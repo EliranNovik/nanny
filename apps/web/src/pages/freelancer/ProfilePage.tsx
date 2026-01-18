@@ -4,7 +4,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +33,8 @@ interface FreelancerData {
   availability_note: string;
 }
 
+type RateMode = "single" | "range";
+
 const LANGUAGES = ["Hebrew", "English", "Russian", "Arabic", "French", "Spanish"];
 
 export default function FreelancerProfilePage() {
@@ -42,6 +43,7 @@ export default function FreelancerProfilePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [rateMode, setRateMode] = useState<RateMode>("single");
 
   const [data, setData] = useState<FreelancerData>({
     bio: "",
@@ -98,6 +100,13 @@ export default function FreelancerProfilePage() {
           available_now: profile.available_now,
           availability_note: profile.availability_note || "",
         });
+        
+        // Determine rate mode based on existing data
+        if (profile.hourly_rate_min !== null && profile.hourly_rate_max !== null && profile.hourly_rate_min !== profile.hourly_rate_max) {
+          setRateMode("range");
+        } else {
+          setRateMode("single");
+        }
       } catch (err: any) {
         console.error("[FreelancerProfilePage] Exception fetching profile:", err);
       } finally {
@@ -348,36 +357,139 @@ export default function FreelancerProfilePage() {
           {/* Rates */}
           <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-primary" />
-                Hourly Rate
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <Label htmlFor="rateMin">Minimum (₪)</Label>
-                  <Input
-                    id="rateMin"
-                    type="number"
-                    placeholder="50"
-                    value={data.hourly_rate_min || ""}
-                    onChange={(e) => updateField("hourly_rate_min", e.target.value ? Number(e.target.value) : null)}
-                    className="mt-1.5"
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-primary" />
+                  Hourly Rate
+                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "text-sm font-medium transition-colors",
+                    rateMode === "single" ? "text-muted-foreground" : "text-foreground"
+                  )}>
+                    Single
+                  </span>
+                  <Switch
+                    checked={rateMode === "range"}
+                    onCheckedChange={(checked) => {
+                      const newMode = checked ? "range" : "single";
+                      setRateMode(newMode);
+                      // When switching to single, set both min and max to the same value
+                      if (newMode === "single" && data.hourly_rate_min !== null) {
+                        updateField("hourly_rate_max", data.hourly_rate_min);
+                      } else if (newMode === "single" && data.hourly_rate_max !== null) {
+                        updateField("hourly_rate_min", data.hourly_rate_max);
+                      }
+                    }}
                   />
-                </div>
-                <div className="flex-1">
-                  <Label htmlFor="rateMax">Maximum (₪)</Label>
-                  <Input
-                    id="rateMax"
-                    type="number"
-                    placeholder="100"
-                    value={data.hourly_rate_max || ""}
-                    onChange={(e) => updateField("hourly_rate_max", e.target.value ? Number(e.target.value) : null)}
-                    className="mt-1.5"
-                  />
+                  <span className={cn(
+                    "text-sm font-medium transition-colors",
+                    rateMode === "range" ? "text-foreground" : "text-muted-foreground"
+                  )}>
+                    Range
+                  </span>
                 </div>
               </div>
+            </CardHeader>
+            <CardContent>
+              {rateMode === "single" ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Hourly Rate</span>
+                    <span className="text-2xl font-bold text-primary">
+                      ₪{data.hourly_rate_min || data.hourly_rate_max || 50}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="range"
+                      min={20}
+                      max={200}
+                      step={5}
+                      value={data.hourly_rate_min || data.hourly_rate_max || 50}
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        updateField("hourly_rate_min", value);
+                        updateField("hourly_rate_max", value);
+                      }}
+                      className="w-full h-3 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>₪20</span>
+                      <span>₪200</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Min Rate Slider */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Minimum Rate</span>
+                      <span className="text-2xl font-bold text-primary">
+                        ₪{data.hourly_rate_min || 20}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="range"
+                        min={20}
+                        max={data.hourly_rate_max || 200}
+                        step={5}
+                        value={data.hourly_rate_min || 20}
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          if (!data.hourly_rate_max || value <= data.hourly_rate_max) {
+                            updateField("hourly_rate_min", value);
+                          }
+                        }}
+                        className="w-full h-3 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>₪20</span>
+                        <span>₪{data.hourly_rate_max || 200}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Max Rate Slider */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Maximum Rate</span>
+                      <span className="text-2xl font-bold text-primary">
+                        ₪{data.hourly_rate_max || 200}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="range"
+                        min={data.hourly_rate_min || 20}
+                        max={200}
+                        step={5}
+                        value={data.hourly_rate_max || 200}
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          if (!data.hourly_rate_min || value >= data.hourly_rate_min) {
+                            updateField("hourly_rate_max", value);
+                          }
+                        }}
+                        className="w-full h-3 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>₪{data.hourly_rate_min || 20}</span>
+                        <span>₪200</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rate Summary */}
+                  <div className="pt-2 pb-1 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Range: <span className="font-semibold text-foreground">₪{data.hourly_rate_min || 20}</span> - <span className="font-semibold text-foreground">₪{data.hourly_rate_max || 200}</span> per hour
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

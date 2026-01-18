@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ui/toast";
 import { apiPost } from "@/lib/api";
+import { getCityFromLocation } from "@/lib/location";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +16,9 @@ import {
   ArrowLeft, 
   ArrowRight,
   Loader2,
-  Sparkles
+  Sparkles,
+  Navigation,
+  Check
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +57,11 @@ const REQUIREMENTS = [
   { id: "special_needs", label: "Special Needs Experience", icon: "💜" },
 ];
 
+const STORAGE_KEY = "create_job_form_data";
+const MIN_BUDGET = 20;
+const MAX_BUDGET = 200;
+const BUDGET_STEP = 5;
+
 interface JobData {
   care_type: string;
   children_count: number;
@@ -65,20 +75,119 @@ interface JobData {
 
 export default function CreateJobPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const { profile } = useAuth();
+  const { addToast } = useToast();
+  // Lazy initializer for step - only runs once
+  const [step, setStep] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const savedStep = parsed.step;
+        if (savedStep && savedStep > 0) {
+          return savedStep;
+        }
+      }
+    } catch (error) {
+      console.error("Error loading saved step:", error);
+    }
+    return 1;
+  });
+
+  // Lazy initializer for jobData - only runs once
+  const [jobData, setJobData] = useState<JobData>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const { step: _, ...savedJobData } = parsed;
+        
+        // Validate that we have meaningful data
+        const hasData = savedJobData.care_type || 
+          savedJobData.location_city || 
+          savedJobData.shift_hours ||
+          (savedJobData.budget_min !== null) ||
+          (savedJobData.budget_max !== null) ||
+          (savedJobData.requirements && savedJobData.requirements.length > 0);
+        
+        if (hasData) {
+          return {
+            care_type: savedJobData.care_type || "",
+            children_count: savedJobData.children_count || 1,
+            children_age_group: savedJobData.children_age_group || "",
+            location_city: savedJobData.location_city || "",
+            shift_hours: savedJobData.shift_hours || "",
+            requirements: savedJobData.requirements || [],
+            budget_min: savedJobData.budget_min ?? null,
+            budget_max: savedJobData.budget_max ?? null,
+          } as JobData;
+        }
+      }
+    } catch (error) {
+      console.error("Error loading saved form data:", error);
+    }
+    // Return defaults if no saved data
+    return {
+      care_type: "",
+      children_count: 1,
+      children_age_group: "",
+      location_city: "",
+      shift_hours: "",
+      requirements: [],
+      budget_min: null,
+      budget_max: null,
+    };
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [savedLocationShown, setSavedLocationShown] = useState(false);
   
-  const [jobData, setJobData] = useState<JobData>({
-    care_type: "",
-    children_count: 1,
-    children_age_group: "",
-    location_city: "",
-    shift_hours: "",
-    requirements: [],
-    budget_min: null,
-    budget_max: null,
-  });
+  // Track previous values to only save when they actually change
+  const prevStepRef = useRef<number | null>(null);
+  const prevJobDataRef = useRef<string | null>(null);
+  const isInitialMountRef = useRef(true);
+
+  // Save to localStorage only when values actually change (not on mount)
+  useEffect(() => {
+    // Skip on initial mount
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      prevStepRef.current = step;
+      prevJobDataRef.current = JSON.stringify(jobData);
+      return;
+    }
+
+    const currentDataStr = JSON.stringify(jobData);
+    const stepChanged = prevStepRef.current !== step;
+    const dataChanged = prevJobDataRef.current !== currentDataStr;
+
+    // Only save if something actually changed
+    if (!stepChanged && !dataChanged) return;
+
+    // Update refs
+    prevStepRef.current = step;
+    prevJobDataRef.current = currentDataStr;
+
+    // Small delay to batch rapid changes
+    const timeoutId = setTimeout(() => {
+      const dataToSave = {
+        ...jobData,
+        step,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    }, 150);
+    
+    return () => clearTimeout(timeoutId);
+  }, [jobData, step]);
+
+  // Show saved location when reaching step 4 (location step)
+  useEffect(() => {
+    if (step === 4 && profile?.city && !savedLocationShown && !jobData.location_city) {
+      setSavedLocationShown(true);
+    }
+  }, [step, profile?.city, savedLocationShown, jobData.location_city]);
 
   const totalSteps = 6;
 
@@ -107,6 +216,39 @@ export default function CreateJobPage() {
     }
   }
 
+  function handleUseSavedLocation() {
+    if (profile?.city) {
+      updateField("location_city", profile.city);
+      addToast({
+        title: "Location set",
+        description: `Using your saved location: ${profile.city}`,
+        variant: "success",
+      });
+    }
+  }
+
+  async function handleGetLocation() {
+    setGettingLocation(true);
+    try {
+      const cityName = await getCityFromLocation();
+      updateField("location_city", cityName);
+      addToast({
+        title: "Location found",
+        description: `Your location has been set to ${cityName}`,
+        variant: "success",
+      });
+    } catch (error: any) {
+      console.error("Error getting location:", error);
+      addToast({
+        title: "Location error",
+        description: error.message || "Failed to get your location",
+        variant: "error",
+      });
+    } finally {
+      setGettingLocation(false);
+    }
+  }
+
   async function handleSubmit() {
     setLoading(true);
     setError("");
@@ -121,6 +263,8 @@ export default function CreateJobPage() {
         }
       );
       console.log("[CreateJobPage] Job created successfully:", result);
+      // Clear localStorage after successful submission
+      localStorage.removeItem(STORAGE_KEY);
       navigate(`/client/jobs/${result.job_id}/confirmed`);
     } catch (err) {
       console.error("[CreateJobPage] Error creating job:", err);
@@ -234,16 +378,61 @@ export default function CreateJobPage() {
             {/* Step 4: Location */}
             {step === 4 && (
               <div className="space-y-4">
-                <Input
-                  placeholder="Enter your city"
-                  value={jobData.location_city}
-                  onChange={(e) => updateField("location_city", e.target.value)}
-                  className="text-lg h-14"
-                  autoFocus
-                />
-                <p className="text-sm text-muted-foreground">
-                  We'll match you with nannies in your area
-                </p>
+                {/* Show saved location option if available */}
+                {profile?.city && !jobData.location_city && (
+                  <div className="p-4 rounded-lg border-2 border-primary/20 bg-primary/5">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm mb-1">Use your saved location?</p>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          We found a saved location: <span className="font-medium">{profile.city}</span>
+                        </p>
+                        <Button
+                          onClick={handleUseSavedLocation}
+                          size="sm"
+                          className="w-full"
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Use {profile.city}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Location input */}
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter your city"
+                      value={jobData.location_city}
+                      onChange={(e) => updateField("location_city", e.target.value)}
+                      className="text-lg h-14 flex-1"
+                      autoFocus={!profile?.city || !!jobData.location_city}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleGetLocation}
+                      disabled={gettingLocation}
+                      className="h-14 w-14"
+                      title="Get location using GPS"
+                    >
+                      {gettingLocation ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Navigation className="w-5 h-5" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {profile?.city && jobData.location_city !== profile.city
+                      ? "We'll match you with nannies in your area"
+                      : "Click the GPS icon to automatically detect your location"}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -272,25 +461,90 @@ export default function CreateJobPage() {
             {step === 6 && (
               <div className="space-y-6">
                 <div>
-                  <label className="text-sm font-medium mb-3 block">
+                  <label className="text-sm font-medium mb-4 block">
                     Hourly Budget Range (optional)
                   </label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      placeholder="Min ₪"
-                      value={jobData.budget_min || ""}
-                      onChange={(e) => updateField("budget_min", e.target.value ? Number(e.target.value) : null)}
-                      className="text-center"
-                    />
-                    <span className="text-muted-foreground">—</span>
-                    <Input
-                      type="number"
-                      placeholder="Max ₪"
-                      value={jobData.budget_max || ""}
-                      onChange={(e) => updateField("budget_max", e.target.value ? Number(e.target.value) : null)}
-                      className="text-center"
-                    />
+                  
+                  {/* Budget Range Slider */}
+                  <div className="space-y-6">
+                    {/* Min Budget Slider */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">Minimum Rate</span>
+                        <span className="text-2xl font-bold text-primary">
+                          ₪{jobData.budget_min || MIN_BUDGET}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min={MIN_BUDGET}
+                          max={jobData.budget_max || MAX_BUDGET}
+                          step={BUDGET_STEP}
+                          value={jobData.budget_min || MIN_BUDGET}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            if (!jobData.budget_max || value <= jobData.budget_max) {
+                              updateField("budget_min", value);
+                            }
+                          }}
+                          className="w-full h-3 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>₪{MIN_BUDGET}</span>
+                          <span>₪{jobData.budget_max || MAX_BUDGET}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Max Budget Slider */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">Maximum Rate</span>
+                        <span className="text-2xl font-bold text-primary">
+                          ₪{jobData.budget_max || MAX_BUDGET}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min={jobData.budget_min || MIN_BUDGET}
+                          max={MAX_BUDGET}
+                          step={BUDGET_STEP}
+                          value={jobData.budget_max || MAX_BUDGET}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            if (!jobData.budget_min || value >= jobData.budget_min) {
+                              updateField("budget_max", value);
+                            }
+                          }}
+                          className="w-full h-3 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>₪{jobData.budget_min || MIN_BUDGET}</span>
+                          <span>₪{MAX_BUDGET}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Budget Summary */}
+                    <div className="pt-2 pb-1 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Range: <span className="font-semibold text-foreground">₪{jobData.budget_min || MIN_BUDGET}</span> - <span className="font-semibold text-foreground">₪{jobData.budget_max || MAX_BUDGET}</span> per hour
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          updateField("budget_min", null);
+                          updateField("budget_max", null);
+                        }}
+                        className="mt-2 text-xs"
+                      >
+                        Clear budget
+                      </Button>
+                    </div>
                   </div>
                 </div>
 

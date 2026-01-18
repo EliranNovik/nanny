@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Save, ArrowLeft, Loader2, Camera, X } from "lucide-react";
+import { Save, ArrowLeft, Loader2, Camera, X, Navigation } from "lucide-react";
+import { getCityFromLocation } from "@/lib/location";
 
 export default function ClientProfilePage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -22,6 +23,7 @@ export default function ClientProfilePage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -129,6 +131,28 @@ export default function ClientProfilePage() {
         description: error.message || "Please try again",
         variant: "error",
       });
+    }
+  }
+
+  async function handleGetLocation() {
+    setGettingLocation(true);
+    try {
+      const cityName = await getCityFromLocation();
+      setCity(cityName);
+      addToast({
+        title: "Location found",
+        description: `Your location has been set to ${cityName}`,
+        variant: "success",
+      });
+    } catch (error: any) {
+      console.error("Error getting location:", error);
+      addToast({
+        title: "Location error",
+        description: error.message || "Failed to get your location",
+        variant: "error",
+      });
+    } finally {
+      setGettingLocation(false);
     }
   }
 
@@ -257,12 +281,32 @@ export default function ClientProfilePage() {
 
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                placeholder="e.g., Tel Aviv"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="city"
+                  placeholder="e.g., Tel Aviv"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleGetLocation}
+                  disabled={gettingLocation}
+                  title="Get location using GPS"
+                >
+                  {gettingLocation ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Navigation className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Click the GPS icon to automatically detect your location
+              </p>
             </div>
 
             <div className="space-y-2">
