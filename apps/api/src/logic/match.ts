@@ -25,7 +25,7 @@ interface ProfileWithFreelancer {
   id: string;
   city: string;
   role: string;
-  freelancer_profiles: FreelancerProfile;
+  freelancer_profiles: FreelancerProfile | FreelancerProfile[] | null;
 }
 
 export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
@@ -42,8 +42,11 @@ export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
   if (error) throw error;
 
   // Filter in code for requirements and budget.
-  const candidates = (data || []).filter((row: ProfileWithFreelancer) => {
-    const fp = row.freelancer_profiles;
+  const candidates = (data || []).filter((row: any) => {
+    // Handle Supabase join result - it may be an array or single object
+    const fpRaw = row.freelancer_profiles;
+    const fp: FreelancerProfile | null = Array.isArray(fpRaw) ? fpRaw[0] : fpRaw;
+    
     if (!fp) {
       console.log("[Match] Skipping", row.id, "- no freelancer_profiles");
       return false;
@@ -93,6 +96,6 @@ export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
   });
 
   console.log("[Match] Final candidates:", candidates.length, "out of", (data || []).length);
-  return candidates.map((c: ProfileWithFreelancer) => c.id);
+  return candidates.map((c: any) => c.id);
 }
 
