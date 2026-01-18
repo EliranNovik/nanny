@@ -1,8 +1,7 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +39,7 @@ interface Conversation {
     read_by: string | null;
     attachment_type?: string | null;
     attachment_name?: string | null;
-  };
+  } | undefined;
   unread_count: number;
 }
 
@@ -135,7 +134,7 @@ export default function MessagesPage() {
             // Fetch job info for the most recent conversation
             const { data: job } = await supabase
               .from("job_requests")
-              .select("id, status, care_type, children_count, children_age_group, start_at")
+              .select("id, status, stage, care_type, children_count, children_age_group, start_at")
               .eq("id", mostRecentConversation.job_id)
               .single();
 
@@ -315,16 +314,18 @@ export default function MessagesPage() {
                   if (cOtherUserId === otherUserId) {
                     // Check if this message was from the other user
                     if (updatedMsg.sender_id === otherUserId && convo.unread_count > 0) {
+                      const updatedLastMessage = convo.last_message?.created_at === updatedMsg.created_at
+                        ? (convo.last_message ? {
+                            ...convo.last_message,
+                            read_at: updatedMsg.read_at || null,
+                            read_by: updatedMsg.read_by || null,
+                          } : undefined)
+                        : convo.last_message;
+                      
                       return {
                         ...convo,
                         unread_count: Math.max(0, convo.unread_count - 1),
-                        last_message: convo.last_message?.created_at === updatedMsg.created_at
-                          ? {
-                              ...convo.last_message,
-                              read_at: updatedMsg.read_at,
-                              read_by: updatedMsg.read_by,
-                            }
-                          : convo.last_message,
+                        last_message: updatedLastMessage,
                       };
                     }
                   }

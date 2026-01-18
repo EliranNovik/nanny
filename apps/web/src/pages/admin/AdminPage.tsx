@@ -4,20 +4,14 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Briefcase, 
   Users, 
   BarChart3, 
   MessageSquare, 
-  Calendar,
   CheckCircle2,
-  Clock,
-  XCircle,
-  TrendingUp,
-  UserCheck,
-  UserX
+  Clock
 } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";

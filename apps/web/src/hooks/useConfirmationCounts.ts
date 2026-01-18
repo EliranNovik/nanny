@@ -13,6 +13,8 @@ export function useConfirmationCounts() {
     }
 
     async function fetchConfirmationCounts() {
+      if (!user) return;
+      
       try {
         // Get all jobs waiting for responses
         const { data: jobs } = await supabase

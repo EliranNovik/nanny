@@ -13,6 +13,8 @@ export function useScheduleChanges() {
     }
 
     async function fetchScheduleChanges() {
+      if (!user || !profile) return;
+      
       try {
         // Get all conversations for active jobs (locked or active status)
         let conversations;

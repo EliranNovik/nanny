@@ -4,10 +4,9 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, CreditCard, CheckCircle2, Clock, DollarSign, Edit, Trash2, Search, Filter, X } from "lucide-react";
+import { Loader2, CheckCircle2, Clock, DollarSign, Edit, Trash2, Search, Filter, X } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
@@ -56,7 +55,6 @@ interface Payment {
 
 export default function PaymentsPage() {
   const { user, profile } = useAuth();
-  const navigate = useNavigate();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);

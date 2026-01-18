@@ -16,7 +16,7 @@ export function useUnreadCounts() {
 
     // Fetch unread notifications count (for freelancers only)
     async function fetchUnreadNotifications() {
-      if (profile.role !== "freelancer") {
+      if (!user || !profile || profile.role !== "freelancer") {
         setUnreadNotifications(0);
         return;
       }
@@ -57,6 +57,8 @@ export function useUnreadCounts() {
 
     // Fetch unread messages count
     async function fetchUnreadMessages() {
+      if (!user || !profile) return;
+      
       try {
         // Get all conversations for this user
         let conversations;

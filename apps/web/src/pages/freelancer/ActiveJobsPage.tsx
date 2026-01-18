@@ -114,14 +114,14 @@ export default function FreelancerActiveJobsPage() {
     loadJobs();
   }, [user]);
 
-  function formatCareType(type: string): string {
-    const map: Record<string, string> = {
-      occasional: "One-time",
-      part_time: "Part-time",
-      full_time: "Full-time",
-    };
-    return map[type] || type;
-  }
+  // function formatCareType(type: string): string {
+  //   const map: Record<string, string> = {
+  //     occasional: "One-time",
+  //     part_time: "Part-time",
+  //     full_time: "Full-time",
+  //   };
+  //   return map[type] || type;
+  // }
 
   function formatAgeGroup(group: string): string {
     const map: Record<string, string> = {

@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Send, Check, CheckCheck, Paperclip, X, Image as ImageIcon, File } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -59,13 +59,16 @@ export function ReportIssueModal() {
 
   // Fetch messages when conversation is available
   useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    
     if (conversationId) {
       fetchMessages();
-      subscribeToMessages();
+      channel = subscribeToMessages();
     }
+    
     return () => {
-      if (conversationId) {
-        supabase.removeChannel(`messages:${conversationId}`);
+      if (channel) {
+        supabase.removeChannel(channel);
       }
     };
   }, [conversationId]);
@@ -176,7 +179,7 @@ export function ReportIssueModal() {
   }
 
   function subscribeToMessages() {
-    if (!conversationId) return;
+    if (!conversationId) return null;
 
     const channel = supabase
       .channel(`messages:${conversationId}`)
@@ -209,9 +212,7 @@ export function ReportIssueModal() {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return channel;
   }
 
   function getFileType(filename: string): string {
@@ -256,7 +257,7 @@ export function ReportIssueModal() {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = `conversations/${conversationId}/${fileName}`;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from("attachments")
           .upload(filePath, selectedFile, {
             cacheControl: "3600",

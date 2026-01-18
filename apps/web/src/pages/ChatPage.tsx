@@ -1269,7 +1269,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           // Get last message
           const { data: lastMsg } = await supabase
             .from("messages")
-            .select("id, body, created_at, read_at")
+            .select("id, conversation_id, sender_id, body, created_at, read_at, read_by")
             .eq("conversation_id", conv.id)
             .order("created_at", { ascending: false })
             .limit(1)
@@ -1283,16 +1283,23 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             .is("read_at", null)
             .neq("sender_id", user.id);
 
+          // Only include conversations with valid client profiles
+          if (!clientProfile) {
+            return null;
+          }
+          
           return {
             id: conv.id,
-            client: clientProfile || null,
+            client: clientProfile,
             lastMessage: lastMsg || undefined,
             unreadCount: count || 0,
           };
         })
       );
 
-      setReportConversations(reportsWithDetails);
+      // Filter out null values (conversations without client profiles)
+      const validReports = reportsWithDetails.filter((r): r is NonNullable<typeof r> => r !== null);
+      setReportConversations(validReports);
     } catch (error) {
       console.error("Error fetching report conversations:", error);
     }
@@ -3353,7 +3360,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                               .insert({
                                 job_id: job.id,
                                 freelancer_id: conversation?.freelancer_id || user.id,
-                                client_id: conversation?.client_id || job.client_id,
+                                client_id: conversation?.client_id || "",
                                 currency_id: selectedCurrencyId,
                                 hours_worked: hours,
                                 hourly_rate: rate,

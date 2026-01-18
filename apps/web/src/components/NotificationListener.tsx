@@ -17,6 +17,8 @@ export function NotificationListener() {
 
     // Fetch initial notifications to populate the ref
     async function initializeNotifications() {
+      if (!user) return;
+      
       const { data } = await supabase
         .from("job_candidate_notifications")
         .select("id")

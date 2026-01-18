@@ -16,11 +16,11 @@ import {
   MessageCircle,
   CheckCircle2,
   Calendar,
-  Trash2,
   ChevronDown,
   ChevronUp,
   Eye,
-  X
+  X,
+  Bell
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getJobStageBadge } from "@/lib/jobStages";
@@ -202,14 +202,14 @@ export default function ActiveJobsPage() {
     return () => clearInterval(interval);
   }, [user, openRequests.length]);
 
-  function formatCareType(type: string): string {
-    const map: Record<string, string> = {
-      occasional: "One-time",
-      part_time: "Part-time",
-      full_time: "Full-time",
-    };
-    return map[type] || type;
-  }
+  // function formatCareType(type: string): string {
+  //   const map: Record<string, string> = {
+  //     occasional: "One-time",
+  //     part_time: "Part-time",
+  //     full_time: "Full-time",
+  //   };
+  //   return map[type] || type;
+  // }
 
   function formatAgeGroup(group: string): string {
     const map: Record<string, string> = {
