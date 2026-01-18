@@ -55,9 +55,9 @@ export function BottomNav() {
   if (location.pathname === "/onboarding" && !profile) {
     return (
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-around">
-            <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 text-muted-foreground">
+        <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-start min-w-max px-2">
+            <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 text-muted-foreground">
               <Home className="w-5 h-5" />
               <span className="text-xs font-medium">Getting Started</span>
             </div>
@@ -80,8 +80,8 @@ export function BottomNav() {
 
     return (
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-around">
+        <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-start min-w-max px-2">
             {clientNav.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
@@ -96,7 +96,7 @@ export function BottomNav() {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 transition-colors relative",
+                    "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 transition-colors relative",
                     isActive
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -129,7 +129,7 @@ export function BottomNav() {
             <button
               onClick={openReportModal}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 transition-colors text-muted-foreground hover:text-foreground"
+                "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 transition-colors text-muted-foreground hover:text-foreground"
               )}
             >
               <AlertCircle className="w-5 h-5" />
@@ -150,8 +150,8 @@ export function BottomNav() {
 
     return (
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-around">
+        <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-start min-w-max px-2">
             {adminNav.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
@@ -161,7 +161,7 @@ export function BottomNav() {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 transition-colors",
+                    "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 transition-colors",
                     isActive
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -191,8 +191,8 @@ export function BottomNav() {
 
     return (
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-around">
+        <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-start min-w-max px-2">
             {freelancerNav.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
@@ -205,7 +205,7 @@ export function BottomNav() {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 transition-colors relative",
+                    "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 transition-colors relative",
                     isActive
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -246,7 +246,7 @@ export function BottomNav() {
             <button
               onClick={openReportModal}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 transition-colors text-muted-foreground hover:text-foreground"
+                "flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 transition-colors text-muted-foreground hover:text-foreground"
               )}
             >
               <AlertCircle className="w-5 h-5" />
@@ -262,9 +262,9 @@ export function BottomNav() {
   if (user) {
     return (
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-around">
-            <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 text-muted-foreground">
+        <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-start min-w-max px-2">
+            <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 text-muted-foreground">
               <Home className="w-5 h-5" />
               <span className="text-xs font-medium">Loading...</span>
             </div>

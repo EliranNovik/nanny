@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useReportIssue } from "@/context/ReportIssueContext";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +25,7 @@ import {
   Image as ImageIcon,
   File,
   X,
-  Calendar,
   Clock,
-  AlertCircle,
   CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -93,6 +90,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [showContactPanel, setShowContactPanel] = useState(false);
+  const [mobileView, setMobileView] = useState<"steps" | "chat">("steps"); // Default to steps on mobile
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
@@ -121,7 +119,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const [priceOfferStatus, setPriceOfferStatus] = useState<"pending" | "accepted" | "declined" | null>(null);
   const [priceOfferInput, setPriceOfferInput] = useState<string>("");
   const [priceOfferPending, setPriceOfferPending] = useState(false);
-  const { openReportModal } = useReportIssue();
   const [showRevisePriceModal, setShowRevisePriceModal] = useState(false);
   const [jobStartStatus, setJobStartStatus] = useState<"pending" | "confirmed" | null>(null);
   const [jobStartPending, setJobStartPending] = useState(false);
@@ -1359,12 +1356,59 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     }
   }
 
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
+  // Smooth scroll function
+  const scrollToBottom = (smooth = true) => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // ScrollArea from Radix UI wraps content, need to find the viewport element
+      // The viewport is the first child div inside the ScrollArea
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+      if (viewport) {
+        viewport.scrollTo({
+          top: viewport.scrollHeight,
+          behavior: smooth ? 'smooth' : 'auto'
+        });
+      } else {
+        // Fallback: try to find viewport by class or direct access
+        const viewportElement = scrollRef.current.querySelector('.h-full.w-full') as HTMLElement;
+        if (viewportElement) {
+          viewportElement.scrollTo({
+            top: viewportElement.scrollHeight,
+            behavior: smooth ? 'smooth' : 'auto'
+          });
+        }
+      }
+    }
+  };
+
+  // Auto-scroll to bottom on new messages (smooth)
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Small delay to ensure DOM has updated
+      setTimeout(() => {
+        scrollToBottom(true);
+      }, 100);
     }
   }, [messages]);
+
+  // Auto-scroll when entering chat view (especially on mobile)
+  useEffect(() => {
+    if (mobileView === "chat" && messages.length > 0 && !loading) {
+      // Small delay to ensure chat area is rendered
+      setTimeout(() => {
+        scrollToBottom(true);
+      }, 300);
+    }
+  }, [mobileView, loading]);
+
+  // Auto-scroll when conversation is first loaded (smooth)
+  useEffect(() => {
+    if (!loading && messages.length > 0) {
+      // Delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        scrollToBottom(true);
+      }, 300);
+    }
+  }, [loading]); // Only trigger when loading changes from true to false
 
   // Mark messages as read when viewing
   useEffect(() => {
@@ -1492,12 +1536,10 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     setNewMessage("");
     setSelectedFile(null);
     
-    // Scroll to bottom immediately
+    // Scroll to bottom smoothly after sending
     setTimeout(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    }, 0);
+      scrollToBottom(true);
+    }, 100);
 
     const { data, error } = await supabase.from("messages").insert({
       conversation_id: conversationId,
@@ -1602,25 +1644,61 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       {!hideBackButton && (
         <div
           className={cn(
-            "fixed inset-y-0 left-0 w-[400px] bg-card border-r z-40 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
-            showContactPanel ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+            "fixed inset-y-0 left-0 w-full lg:w-[400px] bg-card border-r z-40 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
+            // On mobile: show when mobileView is 'steps', on desktop: always show
+            mobileView === "steps" || showContactPanel ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="p-4 border-b">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/messages")}
-                className="lg:hidden"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <h2 className="text-lg font-semibold">
-                {conversation?.job_id === null && currentUserProfile?.is_admin ? "Issue Reports" : "Job Steps"}
-              </h2>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    // Navigate to active jobs page based on user role
+                    if (currentUserProfile?.role === "client") {
+                      navigate("/client/active-jobs");
+                    } else if (currentUserProfile?.role === "freelancer") {
+                      navigate("/freelancer/active-jobs");
+                    } else {
+                      navigate("/messages");
+                    }
+                  }}
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <h2 className="text-lg font-semibold">
+                  {conversation?.job_id === null && currentUserProfile?.is_admin ? "Issue Reports" : "Job Steps"}
+                </h2>
+              </div>
+              
+              {/* Contact Info - Right side (mobile only) */}
+              {conversation?.job_id !== null && otherUser && (
+                <div className="lg:hidden flex items-center gap-2 flex-shrink-0">
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    <AvatarImage src={otherUser.photo_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {otherInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium leading-tight max-w-[100px] line-clamp-2">
+                    {otherUser.full_name || "User"}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      // Phone call functionality
+                      console.log("Call", otherUser?.full_name);
+                    }}
+                  >
+                    <Phone className="w-5 h-5" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1706,9 +1784,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                   <h3 className="font-semibold">Request</h3>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Job request created and waiting for price offer...
-                  </p>
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span className="font-medium">
+                      Job accepted
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -3027,43 +3108,23 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 </div>
               )}
 
-              {/* Contact Info Section - Only show for job conversations */}
-              <Separator />
-              <div className="space-y-4">
-                <h3 className="font-semibold">Contact</h3>
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={otherUser?.photo_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {otherInitials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">
-                      {conversation?.job_id === null 
-                        ? (currentUserProfile?.is_admin ? (otherUser?.full_name || "User") : "Support")
-                        : (otherUser?.full_name || "User")}
-                    </p>
-                    {conversation?.job_id !== null && otherUser?.city && (
-                      <p className="text-sm text-muted-foreground">{otherUser.city}</p>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    // Phone call functionality
-                    console.log("Call", otherUser?.full_name);
-                  }}
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call
-                </Button>
-              </div>
             </div>
               )}
           </ScrollArea>
+
+          {/* Mobile Chat Button - at bottom of job steps panel */}
+          {!hideBackButton && (
+            <div className="lg:hidden border-t p-4 bg-card flex-shrink-0">
+              <Button
+                onClick={() => setMobileView("chat")}
+                className="w-full"
+                size="lg"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Open Chat
+              </Button>
+            </div>
+          )}
 
           {/* Modals - Outside ScrollArea */}
           {/* Revise Schedule Modal */}
@@ -3558,6 +3619,20 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                   </div>
                 </DialogContent>
               </Dialog>
+          
+          {/* Mobile Chat Button - at bottom of job steps panel */}
+          {!hideBackButton && (
+            <div className="lg:hidden border-t p-4 bg-card">
+              <Button
+                onClick={() => setMobileView("chat")}
+                className="w-full"
+                size="lg"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Open Chat
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       )}
@@ -3571,7 +3646,11 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       )}
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col min-w-0 overflow-hidden",
+        // Hide chat on mobile when viewing steps
+        !hideBackButton && mobileView === "steps" && "hidden lg:flex"
+      )}>
         {/* Header */}
         <header className="flex-shrink-0 border-b bg-card px-4 py-3">
           <div className="flex items-center gap-3">
@@ -3579,7 +3658,14 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/messages")}
+                onClick={() => {
+                  // On mobile, go back to steps; on desktop, navigate to messages
+                  if (window.innerWidth < 1024) {
+                    setMobileView("steps");
+                  } else {
+                    navigate("/messages");
+                  }
+                }}
                 className="lg:hidden"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -3787,96 +3873,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             </div>
           </ScrollArea>
         </div>
-
-        {/* Action Buttons Bar - Above Input */}
-        {job && (job.status === "locked" || job.status === "active") && (
-          <div className="flex-shrink-0 border-t bg-muted/30 px-4 py-2">
-            <div className="flex gap-2 overflow-x-auto">
-              {currentUserProfile?.role === "client" ? (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // TODO: Implement confirm schedule
-                      console.log("Confirm schedule");
-                    }}
-                    className="flex-shrink-0"
-                  >
-                    <Calendar className="w-4 h-4 mr-1" />
-                    Confirm schedule
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // TODO: Implement adjust time
-                      console.log("Adjust time");
-                    }}
-                    className="flex-shrink-0"
-                  >
-                    <Clock className="w-4 h-4 mr-1" />
-                    Adjust time
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={openReportModal}
-                    className="flex-shrink-0"
-                  >
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    Report issue
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {job.status === "locked" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        // TODO: Implement start job
-                        console.log("Start job");
-                      }}
-                      className="flex-shrink-0"
-                    >
-                      <Clock className="w-4 h-4 mr-1" />
-                      Start job
-                    </Button>
-                  )}
-                  {job.status === "active" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // TODO: Implement running late
-                          console.log("Running late");
-                        }}
-                        className="flex-shrink-0"
-                      >
-                        <Clock className="w-4 h-4 mr-1" />
-                        Running late
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // TODO: Implement finish job
-                          console.log("Finish job");
-                        }}
-                        className="flex-shrink-0"
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Finish job
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Input - Fixed at Bottom */}
         <div className="flex-shrink-0 border-t bg-card px-4 py-3 pb-20 sticky bottom-0 z-10">

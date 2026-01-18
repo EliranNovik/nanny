@@ -77,6 +77,16 @@
   @apply bg-muted-foreground/50;
 }
 
+/* Hide scrollbar utility for mobile */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Animations */
 @keyframes fade-in {
   from {
