@@ -55,7 +55,7 @@ export function BottomNav() {
   // On onboarding page, show basic navigation
   if (location.pathname === "/onboarding" && !profile) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
+      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50 pb-2 md:pb-0">
         <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
           <div className="flex items-center justify-start min-w-max px-2">
             <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 text-muted-foreground">
@@ -80,7 +80,7 @@ export function BottomNav() {
     ];
 
     return (
-      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
+      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50 pb-2 md:pb-0">
         <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
           <div className="flex items-center justify-start min-w-max px-2">
             {clientNav.map((item) => {
@@ -150,7 +150,7 @@ export function BottomNav() {
     ];
 
     return (
-      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
+      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50 pb-2 md:pb-0">
         <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
           <div className="flex items-center justify-start min-w-max px-2">
             {adminNav.map((item) => {
@@ -192,7 +192,7 @@ export function BottomNav() {
     ];
 
     return (
-      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
+      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50 pb-2 md:pb-0">
         <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
           <div className="flex items-center justify-start min-w-max px-2">
             {freelancerNav.map((item) => {
@@ -266,7 +266,7 @@ export function BottomNav() {
   // Default fallback - show basic nav if user exists
   if (user) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50">
+      <nav className="fixed bottom-0 left-0 right-0 border-t bg-card shadow-lg z-50 pb-2 md:pb-0">
         <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
           <div className="flex items-center justify-start min-w-max px-2">
             <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 flex-shrink-0 text-muted-foreground">

@@ -18,4 +18,17 @@ export default defineConfig({
             "@": path.resolve(__dirname, "./src"),
         },
     },
+    // Ensure service worker and manifest are included in build
+    build: {
+        rollupOptions: {
+            output: {
+                // Ensure service worker is not hashed
+                entryFileNames: 'assets/[name].js',
+                chunkFileNames: 'assets/[name].js',
+                assetFileNames: 'assets/[name].[ext]'
+            }
+        }
+    },
+    // Public directory files are automatically copied to dist
+    publicDir: 'public',
 });

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { ReportIssueProvider } from "@/context/ReportIssueContext";
 import { ConfigCheck } from "@/components/ConfigCheck";
 import { BottomNav } from "@/components/BottomNav";
@@ -249,18 +250,20 @@ export default function App() {
   return (
     <>
       <ConfigCheck />
-      <BrowserRouter>
-        <ToastProvider>
-          <AuthProvider>
-            <ReportIssueProvider>
-              <NotificationListener />
-              <AppRoutes />
-              <BottomNav />
-              <ReportIssueModal />
-            </ReportIssueProvider>
-          </AuthProvider>
-        </ToastProvider>
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter>
+          <ToastProvider>
+            <AuthProvider>
+              <ReportIssueProvider>
+                <NotificationListener />
+                <AppRoutes />
+                <BottomNav />
+                <ReportIssueModal />
+              </ReportIssueProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </BrowserRouter>
+      </ThemeProvider>
     </>
   );
 }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Baby, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -111,10 +111,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md animate-fade-in">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary mb-4 shadow-lg">
-            <Baby className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <img 
+              src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" 
+              alt="MamaLama Logo" 
+              className="h-28 w-auto max-w-xs rounded-lg"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">NannyNow</h1>
           <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1">
             <Sparkles className="w-4 h-4" />
             Find childcare in minutes

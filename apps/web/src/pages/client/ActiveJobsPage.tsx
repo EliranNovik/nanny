@@ -492,7 +492,6 @@ export default function ActiveJobsPage() {
             {pastJobsExpanded && (
               <CardContent className="space-y-3">
                 {pastJobs.map((job) => {
-                  const statusBadge = getJobStatusBadge(job.status);
                   const stageBadge = getJobStageBadge(job.stage);
                   return (
                     <div key={job.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
@@ -502,9 +501,6 @@ export default function ActiveJobsPage() {
                           <span className="text-sm text-muted-foreground truncate">{formatJobTitle(job)}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={statusBadge.variant} className="text-xs">
-                            {statusBadge.label}
-                          </Badge>
                           {job.stage && (
                             <Badge variant={stageBadge.variant} className="text-xs">
                               {stageBadge.label}

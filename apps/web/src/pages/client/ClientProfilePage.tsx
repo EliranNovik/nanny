@@ -6,10 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Save, ArrowLeft, Loader2, Camera, X, Navigation } from "lucide-react";
 import { getCityFromLocation } from "@/lib/location";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function ClientProfilePage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -338,6 +339,23 @@ export default function ClientProfilePage() {
                 </>
               )}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Appearance Settings */}
+        <Card className="border-0 shadow-lg mt-6">
+          <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+            <CardDescription>Customize your app experience</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Theme</p>
+                <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
+              </div>
+              <ThemeToggle />
+            </div>
           </CardContent>
         </Card>
       </div>

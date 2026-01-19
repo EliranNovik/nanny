@@ -88,6 +88,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const { user, profile: currentUserProfile } = useAuth();
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [mobileView, setMobileView] = useState<"steps" | "chat">("steps"); // Default to steps on mobile
@@ -181,6 +182,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   }, [showPaymentModal]);
 
   useEffect(() => {
+    // Reset initial load flag when conversation changes
+    isInitialLoadRef.current = true;
+    
     async function fetchConversation() {
       if (!conversationId || !user) return;
 
@@ -272,6 +276,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       }
 
       setMessages(msgs || []);
+      
+      // Reset initial load flag when conversation changes
+      isInitialLoadRef.current = true;
 
       // Check for schedule request or confirmation
       if (currentUserProfile?.role === "client") {
@@ -1358,6 +1365,16 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
   // Smooth scroll function
   const scrollToBottom = (smooth = true) => {
+    // Try mobile scroll ref first (native div)
+    if (mobileScrollRef.current) {
+      mobileScrollRef.current.scrollTo({
+        top: mobileScrollRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+      return;
+    }
+    
+    // Desktop: ScrollArea from Radix UI
     if (scrollRef.current) {
       // ScrollArea from Radix UI wraps content, need to find the viewport element
       // The viewport is the first child div inside the ScrollArea
@@ -1380,33 +1397,37 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     }
   };
 
-  // Auto-scroll to bottom on new messages (smooth)
+  // Track if this is the initial load
+  const isInitialLoadRef = useRef(true);
+
+  // Auto-scroll to bottom on new messages (smooth for new messages, instant for initial load)
   useEffect(() => {
     if (messages.length > 0) {
       // Small delay to ensure DOM has updated
       setTimeout(() => {
-        scrollToBottom(true);
+        scrollToBottom(!isInitialLoadRef.current);
       }, 100);
     }
   }, [messages]);
 
-  // Auto-scroll when entering chat view (especially on mobile)
+  // Auto-scroll when entering chat view (especially on mobile) - instant
   useEffect(() => {
     if (mobileView === "chat" && messages.length > 0 && !loading) {
-      // Small delay to ensure chat area is rendered
+      // Small delay to ensure chat area is rendered, but instant scroll
       setTimeout(() => {
-        scrollToBottom(true);
-      }, 300);
+        scrollToBottom(false);
+      }, 50);
     }
   }, [mobileView, loading]);
 
-  // Auto-scroll when conversation is first loaded (smooth)
+  // Auto-scroll when conversation is first loaded - instant
   useEffect(() => {
-    if (!loading && messages.length > 0) {
-      // Delay to ensure DOM is fully rendered
+    if (!loading && messages.length > 0 && isInitialLoadRef.current) {
+      // Instant scroll on initial load
       setTimeout(() => {
-        scrollToBottom(true);
-      }, 300);
+        scrollToBottom(false);
+        isInitialLoadRef.current = false;
+      }, 50);
     }
   }, [loading]); // Only trigger when loading changes from true to false
 
@@ -1539,6 +1560,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     // Scroll to bottom smoothly after sending
     setTimeout(() => {
       scrollToBottom(true);
+      isInitialLoadRef.current = false; // Mark as no longer initial load
     }, 100);
 
     const { data, error } = await supabase.from("messages").insert({
@@ -3651,8 +3673,8 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         // Hide chat on mobile when viewing steps
         !hideBackButton && mobileView === "steps" && "hidden lg:flex"
       )}>
-        {/* Header */}
-        <header className="flex-shrink-0 border-b bg-card px-4 py-3">
+        {/* Header - Fixed */}
+        <header className="flex-shrink-0 border-b bg-card px-4 py-3 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto">
           <div className="flex items-center gap-3">
             {!hideBackButton && (
               <Button
@@ -3716,9 +3738,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           </div>
         </header>
 
-        {/* Job Summary Header */}
+        {/* Job Summary Header - Fixed */}
         {job && (
-          <div className="flex-shrink-0 border-b bg-muted/30 px-4 py-2">
+          <div className="flex-shrink-0 border-b bg-muted/30 px-4 py-2 md:relative fixed top-[57px] left-0 right-0 z-20 md:z-auto md:top-auto">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -3748,134 +3770,255 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         )}
 
         {/* Messages - Scrollable Area */}
-        <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-b from-muted/20 to-background">
-          <ScrollArea className="flex-1" ref={scrollRef}>
-            <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 pb-4">
-            {messages.map((msg, index) => {
-              const isOwn = msg.sender_id === user?.id;
-              const receiptStatus = isOwn ? getReadReceiptStatus(msg) : null;
+        <div className={cn(
+          "flex-1 min-h-0 flex flex-col bg-gradient-to-b from-muted/20 to-background",
+          "md:pt-0",
+          job ? "pt-[106px]" : "pt-[57px]"
+        )}>
+          {/* Mobile: Use native scrolling */}
+          <div 
+            ref={mobileScrollRef}
+            className="md:hidden flex-1 overflow-y-auto"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          >
+            <div className="p-4 space-y-4 pb-36">
+              {messages.map((msg, index) => {
+                const isOwn = msg.sender_id === user?.id;
+                const receiptStatus = isOwn ? getReadReceiptStatus(msg) : null;
 
-              return (
-                <div key={msg.id} className={isOwn ? "animate-message-sent" : "animate-slide-in-left"}>
-                  {/* Date Header */}
-                  {shouldShowDateHeader(index) && (
-                    <div className="flex justify-center my-6">
-                      <span className="text-xs text-muted-foreground bg-muted/80 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                        {formatDate(msg.created_at)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Message Bubble */}
-                  <div
-                    className={cn(
-                      "flex gap-2 md:gap-3 max-w-[70%] md:max-w-[65%] lg:max-w-[60%]",
-                      isOwn ? "ml-auto flex-row-reverse" : "mr-auto"
-                    )}
-                  >
-                    {!isOwn && (
-                      <Avatar className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 flex-shrink-0 mt-auto">
-                        <AvatarImage src={otherUser?.photo_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm lg:text-base">
-                          {otherInitials}
-                        </AvatarFallback>
-                      </Avatar>
+                return (
+                  <div key={msg.id} className={isOwn ? "animate-message-sent" : "animate-slide-in-left"}>
+                    {/* Date Header */}
+                    {shouldShowDateHeader(index) && (
+                      <div className="flex justify-center my-6">
+                        <span className="text-xs text-muted-foreground bg-muted/80 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                          {formatDate(msg.created_at)}
+                        </span>
+                      </div>
                     )}
 
-                    <div className={cn("flex flex-col", isOwn ? "items-end" : "items-start")}>
-                      {/* Image Attachment - Display outside bubble */}
-                      {msg.attachment_url && msg.attachment_type === "image" && (
-                        <div className="mb-2 md:mb-3">
-                          <img
-                            src={msg.attachment_url}
-                            alt={msg.attachment_name || "Attachment"}
-                            className="max-w-[300px] md:max-w-[500px] lg:max-w-[600px] rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
-                            onClick={() => {
-                              setSelectedImage(msg);
-                              setIsImageModalOpen(true);
-                            }}
-                          />
-                        </div>
+                    {/* Message Bubble */}
+                    <div
+                      className={cn(
+                        "flex gap-2 max-w-[70%]",
+                        isOwn ? "ml-auto flex-row-reverse" : "mr-auto"
                       )}
-                      
-                      {/* Message Body or File Attachment - Inside bubble */}
-                      {(msg.body || (msg.attachment_url && msg.attachment_type !== "image")) && (
-                        <div
-                          className={cn(
-                            "rounded-xl md:rounded-2xl px-3 md:px-4 py-2 md:py-3 shadow-sm",
-                            isOwn
-                              ? "bg-primary text-primary-foreground rounded-br-md"
-                              : "bg-card border border-border rounded-bl-md"
-                          )}
-                        >
-                          {/* File Attachment */}
-                          {msg.attachment_url && msg.attachment_type !== "image" && (
-                            <div className="mb-2 md:mb-3">
+                    >
+                      {!isOwn && (
+                        <Avatar className="w-8 h-8 flex-shrink-0 mt-auto">
+                          <AvatarImage src={otherUser?.photo_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                            {otherInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+
+                      <div className={cn("flex flex-col", isOwn ? "items-end" : "items-start")}>
+                        {/* Image Attachment - Display outside bubble */}
+                        {msg.attachment_url && msg.attachment_type === "image" && (
+                          <div className="mb-2">
+                            <img
+                              src={msg.attachment_url}
+                              alt={msg.attachment_name || "Attachment"}
+                              className="max-w-[300px] rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
+                              onClick={() => {
+                                setSelectedImage(msg);
+                                setIsImageModalOpen(true);
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Message Body or File Attachment - Inside bubble */}
+                        {(msg.body || (msg.attachment_url && msg.attachment_type !== "image")) && (
+                          <div
+                            className={cn(
+                              "rounded-2xl px-3 py-2 max-w-full break-words",
+                              isOwn
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card border text-foreground"
+                            )}
+                          >
+                            {/* File Attachment */}
+                            {msg.attachment_url && msg.attachment_type !== "image" && (
                               <a
                                 href={msg.attachment_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={cn(
-                                  "flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg hover:bg-black/10 transition-colors",
-                                  isOwn ? "bg-black/10" : "bg-muted"
-                                )}
+                                className="flex items-center gap-2 text-sm hover:underline"
                               >
-                                <File className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm md:text-base font-medium truncate">
-                                    {msg.attachment_name || "Attachment"}
-                                  </p>
-                                  {msg.attachment_size && (
-                                    <p className="text-xs md:text-sm opacity-75">
-                                      {(msg.attachment_size / 1024).toFixed(1)} KB
-                                    </p>
-                                  )}
-                                </div>
+                                <File className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{msg.attachment_name || "Attachment"}</span>
+                                {msg.attachment_size && (
+                                  <span className="text-xs opacity-70">
+                                    {(msg.attachment_size / 1024).toFixed(1)} KB
+                                  </span>
+                                )}
                               </a>
-                            </div>
-                          )}
-                          {/* Message Body */}
-                          {msg.body && (
-                            <p className="text-sm md:text-base whitespace-pre-wrap break-words leading-relaxed">
-                              {msg.body}
-                            </p>
+                            )}
+
+                            {/* Message Text */}
+                            {msg.body && (
+                              <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Timestamp and Read Receipt */}
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatTime(msg.created_at)}
+                          </span>
+                          {isOwn && receiptStatus && (
+                            <ReadReceipt status={receiptStatus} />
                           )}
                         </div>
-                      )}
-                      <div
-                        className={cn(
-                          "flex items-center gap-1.5 md:gap-2 mt-1 md:mt-2 px-1",
-                          isOwn ? "flex-row-reverse" : ""
-                        )}
-                      >
-                        <span className="text-[10px] md:text-xs text-muted-foreground">
-                          {formatTime(msg.created_at)}
-                        </span>
-                        {isOwn && receiptStatus && (
-                          <ReadReceipt status={receiptStatus} />
-                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {/* Empty State */}
-            {messages.length === 0 && (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                  <Send className="w-8 h-8 text-muted-foreground" />
+              {/* Empty State */}
+              {messages.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                    <Send className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground">No messages yet. Say hello!</p>
                 </div>
-                <p className="text-muted-foreground">No messages yet. Say hello!</p>
-              </div>
-            )}
+              )}
+            </div>
+          </div>
+          
+          {/* Desktop: Use ScrollArea */}
+          <ScrollArea className="hidden md:flex flex-1" ref={scrollRef}>
+            <div className="p-6 lg:p-8 space-y-6 pb-4">
+              {messages.map((msg, index) => {
+                const isOwn = msg.sender_id === user?.id;
+                const receiptStatus = isOwn ? getReadReceiptStatus(msg) : null;
+
+                return (
+                  <div key={msg.id} className={isOwn ? "animate-message-sent" : "animate-slide-in-left"}>
+                    {/* Date Header */}
+                    {shouldShowDateHeader(index) && (
+                      <div className="flex justify-center my-6">
+                        <span className="text-xs text-muted-foreground bg-muted/80 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                          {formatDate(msg.created_at)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Message Bubble */}
+                    <div
+                      className={cn(
+                        "flex gap-2 md:gap-3 max-w-[70%] md:max-w-[65%] lg:max-w-[60%]",
+                        isOwn ? "ml-auto flex-row-reverse" : "mr-auto"
+                      )}
+                    >
+                      {!isOwn && (
+                        <Avatar className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 flex-shrink-0 mt-auto">
+                          <AvatarImage src={otherUser?.photo_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm lg:text-base">
+                            {otherInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+
+                      <div className={cn("flex flex-col", isOwn ? "items-end" : "items-start")}>
+                        {/* Image Attachment - Display outside bubble */}
+                        {msg.attachment_url && msg.attachment_type === "image" && (
+                          <div className="mb-2 md:mb-3">
+                            <img
+                              src={msg.attachment_url}
+                              alt={msg.attachment_name || "Attachment"}
+                              className="max-w-[300px] md:max-w-[500px] lg:max-w-[600px] rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
+                              onClick={() => {
+                                setSelectedImage(msg);
+                                setIsImageModalOpen(true);
+                              }}
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Message Body or File Attachment - Inside bubble */}
+                        {(msg.body || (msg.attachment_url && msg.attachment_type !== "image")) && (
+                          <div
+                            className={cn(
+                              "rounded-xl md:rounded-2xl px-3 md:px-4 py-2 md:py-3 shadow-sm",
+                              isOwn
+                                ? "bg-primary text-primary-foreground rounded-br-md"
+                                : "bg-card border border-border rounded-bl-md"
+                            )}
+                          >
+                            {/* File Attachment */}
+                            {msg.attachment_url && msg.attachment_type !== "image" && (
+                              <div className="mb-2 md:mb-3">
+                                <a
+                                  href={msg.attachment_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={cn(
+                                    "flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg hover:bg-black/10 transition-colors",
+                                    isOwn ? "bg-black/10" : "bg-muted"
+                                  )}
+                                >
+                                  <File className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm md:text-base font-medium truncate">
+                                      {msg.attachment_name || "Attachment"}
+                                    </p>
+                                    {msg.attachment_size && (
+                                      <p className="text-xs md:text-sm opacity-75">
+                                        {(msg.attachment_size / 1024).toFixed(1)} KB
+                                      </p>
+                                    )}
+                                  </div>
+                                </a>
+                              </div>
+                            )}
+                            {/* Message Body */}
+                            {msg.body && (
+                              <p className="text-sm md:text-base whitespace-pre-wrap break-words leading-relaxed">
+                                {msg.body}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5 md:gap-2 mt-1 md:mt-2 px-1",
+                            isOwn ? "flex-row-reverse" : ""
+                          )}
+                        >
+                          <span className="text-[10px] md:text-xs text-muted-foreground">
+                            {formatTime(msg.created_at)}
+                          </span>
+                          {isOwn && receiptStatus && (
+                            <ReadReceipt status={receiptStatus} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Empty State */}
+              {messages.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                    <Send className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground">No messages yet. Say hello!</p>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </div>
 
         {/* Input - Fixed at Bottom */}
-        <div className="flex-shrink-0 border-t bg-card px-4 py-3 pb-20 sticky bottom-0 z-10">
+        <div className="flex-shrink-0 border-t bg-card px-4 py-3 md:sticky md:bottom-0 fixed bottom-[72px] left-0 right-0 z-10 md:pb-0 md:relative md:bottom-auto md:left-auto md:right-auto">
           {/* Selected File Preview */}
           {selectedFile && (
             <div className="mb-2 flex items-center gap-2 p-2 bg-muted rounded-lg">

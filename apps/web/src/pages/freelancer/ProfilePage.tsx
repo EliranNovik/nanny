@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { getCityFromLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface FreelancerData {
   bio: string;
@@ -830,6 +831,23 @@ export default function FreelancerProfilePage() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Appearance Settings */}
+          <Card className="border-0 shadow-lg mt-6">
+            <CardHeader>
+              <CardTitle>Appearance</CardTitle>
+              <CardDescription>Customize your app experience</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Theme</p>
+                  <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
+                </div>
+                <ThemeToggle />
+              </div>
             </CardContent>
           </Card>
         </div>

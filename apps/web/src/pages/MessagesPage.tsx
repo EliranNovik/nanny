@@ -402,8 +402,8 @@ export default function MessagesPage() {
         "md:flex",
         mobileView === "contacts" ? "flex" : "hidden md:flex"
       )}>
-        {/* Header */}
-        <div className="p-4 border-b">
+        {/* Header - Fixed */}
+        <div className="p-4 border-b flex-shrink-0">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"

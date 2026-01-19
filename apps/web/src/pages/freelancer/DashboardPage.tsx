@@ -233,6 +233,15 @@ export default function FreelancerDashboardPage() {
   return (
     <div className="min-h-screen gradient-mesh p-4 pb-24">
       <div className="max-w-2xl mx-auto pt-8">
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <img 
+            src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" 
+            alt="MamaLama Logo" 
+            className="h-16 w-auto mx-auto rounded-lg"
+          />
+        </div>
+
         {/* Profile Section */}
         <Card className="border-0 shadow-lg mb-6">
           <CardContent className="p-6">
@@ -396,29 +405,36 @@ export default function FreelancerDashboardPage() {
         {/* Next Scheduled Appointment Section */}
         {nextAppointment && (
           <Card className="border-0 shadow-lg mb-6">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="w-5 h-5 text-primary" />
-                  Next Scheduled Appointment
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/calendar")}
-                  className="gap-1"
-                >
-                  View Calendar
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-lg mb-2 flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5 text-primary" />
+                    Next Scheduled Appointment
+                  </CardTitle>
+                  <div className="flex items-center gap-2 mb-2">
+                    {nextAppointment.stage && (
+                      <Badge variant={getJobStageBadge(nextAppointment.stage).variant} className="text-xs">
+                        {getJobStageBadge(nextAppointment.stage).label}
+                      </Badge>
+                    )}
+                    {nextAppointment.location_city && (
+                      <span className="text-sm text-muted-foreground">
+                        {nextAppointment.location_city}
+                      </span>
+                    )}
+                  </div>
+                  {nextAppointment.client_profile && (
+                    <p className="text-sm text-muted-foreground">
+                      Client: {nextAppointment.client_profile.full_name || "Unknown"}
+                    </p>
+                  )}
+                </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div
-                className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer relative"
-                onClick={() => navigate("/calendar")}
-              >
-                <div className="flex items-start gap-4 mb-3">
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex items-start gap-4 mb-2">
                   {nextAppointment.client_profile && (
                     <Avatar className="w-12 h-12 border-2 border-primary/20 flex-shrink-0">
                       <AvatarImage
@@ -433,59 +449,60 @@ export default function FreelancerDashboardPage() {
                       </AvatarFallback>
                     </Avatar>
                   )}
-                  <div className="flex-1 min-w-0 pr-6">
-                    <h3 className="font-semibold text-sm mb-1 truncate">
-                      {formatJobTitle(nextAppointment)}
-                    </h3>
-                    {nextAppointment.client_profile?.full_name && (
-                      <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
-                        <User className="w-3 h-3" />
-                        {nextAppointment.client_profile.full_name}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {nextAppointment.location_city}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-muted-foreground">Job:</span>
+                      <span className="font-medium">
+                        {formatJobTitle(nextAppointment)}
                       </span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Baby className="w-3 h-3" />
-                        {formatAgeGroup(nextAppointment.children_age_group)}
-                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Location:</span>
+                      <span className="font-medium">{nextAppointment.location_city}</span>
                     </div>
                   </div>
                 </div>
                 {nextAppointment.start_at && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-                    <CalendarIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-primary">
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <CalendarIcon className="w-3 h-3" />
+                        Date:
+                      </span>
+                      <span className="font-semibold text-primary">
                         {new Date(nextAppointment.start_at).toLocaleDateString("en-US", {
                           weekday: "long",
                           month: "long",
                           day: "numeric",
                           year: "numeric",
                         })}
-                      </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3 h-3" />
+                        Time:
+                      </span>
+                      <span className="font-medium">
                         {new Date(nextAppointment.start_at).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
-                      </div>
+                      </span>
                     </div>
-                    {nextAppointment.stage && (
-                      <Badge
-                        variant={getJobStageBadge(nextAppointment.stage).variant}
-                        className="text-xs flex-shrink-0"
-                      >
-                        {getJobStageBadge(nextAppointment.stage).label}
-                      </Badge>
-                    )}
                   </div>
                 )}
-                <ChevronRight className="w-5 h-5 text-muted-foreground absolute top-4 right-4" />
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/calendar")}
+                  className="gap-1"
+                >
+                  View Calendar
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
