@@ -56,9 +56,25 @@ interface Payment {
 export default function PaymentsPage() {
   const { user, profile } = useAuth();
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
-  const [paidPayments, setPaidPayments] = useState<Payment[]>([]);
+  
+  // Try to load cached data immediately
+  const getCachedPaymentsData = () => {
+    try {
+      const cached = localStorage.getItem(`payments_${user?.id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
+          return parsed.data;
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const cachedData = user ? getCachedPaymentsData() : null;
+  const [loading, setLoading] = useState(!cachedData);
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>(cachedData?.pendingPayments || []);
+  const [paidPayments, setPaidPayments] = useState<Payment[]>(cachedData?.paidPayments || []);
   const [activeTab, setActiveTab] = useState("pending");
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
@@ -86,6 +102,23 @@ export default function PaymentsPage() {
     loadPayments();
     loadCurrencies();
   }, [user, profile]);
+
+  // Update cache whenever payments change (from real-time updates or initial load)
+  useEffect(() => {
+    if (user && (pendingPayments.length >= 0 || paidPayments.length >= 0)) {
+      try {
+        localStorage.setItem(`payments_${user.id}`, JSON.stringify({
+          timestamp: Date.now(),
+          data: {
+            pendingPayments,
+            paidPayments
+          }
+        }));
+      } catch (e) {
+        // Ignore cache errors
+      }
+    }
+  }, [pendingPayments, paidPayments, user]);
 
   async function loadCurrencies() {
     try {
@@ -277,6 +310,21 @@ export default function PaymentsPage() {
         // Initialize filtered payments with all payments
         setFilteredPendingPayments(pending);
         setFilteredPaidPayments(paid);
+
+        // Cache the data for instant loading next time
+        if (user) {
+          try {
+            localStorage.setItem(`payments_${user.id}`, JSON.stringify({
+              timestamp: Date.now(),
+              data: {
+                pendingPayments: pending,
+                paidPayments: paid
+              }
+            }));
+          } catch (e) {
+            // Ignore cache errors
+          }
+        }
       }
 
     } catch (err) {

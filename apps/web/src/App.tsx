@@ -30,7 +30,10 @@ import PaymentsPage from "@/pages/PaymentsPage";
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
-  if (loading) {
+  // Only show loading if we don't have a user yet (initial auth check)
+  // If we have a user but profile is still loading, allow navigation to proceed
+  // The individual pages can handle their own loading states
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -42,6 +45,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
+  // Allow navigation even if profile is still loading
+  // Pages that need profile will handle their own loading states
   return <>{children}</>;
 }
 

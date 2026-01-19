@@ -67,11 +67,30 @@ interface NextAppointment extends JobRequest {
 export default function FreelancerDashboardPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [activeJobs, setActiveJobs] = useState<JobRequest[]>([]);
-  const [lastConversation, setLastConversation] = useState<Conversation | null>(null);
-  const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
-  const [nextAppointment, setNextAppointment] = useState<NextAppointment | null>(null);
+  
+  // Try to load cached data immediately for instant rendering
+  const getCachedDashboardData = () => {
+    try {
+      const cached = localStorage.getItem(`freelancer_dashboard_${user?.id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Use cache if less than 30 seconds old
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
+          return parsed.data;
+        }
+      }
+    } catch (e) {
+      // Ignore cache errors
+    }
+    return null;
+  };
+
+  const cachedData = user ? getCachedDashboardData() : null;
+  const [loading, setLoading] = useState(!cachedData); // Only show loading if no cache
+  const [activeJobs, setActiveJobs] = useState<JobRequest[]>(cachedData?.activeJobs || []);
+  const [lastConversation, setLastConversation] = useState<Conversation | null>(cachedData?.lastConversation || null);
+  const [recentNotifications, setRecentNotifications] = useState<Notification[]>(cachedData?.recentNotifications || []);
+  const [nextAppointment, setNextAppointment] = useState<NextAppointment | null>(cachedData?.nextAppointment || null);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -100,22 +119,28 @@ export default function FreelancerDashboardPage() {
           .limit(1)
           .maybeSingle();
 
+        let clientProfile: any = null;
+        let lastMessage: any = null;
         if (conversations) {
           // Fetch client profile
-          const { data: clientProfile } = await supabase
+          const { data: clientProfileData } = await supabase
             .from("profiles")
             .select("id, full_name, photo_url")
             .eq("id", conversations.client_id)
             .single();
 
+          clientProfile = clientProfileData;
+
           // Fetch last message
-          const { data: lastMessage } = await supabase
+          const { data: lastMessageData } = await supabase
             .from("messages")
             .select("body, created_at")
             .eq("conversation_id", conversations.id)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
+
+          lastMessage = lastMessageData;
 
           setLastConversation({
             ...conversations,
@@ -165,6 +190,7 @@ export default function FreelancerDashboardPage() {
         }));
         setRecentNotifications(mappedNotifications);
 
+
         // Fetch next scheduled appointment (earliest future appointment)
         const now = new Date().toISOString();
         const { data: scheduledJobs } = await supabase
@@ -178,23 +204,54 @@ export default function FreelancerDashboardPage() {
           .limit(1)
           .maybeSingle();
 
+        let scheduledClientProfile: any = null;
         if (scheduledJobs) {
           // Fetch client profile
-          const { data: clientProfile } = await supabase
+          const { data: scheduledClientProfileData } = await supabase
             .from("profiles")
             .select("id, full_name, photo_url")
             .eq("id", scheduledJobs.client_id)
             .single();
 
+          scheduledClientProfile = scheduledClientProfileData;
+
           setNextAppointment({
             ...scheduledJobs,
-            client_profile: clientProfile || {
+            client_profile: scheduledClientProfile || {
               full_name: null,
               photo_url: null,
             },
           });
         } else {
           setNextAppointment(null);
+        }
+
+        // Cache the dashboard data for instant loading next time
+        if (user) {
+          try {
+            const cachedLastConversation = conversations ? {
+              ...conversations,
+              client_profile: clientProfile || { full_name: null, photo_url: null },
+              last_message: lastMessage || undefined,
+            } : null;
+
+            const cachedNextAppt = scheduledJobs ? {
+              ...scheduledJobs,
+              client_profile: scheduledClientProfile || { full_name: null, photo_url: null },
+            } : null;
+
+            localStorage.setItem(`freelancer_dashboard_${user.id}`, JSON.stringify({
+              timestamp: Date.now(),
+              data: {
+                activeJobs: jobs || [],
+                lastConversation: cachedLastConversation,
+                recentNotifications: mappedNotifications,
+                nextAppointment: cachedNextAppt
+              }
+            }));
+          } catch (e) {
+            // Ignore cache errors
+          }
         }
       } catch (err) {
         console.error("Error loading dashboard:", err);
@@ -205,6 +262,25 @@ export default function FreelancerDashboardPage() {
 
     loadDashboard();
   }, [user]);
+
+  // Update cache whenever dashboard data changes (from real-time updates or initial load)
+  useEffect(() => {
+    if (user && (activeJobs.length >= 0 || lastConversation !== null || recentNotifications.length >= 0)) {
+      try {
+        localStorage.setItem(`freelancer_dashboard_${user.id}`, JSON.stringify({
+          timestamp: Date.now(),
+          data: {
+            activeJobs,
+            lastConversation,
+            recentNotifications,
+            nextAppointment
+          }
+        }));
+      } catch (e) {
+        // Ignore cache errors
+      }
+    }
+  }, [activeJobs, lastConversation, recentNotifications, nextAppointment, user]);
 
   function formatAgeGroup(group: string): string {
     const map: Record<string, string> = {

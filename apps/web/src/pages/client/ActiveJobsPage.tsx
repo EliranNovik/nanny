@@ -56,14 +56,30 @@ export default function ActiveJobsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [activeJob, setActiveJob] = useState<JobRequest | null>(null);
-  const [openRequests, setOpenRequests] = useState<JobRequest[]>([]);
-  const [pastJobs, setPastJobs] = useState<JobRequest[]>([]);
-  const [conversations, setConversations] = useState<Record<string, Conversation>>({});
-  const [freelancerProfiles, setFreelancerProfiles] = useState<Record<string, FreelancerProfile>>({});
+  
+  // Try to load cached data immediately
+  const getCachedJobsData = () => {
+    try {
+      const cached = localStorage.getItem(`active_jobs_${user?.id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
+          return parsed.data;
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const cachedData = user ? getCachedJobsData() : null;
+  const [loading, setLoading] = useState(!cachedData);
+  const [activeJob, setActiveJob] = useState<JobRequest | null>(cachedData?.activeJob || null);
+  const [openRequests, setOpenRequests] = useState<JobRequest[]>(cachedData?.openRequests || []);
+  const [pastJobs, setPastJobs] = useState<JobRequest[]>(cachedData?.pastJobs || []);
+  const [conversations, setConversations] = useState<Record<string, Conversation>>(cachedData?.conversations || {});
+  const [freelancerProfiles, setFreelancerProfiles] = useState<Record<string, FreelancerProfile>>(cachedData?.freelancerProfiles || {});
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [confirmationCounts, setConfirmationCounts] = useState<Record<string, number>>({});
+  const [confirmationCounts, setConfirmationCounts] = useState<Record<string, number>>(cachedData?.confirmationCounts || {});
   const [openRequestsExpanded, setOpenRequestsExpanded] = useState(true);
   const [pastJobsExpanded, setPastJobsExpanded] = useState(false);
   const [hasNewActions, setHasNewActions] = useState(false);
@@ -105,6 +121,7 @@ export default function ActiveJobsPage() {
         setPastJobs(past);
 
         // Fetch confirmation counts for open requests
+        let countsMap: Record<string, number> = {};
         if (open.length > 0) {
           const { data: confirmations } = await supabase
             .from("job_confirmations")
@@ -112,7 +129,6 @@ export default function ActiveJobsPage() {
             .in("job_id", open.map((j) => j.id))
             .eq("status", "available");
 
-          const countsMap: Record<string, number> = {};
           (confirmations || []).forEach((conf) => {
             countsMap[conf.job_id] = (countsMap[conf.job_id] || 0) + 1;
           });
@@ -120,21 +136,27 @@ export default function ActiveJobsPage() {
         }
 
         // Fetch conversations and freelancer profiles for active job
+        let convos: any = null;
+        let profile: any = null;
         if (active && active.selected_freelancer_id) {
-          const { data: convos } = await supabase
+          const { data: convosData } = await supabase
             .from("conversations")
             .select("id, job_id, freelancer_id, created_at")
             .eq("job_id", active.id)
             .maybeSingle();
 
+          convos = convosData;
+
           if (convos) {
             setConversations({ [active.id]: convos });
             
-            const { data: profile } = await supabase
+            const { data: profileData } = await supabase
               .from("profiles")
               .select("id, full_name, photo_url")
               .eq("id", active.selected_freelancer_id)
               .single();
+
+            profile = profileData;
 
             if (profile) {
               setFreelancerProfiles({ [active.selected_freelancer_id]: profile });
@@ -172,6 +194,25 @@ export default function ActiveJobsPage() {
             }
           }
         }
+        // Cache the data for instant loading next time (use the values we just set)
+        if (user) {
+          try {
+            const cacheData = {
+              activeJob: active || null,
+              openRequests: open,
+              pastJobs: past,
+              conversations: active && active.selected_freelancer_id && convos ? { [active.id]: convos } : {},
+              freelancerProfiles: active && active.selected_freelancer_id && profile ? { [active.selected_freelancer_id]: profile } : {},
+              confirmationCounts: countsMap
+            };
+            localStorage.setItem(`active_jobs_${user.id}`, JSON.stringify({
+              timestamp: Date.now(),
+              data: cacheData
+            }));
+          } catch (e) {
+            // Ignore cache errors
+          }
+        }
       } catch (err) {
         console.error("Error loading jobs:", err);
       } finally {
@@ -201,6 +242,27 @@ export default function ActiveJobsPage() {
 
     return () => clearInterval(interval);
   }, [user, openRequests.length]);
+
+  // Update cache whenever jobs data changes (from real-time updates or initial load)
+  useEffect(() => {
+    if (user && (activeJob !== null || openRequests.length >= 0 || pastJobs.length >= 0)) {
+      try {
+        localStorage.setItem(`active_jobs_${user.id}`, JSON.stringify({
+          timestamp: Date.now(),
+          data: {
+            activeJob,
+            openRequests,
+            pastJobs,
+            conversations,
+            freelancerProfiles,
+            confirmationCounts
+          }
+        }));
+      } catch (e) {
+        // Ignore cache errors
+      }
+    }
+  }, [activeJob, openRequests, pastJobs, conversations, freelancerProfiles, confirmationCounts, user]);
 
   // function formatCareType(type: string): string {
   //   const map: Record<string, string> = {

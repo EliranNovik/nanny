@@ -55,14 +55,32 @@ type DashboardState = "first_time" | "job_in_progress" | "job_matched" | "no_act
 export default function DashboardPage() {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [activeJob, setActiveJob] = useState<JobRequest | null>(null);
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
-  const [selectedFreelancer, setSelectedFreelancer] = useState<{ full_name: string | null; photo_url: string | null } | null>(null);
-  const [dashboardState, setDashboardState] = useState<DashboardState>("first_time");
-  const [nextAppointment, setNextAppointment] = useState<JobRequest & { freelancer_profile?: { full_name: string | null; photo_url: string | null } } | null>(null);
-  const [latestRequests, setLatestRequests] = useState<JobRequest[]>([]);
-  const [confirmationCounts, setConfirmationCounts] = useState<Record<string, number>>({});
+  // Try to load cached data immediately for instant rendering
+  const getCachedDashboardData = () => {
+    try {
+      const cached = localStorage.getItem(`dashboard_${user?.id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Use cache if less than 30 seconds old
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
+          return parsed.data;
+        }
+      }
+    } catch (e) {
+      // Ignore cache errors
+    }
+    return null;
+  };
+
+  const cachedData = user ? getCachedDashboardData() : null;
+  const [loading, setLoading] = useState(!cachedData); // Only show loading if no cache
+  const [activeJob, setActiveJob] = useState<JobRequest | null>(cachedData?.activeJob || null);
+  const [activeConversation, setActiveConversation] = useState<Conversation | null>(cachedData?.activeConversation || null);
+  const [selectedFreelancer, setSelectedFreelancer] = useState<{ full_name: string | null; photo_url: string | null } | null>(cachedData?.selectedFreelancer || null);
+  const [dashboardState, setDashboardState] = useState<DashboardState>(cachedData?.dashboardState || "first_time");
+  const [nextAppointment, setNextAppointment] = useState<JobRequest & { freelancer_profile?: { full_name: string | null; photo_url: string | null } } | null>(cachedData?.nextAppointment || null);
+  const [latestRequests, setLatestRequests] = useState<JobRequest[]>(cachedData?.latestRequests || []);
+  const [confirmationCounts, setConfirmationCounts] = useState<Record<string, number>>(cachedData?.confirmationCounts || {});
 
   useEffect(() => {
     async function loadDashboard() {
@@ -113,22 +131,28 @@ export default function DashboardPage() {
         }
 
         // If active job is locked/matched or active, fetch conversation
+        let convo: any = null;
+        let lastMessage: any = null;
         if (active && (active.status === "locked" || active.status === "active") && active.selected_freelancer_id) {
-          const { data: convo } = await supabase
+          const { data: convoData } = await supabase
             .from("conversations")
             .select("id, job_id, freelancer_id, created_at")
             .eq("job_id", active.id)
             .maybeSingle();
 
+          convo = convoData;
+
           if (convo) {
             // Fetch last message
-            const { data: lastMessage } = await supabase
+            const { data: lastMessageData } = await supabase
               .from("messages")
               .select("body, created_at")
               .eq("conversation_id", convo.id)
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
+
+            lastMessage = lastMessageData;
 
             setActiveConversation({
               id: convo.id,
@@ -206,6 +230,7 @@ export default function DashboardPage() {
         setLatestRequests(openRequests || []);
 
         // Fetch confirmation counts for open requests
+        let countsMap: Record<string, number> = {};
         if (openRequests && openRequests.length > 0) {
           const { data: confirmations } = await supabase
             .from("job_confirmations")
@@ -213,11 +238,43 @@ export default function DashboardPage() {
             .in("job_id", openRequests.map((j) => j.id))
             .eq("status", "available");
 
-          const countsMap: Record<string, number> = {};
           (confirmations || []).forEach((conf) => {
             countsMap[conf.job_id] = (countsMap[conf.job_id] || 0) + 1;
           });
           setConfirmationCounts(countsMap);
+        }
+
+        // Cache the dashboard data for instant loading next time
+        if (user) {
+          try {
+            const cachedConversation = (active && (active.status === "locked" || active.status === "active") && active.selected_freelancer_id && convo) ? {
+              id: convo.id,
+              job_id: active.id,
+              freelancer_id: active.selected_freelancer_id,
+              created_at: convo.created_at,
+              freelancer_profile: freelancerProfileData || { full_name: null, photo_url: null },
+              last_message: lastMessage || undefined,
+            } : null;
+
+            const cacheData = {
+              activeJob: active || null,
+              activeConversation: cachedConversation,
+              selectedFreelancer: freelancerProfileData,
+              dashboardState: !active ? (past.length > 0 ? "no_active_job" : "first_time") : (active.status === "locked" ? "job_matched" : "job_in_progress"),
+              nextAppointment: scheduledJobs ? {
+                ...scheduledJobs,
+                freelancer_profile: freelancerProfileData || undefined,
+              } : null,
+              latestRequests: openRequests || [],
+              confirmationCounts: countsMap
+            };
+            localStorage.setItem(`dashboard_${user.id}`, JSON.stringify({
+              timestamp: Date.now(),
+              data: cacheData
+            }));
+          } catch (e) {
+            // Ignore cache errors
+          }
         }
       } catch (err) {
         console.error("Error loading dashboard:", err);
@@ -228,6 +285,29 @@ export default function DashboardPage() {
 
     loadDashboard();
   }, [user]);
+
+  // Update cache whenever dashboard data changes (from real-time updates or initial load)
+  useEffect(() => {
+    if (user && (activeJob !== null || latestRequests.length >= 0)) {
+      try {
+        const cacheData = {
+          activeJob,
+          activeConversation,
+          selectedFreelancer,
+          dashboardState,
+          nextAppointment,
+          latestRequests,
+          confirmationCounts
+        };
+        localStorage.setItem(`dashboard_${user.id}`, JSON.stringify({
+          timestamp: Date.now(),
+          data: cacheData
+        }));
+      } catch (e) {
+        // Ignore cache errors
+      }
+    }
+  }, [activeJob, activeConversation, selectedFreelancer, dashboardState, nextAppointment, latestRequests, confirmationCounts, user]);
 
   function getStatusLabel(status: string): string {
     const statusMap: Record<string, string> = {

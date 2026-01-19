@@ -48,8 +48,24 @@ export default function MessagesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationId = searchParams.get("conversation");
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Try to load cached data immediately
+  const getCachedMessagesData = () => {
+    try {
+      const cached = localStorage.getItem(`messages_${user?.id}_${profile?.role}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
+          return parsed.data;
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const cachedData = (user && profile) ? getCachedMessagesData() : null;
+  const [conversations, setConversations] = useState<Conversation[]>(cachedData?.conversations || []);
+  const [loading, setLoading] = useState(!cachedData);
   const loadConversationsRef = useRef<(() => Promise<void>) | null>(null);
   const [mobileView, setMobileView] = useState<"contacts" | "chat">("contacts");
 
@@ -180,6 +196,20 @@ export default function MessagesPage() {
         });
 
         setConversations(sortedConversations);
+
+        // Cache the data for instant loading next time
+        if (user && profile) {
+          try {
+            localStorage.setItem(`messages_${user.id}_${profile.role}`, JSON.stringify({
+              timestamp: Date.now(),
+              data: {
+                conversations: sortedConversations
+              }
+            }));
+          } catch (e) {
+            // Ignore cache errors
+          }
+        }
       } catch (err) {
         console.error("Error loading conversations:", err);
       } finally {
@@ -356,6 +386,20 @@ export default function MessagesPage() {
       };
     }
   }, [user, profile]);
+
+  // Update cache whenever conversations change (from real-time updates or initial load)
+  useEffect(() => {
+    if (user && profile && conversations.length >= 0) {
+      try {
+        localStorage.setItem(`messages_${user.id}_${profile.role}`, JSON.stringify({
+          timestamp: Date.now(),
+          data: { conversations }
+        }));
+      } catch (e) {
+        // Ignore cache errors
+      }
+    }
+  }, [conversations, user, profile]);
 
   function formatTime(dateStr: string): string {
     const date = new Date(dateStr);

@@ -31,9 +31,25 @@ interface BookedJob extends JobRequest {
 export default function CalendarPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  
+  // Try to load cached data immediately
+  const getCachedCalendarData = () => {
+    try {
+      const cached = localStorage.getItem(`calendar_${user?.id}_${profile?.role}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
+          return parsed.data;
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const cachedData = (user && profile) ? getCachedCalendarData() : null;
+  const [loading, setLoading] = useState(!cachedData);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [bookedJobs, setBookedJobs] = useState<BookedJob[]>([]);
+  const [bookedJobs, setBookedJobs] = useState<BookedJob[]>(cachedData?.bookedJobs || []);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedJobs, setSelectedJobs] = useState<BookedJob[]>([]);
 
@@ -107,6 +123,20 @@ export default function CalendarPage() {
         });
 
         setBookedJobs(enrichedJobs);
+
+        // Cache the data for instant loading next time
+        if (user && profile) {
+          try {
+            localStorage.setItem(`calendar_${user.id}_${profile.role}`, JSON.stringify({
+              timestamp: Date.now(),
+              data: {
+                bookedJobs: enrichedJobs
+              }
+            }));
+          } catch (e) {
+            // Ignore cache errors
+          }
+        }
       } catch (err) {
         console.error("Error loading booked jobs:", err);
       } finally {
@@ -116,6 +146,22 @@ export default function CalendarPage() {
 
     loadBookedJobs();
   }, [user, profile]);
+
+  // Update cache whenever booked jobs change (from real-time updates or initial load)
+  useEffect(() => {
+    if (user && profile && bookedJobs.length >= 0) {
+      try {
+        localStorage.setItem(`calendar_${user.id}_${profile.role}`, JSON.stringify({
+          timestamp: Date.now(),
+          data: {
+            bookedJobs
+          }
+        }));
+      } catch (e) {
+        // Ignore cache errors
+      }
+    }
+  }, [bookedJobs, user, profile]);
 
   // Update selected jobs when date changes
   useEffect(() => {

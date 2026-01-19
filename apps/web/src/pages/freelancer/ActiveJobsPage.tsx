@@ -48,11 +48,27 @@ interface ClientProfile {
 export default function FreelancerActiveJobsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [activeJob, setActiveJob] = useState<JobRequest | null>(null);
-  const [pastJobs, setPastJobs] = useState<JobRequest[]>([]);
-  const [conversations, setConversations] = useState<Record<string, Conversation>>({});
-  const [clientProfiles, setClientProfiles] = useState<Record<string, ClientProfile>>({});
+  
+  // Try to load cached data immediately
+  const getCachedJobsData = () => {
+    try {
+      const cached = localStorage.getItem(`freelancer_active_jobs_${user?.id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
+          return parsed.data;
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const cachedData = user ? getCachedJobsData() : null;
+  const [loading, setLoading] = useState(!cachedData);
+  const [activeJob, setActiveJob] = useState<JobRequest | null>(cachedData?.activeJob || null);
+  const [pastJobs, setPastJobs] = useState<JobRequest[]>(cachedData?.pastJobs || []);
+  const [conversations, setConversations] = useState<Record<string, Conversation>>(cachedData?.conversations || {});
+  const [clientProfiles, setClientProfiles] = useState<Record<string, ClientProfile>>(cachedData?.clientProfiles || {});
   const [pastJobsExpanded, setPastJobsExpanded] = useState(false);
 
   useEffect(() => {
@@ -83,25 +99,47 @@ export default function FreelancerActiveJobsPage() {
         setPastJobs(past);
 
         // Fetch conversations and client profiles for active job
+        let convos: any = null;
+        let profile: any = null;
         if (active) {
-          const { data: convos } = await supabase
+          const { data: convosData } = await supabase
             .from("conversations")
             .select("id, job_id, client_id, created_at")
             .eq("job_id", active.id)
             .maybeSingle();
 
+          convos = convosData;
+
           if (convos) {
             setConversations({ [active.id]: convos });
             
-            const { data: profile } = await supabase
+            const { data: profileData } = await supabase
               .from("profiles")
               .select("id, full_name, photo_url")
               .eq("id", convos.client_id)
               .single();
 
+            profile = profileData;
+
             if (profile) {
               setClientProfiles({ [convos.client_id]: profile });
             }
+          }
+        }
+        // Cache the data for instant loading next time
+        if (user) {
+          try {
+            localStorage.setItem(`freelancer_active_jobs_${user.id}`, JSON.stringify({
+              timestamp: Date.now(),
+              data: {
+                activeJob: active || null,
+                pastJobs: past,
+                conversations: active && convos ? { [active.id]: convos } : {},
+                clientProfiles: active && convos && profile ? { [convos.client_id]: profile } : {}
+              }
+            }));
+          } catch (e) {
+            // Ignore cache errors
           }
         }
       } catch (err) {
@@ -113,6 +151,25 @@ export default function FreelancerActiveJobsPage() {
 
     loadJobs();
   }, [user]);
+
+  // Update cache whenever jobs data changes (from real-time updates or initial load)
+  useEffect(() => {
+    if (user && (activeJob !== null || pastJobs.length >= 0)) {
+      try {
+        localStorage.setItem(`freelancer_active_jobs_${user.id}`, JSON.stringify({
+          timestamp: Date.now(),
+          data: {
+            activeJob,
+            pastJobs,
+            conversations,
+            clientProfiles
+          }
+        }));
+      } catch (e) {
+        // Ignore cache errors
+      }
+    }
+  }, [activeJob, pastJobs, conversations, clientProfiles, user]);
 
   // function formatCareType(type: string): string {
   //   const map: Record<string, string> = {
