@@ -58,7 +58,6 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [activeJob, setActiveJob] = useState<JobRequest | null>(null);
-  const [pastJobs, setPastJobs] = useState<JobRequest[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [selectedFreelancer, setSelectedFreelancer] = useState<{ full_name: string | null; photo_url: string | null } | null>(null);
   const [dashboardState, setDashboardState] = useState<DashboardState>("first_time");
@@ -91,7 +90,6 @@ export default function DashboardPage() {
         );
 
         setActiveJob(active || null);
-        setPastJobs(past);
 
         // Fetch selected freelancer profile if job has one
         let freelancerProfileData: { full_name: string | null; photo_url: string | null } | null = null;

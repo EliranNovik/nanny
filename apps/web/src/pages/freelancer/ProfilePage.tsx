@@ -57,7 +57,7 @@ export default function FreelancerProfilePage() {
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [gettingLocation, setGettingLocation] = useState(false);
-  const hasFetchedRef = useRef(false);
+  const hasFetchedRef = useRef<string | null>(null);
   const fetchingRef = useRef(false);
 
   const [data, setData] = useState<FreelancerData>({

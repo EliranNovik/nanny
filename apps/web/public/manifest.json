@@ -1,6 +1,6 @@
 {
-  "name": "NannyNow - Find Childcare Fast",
-  "short_name": "NannyNow",
+  "name": "MamaLama - Find Childcare Fast",
+  "short_name": "MamaLama",
   "description": "Find and connect with trusted nannies for your childcare needs",
   "start_url": "/",
   "display": "standalone",

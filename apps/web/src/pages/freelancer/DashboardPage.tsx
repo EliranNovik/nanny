@@ -18,9 +18,9 @@ import {
   Clock,
   Baby,
   ChevronRight,
-  User
+  User,
+  Calendar
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { getJobStageBadge } from "@/lib/jobStages";
 
 interface JobRequest {
@@ -55,7 +55,7 @@ interface Notification {
   job_id: string;
   status: string;
   created_at: string;
-  job_requests: JobRequest;
+  job_requests: JobRequest | JobRequest[];
 }
 
 interface NextAppointment extends JobRequest {
@@ -156,7 +156,15 @@ export default function FreelancerDashboardPage() {
           .order("created_at", { ascending: false })
           .limit(5);
 
-        setRecentNotifications((notifications || []) as Notification[]);
+        // Map notifications to match the interface
+        const mappedNotifications: Notification[] = (notifications || []).map((n: any) => ({
+          id: n.id,
+          job_id: n.job_id,
+          status: n.status,
+          created_at: n.created_at,
+          job_requests: Array.isArray(n.job_requests) ? n.job_requests[0] : n.job_requests
+        }));
+        setRecentNotifications(mappedNotifications);
 
         // Fetch next scheduled appointment (earliest future appointment)
         const now = new Date().toISOString();
