@@ -18,7 +18,6 @@ import {
   Clock,
   Baby,
   ChevronRight,
-  User,
   Calendar
 } from "lucide-react";
 import { getJobStageBadge } from "@/lib/jobStages";
