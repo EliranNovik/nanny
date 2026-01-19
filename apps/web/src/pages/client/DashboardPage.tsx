@@ -15,8 +15,11 @@ import {
   ArrowRight,
   Loader2,
   Users,
-  Calendar,
-  LogOut
+  Calendar as CalendarIcon,
+  LogOut,
+  User,
+  Bell,
+  ChevronRight
 } from "lucide-react";
 import { getJobStageBadge } from "@/lib/jobStages";
 
@@ -59,6 +62,9 @@ export default function DashboardPage() {
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [selectedFreelancer, setSelectedFreelancer] = useState<{ full_name: string | null; photo_url: string | null } | null>(null);
   const [dashboardState, setDashboardState] = useState<DashboardState>("first_time");
+  const [nextAppointment, setNextAppointment] = useState<JobRequest & { freelancer_profile?: { full_name: string | null; photo_url: string | null } } | null>(null);
+  const [latestRequests, setLatestRequests] = useState<JobRequest[]>([]);
+  const [confirmationCounts, setConfirmationCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     async function loadDashboard() {
@@ -151,6 +157,71 @@ export default function DashboardPage() {
         } else {
           setDashboardState("job_in_progress");
         }
+
+        // Fetch next scheduled appointment (earliest future appointment)
+        const now = new Date().toISOString();
+        const { data: scheduledJobs } = await supabase
+          .from("job_requests")
+          .select("*")
+          .eq("client_id", user.id)
+          .in("status", ["locked", "active"])
+          .not("start_at", "is", null)
+          .gte("start_at", now)
+          .order("start_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (scheduledJobs) {
+          // Fetch freelancer profile if job has one
+          let freelancerProfileData: { full_name: string | null; photo_url: string | null } | null = null;
+          if (scheduledJobs.selected_freelancer_id) {
+            const { data: freelancerProfile } = await supabase
+              .from("profiles")
+              .select("id, full_name, photo_url")
+              .eq("id", scheduledJobs.selected_freelancer_id)
+              .single();
+
+            if (freelancerProfile) {
+              freelancerProfileData = {
+                full_name: freelancerProfile.full_name,
+                photo_url: freelancerProfile.photo_url,
+              };
+            }
+          }
+
+          setNextAppointment({
+            ...scheduledJobs,
+            freelancer_profile: freelancerProfileData || undefined,
+          });
+        } else {
+          setNextAppointment(null);
+        }
+
+        // Fetch latest open requests (ready, notifying, confirmations_closed)
+        const { data: openRequests } = await supabase
+          .from("job_requests")
+          .select("*")
+          .eq("client_id", user.id)
+          .in("status", ["ready", "notifying", "confirmations_closed"])
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        setLatestRequests(openRequests || []);
+
+        // Fetch confirmation counts for open requests
+        if (openRequests && openRequests.length > 0) {
+          const { data: confirmations } = await supabase
+            .from("job_confirmations")
+            .select("job_id")
+            .in("job_id", openRequests.map((j) => j.id))
+            .eq("status", "available");
+
+          const countsMap: Record<string, number> = {};
+          (confirmations || []).forEach((conf) => {
+            countsMap[conf.job_id] = (countsMap[conf.job_id] || 0) + 1;
+          });
+          setConfirmationCounts(countsMap);
+        }
       } catch (err) {
         console.error("Error loading dashboard:", err);
       } finally {
@@ -201,6 +272,17 @@ export default function DashboardPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  }
+
+  function formatAgeGroup(group: string): string {
+    const map: Record<string, string> = {
+      newborn: "0-3 months",
+      infant: "3-12 months",
+      toddler: "1-3 years",
+      preschool: "3-5 years",
+      mixed: "Mixed ages",
+    };
+    return map[group] || group;
   }
 
   function getJobAction(job: JobRequest) {
@@ -390,48 +472,212 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Past Jobs - Collapsed by default if empty */}
-        {pastJobs.length > 0 && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
+        {/* Latest Requests Section */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary" />
-                Your Jobs
+                <Bell className="w-5 h-5 text-primary" />
+                Latest Requests
               </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {pastJobs.slice(0, 5).map((job) => (
+              {latestRequests.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/client/active-jobs")}
+                  className="gap-1"
+                >
+                  View All
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {latestRequests.length > 0 ? (
+              latestRequests.map((request) => {
+                const confirmationCount = confirmationCounts[request.id] || 0;
+                return (
                   <div
-                    key={job.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    key={request.id}
+                    className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer relative"
+                    onClick={() => {
+                      if (request.status === "confirmations_closed") {
+                        navigate(`/client/jobs/${request.id}/confirmed`);
+                      } else {
+                        navigate("/client/active-jobs");
+                      }
+                    }}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-sm font-medium">
-                          {formatDate(job.created_at)}
-                        </span>
-                        {getStatusBadge(job.status)}
-                        {job.stage && (
-                          <Badge variant={getJobStageBadge(job.stage).variant} className="text-xs">
-                            {getJobStageBadge(job.stage).label}
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0 pr-6">
+                        <h3 className="font-semibold text-sm mb-1 truncate">
+                          {request.children_count} kid{request.children_count > 1 ? "s" : ""} ({formatAgeGroup(request.children_age_group)})
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {request.location_city}
+                          </span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Baby className="w-3 h-3" />
+                            {formatAgeGroup(request.children_age_group)}
+                          </span>
+                          {request.start_at && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <CalendarIcon className="w-3 h-3" />
+                              {new Date(request.start_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {confirmationCount > 0 && (
+                          <Badge variant="default" className="text-xs">
+                            {confirmationCount} available
+                          </Badge>
+                        )}
+                        <Badge
+                          variant={
+                            request.status === "confirmations_closed"
+                              ? "default"
+                              : request.status === "notifying"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-xs"
+                        >
+                          {getStatusLabel(request.status)}
+                        </Badge>
+                        {request.stage && (
+                          <Badge
+                            variant={getJobStageBadge(request.stage).variant}
+                            className="text-xs"
+                          >
+                            {getJobStageBadge(request.stage).label}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {job.care_type} · {job.location_city}
-                      </p>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+                      <Clock className="w-3 h-3" />
+                      {formatDate(request.created_at)}
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground absolute top-4 right-4 flex-shrink-0" />
                   </div>
-                ))}
-                {pastJobs.length > 5 && (
-                  <p className="text-sm text-center text-muted-foreground">
-                    +{pastJobs.length - 5} more jobs
-                  </p>
+                );
+              })
+            ) : (
+              <div className="text-center py-8">
+                <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-muted-foreground mb-4">
+                  No open requests at the moment
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/client/create")}
+                >
+                  Create New Request
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Next Scheduled Appointment Section */}
+        {nextAppointment && (
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 text-primary" />
+                  Next Scheduled Appointment
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/calendar")}
+                  className="gap-1"
+                >
+                  View Calendar
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div
+                className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer relative"
+                onClick={() => navigate("/calendar")}
+              >
+                <div className="flex items-start gap-4 mb-3">
+                  {nextAppointment.freelancer_profile && (
+                    <Avatar className="w-12 h-12 border-2 border-primary/20 flex-shrink-0">
+                      <AvatarImage
+                        src={nextAppointment.freelancer_profile.photo_url || undefined}
+                      />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {nextAppointment.freelancer_profile.full_name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className="flex-1 min-w-0 pr-6">
+                    <h3 className="font-semibold text-sm mb-1 truncate">
+                      {nextAppointment.children_count} kid{nextAppointment.children_count > 1 ? "s" : ""} ({formatAgeGroup(nextAppointment.children_age_group)})
+                    </h3>
+                    {nextAppointment.freelancer_profile?.full_name && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
+                        <User className="w-3 h-3" />
+                        {nextAppointment.freelancer_profile.full_name}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {nextAppointment.location_city}
+                      </span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Baby className="w-3 h-3" />
+                        {formatAgeGroup(nextAppointment.children_age_group)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {nextAppointment.start_at && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                    <CalendarIcon className="w-4 h-4 text-primary flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-primary">
+                        {new Date(nextAppointment.start_at).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(nextAppointment.start_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                    {nextAppointment.stage && (
+                      <Badge
+                        variant={getJobStageBadge(nextAppointment.stage).variant}
+                        className="text-xs flex-shrink-0"
+                      >
+                        {getJobStageBadge(nextAppointment.stage).label}
+                      </Badge>
+                    )}
+                  </div>
                 )}
+                <ArrowRight className="w-5 h-5 text-muted-foreground absolute top-4 right-4 flex-shrink-0" />
               </div>
             </CardContent>
           </Card>

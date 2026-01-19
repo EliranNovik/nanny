@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Save, 
   Bell,
@@ -16,8 +18,12 @@ import {
   Heart,
   Shield,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Camera,
+  X,
+  Navigation
 } from "lucide-react";
+import { getCityFromLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
 
 interface FreelancerData {
@@ -38,12 +44,21 @@ type RateMode = "single" | "range";
 const LANGUAGES = ["Hebrew", "English", "Russian", "Arabic", "French", "Spanish"];
 
 export default function FreelancerProfilePage() {
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rateMode, setRateMode] = useState<RateMode>("single");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const hasFetchedRef = useRef(false);
+  const fetchingRef = useRef(false);
 
   const [data, setData] = useState<FreelancerData>({
     bio: "",
@@ -59,63 +74,110 @@ export default function FreelancerProfilePage() {
   });
 
   useEffect(() => {
-    async function fetchProfile() {
-      if (!user) {
-        setLoading(false);
+    // Load photo and basic info from user profile
+    if (profile) {
+      setPhotoUrl(profile.photo_url || null);
+      setFullName(profile.full_name || "");
+      setPhone(profile.phone || "");
+      setCity(profile.city || "");
+    }
+  }, [profile]);
+
+  // Function to fetch freelancer profile data
+  const fetchFreelancerProfile = async (userId: string) => {
+    // Prevent multiple simultaneous fetches
+    if (fetchingRef.current) {
+      console.log("[FreelancerProfilePage] Fetch already in progress, skipping");
+      return;
+    }
+
+    fetchingRef.current = true;
+    try {
+      console.log("[FreelancerProfilePage] Fetching freelancer profile for user", userId);
+      const { data: freelancerProfile, error } = await supabase
+        .from("freelancer_profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("[FreelancerProfilePage] Error fetching freelancer profile:", error);
         return;
       }
 
-      try {
-        console.log("[FreelancerProfilePage] Fetching freelancer profile for user", user.id);
-        const { data: profile, error } = await supabase
-          .from("freelancer_profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (error && error.code !== "PGRST116") {
-          console.error("[FreelancerProfilePage] Error fetching freelancer profile:", error);
-          setLoading(false);
-          return;
-        }
-
-        // If no freelancer_profiles entry exists, redirect to onboarding
-        if (!profile) {
-          console.log("[FreelancerProfilePage] No freelancer_profiles found, redirecting to onboarding");
-          navigate("/onboarding", { replace: true });
-          return;
-        }
-
-        // Profile exists, load data
-        console.log("[FreelancerProfilePage] Profile loaded successfully");
-        setData({
-          bio: profile.bio || "",
-          languages: profile.languages || [],
-          has_first_aid: profile.has_first_aid,
-          newborn_experience: profile.newborn_experience,
-          special_needs_experience: profile.special_needs_experience,
-          max_children: profile.max_children,
-          hourly_rate_min: profile.hourly_rate_min,
-          hourly_rate_max: profile.hourly_rate_max,
-          available_now: profile.available_now,
-          availability_note: profile.availability_note || "",
-        });
-        
-        // Determine rate mode based on existing data
-        if (profile.hourly_rate_min !== null && profile.hourly_rate_max !== null && profile.hourly_rate_min !== profile.hourly_rate_max) {
-          setRateMode("range");
-        } else {
-          setRateMode("single");
-        }
-      } catch (err: any) {
-        console.error("[FreelancerProfilePage] Exception fetching profile:", err);
-      } finally {
-        setLoading(false);
+      // If no freelancer_profiles entry exists, redirect to onboarding
+      if (!freelancerProfile) {
+        console.log("[FreelancerProfilePage] No freelancer_profiles found, redirecting to onboarding");
+        navigate("/onboarding", { replace: true });
+        return;
       }
+
+      // Profile exists, load data
+      console.log("[FreelancerProfilePage] Profile loaded successfully");
+      setData({
+        bio: freelancerProfile.bio || "",
+        languages: freelancerProfile.languages || [],
+        has_first_aid: freelancerProfile.has_first_aid,
+        newborn_experience: freelancerProfile.newborn_experience,
+        special_needs_experience: freelancerProfile.special_needs_experience,
+        max_children: freelancerProfile.max_children,
+        hourly_rate_min: freelancerProfile.hourly_rate_min,
+        hourly_rate_max: freelancerProfile.hourly_rate_max,
+        available_now: freelancerProfile.available_now,
+        availability_note: freelancerProfile.availability_note || "",
+      });
+      
+      // Determine rate mode based on existing data
+      if (freelancerProfile.hourly_rate_min !== null && freelancerProfile.hourly_rate_max !== null && freelancerProfile.hourly_rate_min !== freelancerProfile.hourly_rate_max) {
+        setRateMode("range");
+      } else {
+        setRateMode("single");
+      }
+    } catch (err: any) {
+      console.error("[FreelancerProfilePage] Exception fetching profile:", err);
+    } finally {
+      fetchingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      hasFetchedRef.current = null;
+      return;
     }
 
-    fetchProfile();
-  }, [user, navigate]);
+    // Only fetch once per user, unless explicitly refetched
+    // This prevents constant refetching when switching browsers/tabs
+    if (hasFetchedRef.current === user.id) {
+      setLoading(false);
+      return;
+    }
+
+    // Don't fetch if tab is hidden (user switched to another tab/browser)
+    if (typeof document !== "undefined" && document.hidden) {
+      console.log("[FreelancerProfilePage] Tab is hidden, deferring fetch");
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    fetchFreelancerProfile(user.id).finally(() => {
+      if (!cancelled) {
+        setLoading(false);
+        hasFetchedRef.current = user.id;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      // Reset fetch ref if user changes
+      if (hasFetchedRef.current !== user.id) {
+        hasFetchedRef.current = null;
+      }
+    };
+  }, [user?.id]); // Only depend on user.id, not the whole user object or navigate
 
   function updateField<K extends keyof FreelancerData>(field: K, value: FreelancerData[K]) {
     setData((prev) => ({ ...prev, [field]: value }));
@@ -130,6 +192,128 @@ export default function FreelancerProfilePage() {
     }));
   }
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      addToast({
+        title: "Invalid file type",
+        description: "Please upload an image file",
+        variant: "error",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      addToast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "error",
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Delete old avatar if exists
+      if (photoUrl) {
+        const oldPath = photoUrl.split("/").pop();
+        if (oldPath) {
+          await supabase.storage.from("avatars").remove([oldPath]);
+        }
+      }
+
+      // Upload new avatar
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      setPhotoUrl(data.publicUrl);
+
+      addToast({
+        title: "Photo uploaded",
+        description: "Don't forget to save your changes",
+        variant: "success",
+      });
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      addToast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload image",
+        variant: "error",
+      });
+    } finally {
+      setUploading(false);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function handleRemovePhoto() {
+    if (!photoUrl || !user) return;
+
+    try {
+      const fileName = photoUrl.split("/").pop();
+      if (fileName) {
+        await supabase.storage.from("avatars").remove([fileName]);
+      }
+      setPhotoUrl(null);
+      addToast({
+        title: "Photo removed",
+        description: "Don't forget to save your changes",
+        variant: "info",
+      });
+    } catch (error: any) {
+      console.error("Error removing image:", error);
+      addToast({
+        title: "Failed to remove photo",
+        description: error.message || "Please try again",
+        variant: "error",
+      });
+    }
+  }
+
+  async function handleGetLocation() {
+    setGettingLocation(true);
+    try {
+      const cityName = await getCityFromLocation();
+      setCity(cityName);
+      addToast({
+        title: "Location found",
+        description: `Your location has been set to ${cityName}`,
+        variant: "success",
+      });
+    } catch (error: any) {
+      console.error("Error getting location:", error);
+      addToast({
+        title: "Location error",
+        description: error.message || "Failed to get your location",
+        variant: "error",
+      });
+    } finally {
+      setGettingLocation(false);
+    }
+  }
+
   async function handleSave() {
     if (!user) return;
     setSaving(true);
@@ -141,14 +325,54 @@ export default function FreelancerProfilePage() {
         max_children: data.max_children
       });
 
-      const { error } = await supabase.from("freelancer_profiles").upsert({
+      // Save freelancer profile data
+      const { error: freelancerError } = await supabase.from("freelancer_profiles").upsert({
         user_id: user.id,
         ...data,
       });
 
-      if (error) {
-        console.error("[FreelancerProfilePage] Error saving profile:", error);
-        throw error;
+      if (freelancerError) {
+        console.error("[FreelancerProfilePage] Error saving freelancer profile:", freelancerError);
+        throw freelancerError;
+      }
+
+      // Save profile info (photo, name, phone, city) to profiles table
+      const profileUpdates: any = {};
+      if (photoUrl !== (profile?.photo_url || null)) {
+        profileUpdates.photo_url = photoUrl;
+      }
+      if (fullName !== (profile?.full_name || "")) {
+        profileUpdates.full_name = fullName.trim();
+      }
+      if (phone !== (profile?.phone || "")) {
+        profileUpdates.phone = phone.trim() || null;
+      }
+      if (city !== (profile?.city || "")) {
+        profileUpdates.city = city.trim();
+      }
+
+      if (Object.keys(profileUpdates).length > 0) {
+        const { error: profileError } = await supabase.from("profiles").upsert({
+          id: user.id,
+          role: profile?.role || "freelancer", // Preserve existing role
+          ...profileUpdates,
+        });
+
+        if (profileError) {
+          console.error("[FreelancerProfilePage] Error saving profile info:", profileError);
+          throw profileError;
+        }
+      }
+
+      // Refresh both profile and freelancer profile data
+      await refreshProfile();
+      
+      // Refetch freelancer profile data to update the form
+      // Reset the fetch ref to force a refetch
+      if (user) {
+        hasFetchedRef.current = null;
+        await fetchFreelancerProfile(user.id);
+        hasFetchedRef.current = user.id;
       }
 
       console.log("[FreelancerProfilePage] Profile saved successfully");
@@ -199,6 +423,122 @@ export default function FreelancerProfilePage() {
         </div>
 
         <div className="space-y-6 animate-stagger">
+          {/* Profile Picture & Basic Info */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle>Profile Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Profile Picture */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                  <Avatar className="w-24 h-24 border-4 border-primary/20">
+                    <AvatarImage src={photoUrl || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
+                      {fullName
+                        ?.split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  {photoUrl && (
+                    <button
+                      onClick={handleRemovePhoto}
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-white flex items-center justify-center hover:bg-destructive/90 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="avatar-upload"
+                    disabled={uploading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-4 h-4 mr-2" />
+                        {photoUrl ? "Change Photo" : "Upload Photo"}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Full Name */}
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  placeholder="Enter your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone (optional)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+972 50-123-4567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+
+              {/* City with GPS */}
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="city"
+                    placeholder="e.g., Tel Aviv"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleGetLocation}
+                    disabled={gettingLocation}
+                    title="Get location using GPS"
+                  >
+                    {gettingLocation ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Navigation className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Click the GPS icon to automatically detect your location
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Availability Toggle */}
           <Card className="border-0 shadow-lg overflow-hidden">
             <div className={cn(
@@ -498,7 +838,7 @@ export default function FreelancerProfilePage() {
         <div className="mb-24">
           <Button 
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || uploading}
             className="w-full"
             size="lg"
           >

@@ -36,6 +36,7 @@ export function BottomNav() {
   if (user && !profile && location.pathname !== "/onboarding") {
     // Allow nav on freelancer/client pages even without profile
     const allowedPaths = [
+      "/freelancer/dashboard",
       "/freelancer/profile",
       "/freelancer/notifications", 
       "/freelancer/active-jobs",
@@ -181,12 +182,13 @@ export function BottomNav() {
   // Freelancer navigation - show if profile exists OR if on freelancer pages
   if ((profile && profile.role === "freelancer") || (!profile && location.pathname.startsWith("/freelancer"))) {
     const freelancerNav = [
-      { path: "/freelancer/profile", icon: Home, label: "Home" },
+      { path: "/freelancer/dashboard", icon: Home, label: "Home" },
       { path: "/freelancer/notifications", icon: Bell, label: "Requests" },
       { path: "/freelancer/active-jobs", icon: Briefcase, label: "Jobs" },
       { path: "/calendar", icon: Calendar, label: "Calendar" },
       { path: "/messages", icon: MessageCircle, label: "Messages" },
       { path: "/payments", icon: CreditCard, label: "Payments" },
+      { path: "/freelancer/profile", icon: User, label: "Profile" },
     ];
 
     return (
@@ -195,7 +197,10 @@ export function BottomNav() {
           <div className="flex items-center justify-start min-w-max px-2">
             {freelancerNav.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.path);
+              // For profile, also check if we're on the edit route
+              const isActive = item.path === "/freelancer/profile" 
+                ? location.pathname.startsWith(item.path)
+                : location.pathname.startsWith(item.path);
               const showNotificationBadge = item.path === "/freelancer/notifications" && unreadNotifications > 0;
               const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
               const showScheduleBadge = item.path === "/freelancer/active-jobs" && scheduleChanges > 0;

@@ -17,6 +17,7 @@ import ClientProfilePage from "@/pages/client/ClientProfilePage";
 import ActiveJobsPage from "@/pages/client/ActiveJobsPage";
 import MessagesPage from "@/pages/MessagesPage";
 import ProfilePage from "@/pages/freelancer/ProfilePage";
+import FreelancerDashboardPage from "@/pages/freelancer/DashboardPage";
 import NotificationsPage from "@/pages/freelancer/NotificationsPage";
 import FreelancerActiveJobsPage from "@/pages/freelancer/ActiveJobsPage";
 import ChatPage from "@/pages/ChatPage";
@@ -68,7 +69,7 @@ function RoleRedirect() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return <Navigate to="/freelancer/profile" replace />;
+  return <Navigate to="/freelancer/dashboard" replace />;
 }
 
 function AppRoutes() {
@@ -152,7 +153,23 @@ function AppRoutes() {
 
       {/* Freelancer routes */}
       <Route
+        path="/freelancer/dashboard"
+        element={
+          <ProtectedRoute>
+            <FreelancerDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/freelancer/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/freelancer/profile/edit"
         element={
           <ProtectedRoute>
             <ProfilePage />

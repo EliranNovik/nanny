@@ -85,8 +85,8 @@ export default function OnboardingPage() {
       console.log("[OnboardingPage] Navigating to /dashboard");
       navigate("/dashboard", { replace: true });
     } else {
-      console.log("[OnboardingPage] Navigating to /freelancer/profile");
-      navigate("/freelancer/profile", { replace: true });
+      console.log("[OnboardingPage] Navigating to /freelancer/dashboard");
+      navigate("/freelancer/dashboard", { replace: true });
     }
   }
 

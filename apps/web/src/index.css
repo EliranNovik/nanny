@@ -230,3 +230,15 @@ input[type="range"].slider::-moz-range-thumb:hover {
     radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.15) 0px, transparent 50%);
 }
 
+/* Hide ChatPage header and job summary on mobile when embedded in MessagesPage */
+@media (max-width: 767px) {
+  .messages-chat-container header,
+  .messages-chat-container > div > header {
+    display: none !important;
+  }
+  /* Hide job summary header that appears below the main header */
+  .messages-chat-container > div > div.flex-shrink-0.border-b.bg-muted\/30 {
+    display: none !important;
+  }
+}
+

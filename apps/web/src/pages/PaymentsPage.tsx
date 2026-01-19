@@ -622,7 +622,12 @@ export default function PaymentsPage() {
                         <div className="flex justify-between text-base font-semibold">
                           <span>Total:</span>
                           <span className="text-primary">
-                            {payment.currency?.icon || "$"}{payment.total_amount.toFixed(2)} {payment.currency?.iso || ""}
+                            {(() => {
+                              // Find NIS currency
+                              const nisCurrency = currencies.find(c => c.iso === "ILS" || c.name === "NIS");
+                              const nisIcon = nisCurrency?.icon || "₪";
+                              return `${nisIcon}${payment.total_amount.toFixed(2)} NIS`;
+                            })()}
                           </span>
                         </div>
                       </div>
@@ -761,21 +766,22 @@ export default function PaymentsPage() {
                           {profile?.role === "client" ? "Total Paid" : "Total Earned"}
                         </p>
                         <p className="text-2xl font-bold">
-                          {/* Group by currency and show totals */}
-                          {Object.entries(
-                            filteredPaidPayments.reduce((acc, p) => {
-                              const currencyKey = p.currency?.iso || "USD";
-                              if (!acc[currencyKey]) {
-                                acc[currencyKey] = { total: 0, icon: p.currency?.icon || "$" };
-                              }
-                              acc[currencyKey].total += p.total_amount;
-                              return acc;
-                            }, {} as Record<string, { total: number; icon: string }>)
-                          ).map(([iso, { total, icon }]) => (
-                            <span key={iso} className="mr-2">
-                              {icon}{total.toFixed(2)} {iso}
-                            </span>
-                          ))}
+                          {/* Show total only in NIS */}
+                          {(() => {
+                            // Find NIS currency
+                            const nisCurrency = currencies.find(c => c.iso === "ILS" || c.name === "NIS");
+                            const nisIcon = nisCurrency?.icon || "₪";
+                            
+                            // Calculate total of all payments (assuming they're all in NIS or convert if needed)
+                            // For now, sum all payments - in a real app you'd convert currencies
+                            const total = filteredPaidPayments.reduce((sum, p) => sum + p.total_amount, 0);
+                            
+                            return (
+                              <span>
+                                {nisIcon}{total.toFixed(2)} NIS
+                              </span>
+                            );
+                          })()}
                         </p>
                       </div>
                       <DollarSign className="w-8 h-8 text-primary" />
@@ -839,7 +845,12 @@ export default function PaymentsPage() {
                           <div className="flex justify-between text-base font-semibold">
                             <span>Total:</span>
                             <span className="text-primary">
-                              {payment.currency?.icon || "$"}{payment.total_amount.toFixed(2)} {payment.currency?.iso || ""}
+                              {(() => {
+                                // Find NIS currency
+                                const nisCurrency = currencies.find(c => c.iso === "ILS" || c.name === "NIS");
+                                const nisIcon = nisCurrency?.icon || "₪";
+                                return `${nisIcon}${payment.total_amount.toFixed(2)} NIS`;
+                              })()}
                             </span>
                           </div>
                         </div>

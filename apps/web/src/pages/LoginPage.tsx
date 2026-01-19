@@ -36,8 +36,8 @@ export default function LoginPage() {
           console.log("[LoginPage] Redirecting to /dashboard (client)");
           navigate("/dashboard", { replace: true });
         } else {
-          console.log("[LoginPage] Redirecting to /freelancer/profile");
-          navigate("/freelancer/profile", { replace: true });
+          console.log("[LoginPage] Redirecting to /freelancer/dashboard");
+          navigate("/freelancer/dashboard", { replace: true });
         }
       }, 100);
       

@@ -51,6 +51,20 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const loadConversationsRef = useRef<(() => Promise<void>) | null>(null);
+  const [mobileView, setMobileView] = useState<"contacts" | "chat">("contacts");
+
+  // Update mobile view when conversationId changes
+  useEffect(() => {
+    if (conversationId) {
+      if (window.innerWidth < 768) {
+        setMobileView("chat");
+      }
+    } else {
+      if (window.innerWidth < 768) {
+        setMobileView("contacts");
+      }
+    }
+  }, [conversationId]);
 
   useEffect(() => {
     async function loadConversations() {
@@ -360,6 +374,15 @@ export default function MessagesPage() {
 
   function handleConversationClick(convoId: string) {
     setSearchParams({ conversation: convoId });
+    // On mobile, switch to chat view
+    if (window.innerWidth < 768) {
+      setMobileView("chat");
+    }
+  }
+
+  function handleBackToContacts() {
+    setSearchParams({});
+    setMobileView("contacts");
   }
 
   if (loading) {
@@ -373,15 +396,19 @@ export default function MessagesPage() {
   // Show contact panel with conversation list and chat inline
   return (
     <div className="h-screen flex bg-background overflow-hidden">
-      {/* Contact Panel - Left Sidebar - Always visible on desktop */}
-      <div className="w-80 lg:w-96 border-r bg-card flex flex-col flex-shrink-0 hidden md:flex">
+      {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
+      <div className={cn(
+        "w-full md:w-80 lg:w-96 border-r bg-card flex flex-col flex-shrink-0",
+        "md:flex",
+        mobileView === "contacts" ? "flex" : "hidden md:flex"
+      )}>
         {/* Header */}
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(profile?.role === "client" ? "/dashboard" : "/freelancer/profile")}
+              onClick={() => navigate(profile?.role === "client" ? "/dashboard" : "/freelancer/dashboard")}
               className="md:hidden"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -553,7 +580,10 @@ export default function MessagesPage() {
       </div>
 
       {/* Chat Area - Right Side */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col overflow-hidden",
+        mobileView === "chat" ? "flex" : "hidden md:flex"
+      )}>
         {conversationId ? (() => {
           // Find the conversation to get the otherUserId
           const selectedConvo = conversations.find(c => c.id === conversationId);
@@ -561,11 +591,53 @@ export default function MessagesPage() {
             ? (profile?.role === "client" ? selectedConvo.freelancer_id : selectedConvo.client_id)
             : undefined;
           
-          return <ChatPage 
-            conversationId={conversationId} 
-            hideBackButton={true} 
-            otherUserId={otherUserId}
-          />;
+          const otherUserProfile = selectedConvo?.other_user_profile;
+          const otherInitials = otherUserProfile?.full_name
+            ?.split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase() || "?";
+          
+          return (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Mobile Back Button Header */}
+              <div className="md:hidden p-4 border-b bg-card">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleBackToContacts}
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar className="w-10 h-10 flex-shrink-0">
+                      <AvatarImage src={otherUserProfile?.photo_url || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {otherInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="font-semibold truncate">
+                        {otherUserProfile?.full_name || "User"}
+                      </h2>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Chat Page - Hide header on mobile since we have our own */}
+              <div className="flex-1 overflow-hidden relative">
+                <div className="messages-chat-container h-full">
+                  <ChatPage 
+                    conversationId={conversationId} 
+                    hideBackButton={true} 
+                    otherUserId={otherUserId}
+                  />
+                </div>
+              </div>
+            </div>
+          );
         })() : (
           <div className="hidden md:flex flex-1 items-center justify-center bg-gradient-to-b from-muted/20 to-background">
             <div className="text-center">
