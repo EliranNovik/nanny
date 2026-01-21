@@ -1732,9 +1732,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             mobileView === "steps" || showContactPanel ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
-        <div className="h-full flex flex-col">
+        <div className="h-screen lg:h-full flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex-shrink-0">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Button
@@ -1786,7 +1786,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           </div>
 
           {/* Content */}
-          <ScrollArea className="flex-1 p-6">
+          <div className="flex-1 overflow-y-auto p-6 pb-56 lg:pb-6 min-h-0" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
             {conversation?.job_id === null && currentUserProfile?.is_admin ? (
               /* Report Conversations List */
               <div className="space-y-2">
@@ -3229,11 +3229,11 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
             </div>
               )}
-          </ScrollArea>
+          </div>
 
-          {/* Mobile Chat Button - at bottom of job steps panel */}
+          {/* Mobile Chat Button - fixed above nav bar */}
           {!hideBackButton && (
-            <div className="lg:hidden border-t p-4 bg-card flex-shrink-0">
+            <div className="lg:hidden fixed bottom-[88px] left-0 right-0 z-40 border-t bg-card p-4">
               <Button
                 onClick={() => setMobileView("chat")}
                 className="w-full"
@@ -3740,19 +3740,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 </DialogContent>
               </Dialog>
           
-          {/* Mobile Chat Button - at bottom of job steps panel */}
-          {!hideBackButton && (
-            <div className="lg:hidden border-t p-4 bg-card">
-              <Button
-                onClick={() => setMobileView("chat")}
-                className="w-full"
-                size="lg"
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Open Chat
-              </Button>
-            </div>
-          )}
         </div>
       </div>
       )}
@@ -3767,12 +3754,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
       {/* Main Chat Area */}
       <div className={cn(
-        "flex-1 flex flex-col min-w-0 overflow-hidden",
+        "flex-1 flex flex-col min-w-0",
         // Hide chat on mobile when viewing steps
         !hideBackButton && mobileView === "steps" && "hidden lg:flex"
       )}>
         {/* Header - Fixed */}
-        <header className="flex-shrink-0 border-b bg-card px-4 py-3 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto">
+        <header className="flex-shrink-0 border-b bg-card px-4 py-3 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto md:top-auto">
           <div className="flex items-center gap-3">
             {!hideBackButton && (
               <Button
@@ -3869,15 +3856,15 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
         {/* Messages - Scrollable Area */}
         <div className={cn(
-          "flex-1 min-h-0 flex flex-col bg-gradient-to-b from-muted/20 to-background",
+          "flex-1 min-h-0 flex flex-col bg-gradient-to-b from-muted/20 to-background overflow-hidden",
           "md:pt-0",
           job ? "pt-[106px]" : "pt-[57px]"
         )}>
           {/* Mobile: Use native scrolling */}
           <div 
             ref={mobileScrollRef}
-            className="md:hidden flex-1 overflow-y-auto"
-            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+            className="md:hidden flex-1 overflow-y-auto min-h-0"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain' }}
           >
             <div className="p-4 space-y-4 pb-36">
               {messages.map((msg, index) => {
@@ -4116,10 +4103,16 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         </div>
 
         {/* Input - Fixed at Bottom */}
-        <div className="flex-shrink-0 border-t bg-card px-4 py-3 md:sticky md:bottom-0 fixed bottom-[72px] left-0 right-0 z-10 md:pb-0 md:relative md:bottom-auto md:left-auto md:right-auto">
+        <div className={cn(
+          "flex-shrink-0 px-4 py-3 z-10 chat-input-container",
+          // Both mobile and desktop: fixed above nav bar, no background box
+          "fixed bottom-[100px] left-0 right-0",
+          // On desktop, add a subtle background to contain the file preview
+          "md:bg-background/80 md:backdrop-blur-sm md:border-t md:border-border/50"
+        )}>
           {/* Selected File Preview */}
           {selectedFile && (
-            <div className="mb-2 flex items-center gap-2 p-2 bg-muted rounded-lg">
+            <div className="mb-2 flex items-center gap-2 p-2 bg-muted/90 backdrop-blur-sm rounded-lg md:bg-muted md:max-w-4xl md:mx-auto">
               {getFileType(selectedFile.name) === "image" ? (
                 <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
               ) : (
@@ -4153,30 +4146,30 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               type="button"
               variant="ghost"
               size="icon"
-              className="rounded-full h-10 w-10 flex-shrink-0"
+              className="rounded-full h-10 w-10 flex-shrink-0 bg-background/90 backdrop-blur-sm shadow-md !flex !items-center !justify-center p-0"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
             >
-              <Paperclip className="w-5 h-5" />
+              <Paperclip className="w-5 h-5 m-auto" />
             </Button>
             <Input
               ref={inputRef}
               placeholder={selectedFile ? "Add a message (optional)..." : "Type a message..."}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border-2 focus:border-primary h-10 text-sm"
+              className="flex-1 rounded-full border-2 focus:border-primary h-10 text-sm bg-background/90 backdrop-blur-sm shadow-md"
               disabled={sending || uploading}
             />
             <Button
               type="submit"
               size="icon"
-              className="rounded-full h-10 w-10 flex-shrink-0"
+              className="rounded-full h-10 w-10 flex-shrink-0 shadow-md !flex !items-center !justify-center p-0"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             >
               {(sending || uploading) ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin m-auto" />
               ) : (
-                <Send className="w-4 h-4" />
+                <Send className="w-4 h-4 m-auto" />
               )}
             </Button>
           </form>

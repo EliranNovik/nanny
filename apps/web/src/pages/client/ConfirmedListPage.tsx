@@ -202,7 +202,7 @@ export default function ConfirmedListPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-24">
+    <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
       <div className="max-w-2xl mx-auto pt-8">
         {/* Timer Header */}
         <div className="text-center mb-8 animate-fade-in">

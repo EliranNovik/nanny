@@ -55,10 +55,10 @@ export function BottomNav() {
   // On onboarding page, show basic navigation
   if (location.pathname === "/onboarding" && !profile) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:border-t md:bg-card md:shadow-lg md:pb-0">
-        <div className="max-w-2xl mx-auto px-4 pb-4 md:px-0 md:pb-0">
-          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide md:border-0 md:rounded-none md:shadow-none md:bg-transparent md:backdrop-blur-none">
-            <div className="flex items-center justify-start min-w-max px-2 py-2 md:py-0">
+      <nav className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 pb-4">
+          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+            <div className="flex items-center justify-center min-w-max px-2 py-2">
               <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 text-muted-foreground">
                 <Home className="w-6 h-6 md:w-5 md:h-5" />
                 <span className="text-xs md:text-xs font-medium">Getting Started</span>
@@ -82,10 +82,10 @@ export function BottomNav() {
     ];
 
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:border-t md:bg-card md:shadow-lg md:pb-0">
-        <div className="max-w-2xl mx-auto px-4 pb-4 md:px-0 md:pb-0">
-          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide md:border-0 md:rounded-none md:shadow-none md:bg-transparent md:backdrop-blur-none">
-            <div className="flex items-center justify-start min-w-max px-2 py-2 md:py-0">
+      <nav className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 pb-4">
+          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+            <div className="flex items-center justify-center min-w-max px-2 py-2">
             {clientNav.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
@@ -154,10 +154,10 @@ export function BottomNav() {
     ];
 
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:border-t md:bg-card md:shadow-lg md:pb-0">
-        <div className="max-w-2xl mx-auto px-4 pb-4 md:px-0 md:pb-0">
-          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide md:border-0 md:rounded-none md:shadow-none md:bg-transparent md:backdrop-blur-none">
-            <div className="flex items-center justify-start min-w-max px-2 py-2 md:py-0">
+      <nav className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 pb-4">
+          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+            <div className="flex items-center justify-center min-w-max px-2 py-2">
             {adminNav.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
@@ -198,10 +198,10 @@ export function BottomNav() {
     ];
 
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:border-t md:bg-card md:shadow-lg md:pb-0">
-        <div className="max-w-2xl mx-auto px-4 pb-4 md:px-0 md:pb-0">
-          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide md:border-0 md:rounded-none md:shadow-none md:bg-transparent md:backdrop-blur-none">
-            <div className="flex items-center justify-start min-w-max px-2 py-2 md:py-0">
+      <nav className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 pb-4">
+          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+            <div className="flex items-center justify-center min-w-max px-2 py-2">
             {freelancerNav.map((item) => {
               const Icon = item.icon;
               // For profile, also check if we're on the edit route
@@ -274,10 +274,10 @@ export function BottomNav() {
   // Default fallback - show basic nav if user exists
   if (user) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:border-t md:bg-card md:shadow-lg md:pb-0">
-        <div className="max-w-2xl mx-auto px-4 pb-4 md:px-0 md:pb-0">
-          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide md:border-0 md:rounded-none md:shadow-none md:bg-transparent md:backdrop-blur-none">
-            <div className="flex items-center justify-start min-w-max px-2 py-2 md:py-0">
+      <nav className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 pb-4">
+          <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+            <div className="flex items-center justify-center min-w-max px-2 py-2">
               <div className="flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 text-muted-foreground">
                 <Home className="w-6 h-6 md:w-5 md:h-5" />
                 <span className="text-xs md:text-xs font-medium">Loading...</span>

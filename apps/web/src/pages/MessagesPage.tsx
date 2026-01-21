@@ -447,7 +447,7 @@ export default function MessagesPage() {
         mobileView === "contacts" ? "flex" : "hidden md:flex"
       )}>
         {/* Header - Fixed */}
-        <div className="p-4 border-b flex-shrink-0">
+        <div className="p-4 border-b flex-shrink-0 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto bg-card">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -462,7 +462,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Conversations List */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 md:pt-0 pt-[73px]">
           {conversations.length === 0 ? (
             <div className="p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
@@ -644,8 +644,8 @@ export default function MessagesPage() {
           
           return (
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Mobile Back Button Header */}
-              <div className="md:hidden p-4 border-b bg-card">
+              {/* Mobile Back Button Header - Fixed */}
+              <div className="md:hidden p-4 border-b bg-card fixed top-0 left-0 right-0 z-20">
                 <div className="flex items-center gap-3">
                   <Button
                     variant="ghost"
@@ -671,7 +671,7 @@ export default function MessagesPage() {
               </div>
               
               {/* Chat Page - Hide header on mobile since we have our own */}
-              <div className="flex-1 overflow-hidden relative">
+              <div className="flex-1 overflow-hidden relative md:pt-0 pt-[73px]">
                 <div className="messages-chat-container h-full">
                   <ChatPage 
                     conversationId={conversationId} 

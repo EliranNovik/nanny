@@ -274,7 +274,7 @@ export default function CreateJobPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-24">
+    <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
       <div className="max-w-lg mx-auto pt-8">
         {/* Progress */}
         <div className="mb-8">
