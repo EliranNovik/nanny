@@ -3,13 +3,21 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+interface UnavailableTimeSlot {
+  date: string;
+  start_time: string;
+  end_time: string;
+}
+
 interface SimpleCalendarProps {
   selectedDate: Date | null;
   onDateSelect: (date: Date) => void;
   minDate?: Date;
+  unavailableDates?: Date[]; // Array of dates that should be marked as unavailable (deprecated, use unavailableTimeSlots)
+  unavailableTimeSlots?: UnavailableTimeSlot[]; // Array of time slots that are unavailable
 }
 
-export function SimpleCalendar({ selectedDate, onDateSelect, minDate }: SimpleCalendarProps) {
+export function SimpleCalendar({ selectedDate, onDateSelect, minDate, unavailableDates = [], unavailableTimeSlots = [] }: SimpleCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const today = new Date();
@@ -38,10 +46,35 @@ export function SimpleCalendar({ selectedDate, onDateSelect, minDate }: SimpleCa
     setCurrentMonth(new Date(year, month + 1, 1));
   };
 
+  const isDateUnavailable = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Check new time slots format
+    if (unavailableTimeSlots && unavailableTimeSlots.length > 0) {
+      return unavailableTimeSlots.some(slot => slot.date === dateStr);
+    }
+    
+    // Fallback to old dates format
+    if (unavailableDates && unavailableDates.length > 0) {
+      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      return unavailableDates.some(unavailableDate => {
+        const unavailableOnly = new Date(unavailableDate.getFullYear(), unavailableDate.getMonth(), unavailableDate.getDate());
+        return dateOnly.getTime() === unavailableOnly.getTime();
+      });
+    }
+    
+    return false;
+  };
+
+  const getUnavailableTimeSlotsForDate = (date: Date): UnavailableTimeSlot[] => {
+    const dateStr = date.toISOString().split('T')[0];
+    return unavailableTimeSlots.filter(slot => slot.date === dateStr);
+  };
+
   const isDateDisabled = (date: Date) => {
     const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const minOnly = new Date(min.getFullYear(), min.getMonth(), min.getDate());
-    return dateOnly < minOnly;
+    return dateOnly < minOnly || isDateUnavailable(date);
   };
 
   const isDateSelected = (date: Date) => {
@@ -117,6 +150,7 @@ export function SimpleCalendar({ selectedDate, onDateSelect, minDate }: SimpleCa
           const day = index + 1;
           const date = new Date(year, month, day);
           const disabled = isDateDisabled(date);
+          const unavailable = isDateUnavailable(date);
           const selected = isDateSelected(date);
           const isTodayDate = isToday(date);
 
@@ -126,15 +160,20 @@ export function SimpleCalendar({ selectedDate, onDateSelect, minDate }: SimpleCa
               onClick={() => handleDateClick(day)}
               disabled={disabled}
               className={cn(
-                "aspect-square rounded-md text-sm font-medium transition-colors",
+                "aspect-square rounded-md text-sm font-medium transition-colors relative",
                 "hover:bg-accent hover:text-accent-foreground",
                 disabled && "opacity-30 cursor-not-allowed",
+                unavailable && !disabled && "bg-destructive/20 text-destructive/70",
                 selected && "bg-primary text-primary-foreground hover:bg-primary/90",
-                !selected && !disabled && "hover:bg-muted",
+                !selected && !disabled && !unavailable && "hover:bg-muted",
                 isTodayDate && !selected && "ring-2 ring-primary/50"
               )}
+              title={unavailable ? "Unavailable" : undefined}
             >
               {day}
+              {unavailable && (
+                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-destructive rounded-full" />
+              )}
             </button>
           );
         })}

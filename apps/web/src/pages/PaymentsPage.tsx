@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SimpleCalendar } from "@/components/SimpleCalendar";
+import { sumPaymentsInNIS, getCurrencyIcon } from "@/lib/currencyConverter";
 
 interface Payment {
   id: string;
@@ -670,12 +671,7 @@ export default function PaymentsPage() {
                         <div className="flex justify-between text-base font-semibold">
                           <span>Total:</span>
                           <span className="text-primary">
-                            {(() => {
-                              // Find NIS currency
-                              const nisCurrency = currencies.find(c => c.iso === "ILS" || c.name === "NIS");
-                              const nisIcon = nisCurrency?.icon || "₪";
-                              return `${nisIcon}${payment.total_amount.toFixed(2)} NIS`;
-                            })()}
+                            {payment.currency?.icon || "$"}{payment.total_amount.toFixed(2)} {payment.currency?.iso || ""}
                           </span>
                         </div>
                       </div>
@@ -814,19 +810,14 @@ export default function PaymentsPage() {
                           {profile?.role === "client" ? "Total Paid" : "Total Earned"}
                         </p>
                         <p className="text-2xl font-bold">
-                          {/* Show total only in NIS */}
                           {(() => {
-                            // Find NIS currency
-                            const nisCurrency = currencies.find(c => c.iso === "ILS" || c.name === "NIS");
-                            const nisIcon = nisCurrency?.icon || "₪";
-                            
-                            // Calculate total of all payments (assuming they're all in NIS or convert if needed)
-                            // For now, sum all payments - in a real app you'd convert currencies
-                            const total = filteredPaidPayments.reduce((sum, p) => sum + p.total_amount, 0);
+                            // Convert all payments to NIS and sum them
+                            const totalInNIS = sumPaymentsInNIS(filteredPaidPayments);
+                            const nisIcon = getCurrencyIcon("ILS");
                             
                             return (
                               <span>
-                                {nisIcon}{total.toFixed(2)} NIS
+                                {nisIcon}{totalInNIS.toFixed(2)} NIS
                               </span>
                             );
                           })()}
@@ -893,12 +884,7 @@ export default function PaymentsPage() {
                           <div className="flex justify-between text-base font-semibold">
                             <span>Total:</span>
                             <span className="text-primary">
-                              {(() => {
-                                // Find NIS currency
-                                const nisCurrency = currencies.find(c => c.iso === "ILS" || c.name === "NIS");
-                                const nisIcon = nisCurrency?.icon || "₪";
-                                return `${nisIcon}${payment.total_amount.toFixed(2)} NIS`;
-                              })()}
+                              {payment.currency?.icon || "$"}{payment.total_amount.toFixed(2)} {payment.currency?.iso || ""}
                             </span>
                           </div>
                         </div>

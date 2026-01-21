@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getJobStageBadge } from "@/lib/jobStages";
 
@@ -52,6 +55,48 @@ export default function CalendarPage() {
   const [bookedJobs, setBookedJobs] = useState<BookedJob[]>(cachedData?.bookedJobs || []);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedJobs, setSelectedJobs] = useState<BookedJob[]>([]);
+  const [unavailableTimeSlots, setUnavailableTimeSlots] = useState<Array<{id: string, date: string, start_time: string, end_time: string}>>([]);
+  const [showTimeSlotModal, setShowTimeSlotModal] = useState(false);
+  const [selectedDateForSlot, setSelectedDateForSlot] = useState<Date | null>(null);
+  const [newStartTime, setNewStartTime] = useState("09:00");
+  const [newEndTime, setNewEndTime] = useState("17:00");
+  const [addingSlot, setAddingSlot] = useState(false);
+
+  // Load unavailable time slots for freelancers
+  useEffect(() => {
+    async function loadUnavailableTimeSlots() {
+      if (!user || !profile || profile.role !== "freelancer") {
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("freelancer_unavailable_dates")
+          .select("id, unavailable_date, start_time, end_time")
+          .eq("freelancer_id", user.id)
+          .order("unavailable_date", { ascending: true })
+          .order("start_time", { ascending: true });
+
+        if (error) {
+          console.error("Error loading unavailable time slots:", error);
+          return;
+        }
+
+        if (data) {
+          setUnavailableTimeSlots(data.map(item => ({
+            id: item.id,
+            date: item.unavailable_date,
+            start_time: item.start_time,
+            end_time: item.end_time
+          })));
+        }
+      } catch (err) {
+        console.error("Error loading unavailable time slots:", err);
+      }
+    }
+
+    loadUnavailableTimeSlots();
+  }, [user, profile]);
 
   useEffect(() => {
     async function loadBookedJobs() {
@@ -237,6 +282,17 @@ export default function CalendarPage() {
     });
   };
 
+  const isDateUnavailable = (date: Date) => {
+    if (!unavailableTimeSlots || unavailableTimeSlots.length === 0) return false;
+    const dateStr = date.toISOString().split('T')[0];
+    return unavailableTimeSlots.some(slot => slot.date === dateStr);
+  };
+
+  const getUnavailableSlotsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return unavailableTimeSlots.filter(slot => slot.date === dateStr);
+  };
+
   const isDateSelected = (date: Date) => {
     if (!selectedDate) return false;
     return (
@@ -246,9 +302,104 @@ export default function CalendarPage() {
     );
   };
 
-  const handleDateClick = (day: number) => {
+  const handleDateClick = async (day: number) => {
     const date = new Date(year, month, day);
     setSelectedDate(date);
+    
+    // For freelancers, also allow opening modal to add time slots
+    if (profile?.role === "freelancer") {
+      // Could add double-click to open modal, but for now just select
+    }
+  };
+
+  const handleAddTimeSlot = () => {
+    if (!selectedDate) return;
+    setSelectedDateForSlot(selectedDate);
+    setNewStartTime("09:00");
+    setNewEndTime("17:00");
+    setShowTimeSlotModal(true);
+  };
+
+  const handleSaveTimeSlot = async () => {
+    if (!user || !selectedDateForSlot || !newStartTime || !newEndTime) return;
+    
+    if (newEndTime <= newStartTime) {
+      alert("End time must be after start time");
+      return;
+    }
+
+    setAddingSlot(true);
+    try {
+      const dateStr = selectedDateForSlot.toISOString().split('T')[0];
+      const { error } = await supabase
+        .from("freelancer_unavailable_dates")
+        .insert({
+          freelancer_id: user.id,
+          unavailable_date: dateStr,
+          start_time: newStartTime,
+          end_time: newEndTime
+        });
+
+      if (error) throw error;
+
+      // Reload time slots
+      const { data } = await supabase
+        .from("freelancer_unavailable_dates")
+        .select("id, unavailable_date, start_time, end_time")
+        .eq("freelancer_id", user.id)
+        .order("unavailable_date", { ascending: true })
+        .order("start_time", { ascending: true });
+
+      if (data) {
+        setUnavailableTimeSlots(data.map(item => ({
+          id: item.id,
+          date: item.unavailable_date,
+          start_time: item.start_time,
+          end_time: item.end_time
+        })));
+      }
+
+      setShowTimeSlotModal(false);
+    } catch (err) {
+      console.error("Error adding time slot:", err);
+      alert("Failed to add time slot. Please try again.");
+    } finally {
+      setAddingSlot(false);
+    }
+  };
+
+  const handleDeleteTimeSlot = async (slotId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from("freelancer_unavailable_dates")
+        .delete()
+        .eq("id", slotId)
+        .eq("freelancer_id", user.id);
+
+      if (error) throw error;
+
+      // Reload time slots
+      const { data } = await supabase
+        .from("freelancer_unavailable_dates")
+        .select("id, unavailable_date, start_time, end_time")
+        .eq("freelancer_id", user.id)
+        .order("unavailable_date", { ascending: true })
+        .order("start_time", { ascending: true });
+
+      if (data) {
+        setUnavailableTimeSlots(data.map(item => ({
+          id: item.id,
+          date: item.unavailable_date,
+          start_time: item.start_time,
+          end_time: item.end_time
+        })));
+      }
+    } catch (err) {
+      console.error("Error deleting time slot:", err);
+      alert("Failed to delete time slot. Please try again.");
+    }
   };
 
   const formatJobTitle = (job: BookedJob): string => {
@@ -266,6 +417,12 @@ export default function CalendarPage() {
     return map[group] || group;
   };
 
+  const formatTime = (time: string): string => {
+    // Remove seconds from time string (HH:MM:SS -> HH:MM)
+    if (!time) return "";
+    return time.split(':').slice(0, 2).join(':');
+  };
+
   const getJobStatusBadge = (status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } => {
     const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       locked: { label: "Scheduled", variant: "default" },
@@ -277,9 +434,16 @@ export default function CalendarPage() {
   return (
     <div className="min-h-screen gradient-mesh p-4 pb-24">
       <div className="max-w-2xl mx-auto pt-8">
-        <div className="flex items-center gap-4 mb-8">
-          <CalendarIcon className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold">Calendar</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <CalendarIcon className="w-6 h-6 text-primary" />
+            <h1 className="text-2xl font-bold">Calendar</h1>
+          </div>
+          {profile?.role === "freelancer" && (
+            <div className="text-xs text-muted-foreground">
+              Hover over a day and click the icon to mark as unavailable
+            </div>
+          )}
         </div>
 
         <Card className="border-0 shadow-xl mb-6">
@@ -331,6 +495,7 @@ export default function CalendarPage() {
                 const day = index + 1;
                 const date = new Date(year, month, day);
                 const hasJob = hasJobOnDate(date);
+                const unavailable = isDateUnavailable(date);
                 const selected = isDateSelected(date);
                 const isTodayDate = isToday(date);
 
@@ -341,14 +506,19 @@ export default function CalendarPage() {
                     className={cn(
                       "aspect-square rounded-md text-sm font-medium transition-colors relative",
                       "hover:bg-accent hover:text-accent-foreground",
+                      unavailable && "bg-destructive/20 text-destructive/70",
                       selected && "bg-primary text-primary-foreground hover:bg-primary/90",
-                      !selected && "hover:bg-muted",
+                      !selected && !unavailable && "hover:bg-muted",
                       isTodayDate && !selected && "ring-2 ring-primary/50"
                     )}
+                    title={unavailable ? "Has unavailable time slots" : undefined}
                   >
                     {day}
-                    {hasJob && (
+                    {hasJob && !unavailable && (
                       <span className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full" />
+                    )}
+                    {unavailable && (
+                      <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-destructive rounded-full" />
                     )}
                   </button>
                 );
@@ -361,16 +531,59 @@ export default function CalendarPage() {
         {selectedDate && (
           <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-lg">
-                {selectedDate.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  {selectedDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </CardTitle>
+                {profile?.role === "freelancer" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddTimeSlot}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Unavailable Time
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
+              {/* Unavailable Time Slots for Freelancers */}
+              {profile?.role === "freelancer" && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">Unavailable Time Slots</h4>
+                  {getUnavailableSlotsForDate(selectedDate).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No unavailable time slots</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {getUnavailableSlotsForDate(selectedDate).map((slot) => (
+                        <div
+                          key={slot.id}
+                          className="flex items-center justify-between p-2 rounded border bg-destructive/5"
+                        >
+                          <span className="text-sm">
+                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTimeSlot(slot.id)}
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {selectedJobs.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">
                   No jobs scheduled for this date
@@ -449,6 +662,63 @@ export default function CalendarPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Add Time Slot Modal */}
+        <Dialog open={showTimeSlotModal} onOpenChange={setShowTimeSlotModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Unavailable Time Slot</DialogTitle>
+              <DialogDescription>
+                Select a time range when you will be unavailable on{" "}
+                {selectedDateForSlot?.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Start Time</Label>
+                <Input
+                  type="time"
+                  value={newStartTime}
+                  onChange={(e) => setNewStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Time</Label>
+                <Input
+                  type="time"
+                  value={newEndTime}
+                  onChange={(e) => setNewEndTime(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTimeSlotModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveTimeSlot}
+                  disabled={addingSlot || !newStartTime || !newEndTime || newEndTime <= newStartTime}
+                >
+                  {addingSlot ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    "Add Time Slot"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

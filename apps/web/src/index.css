@@ -53,9 +53,53 @@
   * {
     @apply border-border;
   }
+  html {
+    /* Prevent overscroll/bounce on mobile */
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    /* Fixed background that doesn't scroll - matches gradient base */
+    background-color: hsl(var(--background));
+    /* Prevent rubber band effect on iOS */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Prevent overscroll/bounce on mobile */
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    /* Fixed background that matches the gradient-mesh base */
+    background-color: hsl(var(--background));
+    /* Prevent rubber band effect on iOS - body handles scrolling */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Ensure main app container handles scrolling */
+  #root {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    background-color: hsl(var(--background));
+    /* Prevent overscroll */
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+  }
+  
+  /* Prevent overscroll on all scrollable containers and pages */
+  [class*="gradient-mesh"],
+  .gradient-mesh {
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    /* Ensure background color extends to prevent white showing */
+    background-color: hsl(var(--background));
   }
 }
 
@@ -222,12 +266,19 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 .gradient-mesh {
+  /* Prevent background from scrolling with content */
+  position: relative;
   background: 
     radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.15) 0px, transparent 50%),
     radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.2) 0px, transparent 50%),
     radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.1) 0px, transparent 50%),
     radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.1) 0px, transparent 50%),
     radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.15) 0px, transparent 50%);
+  /* Ensure background color extends beyond viewport */
+  background-color: hsl(var(--background));
+  /* Prevent overscroll bounce on mobile */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
 }
 
 /* Hide ChatPage header and job summary on mobile when embedded in MessagesPage */

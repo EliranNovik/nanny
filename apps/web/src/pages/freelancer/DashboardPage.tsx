@@ -308,18 +308,18 @@ export default function FreelancerDashboardPage() {
   return (
     <div className="min-h-screen gradient-mesh p-4 pb-24">
       <div className="max-w-2xl mx-auto pt-8">
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <img 
-            src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" 
-            alt="MamaLama Logo" 
-            className="h-16 w-auto mx-auto rounded-lg"
-          />
-        </div>
-
         {/* Profile Section */}
         <Card className="border-0 shadow-lg mb-6">
           <CardContent className="p-6">
+            {/* Logo */}
+            <div className="text-center mb-4">
+              <img 
+                src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" 
+                alt="MamaLama Logo" 
+                className="h-16 w-auto mx-auto rounded-lg"
+              />
+            </div>
+            
             <div className="flex items-center gap-4">
               <Avatar className="w-16 h-16 border-2 border-primary/20">
                 <AvatarImage src={profile?.photo_url || undefined} />

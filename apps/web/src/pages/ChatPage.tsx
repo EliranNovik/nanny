@@ -113,6 +113,8 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const [schedulePending, setSchedulePending] = useState(false);
   const [scheduleRequestSent, setScheduleRequestSent] = useState(false);
   const [showReviseModal, setShowReviseModal] = useState(false);
+  const [freelancerUnavailableTimeSlots, setFreelancerUnavailableTimeSlots] = useState<Array<{date: string, start_time: string, end_time: string}>>([]);
+  const [scheduledJobs, setScheduledJobs] = useState<Array<{date: string, start_time: string, end_time: string}>>([]);
   const [reviseDate, setReviseDate] = useState<Date | null>(null);
   const [reviseTime, setReviseTime] = useState<string>("09:00");
   const [revisePending, setRevisePending] = useState(false);
@@ -211,6 +213,65 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         .single();
 
       setOtherUser(profile);
+
+      // Fetch freelancer's unavailable time slots and scheduled jobs
+      if (otherId) {
+        const freelancerId = currentUserProfile?.role === "client" 
+          ? otherId 
+          : (currentUserProfile?.role === "freelancer" ? user.id : null);
+        
+        if (freelancerId) {
+          // Fetch unavailable time slots
+          const { data: unavailableSlotsData } = await supabase
+            .from("freelancer_unavailable_dates")
+            .select("unavailable_date, start_time, end_time")
+            .eq("freelancer_id", freelancerId);
+
+          if (unavailableSlotsData) {
+            setFreelancerUnavailableTimeSlots(unavailableSlotsData.map(slot => ({
+              date: slot.unavailable_date,
+              start_time: slot.start_time,
+              end_time: slot.end_time
+            })));
+          } else {
+            setFreelancerUnavailableTimeSlots([]);
+          }
+
+          // Fetch scheduled jobs for this freelancer
+          const { data: jobsData } = await supabase
+            .from("job_requests")
+            .select("start_at")
+            .eq("selected_freelancer_id", freelancerId)
+            .in("status", ["locked", "active"])
+            .not("start_at", "is", null);
+
+          if (jobsData) {
+            // Convert scheduled jobs to time slots (assuming 4-hour duration, adjust as needed)
+            const scheduled = jobsData
+              .filter(job => job.start_at)
+              .map(job => {
+                const start = new Date(job.start_at);
+                const end = new Date(start);
+                end.setHours(end.getHours() + 4); // Default 4-hour job duration
+                
+                return {
+                  date: start.toISOString().split('T')[0],
+                  start_time: start.toTimeString().slice(0, 5),
+                  end_time: end.toTimeString().slice(0, 5)
+                };
+              });
+            setScheduledJobs(scheduled);
+          } else {
+            setScheduledJobs([]);
+          }
+        } else {
+          setFreelancerUnavailableTimeSlots([]);
+          setScheduledJobs([]);
+        }
+      } else {
+        setFreelancerUnavailableTimeSlots([]);
+        setScheduledJobs([]);
+      }
 
       // Get job details (only if job_id is not null)
       let jobData = null;
@@ -2262,15 +2323,42 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                       );
                     }
                     
+                    // Combine unavailable time slots and scheduled jobs
+                    const allUnavailableSlots = [
+                      ...freelancerUnavailableTimeSlots,
+                      ...scheduledJobs
+                    ];
+
+                    // Get unavailable times for selected date
+                    const unavailableTimesForDate = selectedScheduleDate
+                      ? allUnavailableSlots.filter(slot => {
+                          const dateStr = selectedScheduleDate.toISOString().split('T')[0];
+                          return slot.date === dateStr;
+                        })
+                      : [];
+
                     return (
                       <div className="space-y-4">
                         <SimpleCalendar
                           selectedDate={selectedScheduleDate}
                           onDateSelect={setSelectedScheduleDate}
                           minDate={new Date()}
+                          unavailableTimeSlots={allUnavailableSlots}
                         />
                         {selectedScheduleDate && (
                           <>
+                            {unavailableTimesForDate.length > 0 && (
+                              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                                <p className="text-sm font-medium text-destructive mb-2">Unavailable Times:</p>
+                                <div className="space-y-1">
+                                  {unavailableTimesForDate.map((slot, idx) => (
+                                    <p key={idx} className="text-xs text-destructive/80">
+                                      {slot.start_time} - {slot.end_time}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Time</label>
                               <Input
@@ -2279,6 +2367,15 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                                 onChange={(e) => setSelectedScheduleTime(e.target.value)}
                                 className="w-full"
                               />
+                              {selectedScheduleTime && unavailableTimesForDate.some(slot => {
+                                const selected = selectedScheduleTime;
+                                return (selected >= slot.start_time && selected < slot.end_time) ||
+                                       (selected >= slot.start_time && slot.end_time < slot.start_time); // Handle overnight
+                              }) && (
+                                <p className="text-xs text-destructive">
+                                  This time conflicts with an unavailable time slot
+                                </p>
+                              )}
                             </div>
                             <Button
                               className="w-full"
@@ -3165,6 +3262,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                         selectedDate={reviseDate}
                         onDateSelect={setReviseDate}
                         minDate={new Date()}
+                        unavailableTimeSlots={[...freelancerUnavailableTimeSlots, ...scheduledJobs]}
                       />
                     </div>
                     {reviseDate && (
