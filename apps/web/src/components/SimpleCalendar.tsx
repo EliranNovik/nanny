@@ -66,11 +66,6 @@ export function SimpleCalendar({ selectedDate, onDateSelect, minDate, unavailabl
     return false;
   };
 
-  const getUnavailableTimeSlotsForDate = (date: Date): UnavailableTimeSlot[] => {
-    const dateStr = date.toISOString().split('T')[0];
-    return unavailableTimeSlots.filter(slot => slot.date === dateStr);
-  };
-
   const isDateDisabled = (date: Date) => {
     const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const minOnly = new Date(min.getFullYear(), min.getMonth(), min.getDate());
