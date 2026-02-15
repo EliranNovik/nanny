@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Save, 
+import {
+  Save,
   Bell,
   Globe,
   DollarSign,
@@ -58,6 +58,10 @@ export default function FreelancerProfilePage() {
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [telegramUsername, setTelegramUsername] = useState("");
+  const [shareWhatsapp, setShareWhatsapp] = useState(false);
+  const [shareTelegram, setShareTelegram] = useState(false);
   const hasFetchedRef = useRef<string | null>(null);
   const fetchingRef = useRef(false);
 
@@ -81,6 +85,10 @@ export default function FreelancerProfilePage() {
       setFullName(profile.full_name || "");
       setPhone(profile.phone || "");
       setCity(profile.city || "");
+      setWhatsappNumber(profile.whatsapp_number_e164 || "");
+      setTelegramUsername(profile.telegram_username || "");
+      setShareWhatsapp(profile.share_whatsapp || false);
+      setShareTelegram(profile.share_telegram || false);
     }
   }, [profile]);
 
@@ -127,7 +135,7 @@ export default function FreelancerProfilePage() {
         available_now: freelancerProfile.available_now,
         availability_note: freelancerProfile.availability_note || "",
       });
-      
+
       // Determine rate mode based on existing data
       if (freelancerProfile.hourly_rate_min !== null && freelancerProfile.hourly_rate_max !== null && freelancerProfile.hourly_rate_min !== freelancerProfile.hourly_rate_max) {
         setRateMode("range");
@@ -315,6 +323,38 @@ export default function FreelancerProfilePage() {
     }
   }
 
+  // Normalize phone number to E.164 format
+  const normalizePhoneNumber = (phone: string): string | null => {
+    if (!phone.trim()) return null;
+
+    // Remove all non-digit characters except +
+    let cleaned = phone.replace(/[^\d+]/g, '');
+
+    // If it doesn't start with +, assume Israeli number and add +972
+    if (!cleaned.startsWith('+')) {
+      // Remove leading 0 if present
+      if (cleaned.startsWith('0')) {
+        cleaned = cleaned.substring(1);
+      }
+      cleaned = '+972' + cleaned;
+    }
+
+    return cleaned;
+  };
+
+  // Normalize Telegram username (remove @ if present)
+  const normalizeTelegramUsername = (username: string): string | null => {
+    if (!username.trim()) return null;
+
+    // Remove @ symbol if present
+    let cleaned = username.trim();
+    if (cleaned.startsWith('@')) {
+      cleaned = cleaned.substring(1);
+    }
+
+    return cleaned;
+  };
+
   async function handleSave() {
     if (!user) return;
     setSaving(true);
@@ -352,6 +392,21 @@ export default function FreelancerProfilePage() {
         profileUpdates.city = city.trim();
       }
 
+      const normalizedWhatsapp = normalizePhoneNumber(whatsappNumber);
+      if (normalizedWhatsapp !== (profile?.whatsapp_number_e164 || null)) {
+        profileUpdates.whatsapp_number_e164 = normalizedWhatsapp;
+      }
+      const normalizedTelegram = normalizeTelegramUsername(telegramUsername);
+      if (normalizedTelegram !== (profile?.telegram_username || null)) {
+        profileUpdates.telegram_username = normalizedTelegram;
+      }
+      if (shareWhatsapp !== (profile?.share_whatsapp || false)) {
+        profileUpdates.share_whatsapp = shareWhatsapp;
+      }
+      if (shareTelegram !== (profile?.share_telegram || false)) {
+        profileUpdates.share_telegram = shareTelegram;
+      }
+
       if (Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase.from("profiles").upsert({
           id: user.id,
@@ -367,7 +422,7 @@ export default function FreelancerProfilePage() {
 
       // Refresh both profile and freelancer profile data
       await refreshProfile();
-      
+
       // Refetch freelancer profile data to update the form
       // Reset the fetch ref to force a refetch
       if (user) {
@@ -404,7 +459,7 @@ export default function FreelancerProfilePage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -413,7 +468,7 @@ export default function FreelancerProfilePage() {
               Complete your profile to get matched with families
             </p>
           </div>
-          <Button 
+          <Button
             variant="outline"
             onClick={() => navigate("/freelancer/notifications")}
             className="gap-2"
@@ -507,6 +562,68 @@ export default function FreelancerProfilePage() {
                 />
               </div>
 
+              <div className="space-y-4 pt-4 border-t">
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp">WhatsApp Number (optional)</Label>
+                  <Input
+                    id="whatsapp"
+                    type="tel"
+                    placeholder="+972 50-123-4567"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    International format (e.g., +972 50-123-4567)
+                  </p>
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="share-whatsapp" className="text-sm font-medium">
+                        Share WhatsApp with matched users
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Allow others to contact you on WhatsApp
+                      </p>
+                    </div>
+                    <Switch
+                      id="share-whatsapp"
+                      checked={shareWhatsapp}
+                      onCheckedChange={setShareWhatsapp}
+                      disabled={!whatsappNumber.trim()}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="telegram">Telegram Username (optional)</Label>
+                  <Input
+                    id="telegram"
+                    type="text"
+                    placeholder="username (without @)"
+                    value={telegramUsername}
+                    onChange={(e) => setTelegramUsername(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter your username without the @ symbol
+                  </p>
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="share-telegram" className="text-sm font-medium">
+                        Share Telegram with matched users
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Allow others to contact you on Telegram
+                      </p>
+                    </div>
+                    <Switch
+                      id="share-telegram"
+                      checked={shareTelegram}
+                      onCheckedChange={setShareTelegram}
+                      disabled={!telegramUsername.trim()}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* City with GPS */}
               <div className="space-y-2">
                 <Label htmlFor="city">City</Label>
@@ -563,7 +680,7 @@ export default function FreelancerProfilePage() {
                       {data.available_now ? "You're Available!" : "Not Available"}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {data.available_now 
+                      {data.available_now
                         ? "You'll receive job notifications"
                         : "Toggle on to receive job requests"}
                     </p>
@@ -854,7 +971,7 @@ export default function FreelancerProfilePage() {
 
         {/* Save Button */}
         <div className="mb-24">
-          <Button 
+          <Button
             onClick={handleSave}
             disabled={saving || uploading}
             className="w-full"

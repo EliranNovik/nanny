@@ -6,14 +6,13 @@ import { apiPost } from "@/lib/api";
 import { getCityFromLocation } from "@/lib/location";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DualLocationPicker } from "@/components/DualLocationPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Baby, 
-  Clock, 
-  MapPin, 
-  DollarSign, 
-  Heart, 
-  ArrowLeft, 
+import {
+  Clock,
+  MapPin,
+  Heart,
+  ArrowLeft,
   ArrowRight,
   Loader2,
   Sparkles,
@@ -22,55 +21,82 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const CARE_TYPES = [
-  { id: "occasional", label: "One-time / Occasional", icon: "🎯" },
-  { id: "part_time", label: "Part-time", icon: "⏰" },
-  { id: "full_time", label: "Full-time", icon: "💼" },
+// Step 1: Service Types
+const SERVICE_TYPES = [
+  { id: "cleaning", label: "Cleaning", icon: "🧹" },
+  { id: "cooking", label: "Cooking", icon: "👨‍🍳" },
+  { id: "pickup_delivery", label: "Pick up - delivery", icon: "🚗" },
+  { id: "nanny", label: "Nanny", icon: "👶" },
+  { id: "other_help", label: "Other help", icon: "🛠️" },
 ];
 
-const CHILDREN_COUNTS = [
-  { value: 1, label: "1 child" },
-  { value: 2, label: "2 children" },
-  { value: 3, label: "3 children" },
-  { value: 4, label: "4+ children" },
+// Step 2: Care Frequency
+const CARE_FREQUENCIES = [
+  { id: "one_time", label: "One time", icon: "1️⃣" },
+  { id: "part_time", label: "Part time", icon: "⏰" },
+  { id: "regularly", label: "Regularly", icon: "📅" },
 ];
 
-const AGE_GROUPS = [
-  { id: "newborn", label: "Newborn (0-6 mo)", icon: "👶" },
-  { id: "infant", label: "Infant (6-12 mo)", icon: "🍼" },
-  { id: "toddler", label: "Toddler (1-3 yr)", icon: "🧸" },
-  { id: "preschool", label: "Preschool (3-5 yr)", icon: "🎨" },
-  { id: "school_age", label: "School Age (5+ yr)", icon: "📚" },
-  { id: "mixed", label: "Mixed Ages", icon: "👨‍👩‍👧‍👦" },
+// Step 4: Time Duration
+const TIME_DURATIONS = [
+  { id: "1_2_hours", label: "1-2 hours", icon: "⏱️" },
+  { id: "3_4_hours", label: "3-4 hours", icon: "🕐" },
+  { id: "5_6_hours", label: "5-6 hours", icon: "🕔" },
+  { id: "full_day", label: "Full day", icon: "☀️" },
 ];
 
-const SHIFT_OPTIONS = [
-  { id: "up_to_4", label: "Up to 4 hours" },
-  { id: "4_8", label: "4-8 hours" },
-  { id: "full_day", label: "Full day" },
-  { id: "night", label: "Night shift" },
+// Step 5: Service-specific options
+const CLEANING_TYPES = [
+  { id: "house", label: "House cleaning", icon: "🏠" },
+  { id: "office", label: "Office cleaning", icon: "🏢" },
+  { id: "garden", label: "Garden (outdoor)", icon: "🌳" },
 ];
 
-const REQUIREMENTS = [
-  { id: "first_aid", label: "First Aid Certified", icon: "🩹" },
-  { id: "newborn", label: "Newborn Experience", icon: "👶" },
-  { id: "special_needs", label: "Special Needs Experience", icon: "💜" },
+const COOKING_PEOPLE_COUNTS = [
+  { id: "1_4", label: "1-4 people", icon: "👤" },
+  { id: "4_6", label: "4-6 people", icon: "👥" },
+  { id: "6_10", label: "6-10 people", icon: "👨‍👩‍👧‍👦" },
+  { id: "10_plus", label: "10+ people", icon: "👨‍👩‍👧‍👦" },
+];
+
+const NANNY_KIDS_COUNTS = [
+  { id: "1_2", label: "1-2 kids", icon: "👶" },
+  { id: "2_4", label: "2-4 kids", icon: "👶👶" },
+  { id: "4_6", label: "4-6 kids", icon: "👨‍👩‍👧‍👦" },
+  { id: "8_plus", label: "8+ kids", icon: "👨‍👩‍👧‍👦" },
+];
+
+const OTHER_HELP_TYPES = [
+  { id: "technical", label: "Technical", icon: "🔧" },
+  { id: "heavy_lifting", label: "Heavy lifting", icon: "💪" },
+  { id: "caregiving", label: "Caregiving (Olders)", icon: "👴" },
 ];
 
 const STORAGE_KEY = "create_job_form_data";
-const MIN_BUDGET = 20;
-const MAX_BUDGET = 200;
-const BUDGET_STEP = 5;
 
 interface JobData {
-  care_type: string;
-  children_count: number;
-  children_age_group: string;
+  service_type: string;
+  care_frequency: string;
   location_city: string;
-  shift_hours: string;
-  requirements: string[];
-  budget_min: number | null;
-  budget_max: number | null;
+  time_duration: string;
+  service_details: {
+    // For cleaning
+    cleaning_type?: string;
+    // For cooking
+    people_count?: string;
+    // For pickup_delivery
+    from_address?: string;
+    from_lat?: number;
+    from_lng?: number;
+    to_address?: string;
+    to_lat?: number;
+    to_lng?: number;
+    // For nanny
+    kids_count?: string;
+    // For other_help
+    other_type?: string;
+    description?: string;
+  };
 }
 
 export default function CreateJobPage() {
@@ -101,25 +127,21 @@ export default function CreateJobPage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         const { step: _, ...savedJobData } = parsed;
-        
+
         // Validate that we have meaningful data
-        const hasData = savedJobData.care_type || 
-          savedJobData.location_city || 
-          savedJobData.shift_hours ||
-          (savedJobData.budget_min !== null) ||
-          (savedJobData.budget_max !== null) ||
-          (savedJobData.requirements && savedJobData.requirements.length > 0);
-        
+        const hasData = savedJobData.service_type ||
+          savedJobData.location_city ||
+          savedJobData.time_duration ||
+          savedJobData.care_frequency ||
+          (savedJobData.service_details && Object.keys(savedJobData.service_details).length > 0);
+
         if (hasData) {
           return {
-            care_type: savedJobData.care_type || "",
-            children_count: savedJobData.children_count || 1,
-            children_age_group: savedJobData.children_age_group || "",
+            service_type: savedJobData.service_type || "",
+            care_frequency: savedJobData.care_frequency || "",
             location_city: savedJobData.location_city || "",
-            shift_hours: savedJobData.shift_hours || "",
-            requirements: savedJobData.requirements || [],
-            budget_min: savedJobData.budget_min ?? null,
-            budget_max: savedJobData.budget_max ?? null,
+            time_duration: savedJobData.time_duration || "",
+            service_details: savedJobData.service_details || {},
           } as JobData;
         }
       }
@@ -128,14 +150,11 @@ export default function CreateJobPage() {
     }
     // Return defaults if no saved data
     return {
-      care_type: "",
-      children_count: 1,
-      children_age_group: "",
+      service_type: "",
+      care_frequency: "",
       location_city: "",
-      shift_hours: "",
-      requirements: [],
-      budget_min: null,
-      budget_max: null,
+      time_duration: "",
+      service_details: {},
     };
   });
 
@@ -143,7 +162,7 @@ export default function CreateJobPage() {
   const [error, setError] = useState("");
   const [gettingLocation, setGettingLocation] = useState(false);
   const [savedLocationShown, setSavedLocationShown] = useState(false);
-  
+
   // Track previous values to only save when they actually change
   const prevStepRef = useRef<number | null>(null);
   const prevJobDataRef = useRef<string | null>(null);
@@ -178,7 +197,7 @@ export default function CreateJobPage() {
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
     }, 150);
-    
+
     return () => clearTimeout(timeoutId);
   }, [jobData, step]);
 
@@ -189,31 +208,45 @@ export default function CreateJobPage() {
     }
   }, [step, profile?.city, savedLocationShown, jobData.location_city]);
 
-  const totalSteps = 6;
+  const totalSteps = 5;
+
+  function canProceed(): boolean {
+    switch (step) {
+      case 1: return !!jobData.service_type;
+      case 2: return !!jobData.care_frequency;
+      case 3: return !!jobData.location_city;
+      case 4: return !!jobData.time_duration;
+      case 5: {
+        // Check service-specific details based on service_type
+        if (jobData.service_type === "cleaning") {
+          return !!jobData.service_details.cleaning_type;
+        } else if (jobData.service_type === "cooking") {
+          return !!jobData.service_details.people_count;
+        } else if (jobData.service_type === "pickup_delivery") {
+          return !!jobData.service_details.from_address && !!jobData.service_details.to_address;
+        } else if (jobData.service_type === "nanny") {
+          return !!jobData.service_details.kids_count;
+        } else if (jobData.service_type === "other_help") {
+          return !!jobData.service_details.other_type;
+        }
+        return false;
+      }
+      default: return false;
+    }
+  }
 
   function updateField<K extends keyof JobData>(field: K, value: JobData[K]) {
     setJobData((prev) => ({ ...prev, [field]: value }));
   }
 
-  function toggleRequirement(req: string) {
+  function updateServiceDetail<K extends keyof JobData["service_details"]>(
+    field: K,
+    value: JobData["service_details"][K]
+  ) {
     setJobData((prev) => ({
       ...prev,
-      requirements: prev.requirements.includes(req)
-        ? prev.requirements.filter((r) => r !== req)
-        : [...prev.requirements, req],
+      service_details: { ...prev.service_details, [field]: value },
     }));
-  }
-
-  function canProceed(): boolean {
-    switch (step) {
-      case 1: return !!jobData.care_type;
-      case 2: return jobData.children_count > 0;
-      case 3: return !!jobData.children_age_group;
-      case 4: return !!jobData.location_city;
-      case 5: return !!jobData.shift_hours;
-      case 6: return true;
-      default: return false;
-    }
   }
 
   function handleUseSavedLocation() {
@@ -265,7 +298,19 @@ export default function CreateJobPage() {
       console.log("[CreateJobPage] Job created successfully:", result);
       // Clear localStorage after successful submission
       localStorage.removeItem(STORAGE_KEY);
-      navigate(`/client/jobs/${result.job_id}/confirmed`);
+      // Pass job details via state for immediate display
+      navigate(`/client/jobs/${result.job_id}/confirmed`, {
+        state: {
+          job: {
+            id: result.job_id,
+            service_type: jobData.service_type,
+            service_details: jobData.service_details,
+            location_city: jobData.location_city,
+            time_duration: jobData.time_duration,
+            care_frequency: jobData.care_frequency,
+          },
+        },
+      });
     } catch (err) {
       console.error("[CreateJobPage] Error creating job:", err);
       setError(err instanceof Error ? err.message : "Failed to create job");
@@ -287,7 +332,7 @@ export default function CreateJobPage() {
             </span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full gradient-primary transition-all duration-300"
               style={{ width: `${(step / totalSteps) * 100}%` }}
             />
@@ -297,12 +342,11 @@ export default function CreateJobPage() {
         <Card className="border-0 shadow-xl animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {step === 1 && <><Baby className="w-5 h-5 text-primary" /> Type of Care</>}
-              {step === 2 && <><Heart className="w-5 h-5 text-primary" /> How Many Children?</>}
-              {step === 3 && <><Sparkles className="w-5 h-5 text-primary" /> Age Group</>}
-              {step === 4 && <><MapPin className="w-5 h-5 text-primary" /> Location</>}
-              {step === 5 && <><Clock className="w-5 h-5 text-primary" /> Duration</>}
-              {step === 6 && <><DollarSign className="w-5 h-5 text-primary" /> Budget & Requirements</>}
+              {step === 1 && <><Sparkles className="w-5 h-5 text-primary" /> Type of Help</>}
+              {step === 2 && <><Clock className="w-5 h-5 text-primary" /> Type of Care</>}
+              {step === 3 && <><MapPin className="w-5 h-5 text-primary" /> Location</>}
+              {step === 4 && <><Clock className="w-5 h-5 text-primary" /> Time Duration</>}
+              {step === 5 && <><Heart className="w-5 h-5 text-primary" /> Service Details</>}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -312,16 +356,16 @@ export default function CreateJobPage() {
               </div>
             )}
 
-            {/* Step 1: Care Type */}
+            {/* Step 1: Service Type */}
             {step === 1 && (
               <div className="grid gap-3">
-                {CARE_TYPES.map((type) => (
+                {SERVICE_TYPES.map((type) => (
                   <button
                     key={type.id}
-                    onClick={() => { updateField("care_type", type.id); setStep(2); }}
+                    onClick={() => { updateField("service_type", type.id); setStep(2); }}
                     className={cn(
                       "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
-                      jobData.care_type === type.id
+                      jobData.service_type === type.id
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
                     )}
@@ -333,50 +377,29 @@ export default function CreateJobPage() {
               </div>
             )}
 
-            {/* Step 2: Children Count */}
+            {/* Step 2: Care Frequency */}
             {step === 2 && (
-              <div className="grid grid-cols-2 gap-3">
-                {CHILDREN_COUNTS.map((opt) => (
+              <div className="grid gap-3">
+                {CARE_FREQUENCIES.map((freq) => (
                   <button
-                    key={opt.value}
-                    onClick={() => { updateField("children_count", opt.value); setStep(3); }}
+                    key={freq.id}
+                    onClick={() => { updateField("care_frequency", freq.id); setStep(3); }}
                     className={cn(
-                      "p-6 rounded-xl border-2 transition-all text-center",
-                      jobData.children_count === opt.value
+                      "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                      jobData.care_frequency === freq.id
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
                     )}
                   >
-                    <span className="text-3xl font-bold text-primary">{opt.value === 4 ? "4+" : opt.value}</span>
-                    <p className="text-sm text-muted-foreground mt-1">{opt.label}</p>
+                    <span className="text-2xl">{freq.icon}</span>
+                    <span className="font-medium">{freq.label}</span>
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Step 3: Age Group */}
+            {/* Step 3: Location */}
             {step === 3 && (
-              <div className="grid grid-cols-2 gap-3">
-                {AGE_GROUPS.map((age) => (
-                  <button
-                    key={age.id}
-                    onClick={() => { updateField("children_age_group", age.id); setStep(4); }}
-                    className={cn(
-                      "p-4 rounded-xl border-2 transition-all text-center",
-                      jobData.children_age_group === age.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <span className="text-2xl">{age.icon}</span>
-                    <p className="text-sm font-medium mt-2">{age.label}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Step 4: Location */}
-            {step === 4 && (
               <div className="space-y-4">
                 {/* Show saved location option if available */}
                 {profile?.city && !jobData.location_city && (
@@ -429,155 +452,182 @@ export default function CreateJobPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {profile?.city && jobData.location_city !== profile.city
-                      ? "We'll match you with nannies in your area"
+                      ? "We'll match you with helpers in your area"
                       : "Click the GPS icon to automatically detect your location"}
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Step 5: Shift Duration */}
-            {step === 5 && (
+            {/* Step 4: Time Duration */}
+            {step === 4 && (
               <div className="grid grid-cols-2 gap-3">
-                {SHIFT_OPTIONS.map((shift) => (
+                {TIME_DURATIONS.map((duration) => (
                   <button
-                    key={shift.id}
-                    onClick={() => { updateField("shift_hours", shift.id); setStep(6); }}
+                    key={duration.id}
+                    onClick={() => { updateField("time_duration", duration.id); setStep(5); }}
                     className={cn(
                       "p-4 rounded-xl border-2 transition-all text-center",
-                      jobData.shift_hours === shift.id
+                      jobData.time_duration === duration.id
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
                     )}
                   >
-                    <Clock className="w-6 h-6 mx-auto mb-2 text-primary" />
-                    <p className="font-medium">{shift.label}</p>
+                    <span className="text-2xl">{duration.icon}</span>
+                    <p className="text-sm font-medium mt-2">{duration.label}</p>
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Step 6: Budget & Requirements */}
-            {step === 6 && (
-              <div className="space-y-6">
-                <div>
-                  <label className="text-sm font-medium mb-4 block">
-                    Hourly Budget Range (optional)
-                  </label>
-                  
-                  {/* Budget Range Slider */}
-                  <div className="space-y-6">
-                    {/* Min Budget Slider */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">Minimum Rate</span>
-                        <span className="text-2xl font-bold text-primary">
-                          ₪{jobData.budget_min || MIN_BUDGET}
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="range"
-                          min={MIN_BUDGET}
-                          max={jobData.budget_max || MAX_BUDGET}
-                          step={BUDGET_STEP}
-                          value={jobData.budget_min || MIN_BUDGET}
-                          onChange={(e) => {
-                            const value = Number(e.target.value);
-                            if (!jobData.budget_max || value <= jobData.budget_max) {
-                              updateField("budget_min", value);
-                            }
-                          }}
-                          className="w-full h-3 bg-muted rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>₪{MIN_BUDGET}</span>
-                          <span>₪{jobData.budget_max || MAX_BUDGET}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Max Budget Slider */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">Maximum Rate</span>
-                        <span className="text-2xl font-bold text-primary">
-                          ₪{jobData.budget_max || MAX_BUDGET}
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="range"
-                          min={jobData.budget_min || MIN_BUDGET}
-                          max={MAX_BUDGET}
-                          step={BUDGET_STEP}
-                          value={jobData.budget_max || MAX_BUDGET}
-                          onChange={(e) => {
-                            const value = Number(e.target.value);
-                            if (!jobData.budget_min || value >= jobData.budget_min) {
-                              updateField("budget_max", value);
-                            }
-                          }}
-                          className="w-full h-3 bg-muted rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>₪{jobData.budget_min || MIN_BUDGET}</span>
-                          <span>₪{MAX_BUDGET}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Budget Summary */}
-                    <div className="pt-2 pb-1 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Range: <span className="font-semibold text-foreground">₪{jobData.budget_min || MIN_BUDGET}</span> - <span className="font-semibold text-foreground">₪{jobData.budget_max || MAX_BUDGET}</span> per hour
-                      </p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          updateField("budget_min", null);
-                          updateField("budget_max", null);
-                        }}
-                        className="mt-2 text-xs"
-                      >
-                        Clear budget
-                      </Button>
+            {/* Step 5: Service-Specific Details */}
+            {step === 5 && (
+              <div className="space-y-4">
+                {/* Cleaning Type */}
+                {jobData.service_type === "cleaning" && (
+                  <div className="space-y-4">
+                    <div className="grid gap-3">
+                      <label className="text-sm font-medium">Type of cleaning</label>
+                      {CLEANING_TYPES.map((type) => (
+                        <button
+                          key={type.id}
+                          onClick={() => updateServiceDetail("cleaning_type", type.id)}
+                          className={cn(
+                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                            jobData.service_details.cleaning_type === type.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          )}
+                        >
+                          <span className="text-2xl">{type.icon}</span>
+                          <span className="font-medium">{type.label}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
+                )}
 
-                <div>
-                  <label className="text-sm font-medium mb-3 block">
-                    Special Requirements (optional)
-                  </label>
-                  <div className="grid gap-2">
-                    {REQUIREMENTS.map((req) => (
-                      <button
-                        key={req.id}
-                        onClick={() => toggleRequirement(req.id)}
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left",
-                          jobData.requirements.includes(req.id)
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
-                        )}
-                      >
-                        <span>{req.icon}</span>
-                        <span className="text-sm font-medium">{req.label}</span>
-                      </button>
-                    ))}
+                {/* Cooking People Count */}
+                {jobData.service_type === "cooking" && (
+                  <div className="space-y-4">
+                    <div className="grid gap-3">
+                      <label className="text-sm font-medium">How many people?</label>
+                      {COOKING_PEOPLE_COUNTS.map((count) => (
+                        <button
+                          key={count.id}
+                          onClick={() => updateServiceDetail("people_count", count.id)}
+                          className={cn(
+                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                            jobData.service_details.people_count === count.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          )}
+                        >
+                          <span className="text-2xl">{count.icon}</span>
+                          <span className="font-medium">{count.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Pickup/Delivery Addresses */}
+                {jobData.service_type === "pickup_delivery" && (
+                  <div className="space-y-4">
+                    <DualLocationPicker
+                      fromLabel="📍 Pick from location"
+                      toLabel="🎯 Deliver to location"
+                      fromValue={{
+                        address: jobData.service_details.from_address || "",
+                        lat: jobData.service_details.from_lat,
+                        lng: jobData.service_details.from_lng,
+                      }}
+                      toValue={{
+                        address: jobData.service_details.to_address || "",
+                        lat: jobData.service_details.to_lat,
+                        lng: jobData.service_details.to_lng,
+                      }}
+                      onFromChange={(value) => {
+                        updateServiceDetail("from_address", value.address);
+                        updateServiceDetail("from_lat", value.lat);
+                        updateServiceDetail("from_lng", value.lng);
+                      }}
+                      onToChange={(value) => {
+                        updateServiceDetail("to_address", value.address);
+                        updateServiceDetail("to_lat", value.lat);
+                        updateServiceDetail("to_lng", value.lng);
+                      }}
+                      fromPlaceholder="Enter pickup address"
+                      toPlaceholder="Enter delivery address"
+                    />
+                  </div>
+                )}
+
+                {/* Nanny Kids Count */}
+                {jobData.service_type === "nanny" && (
+                  <div className="space-y-4">
+                    <div className="grid gap-3">
+                      <label className="text-sm font-medium">How many kids?</label>
+                      {NANNY_KIDS_COUNTS.map((count) => (
+                        <button
+                          key={count.id}
+                          onClick={() => updateServiceDetail("kids_count", count.id)}
+                          className={cn(
+                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                            jobData.service_details.kids_count === count.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          )}
+                        >
+                          <span className="text-2xl">{count.icon}</span>
+                          <span className="font-medium">{count.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other Help Type */}
+                {jobData.service_type === "other_help" && (
+                  <div className="space-y-4">
+                    <div className="grid gap-3">
+                      <label className="text-sm font-medium">Type of help</label>
+                      {OTHER_HELP_TYPES.map((type) => (
+                        <button
+                          key={type.id}
+                          onClick={() => updateServiceDetail("other_type", type.id)}
+                          className={cn(
+                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                            jobData.service_details.other_type === type.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          )}
+                        >
+                          <span className="text-2xl">{type.icon}</span>
+                          <span className="font-medium">{type.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Additional details (optional)</label>
+                      <Input
+                        placeholder="Describe what you need help with..."
+                        value={jobData.service_details.description || ""}
+                        onChange={(e) => updateServiceDetail("description", e.target.value)}
+                        className="text-lg h-14"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Navigation */}
             <div className="flex gap-3 mt-6">
               {step > 1 && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setStep(step - 1)}
                   className="flex-1"
                 >
@@ -585,9 +635,9 @@ export default function CreateJobPage() {
                   Back
                 </Button>
               )}
-              
-              {step < 6 && step !== 1 && step !== 2 && step !== 3 && step !== 5 && (
-                <Button 
+
+              {step < 5 && step !== 1 && step !== 2 && step !== 4 && (
+                <Button
                   onClick={() => setStep(step + 1)}
                   disabled={!canProceed()}
                   className="flex-1"
@@ -597,21 +647,21 @@ export default function CreateJobPage() {
                 </Button>
               )}
 
-              {step === 6 && (
-                <Button 
+              {step === 5 && (
+                <Button
                   onClick={handleSubmit}
-                  disabled={loading}
+                  disabled={loading || !canProceed()}
                   className="flex-1"
                   size="lg"
                 >
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Finding Nannies...
+                      Finding Helpers...
                     </>
                   ) : (
                     <>
-                      Find My Nanny
+                      Find Helper
                       <Sparkles className="w-4 h-4 ml-2" />
                     </>
                   )}

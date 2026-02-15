@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +14,63 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, user, profile, loading: authLoading } = useAuth();
+  const { signIn, signUp, user, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check if signup mode should be enabled from URL params
+  useEffect(() => {
+    const signupParam = searchParams.get("signup");
+    if (signupParam === "true" && !isSignUp) {
+      setIsSignUp(true);
+    }
+  }, [searchParams, isSignUp]);
+
+  // Check for pending profile and create it after login
+  useEffect(() => {
+    async function handlePendingProfile() {
+      if (!user || profile || authLoading) return;
+
+      const pendingProfile = localStorage.getItem("pendingProfile");
+      if (pendingProfile) {
+        try {
+          const profileData = JSON.parse(pendingProfile);
+          console.log("[LoginPage] Found pending profile, creating...", profileData);
+
+          // Create the profile
+          const { error: profileError } = await supabase.from("profiles").upsert({
+            id: user.id,
+            role: profileData.role,
+            full_name: profileData.fullName,
+            city: profileData.city,
+          });
+
+          if (profileError) {
+            console.error("[LoginPage] Error creating profile", profileError);
+            // Don't clear pending profile on error, let onboarding handle it
+            return;
+          }
+
+          // If freelancer, also create freelancer_profiles entry
+          if (profileData.role === "freelancer") {
+            await supabase.from("freelancer_profiles").upsert({
+              user_id: user.id,
+            });
+          }
+
+          // Clear pending profile
+          localStorage.removeItem("pendingProfile");
+          
+          // Refresh profile to get the new one
+          await refreshProfile();
+        } catch (e) {
+          console.error("[LoginPage] Error handling pending profile", e);
+        }
+      }
+    }
+
+    handlePendingProfile();
+  }, [user, profile, authLoading, refreshProfile]);
 
   // Redirect if already logged in (wait for auth to finish loading)
   useEffect(() => {
@@ -27,23 +83,37 @@ export default function LoginPage() {
     // Only redirect after loading is complete
     if (!authLoading && user) {
       console.log("[LoginPage] Ready to redirect", { profile });
-      // Small delay to ensure auth state is fully updated
+      // Small delay to ensure auth state is fully updated and profile creation completes
       const timer = setTimeout(() => {
-        if (!profile) {
-          console.log("[LoginPage] Redirecting to /onboarding (no profile)");
-          navigate("/onboarding", { replace: true });
-        } else if (profile.role === "client") {
-          console.log("[LoginPage] Redirecting to /dashboard (client)");
-          navigate("/dashboard", { replace: true });
+        // Check if there's a redirect parameter
+        const redirectParam = searchParams.get("redirect");
+        const roleParam = searchParams.get("role");
+        
+        if (redirectParam) {
+          // Redirect to the specified path, preserving role if present
+          const redirectUrl = roleParam ? `${redirectParam}?role=${roleParam}` : redirectParam;
+          console.log("[LoginPage] Redirecting to", redirectUrl);
+          navigate(redirectUrl, { replace: true });
+        } else if (profile) {
+          // User has a profile, redirect to dashboard based on role
+          if (profile.role === "client") {
+            console.log("[LoginPage] Redirecting to /dashboard (client)");
+            navigate("/dashboard", { replace: true });
+          } else {
+            console.log("[LoginPage] Redirecting to /freelancer/dashboard");
+            navigate("/freelancer/dashboard", { replace: true });
+          }
         } else {
-          console.log("[LoginPage] Redirecting to /freelancer/dashboard");
-          navigate("/freelancer/dashboard", { replace: true });
+          // No profile yet, redirect to onboarding
+          console.log("[LoginPage] Redirecting to /onboarding (no profile)");
+          const redirectUrl = roleParam ? `/onboarding?role=${roleParam}` : "/onboarding";
+          navigate(redirectUrl, { replace: true });
         }
-      }, 100);
+      }, 500); // Increased delay to allow profile creation
       
       return () => clearTimeout(timer);
     }
-  }, [user, profile, authLoading, navigate]);
+  }, [user, profile, authLoading, navigate, searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

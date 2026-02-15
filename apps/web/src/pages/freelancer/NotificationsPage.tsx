@@ -9,32 +9,54 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Bell, 
-  Clock, 
-  MapPin, 
-  Baby, 
+import { GoogleMap, useJsApiLoader, DirectionsRenderer } from "@react-google-maps/api";
+import { StarRating } from "@/components/StarRating";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Bell,
+  Clock,
+  MapPin,
+  Baby,
   DollarSign,
   CheckCircle2,
   XCircle,
   Loader2,
   ArrowLeft,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  Navigation
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface JobRequest {
   id: string;
-  care_type: string;
-  children_count: number;
-  children_age_group: string;
+  client_id: string;
+  // New multi-service fields
+  service_type?: string;
+  care_frequency?: string;
+  time_duration?: string;
+  service_details?: Record<string, any>;
+
+  // Old nanny fields (nullable for backward compatibility)
+  care_type?: string;
+  children_count?: number;
+  children_age_group?: string;
+  shift_hours?: string;
+
+  // Common fields
   location_city: string;
-  shift_hours: string;
   budget_min: number | null;
   budget_max: number | null;
   requirements: string[];
   confirm_ends_at: string;
+
+  // Client profile data
+  profiles?: {
+    full_name: string;
+    photo_url: string | null;
+    average_rating: number;
+    total_ratings: number;
+  };
 }
 
 interface Notification {
@@ -45,6 +67,97 @@ interface Notification {
   job_requests: JobRequest;
   isConfirmed?: boolean; // Added to track if freelancer has confirmed
   isDeclined?: boolean; // Added to track if client declined the confirmation
+}
+
+const libraries: ("places")[] = ["places"];
+
+// RouteMap Component
+interface RouteMapProps {
+  fromLat: number;
+  fromLng: number;
+  toLat: number;
+  toLng: number;
+  fromAddress: string;
+  toAddress: string;
+}
+
+function RouteMap({ fromLat, fromLng, toLat, toLng, fromAddress, toAddress }: RouteMapProps) {
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+  const [distance, setDistance] = useState<string>("");
+  const [duration, setDuration] = useState<string>("");
+
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries,
+  });
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const directionsService = new google.maps.DirectionsService();
+    directionsService.route(
+      {
+        origin: { lat: fromLat, lng: fromLng },
+        destination: { lat: toLat, lng: toLng },
+        travelMode: google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === "OK" && result) {
+          setDirections(result);
+          const route = result.routes[0];
+          if (route && route.legs[0]) {
+            setDistance(route.legs[0].distance?.text || "");
+            setDuration(route.legs[0].duration?.text || "");
+          }
+        }
+      }
+    );
+  }, [isLoaded, fromLat, fromLng, toLat, toLng]);
+
+  if (!isLoaded) {
+    return (
+      <div className="h-48 bg-muted rounded-lg flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const center = {
+    lat: (fromLat + toLat) / 2,
+    lng: (fromLng + toLng) / 2,
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="rounded-lg overflow-hidden border">
+        <GoogleMap
+          mapContainerStyle={{ width: "100%", height: "200px" }}
+          center={center}
+          zoom={12}
+          options={{
+            streetViewControl: false,
+            mapTypeControl: false,
+            fullscreenControl: false,
+            zoomControl: true,
+          }}
+        >
+          {directions && <DirectionsRenderer directions={directions} />}
+        </GoogleMap>
+      </div>
+      {distance && duration && (
+        <div className="flex items-center justify-between text-sm bg-muted/50 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <Navigation className="w-4 h-4 text-primary" />
+            <span className="font-medium">{distance}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{duration} drive</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function NotificationsPage() {
@@ -70,7 +183,7 @@ export default function NotificationsPage() {
 
     try {
       console.log("[NotificationsPage] Fetching notifications for user", user.id);
-      
+
       // Fetch notifications
       const { data: notificationsData, error: notifError } = await supabase
         .from("job_candidate_notifications")
@@ -81,6 +194,11 @@ export default function NotificationsPage() {
           created_at,
           job_requests (
             id,
+            client_id,
+            service_type,
+            care_frequency,
+            time_duration,
+            service_details,
             care_type,
             children_count,
             children_age_group,
@@ -89,7 +207,13 @@ export default function NotificationsPage() {
             budget_min,
             budget_max,
             requirements,
-            confirm_ends_at
+            confirm_ends_at,
+            profiles!job_requests_client_id_fkey (
+              full_name,
+              photo_url,
+              average_rating,
+              total_ratings
+            )
           )
         `)
         .eq("freelancer_id", user.id)
@@ -112,7 +236,7 @@ export default function NotificationsPage() {
           .filter((c) => c.status === "available")
           .map((c) => c.job_id)
       );
-      
+
       const declinedJobIds = new Set(
         (confirmationsData || [])
           .filter((c) => c.status === "declined")
@@ -121,7 +245,7 @@ export default function NotificationsPage() {
 
       console.log("[NotificationsPage] Loaded", (notificationsData || []).length, "notifications");
       console.log("[NotificationsPage] Found", confirmedJobIds.size, "confirmed jobs");
-      
+
       // Filter out notifications where job_requests is null (RLS blocked)
       const validNotifications = (notificationsData || []).filter((notif: any) => {
         if (!notif.job_requests) {
@@ -130,22 +254,22 @@ export default function NotificationsPage() {
         }
         return true;
       });
-      
+
       // Add confirmation status to each notification
       const enrichedNotifications = validNotifications.map((notif: any) => ({
         ...notif,
         isConfirmed: confirmedJobIds.has(notif.job_id),
         isDeclined: declinedJobIds.has(notif.job_id)
       }));
-      
+
       console.log("[NotificationsPage] Valid notifications after filtering:", enrichedNotifications.length);
-      
+
       // Check for new notifications and show toast
       const currentNotificationIds = new Set(enrichedNotifications.map((n: any) => n.id));
-      const newNotifications = enrichedNotifications.filter((n: any) => 
+      const newNotifications = enrichedNotifications.filter((n: any) =>
         !previousNotificationIdsRef.current.has(n.id)
       );
-      
+
       // Show toast for new notifications (but not on initial load)
       if (previousNotificationIdsRef.current.size > 0 && newNotifications.length > 0) {
         newNotifications.forEach((notif: any) => {
@@ -164,7 +288,7 @@ export default function NotificationsPage() {
           });
         });
       }
-      
+
       previousNotificationIdsRef.current = currentNotificationIds;
       setNotifications((enrichedNotifications as unknown as Notification[]) || []);
     } catch (err) {
@@ -231,11 +355,11 @@ export default function NotificationsPage() {
 
     try {
       console.log("[NotificationsPage] Confirming availability for job", jobId);
-      
+
       // Mark as opened first
       await apiPost(`/api/jobs/${jobId}/notifications/${notifId}/open`, {});
       console.log("[NotificationsPage] Notification marked as opened");
-      
+
       // Then confirm availability
       await apiPost(`/api/jobs/${jobId}/confirm`, {});
       console.log("[NotificationsPage] Availability confirmed successfully");
@@ -246,7 +370,7 @@ export default function NotificationsPage() {
           n.id === notifId ? { ...n, isConfirmed: true } : n
         )
       );
-      
+
       // Refresh to get latest data
       fetchNotifications();
     } catch (err: any) {
@@ -279,10 +403,10 @@ export default function NotificationsPage() {
 
     try {
       console.log("[NotificationsPage] Accepting open job request", openJobAcceptJobId);
-      
+
       // Mark as opened first
       await apiPost(`/api/jobs/${openJobAcceptJobId}/notifications/${openJobAcceptNotifId}/open`, {});
-      
+
       // Accept open job request with note
       await apiPost(`/api/jobs/${openJobAcceptJobId}/accept-open-job`, {
         note: openJobAcceptNote.trim(),
@@ -308,7 +432,7 @@ export default function NotificationsPage() {
       setOpenJobAcceptJobId(null);
       setOpenJobAcceptNotifId(null);
       setOpenJobAcceptNote("");
-      
+
       // Refresh to get latest data
       fetchNotifications();
     } catch (err: any) {
@@ -329,7 +453,7 @@ export default function NotificationsPage() {
 
     try {
       console.log("[NotificationsPage] Deleting notification", notifId);
-      
+
       const { error } = await supabase
         .from("job_candidate_notifications")
         .delete()
@@ -343,7 +467,7 @@ export default function NotificationsPage() {
 
       // Remove from local state
       setNotifications((prev) => prev.filter((n) => n.id !== notifId));
-      
+
       // Update previous notification IDs ref
       previousNotificationIdsRef.current.delete(notifId);
 
@@ -403,6 +527,85 @@ export default function NotificationsPage() {
     return map[group] || group;
   }
 
+  function formatServiceType(type: string): { label: string; icon: string } {
+    const map: Record<string, { label: string; icon: string }> = {
+      cleaning: { label: "Cleaning", icon: "🧹" },
+      cooking: { label: "Cooking", icon: "🍳" },
+      pickup_delivery: { label: "Pickup & Delivery", icon: "📦" },
+      nanny: { label: "Nanny", icon: "👶" },
+      other_help: { label: "Other Help", icon: "🛠️" },
+    };
+    return map[type] || { label: type, icon: "📋" };
+  }
+
+  function formatFrequency(freq: string): string {
+    const map: Record<string, string> = {
+      one_time: "One-time",
+      part_time: "Part-time",
+      regularly: "Regularly",
+    };
+    return map[freq] || freq;
+  }
+
+  function formatDuration(duration: string): string {
+    const map: Record<string, string> = {
+      "1_2_hours": "1-2 hours",
+      "3_4_hours": "3-4 hours",
+      "5_6_hours": "5-6 hours",
+      full_day: "Full day",
+    };
+    return map[duration] || duration;
+  }
+
+  function formatHomeSize(size: string): string {
+    const map: Record<string, string> = {
+      "1_2_rooms": "1-2 rooms",
+      "2_4_rooms": "2-4 rooms",
+      "4_6_rooms": "4-6 rooms",
+      "6_plus_rooms": "6+ rooms",
+    };
+    return map[size] || size;
+  }
+
+  function formatWhoFor(who: string): string {
+    const map: Record<string, string> = {
+      kids: "Kids",
+      young_adults: "Young Adults",
+      adults: "Adults",
+    };
+    return map[who] || who;
+  }
+
+  function formatWeight(weight: string): string {
+    const map: Record<string, string> = {
+      small: "Small (up to 2kg)",
+      medium: "Medium (2-5kg)",
+      big: "Big (5-10kg)",
+      heavy: "Heavy (10kg+)",
+    };
+    return map[weight] || weight;
+  }
+
+  function formatAgeGroup(age: string): string {
+    const map: Record<string, string> = {
+      "1_3_years": "1-3 years old",
+      "3_5_years": "3-5 years old",
+      "5_10_years": "5-10 years old",
+      "10_plus_years": "10+ years old",
+    };
+    return map[age] || age;
+  }
+
+  function formatMobilityLevel(level: string): string {
+    const map: Record<string, string> = {
+      no_disability: "No Disability",
+      some_disability: "Some Disability",
+      disabled: "Disabled",
+    };
+    return map[level] || level;
+  }
+
+
   if (loading) {
     return (
       <div className="min-h-screen gradient-mesh flex items-center justify-center">
@@ -412,11 +615,11 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8">
         <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => navigate("/freelancer/dashboard")}
           >
@@ -428,7 +631,7 @@ export default function NotificationsPage() {
               Job Requests
             </h1>
             <p className="text-muted-foreground">
-              {notifications.length === 0 
+              {notifications.length === 0
                 ? "No pending requests"
                 : `${notifications.length} pending request${notifications.length > 1 ? "s" : ""}`}
             </p>
@@ -443,7 +646,7 @@ export default function NotificationsPage() {
             const isDeclined = notif.isDeclined || false;
 
             return (
-              <Card 
+              <Card
                 key={notif.id}
                 className={cn(
                   "border-0 shadow-lg overflow-hidden transition-all",
@@ -456,9 +659,9 @@ export default function NotificationsPage() {
                     "px-4 py-2 flex items-center justify-between",
                     isDeclined
                       ? "bg-red-500/10"
-                      : time.expired 
-                        ? "bg-muted" 
-                        : isConfirmed 
+                      : time.expired
+                        ? "bg-muted"
+                        : isConfirmed
                           ? "bg-emerald-500/10"
                           : "bg-primary/10"
                   )}>
@@ -474,22 +677,22 @@ export default function NotificationsPage() {
                         <>
                           <Clock className={cn(
                             "w-4 h-4",
-                            time.expired 
-                              ? "text-muted-foreground" 
+                            time.expired
+                              ? "text-muted-foreground"
                               : isConfirmed
                                 ? "text-emerald-500"
                                 : "text-primary animate-pulse-soft"
                           )} />
                           <span className={cn(
                             "text-sm font-medium",
-                            time.expired 
-                              ? "text-muted-foreground" 
+                            time.expired
+                              ? "text-muted-foreground"
                               : isConfirmed
                                 ? "text-emerald-600"
                                 : "text-primary"
                           )}>
-                            {time.expired 
-                              ? "Expired" 
+                            {time.expired
+                              ? "Expired"
                               : isConfirmed
                                 ? "Confirmed!"
                                 : `${time.minutes}:${time.seconds.toString().padStart(2, "0")} left`}
@@ -498,34 +701,175 @@ export default function NotificationsPage() {
                       )}
                     </div>
                     <Badge variant={isDeclined ? "destructive" : time.expired ? "outline" : "default"}>
-                      {formatCareType(job.care_type)}
+                      {job.service_type ? formatServiceType(job.service_type).icon + " " + formatServiceType(job.service_type).label : formatCareType(job.care_type || "")}
                     </Badge>
                   </div>
 
                   <div className="p-6 space-y-4">
+                    {/* Client Profile - Show First */}
+                    {job.profiles && (
+                      <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-border/50">
+                        <Avatar className="w-12 h-12 border-2 border-primary/20">
+                          <AvatarImage src={job.profiles.photo_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
+                            {job.profiles.full_name?.charAt(0).toUpperCase() || "C"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-semibold text-base">{job.profiles.full_name || "Client"}</p>
+                          <StarRating
+                            rating={job.profiles.average_rating || 0}
+                            totalRatings={job.profiles.total_ratings || 0}
+                            size="sm"
+                            showCount={true}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Service Type & Frequency */}
+                    {job.service_type && (
+                      <div className="flex flex-wrap gap-2">
+                        {job.care_frequency && (
+                          <Badge variant="secondary">{formatFrequency(job.care_frequency)}</Badge>
+                        )}
+                        {job.time_duration && (
+                          <Badge variant="outline">{formatDuration(job.time_duration)}</Badge>
+                        )}
+
+                        {/* Optional: Home Size for Cleaning */}
+                        {job.service_type === "cleaning" && job.service_details?.home_size && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            🏠 {formatHomeSize(job.service_details.home_size)}
+                          </Badge>
+                        )}
+
+                        {/* Optional: Who For in Cooking */}
+                        {job.service_type === "cooking" && job.service_details?.who_for && (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                            👥 {formatWhoFor(job.service_details.who_for)}
+                          </Badge>
+                        )}
+
+                        {/* Optional: Weight for Pickup/Delivery */}
+                        {job.service_type === "pickup_delivery" && job.service_details?.weight && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                            ⚖️ {formatWeight(job.service_details.weight)}
+                          </Badge>
+                        )}
+
+                        {/* Optional: Age Group for Nanny */}
+                        {job.service_type === "nanny" && job.service_details?.age_group && (
+                          <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200">
+                            👶 {formatAgeGroup(job.service_details.age_group)}
+                          </Badge>
+                        )}
+
+                        {/* Optional: Mobility Level for Caregiving */}
+                        {job.service_type === "other_help" &&
+                          job.service_details?.other_type === "caregiving" &&
+                          job.service_details?.mobility_level && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              ♿ {formatMobilityLevel(job.service_details.mobility_level)}
+                            </Badge>
+                          )}
+                      </div>
+                    )}
+
+
                     {/* Job Details */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm">{job.location_city}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Baby className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {job.children_count} child{job.children_count > 1 ? "ren" : ""}
-                        </span>
-                      </div>
+
+                      {/* Service-specific details */}
+                      {job.service_type === "cleaning" && job.service_details?.type && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm capitalize">{job.service_details.type} cleaning</span>
+                        </div>
+                      )}
+
+                      {job.service_type === "cooking" && job.service_details?.people_count && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">
+                            {job.service_details.people_count.replace("_", "-").replace("plus", "+")} people
+                          </span>
+                        </div>
+                      )}
+
+                      {job.service_type === "nanny" && job.service_details?.kids_count && (
+                        <div className="flex items-center gap-2">
+                          <Baby className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {job.service_details.kids_count.replace("_", "-")} kids
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Fallback to old nanny fields if no service_type */}
+                      {!job.service_type && job.children_count && (
+                        <div className="flex items-center gap-2">
+                          <Baby className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {job.children_count} child{job.children_count > 1 ? "ren" : ""}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Age: {formatAgeGroup(job.children_age_group)}</span>
-                    </div>
+                    {/* Pickup/Delivery Route Map */}
+                    {job.service_type === "pickup_delivery" &&
+                      job.service_details?.from_lat &&
+                      job.service_details?.from_lng &&
+                      job.service_details?.to_lat &&
+                      job.service_details?.to_lng && (
+                        <div className="space-y-3">
+                          <div className="space-y-2 text-sm">
+                            {job.service_details.from_address && (
+                              <div className="flex items-start gap-2">
+                                <span className="text-green-600 font-semibold min-w-[50px]">From:</span>
+                                <span className="flex-1">{job.service_details.from_address}</span>
+                              </div>
+                            )}
+                            {job.service_details.to_address && (
+                              <div className="flex items-start gap-2">
+                                <span className="text-red-600 font-semibold min-w-[50px]">To:</span>
+                                <span className="flex-1">{job.service_details.to_address}</span>
+                              </div>
+                            )}
+                          </div>
+                          <RouteMap
+                            fromLat={job.service_details.from_lat}
+                            fromLng={job.service_details.from_lng}
+                            toLat={job.service_details.to_lat}
+                            toLng={job.service_details.to_lng}
+                            fromAddress={job.service_details.from_address || ""}
+                            toAddress={job.service_details.to_address || ""}
+                          />
+                        </div>
+                      )}
+
+                    {/* Other Help Description */}
+                    {job.service_type === "other_help" && job.service_details?.description && (
+                      <div className="text-sm text-muted-foreground">
+                        <p>{job.service_details.description}</p>
+                      </div>
+                    )}
+
+                    {/* Age group for nanny (old or new) */}
+                    {((job.service_type === "nanny" && job.service_details?.age_group) || (!job.service_type && job.children_age_group)) && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Age: {formatAgeGroup(job.service_details?.age_group || job.children_age_group || "")}</span>
+                      </div>
+                    )}
 
                     {(job.budget_min || job.budget_max) && (
                       <div className="flex items-center gap-2">
                         <DollarSign className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm">
-                          {job.budget_min && job.budget_max 
+                          {job.budget_min && job.budget_max
                             ? `₪${job.budget_min}-${job.budget_max}/hr`
                             : job.budget_min
                               ? `From ₪${job.budget_min}/hr`

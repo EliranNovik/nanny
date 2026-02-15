@@ -10,6 +10,9 @@ import { ReportIssueModal } from "@/components/ReportIssueModal";
 
 // Pages
 import LoginPage from "@/pages/LoginPage";
+import LandingPage from "@/pages/LandingPage";
+import AboutPage from "@/pages/AboutPage";
+import ContactPage from "@/pages/ContactPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
@@ -85,18 +88,26 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route 
+        path="/" 
+        element={<LandingPage />} 
+      />
+      <Route 
+        path="/about" 
+        element={<AboutPage />} 
+      />
+      <Route 
+        path="/contact" 
+        element={<ContactPage />} 
+      />
+      <Route 
         path="/login" 
-        element={user ? <Navigate to="/" replace /> : <LoginPage />} 
+        element={user ? <Navigate to="/home" replace /> : <LoginPage />} 
       />
 
-      {/* Protected routes */}
+      {/* Onboarding - public route but requires auth (handled internally) */}
       <Route
         path="/onboarding"
-        element={
-          <ProtectedRoute>
-            <OnboardingPage />
-          </ProtectedRoute>
-        }
+        element={<OnboardingPage />}
       />
 
       {/* Client routes */}
@@ -235,9 +246,9 @@ function AppRoutes() {
         }
       />
 
-      {/* Default redirect */}
+      {/* Default redirect for authenticated users */}
       <Route
-        path="/"
+        path="/home"
         element={
           <ProtectedRoute>
             <RoleRedirect />

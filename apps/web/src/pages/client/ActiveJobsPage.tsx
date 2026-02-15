@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
+import {
   ArrowLeft,
   Loader2,
   Clock,
@@ -37,6 +37,10 @@ interface JobRequest {
   selected_freelancer_id: string | null;
   created_at: string;
   confirm_ends_at: string | null;
+  service_type?: string;
+  service_details?: any;
+  time_duration?: string;
+  care_frequency?: string;
 }
 
 interface Conversation {
@@ -56,7 +60,7 @@ export default function ActiveJobsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
-  
+
   // Try to load cached data immediately
   const getCachedJobsData = () => {
     try {
@@ -67,7 +71,7 @@ export default function ActiveJobsPage() {
           return parsed.data;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   };
 
@@ -106,13 +110,13 @@ export default function ActiveJobsPage() {
 
         // Separate into active, open requests, and past jobs
         const active = allJobs.find(j => j.status === "locked" || j.status === "active");
-        const open = allJobs.filter(j => 
-          j.status === "ready" || 
-          j.status === "notifying" || 
+        const open = allJobs.filter(j =>
+          j.status === "ready" ||
+          j.status === "notifying" ||
           j.status === "confirmations_closed"
         );
-        const past = allJobs.filter(j => 
-          j.status === "completed" || 
+        const past = allJobs.filter(j =>
+          j.status === "completed" ||
           j.status === "cancelled"
         );
 
@@ -149,7 +153,7 @@ export default function ActiveJobsPage() {
 
           if (convos) {
             setConversations({ [active.id]: convos });
-            
+
             const { data: profileData } = await supabase
               .from("profiles")
               .select("id, full_name, photo_url")
@@ -161,7 +165,7 @@ export default function ActiveJobsPage() {
             if (profile) {
               setFreelancerProfiles({ [active.selected_freelancer_id]: profile });
             }
-            
+
             // Check for schedule requests that need confirmation
             const { data: messages } = await supabase
               .from("messages")
@@ -169,23 +173,23 @@ export default function ActiveJobsPage() {
               .eq("conversation_id", convos.id)
               .order("created_at", { ascending: false })
               .limit(10);
-            
+
             if (messages) {
               // Check if there's a schedule request from client that hasn't been confirmed
-              const scheduleRequest = messages.find(msg => 
-                msg.body?.includes("📅 Schedule Request") && 
+              const scheduleRequest = messages.find(msg =>
+                msg.body?.includes("📅 Schedule Request") &&
                 msg.sender_id === user.id
               );
-              
+
               if (scheduleRequest) {
                 // Check if there's a confirmation after the request
-                const confirmation = messages.find(msg => 
-                  (msg.body?.includes("Schedule confirmed") || 
-                   msg.body?.includes("✓")) &&
+                const confirmation = messages.find(msg =>
+                  (msg.body?.includes("Schedule confirmed") ||
+                    msg.body?.includes("✓")) &&
                   msg.sender_id === active.selected_freelancer_id &&
                   new Date(msg.created_at) > new Date(scheduleRequest.created_at)
                 );
-                
+
                 // If no confirmation found, there's a new action available
                 setHasNewActions(!confirmation);
               } else {
@@ -284,6 +288,33 @@ export default function ActiveJobsPage() {
     return map[group] || group;
   }
 
+  function formatElapsedTime(createdAt: string): string {
+    const now = new Date().getTime();
+    const created = new Date(createdAt).getTime();
+    const diffSeconds = Math.floor((now - created) / 1000);
+
+    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+
+  function formatDateTime(dateStr: string | null): string {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
   function getJobStatusBadge(status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } {
     const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       locked: { label: "Scheduled", variant: "default" },
@@ -352,7 +383,14 @@ export default function ActiveJobsPage() {
   }
 
   function formatJobTitle(job: JobRequest): string {
-    return `Nanny – ${job.children_count} kid${job.children_count > 1 ? "s" : ""} (${formatAgeGroup(job.children_age_group)})`;
+    if (job.service_type === 'cleaning') return 'Cleaning';
+    if (job.service_type === 'cooking') return 'Cooking';
+    if (job.service_type === 'pickup_delivery') return 'Pickup & Delivery';
+    if (job.service_type === 'nanny') return 'Nanny';
+    if (job.service_type === 'other_help') return 'Other Help';
+
+    // Fallback for old jobs
+    return `Nanny – ${Number(job.children_count) || 0} kid${Number(job.children_count) !== 1 ? "s" : ""} (${job.children_age_group && job.children_age_group !== 'null' ? formatAgeGroup(job.children_age_group) : 'N/A'})`;
   }
 
   if (loading) {
@@ -367,8 +405,8 @@ export default function ActiveJobsPage() {
     <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
       <div className="max-w-2xl mx-auto pt-8">
         <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => navigate("/dashboard")}
           >
@@ -395,9 +433,11 @@ export default function ActiveJobsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={cn("text-xs", getJobStatusBadge(activeJob.status).variant === "default" ? "bg-primary/10 text-primary" : "")}>
-                      {getJobStatusBadge(activeJob.status).label}
-                    </Badge>
+                    {activeJob.status !== "notifying" && (
+                      <Badge className={cn("text-xs", getJobStatusBadge(activeJob.status).variant === "default" ? "bg-primary/10 text-primary" : "")}>
+                        {getJobStatusBadge(activeJob.status).label}
+                      </Badge>
+                    )}
                     {activeJob.stage && (
                       <Badge variant={getJobStageBadge(activeJob.stage).variant} className="text-xs">
                         {getJobStageBadge(activeJob.stage).label}
@@ -434,15 +474,47 @@ export default function ActiveJobsPage() {
               )}
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4 flex-wrap">
                 <div className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
                   {activeJob.location_city}
                 </div>
-                <div className="flex items-center gap-1">
-                  <Baby className="w-4 h-4" />
-                  {formatAgeGroup(activeJob.children_age_group)}
-                </div>
+
+                {/* Duration/Frequency */}
+                {(activeJob.time_duration || activeJob.care_frequency) && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span className="capitalize">
+                      {[
+                        activeJob.time_duration?.replace('_', '-'),
+                        activeJob.care_frequency?.replace('_', ' ')
+                      ].filter(Boolean).join(' · ')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Service Details */}
+                {activeJob.service_type === 'nanny' && activeJob.service_details?.kids_count && (
+                  <div className="flex items-center gap-1">
+                    <Baby className="w-4 h-4" />
+                    {activeJob.service_details.kids_count.replace('_', '-')} kids
+                  </div>
+                )}
+
+                {activeJob.service_type === 'cleaning' && activeJob.service_details?.home_size && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {activeJob.service_details.home_size.replace(/_/g, ' ')}
+                  </div>
+                )}
+
+                {/* Fallback for old jobs */}
+                {!activeJob.service_type && activeJob.children_count > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Baby className="w-4 h-4" />
+                    {formatAgeGroup(activeJob.children_age_group)}
+                  </div>
+                )}
               </div>
               {(() => {
                 const action = getPrimaryAction(activeJob);
@@ -461,7 +533,7 @@ export default function ActiveJobsPage() {
         {/* B. Open Requests (collapsed list) */}
         {openRequests.length > 0 && (
           <Card className="border-0 shadow-lg mb-6">
-            <CardHeader 
+            <CardHeader
               className="cursor-pointer"
               onClick={() => setOpenRequestsExpanded(!openRequestsExpanded)}
             >
@@ -493,10 +565,18 @@ export default function ActiveJobsPage() {
                             </div>
                           )}
                         </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                          <Clock className="w-3 h-3" />
+                          <span>{formatElapsedTime(job.created_at)}</span>
+                          <span>•</span>
+                          <span>{formatDateTime(job.created_at)}</span>
+                        </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={statusBadge.variant} className="text-xs">
-                            {statusBadge.label}
-                          </Badge>
+                          {job.status !== "notifying" && (
+                            <Badge variant={statusBadge.variant} className="text-xs">
+                              {statusBadge.label}
+                            </Badge>
+                          )}
                           {job.stage && (
                             <Badge variant={stageBadge.variant} className="text-xs">
                               {stageBadge.label}
@@ -538,7 +618,7 @@ export default function ActiveJobsPage() {
         {/* C. Past Jobs (collapsed by default) */}
         {pastJobs.length > 0 && (
           <Card className="border-0 shadow-lg">
-            <CardHeader 
+            <CardHeader
               className="cursor-pointer"
               onClick={() => setPastJobsExpanded(!pastJobsExpanded)}
             >

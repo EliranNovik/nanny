@@ -16,8 +16,8 @@ export function BottomNav() {
   const { totalConfirmations } = useConfirmationCounts();
   const { scheduleChanges } = useScheduleChanges();
 
-  // Don't show on login page
-  if (location.pathname === "/login") {
+  // Don't show on login page or landing page
+  if (location.pathname === "/login" || location.pathname === "/") {
     return null;
   }
 
@@ -38,7 +38,7 @@ export function BottomNav() {
     const allowedPaths = [
       "/freelancer/dashboard",
       "/freelancer/profile",
-      "/freelancer/notifications", 
+      "/freelancer/notifications",
       "/freelancer/active-jobs",
       "/client/profile",
       "/client/create",
@@ -75,9 +75,9 @@ export function BottomNav() {
     const clientNav = [
       { path: "/dashboard", icon: Home, label: "Dashboard" },
       { path: "/client/active-jobs", icon: Briefcase, label: "Jobs" },
-      { path: "/calendar", icon: Calendar, label: "Calendar" },
+      // { path: "/calendar", icon: Calendar, label: "Calendar" },
       { path: "/messages", icon: MessageCircle, label: "Messages" },
-      { path: "/payments", icon: CreditCard, label: "Payments" },
+      // { path: "/payments", icon: CreditCard, label: "Payments" },
       { path: "/client/profile", icon: User, label: "Profile" },
     ];
 
@@ -86,59 +86,59 @@ export function BottomNav() {
         <div className="max-w-2xl mx-auto px-4 pb-4">
           <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
             <div className="flex items-center justify-center min-w-max px-2 py-2">
-            {clientNav.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.path);
-              const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
-              
-              // Combine confirmation and schedule badges for Jobs button
-              const totalJobsBadge = (totalConfirmations > 0 ? 1 : 0) + scheduleChanges;
-              const showJobsBadge = item.path === "/client/active-jobs" && totalJobsBadge > 0;
-              
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors relative",
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <div className="relative">
-                    <Icon className="w-6 h-6 md:w-5 md:h-5" />
-                    {showMessageBadge && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                      >
-                        {unreadMessages > 9 ? "9+" : unreadMessages}
-                      </Badge>
+              {clientNav.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname.startsWith(item.path);
+                const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
+
+                // Combine confirmation and schedule badges for Jobs button
+                const totalJobsBadge = (totalConfirmations > 0 ? 1 : 0) + scheduleChanges;
+                const showJobsBadge = item.path === "/client/active-jobs" && totalJobsBadge > 0;
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors relative",
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
-                    {showJobsBadge && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                      >
-                        {totalJobsBadge > 9 ? "9+" : totalJobsBadge}
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-xs md:text-xs font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
-            {/* Report Issue Button */}
-            <button
-              onClick={openReportModal}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <AlertCircle className="w-6 h-6 md:w-5 md:h-5" />
-              <span className="text-xs md:text-xs font-medium">Report</span>
-            </button>
+                  >
+                    <div className="relative">
+                      <Icon className="w-6 h-6 md:w-5 md:h-5" />
+                      {showMessageBadge && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
+                        >
+                          {unreadMessages > 9 ? "9+" : unreadMessages}
+                        </Badge>
+                      )}
+                      {showJobsBadge && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
+                        >
+                          {totalJobsBadge > 9 ? "9+" : totalJobsBadge}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs md:text-xs font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+              {/* Report Issue Button */}
+              <button
+                onClick={openReportModal}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <AlertCircle className="w-6 h-6 md:w-5 md:h-5" />
+                <span className="text-xs md:text-xs font-medium">Report</span>
+              </button>
             </div>
           </div>
         </div>
@@ -158,26 +158,26 @@ export function BottomNav() {
         <div className="max-w-2xl mx-auto px-4 pb-4">
           <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
             <div className="flex items-center justify-center min-w-max px-2 py-2">
-            {adminNav.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.path);
-              
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors",
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Icon className="w-6 h-6 md:w-5 md:h-5" />
-                  <span className="text-xs md:text-xs font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
+              {adminNav.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname.startsWith(item.path);
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors",
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="w-6 h-6 md:w-5 md:h-5" />
+                    <span className="text-xs md:text-xs font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -191,9 +191,9 @@ export function BottomNav() {
       { path: "/freelancer/dashboard", icon: Home, label: "Home" },
       { path: "/freelancer/notifications", icon: Bell, label: "Requests" },
       { path: "/freelancer/active-jobs", icon: Briefcase, label: "Jobs" },
-      { path: "/calendar", icon: Calendar, label: "Calendar" },
+      // { path: "/calendar", icon: Calendar, label: "Calendar" },
       { path: "/messages", icon: MessageCircle, label: "Messages" },
-      { path: "/payments", icon: CreditCard, label: "Payments" },
+      // { path: "/payments", icon: CreditCard, label: "Payments" },
       { path: "/freelancer/profile", icon: User, label: "Profile" },
     ];
 
@@ -202,68 +202,68 @@ export function BottomNav() {
         <div className="max-w-2xl mx-auto px-4 pb-4">
           <div className="bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
             <div className="flex items-center justify-center min-w-max px-2 py-2">
-            {freelancerNav.map((item) => {
-              const Icon = item.icon;
-              // For profile, also check if we're on the edit route
-              const isActive = item.path === "/freelancer/profile" 
-                ? location.pathname.startsWith(item.path)
-                : location.pathname.startsWith(item.path);
-              const showNotificationBadge = item.path === "/freelancer/notifications" && unreadNotifications > 0;
-              const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
-              const showScheduleBadge = item.path === "/freelancer/active-jobs" && scheduleChanges > 0;
-              
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors relative",
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <div className="relative">
-                    <Icon className="w-6 h-6 md:w-5 md:h-5" />
-                    {showNotificationBadge && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                      >
-                        {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                      </Badge>
+              {freelancerNav.map((item) => {
+                const Icon = item.icon;
+                // For profile, also check if we're on the edit route
+                const isActive = item.path === "/freelancer/profile"
+                  ? location.pathname.startsWith(item.path)
+                  : location.pathname.startsWith(item.path);
+                const showNotificationBadge = item.path === "/freelancer/notifications" && unreadNotifications > 0;
+                const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
+                const showScheduleBadge = item.path === "/freelancer/active-jobs" && scheduleChanges > 0;
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors relative",
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
-                    {showMessageBadge && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                      >
-                        {unreadMessages > 9 ? "9+" : unreadMessages}
-                      </Badge>
-                    )}
-                    {showScheduleBadge && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                      >
-                        {scheduleChanges > 9 ? "9+" : scheduleChanges}
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-xs md:text-xs font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
-            {/* Report Issue Button */}
-            <button
-              onClick={openReportModal}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <AlertCircle className="w-6 h-6 md:w-5 md:h-5" />
-              <span className="text-xs md:text-xs font-medium">Report</span>
-            </button>
+                  >
+                    <div className="relative">
+                      <Icon className="w-6 h-6 md:w-5 md:h-5" />
+                      {showNotificationBadge && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
+                        >
+                          {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                        </Badge>
+                      )}
+                      {showMessageBadge && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
+                        >
+                          {unreadMessages > 9 ? "9+" : unreadMessages}
+                        </Badge>
+                      )}
+                      {showScheduleBadge && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
+                        >
+                          {scheduleChanges > 9 ? "9+" : scheduleChanges}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs md:text-xs font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+              {/* Report Issue Button */}
+              <button
+                onClick={openReportModal}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 py-3 px-4 md:py-3 md:px-4 flex-shrink-0 transition-colors text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <AlertCircle className="w-6 h-6 md:w-5 md:h-5" />
+                <span className="text-xs md:text-xs font-medium">Report</span>
+              </button>
             </div>
           </div>
         </div>

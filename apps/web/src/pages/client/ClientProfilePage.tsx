@@ -11,13 +11,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Save, ArrowLeft, Loader2, Camera, X, Navigation } from "lucide-react";
 import { getCityFromLocation } from "@/lib/location";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Switch } from "@/components/ui/switch";
 
 export default function ClientProfilePage() {
   const { user, profile, refreshProfile } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [fullName, setFullName] = useState("");
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
@@ -25,6 +26,10 @@ export default function ClientProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [telegramUsername, setTelegramUsername] = useState("");
+  const [shareWhatsapp, setShareWhatsapp] = useState(false);
+  const [shareTelegram, setShareTelegram] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -32,6 +37,10 @@ export default function ClientProfilePage() {
       setCity(profile.city || "");
       setPhone(profile.phone || "");
       setPhotoUrl(profile.photo_url || null);
+      setWhatsappNumber(profile.whatsapp_number_e164 || "");
+      setTelegramUsername(profile.telegram_username || "");
+      setShareWhatsapp(profile.share_whatsapp || false);
+      setShareTelegram(profile.share_telegram || false);
     }
   }, [profile]);
 
@@ -157,6 +166,38 @@ export default function ClientProfilePage() {
     }
   }
 
+  // Normalize phone number to E.164 format
+  const normalizePhoneNumber = (phone: string): string | null => {
+    if (!phone.trim()) return null;
+
+    // Remove all non-digit characters except +
+    let cleaned = phone.replace(/[^\d+]/g, '');
+
+    // If it doesn't start with +, assume Israeli number and add +972
+    if (!cleaned.startsWith('+')) {
+      // Remove leading 0 if present
+      if (cleaned.startsWith('0')) {
+        cleaned = cleaned.substring(1);
+      }
+      cleaned = '+972' + cleaned;
+    }
+
+    return cleaned;
+  };
+
+  // Normalize Telegram username (remove @ if present)
+  const normalizeTelegramUsername = (username: string): string | null => {
+    if (!username.trim()) return null;
+
+    // Remove @ symbol if present
+    let cleaned = username.trim();
+    if (cleaned.startsWith('@')) {
+      cleaned = cleaned.substring(1);
+    }
+
+    return cleaned;
+  };
+
   async function handleSave() {
     if (!user) return;
     setSaving(true);
@@ -169,6 +210,10 @@ export default function ClientProfilePage() {
         city: city.trim(),
         phone: phone.trim() || null,
         photo_url: photoUrl,
+        whatsapp_number_e164: normalizePhoneNumber(whatsappNumber),
+        telegram_username: normalizeTelegramUsername(telegramUsername),
+        share_whatsapp: shareWhatsapp,
+        share_telegram: shareTelegram,
       });
 
       if (error) {
@@ -176,7 +221,7 @@ export default function ClientProfilePage() {
       }
 
       await refreshProfile();
-      
+
       addToast({
         title: "Profile updated",
         description: "Your changes have been saved successfully",
@@ -195,11 +240,11 @@ export default function ClientProfilePage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8">
         <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => navigate("/dashboard")}
           >
@@ -321,7 +366,69 @@ export default function ClientProfilePage() {
               />
             </div>
 
-            <Button 
+            <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp">WhatsApp Number (optional)</Label>
+                <Input
+                  id="whatsapp"
+                  type="tel"
+                  placeholder="+972 50-123-4567"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  International format (e.g., +972 50-123-4567)
+                </p>
+                <div className="flex items-center justify-between pt-2">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="share-whatsapp" className="text-sm font-medium">
+                      Share WhatsApp with matched users
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Allow others to contact you on WhatsApp
+                    </p>
+                  </div>
+                  <Switch
+                    id="share-whatsapp"
+                    checked={shareWhatsapp}
+                    onCheckedChange={setShareWhatsapp}
+                    disabled={!whatsappNumber.trim()}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telegram">Telegram Username (optional)</Label>
+                <Input
+                  id="telegram"
+                  type="text"
+                  placeholder="username (without @)"
+                  value={telegramUsername}
+                  onChange={(e) => setTelegramUsername(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter your username without the @ symbol
+                </p>
+                <div className="flex items-center justify-between pt-2">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="share-telegram" className="text-sm font-medium">
+                      Share Telegram with matched users
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Allow others to contact you on Telegram
+                    </p>
+                  </div>
+                  <Switch
+                    id="share-telegram"
+                    checked={shareTelegram}
+                    onCheckedChange={setShareTelegram}
+                    disabled={!telegramUsername.trim()}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Button
               onClick={handleSave}
               disabled={saving || uploading}
               className="w-full"

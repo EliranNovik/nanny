@@ -10,6 +10,10 @@ interface Profile {
   city: string | null;
   phone: string | null;
   photo_url: string | null;
+  whatsapp_number_e164?: string | null;
+  telegram_username?: string | null;
+  share_whatsapp?: boolean;
+  share_telegram?: boolean;
 }
 
 interface AuthContextType {
@@ -44,13 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthContext] Profile already loaded for user", userId);
       return;
     }
-    
+
     // Check if tab is visible - don't fetch if tab is hidden (user switched away)
     if (typeof document !== "undefined" && document.hidden) {
       console.log("[AuthContext] Tab is hidden, deferring profile fetch until tab becomes visible");
       return;
     }
-    
+
     // Try to load from localStorage first as fallback
     const cachedProfileKey = `profile_${userId}`;
     const cachedProfile = localStorage.getItem(cachedProfileKey);
@@ -71,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .select("*")
                 .eq("id", userId)
                 .maybeSingle();
-              
+
               if (!error && freshData && fetchingProfileRef.current === userId) {
                 console.log("[AuthContext] Background refresh successful");
                 setProfile(freshData);
@@ -92,16 +96,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn("[AuthContext] Failed to parse cached profile", e);
       }
     }
-    
+
     fetchingProfileRef.current = userId;
     console.log("[AuthContext] fetchProfile called", { userId });
-    
+
     const startTime = Date.now();
     try {
       console.log("[AuthContext] Starting profile query...");
       console.log("[AuthContext] Supabase URL:", import.meta.env.VITE_SUPABASE_URL?.substring(0, 30) + "...");
       console.log("[AuthContext] User ID:", userId);
-      
+
       // Verify Supabase client is configured
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       if (!supabaseUrl || supabaseUrl.includes("your-project-id") || supabaseUrl.includes("placeholder")) {
@@ -109,13 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         return;
       }
-      
+
       // Verify we have a valid session before querying
       // Add timeout to getSession call as it can hang
       console.log("[AuthContext] Getting session...");
       let currentSession = null;
       let sessionError = null;
-      
+
       try {
         const sessionPromise = supabase.auth.getSession();
         const sessionTimeout = new Promise<{ data: { session: null }; error: { message: string; code: string } }>((resolve) => {
@@ -126,11 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }, 3000); // Increased to 3 seconds
         });
-        
+
         const sessionResult = await Promise.race([sessionPromise, sessionTimeout]) as any;
         currentSession = sessionResult?.data?.session;
         sessionError = sessionResult?.error;
-        
+
         if (sessionError?.code === "TIMEOUT") {
           console.warn("[AuthContext] ⚠️ getSession timed out - using cached session if available");
           // Try to get session from localStorage directly
@@ -158,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("[AuthContext] Exception getting session:", err);
         sessionError = err;
       }
-      
+
       if (sessionError && !currentSession) {
         console.warn("[AuthContext] Error getting session (but continuing with cached data if available):", sessionError.message || sessionError);
         // Try to use cached profile instead
@@ -182,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
       }
-      
+
       if (!currentSession || !currentSession.user) {
         console.error("[AuthContext] No valid session found, cannot fetch profile");
         // Try cache
@@ -202,32 +206,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         return;
       }
-      
+
       if (currentSession.user.id !== userId) {
         console.error("[AuthContext] Session user ID doesn't match requested user ID");
         setProfile(null);
         return;
       }
-      
+
       // Verify access token is present
       if (!currentSession.access_token) {
         console.error("[AuthContext] No access token in session");
         setProfile(null);
         return;
       }
-      
+
       console.log("[AuthContext] Session verified:", {
         userId: currentSession.user.id,
         hasAccessToken: !!currentSession.access_token,
         expiresAt: currentSession.expires_at
       });
-      
+
       // Add explicit timeout wrapper to prevent hanging queries
       // Use a shorter timeout (3 seconds) and simpler query first
       let queryAborted = false;
-      
+
       console.log("[AuthContext] Creating query promise...");
-      
+
       // Create timeout promise first (will resolve after 3 seconds)
       const timeoutPromise = new Promise<{ data: null; error: { message: string; code: string } }>((resolve) => {
         setTimeout(() => {
@@ -254,7 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }, 3000);
       });
-      
+
       const queryPromise = (async () => {
         try {
           console.log("[AuthContext] Executing Supabase query...");
@@ -263,9 +267,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .select("id, role, full_name, city, phone, photo_url, is_admin")
             .eq("id", userId)
             .maybeSingle();
-          
+
           console.log("[AuthContext] Query returned:", { hasData: !!result.data, hasError: !!result.error, errorCode: result.error?.code });
-          
+
           if (queryAborted) {
             console.log("[AuthContext] Query was aborted, returning abort error");
             return { data: null, error: { message: "Query aborted", code: "ABORTED" } };
@@ -279,25 +283,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw err;
         }
       })();
-      
+
       console.log("[AuthContext] Racing query and timeout promises...");
       const result = await Promise.race([queryPromise, timeoutPromise]) as any;
       const { data, error } = result;
-      
+
       const duration = Date.now() - startTime;
       console.log("[AuthContext] Profile query completed in", duration, "ms");
-      
-      console.log("[AuthContext] fetchProfile result", { 
-        hasData: !!data, 
-        data, 
-        hasError: !!error, 
+
+      console.log("[AuthContext] fetchProfile result", {
+        hasData: !!data,
+        data,
+        hasError: !!error,
         errorCode: error?.code,
         errorMessage: error?.message,
         errorDetails: error,
         duration,
         wasAborted: queryAborted
       });
-      
+
       // If query was aborted due to timeout, try to use cache
       if (queryAborted && (error?.code === "TIMEOUT" || error?.code === "ABORTED")) {
         console.warn("[AuthContext] Query was aborted due to timeout, checking cache...");
@@ -318,7 +322,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn("[AuthContext] No cached profile available");
         }
       }
-      
+
       if (error) {
         console.error("[AuthContext] Error fetching profile:", error);
         // If it's a timeout, try to use cached profile if available
@@ -367,18 +371,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         return;
       }
-      
+
       // maybeSingle() returns { data: null, error: null } when no rows found
       if (!data) {
         console.log("[AuthContext] No profile found (new user)");
         setProfile(null);
         return;
       }
-      
+
       console.log("[AuthContext] Setting profile", { profile: data });
       setProfile(data);
       profileUserIdRef.current = userId; // Track which user's profile we have
-      
+
       // Cache profile in localStorage
       try {
         localStorage.setItem(cachedProfileKey, JSON.stringify({
@@ -396,7 +400,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         stack: err?.stack,
         name: err?.name
       });
-      
+
       // If it's a timeout, log network issue but don't fail completely
       if (err?.message?.includes("timeout")) {
         console.error("[AuthContext] NETWORK TIMEOUT - The query is hanging. Check:");
@@ -412,23 +416,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error("[AuthContext] Session invalid during retry");
             throw new Error("Invalid session");
           }
-          
+
           const retryTimeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error("Retry timeout")), 3000);
           });
-          
+
           // Try with minimal fields first
           const retryQueryPromise = supabase
             .from("profiles")
             .select("id, role")
             .eq("id", userId)
             .maybeSingle();
-          
+
           const { data: retryData, error: retryError } = await Promise.race([
             retryQueryPromise,
             retryTimeoutPromise
           ]);
-          
+
           if (!retryError && retryData) {
             console.log("[AuthContext] Retry successful, got minimal profile data");
             setProfile(retryData as any);
@@ -490,13 +494,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleVisibilityChange = () => {
       const wasVisible = isTabVisible;
       isTabVisible = !document.hidden;
-      
+
       if (!wasVisible && isTabVisible) {
         // Tab just became visible - set flag to prevent unnecessary refetches
         tabJustBecameVisible = true;
         tabVisibilityChangeTime = Date.now();
         console.log("[AuthContext] Tab became visible, setting grace period");
-        
+
         // Clear the flag after grace period
         setTimeout(() => {
           tabJustBecameVisible = false;
@@ -527,19 +531,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function initializeAuth() {
       console.log("[AuthContext] Initializing, getting session...");
-      
+
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        
-        console.log("[AuthContext] getSession result", { 
-          hasSession: !!session, 
-          hasUser: !!session?.user, 
+
+        console.log("[AuthContext] getSession result", {
+          hasSession: !!session,
+          hasUser: !!session?.user,
           userId: session?.user?.id,
-          hasError: !!error 
+          hasError: !!error
         });
-        
+
         if (!mounted) return;
-        
+
         if (error) {
           console.error("[AuthContext] Error getting session:", error);
           if (mounted) {
@@ -548,10 +552,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           return;
         }
-        
+
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         try {
           if (session?.user) {
             // Check if we already have a cached profile for this user
@@ -582,11 +586,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.log("[AuthContext] User found, fetching profile...");
               await fetchProfile(session.user.id);
             }
-        } else {
-          console.log("[AuthContext] No user in session");
-          setProfile(null);
-          profileUserIdRef.current = null;
-        }
+          } else {
+            console.log("[AuthContext] No user in session");
+            setProfile(null);
+            profileUserIdRef.current = null;
+          }
         } catch (err) {
           console.error("[AuthContext] Error in initializeAuth:", err);
           setProfile(null);
@@ -622,7 +626,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("[AuthContext] Auth event too frequent, ignoring:", event);
           return;
         }
-        
+
         // If tab just became visible and we have a profile, ignore SIGNED_IN events (they're just from tab visibility)
         if (tabJustBecameVisible && event === "SIGNED_IN" && profile && session?.user && profile.id === session.user.id) {
           const timeSinceTabVisible = Date.now() - tabVisibilityChangeTime;
@@ -635,7 +639,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
         }
-        
+
         lastAuthEventTime = Date.now();
 
         // Skip TOKEN_REFRESHED events if profile is already loaded - these happen frequently
@@ -649,7 +653,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           return;
         }
-        
+
         // Skip SIGNED_IN events if we already have the same user and profile
         // This prevents refetching when tab becomes visible again
         if (event === "SIGNED_IN" && session?.user && profile && profile.id === session.user.id && profileUserIdRef.current === session.user.id) {
@@ -677,31 +681,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        console.log("[AuthContext] Auth state changed", { 
-          event, 
-          hasSession: !!session, 
+        console.log("[AuthContext] Auth state changed", {
+          event,
+          hasSession: !!session,
           hasUser: !!session?.user,
           userId: session?.user?.id,
           isTabVisible: !document.hidden
         });
-        
+
         if (!mounted) return;
-        
+
         // Check if we recently fetched profile - prevent rapid refetches
         const timeSinceLastFetch = Date.now() - lastProfileFetchTime;
-        const shouldSkipFetch = timeSinceLastFetch < MIN_PROFILE_FETCH_INTERVAL && 
-                                profile && 
-                                session?.user && 
-                                profile.id === session.user.id &&
-                                profileUserIdRef.current === session.user.id;
-        
+        const shouldSkipFetch = timeSinceLastFetch < MIN_PROFILE_FETCH_INTERVAL &&
+          profile &&
+          session?.user &&
+          profile.id === session.user.id &&
+          profileUserIdRef.current === session.user.id;
+
         // Also skip if tab just became visible (grace period)
-        const shouldSkipDueToVisibility = tabJustBecameVisible && 
-                                          profile && 
-                                          session?.user && 
-                                          profile.id === session.user.id &&
-                                          (Date.now() - tabVisibilityChangeTime) < TAB_VISIBILITY_GRACE_PERIOD;
-        
+        const shouldSkipDueToVisibility = tabJustBecameVisible &&
+          profile &&
+          session?.user &&
+          profile.id === session.user.id &&
+          (Date.now() - tabVisibilityChangeTime) < TAB_VISIBILITY_GRACE_PERIOD;
+
         if ((shouldSkipFetch || shouldSkipDueToVisibility) && event !== "SIGNED_OUT") {
           console.log("[AuthContext] Skipping refetch - profile recently fetched or tab just became visible. Event:", event);
           if (mounted) {
@@ -710,21 +714,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           return;
         }
-        
+
         // Only set loading if we actually need to fetch profile
         const needsProfileFetch = session?.user && (
-          !profile || 
-          profile.id !== session.user.id || 
+          !profile ||
+          profile.id !== session.user.id ||
           profileUserIdRef.current !== session.user.id
         );
-        
+
         if (needsProfileFetch && !shouldSkipFetch && !shouldSkipDueToVisibility) {
           setLoading(true);
         }
-        
+
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         try {
           if (session?.user) {
             // Only fetch profile if we don't already have it for this user
@@ -734,9 +738,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (
               !shouldSkipFetch &&
               !shouldSkipDueToVisibility &&
-              (!profile || 
-               profile.id !== session.user.id || 
-               profileUserIdRef.current !== session.user.id)
+              (!profile ||
+                profile.id !== session.user.id ||
+                profileUserIdRef.current !== session.user.id)
             ) {
               // Check if fetch is already in progress
               if (fetchingProfileRef.current !== session.user.id) {
@@ -807,15 +811,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      profile, 
-      loading, 
-      signIn, 
-      signUp, 
+    <AuthContext.Provider value={{
+      user,
+      session,
+      profile,
+      loading,
+      signIn,
+      signUp,
       signOut,
-      refreshProfile 
+      refreshProfile
     }}>
       {children}
     </AuthContext.Provider>

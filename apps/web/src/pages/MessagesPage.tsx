@@ -48,7 +48,7 @@ export default function MessagesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationId = searchParams.get("conversation");
-  
+
   // Try to load cached data immediately
   const getCachedMessagesData = () => {
     try {
@@ -59,7 +59,7 @@ export default function MessagesPage() {
           return parsed.data;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   };
 
@@ -88,7 +88,7 @@ export default function MessagesPage() {
 
       try {
         let convos;
-        
+
         // Fetch conversations based on user role
         if (profile.role === "client") {
           const { data } = await supabase
@@ -115,12 +115,12 @@ export default function MessagesPage() {
 
         // Group conversations by other user ID first
         const conversationsByUser = new Map<string, typeof convos>();
-        
+
         for (const convo of convos) {
-          const otherUserId = profile.role === "client" 
-            ? convo.freelancer_id 
+          const otherUserId = profile.role === "client"
+            ? convo.freelancer_id
             : convo.client_id;
-          
+
           if (!conversationsByUser.has(otherUserId)) {
             conversationsByUser.set(otherUserId, []);
           }
@@ -186,11 +186,11 @@ export default function MessagesPage() {
 
         // Sort by last message time
         const sortedConversations = jobRelatedConversations.sort((a, b) => {
-          const timeA = a.last_message?.created_at 
-            ? new Date(a.last_message.created_at).getTime() 
+          const timeA = a.last_message?.created_at
+            ? new Date(a.last_message.created_at).getTime()
             : 0;
-          const timeB = b.last_message?.created_at 
-            ? new Date(b.last_message.created_at).getTime() 
+          const timeB = b.last_message?.created_at
+            ? new Date(b.last_message.created_at).getTime()
             : 0;
           return timeB - timeA; // Most recent first
         });
@@ -216,7 +216,7 @@ export default function MessagesPage() {
         setLoading(false);
       }
     }
-    
+
     loadConversationsRef.current = loadConversations;
     loadConversations();
 
@@ -233,14 +233,14 @@ export default function MessagesPage() {
           },
           async (payload) => {
             const newMsg = payload.new as any;
-            
+
             // Fetch the conversation to determine the other user ID
             const { data: convoData } = await supabase
               .from("conversations")
               .select("client_id, freelancer_id")
               .eq("id", newMsg.conversation_id)
               .single();
-            
+
             if (!convoData) {
               // If conversation not found, reload
               if (loadConversationsRef.current) {
@@ -248,25 +248,25 @@ export default function MessagesPage() {
               }
               return;
             }
-            
+
             // Determine other user ID based on role
-            const otherUserId = profile.role === "client" 
-              ? convoData.freelancer_id 
+            const otherUserId = profile.role === "client"
+              ? convoData.freelancer_id
               : convoData.client_id;
-            
+
             const isFromOtherUser = newMsg.sender_id === otherUserId;
             const newMessageTime = new Date(newMsg.created_at).getTime();
-            
+
             // Update the conversation's last message and unread count
             setConversations((prev) => {
               // Find conversation with the same otherUserId (deduplicated)
               const convo = prev.find(c => {
-                const cOtherUserId = profile.role === "client" 
-                  ? c.freelancer_id 
+                const cOtherUserId = profile.role === "client"
+                  ? c.freelancer_id
                   : c.client_id;
                 return cOtherUserId === otherUserId;
               });
-              
+
               // If not found, reload to get grouped version
               if (!convo) {
                 if (loadConversationsRef.current) {
@@ -274,27 +274,27 @@ export default function MessagesPage() {
                 }
                 return prev;
               }
-              
+
               // Check if this message is more recent than the current last_message
-              const currentLastMessageTime = convo.last_message?.created_at 
-                ? new Date(convo.last_message.created_at).getTime() 
+              const currentLastMessageTime = convo.last_message?.created_at
+                ? new Date(convo.last_message.created_at).getTime()
                 : 0;
-              
+
               // Update the matching conversation
               return prev.map((c) => {
-                const cOtherUserId = profile.role === "client" 
-                  ? c.freelancer_id 
+                const cOtherUserId = profile.role === "client"
+                  ? c.freelancer_id
                   : c.client_id;
-                
+
                 // Update if it's a conversation with the same otherUserId
                 if (cOtherUserId === otherUserId) {
                   const newUnreadCount = isFromOtherUser && !newMsg.read_at
                     ? (c.unread_count || 0) + 1
                     : c.unread_count;
-                  
+
                   // Only update last_message if this message is more recent
                   const shouldUpdateLastMessage = newMessageTime > currentLastMessageTime;
-                  
+
                   return {
                     ...c,
                     last_message: shouldUpdateLastMessage ? {
@@ -312,11 +312,11 @@ export default function MessagesPage() {
                 return c;
               }).sort((a, b) => {
                 // Sort by last message time (most recent first)
-                const timeA = a.last_message?.created_at 
-                  ? new Date(a.last_message.created_at).getTime() 
+                const timeA = a.last_message?.created_at
+                  ? new Date(a.last_message.created_at).getTime()
                   : 0;
-                const timeB = b.last_message?.created_at 
-                  ? new Date(b.last_message.created_at).getTime() 
+                const timeB = b.last_message?.created_at
+                  ? new Date(b.last_message.created_at).getTime()
                   : 0;
                 return timeB - timeA;
               });
@@ -340,32 +340,32 @@ export default function MessagesPage() {
                 .select("client_id, freelancer_id")
                 .eq("id", updatedMsg.conversation_id)
                 .single();
-              
+
               if (!convoData) return;
-              
+
               // Determine other user ID based on role
-              const otherUserId = profile.role === "client" 
-                ? convoData.freelancer_id 
+              const otherUserId = profile.role === "client"
+                ? convoData.freelancer_id
                 : convoData.client_id;
-              
+
               setConversations((prev) =>
                 prev.map((convo) => {
                   // Check if this conversation has the same otherUserId (deduplicated)
-                  const cOtherUserId = profile.role === "client" 
-                    ? convo.freelancer_id 
+                  const cOtherUserId = profile.role === "client"
+                    ? convo.freelancer_id
                     : convo.client_id;
-                  
+
                   if (cOtherUserId === otherUserId) {
                     // Check if this message was from the other user
                     if (updatedMsg.sender_id === otherUserId && convo.unread_count > 0) {
                       const updatedLastMessage = convo.last_message?.created_at === updatedMsg.created_at
                         ? (convo.last_message ? {
-                            ...convo.last_message,
-                            read_at: updatedMsg.read_at || null,
-                            read_by: updatedMsg.read_by || null,
-                          } : undefined)
+                          ...convo.last_message,
+                          read_at: updatedMsg.read_at || null,
+                          read_by: updatedMsg.read_by || null,
+                        } : undefined)
                         : convo.last_message;
-                      
+
                       return {
                         ...convo,
                         unread_count: Math.max(0, convo.unread_count - 1),
@@ -476,7 +476,7 @@ export default function MessagesPage() {
               </p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y pb-32">
               {conversations.map((convo) => {
                 const initials = convo.other_user_profile?.full_name
                   ?.split(" ")
@@ -485,7 +485,7 @@ export default function MessagesPage() {
                   .toUpperCase() || "?";
 
                 const isActive = conversationId === convo.id;
-                
+
                 // Format job label
                 const formatJobLabel = (job: typeof convo.job) => {
                   if (!job) return "";
@@ -495,7 +495,7 @@ export default function MessagesPage() {
                     full_time: "Full-time",
                   };
                   const careType = careTypeMap[job.care_type] || job.care_type;
-                  
+
                   if (job.start_at) {
                     const startDate = new Date(job.start_at);
                     const today = new Date();
@@ -505,14 +505,14 @@ export default function MessagesPage() {
                     }
                     return `Nanny – ${startDate.toLocaleDateString()}`;
                   }
-                  
+
                   if (job.status === "completed") {
                     return "Nanny – Completed";
                   }
-                  
+
                   return `Nanny – ${careType}`;
                 };
-                
+
                 // Get job status badge
                 const getJobStatus = (job: typeof convo.job) => {
                   if (!job) return null;
@@ -524,7 +524,7 @@ export default function MessagesPage() {
                   }
                   return null;
                 };
-                
+
                 const jobLabel = formatJobLabel(convo.job);
                 const jobStatus = getJobStatus(convo.job);
 
@@ -599,15 +599,15 @@ export default function MessagesPage() {
                               )}
                               <p className={cn(
                                 "text-xs truncate",
-                                convo.unread_count > 0 
-                                  ? "text-foreground font-medium" 
+                                convo.unread_count > 0
+                                  ? "text-foreground font-medium"
                                   : "text-muted-foreground"
                               )}>
                                 {convo.last_message.sender_id === user?.id && "You: "}
-                                {convo.last_message.attachment_type 
-                                  ? (convo.last_message.attachment_type === "image" 
-                                      ? "📷 Image" 
-                                      : `📎 ${convo.last_message.attachment_name || "File"}`)
+                                {convo.last_message.attachment_type
+                                  ? (convo.last_message.attachment_type === "image"
+                                    ? "📷 Image"
+                                    : `📎 ${convo.last_message.attachment_name || "File"}`)
                                   : (convo.last_message.body || "")}
                               </p>
                             </div>
@@ -631,17 +631,17 @@ export default function MessagesPage() {
         {conversationId ? (() => {
           // Find the conversation to get the otherUserId
           const selectedConvo = conversations.find(c => c.id === conversationId);
-          const otherUserId = selectedConvo 
+          const otherUserId = selectedConvo
             ? (profile?.role === "client" ? selectedConvo.freelancer_id : selectedConvo.client_id)
             : undefined;
-          
+
           const otherUserProfile = selectedConvo?.other_user_profile;
           const otherInitials = otherUserProfile?.full_name
             ?.split(" ")
             .map((n) => n[0])
             .join("")
             .toUpperCase() || "?";
-          
+
           return (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Mobile Back Button Header - Fixed */}
@@ -669,13 +669,13 @@ export default function MessagesPage() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Chat Page - Hide header on mobile since we have our own */}
               <div className="flex-1 overflow-hidden relative md:pt-0 pt-[73px]">
                 <div className="messages-chat-container h-full">
-                  <ChatPage 
-                    conversationId={conversationId} 
-                    hideBackButton={true} 
+                  <ChatPage
+                    conversationId={conversationId}
+                    hideBackButton={true}
                     otherUserId={otherUserId}
                   />
                 </div>

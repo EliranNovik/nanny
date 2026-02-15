@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Baby, 
-  Sparkles, 
-  Clock, 
-  MapPin, 
+import {
+  Baby,
+  Sparkles,
+  Clock,
+  MapPin,
   MessageCircle,
   ArrowRight,
   Loader2,
@@ -33,6 +33,10 @@ interface JobRequest {
   start_at: string | null;
   selected_freelancer_id: string | null;
   created_at: string;
+  service_type?: string;
+  service_details?: any;
+  time_duration?: string;
+  care_frequency?: string;
 }
 
 interface Conversation {
@@ -362,6 +366,33 @@ export default function DashboardPage() {
     return map[group] || group;
   }
 
+  function formatElapsedTime(createdAt: string): string {
+    const now = new Date().getTime();
+    const created = new Date(createdAt).getTime();
+    const diffSeconds = Math.floor((now - created) / 1000);
+
+    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+
+  function formatDateTime(dateStr: string | null): string {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
   function getJobAction(job: JobRequest) {
     if (job.status === "notifying" || job.status === "confirmations_closed") {
       return { label: "View matches", path: `/client/jobs/${job.id}/confirmed` };
@@ -386,32 +417,32 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8 space-y-6">
         {/* Primary CTA - Always visible */}
         <Card className="border-0 shadow-xl overflow-hidden">
           <div className="p-6 text-center">
             {/* Logo inside the card */}
             <div className="mb-4">
-              <img 
-                src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" 
-                alt="MamaLama Logo" 
+              <img
+                src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+                alt="MamaLama Logo"
                 className="h-24 w-auto mx-auto rounded-lg"
               />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Find a nanny</h1>
+            <h1 className="text-2xl font-bold mb-2">Find a helper</h1>
             <p className="text-muted-foreground mb-6">
-              {dashboardState === "first_time" 
+              {dashboardState === "first_time"
                 ? "Get matched in minutes"
                 : "Post another request"}
             </p>
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="w-full"
               onClick={() => navigate("/client/create")}
             >
               <Sparkles className="w-5 h-5 mr-2" />
-              Find a nanny
+              Find a helper
             </Button>
           </div>
         </Card>
@@ -452,8 +483,28 @@ export default function DashboardPage() {
               {/* Job Summary */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <span>{activeJob.children_count} child{activeJob.children_count > 1 ? "ren" : ""} · {activeJob.children_age_group}</span>
+                  {activeJob.service_type === 'cleaning' && <Sparkles className="w-4 h-4 text-muted-foreground" />}
+                  {(activeJob.service_type === 'cooking' || activeJob.service_type === 'pickup_delivery' || activeJob.service_type === 'other_help') && <Users className="w-4 h-4 text-muted-foreground" />}
+                  {activeJob.service_type === 'nanny' && <Baby className="w-4 h-4 text-muted-foreground" />}
+
+                  <span className="font-medium">
+                    {activeJob.service_type === 'cleaning' && 'Cleaning'}
+                    {activeJob.service_type === 'cooking' && 'Cooking'}
+                    {activeJob.service_type === 'pickup_delivery' && 'Pickup & Delivery'}
+                    {activeJob.service_type === 'nanny' && 'Nanny'}
+                    {activeJob.service_type === 'other_help' && 'Other Help'}
+                    {!activeJob.service_type && `${activeJob.children_count} child${activeJob.children_count !== 1 ? "ren" : ""}`}
+                  </span>
+
+                  {activeJob.service_type === 'nanny' && activeJob.service_details?.kids_count && (
+                    <span className="text-muted-foreground">· {activeJob.service_details.kids_count.replace('_', '-')} kids</span>
+                  )}
+                  {activeJob.service_type === 'cleaning' && activeJob.service_details?.home_size && (
+                    <span className="text-muted-foreground">· {activeJob.service_details.home_size.replace(/_/g, ' ')}</span>
+                  )}
+                  {!activeJob.service_type && activeJob.children_age_group && (
+                    <span className="text-muted-foreground">· {formatAgeGroup(activeJob.children_age_group)}</span>
+                  )}
                 </div>
                 {activeJob.start_at && (
                   <div className="flex items-center gap-2 text-sm">
@@ -594,17 +645,43 @@ export default function DashboardPage() {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0 pr-6">
                         <h3 className="font-semibold text-sm mb-1 truncate">
-                          {request.children_count} kid{request.children_count > 1 ? "s" : ""} ({formatAgeGroup(request.children_age_group)})
+                          {request.service_type === 'cleaning' && 'Cleaning'}
+                          {request.service_type === 'cooking' && 'Cooking'}
+                          {request.service_type === 'pickup_delivery' && 'Pickup & Delivery'}
+                          {request.service_type === 'nanny' && 'Nanny'}
+                          {request.service_type === 'other_help' && 'Other Help'}
+                          {!request.service_type && (
+                            /* Fallback for old jobs with safer rendering */
+                            `${Number(request.children_count) || 0} kid${Number(request.children_count) !== 1 ? "s" : ""} (${request.children_age_group && request.children_age_group !== 'null' ? formatAgeGroup(request.children_age_group) : 'N/A'})`
+                          )}
+                          {request.service_type === 'nanny' && request.service_details?.kids_count && (
+                            <span className="font-normal text-muted-foreground ml-1">
+                              - {request.service_details.kids_count.replace('_', '-')} kids
+                            </span>
+                          )}
                         </h3>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            {request.location_city}
+                            {request.location_city || 'N/A'}
                           </span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Baby className="w-3 h-3" />
-                            {formatAgeGroup(request.children_age_group)}
-                          </span>
+
+                          {/* Show duration/frequency if available */}
+                          {request.time_duration && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span className="capitalize">{request.time_duration.replace('_', '-')}</span>
+                            </span>
+                          )}
+
+                          {/* Show service specific details */}
+                          {request.service_type === 'cleaning' && request.service_details?.home_size && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              {request.service_details.home_size.replace(/_/g, ' ')}
+                            </span>
+                          )}
+
                           {request.start_at && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <CalendarIcon className="w-3 h-3" />
@@ -619,18 +696,18 @@ export default function DashboardPage() {
                             {confirmationCount} available
                           </Badge>
                         )}
-                        <Badge
-                          variant={
-                            request.status === "confirmations_closed"
-                              ? "default"
-                              : request.status === "notifying"
-                              ? "secondary"
-                              : "outline"
-                          }
-                          className="text-xs"
-                        >
-                          {getStatusLabel(request.status)}
-                        </Badge>
+                        {request.status !== "notifying" && (
+                          <Badge
+                            variant={
+                              request.status === "confirmations_closed"
+                                ? "default"
+                                : "outline"
+                            }
+                            className="text-xs"
+                          >
+                            {getStatusLabel(request.status)}
+                          </Badge>
+                        )}
                         {request.stage && (
                           <Badge
                             variant={getJobStageBadge(request.stage).variant}
@@ -641,9 +718,14 @@ export default function DashboardPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
-                      <Clock className="w-3 h-3" />
-                      {formatDate(request.created_at)}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatElapsedTime(request.created_at)}
+                      </div>
+                      <div className="text-xs">
+                        {formatDateTime(request.created_at)}
+                      </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-muted-foreground absolute top-4 right-4 flex-shrink-0" />
                   </div>

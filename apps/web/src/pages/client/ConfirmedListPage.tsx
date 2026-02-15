@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { StarRating } from "@/components/StarRating";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Loader2, 
-  Star, 
-  MapPin, 
-  Clock, 
+import {
+  Loader2,
+  MapPin,
+  Clock,
   CheckCircle2,
   MessageCircle,
   Heart,
@@ -18,6 +18,15 @@ import {
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import JobFollowUpSection, {
+  HOME_SIZES,
+  COOKING_WHO_FOR,
+  DELIVERY_WEIGHTS,
+  NANNY_AGE_GROUPS,
+  MOBILITY_LEVELS
+} from "@/components/JobFollowUpSection";
+import JobMap from "@/components/JobMap";
 
 interface FreelancerProfile {
   bio: string | null;
@@ -44,77 +53,104 @@ interface Freelancer {
 export default function ConfirmedListPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState<string | null>(null);
   const [declining, setDeclining] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [countdown, setCountdown] = useState(90);
-  const [windowEnded, setWindowEnded] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [restarting, setRestarting] = useState(false);
+  const [startTime] = useState(Date.now());
+  const [job, setJob] = useState<any>((location.state as any)?.job || null);
+
+  // Get service details from job state
+  const serviceType = job?.service_type;
+  const serviceDetails = job?.service_details;
 
   async function fetchConfirmed() {
     try {
       console.log("[ConfirmedListPage] Fetching confirmed freelancers for job", jobId);
-      const data = await apiGet<{ freelancers: Freelancer[]; confirm_ends_at: string }>(
+      const data = await apiGet<{
+        freelancers: Freelancer[];
+        confirm_ends_at: string;
+        job: any;
+      }>(
         `/api/jobs/${jobId}/confirmed`
       );
-      console.log("[ConfirmedListPage] Received", data.freelancers.length, "confirmed freelancers");
-      
+      console.log("[ConfirmedListPage] Received data:", data);
+
+      // Store job details
+      if (data.job) {
+        console.log("[ConfirmedListPage] Setting job state with:", data.job);
+        setJob(data.job);
+      } else {
+        console.warn("[ConfirmedListPage] No job data received from API");
+      }
+
       // Sort: open job acceptances first, then regular confirmations
       const sorted = [...data.freelancers].sort((a, b) => {
         if (a.is_open_job_accepted && !b.is_open_job_accepted) return -1;
         if (!a.is_open_job_accepted && b.is_open_job_accepted) return 1;
         return 0;
       });
-      
+
       setFreelancers(sorted);
-      
-      // Update countdown if confirm_ends_at is provided
-      if (data.confirm_ends_at) {
-        const endTime = new Date(data.confirm_ends_at).getTime();
-        const now = Date.now();
-        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-        setCountdown(remaining);
-        setWindowEnded(remaining === 0);
-      }
     } catch (err) {
       console.error("[ConfirmedListPage] Error fetching confirmed freelancers:", err);
+      setError("Failed to load job details");
     } finally {
       setLoading(false);
     }
   }
 
+  // Fetch job details directly from Supabase
+  async function fetchJobDirectly() {
+    if (!jobId) return;
+    try {
+      const { data, error } = await supabase
+        .from('job_requests')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+
+      if (data && !error) {
+        console.log("[ConfirmedListPage] Fetched job directly:", data);
+        setJob((prev: any) => ({ ...prev, ...data }));
+      }
+    } catch (e) {
+      console.error("Error fetching job directly:", e);
+    }
+  }
+
   useEffect(() => {
     if (!jobId) return;
-    
+
     fetchConfirmed();
-    
-    // Poll every 3 seconds during window to get new confirmations
+
+    // Poll every 3 seconds to get new confirmations
     const interval = setInterval(() => {
-      if (!windowEnded) {
-        fetchConfirmed();
-      }
+      fetchConfirmed();
     }, 3000);
 
-    return () => clearInterval(interval);
-  }, [jobId, windowEnded]);
 
+    fetchJobDirectly();
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [jobId]);
+
+  // Timer effect
   useEffect(() => {
-    // Countdown timer
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          setWindowEnded(true);
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
+    const timerInterval = setInterval(() => {
+      const start = job?.created_at ? new Date(job.created_at).getTime() : startTime;
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      setElapsedSeconds(elapsed >= 0 ? elapsed : 0);
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
+    return () => clearInterval(timerInterval);
+  }, [job, startTime]);
 
   async function handleSelect(freelancerId: string) {
     setSelecting(freelancerId);
@@ -134,7 +170,7 @@ export default function ConfirmedListPage() {
 
   async function handleDecline(freelancerId: string) {
     if (!jobId) return;
-    
+
     setDeclining(freelancerId);
     setError("");
 
@@ -157,25 +193,15 @@ export default function ConfirmedListPage() {
 
   async function handleRestartSearch() {
     if (!jobId) return;
-    
+
     setRestarting(true);
     setError("");
 
     try {
       console.log("[ConfirmedListPage] Restarting search for job", jobId);
-      const result = await apiPost<{ job_id: string; confirm_ends_at: string; notifications_sent: number }>(
-        `/api/jobs/${jobId}/restart`,
-        {}
-      );
-      console.log("[ConfirmedListPage] Search restarted successfully, notifications sent:", result.notifications_sent);
-      
-      // Reset state and refresh
-      setFreelancers([]);
-      setWindowEnded(false);
-      setCountdown(90);
-      
-      // Refresh the confirmed list
-      await fetchConfirmed();
+      await apiPost(`/api/jobs/${jobId}/restart`, {});
+      // Refresh the page to reset timer
+      window.location.reload();
     } catch (err) {
       console.error("[ConfirmedListPage] Error restarting search:", err);
       setError(err instanceof Error ? err.message : "Failed to restart search");
@@ -184,10 +210,19 @@ export default function ConfirmedListPage() {
     }
   }
 
-  function formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
+  function formatElapsedTime(seconds: number): string {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+
+    if (days > 0) {
+      return `${days}d ${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
 
   if (loading) {
@@ -195,65 +230,43 @@ export default function ConfirmedListPage() {
       <div className="min-h-screen gradient-mesh flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Finding available nannies...</p>
+          <p className="text-muted-foreground">loading request...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8">
         {/* Timer Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4",
-            windowEnded ? "bg-muted" : "bg-primary/10"
-          )}>
-            <Clock className={cn(
-              "w-5 h-5",
-              windowEnded ? "text-muted-foreground" : "text-primary animate-pulse-soft"
-            )} />
-            <span className={cn(
-              "font-mono font-bold text-lg",
-              windowEnded ? "text-muted-foreground" : "text-primary"
-            )}>
-              {windowEnded ? "Window Closed" : formatTime(countdown)}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 bg-primary/10">
+            <Clock className="w-5 h-5 text-primary animate-pulse-soft" />
+            <span className="font-mono font-bold text-lg text-primary">
+              {formatElapsedTime(elapsedSeconds)}
             </span>
           </div>
-          <h1 className="text-2xl font-bold mb-2">
-            {windowEnded 
-              ? "Confirmation Window Ended" 
-              : "Waiting for Confirmations..."}
-          </h1>
+          <h1 className="text-2xl font-bold mb-2">Waiting for Confirmations...</h1>
           <p className="text-muted-foreground">
-            {freelancers.length === 0 
-              ? "No nannies have confirmed availability yet"
-              : `${freelancers.length} nanny${freelancers.length > 1 ? "s" : ""} available`}
+            {freelancers.length === 0
+              ? "No freelancers have confirmed availability yet"
+              : `${freelancers.length} freelancer${freelancers.length > 1 ? "s" : ""} available`}
           </p>
-          {windowEnded && freelancers.some((f) => f.is_open_job_accepted) && (
-            <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <p className="text-sm text-amber-700 dark:text-amber-400">
-                <strong>Note:</strong> Some nannies have expressed interest in this open job. Review their notes below.
-              </p>
-            </div>
-          )}
-          
+
           <div className="flex gap-2 justify-center mt-4">
-            {!windowEnded && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => fetchConfirmed()}
-                disabled={restarting}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-            )}
-            <Button 
-              variant="default" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => fetchConfirmed()}
+              disabled={restarting}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
               onClick={handleRestartSearch}
               disabled={restarting}
             >
@@ -272,11 +285,124 @@ export default function ConfirmedListPage() {
           </div>
         </div>
 
-        {error && (
-          <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
-            {error}
-          </div>
+        {/* Job Request Summary */}
+        {job && (
+          <Card className="border-0 shadow-lg mb-6">
+            <CardContent className="p-6">
+              <h3 className="font-semibold text-lg mb-4">Your Request</h3>
+              <div className="grid gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xl">
+                      {job.service_type === 'cleaning' && '🧹'}
+                      {job.service_type === 'cooking' && '👨‍🍳'}
+                      {job.service_type === 'pickup_delivery' && '📦'}
+                      {job.service_type === 'nanny' && '👶'}
+                      {job.service_type === 'other_help' && '🔧'}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium capitalize">
+                      {job.service_type?.replace('_', ' & ')}
+                      {job.service_type === 'other_help' && job.service_details?.other_type &&
+                        ` - ${job.service_details.other_type.replace(/_/g, ' ').charAt(0).toUpperCase() + job.service_details.other_type.replace(/_/g, ' ').slice(1)}`
+                      }
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm text-muted-foreground">
+                      {job.location_city && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          <span>{job.location_city}</span>
+                        </div>
+                      )}
+                      {job.time_duration && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span className="capitalize">{job.time_duration.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                      {job.care_frequency && (
+                        <div>
+                          <span className="capitalize">{job.care_frequency.replace('_', ' ')}</span>
+                        </div>
+                      )}
+                      {job.service_details?.kids_count && (
+                        <div>
+                          <span>{job.service_details.kids_count.replace('_', '-')} kids</span>
+                        </div>
+                      )}
+                      {job.service_type === 'cleaning' && job.service_details?.home_size && (
+                        <div>
+                          <span>{HOME_SIZES.find(s => s.id === job.service_details.home_size)?.label || job.service_details.home_size.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                      {job.service_type === 'cooking' && job.service_details?.who_for && (
+                        <div>
+                          <span>For: {COOKING_WHO_FOR.find(w => w.id === job.service_details.who_for)?.label || job.service_details.who_for.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                      {job.service_type === 'pickup_delivery' && job.service_details?.weight && (
+                        <div>
+                          <span>{DELIVERY_WEIGHTS.find(w => w.id === job.service_details.weight)?.label || job.service_details.weight.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                      {job.service_type === 'nanny' && job.service_details?.age_group && (
+                        <div>
+                          <span>Ages: {NANNY_AGE_GROUPS.find(g => g.id === job.service_details.age_group)?.label || job.service_details.age_group.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                      {job.service_type === 'other_help' && job.service_details?.mobility_level && (
+                        <div>
+                          <span>{MOBILITY_LEVELS.find(l => l.id === job.service_details.mobility_level)?.label || job.service_details.mobility_level.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pickup/Delivery Addresses */}
+                {job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address && (
+                  <div className="mt-4 mb-2 space-y-2 text-sm border-t pt-4">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-semibold min-w-[40px]">From:</span>
+                      <span className="flex-1 text-muted-foreground">{job.service_details.from_address}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-600 font-semibold min-w-[40px]">To:</span>
+                      <span className="flex-1 text-muted-foreground">{job.service_details.to_address}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Job Map */}
+                {(job.service_type === 'pickup_delivery' || job.location_city) && (
+                  <JobMap job={job} />
+                )}
+              </div>
+            </CardContent>
+          </Card>
         )}
+
+        {/* Follow-up Section */}
+        {
+          serviceType && jobId && (
+            <JobFollowUpSection
+              jobId={jobId}
+              serviceType={serviceType}
+              otherType={serviceDetails?.other_type}
+              onUpdate={fetchJobDirectly}
+              initialDetails={job?.service_details}
+            />
+          )
+        }
+
+        {
+          error && (
+            <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
+              {error}
+            </div>
+          )
+        }
 
         {/* Freelancer Cards */}
         <div className="space-y-4 animate-stagger">
@@ -289,8 +415,8 @@ export default function ConfirmedListPage() {
               .toUpperCase() || "?";
 
             return (
-              <Card 
-                key={freelancer.id} 
+              <Card
+                key={freelancer.id}
                 className="border-0 shadow-lg overflow-hidden"
               >
                 <CardContent className="p-0">
@@ -315,15 +441,12 @@ export default function ConfirmedListPage() {
                             </div>
                           </div>
 
-                          {fp?.rating_count > 0 && (
-                            <div className="flex items-center gap-1 text-amber-500">
-                              <Star className="w-4 h-4 fill-current" />
-                              <span className="font-medium">{fp.rating_avg}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({fp.rating_count})
-                              </span>
-                            </div>
-                          )}
+                          <StarRating
+                            rating={fp?.rating_avg || 0}
+                            totalRatings={fp?.rating_count || 0}
+                            size="sm"
+                            showCount={true}
+                          />
                         </div>
 
                         {/* Badges */}
@@ -344,9 +467,9 @@ export default function ConfirmedListPage() {
                           <div className="mt-3 text-sm">
                             <span className="text-muted-foreground">Rate: </span>
                             <span className="font-semibold text-foreground">
-                              {fp.hourly_rate_min && fp.hourly_rate_max 
+                              {fp.hourly_rate_min && fp.hourly_rate_max
                                 ? `₪${fp.hourly_rate_min}-${fp.hourly_rate_max}/hr`
-                                : fp.hourly_rate_min 
+                                : fp.hourly_rate_min
                                   ? `From ₪${fp.hourly_rate_min}/hr`
                                   : `Up to ₪${fp.hourly_rate_max}/hr`}
                             </span>
@@ -364,7 +487,7 @@ export default function ConfirmedListPage() {
                         {freelancer.confirmation_note && (
                           <div className={cn(
                             "mt-4 p-3 rounded-lg border",
-                            freelancer.is_open_job_accepted 
+                            freelancer.is_open_job_accepted
                               ? "bg-amber-500/10 border-amber-500/20"
                               : "bg-primary/10 border-primary/20"
                           )}>
@@ -449,25 +572,23 @@ export default function ConfirmedListPage() {
           })}
         </div>
 
-        {/* Empty State */}
-        {freelancers.length === 0 && windowEnded && (
-          <Card className="border-0 shadow-lg text-center py-12">
-            <CardContent>
-              <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                <Clock className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">No Confirmations</h3>
-              <p className="text-muted-foreground mb-4">
-                No nannies confirmed availability for this request.
-              </p>
-              <Button onClick={() => navigate("/client/create")}>
-                Try Again
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
+        {/* Empty State - removed windowEnded check since jobs stay open */}
+        <Card className="border-0 shadow-lg text-center py-12">
+          <CardContent>
+            <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+              <Clock className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">No Confirmations</h3>
+            <p className="text-muted-foreground mb-4">
+
+            </p>
+            <Button onClick={() => navigate("/client/create")}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div >
+    </div >
   );
 }
 

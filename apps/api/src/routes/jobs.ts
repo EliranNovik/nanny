@@ -7,12 +7,21 @@ import { AuthenticatedRequest } from "../middleware/auth";
 export const jobsRouter = Router();
 
 const CreateJobSchema = z.object({
-  care_type: z.string(),
-  children_count: z.number().int().min(1),
-  children_age_group: z.string(),
+  // New multi-service fields
+  service_type: z.string().optional(),
+  care_frequency: z.string().optional(),
+  time_duration: z.string().optional(),
+  service_details: z.record(z.any()).optional(),
+
+  // Old nanny-specific fields (kept for backward compatibility)
+  care_type: z.string().optional(),
+  children_count: z.number().int().min(1).optional(),
+  children_age_group: z.string().optional(),
+  shift_hours: z.string().optional(),
+
+  // Common fields
   location_city: z.string(),
   start_at: z.string().datetime().optional(),
-  shift_hours: z.string().optional(),
   languages_pref: z.array(z.string()).default([]),
   requirements: z.array(z.string()).default([]),
   budget_min: z.number().int().optional().nullable(),
@@ -25,7 +34,7 @@ const CreateJobSchema = z.object({
 jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const parsed = CreateJobSchema.safeParse(req.body);
-  
+
   if (!parsed.success) {
     res.status(400).json(parsed.error);
     return;
@@ -57,21 +66,21 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
 
   // Create notifications for matching freelancers
   if (candidates.length > 0) {
-    const rows = candidates.map((fid) => ({ 
-      job_id: job.id, 
-      freelancer_id: fid, 
-      status: "pending" as const 
+    const rows = candidates.map((fid) => ({
+      job_id: job.id,
+      freelancer_id: fid,
+      status: "pending" as const
     }));
     const { error: notifError } = await supabaseAdmin
       .from("job_candidate_notifications")
       .insert(rows);
-    
+
     if (notifError) {
       console.error("[JobsAPI] Error creating notifications:", notifError);
       res.status(500).json({ error: `Failed to create notifications: ${notifError.message}` });
       return;
     }
-    
+
     console.log("[JobsAPI] Created", candidates.length, "notifications");
   } else {
     console.log("[JobsAPI] No matching candidates found");
@@ -108,7 +117,7 @@ jobsRouter.post("/:jobId/notifications/:notifId/open", async (req: Request, res:
     res.status(500).json({ error: error.message });
     return;
   }
-  
+
   res.json({ ok: true });
 });
 
@@ -152,10 +161,10 @@ jobsRouter.post("/:jobId/confirm", async (req: Request, res: Response): Promise<
 jobsRouter.post("/:jobId/accept-open-job", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
-  
+
   const schema = z.object({ note: z.string().min(1).max(500) });
   const parsed = schema.safeParse(req.body);
-  
+
   if (!parsed.success) {
     res.status(400).json({ error: "Note is required (1-500 characters)" });
     return;
@@ -190,9 +199,9 @@ jobsRouter.post("/:jobId/accept-open-job", async (req: Request, res: Response): 
   // Insert open job acceptance confirmation
   const { error } = await supabaseAdmin
     .from("job_confirmations")
-    .upsert({ 
-      job_id: jobId, 
-      freelancer_id: user.id, 
+    .upsert({
+      job_id: jobId,
+      freelancer_id: user.id,
       status: "available",
       note: note,
       is_open_job_accepted: true
@@ -259,17 +268,29 @@ jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise
     return;
   }
 
-  res.json({ freelancers: enrichedProfiles || [], confirm_ends_at: job.confirm_ends_at });
+  res.json({
+    freelancers: enrichedProfiles || [],
+    confirm_ends_at: job.confirm_ends_at,
+    job: {
+      id: job.id,
+      service_type: job.service_type,
+      service_details: job.service_details,
+      location_city: job.location_city,
+      time_duration: job.time_duration,
+      care_frequency: job.care_frequency,
+      created_at: job.created_at, // Ensure created_at is returned
+    },
+  });
 });
 
 // Client selects freelancer and locks job + creates conversation
 jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
-  
+
   const schema = z.object({ freelancer_id: z.string().uuid() });
   const parsed = schema.safeParse(req.body);
-  
+
   if (!parsed.success) {
     res.status(400).json(parsed.error);
     return;
@@ -311,7 +332,7 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
     .select("offered_hourly_rate, price_offer_status")
     .eq("id", jobId)
     .single();
-  
+
   let newStage = "Request"; // Default: stay at Request if no price offer sent
   if (currentJob?.offered_hourly_rate) {
     if (currentJob.price_offer_status === "accepted") {
@@ -373,10 +394,10 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
 jobsRouter.post("/:jobId/decline", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
-  
+
   const schema = z.object({ freelancer_id: z.string().uuid() });
   const parsed = schema.safeParse(req.body);
-  
+
   if (!parsed.success) {
     res.status(400).json(parsed.error);
     return;
@@ -465,21 +486,21 @@ jobsRouter.post("/:jobId/restart", async (req: Request, res: Response): Promise<
 
   // Create new notifications for matching freelancers
   if (candidates.length > 0) {
-    const rows = candidates.map((fid) => ({ 
-      job_id: job.id, 
-      freelancer_id: fid, 
-      status: "pending" as const 
+    const rows = candidates.map((fid) => ({
+      job_id: job.id,
+      freelancer_id: fid,
+      status: "pending" as const
     }));
     const { error: notifError } = await supabaseAdmin
       .from("job_candidate_notifications")
       .insert(rows);
-    
+
     if (notifError) {
       console.error("[JobsAPI] Error creating notifications:", notifError);
       res.status(500).json({ error: `Failed to create notifications: ${notifError.message}` });
       return;
     }
-    
+
     console.log("[JobsAPI] Created", candidates.length, "new notifications");
   } else {
     console.log("[JobsAPI] No matching candidates found");
@@ -506,8 +527,8 @@ jobsRouter.post("/:jobId/restart", async (req: Request, res: Response): Promise<
     return;
   }
 
-  res.json({ 
-    job_id: job.id, 
+  res.json({
+    job_id: job.id,
     confirm_ends_at: ends.toISOString(),
     notifications_sent: candidates.length
   });
@@ -536,5 +557,61 @@ jobsRouter.get("/:jobId", async (req: Request, res: Response): Promise<void> => 
   }
 
   res.json({ job });
+});
+
+// POST /:jobId/details - Update job service details (follow-up questions)
+const UpdateJobDetailsSchema = z.object({
+  service_details: z.record(z.any()),
+});
+
+jobsRouter.post("/:jobId/details", async (req: Request, res: Response): Promise<void> => {
+  const user = (req as AuthenticatedRequest).user;
+  const { jobId } = req.params;
+  const parsed = UpdateJobDetailsSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json(parsed.error);
+    return;
+  }
+
+  // Fetch the job to verify ownership
+  const { data: job, error: fetchErr } = await supabaseAdmin
+    .from("job_requests")
+    .select("id, client_id, service_details")
+    .eq("id", jobId)
+    .single();
+
+  if (fetchErr || !job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  // Only the client who created the job can update details
+  if (job.client_id !== user.id) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  // Merge new details with existing service_details
+  const updatedDetails = {
+    ...job.service_details,
+    ...parsed.data.service_details,
+  };
+
+  // Update the job
+  const { data: updatedJob, error: updateErr } = await supabaseAdmin
+    .from("job_requests")
+    .update({ service_details: updatedDetails })
+    .eq("id", jobId)
+    .select()
+    .single();
+
+  if (updateErr) {
+    console.error("Error updating job details:", updateErr);
+    res.status(500).json({ error: "Failed to update job details" });
+    return;
+  }
+
+  res.json({ job: updatedJob });
 });
 
