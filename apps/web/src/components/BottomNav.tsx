@@ -4,7 +4,7 @@ import { useReportIssue } from "@/context/ReportIssueContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useConfirmationCounts } from "@/hooks/useConfirmationCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
-import { Home, MessageCircle, User, Bell, Briefcase, Calendar, AlertCircle, CreditCard } from "lucide-react";
+import { Home, MessageCircle, User, Bell, Briefcase, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 

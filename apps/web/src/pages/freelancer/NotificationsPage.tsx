@@ -77,11 +77,9 @@ interface RouteMapProps {
   fromLng: number;
   toLat: number;
   toLng: number;
-  fromAddress: string;
-  toAddress: string;
 }
 
-function RouteMap({ fromLat, fromLng, toLat, toLng, fromAddress, toAddress }: RouteMapProps) {
+function RouteMap({ fromLat, fromLng, toLat, toLng }: RouteMapProps) {
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [distance, setDistance] = useState<string>("");
   const [duration, setDuration] = useState<string>("");
@@ -523,6 +521,10 @@ export default function NotificationsPage() {
       preschool: "Preschool (3-5 yr)",
       school_age: "School Age (5+)",
       mixed: "Mixed Ages",
+      "1_3_years": "1-3 years old",
+      "3_5_years": "3-5 years old",
+      "5_10_years": "5-10 years old",
+      "10_plus_years": "10+ years old",
     };
     return map[group] || group;
   }
@@ -586,15 +588,6 @@ export default function NotificationsPage() {
     return map[weight] || weight;
   }
 
-  function formatAgeGroup(age: string): string {
-    const map: Record<string, string> = {
-      "1_3_years": "1-3 years old",
-      "3_5_years": "3-5 years old",
-      "5_10_years": "5-10 years old",
-      "10_plus_years": "10+ years old",
-    };
-    return map[age] || age;
-  }
 
   function formatMobilityLevel(level: string): string {
     const map: Record<string, string> = {
@@ -845,8 +838,6 @@ export default function NotificationsPage() {
                             fromLng={job.service_details.from_lng}
                             toLat={job.service_details.to_lat}
                             toLng={job.service_details.to_lng}
-                            fromAddress={job.service_details.from_address || ""}
-                            toAddress={job.service_details.to_address || ""}
                           />
                         </div>
                       )}

@@ -136,7 +136,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   // Job details state
   const [job, setJob] = useState<Job | null>(null);
   const [priceOffer, setPriceOffer] = useState<number | null>(null);
-  const [priceOfferStatus, setPriceOfferStatus] = useState<string | null>(null);
 
   // Revise schedule state
   const [showReviseModal, setShowReviseModal] = useState(false);
@@ -145,36 +144,21 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const [revisePending, setRevisePending] = useState(false);
   const [freelancerUnavailableTimeSlots, setFreelancerUnavailableTimeSlots] = useState<string[]>([]);
   const [scheduledJobs, setScheduledJobs] = useState<Job[]>([]);
-  const [scheduleConfirmed, setScheduleConfirmed] = useState(false);
-  const [schedulePending, setSchedulePending] = useState(false);
-  const [scheduleRequestSent, setScheduleRequestSent] = useState(false);
 
   // Revise Price state
   const [showRevisePriceModal, setShowRevisePriceModal] = useState(false);
   const [priceOfferInput, setPriceOfferInput] = useState("");
   const [priceOfferPending, setPriceOfferPending] = useState(false);
 
-  // Job Start/End state (referenced in legacy logic)
-  const [jobStartStatus, setJobStartStatus] = useState<string | null>(null);
-  const [jobStartPending, setJobStartPending] = useState(false);
-  const [jobEndStatus, setJobEndStatus] = useState<string | null>(null);
-  const [jobEndPending, setJobEndPending] = useState(false);
-
   // Payment state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentHoursInput, setPaymentHoursInput] = useState("");
   const [paymentHourlyRateInput, setPaymentHourlyRateInput] = useState("");
-  const [paymentHours, setPaymentHours] = useState(0);
   const [paymentHourlyRate, setPaymentHourlyRate] = useState(0);
   const [paymentTotal, setPaymentTotal] = useState(0);
   const [paymentPending, setPaymentPending] = useState(false);
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>("");
   const [currencies, setCurrencies] = useState<any[]>([]);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
-  const [paymentSubtotal, setPaymentSubtotal] = useState(0);
-  const [paymentVat, setPaymentVat] = useState(0);
-  const [paymentCurrency, setPaymentCurrency] = useState<any>(null);
   const [reportConversations, setReportConversations] = useState<ReportConversation[]>([]);
 
   useEffect(() => {
@@ -351,33 +335,23 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             },
             async (payload) => {
               const newMsg = payload.new as Message;
-              // Only add if it's not already in the list (avoid duplicates from optimistic updates)
               setMessages((prev) => {
                 const exists = prev.some((msg) => msg.id === newMsg.id);
                 if (exists) return prev;
                 return [...prev, newMsg];
               });
 
-              // Mark as read if it's not from current user
               if (newMsg.sender_id !== user?.id) {
                 markMessagesAsRead([newMsg.id]);
               }
 
-              // Check if this is a schedule request message (client sent)
-              if (newMsg.body?.includes("📅 Schedule Request") && newMsg.sender_id === user?.id && currentUserProfile?.role === "client") {
-                setScheduleRequestSent(true);
-              }
-
-              // Check if this is a schedule confirmation message (freelancer confirmed)
+              // Check if this is a schedule confirmation message - update job stage if needed
               if (newMsg.body?.includes("Schedule confirmed") ||
-                newMsg.body?.includes("✓ Schedule confirmed") ||
-                (newMsg.body?.includes("✓") && newMsg.body?.includes("Schedule"))) {
+                newMsg.body?.includes("✓ Schedule confirmed")) {
                 const otherId = conversation?.client_id === user?.id
                   ? conversation?.freelancer_id
                   : conversation?.client_id;
                 if (newMsg.sender_id === otherId && currentUserProfile?.role === "client") {
-                  setScheduleConfirmed(true);
-                  // Also update job to mark schedule as confirmed
                   if (job) {
                     supabase
                       .from("job_requests")
@@ -390,53 +364,20 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 }
               }
 
-              // Check if this is a price offer message
+              // Check if this is a price offer message - update local price offer
               if (newMsg.body?.includes("💰 Price Offer")) {
-                const otherId = conversation?.client_id === user?.id
-                  ? conversation?.freelancer_id
-                  : conversation?.client_id;
-
-                if (currentUserProfile?.role === "client" && newMsg.sender_id === otherId) {
-                  // Client received price offer
-                  const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
-                  if (priceMatch) {
-                    setPriceOffer(parseInt(priceMatch[1]));
-                    setPriceOfferStatus("pending");
-                  }
-                } else if (currentUserProfile?.role === "freelancer" && newMsg.sender_id === user?.id) {
-                  // Freelancer sent price offer
-                  const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
-                  if (priceMatch) {
-                    setPriceOffer(parseInt(priceMatch[1]));
-                    setPriceOfferStatus("pending");
-                  }
+                const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
+                if (priceMatch) {
+                  setPriceOffer(parseInt(priceMatch[1]));
                 }
               }
 
-              // Check if price offer was accepted
-              if (newMsg.body?.includes("Price offer accepted")) {
-                setPriceOfferStatus("accepted");
-              }
-
-              // Check if price offer was declined
-              if (newMsg.body?.includes("Price offer declined")) {
-                setPriceOfferStatus("declined");
-              }
-
-              // Check if payment request was sent
+              // Check if payment request was sent - update payment total
               if (newMsg.body?.includes("💰 Payment Request")) {
-                const otherId = conversation?.client_id === user?.id
-                  ? conversation?.freelancer_id
-                  : conversation?.client_id;
-
-                if (currentUserProfile?.role === "client" && newMsg.sender_id === otherId && job) {
-                  // Client received payment request - fetch payment data with currency
+                if (currentUserProfile?.role === "client" && job) {
                   const { data: paymentData } = await supabase
                     .from("payments")
-                    .select(`
-                    *,
-                    currency:currencies(id, name, iso, icon)
-                  `)
+                    .select("*")
                     .eq("job_id", job.id)
                     .eq("status", "pending")
                     .order("created_at", { ascending: false })
@@ -444,72 +385,29 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                     .maybeSingle();
 
                   if (paymentData) {
-                    console.log("Client received payment request (multi-conv):", paymentData);
-                    setPaymentId(paymentData.id);
-                    setPaymentStatus(paymentData.status as "pending" | "accepted" | "declined" | "paid");
-                    setPaymentHours(paymentData.hours_worked);
                     setPaymentHourlyRate(paymentData.hourly_rate);
-                    setPaymentSubtotal(paymentData.subtotal);
-                    setPaymentVat(paymentData.vat_amount);
                     setPaymentTotal(paymentData.total_amount);
-                    if (paymentData.currency) {
-                      setPaymentCurrency(paymentData.currency as { id: string; name: string; iso: string; icon: string });
-                    }
                   }
                 }
               }
 
-              // Check if payment was accepted
-              if (newMsg.body?.includes("Payment accepted") || newMsg.body?.includes("✓ Payment accepted")) {
-                setPaymentStatus("accepted");
+              // Check if payment was accepted or completed
+              if (newMsg.body?.includes("Payment accepted") ||
+                newMsg.body?.includes("✓ Payment accepted") ||
+                newMsg.body?.includes("Payment completed") ||
+                newMsg.body?.includes("✓ Payment completed")) {
                 if (job) {
                   const { data: paymentData } = await supabase
                     .from("payments")
-                    .select(`
-                    *,
-                    currency:currencies(id, name, iso, icon)
-                  `)
+                    .select("*")
                     .eq("job_id", job.id)
-                    .eq("status", "accepted")
+                    .in("status", ["accepted", "paid"])
                     .order("created_at", { ascending: false })
                     .limit(1)
                     .maybeSingle();
 
                   if (paymentData) {
                     setPaymentTotal(paymentData.total_amount);
-                    if (paymentData.currency) {
-                      setPaymentCurrency(paymentData.currency as { id: string; name: string; iso: string; icon: string });
-                    }
-                  }
-                }
-              }
-
-              // Check if payment was declined
-              if (newMsg.body?.includes("Payment declined") || newMsg.body?.includes("❌ Payment declined")) {
-                setPaymentStatus("declined");
-              }
-
-              // Check if payment was completed
-              if (newMsg.body?.includes("Payment completed") || newMsg.body?.includes("✓ Payment completed")) {
-                setPaymentStatus("paid");
-                if (job) {
-                  const { data: paymentData } = await supabase
-                    .from("payments")
-                    .select(`
-                    *,
-                    currency:currencies(id, name, iso, icon)
-                  `)
-                    .eq("job_id", job.id)
-                    .eq("status", "paid")
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                  if (paymentData) {
-                    setPaymentTotal(paymentData.total_amount);
-                    if (paymentData.currency) {
-                      setPaymentCurrency(paymentData.currency as { id: string; name: string; iso: string; icon: string });
-                    }
                   }
                 }
               }
@@ -555,128 +453,34 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 markMessagesAsRead([newMsg.id]);
               }
 
-              if (newMsg.body?.includes("📅 Schedule Request") && newMsg.sender_id === user?.id && currentUserProfile?.role === "client") {
-                setScheduleRequestSent(true);
-              }
-
+              // Check if this is a schedule confirmation message
               if (newMsg.body?.includes("Schedule confirmed") ||
-                newMsg.body?.includes("✓ Schedule confirmed") ||
-                (newMsg.body?.includes("✓") && newMsg.body?.includes("Schedule"))) {
-                const otherId = conversation?.client_id === user?.id
-                  ? conversation?.freelancer_id
-                  : conversation?.client_id;
-                if (newMsg.sender_id === otherId && currentUserProfile?.role === "client") {
-                  setScheduleConfirmed(true);
-                  // Also update job to mark schedule as confirmed
-                  if (job) {
-                    supabase
-                      .from("job_requests")
-                      .update({ schedule_confirmed: true, stage: "Schedule" })
-                      .eq("id", job.id)
-                      .then(({ error }) => {
-                        if (error) console.error("Error updating schedule_confirmed:", error);
-                      });
-                  }
+                newMsg.body?.includes("✓ Schedule confirmed")) {
+                if (currentUserProfile?.role === "client" && job) {
+                  supabase
+                    .from("job_requests")
+                    .update({ schedule_confirmed: true, stage: "Schedule" })
+                    .eq("id", job.id)
+                    .then(({ error }) => {
+                      if (error) console.error("Error updating schedule_confirmed:", error);
+                    });
                 }
               }
 
               // Check if this is a price offer message
               if (newMsg.body?.includes("💰 Price Offer")) {
-                const otherId = conversation?.client_id === user?.id
-                  ? conversation?.freelancer_id
-                  : conversation?.client_id;
-
-                if (currentUserProfile?.role === "client" && newMsg.sender_id === otherId) {
-                  // Client received price offer
-                  const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
-                  if (priceMatch) {
-                    setPriceOffer(parseInt(priceMatch[1]));
-                    setPriceOfferStatus("pending");
-                  }
-                } else if (currentUserProfile?.role === "freelancer" && newMsg.sender_id === user?.id) {
-                  // Freelancer sent price offer
-                  const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
-                  if (priceMatch) {
-                    setPriceOffer(parseInt(priceMatch[1]));
-                    setPriceOfferStatus("pending");
-                  }
+                const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
+                if (priceMatch) {
+                  setPriceOffer(parseInt(priceMatch[1]));
                 }
-              }
-
-              // Check if price offer was accepted
-              if (newMsg.body?.includes("Price offer accepted")) {
-                setPriceOfferStatus("accepted");
-              }
-
-              // Check if price offer was declined
-              if (newMsg.body?.includes("Price offer declined")) {
-                setPriceOfferStatus("declined");
-              }
-
-              // Check if job started
-              if (newMsg.body?.includes("🚀 Job Started")) {
-                const otherId = conversation?.client_id === user?.id
-                  ? conversation?.freelancer_id
-                  : conversation?.client_id;
-
-                if (currentUserProfile?.role === "client" && newMsg.sender_id === otherId) {
-                  setJobStartStatus("pending");
-                } else if (currentUserProfile?.role === "freelancer" && newMsg.sender_id === user?.id) {
-                  setJobStartStatus("pending");
-                }
-              }
-
-              // Check if job start confirmed
-              if (newMsg.body?.includes("Job started confirmed")) {
-                setJobStartStatus("confirmed");
-                // If job start is confirmed, schedule must be confirmed too
-                setScheduleConfirmed(true);
-              }
-
-              // Check if schedule confirmed message
-              if (newMsg.body?.includes("Schedule confirmed") || newMsg.body?.includes("✓ Schedule confirmed")) {
-                setScheduleConfirmed(true);
-              }
-
-              // Check if job ended
-              if (newMsg.body?.includes("✅ Job Ended")) {
-                const otherId = conversation?.client_id === user?.id
-                  ? conversation?.freelancer_id
-                  : conversation?.client_id;
-
-                if (currentUserProfile?.role === "client" && newMsg.sender_id === otherId) {
-                  setJobEndStatus("pending");
-                } else if (currentUserProfile?.role === "freelancer" && newMsg.sender_id === user?.id) {
-                  setJobEndStatus("pending");
-                }
-              }
-
-              // Check if job end confirmed
-              if (newMsg.body?.includes("Job ended confirmed")) {
-                setJobEndStatus("confirmed");
-                // If job end is confirmed, schedule must be confirmed too
-                setScheduleConfirmed(true);
-              }
-
-              // Check if schedule confirmed message
-              if (newMsg.body?.includes("Schedule confirmed") || newMsg.body?.includes("✓ Schedule confirmed")) {
-                setScheduleConfirmed(true);
               }
 
               // Check if payment request was sent
               if (newMsg.body?.includes("💰 Payment Request")) {
-                const otherId = conversation?.client_id === user?.id
-                  ? conversation?.freelancer_id
-                  : conversation?.client_id;
-
-                if (currentUserProfile?.role === "client" && newMsg.sender_id === otherId && job) {
-                  // Client received payment request - fetch payment data with currency
+                if (currentUserProfile?.role === "client" && job) {
                   const { data: paymentData } = await supabase
                     .from("payments")
-                    .select(`
-                    *,
-                    currency:currencies(id, name, iso, icon)
-                  `)
+                    .select("*")
                     .eq("job_id", job.id)
                     .eq("status", "pending")
                     .order("created_at", { ascending: false })
@@ -684,72 +488,29 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                     .maybeSingle();
 
                   if (paymentData) {
-                    console.log("Client received payment request (single-conv):", paymentData);
-                    setPaymentId(paymentData.id);
-                    setPaymentStatus(paymentData.status as "pending" | "accepted" | "declined" | "paid");
-                    setPaymentHours(paymentData.hours_worked);
                     setPaymentHourlyRate(paymentData.hourly_rate);
-                    setPaymentSubtotal(paymentData.subtotal);
-                    setPaymentVat(paymentData.vat_amount);
                     setPaymentTotal(paymentData.total_amount);
-                    if (paymentData.currency) {
-                      setPaymentCurrency(paymentData.currency as { id: string; name: string; iso: string; icon: string });
-                    }
                   }
                 }
               }
 
-              // Check if payment was accepted
-              if (newMsg.body?.includes("Payment accepted") || newMsg.body?.includes("✓ Payment accepted")) {
-                setPaymentStatus("accepted");
+              // Check if payment was accepted or completed
+              if (newMsg.body?.includes("Payment accepted") ||
+                newMsg.body?.includes("✓ Payment accepted") ||
+                newMsg.body?.includes("Payment completed") ||
+                newMsg.body?.includes("✓ Payment completed")) {
                 if (job) {
                   const { data: paymentData } = await supabase
                     .from("payments")
-                    .select(`
-                    *,
-                    currency:currencies(id, name, iso, icon)
-                  `)
+                    .select("*")
                     .eq("job_id", job.id)
-                    .eq("status", "accepted")
+                    .in("status", ["accepted", "paid"])
                     .order("created_at", { ascending: false })
                     .limit(1)
                     .maybeSingle();
 
                   if (paymentData) {
                     setPaymentTotal(paymentData.total_amount);
-                    if (paymentData.currency) {
-                      setPaymentCurrency(paymentData.currency as { id: string; name: string; iso: string; icon: string });
-                    }
-                  }
-                }
-              }
-
-              // Check if payment was declined
-              if (newMsg.body?.includes("Payment declined") || newMsg.body?.includes("❌ Payment declined")) {
-                setPaymentStatus("declined");
-              }
-
-              // Check if payment was completed
-              if (newMsg.body?.includes("Payment completed") || newMsg.body?.includes("✓ Payment completed")) {
-                setPaymentStatus("paid");
-                if (job) {
-                  const { data: paymentData } = await supabase
-                    .from("payments")
-                    .select(`
-                    *,
-                    currency:currencies(id, name, iso, icon)
-                  `)
-                    .eq("job_id", job.id)
-                    .eq("status", "paid")
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                  if (paymentData) {
-                    setPaymentTotal(paymentData.total_amount);
-                    if (paymentData.currency) {
-                      setPaymentCurrency(paymentData.currency as { id: string; name: string; iso: string; icon: string });
-                    }
                   }
                 }
               }
@@ -781,24 +542,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               // Check if this payment is for the current job
               const paymentJobId = payload.new.job_id;
               if (job && paymentJobId === job.id) {
-                // Fetch currency data
-                const { data: currencyData } = await supabase
-                  .from("currencies")
-                  .select("*")
-                  .eq("id", payload.new.currency_id)
-                  .single();
-
                 const paymentData = payload.new;
-                setPaymentId(paymentData.id);
-                setPaymentStatus(paymentData.status as "pending" | "accepted" | "declined" | "paid");
-                setPaymentHours(paymentData.hours_worked);
                 setPaymentHourlyRate(paymentData.hourly_rate);
-                setPaymentSubtotal(paymentData.subtotal);
-                setPaymentVat(paymentData.vat_amount);
                 setPaymentTotal(paymentData.total_amount);
-                if (currencyData) {
-                  setPaymentCurrency(currencyData);
-                }
               }
             }
           )
@@ -813,30 +559,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               // Check if this payment is for the current job
               const paymentJobId = payload.new.job_id;
               if (job && paymentJobId === job.id) {
-                console.log("Payment UPDATE detected (single-conv):", payload.new);
-
-                // Fetch currency data
-                const { data: currencyData } = await supabase
-                  .from("currencies")
-                  .select("*")
-                  .eq("id", payload.new.currency_id)
-                  .single();
-
                 const paymentData = payload.new;
-                setPaymentId(paymentData.id);
-                setPaymentStatus(paymentData.status as "pending" | "accepted" | "declined" | "paid");
-                setPaymentHours(paymentData.hours_worked);
                 setPaymentHourlyRate(paymentData.hourly_rate);
-                setPaymentSubtotal(paymentData.subtotal);
-                setPaymentVat(paymentData.vat_amount);
                 setPaymentTotal(paymentData.total_amount);
-                if (currencyData) {
-                  setPaymentCurrency(currencyData);
-                }
 
                 // If payment is marked as paid, update job stage to Completed
                 if (paymentData.status === "paid") {
-                  console.log("Payment marked as paid, updating job stage to Completed (single-conv)");
                   if (job.stage !== "Completed") {
                     const { error: jobError } = await supabase
                       .from("job_requests")
@@ -845,8 +573,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
                     if (!jobError) {
                       setJob({ ...job, stage: "Completed" });
-                    } else {
-                      console.error("Error updating job stage to Completed:", jobError);
                     }
                   }
                 }
@@ -864,50 +590,21 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             async (payload) => {
               // When job stage changes to Payment or Completed, fetch the payment
               if (job && payload.new.id === job.id && (payload.new.stage === "Payment" || payload.new.stage === "Completed")) {
-                console.log("Job stage changed to:", payload.new.stage, "(single-conv)");
                 // Update job state
                 setJob({ ...job, stage: payload.new.stage as string });
 
-                // Fetch payment if it exists (if Completed, fetch paid payment)
-                const paymentQuery = payload.new.stage === "Completed"
-                  ? supabase
-                    .from("payments")
-                    .select(`
-                      *,
-                      currency:currencies(id, name, iso, icon)
-                    `)
-                    .eq("job_id", job.id)
-                    .eq("status", "paid")
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle()
-                  : supabase
-                    .from("payments")
-                    .select(`
-                      *,
-                      currency:currencies(id, name, iso, icon)
-                    `)
-                    .eq("job_id", job.id)
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                const { data: existingPayment } = await paymentQuery;
+                // Fetch payment if it exists
+                const { data: existingPayment } = await supabase
+                  .from("payments")
+                  .select("*")
+                  .eq("job_id", job.id)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
 
                 if (existingPayment) {
-                  console.log("Payment found after job stage update (single-conv):", existingPayment);
-                  setPaymentId(existingPayment.id);
-                  setPaymentStatus(existingPayment.status as "pending" | "accepted" | "declined" | "paid");
-                  setPaymentHours(existingPayment.hours_worked);
                   setPaymentHourlyRate(existingPayment.hourly_rate);
-                  setPaymentSubtotal(existingPayment.subtotal);
-                  setPaymentVat(existingPayment.vat_amount);
                   setPaymentTotal(existingPayment.total_amount);
-                  if (existingPayment.currency) {
-                    setPaymentCurrency(existingPayment.currency as { id: string; name: string; iso: string; icon: string });
-                  }
-                } else {
-                  console.log("No payment found after job stage update to", payload.new.stage);
                 }
               }
             }
@@ -2177,10 +1874,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                   const vatRate = 0.18;
                   const vat = subtotal * vatRate;
                   const total = subtotal + vat;
-                  setPaymentHours(hours);
                   setPaymentHourlyRate(rate);
-                  setPaymentSubtotal(subtotal);
-                  setPaymentVat(vat);
                   setPaymentTotal(total);
                 }}
                 className="mt-2"
@@ -2204,8 +1898,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                   const vat = subtotal * vatRate;
                   const total = subtotal + vat;
                   setPaymentHourlyRate(rate);
-                  setPaymentSubtotal(subtotal);
-                  setPaymentVat(vat);
                   setPaymentTotal(total);
                 }}
                 className="mt-2"
@@ -2270,12 +1962,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                     const { data: paymentData, error: paymentError } = await supabase.from("payments").insert({ job_id: job.id, freelancer_id: conversation?.freelancer_id || user.id, client_id: conversation?.client_id || "", currency_id: selectedCurrencyId, hours_worked: hours, hourly_rate: rate, subtotal: subtotal, vat_rate: vatRate * 100, vat_amount: vat, total_amount: total, status: "pending" }).select(`*, currency:currencies(id, name, iso, icon)`).single();
                     if (paymentError) throw paymentError;
                     if (paymentData) {
-                      setPaymentId(paymentData.id);
-                      setPaymentStatus("pending");
-                      setPaymentHours(paymentData.hours_worked);
                       setPaymentHourlyRate(paymentData.hourly_rate);
-                      setPaymentSubtotal(paymentData.subtotal);
-                      setPaymentVat(paymentData.vat_amount);
                       setPaymentTotal(paymentData.total_amount);
                     }
                     await supabase.from("job_requests").update({ stage: "Payment" }).eq("id", job.id);
@@ -2335,7 +2022,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                     const priceMessage = `💰 Price Offer: $${offerAmount}/hour`;
                     await supabase.from("messages").insert({ conversation_id: conversationId, sender_id: user.id, body: priceMessage });
                     setPriceOffer(offerAmount);
-                    setPriceOfferStatus("pending");
                     setPriceOfferInput("");
                     setShowRevisePriceModal(false);
                     addToast({ title: "Price offer sent", description: `Your new offer of $${offerAmount}/hour has been sent.` });
