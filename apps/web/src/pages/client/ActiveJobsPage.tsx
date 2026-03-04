@@ -23,7 +23,6 @@ import {
   Bell
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getJobStageBadge } from "@/lib/jobStages";
 
 interface JobRequest {
   id: string;
@@ -84,7 +83,7 @@ export default function ActiveJobsPage() {
   const [freelancerProfiles, setFreelancerProfiles] = useState<Record<string, FreelancerProfile>>(cachedData?.freelancerProfiles || {});
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmationCounts, setConfirmationCounts] = useState<Record<string, number>>(cachedData?.confirmationCounts || {});
-  const [openRequestsExpanded, setOpenRequestsExpanded] = useState(true);
+  const [openRequestsExpanded, setOpenRequestsExpanded] = useState(false);
   const [pastJobsExpanded, setPastJobsExpanded] = useState(false);
   const [hasNewActions, setHasNewActions] = useState(false);
 
@@ -438,11 +437,6 @@ export default function ActiveJobsPage() {
                         {getJobStatusBadge(activeJob.status).label}
                       </Badge>
                     )}
-                    {activeJob.stage && (
-                      <Badge variant={getJobStageBadge(activeJob.stage).variant} className="text-xs">
-                        {getJobStageBadge(activeJob.stage).label}
-                      </Badge>
-                    )}
                   </div>
                 </div>
                 {activeJob.selected_freelancer_id && freelancerProfiles[activeJob.selected_freelancer_id] && (
@@ -550,7 +544,6 @@ export default function ActiveJobsPage() {
               <CardContent className="space-y-3">
                 {openRequests.map((job) => {
                   const statusBadge = getJobStatusBadge(job.status);
-                  const stageBadge = getJobStageBadge(job.stage);
                   const action = getPrimaryAction(job);
                   return (
                     <div key={job.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
@@ -575,11 +568,6 @@ export default function ActiveJobsPage() {
                           {job.status !== "notifying" && (
                             <Badge variant={statusBadge.variant} className="text-xs">
                               {statusBadge.label}
-                            </Badge>
-                          )}
-                          {job.stage && (
-                            <Badge variant={stageBadge.variant} className="text-xs">
-                              {stageBadge.label}
                             </Badge>
                           )}
                         </div>
@@ -634,7 +622,7 @@ export default function ActiveJobsPage() {
             {pastJobsExpanded && (
               <CardContent className="space-y-3">
                 {pastJobs.map((job) => {
-                  const stageBadge = getJobStageBadge(job.stage);
+                  const statusBadge = getJobStatusBadge(job.status);
                   return (
                     <div key={job.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
                       <div className="flex-1 min-w-0">
@@ -643,11 +631,9 @@ export default function ActiveJobsPage() {
                           <span className="text-sm text-muted-foreground truncate">{formatJobTitle(job)}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          {job.stage && (
-                            <Badge variant={stageBadge.variant} className="text-xs">
-                              {stageBadge.label}
-                            </Badge>
-                          )}
+                          <Badge variant={statusBadge.variant} className="text-xs">
+                            {statusBadge.label}
+                          </Badge>
                         </div>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => navigate("/client/create")}>

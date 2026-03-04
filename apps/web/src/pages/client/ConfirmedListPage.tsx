@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
@@ -13,8 +14,8 @@ import {
   CheckCircle2,
   MessageCircle,
   Heart,
-  RefreshCw,
   RotateCcw,
+  StopCircle,
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,10 +55,12 @@ export default function ConfirmedListPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { addToast } = useToast();
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState<string | null>(null);
   const [declining, setDeclining] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [restarting, setRestarting] = useState(false);
@@ -191,6 +194,34 @@ export default function ConfirmedListPage() {
     }
   }
 
+  async function handleStopRequest() {
+    if (!jobId) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("job_requests")
+        .delete()
+        .eq("id", jobId);
+      if (error) throw error;
+      addToast({
+        title: "Request stopped",
+        description: "Your job request has been removed.",
+        variant: "success",
+        duration: 3000,
+      });
+      navigate("/client/jobs");
+    } catch (err: any) {
+      addToast({
+        title: "Failed to stop request",
+        description: err?.message || "Could not delete the job.",
+        variant: "error",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleRestartSearch() {
     if (!jobId) return;
 
@@ -256,19 +287,10 @@ export default function ConfirmedListPage() {
 
           <div className="flex gap-2 justify-center mt-4">
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => fetchConfirmed()}
-              disabled={restarting}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
-            <Button
               variant="default"
               size="sm"
               onClick={handleRestartSearch}
-              disabled={restarting}
+              disabled={restarting || deleting}
             >
               {restarting ? (
                 <>
@@ -279,6 +301,24 @@ export default function ConfirmedListPage() {
                 <>
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Restart Search
+                </>
+              )}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleStopRequest}
+              disabled={deleting || restarting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Stopping...
+                </>
+              ) : (
+                <>
+                  <StopCircle className="w-4 h-4 mr-2" />
+                  Stop Request
                 </>
               )}
             </Button>

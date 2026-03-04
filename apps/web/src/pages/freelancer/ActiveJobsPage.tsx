@@ -18,7 +18,6 @@ import {
   ChevronUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getJobStageBadge } from "@/lib/jobStages";
 
 interface JobRequest {
   id: string;
@@ -240,11 +239,6 @@ export default function FreelancerActiveJobsPage() {
                     <Badge className={cn("text-xs", getJobStatusBadge(activeJob.status).variant === "default" ? "bg-primary/10 text-primary" : "")}>
                       {getJobStatusBadge(activeJob.status).label}
                     </Badge>
-                    {activeJob.stage && (
-                      <Badge variant={getJobStageBadge(activeJob.stage).variant} className="text-xs">
-                        {getJobStageBadge(activeJob.stage).label}
-                      </Badge>
-                    )}
                   </div>
                 </div>
                 {conversations[activeJob.id] && clientProfiles[conversations[activeJob.id].client_id] && (
@@ -319,7 +313,7 @@ export default function FreelancerActiveJobsPage() {
             {pastJobsExpanded && (
               <CardContent className="space-y-3">
                 {pastJobs.map((job) => {
-                  const stageBadge = getJobStageBadge(job.stage);
+                  const statusBadge = getJobStatusBadge(job.status);
                   return (
                     <div key={job.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
                       <div className="flex-1 min-w-0">
@@ -328,11 +322,9 @@ export default function FreelancerActiveJobsPage() {
                           <span className="text-sm text-muted-foreground truncate">{formatJobTitle(job)}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          {job.stage && (
-                            <Badge variant={stageBadge.variant} className="text-xs">
-                              {stageBadge.label}
-                            </Badge>
-                          )}
+                          <Badge variant={statusBadge.variant} className="text-xs">
+                            {statusBadge.label}
+                          </Badge>
                         </div>
                       </div>
                     </div>

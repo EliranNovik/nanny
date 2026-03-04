@@ -16,7 +16,6 @@ import {
   Loader2,
   Users,
   Calendar as CalendarIcon,
-  LogOut,
   Bell,
   ChevronRight
 } from "lucide-react";
@@ -57,7 +56,7 @@ interface Conversation {
 type DashboardState = "first_time" | "job_in_progress" | "job_matched" | "no_active_job";
 
 export default function DashboardPage() {
-  const { user, profile, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   // Try to load cached data immediately for instant rendering
   const getCachedDashboardData = () => {
@@ -100,9 +99,9 @@ export default function DashboardPage() {
 
         if (!jobs) return;
 
-        // Find active job (not completed, not cancelled)
+        // Find truly active job — only where a freelancer has been matched & accepted
         const active = jobs.find(
-          (j) => !["completed", "cancelled"].includes(j.status)
+          (j) => j.status === "locked" || j.status === "active"
         );
 
         // Past jobs (completed or cancelled)
@@ -403,11 +402,6 @@ export default function DashboardPage() {
     return { label: "View details", path: `#` };
   }
 
-  async function handleLogout() {
-    await signOut();
-    navigate("/login", { replace: true });
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen gradient-mesh flex items-center justify-center">
@@ -470,11 +464,6 @@ export default function DashboardPage() {
                 ) : (
                   <div className="flex items-center gap-2 flex-wrap">
                     {getStatusBadge(activeJob.status)}
-                    {activeJob.stage && (
-                      <Badge variant={getJobStageBadge(activeJob.stage).variant} className="text-xs">
-                        {getJobStageBadge(activeJob.stage).label}
-                      </Badge>
-                    )}
                   </div>
                 )}
               </div>
@@ -506,15 +495,17 @@ export default function DashboardPage() {
                     <span className="text-muted-foreground">· {formatAgeGroup(activeJob.children_age_group)}</span>
                   )}
                 </div>
-                {activeJob.start_at && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span>{formatDate(activeJob.start_at)}</span>
+                <div className="flex items-center gap-4 text-sm flex-wrap">
+                  {activeJob.start_at && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span>{formatDate(activeJob.start_at)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <span>{activeJob.location_city}</span>
                   </div>
-                )}
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                  <span>{activeJob.location_city}</span>
                 </div>
               </div>
 
@@ -522,13 +513,6 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 text-sm flex-wrap">
                 <span className="text-muted-foreground">Status:</span>
                 <span className="font-medium">{getStatusLabel(activeJob.status)}</span>
-                {activeJob.stage && (
-                  <>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="text-muted-foreground">Stage:</span>
-                    <span className="font-medium">{getJobStageBadge(activeJob.stage).label}</span>
-                  </>
-                )}
               </div>
               {activeJob.status === "notifying" && (
                 <p className="text-sm text-muted-foreground">
@@ -543,11 +527,6 @@ export default function DashboardPage() {
               {activeJob.status === "locked" && (
                 <p className="text-sm text-muted-foreground">
                   You're connected with a nanny. Start chatting to coordinate.
-                </p>
-              )}
-              {activeJob.status === "active" && (
-                <p className="text-sm text-muted-foreground">
-                  Job is in progress. Keep in touch with your nanny.
                 </p>
               )}
 
@@ -634,13 +613,7 @@ export default function DashboardPage() {
                   <div
                     key={request.id}
                     className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer relative"
-                    onClick={() => {
-                      if (request.status === "confirmations_closed") {
-                        navigate(`/client/jobs/${request.id}/confirmed`);
-                      } else {
-                        navigate("/client/active-jobs");
-                      }
-                    }}
+                    onClick={() => navigate(`/client/jobs/${request.id}/confirmed`)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0 pr-6">
@@ -706,14 +679,6 @@ export default function DashboardPage() {
                             className="text-xs"
                           >
                             {getStatusLabel(request.status)}
-                          </Badge>
-                        )}
-                        {request.stage && (
-                          <Badge
-                            variant={getJobStageBadge(request.stage).variant}
-                            className="text-xs"
-                          >
-                            {getJobStageBadge(request.stage).label}
                           </Badge>
                         )}
                       </div>
@@ -854,45 +819,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         )}
-
-        {/* Mini Profile */}
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarImage src={profile?.photo_url || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {profile?.full_name?.[0]?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{profile?.full_name || "User"}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {profile?.city || "Location not set"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/client/profile")}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <LogOut className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

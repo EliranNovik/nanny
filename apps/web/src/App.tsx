@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ReportIssueProvider } from "@/context/ReportIssueContext";
@@ -81,183 +81,182 @@ function RoleRedirect() {
   return <Navigate to="/freelancer/dashboard" replace />;
 }
 
+/** Wraps page content with top padding so fixed header does not overlap content */
+function PageLayoutWithHeader() {
+  return (
+    <div className="min-h-screen pt-14">
+      <Outlet />
+    </div>
+  );
+}
+
 function AppRoutes() {
   const { user } = useAuth();
 
   return (
     <Routes>
-      {/* Public routes */}
-      <Route 
-        path="/" 
-        element={<LandingPage />} 
-      />
-      <Route 
-        path="/about" 
-        element={<AboutPage />} 
-      />
-      <Route 
-        path="/contact" 
-        element={<ContactPage />} 
-      />
-      <Route 
-        path="/login" 
-        element={user ? <Navigate to="/home" replace /> : <LoginPage />} 
-      />
+      {/* Landing - no header, no extra padding */}
+      <Route path="/" element={<LandingPage />} />
 
-      {/* Onboarding - public route but requires auth (handled internally) */}
-      <Route
-        path="/onboarding"
-        element={<OnboardingPage />}
-      />
+      {/* All other routes: layout adds top padding for fixed header */}
+      <Route element={<PageLayoutWithHeader />}>
+        <Route path="/about" element={<AboutPage />} />
+      <Route path="/contact" element={<ContactPage />} />
+        <Route
+          path="/login"
+          element={user ? <Navigate to="/home" replace /> : <LoginPage />}
+        />
+        <Route path="/onboarding" element={<OnboardingPage />} />
 
-      {/* Client routes */}
-      <Route
-        path="/dashboard"
+        {/* Client routes */}
+        <Route
+          path="/dashboard"
         element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/client/create"
-        element={
-          <ProtectedRoute>
-            <CreateJobPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/client/jobs/:jobId/confirmed"
-        element={
-          <ProtectedRoute>
-            <ConfirmedListPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/client/profile"
-        element={
-          <ProtectedRoute>
-            <ClientProfilePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/client/active-jobs"
-        element={
-          <ProtectedRoute>
-            <ActiveJobsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/messages"
-        element={
-          <ProtectedRoute>
-            <MessagesPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/messages/:conversationId"
-        element={
-          <ProtectedRoute>
-            <MessagesPage />
-          </ProtectedRoute>
-        }
-      />
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/create"
+          element={
+            <ProtectedRoute>
+              <CreateJobPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/jobs/:jobId/confirmed"
+          element={
+            <ProtectedRoute>
+              <ConfirmedListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/profile"
+          element={
+            <ProtectedRoute>
+              <ClientProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/active-jobs"
+          element={
+            <ProtectedRoute>
+              <ActiveJobsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages/:conversationId"
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Freelancer routes */}
-      <Route
-        path="/freelancer/dashboard"
-        element={
-          <ProtectedRoute>
-            <FreelancerDashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/freelancer/profile"
-        element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/freelancer/profile/edit"
-        element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/freelancer/notifications"
-        element={
-          <ProtectedRoute>
-            <NotificationsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/freelancer/active-jobs"
-        element={
-          <ProtectedRoute>
-            <FreelancerActiveJobsPage />
-          </ProtectedRoute>
-        }
-      />
+        {/* Freelancer routes */}
+        <Route
+          path="/freelancer/dashboard"
+          element={
+            <ProtectedRoute>
+              <FreelancerDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/freelancer/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/freelancer/profile/edit"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/freelancer/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/freelancer/active-jobs"
+          element={
+            <ProtectedRoute>
+              <FreelancerActiveJobsPage />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Shared routes */}
-      <Route
-        path="/calendar"
-        element={
-          <ProtectedRoute>
-            <CalendarPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/payments"
-        element={
-          <ProtectedRoute>
-            <PaymentsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/chat/:conversationId"
-        element={
-          <ProtectedRoute>
-            <ChatPage />
-          </ProtectedRoute>
-        }
-      />
+        {/* Shared routes */}
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <CalendarPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payments"
+          element={
+            <ProtectedRoute>
+              <PaymentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat/:conversationId"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Admin routes */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminPage />
-          </ProtectedRoute>
-        }
-      />
+        {/* Admin routes */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Default redirect for authenticated users */}
-      <Route
-        path="/home"
-        element={
-          <ProtectedRoute>
-            <RoleRedirect />
-          </ProtectedRoute>
-        }
-      />
+        {/* Default redirect for authenticated users */}
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <RoleRedirect />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
     </Routes>
   );
 }

@@ -1,13 +1,32 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Briefcase, Users, LogIn, Baby, Sparkles, Star, Flag, Menu, X } from "lucide-react";
+import { Briefcase, Users, LogIn, Baby, Sparkles, Star, Flag, Menu, X, Home } from "lucide-react";
 import { Link } from "react-router-dom";
 import JobCategories from "@/components/JobCategories";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showFixedButtons, setShowFixedButtons] = useState(false);
+  const buttonsRef = useRef<HTMLDivElement>(null);
+  const dashboardPath = profile?.role === "freelancer" ? "/freelancer/dashboard" : "/dashboard";
+  const jobsPath = profile?.role === "freelancer" ? "/freelancer/active-jobs" : "/client/active-jobs";
+  const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : "/client/profile";
+
+  useEffect(() => {
+    const el = buttonsRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowFixedButtons(!entry.isIntersecting),
+      { threshold: 0, rootMargin: "0px 0px -10px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const handleSearchingForJob = () => {
     // Navigate directly to onboarding with role param
@@ -21,10 +40,23 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen gradient-mesh flex flex-col">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 w-full border-b bg-background/80 backdrop-blur-sm z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      {/* Header - taller on mobile, glassy */}
+      <header className="fixed top-0 left-0 right-0 w-full z-50 border-b bg-white/90 backdrop-blur-lg md:bg-background/80 md:backdrop-blur-sm min-h-[72px] md:min-h-0 flex items-center">
+        <div className="max-w-7xl mx-auto px-4 w-full py-4 md:py-4">
           <div className="flex items-center justify-between">
+            {/* Hamburger Menu - Mobile Only: icon only, no box */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 text-foreground hover:text-foreground/80 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
+
             {/* Logo - Desktop Only */}
             <Link to="/" className="hidden md:flex items-center gap-2">
               <img
@@ -34,9 +66,46 @@ export default function LandingPage() {
               />
             </Link>
 
+            {/* Welcome - when logged in: Hi, (username) + profile image */}
+            {user && (
+              <div className="flex items-center gap-2 min-w-0 flex-1 justify-center md:justify-center">
+                <Avatar className="h-10 w-10 md:h-11 md:w-11 border border-primary/20 flex-shrink-0">
+                  <AvatarImage src={profile?.photo_url || undefined} alt="" />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    {profile?.full_name
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2) || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium text-foreground truncate">
+                  Hi, {profile?.full_name?.split(" ")[0] || "there"}
+                </span>
+              </div>
+            )}
+
+            {/* Log In / Home - Mobile Only (right side of header) */}
+            {user ? (
+              <Link to={dashboardPath} className="md:hidden">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Home className="w-4 h-4" />
+                  Home
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/login" className="md:hidden">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <LogIn className="w-4 h-4" />
+                  Log In
+                </Button>
+              </Link>
+            )}
+
             {/* Mobile Menu */}
             {isMenuOpen && (
-              <div className="md:hidden fixed top-[73px] left-0 right-0 bg-background border-b shadow-lg z-50">
+              <div className="md:hidden fixed top-[72px] left-0 right-0 bg-white/95 backdrop-blur-md border-b shadow-lg z-50">
                 <nav className="flex flex-col p-4 space-y-4">
                   <Link
                     to="/about"
@@ -52,12 +121,44 @@ export default function LandingPage() {
                   >
                     Contact
                   </Link>
-                  <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="outline" size="sm" className="gap-2 w-full">
-                      <LogIn className="w-4 h-4" />
-                      Log In
-                    </Button>
-                  </Link>
+                  {user ? (
+                    <>
+                      <Link
+                        to={dashboardPath}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
+                        to={jobsPath}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Jobs
+                      </Link>
+                      <Link
+                        to="/messages"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Messages
+                      </Link>
+                      <Link
+                        to={profilePath}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Profile
+                      </Link>
+                    </>
+                  ) : (
+                    <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="outline" size="sm" className="w-full">
+                        Log In
+                      </Button>
+                    </Link>
+                  )}
                 </nav>
               </div>
             )}
@@ -76,19 +177,28 @@ export default function LandingPage() {
               >
                 Contact
               </Link>
-              <Link to="/login">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <LogIn className="w-4 h-4" />
-                  Log In
-                </Button>
-              </Link>
+              {user ? (
+                <Link to={dashboardPath}>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Home className="w-4 h-4" />
+                    Home
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/login">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <LogIn className="w-4 h-4" />
+                    Log In
+                  </Button>
+                </Link>
+              )}
             </nav>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 py-12 pt-24">
+      {/* Main Content - extra top padding on mobile for taller header */}
+      <main className="flex-1 p-4 py-12 pt-[100px] md:pt-24">
         <div className="max-w-7xl mx-auto space-y-12">
           {/* Hero Section */}
           <div className="text-center space-y-6">
@@ -146,43 +256,25 @@ export default function LandingPage() {
                       />
                     </div>
 
-                    {/* Buttons Overlay - Mobile Only */}
-                    <div className="absolute top-0 left-0 right-0 p-3 md:hidden z-20">
-                      <div className="flex flex-col items-center gap-2 w-full max-w-xl">
-                        <Button
-                          onClick={handleSearchingForJob}
-                          size="lg"
-                          className="h-20 flex flex-col items-center justify-center gap-1.5 text-sm bg-orange-500 hover:bg-orange-600 text-white shadow-lg rounded-lg w-full"
-                        >
-                          <Briefcase className="w-5 h-5" />
-                          <span className="text-xs font-medium">Searching for a Job</span>
-                        </Button>
-
-                        <Button
-                          onClick={handleHiringHelper}
-                          size="lg"
-                          className="h-20 flex flex-col items-center justify-center gap-1.5 text-sm bg-orange-500 hover:bg-orange-600 text-white shadow-lg rounded-lg w-full"
-                        >
-                          <Users className="w-5 h-5" />
-                          <span className="text-xs font-medium">Hiring a Helper</span>
-                        </Button>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Hamburger Menu - Mobile Only: Right corner of image */}
-                  <button
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className="absolute top-4 right-4 md:hidden z-[100] p-4 bg-orange-500 rounded-xl shadow-2xl hover:bg-orange-600 transition-colors"
-                    style={{ display: 'block' }}
-                    aria-label="Toggle menu"
-                  >
-                    {isMenuOpen ? (
-                      <X className="w-6 h-6 text-white" />
-                    ) : (
-                      <Menu className="w-6 h-6 text-white" />
-                    )}
-                  </button>
+                  {/* Oval (pill) buttons - Mobile Only: on image, centered, top (ref for scroll) */}
+                  <div ref={buttonsRef} className="absolute left-1/2 -translate-x-1/2 top-6 flex flex-row gap-2 md:hidden z-20">
+                    <Button
+                      onClick={handleSearchingForJob}
+                      className="h-11 rounded-full px-5 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-shrink-0 gap-2 text-sm font-medium"
+                    >
+                      <Briefcase className="w-5 h-5 flex-shrink-0" />
+                      Find a Job
+                    </Button>
+                    <Button
+                      onClick={handleHiringHelper}
+                      className="h-11 rounded-full px-5 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-shrink-0 gap-2 text-sm font-medium"
+                    >
+                      <Users className="w-5 h-5 flex-shrink-0" />
+                      Hire a Helper
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Left Service Boxes - Desktop Only - Inside image, extending slightly on larger screens */}
@@ -482,6 +574,28 @@ export default function LandingPage() {
           </div>
         </div>
       </main>
+
+      {/* Fixed bottom bar - Mobile only, when buttons scroll out of view */}
+      {showFixedButtons && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 pt-3 bg-background/95 backdrop-blur-md border-t shadow-lg z-40 md:hidden">
+          <div className="max-w-lg mx-auto flex flex-row gap-2 justify-center">
+            <Button
+              onClick={handleSearchingForJob}
+              className="h-11 rounded-full px-5 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 gap-2 text-sm font-medium"
+            >
+              <Briefcase className="w-5 h-5 flex-shrink-0" />
+              Find a Job
+            </Button>
+            <Button
+              onClick={handleHiringHelper}
+              className="h-11 rounded-full px-5 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 gap-2 text-sm font-medium"
+            >
+              <Users className="w-5 h-5 flex-shrink-0" />
+              Hire a Helper
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
