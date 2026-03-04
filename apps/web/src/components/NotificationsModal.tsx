@@ -39,9 +39,12 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
     let cancelled = false;
 
     async function fetchAlerts() {
-      setLoading(true);
+        if (!user || !profile) return;
+        const u = user;
+        const p = profile;
+        setLoading(true);
       try {
-        if (profile.role === "freelancer") {
+        if (p.role === "freelancer") {
           const { data: notifications } = await supabase
             .from("job_candidate_notifications")
             .select(`
@@ -55,7 +58,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
                 confirm_ends_at
               )
             `)
-            .eq("freelancer_id", user.id)
+            .eq("freelancer_id", u.id)
             .in("status", ["pending", "opened"])
             .order("created_at", { ascending: false });
 
@@ -81,11 +84,11 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
               };
             });
           setAlerts(items);
-        } else if (profile.role === "client") {
+        } else if (p.role === "client") {
           const { data: jobs } = await supabase
             .from("job_requests")
             .select("id")
-            .eq("client_id", user.id)
+            .eq("client_id", u.id)
             .in("status", ["notifying", "confirmations_closed"]);
 
           const jobIds = (jobs || []).map((j) => j.id);
