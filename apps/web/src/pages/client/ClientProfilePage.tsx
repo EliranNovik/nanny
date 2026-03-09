@@ -12,6 +12,7 @@ import { Save, ArrowLeft, Loader2, Camera, X, Navigation } from "lucide-react";
 import { getCityFromLocation } from "@/lib/location";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Switch } from "@/components/ui/switch";
+import { ServiceCategoriesPicker } from "@/components/ServiceCategoriesPicker";
 
 export default function ClientProfilePage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -30,6 +31,8 @@ export default function ClientProfilePage() {
   const [telegramUsername, setTelegramUsername] = useState("");
   const [shareWhatsapp, setShareWhatsapp] = useState(false);
   const [shareTelegram, setShareTelegram] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [isAvailableForJobs, setIsAvailableForJobs] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -41,6 +44,8 @@ export default function ClientProfilePage() {
       setTelegramUsername(profile.telegram_username || "");
       setShareWhatsapp(profile.share_whatsapp || false);
       setShareTelegram(profile.share_telegram || false);
+      setCategories(profile.categories || []);
+      setIsAvailableForJobs(profile.is_available_for_jobs || false);
     }
   }, [profile]);
 
@@ -214,6 +219,8 @@ export default function ClientProfilePage() {
         telegram_username: normalizeTelegramUsername(telegramUsername),
         share_whatsapp: shareWhatsapp,
         share_telegram: shareTelegram,
+        categories: categories,
+        is_available_for_jobs: isAvailableForJobs,
       });
 
       if (error) {
@@ -446,6 +453,38 @@ export default function ClientProfilePage() {
                 </>
               )}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Services Provided Settings */}
+        <Card className="border-0 shadow-lg mt-6">
+          <CardHeader>
+            <CardTitle>Services Provided</CardTitle>
+            <CardDescription>Types of services you offer or need</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="receive-requests" className="text-base font-medium">
+                  Receive Requests
+                </Label>
+                <p className="text-sm text-muted-foreground max-w-[80%]">
+                  Allow other users to send you service requests for the categories below.
+                </p>
+              </div>
+              <Switch
+                id="receive-requests"
+                checked={isAvailableForJobs}
+                onCheckedChange={setIsAvailableForJobs}
+              />
+            </div>
+
+            <div className="pt-4 border-t">
+              <ServiceCategoriesPicker
+                selectedCategories={categories}
+                onChange={setCategories}
+              />
+            </div>
           </CardContent>
         </Card>
 

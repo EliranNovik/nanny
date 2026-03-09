@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Briefcase, Users, LogIn, Baby, Sparkles, Star, Flag, Menu, X, Home } from "lucide-react";
+import { Briefcase, Users, LogIn, Baby, Sparkles, Star, Flag, Menu, X, Home, ClipboardList, UserCheck, MessageCircle, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import JobCategories from "@/components/JobCategories";
 import { useState, useRef, useEffect } from "react";
@@ -438,6 +438,70 @@ export default function LandingPage() {
                       "The cleaning service was exceptional! Our home has never looked better. The team was professional, thorough, and left everything sparkling clean. Will definitely use again!"
                     </p>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* How finding a helper works */}
+          <div className="max-w-6xl mx-auto pt-12 px-4">
+            <h2 className="text-2xl md:text-3xl font-semibold text-center mb-8 md:mb-10">
+              How finding a helper works
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+              <div className="flex items-start gap-4 md:flex-col md:items-center md:text-center">
+                <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <ClipboardList className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+                </div>
+                <div className="md:flex-1">
+                  <p className="text-base md:text-lg font-medium text-foreground">1. Post your request</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Answer a few short filter questions with simple taps. We match you with helpers who meet your criteria.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4 md:flex-col md:items-center md:text-center">
+                <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Users className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+                </div>
+                <div className="md:flex-1">
+                  <p className="text-base md:text-lg font-medium text-foreground">2. Get matched</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Helpers in your area see your request and respond. You’ll see who’s available and interested.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4 md:flex-col md:items-center md:text-center">
+                <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <UserCheck className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+                </div>
+                <div className="md:flex-1">
+                  <p className="text-base md:text-lg font-medium text-foreground">3. Choose your helper</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Look at profiles and pick the person who fits you best. No pressure—you’re in control.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4 md:flex-col md:items-center md:text-center">
+                <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <MessageCircle className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+                </div>
+                <div className="md:flex-1">
+                  <p className="text-base md:text-lg font-medium text-foreground">4. Chat and confirm</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Message your helper to sort out details, schedule, and anything else. Confirm when you’re both ready.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4 md:flex-col md:items-center md:text-center">
+                <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+                </div>
+                <div className="md:flex-1">
+                  <p className="text-base md:text-lg font-medium text-foreground">5. You’re all set</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your helper comes at the agreed time. Relax—you’ve found the right person.
+                  </p>
                 </div>
               </div>
             </div>

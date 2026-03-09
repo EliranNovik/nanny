@@ -14,9 +14,9 @@ export function useUnreadCounts() {
       return;
     }
 
-    // Fetch unread notifications count (for freelancers only)
+    // Fetch unread notifications count (for incoming job requests)
     async function fetchUnreadNotifications() {
-      if (!user || !profile || profile.role !== "freelancer") {
+      if (!user || !profile) {
         setUnreadNotifications(0);
         return;
       }
@@ -44,7 +44,7 @@ export function useUnreadCounts() {
         const validNotifications = notifications.filter((notif: any) => {
           const job = notif.job_requests;
           if (!job || !job.confirm_ends_at) return false;
-          
+
           const endTime = new Date(job.confirm_ends_at).getTime();
           return endTime > now.getTime(); // Only count if not expired
         });
@@ -58,7 +58,7 @@ export function useUnreadCounts() {
     // Fetch unread messages count
     async function fetchUnreadMessages() {
       if (!user || !profile) return;
-      
+
       try {
         // Get all conversations for this user
         let conversations;
@@ -83,7 +83,7 @@ export function useUnreadCounts() {
 
         // Count unread messages (messages from other users that haven't been read)
         const conversationIds = conversations.map((c) => c.id);
-        
+
         // Get all messages in these conversations
         const { data: allMessages } = await supabase
           .from("messages")
@@ -110,11 +110,11 @@ export function useUnreadCounts() {
         const unreadCount = allMessages.filter((msg) => {
           const convo = convos.find((c) => c.id === msg.conversation_id);
           if (!convo) return false;
-          
-          const otherUserId = profile.role === "client" 
-            ? convo.freelancer_id 
+
+          const otherUserId = profile.role === "client"
+            ? convo.freelancer_id
             : convo.client_id;
-          
+
           return msg.sender_id === otherUserId && !msg.read_at;
         }).length;
 
@@ -128,23 +128,21 @@ export function useUnreadCounts() {
     fetchUnreadMessages();
 
     // Subscribe to real-time updates
-    const notificationsChannel = profile.role === "freelancer" 
-      ? supabase
-          .channel(`unread-notifications:${user.id}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "job_candidate_notifications",
-              filter: `freelancer_id=eq.${user.id}`,
-            },
-            () => {
-              fetchUnreadNotifications();
-            }
-          )
-          .subscribe()
-      : null;
+    const notificationsChannel = supabase
+      .channel(`unread-notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "job_candidate_notifications",
+          filter: `freelancer_id=eq.${user.id}`,
+        },
+        () => {
+          fetchUnreadNotifications();
+        }
+      )
+      .subscribe();
 
     const messagesChannel = supabase
       .channel(`unread-messages:${user.id}`)

@@ -2,6 +2,8 @@ import { supabaseAdmin } from "../supabase";
 
 type Job = {
   id: string;
+  client_id: string;
+  service_type?: string;
   children_count: number;
   children_age_group: string;
   location_city: string;
@@ -25,16 +27,17 @@ interface ProfileWithFreelancer {
   id: string;
   city: string;
   role: string;
+  categories?: string[];
   freelancer_profiles: FreelancerProfile | FreelancerProfile[] | null;
 }
 
 export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
-  // Pull freelancers in same city that are available_now and meet requirements.
+  // Pull freelancers OR available users in same city that are available_now and meet requirements.
   // For MVP, city match only. Later add geo radius.
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, city, role, freelancer_profiles!inner(*)")
-    .eq("role", "freelancer")
+    .select("id, city, role, is_available_for_jobs, categories, freelancer_profiles!inner(*)")
+    .or("role.eq.freelancer,is_available_for_jobs.eq.true")
     .eq("city", job.location_city)
     .eq("freelancer_profiles.available_now", true)
     .limit(limit);
@@ -46,10 +49,23 @@ export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
     // Handle Supabase join result - it may be an array or single object
     const fpRaw = row.freelancer_profiles;
     const fp: FreelancerProfile | null = Array.isArray(fpRaw) ? fpRaw[0] : fpRaw;
-    
+
     if (!fp) {
       console.log("[Match] Skipping", row.id, "- no freelancer_profiles");
       return false;
+    }
+
+    if (row.id === job.client_id) {
+      console.log("[Match] Skipping", row.id, "- user is the client");
+      return false;
+    }
+
+    // Check categories
+    if (job.service_type && row.categories && row.categories.length > 0) {
+      if (!row.categories.includes(job.service_type)) {
+        console.log("[Match] Skipping", row.id, "- category mismatch. Job:", job.service_type, "User:", row.categories);
+        return false;
+      }
     }
 
     // Check max children capacity

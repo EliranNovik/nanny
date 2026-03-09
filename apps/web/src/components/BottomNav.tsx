@@ -34,11 +34,7 @@ export function BottomNav() {
   }
 
   const notificationBadgeCount =
-    profile?.role === "client"
-      ? (totalConfirmations > 0 ? 1 : 0) + scheduleChanges
-      : profile?.role === "freelancer"
-        ? unreadNotifications
-        : 0;
+    (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications;
 
   const TopHeader = (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/60 dark:bg-background/60 backdrop-blur-md">
@@ -198,16 +194,17 @@ export function BottomNav() {
     );
   }
 
-  // Client navigation - show if profile exists OR if on client pages
-  if ((profile && profile.role === "client") || (!profile && location.pathname.startsWith("/client"))) {
-    const clientNav = [
-      { path: "/dashboard", icon: Home, label: "Dashboard" },
-      { path: "/client/active-jobs", icon: Briefcase, label: "Jobs" },
-      // { path: "/calendar", icon: Calendar, label: "Calendar" },
+  // User navigation (Client & Freelancer)
+  if ((profile && !profile.is_admin) || (!profile && (location.pathname.startsWith("/client") || location.pathname.startsWith("/freelancer")))) {
+    const isFreelancer = profile?.role === "freelancer";
+
+    const userNav = [
+      { path: isFreelancer ? "/freelancer/dashboard" : "/dashboard", icon: Home, label: isFreelancer ? "Home" : "Dashboard" },
+      { path: "/jobs", icon: Briefcase, label: "Jobs" },
       { path: "/messages", icon: MessageCircle, label: "Messages" },
-      // { path: "/payments", icon: CreditCard, label: "Payments" },
-      { path: "/client/profile", icon: User, label: "Profile" },
+      { path: isFreelancer ? "/freelancer/profile" : "/client/profile", icon: User, label: "Profile" },
     ];
+
     return (
       <>
         {TopHeader}
@@ -215,12 +212,15 @@ export function BottomNav() {
           <div className="max-w-2xl mx-auto px-4 pb-3">
             <div className="w-fit mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
               <div className="flex items-center justify-center min-w-max px-2 py-2 gap-1">
-                {clientNav.slice(0, 2).map((item) => {
+                {/* First two items */}
+                {userNav.slice(0, 2).map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname.startsWith(item.path);
-                  const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
-                  const totalJobsBadge = (totalConfirmations > 0 ? 1 : 0) + scheduleChanges;
-                  const showJobsBadge = item.path === "/client/active-jobs" && totalJobsBadge > 0;
+
+                  // Calculate badges for jobs tab
+                  const jobsBadgeCount = item.path === "/jobs"
+                    ? (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications
+                    : 0;
 
                   return (
                     <Link
@@ -236,36 +236,32 @@ export function BottomNav() {
                     >
                       <div className="relative">
                         <Icon className="w-6 h-6" />
-                        {showMessageBadge && (
+                        {jobsBadgeCount > 0 && (
                           <Badge
                             variant="destructive"
                             className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
                           >
-                            {unreadMessages > 9 ? "9+" : unreadMessages}
-                          </Badge>
-                        )}
-                        {showJobsBadge && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                          >
-                            {totalJobsBadge > 9 ? "9+" : totalJobsBadge}
+                            {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
                           </Badge>
                         )}
                       </div>
                     </Link>
                   );
                 })}
+
+                {/* Center Plus Button */}
                 <button
                   type="button"
                   onClick={() => navigate("/client/create")}
-                  className="flex items-center justify-center h-12 w-12 rounded-full flex-shrink-0 bg-orange-500 text-white hover:bg-orange-600 shadow-lg transition-colors"
+                  className="flex items-center justify-center h-12 w-12 rounded-full flex-shrink-0 bg-orange-500 text-white hover:bg-orange-600 shadow-lg transition-colors mx-2"
                   title="Find a helper"
                   aria-label="Find a helper"
                 >
                   <Plus className="w-7 h-7" />
                 </button>
-                {clientNav.slice(2).map((item) => {
+
+                {/* Last two items */}
+                {userNav.slice(2).map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname.startsWith(item.path);
                   const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
@@ -290,130 +286,6 @@ export function BottomNav() {
                             className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
                           >
                             {unreadMessages > 9 ? "9+" : unreadMessages}
-                          </Badge>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </nav>
-        {ProfileMenuModal}
-        <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
-      </>
-    );
-  }
-
-  // Admin navigation
-  if (profile && profile.is_admin) {
-    const adminNav = [
-      { path: "/admin", icon: Briefcase, label: "Admin" },
-      { path: "/messages", icon: MessageCircle, label: "Messages" },
-    ];
-
-    return (
-      <>
-        {TopHeader}
-        <nav className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-fit mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
-              <div className="flex items-center justify-center min-w-max px-2 py-2 gap-1">
-                {adminNav.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname.startsWith(item.path);
-
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={cn(
-"flex items-center justify-center py-2.5 px-3.5 rounded-full flex-shrink-0 transition-colors",
-                        isActive
-                          ? "text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      title={item.label}
-                    >
-                      <Icon className="w-6 h-6" />
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </nav>
-        {ProfileMenuModal}
-        <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
-      </>
-    );
-  }
-
-  // Freelancer navigation - show if profile exists OR if on freelancer pages
-  if ((profile && profile.role === "freelancer") || (!profile && location.pathname.startsWith("/freelancer"))) {
-    const freelancerNav = [
-      { path: "/freelancer/dashboard", icon: Home, label: "Home" },
-      { path: "/freelancer/notifications", icon: Bell, label: "Requests" },
-      { path: "/freelancer/active-jobs", icon: Briefcase, label: "Jobs" },
-      // { path: "/calendar", icon: Calendar, label: "Calendar" },
-      { path: "/messages", icon: MessageCircle, label: "Messages" },
-      // { path: "/payments", icon: CreditCard, label: "Payments" },
-      { path: "/freelancer/profile", icon: User, label: "Profile" },
-    ];
-
-    return (
-      <>
-        {TopHeader}
-        <nav className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-fit mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
-              <div className="flex items-center justify-center min-w-max px-2 py-2 gap-1">
-                {freelancerNav.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = item.path === "/freelancer/profile"
-                    ? location.pathname.startsWith(item.path)
-                    : location.pathname.startsWith(item.path);
-                  const showNotificationBadge = item.path === "/freelancer/notifications" && unreadNotifications > 0;
-                  const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
-                  const showScheduleBadge = item.path === "/freelancer/active-jobs" && scheduleChanges > 0;
-
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={cn(
-                        "flex items-center justify-center py-2.5 px-3.5 rounded-full flex-shrink-0 transition-colors relative",
-                        isActive
-                          ? "text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      title={item.label}
-                    >
-                      <div className="relative">
-                        <Icon className="w-6 h-6" />
-                        {showNotificationBadge && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                          >
-                            {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                          </Badge>
-                        )}
-                        {showMessageBadge && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                          >
-                            {unreadMessages > 9 ? "9+" : unreadMessages}
-                          </Badge>
-                        )}
-                        {showScheduleBadge && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
-                          >
-                            {scheduleChanges > 9 ? "9+" : scheduleChanges}
                           </Badge>
                         )}
                       </div>

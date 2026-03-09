@@ -26,6 +26,7 @@ import {
 import { getCityFromLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ServiceCategoriesPicker } from "@/components/ServiceCategoriesPicker";
 
 interface FreelancerData {
   bio: string;
@@ -62,6 +63,7 @@ export default function FreelancerProfilePage() {
   const [telegramUsername, setTelegramUsername] = useState("");
   const [shareWhatsapp, setShareWhatsapp] = useState(false);
   const [shareTelegram, setShareTelegram] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
   const hasFetchedRef = useRef<string | null>(null);
   const fetchingRef = useRef(false);
 
@@ -89,6 +91,7 @@ export default function FreelancerProfilePage() {
       setTelegramUsername(profile.telegram_username || "");
       setShareWhatsapp(profile.share_whatsapp || false);
       setShareTelegram(profile.share_telegram || false);
+      setCategories(profile.categories || []);
     }
   }, [profile]);
 
@@ -406,6 +409,9 @@ export default function FreelancerProfilePage() {
       if (shareTelegram !== (profile?.share_telegram || false)) {
         profileUpdates.share_telegram = shareTelegram;
       }
+      if (JSON.stringify(categories) !== JSON.stringify(profile?.categories || [])) {
+        profileUpdates.categories = categories;
+      }
 
       if (Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase.from("profiles").upsert({
@@ -711,6 +717,25 @@ export default function FreelancerProfilePage() {
                   onChange={(e) => updateField("bio", e.target.value)}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Service Categories */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="w-5 h-5 text-primary" />
+                Services Provided
+              </CardTitle>
+              <CardDescription>
+                Select all the types of services you can provide
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ServiceCategoriesPicker
+                selectedCategories={categories}
+                onChange={setCategories}
+              />
             </CardContent>
           </Card>
 

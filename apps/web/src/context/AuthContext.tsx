@@ -14,6 +14,8 @@ interface Profile {
   telegram_username?: string | null;
   share_whatsapp?: boolean;
   share_telegram?: boolean;
+  categories?: string[];
+  is_available_for_jobs?: boolean;
 }
 
 interface AuthContextType {

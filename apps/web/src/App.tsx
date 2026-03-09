@@ -18,12 +18,10 @@ import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
 import DashboardPage from "@/pages/client/DashboardPage";
 import ClientProfilePage from "@/pages/client/ClientProfilePage";
-import ActiveJobsPage from "@/pages/client/ActiveJobsPage";
 import MessagesPage from "@/pages/MessagesPage";
 import ProfilePage from "@/pages/freelancer/ProfilePage";
 import FreelancerDashboardPage from "@/pages/freelancer/DashboardPage";
-import NotificationsPage from "@/pages/freelancer/NotificationsPage";
-import FreelancerActiveJobsPage from "@/pages/freelancer/ActiveJobsPage";
+import UnifiedJobsPage from "@/pages/jobs/UnifiedJobsPage";
 import ChatPage from "@/pages/ChatPage";
 import CalendarPage from "@/pages/CalendarPage";
 import AdminPage from "@/pages/admin/AdminPage";
@@ -101,7 +99,7 @@ function AppRoutes() {
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>
         <Route path="/about" element={<AboutPage />} />
-      <Route path="/contact" element={<ContactPage />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/home" replace /> : <LoginPage />}
@@ -111,7 +109,7 @@ function AppRoutes() {
         {/* Client routes */}
         <Route
           path="/dashboard"
-        element={
+          element={
             <ProtectedRoute>
               <DashboardPage />
             </ProtectedRoute>
@@ -138,14 +136,6 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <ClientProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/active-jobs"
-          element={
-            <ProtectedRoute>
-              <ActiveJobsPage />
             </ProtectedRoute>
           }
         />
@@ -191,24 +181,19 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/freelancer/notifications"
-          element={
-            <ProtectedRoute>
-              <NotificationsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/freelancer/active-jobs"
-          element={
-            <ProtectedRoute>
-              <FreelancerActiveJobsPage />
-            </ProtectedRoute>
-          }
-        />
 
         {/* Shared routes */}
+        <Route
+          path="/jobs"
+          element={
+            <ProtectedRoute>
+              <UnifiedJobsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/client/active-jobs" element={<Navigate to="/jobs" replace />} />
+        <Route path="/freelancer/active-jobs" element={<Navigate to="/jobs" replace />} />
+        <Route path="/freelancer/notifications" element={<Navigate to="/jobs" replace />} />
         <Route
           path="/calendar"
           element={

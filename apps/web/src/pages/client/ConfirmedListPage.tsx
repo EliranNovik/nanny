@@ -11,23 +11,49 @@ import {
   Loader2,
   MapPin,
   Clock,
-  CheckCircle2,
   MessageCircle,
-  Heart,
   RotateCcw,
   StopCircle,
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import JobFollowUpSection, {
-  HOME_SIZES,
-  COOKING_WHO_FOR,
-  DELIVERY_WEIGHTS,
-  NANNY_AGE_GROUPS,
-  MOBILITY_LEVELS
-} from "@/components/JobFollowUpSection";
+import { Textarea } from "@/components/ui/textarea";
 import JobMap from "@/components/JobMap";
+
+export const HOME_SIZES = [
+  { id: '1_room', label: '1 Room' },
+  { id: '2_rooms', label: '2 Rooms' },
+  { id: '3_rooms', label: '3 Rooms' },
+  { id: '4_rooms', label: '4 Rooms' },
+  { id: '5_plus_rooms', label: '5+ Rooms' },
+];
+
+export const COOKING_WHO_FOR = [
+  { id: 'kids', label: 'Kids' },
+  { id: 'adults', label: 'Adults' },
+  { id: 'family', label: 'Family' },
+];
+
+export const DELIVERY_WEIGHTS = [
+  { id: 'light', label: 'Light (up to 5kg)' },
+  { id: 'medium', label: 'Medium (5-15kg)' },
+  { id: 'heavy', label: 'Heavy (15kg+)' },
+];
+
+export const NANNY_AGE_GROUPS = [
+  { id: '0_1', label: '0-1 years' },
+  { id: '1_3', label: '1-3 years' },
+  { id: '3_6', label: '3-6 years' },
+  { id: '6_plus', label: '6+ years' },
+];
+
+export const MOBILITY_LEVELS = [
+  { id: 'independent', label: 'Independent' },
+  { id: 'needs_assistance', label: 'Needs Assistance' },
+  { id: 'wheelchair', label: 'Wheelchair Bound' },
+  { id: 'bedridden', label: 'Bedridden' },
+];
 
 interface FreelancerProfile {
   bio: string | null;
@@ -66,10 +92,8 @@ export default function ConfirmedListPage() {
   const [restarting, setRestarting] = useState(false);
   const [startTime] = useState(Date.now());
   const [job, setJob] = useState<any>((location.state as any)?.job || null);
-
-  // Get service details from job state
-  const serviceType = job?.service_type;
-  const serviceDetails = job?.service_details;
+  const [customDetails, setCustomDetails] = useState("");
+  const [savingDetails, setSavingDetails] = useState(false);
 
   async function fetchConfirmed() {
     try {
@@ -125,6 +149,33 @@ export default function ConfirmedListPage() {
       console.error("Error fetching job directly:", e);
     }
   }
+
+  const handleSaveDetails = async () => {
+    if (!jobId || !customDetails.trim()) return;
+    setSavingDetails(true);
+    try {
+      const currentDetails = job?.service_details || {};
+      const updatedDetails = {
+        ...currentDetails,
+        custom: customDetails
+      };
+
+      const { error } = await supabase
+        .from('job_requests')
+        .update({ service_details: updatedDetails })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      addToast({ title: "Details Saved", description: "Your custom details have been added to the request.", variant: "default" });
+      fetchJobDirectly();
+    } catch (err: any) {
+      console.error("[ConfirmedListPage] Error saving details:", err);
+      addToast({ title: "Failed to save details", description: err.message || "An error occurred.", variant: "error" });
+    } finally {
+      setSavingDetails(false);
+    }
+  };
 
   useEffect(() => {
     if (!jobId) return;
@@ -393,7 +444,13 @@ export default function ConfirmedListPage() {
                       )}
                       {job.service_type === 'other_help' && job.service_details?.mobility_level && (
                         <div>
-                          <span>{MOBILITY_LEVELS.find(l => l.id === job.service_details.mobility_level)?.label || job.service_details.mobility_level.replace(/_/g, ' ')}</span>
+                          <span>{job.service_details.mobility_level.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                      {job.service_details?.custom && (
+                        <div className="col-span-1 border-t border-border/20 pt-2 mt-2 w-full">
+                          <span className="font-semibold block mb-1">Custom Notes:</span>
+                          <span className="whitespace-pre-wrap leading-tight">{job.service_details.custom}</span>
                         </div>
                       )}
                     </div>
@@ -423,16 +480,31 @@ export default function ConfirmedListPage() {
           </Card>
         )}
 
-        {/* Follow-up Section */}
-        {
-          serviceType && jobId && (
-            <JobFollowUpSection
-              jobId={jobId}
-              serviceType={serviceType}
-              otherType={serviceDetails?.other_type}
-              onUpdate={fetchJobDirectly}
-              initialDetails={job?.service_details}
-            />
+        {/* Additional Details Section */
+          job && (
+            <Card className="mb-6 shadow-sm border border-border/50">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-primary" />
+                  Additional Job Details
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Add any extra details, instructions, or requirements for this job. These will be visible to helpers.
+                </p>
+                <Textarea
+                  placeholder={job?.service_details?.custom || "Type your custom job details here..."}
+                  className="min-h-[100px] mb-4 bg-muted/30 focus-visible:bg-background resize-y"
+                  value={customDetails}
+                  onChange={(e) => setCustomDetails(e.target.value)}
+                />
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveDetails} disabled={savingDetails || !customDetails.trim()}>
+                    {savingDetails ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    Save Details
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )
         }
 
@@ -444,139 +516,148 @@ export default function ConfirmedListPage() {
           )
         }
 
-        {/* Freelancer Cards */}
-        <div className="space-y-4 animate-stagger">
-          {freelancers.map((freelancer) => {
-            const fp = freelancer.freelancer_profiles;
-            const initials = freelancer.full_name
-              ?.split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase() || "?";
+        {/* Freelancer Cards - horizontal scroll, one card at a time */}
+        {freelancers.length > 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-medium text-muted-foreground">
+              {freelancers.length} helper{freelancers.length !== 1 ? "s" : ""} available
+            </span>
+            {freelancers.length > 1 && (
+              <Badge variant="secondary" className="text-xs">
+                +{freelancers.length - 1} more
+              </Badge>
+            )}
+          </div>
+        )}
+        <div
+          className={cn(
+            "flex gap-4 overflow-x-auto overflow-y-hidden pb-2 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth",
+            freelancers.length === 0 && "hidden"
+          )}
+          style={{
+            scrollbarWidth: "thin",
+          }}
+        >
+          <div
+            className="flex gap-4 flex-shrink-0"
+            style={{
+              width: freelancers.length > 0
+                ? `calc(${freelancers.length} * 100% + ${(freelancers.length - 1) * 16}px)`
+                : undefined,
+            }}
+          >
+            {freelancers.map((freelancer) => {
+              const fp = freelancer.freelancer_profiles;
+              const initials = freelancer.full_name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase() || "?";
 
-            return (
-              <Card
-                key={freelancer.id}
-                className="border-0 shadow-lg overflow-hidden"
-              >
-                <CardContent className="p-0">
-                  <div className="p-6">
-                    <div className="flex gap-4">
-                      <Avatar className="w-16 h-16 border-2 border-primary/20">
-                        <AvatarImage src={freelancer.photo_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
+              return (
+                <Card
+                  key={freelancer.id}
+                  className="border-0 shadow-lg overflow-hidden flex-shrink-0 snap-start flex flex-col"
+                  style={{
+                    width: freelancers.length > 0 ? `calc((100% - ${(freelancers.length - 1) * 16}px) / ${freelancers.length})` : undefined,
+                  }}
+                >
+                  <CardContent className="p-0">
+                    <div className="p-6">
+                      <div className="flex gap-4">
+                        <Avatar className="w-16 h-16 border-2 border-primary/20">
+                          <AvatarImage src={freelancer.photo_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="font-semibold text-lg">
-                              {freelancer.full_name}
-                            </h3>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {freelancer.city || "Location not set"}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="font-semibold text-lg">
+                                {freelancer.full_name}
+                              </h3>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                <MapPin className="w-3.5 h-3.5" />
+                                {freelancer.city || "Location not set"}
+                              </div>
                             </div>
+
+                            <StarRating
+                              rating={fp?.rating_avg || 0}
+                              totalRatings={fp?.rating_count || 0}
+                              size="sm"
+                              showCount={true}
+                            />
                           </div>
 
-                          <StarRating
-                            rating={fp?.rating_avg || 0}
-                            totalRatings={fp?.rating_count || 0}
-                            size="sm"
-                            showCount={true}
-                          />
-                        </div>
-
-                        {/* Badges */}
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {fp?.has_first_aid && (
-                            <Badge variant="success">🩹 First Aid</Badge>
-                          )}
-                          {fp?.newborn_experience && (
-                            <Badge variant="secondary">👶 Newborn Exp.</Badge>
-                          )}
-                          {fp?.special_needs_experience && (
-                            <Badge variant="secondary">💜 Special Needs</Badge>
-                          )}
-                        </div>
-
-                        {/* Rate */}
-                        {(fp?.hourly_rate_min || fp?.hourly_rate_max) && (
-                          <div className="mt-3 text-sm">
-                            <span className="text-muted-foreground">Rate: </span>
-                            <span className="font-semibold text-foreground">
-                              {fp.hourly_rate_min && fp.hourly_rate_max
-                                ? `₪${fp.hourly_rate_min}-${fp.hourly_rate_max}/hr`
-                                : fp.hourly_rate_min
-                                  ? `From ₪${fp.hourly_rate_min}/hr`
-                                  : `Up to ₪${fp.hourly_rate_max}/hr`}
-                            </span>
+                          {/* Certificates (left) and Rate (right) */}
+                          <div className="flex items-center justify-between gap-4 mt-3">
+                            <div className="flex flex-wrap gap-2">
+                              {fp?.has_first_aid && (
+                                <Badge variant="success">🩹 First Aid</Badge>
+                              )}
+                              {fp?.newborn_experience && (
+                                <Badge variant="secondary">👶 Newborn Exp.</Badge>
+                              )}
+                              {fp?.special_needs_experience && (
+                                <Badge variant="secondary">💜 Special Needs</Badge>
+                              )}
+                            </div>
+                            {(fp?.hourly_rate_min || fp?.hourly_rate_max) && (
+                              <div className="text-sm flex-shrink-0">
+                                <span className="text-muted-foreground">Rate: </span>
+                                <span className="font-semibold text-foreground">
+                                  {fp.hourly_rate_min && fp.hourly_rate_max
+                                    ? `₪${fp.hourly_rate_min}-${fp.hourly_rate_max}/hr`
+                                    : fp.hourly_rate_min
+                                      ? `From ₪${fp.hourly_rate_min}/hr`
+                                      : `Up to ₪${fp.hourly_rate_max}/hr`}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        )}
 
-                        {/* Bio */}
-                        {fp?.bio && (
-                          <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
-                            {fp.bio}
-                          </p>
-                        )}
-
-                        {/* Confirmation Note */}
-                        {freelancer.confirmation_note && (
-                          <div className={cn(
-                            "mt-4 p-3 rounded-lg border",
-                            freelancer.is_open_job_accepted
-                              ? "bg-amber-500/10 border-amber-500/20"
-                              : "bg-primary/10 border-primary/20"
-                          )}>
-                            <p className={cn(
-                              "text-xs font-medium mb-1",
-                              freelancer.is_open_job_accepted
-                                ? "text-amber-700 dark:text-amber-400"
-                                : "text-primary"
-                            )}>
-                              Note from nanny:
+                          {/* Bio */}
+                          {fp?.bio && (
+                            <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
+                              {fp.bio}
                             </p>
-                            <p className={cn(
-                              "text-sm",
+                          )}
+
+                          {/* Confirmation Note */}
+                          {freelancer.confirmation_note && (
+                            <div className={cn(
+                              "mt-4 p-3 rounded-lg border",
                               freelancer.is_open_job_accepted
-                                ? "text-amber-800 dark:text-amber-300"
-                                : "text-foreground"
+                                ? "bg-amber-500/10 border-amber-500/20"
+                                : "bg-primary/10 border-primary/20"
                             )}>
-                              {freelancer.confirmation_note}
-                            </p>
-                          </div>
-                        )}
+                              <p className={cn(
+                                "text-xs font-medium mb-1",
+                                freelancer.is_open_job_accepted
+                                  ? "text-amber-700 dark:text-amber-400"
+                                  : "text-primary"
+                              )}>
+                                Note from nanny:
+                              </p>
+                              <p className={cn(
+                                "text-sm",
+                                freelancer.is_open_job_accepted
+                                  ? "text-amber-800 dark:text-amber-300"
+                                  : "text-foreground"
+                              )}>
+                                {freelancer.confirmation_note}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Action Bar */}
-                  <div className="px-6 py-4 bg-muted/50 border-t flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm">
-                      {freelancer.is_open_job_accepted ? (
-                        <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          Open Job Acceptance
-                        </span>
-                      ) : (
-                        <span className="text-primary flex items-center gap-1">
-                          <CheckCircle2 className="w-4 h-4" />
-                          Available Now
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                      >
-                        <Heart className="w-4 h-4" />
-                        Save
-                      </Button>
+                    {/* Action Bar: Decline left, Select right */}
+                    <div className="px-6 py-4 bg-muted/50 border-t flex items-center justify-between gap-4">
                       <Button
                         variant="outline"
                         size="sm"
@@ -605,15 +686,15 @@ export default function ConfirmedListPage() {
                         Select & Chat
                       </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
         {/* Empty State - removed windowEnded check since jobs stay open */}
-        <Card className="border-0 shadow-lg text-center py-12">
+        <Card className="border-0 shadow-lg text-center py-12 mt-10">
           <CardContent>
             <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
               <Clock className="w-8 h-8 text-muted-foreground" />
