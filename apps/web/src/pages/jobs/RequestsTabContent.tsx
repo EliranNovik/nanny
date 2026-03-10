@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     Bell, Clock, MapPin, CheckCircle2, Loader2, XCircle,
-    Briefcase, Hourglass, Repeat, Baby, ArrowUpCircle, ArrowDownCircle, Package, Home, AlignLeft
+    Briefcase, Hourglass, Repeat, Baby, ArrowUpCircle, ArrowDownCircle, Package, Home, AlignLeft,
+    Sparkles, UtensilsCrossed, Truck, HelpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import JobMap from "@/components/JobMap";
@@ -60,10 +61,10 @@ function formatServiceDetails(details: any, serviceType?: string) {
     if (serviceType === 'pickup_delivery') {
         return (
             <>
-                {details.from_address && <div className="flex items-start gap-2 col-span-2 xl:col-span-1"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight">{details.from_address} (From)</span></div>}
-                {details.to_address && <div className="flex items-start gap-2 col-span-2 xl:col-span-1"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight">{details.to_address} (To)</span></div>}
-                {details.weight && <div className="flex items-start sm:items-center gap-2 col-span-2 xl:col-span-1"><Package className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize">{formatValue(details.weight)} kg weight</span></div>}
-                {details.custom && <div className="col-span-2 flex flex-col gap-1 mt-1 border-t border-border/20 pt-2 w-full"><span className="font-semibold text-foreground/70 text-sm">Notes:</span><span className="text-foreground font-medium whitespace-pre-wrap">{details.custom}</span></div>}
+                {details.from_address && <div className="flex items-start gap-2 col-span-1"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm">{details.from_address} (From)</span></div>}
+                {details.to_address && <div className="flex items-start gap-2 col-span-1"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm">{details.to_address} (To)</span></div>}
+                {details.weight && <div className="flex items-center gap-2 col-span-1"><Package className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
+                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted/50 rounded-xl px-3.5 py-2.5 border border-border/30"><span className="font-semibold text-foreground/60 text-xs uppercase tracking-wider">Notes</span><span className="text-foreground/90 text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
             </>
         );
     }
@@ -71,8 +72,8 @@ function formatServiceDetails(details: any, serviceType?: string) {
     if (serviceType === 'cleaning') {
         return (
             <>
-                {details.home_size && <div className="flex items-center gap-2 col-span-2 xl:col-span-1"><Home className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize">{formatValue(details.home_size)} size</span></div>}
-                {details.custom && <div className="col-span-2 flex flex-col gap-1 mt-1 border-t border-border/20 pt-2 w-full"><span className="font-semibold text-foreground/70 text-sm">Notes:</span><span className="text-foreground font-medium whitespace-pre-wrap">{details.custom}</span></div>}
+                {details.home_size && <div className="flex items-center gap-2 col-span-1"><Home className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.home_size)} size</span></div>}
+                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted/50 rounded-xl px-3.5 py-2.5 border border-border/30"><span className="font-semibold text-foreground/60 text-xs uppercase tracking-wider">Notes</span><span className="text-foreground/90 text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
             </>
         )
     }
@@ -85,16 +86,16 @@ function formatServiceDetails(details: any, serviceType?: string) {
                 // hide raw coordinates if they exist
                 if (key === 'from_lat' || key === 'from_lng' || key === 'to_lat' || key === 'to_lng') return null;
                 return (
-                    <div key={key} className="flex items-start sm:items-center gap-2 col-span-2 xl:col-span-1">
+                    <div key={key} className="flex items-center gap-2 col-span-1">
                         <AlignLeft className="w-4 h-4 text-primary/70 flex-shrink-0" />
-                        <span className="font-medium text-foreground capitalize">{formatValue(value)} {key.replace(/_/g, ' ')}</span>
+                        <span className="font-medium text-foreground capitalize text-sm">{formatValue(value)} {key.replace(/_/g, ' ')}</span>
                     </div>
                 );
             })}
             {details.custom && (
-                <div className="col-span-2 flex flex-col gap-1 mt-1 border-t border-border/20 pt-2 w-full">
-                    <span className="font-semibold text-foreground/70 text-sm">Notes:</span>
-                    <span className="text-foreground font-medium whitespace-pre-wrap">{details.custom}</span>
+                <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted/50 rounded-xl px-3.5 py-2.5 border border-border/30">
+                    <span className="font-semibold text-foreground/60 text-xs uppercase tracking-wider">Notes</span>
+                    <span className="text-foreground/90 text-sm font-medium whitespace-pre-wrap">{details.custom}</span>
                 </div>
             )}
         </>
@@ -112,6 +113,7 @@ export default function RequestsTabContent() {
 
     const [myOpenRequests, setMyOpenRequests] = useState<JobRequest[]>([]);
     const [inboundNotifications, setInboundNotifications] = useState<InboundNotification[]>([]);
+    const [myProfile, setMyProfile] = useState<{ photo_url: string | null; full_name: string | null } | null>(null);
 
     useEffect(() => {
         async function loadRequests() {
@@ -126,6 +128,14 @@ export default function RequestsTabContent() {
                     .order("created_at", { ascending: false });
 
                 setMyOpenRequests(openJobs || []);
+
+                // Fetch own profile photo
+                const { data: profileData } = await supabase
+                    .from("profiles")
+                    .select("photo_url, full_name")
+                    .eq("id", user.id)
+                    .single();
+                if (profileData) setMyProfile(profileData);
 
                 // 2. Fetch Inbound -> Notifications where I am the candidate
                 const { data: notificationsData } = await supabase
@@ -267,6 +277,15 @@ export default function RequestsTabContent() {
         return "Service Request";
     }
 
+    function getServiceIcon(serviceType?: string) {
+        if (serviceType === 'cleaning') return <Sparkles className="w-3.5 h-3.5" />;
+        if (serviceType === 'cooking') return <UtensilsCrossed className="w-3.5 h-3.5" />;
+        if (serviceType === 'pickup_delivery') return <Truck className="w-3.5 h-3.5" />;
+        if (serviceType === 'nanny') return <Baby className="w-3.5 h-3.5" />;
+        if (serviceType === 'other_help') return <HelpCircle className="w-3.5 h-3.5" />;
+        return <Baby className="w-3.5 h-3.5" />;
+    }
+
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
     return (
@@ -293,14 +312,14 @@ export default function RequestsTabContent() {
                                         )}>
                                             <div className="flex items-center gap-2">
                                                 {isDeclined ? (
-                                                    <><XCircle className="w-5 h-5 text-red-500" /><span className="text-base font-bold text-red-600">Declined</span></>
+                                                    <><XCircle className="w-4 h-4 text-red-500" /><span className="text-sm font-semibold text-red-600">Declined</span></>
                                                 ) : isConfirmed ? (
-                                                    <><CheckCircle2 className="w-5 h-5 text-emerald-500" /><span className="text-base font-bold text-emerald-600">Confirmed!</span></>
+                                                    <><CheckCircle2 className="w-4 h-4 text-emerald-500" /><span className="text-sm font-semibold text-emerald-600">Confirmed!</span></>
                                                 ) : (
-                                                    <><Clock className="w-5 h-5 text-primary" /><span className="text-base font-bold text-primary">Pending Response</span></>
+                                                    <><Clock className="w-4 h-4 text-primary" /><span className="text-sm font-semibold text-primary">Pending Response</span></>
                                                 )}
                                             </div>
-                                            <Badge variant={isDeclined ? "destructive" : "default"} className="text-sm px-3 py-1 shadow-sm font-semibold">{formatJobTitle(job)}</Badge>
+                                            <Badge variant={isDeclined ? "destructive" : "default"} className="flex items-center gap-1 text-xs px-2.5 py-0.5 shadow-sm font-semibold">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
                                         </div>
 
                                         <div className="px-5 py-4 border-b border-border/40">
@@ -340,23 +359,23 @@ export default function RequestsTabContent() {
                                                     </div>
                                                 )}
                                                 {job.care_type && (
-                                                    <div className="flex items-center gap-2 col-span-2 xl:col-span-1">
-                                                        <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize">{job.care_type.replace('_', ' ')} type</span>
+                                                    <div className="flex items-center gap-2 col-span-1">
+                                                        <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
                                                     </div>
                                                 )}
                                                 {job.time_duration && (
-                                                    <div className="flex items-center gap-2 col-span-2 xl:col-span-1">
-                                                        <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground">{job.time_duration.replace(/_/g, '-')} duration</span>
+                                                    <div className="flex items-center gap-2 col-span-1">
+                                                        <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground text-sm">{job.time_duration.replace(/_/g, '-')}</span>
                                                     </div>
                                                 )}
                                                 {job.care_frequency && (
-                                                    <div className="flex items-center gap-2 col-span-2 xl:col-span-1">
-                                                        <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize">{job.care_frequency.replace(/_/g, ' ')} frequency</span>
+                                                    <div className="flex items-center gap-2 col-span-1">
+                                                        <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
                                                     </div>
                                                 )}
                                                 {job.children_count ? (
-                                                    <div className="flex items-center gap-2 col-span-2 xl:col-span-1">
-                                                        <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
+                                                    <div className="flex items-center gap-2 col-span-1">
+                                                        <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
                                                     </div>
                                                 ) : null}
                                                 {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
@@ -424,19 +443,19 @@ export default function RequestsTabContent() {
                                 <CardContent className="p-0">
                                     <div className="px-5 py-3 flex items-center justify-between border-b border-border/30 bg-primary/5">
                                         <div className="flex items-center gap-2">
-                                            <Clock className="w-5 h-5 text-primary" />
-                                            <span className="text-base font-bold text-primary">{getJobStatusBadge(job.status)}</span>
+                                            <Clock className="w-4 h-4 text-primary" />
+                                            <span className="text-sm font-semibold text-primary">{getJobStatusBadge(job.status)}</span>
                                         </div>
-                                        <Badge variant="default" className="text-sm px-3 py-1 shadow-sm font-semibold">{formatJobTitle(job)}</Badge>
+                                        <Badge variant="default" className="flex items-center gap-1 text-xs px-2.5 py-0.5 shadow-sm font-semibold">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
                                     </div>
                                     <div className="px-5 py-4 border-b border-border/40">
                                         <div className="flex items-center gap-3.5">
                                             <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
-                                                <AvatarImage src={user?.user_metadata?.avatar_url || undefined} className="object-cover" />
-                                                <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{user?.email?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
+                                                <AvatarImage src={myProfile?.photo_url || undefined} className="object-cover" />
+                                                <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{(myProfile?.full_name || user?.email || "M").charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex flex-col gap-1">
-                                                <p className="font-bold text-xl leading-tight text-foreground">My Request</p>
+                                                <p className="font-semibold text-base leading-tight text-foreground">My Request</p>
                                                 <div className="flex items-center gap-2 mt-0.5 text-sm text-muted-foreground font-medium">
                                                     <MapPin className="w-4 h-4 text-primary/70" /> {job.location_city}
                                                     <span className="mx-1 opacity-50">•</span>
@@ -458,23 +477,23 @@ export default function RequestsTabContent() {
                                                 </div>
                                             )}
                                             {job.care_type && (
-                                                <div className="flex items-center gap-2 col-span-2 xl:col-span-1">
-                                                    <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize">{job.care_type.replace('_', ' ')} type</span>
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
                                                 </div>
                                             )}
                                             {job.time_duration && (
-                                                <div className="flex items-center gap-2 col-span-2 xl:col-span-1">
-                                                    <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground">{job.time_duration.replace(/_/g, '-')} duration</span>
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground text-sm">{job.time_duration.replace(/_/g, '-')}</span>
                                                 </div>
                                             )}
                                             {job.care_frequency && (
-                                                <div className="flex items-center gap-2 col-span-2 xl:col-span-1">
-                                                    <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize">{job.care_frequency.replace(/_/g, ' ')} frequency</span>
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
                                                 </div>
                                             )}
                                             {job.children_count ? (
-                                                <div className="flex items-center gap-2 col-span-2 xl:col-span-1">
-                                                    <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
                                                 </div>
                                             ) : null}
                                             {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
