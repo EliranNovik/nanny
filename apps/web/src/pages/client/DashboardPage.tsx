@@ -3,34 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Baby,
-  Sparkles,
-  Clock,
-  MapPin,
-  MessageCircle,
-  ArrowRight,
-  Loader2,
-  Users,
-  Calendar as CalendarIcon,
-  Bell,
-  ChevronRight
+  Baby, Sparkles, Clock, MapPin, ArrowRight, Loader2, Bell, Briefcase,
+  UtensilsCrossed, Truck, HelpCircle, Calendar, Repeat,
+  Hourglass, MessageCircle, ChevronRight
 } from "lucide-react";
-import { getJobStageBadge } from "@/lib/jobStages";
+import { cn } from "@/lib/utils";
+import { StarRating } from "@/components/StarRating";
 
 interface JobRequest {
   id: string;
   status: string;
-  stage: string | null;
-  care_type: string;
-  children_count: number;
-  children_age_group: string;
+  client_id: string;
+  selected_freelancer_id: string | null;
+  care_type?: string;
+  children_count?: number;
+  children_age_group?: string;
   location_city: string;
   start_at: string | null;
-  selected_freelancer_id: string | null;
   created_at: string;
   service_type?: string;
   service_details?: any;
@@ -38,368 +31,182 @@ interface JobRequest {
   care_frequency?: string;
 }
 
-interface Conversation {
+interface Invitation {
   id: string;
   job_id: string;
-  freelancer_id: string;
+  status: string;
   created_at: string;
-  freelancer_profile?: {
-    full_name: string | null;
-    photo_url: string | null;
-  };
-  last_message?: {
-    body: string;
-    created_at: string;
+  isConfirmed?: boolean;
+  isDeclined?: boolean;
+  job_requests: JobRequest & {
+    profiles?: { full_name: string | null; photo_url: string | null };
   };
 }
 
-type DashboardState = "first_time" | "job_in_progress" | "job_matched" | "no_active_job";
+interface Profile {
+  full_name: string | null;
+  photo_url: string | null;
+  average_rating?: number;
+  total_ratings?: number;
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  // Try to load cached data immediately for instant rendering
-  const getCachedDashboardData = () => {
-    try {
-      const cached = localStorage.getItem(`dashboard_${user?.id}`);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        // Use cache if less than 30 seconds old
-        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
-          return parsed.data;
-        }
-      }
-    } catch (e) {
-      // Ignore cache errors
-    }
-    return null;
-  };
 
-  const cachedData = user ? getCachedDashboardData() : null;
-  const [loading, setLoading] = useState(!cachedData); // Only show loading if no cache
-  const [activeJob, setActiveJob] = useState<JobRequest | null>(cachedData?.activeJob || null);
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(cachedData?.activeConversation || null);
-  const [selectedFreelancer, setSelectedFreelancer] = useState<{ full_name: string | null; photo_url: string | null } | null>(cachedData?.selectedFreelancer || null);
-  const [dashboardState, setDashboardState] = useState<DashboardState>(cachedData?.dashboardState || "first_time");
-  const [nextAppointment, setNextAppointment] = useState<JobRequest & { freelancer_profile?: { full_name: string | null; photo_url: string | null } } | null>(cachedData?.nextAppointment || null);
-  const [latestRequests, setLatestRequests] = useState<JobRequest[]>(cachedData?.latestRequests || []);
-  const [confirmationCounts, setConfirmationCounts] = useState<Record<string, number>>(cachedData?.confirmationCounts || {});
+  const [loading, setLoading] = useState(true);
+  const [activeJob, setActiveJob] = useState<JobRequest | null>(null);
+  const [selectedFreelancer, setSelectedFreelancer] = useState<Profile | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [lastConversation, setLastConversation] = useState<{
+    id: string;
+    otherName: string | null;
+    otherPhoto: string | null;
+    lastMessage: string | null;
+    lastMessageTime: string | null;
+  } | null>(null);
+  const [myRequests, setMyRequests] = useState<JobRequest[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [requestsTab, setRequestsTab] = useState<"my" | "invitations">("my");
 
   useEffect(() => {
-    async function loadDashboard() {
+    async function load() {
       if (!user) return;
-
       try {
-        // Fetch user's jobs
+        // Active job
         const { data: jobs } = await supabase
           .from("job_requests")
           .select("*")
           .eq("client_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (!jobs) return;
-
-        // Find truly active job — only where a freelancer has been matched & accepted
-        const active = jobs.find(
-          (j) => j.status === "locked" || j.status === "active"
-        );
-
-        // Past jobs (completed or cancelled)
-        const past = jobs.filter((j) =>
-          ["completed", "cancelled"].includes(j.status)
-        );
-
-        setActiveJob(active || null);
-
-        // Fetch selected freelancer profile if job has one
-        let freelancerProfileData: { full_name: string | null; photo_url: string | null } | null = null;
-        if (active?.selected_freelancer_id) {
-          const { data: freelancerProfile } = await supabase
-            .from("profiles")
-            .select("full_name, photo_url")
-            .eq("id", active.selected_freelancer_id)
-            .single();
-
-          if (freelancerProfile) {
-            freelancerProfileData = {
-              full_name: freelancerProfile.full_name,
-              photo_url: freelancerProfile.photo_url,
-            };
-            setSelectedFreelancer(freelancerProfileData);
-          } else {
-            setSelectedFreelancer(null);
-          }
-        } else {
-          setSelectedFreelancer(null);
-        }
-
-        // If active job is locked/matched or active, fetch conversation
-        let convo: any = null;
-        let lastMessage: any = null;
-        if (active && (active.status === "locked" || active.status === "active") && active.selected_freelancer_id) {
-          const { data: convoData } = await supabase
-            .from("conversations")
-            .select("id, job_id, freelancer_id, created_at")
-            .eq("job_id", active.id)
-            .maybeSingle();
-
-          convo = convoData;
-
-          if (convo) {
-            // Fetch last message
-            const { data: lastMessageData } = await supabase
-              .from("messages")
-              .select("body, created_at")
-              .eq("conversation_id", convo.id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            lastMessage = lastMessageData;
-
-            setActiveConversation({
-              id: convo.id,
-              job_id: convo.job_id,
-              freelancer_id: convo.freelancer_id,
-              created_at: convo.created_at,
-              freelancer_profile: freelancerProfileData || {
-                full_name: null,
-                photo_url: null,
-              },
-              last_message: lastMessage || undefined,
-            });
-          }
-        } else {
-          setActiveConversation(null);
-        }
-
-        // Determine dashboard state
-        if (!active) {
-          setDashboardState(past.length > 0 ? "no_active_job" : "first_time");
-        } else if (active.status === "locked") {
-          setDashboardState("job_matched");
-        } else {
-          setDashboardState("job_in_progress");
-        }
-
-        // Fetch next scheduled appointment (earliest future appointment)
-        const now = new Date().toISOString();
-        const { data: scheduledJobs } = await supabase
-          .from("job_requests")
-          .select("*")
-          .eq("client_id", user.id)
           .in("status", ["locked", "active"])
-          .not("start_at", "is", null)
-          .gte("start_at", now)
-          .order("start_at", { ascending: true })
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const job = jobs?.[0] || null;
+        setActiveJob(job);
+
+        if (job?.selected_freelancer_id) {
+          const { data: fp } = await supabase
+            .from("profiles")
+            .select("full_name, photo_url, average_rating, total_ratings")
+            .eq("id", job.selected_freelancer_id)
+            .single();
+          setSelectedFreelancer(fp || null);
+
+          const { data: conv } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("job_id", job.id)
+            .maybeSingle();
+          setActiveConversationId(conv?.id || null);
+        }
+
+        // Latest conversation (most recent, any job)
+        const { data: convRows } = await supabase
+          .from("conversations")
+          .select("id, job_id, freelancer_id")
+          .eq("client_id", user.id)
+          .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (scheduledJobs) {
-          // Fetch freelancer profile if job has one
-          let freelancerProfileData: { full_name: string | null; photo_url: string | null } | null = null;
-          if (scheduledJobs.selected_freelancer_id) {
-            const { data: freelancerProfile } = await supabase
-              .from("profiles")
-              .select("id, full_name, photo_url")
-              .eq("id", scheduledJobs.selected_freelancer_id)
-              .single();
-
-            if (freelancerProfile) {
-              freelancerProfileData = {
-                full_name: freelancerProfile.full_name,
-                photo_url: freelancerProfile.photo_url,
-              };
-            }
-          }
-
-          setNextAppointment({
-            ...scheduledJobs,
-            freelancer_profile: freelancerProfileData || undefined,
+        if (convRows) {
+          const { data: otherProfile } = await supabase
+            .from("profiles")
+            .select("full_name, photo_url")
+            .eq("id", convRows.freelancer_id)
+            .single();
+          const { data: lastMsg } = await supabase
+            .from("messages")
+            .select("body, created_at")
+            .eq("conversation_id", convRows.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          setLastConversation({
+            id: convRows.id,
+            otherName: otherProfile?.full_name || null,
+            otherPhoto: otherProfile?.photo_url || null,
+            lastMessage: lastMsg?.body || null,
+            lastMessageTime: lastMsg?.created_at || null,
           });
-        } else {
-          setNextAppointment(null);
         }
 
-        // Fetch latest open requests (ready, notifying, confirmations_closed)
-        const { data: openRequests } = await supabase
+        // My open requests
+        const { data: openReqs } = await supabase
           .from("job_requests")
           .select("*")
           .eq("client_id", user.id)
           .in("status", ["ready", "notifying", "confirmations_closed"])
           .order("created_at", { ascending: false })
-          .limit(5);
+          .limit(3);
+        setMyRequests(openReqs || []);
 
-        setLatestRequests(openRequests || []);
+        // Invitations sent to this user as a freelancer candidate
+        const { data: notifs } = await supabase
+          .from("job_candidate_notifications")
+          .select(`id, job_id, status, created_at,
+            job_requests (
+              id, client_id, service_type, care_type, children_count, children_age_group,
+              location_city, start_at, created_at, service_details, time_duration, care_frequency, selected_freelancer_id,
+              profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
+            )`)
+          .eq("freelancer_id", user.id)
+          .in("status", ["pending", "opened"])
+          .order("created_at", { ascending: false })
+          .limit(3);
 
-        // Fetch confirmation counts for open requests
-        let countsMap: Record<string, number> = {};
-        if (openRequests && openRequests.length > 0) {
-          const { data: confirmations } = await supabase
-            .from("job_confirmations")
-            .select("job_id")
-            .in("job_id", openRequests.map((j) => j.id))
-            .eq("status", "available");
+        const { data: confs } = await supabase
+          .from("job_confirmations")
+          .select("job_id, status")
+          .eq("freelancer_id", user.id);
+        const confirmedIds = new Set((confs || []).filter(c => c.status === "available").map(c => c.job_id));
+        const declinedIds = new Set((confs || []).filter(c => c.status === "declined").map(c => c.job_id));
 
-          (confirmations || []).forEach((conf) => {
-            countsMap[conf.job_id] = (countsMap[conf.job_id] || 0) + 1;
-          });
-          setConfirmationCounts(countsMap);
-        }
-
-        // Cache the dashboard data for instant loading next time
-        if (user) {
-          try {
-            const cachedConversation = (active && (active.status === "locked" || active.status === "active") && active.selected_freelancer_id && convo) ? {
-              id: convo.id,
-              job_id: active.id,
-              freelancer_id: active.selected_freelancer_id,
-              created_at: convo.created_at,
-              freelancer_profile: freelancerProfileData || { full_name: null, photo_url: null },
-              last_message: lastMessage || undefined,
-            } : null;
-
-            const cacheData = {
-              activeJob: active || null,
-              activeConversation: cachedConversation,
-              selectedFreelancer: freelancerProfileData,
-              dashboardState: !active ? (past.length > 0 ? "no_active_job" : "first_time") : (active.status === "locked" ? "job_matched" : "job_in_progress"),
-              nextAppointment: scheduledJobs ? {
-                ...scheduledJobs,
-                freelancer_profile: freelancerProfileData || undefined,
-              } : null,
-              latestRequests: openRequests || [],
-              confirmationCounts: countsMap
-            };
-            localStorage.setItem(`dashboard_${user.id}`, JSON.stringify({
-              timestamp: Date.now(),
-              data: cacheData
-            }));
-          } catch (e) {
-            // Ignore cache errors
-          }
-        }
-      } catch (err) {
-        console.error("Error loading dashboard:", err);
+        const mapped = (notifs || [])
+          .filter((n: any) => n.job_requests)
+          .map((n: any) => ({
+            ...n,
+            isConfirmed: confirmedIds.has(n.job_id),
+            isDeclined: declinedIds.has(n.job_id),
+          }));
+        setInvitations(mapped);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
     }
-
-    loadDashboard();
+    load();
   }, [user]);
 
-  // Update cache whenever dashboard data changes (from real-time updates or initial load)
-  useEffect(() => {
-    if (user && (activeJob !== null || latestRequests.length >= 0)) {
-      try {
-        const cacheData = {
-          activeJob,
-          activeConversation,
-          selectedFreelancer,
-          dashboardState,
-          nextAppointment,
-          latestRequests,
-          confirmationCounts
-        };
-        localStorage.setItem(`dashboard_${user.id}`, JSON.stringify({
-          timestamp: Date.now(),
-          data: cacheData
-        }));
-      } catch (e) {
-        // Ignore cache errors
-      }
-    }
-  }, [activeJob, activeConversation, selectedFreelancer, dashboardState, nextAppointment, latestRequests, confirmationCounts, user]);
-
-  function getStatusLabel(status: string): string {
-    const statusMap: Record<string, string> = {
-      draft: "Draft",
-      ready: "Ready",
-      notifying: "Checking availability",
-      confirmations_closed: "Waiting for confirmations",
-      locked: "Nanny selected",
-      active: "In progress",
-      completed: "Completed",
-      cancelled: "Cancelled",
-    };
-    return statusMap[status] || status;
+  function formatJobTitle(job: JobRequest) {
+    if (job.service_type === "cleaning") return "Cleaning";
+    if (job.service_type === "cooking") return "Cooking";
+    if (job.service_type === "pickup_delivery") return "Pickup & Delivery";
+    if (job.service_type === "nanny") return "Nanny";
+    if (job.service_type === "other_help") return "Other Help";
+    return "Service Request";
   }
 
-  function getStatusBadge(status: string) {
-    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "success" | "warning" }> = {
-      draft: { label: "Draft", variant: "secondary" },
+  function getServiceIcon(serviceType?: string) {
+    if (serviceType === "cleaning") return <Sparkles className="w-3.5 h-3.5" />;
+    if (serviceType === "cooking") return <UtensilsCrossed className="w-3.5 h-3.5" />;
+    if (serviceType === "pickup_delivery") return <Truck className="w-3.5 h-3.5" />;
+    if (serviceType === "nanny") return <Baby className="w-3.5 h-3.5" />;
+    if (serviceType === "other_help") return <HelpCircle className="w-3.5 h-3.5" />;
+    return <Briefcase className="w-3.5 h-3.5" />;
+  }
+
+  function getJobStatusBadge(status: string): { label: string; variant: "default" | "secondary" | "outline" } {
+    const map: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+      locked: { label: "In Progress", variant: "default" },
+      active: { label: "In Progress", variant: "default" },
       ready: { label: "Ready", variant: "secondary" },
-      notifying: { label: "Checking availability", variant: "warning" },
-      confirmations_closed: { label: "Waiting for confirmations", variant: "warning" },
-      locked: { label: "Nanny selected", variant: "success" },
-      active: { label: "In progress", variant: "success" },
-      completed: { label: "Completed", variant: "secondary" },
-      cancelled: { label: "Cancelled", variant: "secondary" },
+      notifying: { label: "Checking availability", variant: "secondary" },
+      confirmations_closed: { label: "Waiting confirmations", variant: "secondary" },
     };
-
-    const config = statusMap[status] || { label: status, variant: "secondary" as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  }
-
-  function formatDate(dateStr: string | null): string {
-    if (!dateStr) return "Not set";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  function formatAgeGroup(group: string): string {
-    const map: Record<string, string> = {
-      newborn: "0-3 months",
-      infant: "3-12 months",
-      toddler: "1-3 years",
-      preschool: "3-5 years",
-      mixed: "Mixed ages",
-    };
-    return map[group] || group;
-  }
-
-  function formatElapsedTime(createdAt: string): string {
-    const now = new Date().getTime();
-    const created = new Date(createdAt).getTime();
-    const diffSeconds = Math.floor((now - created) / 1000);
-
-    if (diffSeconds < 60) return `${diffSeconds}s ago`;
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
-  }
-
-  function formatDateTime(dateStr: string | null): string {
-    if (!dateStr) return "N/A";
-    const date = new Date(dateStr);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  }
-
-  function getJobAction(job: JobRequest) {
-    if (job.status === "notifying" || job.status === "confirmations_closed") {
-      return { label: "View matches", path: `/client/jobs/${job.id}/confirmed` };
-    }
-    if (job.status === "locked" || job.status === "active") {
-      return { label: "Open chat", path: `/chat/${activeConversation?.id || ""}` };
-    }
-    return { label: "View details", path: `#` };
+    return map[status] || { label: status, variant: "outline" };
   }
 
   if (loading) {
@@ -413,414 +220,271 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8 space-y-6">
-        {/* Primary CTA - Always visible */}
-        <Card className="border-0 shadow-xl overflow-hidden">
-          <div className="p-6 text-center">
-            {/* Logo inside the card */}
-            <div className="mb-4">
-              <img
-                src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-                alt="MamaLama Logo"
-                className="h-24 w-auto mx-auto rounded-lg"
-              />
-            </div>
-            <h1 className="text-2xl font-bold mb-2">Find a helper</h1>
-            <p className="text-muted-foreground mb-6">
-              {dashboardState === "first_time"
-                ? "Get matched in minutes"
-                : "Post another request"}
-            </p>
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={() => navigate("/client/create")}
-            >
-              <Sparkles className="w-5 h-5 mr-2" />
-              Find a helper
-            </Button>
-          </div>
-        </Card>
 
-        {/* Active Job Card - Only if exists */}
+
+        {/* Floating logo CTA */}
+        <div className="flex justify-center">
+          <button
+            onClick={() => navigate("/client/create")}
+            className="group transition-all duration-300 hover:scale-110 active:scale-95"
+            title="Find a helper"
+          >
+            <img
+              src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+              alt="Find a helper"
+              className="w-24 h-24 object-contain rounded-3xl drop-shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+            />
+          </button>
+        </div>
+
+        {/* Active Job Card - styled like Live Jobs tab */}
         {activeJob && (
-          <Card className="border-0 shadow-lg animate-fade-in">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Active Job</CardTitle>
-                {(activeJob.status === "locked" || activeJob.status === "active") && selectedFreelancer ? (
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={selectedFreelancer.photo_url || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {selectedFreelancer.full_name
-                          ?.split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase() || "?"}
+          <Card className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white dark:bg-card">
+            <CardContent className="p-0">
+              {/* Header bar */}
+              <div className="px-5 py-3 flex items-center justify-between border-b border-border/30 bg-primary/5">
+                <div className="flex items-center gap-2">
+                  {activeJob.status === "active"
+                    ? <Clock className="w-4 h-4 text-emerald-500" />
+                    : <Calendar className="w-4 h-4 text-primary" />}
+                  <span className={cn("text-sm font-semibold capitalize",
+                    activeJob.status === "active" ? "text-emerald-600" : "text-primary")}>
+                    {getJobStatusBadge(activeJob.status).label}
+                  </span>
+                </div>
+                <Badge variant="default" className="flex items-center gap-1 text-xs px-2.5 py-0.5 font-semibold">
+                  {getServiceIcon(activeJob.service_type)}{formatJobTitle(activeJob)}
+                </Badge>
+              </div>
+
+              {/* Freelancer info */}
+              {selectedFreelancer && (
+                <div className="px-5 py-4 border-b border-border/40">
+                  <div className="flex items-center gap-3.5">
+                    <Avatar className="w-14 h-14 border-2 border-primary/10 shadow-sm">
+                      <AvatarImage src={selectedFreelancer.photo_url || undefined} className="object-cover" />
+                      <AvatarFallback className="bg-primary/5 text-primary font-bold text-xl">
+                        {selectedFreelancer.full_name?.charAt(0).toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm font-medium">{selectedFreelancer.full_name || "Nanny"}</span>
+                    <div className="flex flex-col gap-0.5">
+                      <p className="font-bold text-lg leading-tight">{selectedFreelancer.full_name || "Helper"}</p>
+                      {(selectedFreelancer.average_rating ?? 0) > 0 && (
+                        <StarRating rating={selectedFreelancer.average_rating ?? 0} totalRatings={selectedFreelancer.total_ratings ?? 0} size="sm" showCount={true} />
+                      )}
+                      {activeJob.location_city && (
+                        <div className="flex items-center text-muted-foreground text-sm">
+                          <MapPin className="w-3.5 h-3.5 mr-1 text-primary/70" />{activeJob.location_city}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {getStatusBadge(activeJob.status)}
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Job Summary */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  {activeJob.service_type === 'cleaning' && <Sparkles className="w-4 h-4 text-muted-foreground" />}
-                  {(activeJob.service_type === 'cooking' || activeJob.service_type === 'pickup_delivery' || activeJob.service_type === 'other_help') && <Users className="w-4 h-4 text-muted-foreground" />}
-                  {activeJob.service_type === 'nanny' && <Baby className="w-4 h-4 text-muted-foreground" />}
-
-                  <span className="font-medium">
-                    {activeJob.service_type === 'cleaning' && 'Cleaning'}
-                    {activeJob.service_type === 'cooking' && 'Cooking'}
-                    {activeJob.service_type === 'pickup_delivery' && 'Pickup & Delivery'}
-                    {activeJob.service_type === 'nanny' && 'Nanny'}
-                    {activeJob.service_type === 'other_help' && 'Other Help'}
-                    {!activeJob.service_type && `${activeJob.children_count} child${activeJob.children_count !== 1 ? "ren" : ""}`}
-                  </span>
-
-                  {activeJob.service_type === 'nanny' && activeJob.service_details?.kids_count && (
-                    <span className="text-muted-foreground">· {activeJob.service_details.kids_count.replace('_', '-')} kids</span>
-                  )}
-                  {activeJob.service_type === 'cleaning' && activeJob.service_details?.home_size && (
-                    <span className="text-muted-foreground">· {activeJob.service_details.home_size.replace(/_/g, ' ')}</span>
-                  )}
-                  {!activeJob.service_type && activeJob.children_age_group && (
-                    <span className="text-muted-foreground">· {formatAgeGroup(activeJob.children_age_group)}</span>
-                  )}
                 </div>
-                <div className="flex items-center gap-4 text-sm flex-wrap">
+              )}
+
+              {/* Details */}
+              <div className="px-5 pt-4 pb-2">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground">
                   {activeJob.start_at && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span>{formatDate(activeJob.start_at)}</span>
+                    <div className="flex flex-wrap items-center gap-2 col-span-2 bg-muted/30 px-3 py-2 rounded-xl border border-border/40 mb-1">
+                      <Clock className="w-4 h-4 text-primary flex-shrink-0" />
+                      <span className="font-bold text-foreground">{new Date(activeJob.start_at).toLocaleDateString()}</span>
+                      <span className="text-muted-foreground">at</span>
+                      <span className="font-bold text-foreground">{new Date(activeJob.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span>{activeJob.location_city}</span>
-                  </div>
+                  {activeJob.time_duration && (
+                    <div className="flex items-center gap-2 col-span-1">
+                      <Hourglass className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
+                      <span className="font-medium text-foreground text-xs">{activeJob.time_duration.replace(/_/g, "-")}</span>
+                    </div>
+                  )}
+                  {activeJob.care_frequency && (
+                    <div className="flex items-center gap-2 col-span-1">
+                      <Repeat className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
+                      <span className="font-medium text-foreground capitalize text-xs">{activeJob.care_frequency.replace(/_/g, " ")}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Status explanation */}
-              <div className="flex items-center gap-2 text-sm flex-wrap">
-                <span className="text-muted-foreground">Status:</span>
-                <span className="font-medium">{getStatusLabel(activeJob.status)}</span>
+              {/* Buttons */}
+              <div className="px-5 pb-5 pt-2 flex gap-3">
+                <Button className="flex-1 h-11 text-sm font-semibold border-2" variant="outline"
+                  onClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate(`/client/jobs/${activeJob.id}`)}>
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Contact
+                </Button>
+                <Button className="flex-1 h-11 text-sm font-semibold bg-primary hover:bg-primary/90 text-white shadow-md"
+                  onClick={() => navigate("/client/active-jobs")}>
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  Show More
+                </Button>
               </div>
-              {activeJob.status === "notifying" && (
-                <p className="text-sm text-muted-foreground">
-                  We're checking which nannies are available for your request.
-                </p>
-              )}
-              {activeJob.status === "confirmations_closed" && (
-                <p className="text-sm text-muted-foreground">
-                  Waiting for nannies to confirm availability.
-                </p>
-              )}
-              {activeJob.status === "locked" && (
-                <p className="text-sm text-muted-foreground">
-                  You're connected with a nanny. Start chatting to coordinate.
-                </p>
-              )}
-
-              {/* Action Button */}
-              <Button
-                className="w-full"
-                onClick={() => {
-                  const action = getJobAction(activeJob);
-                  if (action.path) navigate(action.path);
-                }}
-              >
-                {getJobAction(activeJob).label}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Messages Preview - Only if conversation exists */}
-        {activeConversation && (
-          <Card className="border-0 shadow-lg animate-fade-in">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-primary" />
-                Messages
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={activeConversation.freelancer_profile?.photo_url || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {activeConversation.freelancer_profile?.full_name?.[0] || "?"}
+        {/* Latest Messages */}
+        {lastConversation && (
+          <Card className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white dark:bg-card">
+            <CardContent className="p-0">
+              <div className="px-5 py-4 border-b border-border/30 flex items-center justify-between">
+                <h2 className="text-base font-bold flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-primary" /> Messages
+                </h2>
+                <Button variant="ghost" size="sm" className="gap-1 text-xs h-8"
+                  onClick={() => navigate(`/chat/${lastConversation.id}`)}>
+                  Open <ArrowRight className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <div className="px-5 py-4 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => navigate(`/chat/${lastConversation.id}`)}>
+                <Avatar className="w-12 h-12 border-2 border-primary/10 shadow-sm flex-shrink-0">
+                  <AvatarImage src={lastConversation.otherPhoto || undefined} className="object-cover" />
+                  <AvatarFallback className="bg-primary/5 text-primary font-bold text-lg">
+                    {lastConversation.otherName?.charAt(0).toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {activeConversation.freelancer_profile?.full_name || "Nanny"}
+                  <div className="flex items-center justify-between mb-0.5">
+                    <p className="font-semibold text-sm">{lastConversation.otherName || "Helper"}</p>
+                    {lastConversation.lastMessageTime && (
+                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                        {new Date(lastConversation.lastMessageTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {lastConversation.lastMessage || "No messages yet"}
                   </p>
-                  {activeConversation.last_message && (
-                    <p className="text-sm text-muted-foreground truncate">
-                      {activeConversation.last_message.body}
-                    </p>
-                  )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/chat/${activeConversation.id}`)}
-                >
-                  Open
-                </Button>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Latest Requests Section */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Bell className="w-5 h-5 text-primary" />
-                Latest Requests
-              </CardTitle>
-              {latestRequests.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/client/active-jobs")}
-                  className="gap-1"
-                >
-                  View All
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {latestRequests.length > 0 ? (
-              latestRequests.map((request) => {
-                const confirmationCount = confirmationCounts[request.id] || 0;
-                return (
-                  <div
-                    key={request.id}
-                    className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer relative"
-                    onClick={() => navigate(`/client/jobs/${request.id}/confirmed`)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0 pr-6">
-                        <h3 className="font-semibold text-sm mb-1 truncate">
-                          {request.service_type === 'cleaning' && 'Cleaning'}
-                          {request.service_type === 'cooking' && 'Cooking'}
-                          {request.service_type === 'pickup_delivery' && 'Pickup & Delivery'}
-                          {request.service_type === 'nanny' && 'Nanny'}
-                          {request.service_type === 'other_help' && 'Other Help'}
-                          {!request.service_type && (
-                            /* Fallback for old jobs with safer rendering */
-                            `${Number(request.children_count) || 0} kid${Number(request.children_count) !== 1 ? "s" : ""} (${request.children_age_group && request.children_age_group !== 'null' ? formatAgeGroup(request.children_age_group) : 'N/A'})`
-                          )}
-                          {request.service_type === 'nanny' && request.service_details?.kids_count && (
-                            <span className="font-normal text-muted-foreground ml-1">
-                              - {request.service_details.kids_count.replace('_', '-')} kids
-                            </span>
-                          )}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {request.location_city || 'N/A'}
-                          </span>
-
-                          {/* Show duration/frequency if available */}
-                          {request.time_duration && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span className="capitalize">{request.time_duration.replace('_', '-')}</span>
-                            </span>
-                          )}
-
-                          {/* Show service specific details */}
-                          {request.service_type === 'cleaning' && request.service_details?.home_size && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Sparkles className="w-3 h-3" />
-                              {request.service_details.home_size.replace(/_/g, ' ')}
-                            </span>
-                          )}
-
-                          {request.start_at && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <CalendarIcon className="w-3 h-3" />
-                              {new Date(request.start_at).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {confirmationCount > 0 && (
-                          <Badge variant="default" className="text-xs">
-                            {confirmationCount} available
-                          </Badge>
-                        )}
-                        {request.status !== "notifying" && (
-                          <Badge
-                            variant={
-                              request.status === "confirmations_closed"
-                                ? "default"
-                                : "outline"
-                            }
-                            className="text-xs"
-                          >
-                            {getStatusLabel(request.status)}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatElapsedTime(request.created_at)}
-                      </div>
-                      <div className="text-xs">
-                        {formatDateTime(request.created_at)}
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground absolute top-4 right-4 flex-shrink-0" />
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8">
-                <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                <p className="text-sm text-muted-foreground mb-4">
-                  No open requests at the moment
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/client/create")}
-                >
-                  Create New Request
+        {/* Latest Requests with toggle */}
+        <Card className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white dark:bg-card">
+          <CardContent className="p-0">
+            {/* Section header */}
+            <div className="px-5 py-4 border-b border-border/30">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-bold flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-primary" /> Latest Requests
+                </h2>
+                <Button variant="ghost" size="sm" className="gap-1 text-xs h-8"
+                  onClick={() => navigate("/client/active-jobs")}>
+                  View All <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </div>
-            )}
+              {/* Toggle */}
+              <div className="flex gap-1 bg-muted/50 rounded-xl p-1">
+                <button
+                  onClick={() => setRequestsTab("my")}
+                  className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
+                    requestsTab === "my"
+                      ? "bg-orange-500 text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground")}
+                >
+                  <Briefcase className="w-3.5 h-3.5" /> My Requests
+                </button>
+                <button
+                  onClick={() => setRequestsTab("invitations")}
+                  className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
+                    requestsTab === "invitations"
+                      ? "bg-orange-500 text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground")}
+                >
+                  <Bell className="w-3.5 h-3.5" /> Invitations
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="divide-y divide-border/30">
+              {requestsTab === "my" ? (
+                myRequests.length > 0 ? myRequests.map((req) => (
+                  <div key={req.id}
+                    className="px-5 py-4 flex items-center gap-3 hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => navigate("/client/active-jobs")}>
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                      {getServiceIcon(req.service_type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{formatJobTitle(req)}</p>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3" /> {req.location_city}
+                        {req.start_at && <><Calendar className="w-3 h-3 ml-1" />{new Date(req.start_at).toLocaleDateString()}</>}
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">
+                      {getJobStatusBadge(req.status).label}
+                    </Badge>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </div>
+                )) : (
+                  <div className="px-5 py-10 text-center text-muted-foreground">
+                    <Briefcase className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No open requests at the moment</p>
+                    <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate("/client/create")}>
+                      Create Request
+                    </Button>
+                  </div>
+                )
+              ) : (
+                invitations.length > 0 ? invitations.map((notif) => {
+                  const job = notif.job_requests;
+                  const isDeclined = notif.isDeclined;
+                  const isConfirmed = notif.isConfirmed;
+                  return (
+                    <div key={notif.id}
+                      className={cn("px-5 py-4 flex items-center gap-3 hover:bg-muted/30 transition-colors cursor-pointer", isDeclined && "opacity-60")}
+                      onClick={() => navigate("/client/active-jobs?tab=requests")}>
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                        {getServiceIcon(job?.service_type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">{formatJobTitle(job)}</p>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                          <MapPin className="w-3 h-3" /> {job?.location_city}
+                        </div>
+                      </div>
+                      <Badge
+                        variant={isDeclined ? "destructive" : isConfirmed ? "default" : "secondary"}
+                        className="text-xs flex-shrink-0">
+                        {isDeclined ? "Declined" : isConfirmed ? "Confirmed" : "Pending"}
+                      </Badge>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    </div>
+                  );
+                }) : (
+                  <div className="px-5 py-10 text-center text-muted-foreground">
+                    <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No invitations right now</p>
+                  </div>
+                )
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Next Scheduled Appointment Section */}
-        {nextAppointment && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg mb-2 flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5 text-primary" />
-                    Next Scheduled Appointment
-                  </CardTitle>
-                  <div className="flex items-center gap-2 mb-2">
-                    {nextAppointment.stage && (
-                      <Badge variant={getJobStageBadge(nextAppointment.stage).variant} className="text-xs">
-                        {getJobStageBadge(nextAppointment.stage).label}
-                      </Badge>
-                    )}
-                    {nextAppointment.location_city && (
-                      <span className="text-sm text-muted-foreground">
-                        {nextAppointment.location_city}
-                      </span>
-                    )}
-                  </div>
-                  {nextAppointment.freelancer_profile && (
-                    <p className="text-sm text-muted-foreground">
-                      Freelancer: {nextAppointment.freelancer_profile.full_name || "Unknown"}
-                    </p>
-                  )}
-                </div>
+        {/* No active job empty state */}
+        {!activeJob && myRequests.length === 0 && (
+          <Card className="border-0 shadow-lg text-center py-12">
+            <CardContent>
+              <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                <Baby className="w-8 h-8 text-muted-foreground" />
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg space-y-2">
-                <div className="flex items-start gap-4 mb-2">
-                  {nextAppointment.freelancer_profile && (
-                    <Avatar className="w-12 h-12 border-2 border-primary/20 flex-shrink-0">
-                      <AvatarImage
-                        src={nextAppointment.freelancer_profile.photo_url || undefined}
-                      />
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {nextAppointment.freelancer_profile.full_name
-                          ?.split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase() || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-muted-foreground">Job:</span>
-                      <span className="font-medium">
-                        {nextAppointment.children_count} kid{nextAppointment.children_count > 1 ? "s" : ""} ({formatAgeGroup(nextAppointment.children_age_group)})
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Location:</span>
-                      <span className="font-medium">{nextAppointment.location_city}</span>
-                    </div>
-                  </div>
-                </div>
-                {nextAppointment.start_at && (
-                  <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <CalendarIcon className="w-3 h-3" />
-                        Date:
-                      </span>
-                      <span className="font-semibold text-primary">
-                        {new Date(nextAppointment.start_at).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Time:
-                      </span>
-                      <span className="font-medium">
-                        {new Date(nextAppointment.start_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/calendar")}
-                  className="gap-1"
-                >
-                  View Calendar
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </div>
+              <h3 className="font-semibold text-lg mb-2">No Active Jobs</h3>
+              <p className="text-muted-foreground mb-4">Post a request to get matched with a helper.</p>
+              <Button onClick={() => navigate("/client/create")}>Create Request</Button>
             </CardContent>
           </Card>
         )}
+
       </div>
     </div>
   );
 }
-

@@ -28,8 +28,8 @@ export function BottomNav() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : profile?.role === "client" ? "/client/profile" : "/dashboard";
 
-  // Nothing on landing page (no header, no nav)
-  if (location.pathname === "/") {
+  // Nothing on landing page or chat pages
+  if (location.pathname === "/" || location.pathname.startsWith("/chat/")) {
     return null;
   }
 
@@ -180,10 +180,10 @@ export function BottomNav() {
         {ProfileMenuModal}
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-fit mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
-              <div className="flex items-center justify-center min-w-max px-2 py-2">
-                <div className="flex items-center justify-center py-2.5 px-3.5 rounded-full flex-shrink-0 text-muted-foreground" title="Getting Started">
-                  <Home className="w-6 h-6" />
+            <div className="w-full max-w-xs mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+              <div className="flex items-center justify-center min-w-max px-4 py-2">
+                <div className="flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 text-muted-foreground" title="Getting Started">
+                  <Home className="w-8 h-8" />
                 </div>
               </div>
             </div>
@@ -210,8 +210,8 @@ export function BottomNav() {
         {TopHeader}
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-fit mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
-              <div className="flex items-center justify-center min-w-max px-2 py-2 gap-1">
+            <div className="w-full max-w-sm sm:max-w-md mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+              <div className="flex items-center justify-around min-w-max px-4 py-2 gap-4">
                 {/* First two items */}
                 {userNav.slice(0, 2).map((item) => {
                   const Icon = item.icon;
@@ -227,7 +227,7 @@ export function BottomNav() {
                       key={item.path}
                       to={item.path}
                       className={cn(
-                        "flex items-center justify-center py-2.5 px-3.5 rounded-full flex-shrink-0 transition-colors relative",
+                        "flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 transition-colors relative",
                         isActive
                           ? "text-primary"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -235,11 +235,11 @@ export function BottomNav() {
                       title={item.label}
                     >
                       <div className="relative">
-                        <Icon className="w-6 h-6" />
+                        <Icon className="w-8 h-8" />
                         {jobsBadgeCount > 0 && (
                           <Badge
                             variant="destructive"
-                            className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
+                            className="absolute -top-2.5 -right-2.5 h-6 min-w-6 flex items-center justify-center px-1 text-[11px] font-bold"
                           >
                             {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
                           </Badge>
@@ -253,11 +253,11 @@ export function BottomNav() {
                 <button
                   type="button"
                   onClick={() => navigate("/client/create")}
-                  className="flex items-center justify-center h-12 w-12 rounded-full flex-shrink-0 bg-orange-500 text-white hover:bg-orange-600 shadow-lg transition-colors mx-2"
+                  className="flex items-center justify-center h-14 w-14 rounded-full flex-shrink-0 bg-orange-500 text-white hover:bg-orange-600 shadow-lg transition-colors mx-3"
                   title="Find a helper"
                   aria-label="Find a helper"
                 >
-                  <Plus className="w-7 h-7" />
+                  <Plus className="w-9 h-9" />
                 </button>
 
                 {/* Last two items */}
@@ -271,7 +271,7 @@ export function BottomNav() {
                       key={item.path}
                       to={item.path}
                       className={cn(
-                        "flex items-center justify-center py-2.5 px-3.5 rounded-full flex-shrink-0 transition-colors relative",
+                        "flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 transition-colors relative",
                         isActive
                           ? "text-primary"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -279,11 +279,11 @@ export function BottomNav() {
                       title={item.label}
                     >
                       <div className="relative">
-                        <Icon className="w-6 h-6" />
+                        <Icon className="w-8 h-8" />
                         {showMessageBadge && (
                           <Badge
                             variant="destructive"
-                            className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold"
+                            className="absolute -top-2.5 -right-2.5 h-6 min-w-6 flex items-center justify-center px-1 text-[11px] font-bold"
                           >
                             {unreadMessages > 9 ? "9+" : unreadMessages}
                           </Badge>
@@ -309,10 +309,10 @@ export function BottomNav() {
         {TopHeader}
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-fit mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
-              <div className="flex items-center justify-center min-w-max px-2 py-2">
-                <div className="flex items-center justify-center py-2.5 px-3.5 rounded-full flex-shrink-0 text-muted-foreground" title="Loading...">
-                  <Home className="w-6 h-6" />
+            <div className="w-full max-w-xs mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+              <div className="flex items-center justify-center min-w-max px-4 py-2">
+                <div className="flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 text-muted-foreground" title="Loading...">
+                  <Home className="w-8 h-8" />
                 </div>
               </div>
             </div>

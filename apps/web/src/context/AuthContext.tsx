@@ -38,6 +38,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const fetchingProfileRef = React.useRef<string | null>(null);
   const profileUserIdRef = React.useRef<string | null>(null);
+  const profileDataRef = React.useRef<Profile | null>(null);
+
+  // Keep profileDataRef in sync with profile state so closures can read current value
+  // Keep profileDataRef in sync with profile state so closures can read current value
+  const setProfileWithRef = (p: Profile | null) => {
+    // SECURITY: Never overwrite a profile that has specialized fields (whatsapp, telegram, categories)
+    // with one that doesn't, unless the new object is null (signing out).
+    if (p && profileDataRef.current && profileDataRef.current.id === p.id) {
+      const currentIsFull = !!profileDataRef.current.whatsapp_number_e164 || !!profileDataRef.current.telegram_username || (profileDataRef.current.categories?.length || 0) > 0;
+      const newIsFull = !!p.whatsapp_number_e164 || !!p.telegram_username || (p.categories?.length || 0) > 0;
+
+      if (currentIsFull && !newIsFull) {
+        console.warn("[AuthContext] ⚠️ BLOCKING PROFILE DOWNGRADE: Attempted to overwrite full profile with partial data. Ignoring.");
+        return;
+      }
+    }
+
+    profileDataRef.current = p;
+    setProfile(p);
+  };
 
   async function fetchProfile(userId: string, forceRefresh: boolean = false): Promise<void> {
     // Prevent multiple simultaneous fetches for the same user
@@ -63,11 +83,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (cachedProfile) {
       try {
         const parsed = JSON.parse(cachedProfile);
-        // Check if cache is less than 5 minutes old
-        if (parsed.timestamp && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+        const hasRequiredFields = parsed.data &&
+          "whatsapp_number_e164" in parsed.data &&
+          "telegram_username" in parsed.data &&
+          "categories" in parsed.data;
+
+        // If it's valid, not too old, and has all fields, we can serve it and do background refresh
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 5 * 60 * 1000 && hasRequiredFields) {
           console.log("[AuthContext] Using cached profile (age:", Math.round((Date.now() - parsed.timestamp) / 1000), "s)");
-          setProfile(parsed.data);
+          setProfileWithRef(parsed.data);
           profileUserIdRef.current = userId;
+
           // Still try to fetch fresh data in background, but don't block
           fetchingProfileRef.current = userId;
           (async () => {
@@ -79,8 +105,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .maybeSingle();
 
               if (!error && freshData && fetchingProfileRef.current === userId) {
-                console.log("[AuthContext] Background refresh successful");
-                setProfile(freshData);
+                console.log("[AuthContext] Background refresh successful", {
+                  whatsapp: freshData.whatsapp_number_e164,
+                  telegram: freshData.telegram_username,
+                  categories: freshData.categories?.length || 0
+                });
+                setProfileWithRef(freshData);
                 localStorage.setItem(cachedProfileKey, JSON.stringify({
                   data: freshData,
                   timestamp: Date.now()
@@ -92,12 +122,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               fetchingProfileRef.current = null;
             }
           })();
-          return; // Return early, don't fetch synchronously
+          return; // Return early, served from cache
+        } else {
+          // Cache is either too old or missing fields. 
+          // Serve it as a temporary placeholder if it exists, but don't return early.
+          // This ensures the UI has something while the main query runs.
+          console.log("[AuthContext] Cache is " + (!hasRequiredFields ? "outdated" : "old") + ", using as placeholder while fetching...");
+          setProfileWithRef(parsed.data);
+          profileUserIdRef.current = userId;
+          // Continue to synchronous fetch below...
         }
       } catch (e) {
         console.warn("[AuthContext] Failed to parse cached profile", e);
       }
     }
+
 
     fetchingProfileRef.current = userId;
     console.log("[AuthContext] fetchProfile called", { userId });
@@ -112,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       if (!supabaseUrl || supabaseUrl.includes("your-project-id") || supabaseUrl.includes("placeholder")) {
         console.error("[AuthContext] Supabase not properly configured!");
-        setProfile(null);
+        setProfileWithRef(null);
         return;
       }
 
@@ -174,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const parsed = JSON.parse(cachedProfile);
             console.log("[AuthContext] Using cached profile due to session error");
-            setProfile(parsed.data);
+            setProfileWithRef(parsed.data);
             profileUserIdRef.current = userId;
             return;
           } catch (e) {
@@ -184,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Don't set profile to null if we have a cached one - let it stay
         // Only return if we truly have no session and no cache
         if (!cachedProfile) {
-          setProfile(null);
+          setProfileWithRef(null);
           return;
         }
       }
@@ -198,27 +237,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const parsed = JSON.parse(cachedProfile);
             console.log("[AuthContext] Using cached profile - no session");
-            setProfile(parsed.data);
+            setProfileWithRef(parsed.data);
             profileUserIdRef.current = userId;
             return;
           } catch (e) {
             console.warn("[AuthContext] Failed to parse cached profile", e);
           }
         }
-        setProfile(null);
+        setProfileWithRef(null);
         return;
       }
 
       if (currentSession.user.id !== userId) {
         console.error("[AuthContext] Session user ID doesn't match requested user ID");
-        setProfile(null);
+        setProfileWithRef(null);
         return;
       }
 
       // Verify access token is present
       if (!currentSession.access_token) {
         console.error("[AuthContext] No access token in session");
-        setProfile(null);
+        setProfileWithRef(null);
         return;
       }
 
@@ -266,7 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("[AuthContext] Executing Supabase query...");
           const result = await supabase
             .from("profiles")
-            .select("id, role, full_name, city, phone, photo_url, is_admin")
+            .select("*")
             .eq("id", userId)
             .maybeSingle();
 
@@ -314,7 +353,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const parsed = JSON.parse(cachedProfile);
             // Use cache even if old, better than nothing
             console.log("[AuthContext] ✅ Using cached profile due to timeout");
-            setProfile(parsed.data);
+            setProfileWithRef(parsed.data);
             profileUserIdRef.current = userId;
             return;
           } catch (e) {
@@ -337,7 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const parsed = JSON.parse(cachedProfile);
               // Use cache even if old, better than nothing
               console.log("[AuthContext] ✅ Using stale cached profile due to timeout");
-              setProfile(parsed.data);
+              setProfileWithRef(parsed.data);
               profileUserIdRef.current = userId;
               return;
             } catch (e) {
@@ -362,7 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
               const parsed = JSON.parse(cachedProfile);
               console.log("[AuthContext] Using cached profile due to RLS error");
-              setProfile(parsed.data);
+              setProfileWithRef(parsed.data);
               profileUserIdRef.current = userId;
               return;
             } catch (e) {
@@ -370,19 +409,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-        setProfile(null);
+        setProfileWithRef(null);
         return;
       }
 
       // maybeSingle() returns { data: null, error: null } when no rows found
       if (!data) {
         console.log("[AuthContext] No profile found (new user)");
-        setProfile(null);
+        setProfileWithRef(null);
         return;
       }
 
-      console.log("[AuthContext] Setting profile", { profile: data });
-      setProfile(data);
+      setProfileWithRef(data);
       profileUserIdRef.current = userId; // Track which user's profile we have
 
       // Cache profile in localStorage
@@ -423,10 +461,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setTimeout(() => reject(new Error("Retry timeout")), 3000);
           });
 
-          // Try with minimal fields first
+          // Try with full fields so we don't lose whatsapp/telegram/categories
           const retryQueryPromise = supabase
             .from("profiles")
-            .select("id, role")
+            .select("*")
             .eq("id", userId)
             .maybeSingle();
 
@@ -436,17 +474,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ]);
 
           if (!retryError && retryData) {
-            console.log("[AuthContext] Retry successful, got minimal profile data");
-            setProfile(retryData as any);
-            profileUserIdRef.current = userId;
-            // Cache minimal profile
-            try {
-              localStorage.setItem(cachedProfileKey, JSON.stringify({
-                data: retryData,
-                timestamp: Date.now()
-              }));
-            } catch (e) {
-              console.warn("[AuthContext] Failed to cache retry profile", e);
+            console.log("[AuthContext] Retry successful, got full profile data");
+            // Only overwrite if we don't already have a more complete profile loaded
+            const alreadyHasFullProfile = profileDataRef.current &&
+              profileDataRef.current.id === userId &&
+              "whatsapp_number_e164" in profileDataRef.current;
+            if (!alreadyHasFullProfile) {
+              setProfileWithRef(retryData as any);
+              profileUserIdRef.current = userId;
+              // Cache the full profile
+              try {
+                localStorage.setItem(cachedProfileKey, JSON.stringify({
+                  data: retryData,
+                  timestamp: Date.now()
+                }));
+              } catch (e) {
+                console.warn("[AuthContext] Failed to cache retry profile", e);
+              }
+            } else {
+              console.log("[AuthContext] Full profile already set by concurrent fetch, skipping retry overwrite");
             }
             return;
           } else if (retryError) {
@@ -456,10 +502,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("[AuthContext] Retry also failed:", retryErr);
         }
         // Set profile to null so user can proceed to onboarding
-        setProfile(null);
+        setProfileWithRef(null);
         profileUserIdRef.current = null;
       } else {
-        setProfile(null);
+        setProfileWithRef(null);
         profileUserIdRef.current = null;
       }
     } finally {
@@ -569,7 +615,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // Check if cache is less than 5 minutes old
                 if (parsed.timestamp && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
                   console.log("[AuthContext] Using cached profile on init (age:", Math.round((Date.now() - parsed.timestamp) / 1000), "s)");
-                  setProfile(parsed.data);
+                  setProfileWithRef(parsed.data);
                   profileUserIdRef.current = session.user.id;
                   lastProfileFetchTime = Date.now();
                   // Still try to fetch fresh data in background, but don't block
@@ -590,12 +636,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } else {
             console.log("[AuthContext] No user in session");
-            setProfile(null);
+            setProfileWithRef(null);
             profileUserIdRef.current = null;
           }
         } catch (err) {
           console.error("[AuthContext] Error in initializeAuth:", err);
-          setProfile(null);
+          setProfileWithRef(null);
         } finally {
           if (mounted) {
             if (timeoutId) clearTimeout(timeoutId);
@@ -762,12 +808,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } else {
             console.log("[AuthContext] No user in new session, clearing profile");
-            setProfile(null);
+            setProfileWithRef(null);
             profileUserIdRef.current = null;
           }
         } catch (err) {
           console.error("[AuthContext] Error in onAuthStateChange handler:", err);
-          setProfile(null);
+          setProfileWithRef(null);
           profileUserIdRef.current = null;
         } finally {
           // Only set loading to false if we set it to true
@@ -808,7 +854,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
-    setProfile(null);
+    setProfileWithRef(null);
     profileUserIdRef.current = null;
   }
 

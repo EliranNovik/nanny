@@ -21,7 +21,6 @@ import {
   Send,
   Loader2,
   Clock,
-  CheckCircle2,
   File,
   X,
   Image as ImageIcon,
@@ -29,10 +28,20 @@ import {
   CheckCheck,
   MapPin,
   Baby,
-  Info,
   FileText,
-  User,
   Star,
+  Repeat,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Package,
+  Home,
+  AlignLeft,
+  Sparkles,
+  UtensilsCrossed,
+  Truck,
+  Briefcase,
+  Hourglass,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -77,6 +86,7 @@ interface Profile {
   role?: "client" | "freelancer";
   rating_avg?: number;
   rating_count?: number;
+  categories?: string[];
 }
 
 interface Job {
@@ -94,6 +104,8 @@ interface Job {
   price_offer_status?: string | null;
   service_type?: string | null;
   service_details?: any | null;
+  time_duration?: string | null;
+  care_frequency?: string | null;
 }
 
 interface ReportConversation {
@@ -186,7 +198,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       const otherId = propOtherUserId || (convo.client_id === user.id ? convo.freelancer_id : convo.client_id);
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, full_name, photo_url, city, phone, role, whatsapp_number_e164, telegram_username, share_whatsapp, share_telegram")
+        .select("id, full_name, photo_url, city, phone, role, whatsapp_number_e164, telegram_username, share_whatsapp, share_telegram, categories")
         .eq("id", otherId)
         .single();
 
@@ -215,7 +227,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       if (convo.job_id) {
         const { data } = await supabase
           .from("job_requests")
-          .select("id, status, stage, care_type, children_count, children_age_group, location_city, start_at, created_at, offered_hourly_rate, price_offer_status, schedule_confirmed, service_type, service_details")
+          .select("id, status, stage, care_type, children_count, children_age_group, location_city, start_at, created_at, offered_hourly_rate, price_offer_status, schedule_confirmed, service_type, service_details, time_duration, care_frequency")
           .eq("id", convo.job_id)
           .single();
 
@@ -1032,10 +1044,62 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     return map[group] || group;
   }
 
+  function formatServiceDetails(details: any, serviceType?: string) {
+    if (!details) return null;
+    if (typeof details === 'string') return <div className="col-span-2 flex items-start gap-2 text-foreground font-medium"><AlignLeft className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> {details}</div>;
+
+    const formatValue = (val: any) => {
+      if (typeof val !== 'string') return String(val);
+      // Replace underscore between digits with a hyphen, rest of underscores with spaces
+      let formatted = val.replace(/(\d)_(\d)/g, '$1-$2').replace(/_/g, ' ');
+      // For special keys, 'plus' -> '+' 
+      if (formatted.includes('plus')) {
+        formatted = formatted.replace('plus', '+');
+      }
+      return formatted;
+    };
+
+    if (serviceType === 'pickup_delivery') {
+      return (
+        <>
+          {details.from_address && <div className="flex items-start gap-2"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.from_address} (From)</span></div>}
+          {details.to_address && <div className="flex items-start gap-2"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.to_address} (To)</span></div>}
+          {details.weight && <div className="flex items-center gap-2"><Package className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
+        </>
+      );
+    }
+
+    if (serviceType === 'cleaning') {
+      return (
+        <>
+          {details.home_size && <div className="flex items-center gap-2"><Home className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.home_size)} size</span></div>}
+        </>
+      )
+    }
+
+    // fallback for generic JSON object
+    return (
+      <>
+        {Object.entries(details).map(([key, value]) => {
+          if (key === 'custom') return null; // handled separately inside the main return
+          // hide raw coordinates if they exist
+          if (key === 'from_lat' || key === 'from_lng' || key === 'to_lat' || key === 'to_lng') return null;
+          return (
+            <div key={key} className="flex items-center gap-2">
+              <AlignLeft className="w-4 h-4 text-primary/70 flex-shrink-0" />
+              <span className="font-medium text-foreground capitalize text-sm">{formatValue(value)} {key.replace(/_/g, ' ')}</span>
+            </div>
+          );
+        })}
+      </>
+    );
+  }
+
   function formatDateTimeSimple(dateStr: string | null): string {
     if (!dateStr) return "N/A";
     const date = new Date(dateStr);
     return date.toLocaleString('en-US', {
+      weekday: 'short',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -1043,6 +1107,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       hour12: true
     });
   }
+
 
   function formatJobTitle(job: Job): string {
     if (job.service_type === 'cleaning') return 'Cleaning';
@@ -1262,14 +1327,25 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 <div className="space-y-8 flex flex-col py-4">
                   {/* Profile Card */}
                   <div className="flex flex-col items-center text-center gap-4">
-                    <Avatar className="w-24 h-24 border-4 border-primary/10 shadow-lg">
-                      <AvatarImage src={otherUser?.photo_url || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-2xl">
-                        {otherInitials}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="w-24 h-24 border-none shadow-none">
+                        <AvatarImage src={otherUser?.photo_url || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-2xl font-bold">
+                          {otherInitials}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      {/* Informative Text - Glassy Style, Top Corner */}
+                      <div className="absolute -top-1 -right-12 sm:-left-20 z-10 w-24 sm:w-32 rotate-[5deg] sm:rotate-[-5deg] pointer-events-none">
+                        <div className="bg-primary/10 backdrop-blur-md border border-primary/20 shadow-lg p-1.5 sm:p-2 rounded-xl text-center">
+                          <p className="text-primary font-bold text-[8px] sm:text-[8px] leading-tight uppercase tracking-tighter">
+                            Matched!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                     <div className="space-y-1">
-                      <h3 className="text-2xl font-bold italic text-primary">{otherUser?.full_name || "User"}</h3>
+                      <h3 className="text-2xl font-bold italic text-black dark:text-white">{otherUser?.full_name || "User"}</h3>
 
                       {otherUser?.role === "freelancer" && (typeof otherUser.rating_avg === 'number') && (
                         <div className="flex items-center justify-center gap-1 text-sm font-medium">
@@ -1290,116 +1366,141 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                         </div>
                       )}
 
-                      <div className="flex items-center justify-center gap-2 pt-1">
-                        <Badge variant="success" className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-3 font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                          Job is active
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bio Section */}
-                  {otherUser?.bio && (
-                    <div className="space-y-3 px-2">
-                      <div className="flex items-center gap-2 text-primary font-semibold text-sm">
-                        <User className="w-4 h-4" />
-                        <span>About</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed italic text-center">
-                        "{otherUser.bio}"
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Informative Text Restored */}
-                  <div className="px-2">
-                    <p className="text-muted-foreground leading-relaxed text-sm text-center">
-                      You were successfully matched and can start to chat and schedule an appointment via WhatsApp, Telegram or internal chat.
-                    </p>
-                  </div>
-
-                  {/* Social Buttons */}
-                  <div className="space-y-3 px-2">
-                    <div className="flex flex-col gap-3 w-full">
-                      {showWhatsApp && (
-                        <Button
-                          variant="outline"
-                          className="h-12 w-full flex items-center justify-center gap-3 border-green-200 hover:bg-green-50 transition-colors shadow-sm"
-                          onClick={() => {
-                            if (otherUser?.whatsapp_number_e164) {
-                              window.open(getWhatsAppLink(otherUser.whatsapp_number_e164), '_blank');
-                            }
-                          }}
-                        >
-                          <WhatsAppIcon className="w-5 h-5 fill-[#25D366]" />
-                          <span className="font-semibold text-green-700">WhatsApp</span>
-                        </Button>
+                      {/* Social Buttons within the box - Orange with white icons */}
+                      {(showWhatsApp || showTelegram) && (
+                        <div className="flex justify-center items-center gap-5 pt-4">
+                          {showWhatsApp && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-14 w-14 rounded-full border-none bg-primary hover:bg-primary/90 hover:scale-110 transition-all shadow-lg group"
+                              onClick={() => {
+                                if (otherUser?.whatsapp_number_e164) {
+                                  window.open(getWhatsAppLink(otherUser.whatsapp_number_e164), '_blank');
+                                }
+                              }}
+                            >
+                              <WhatsAppIcon className="w-8 h-8 fill-white group-hover:scale-110 transition-transform" />
+                            </Button>
+                          )}
+                          {showTelegram && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-14 w-14 rounded-full border-none bg-primary hover:bg-primary/90 hover:scale-110 transition-all shadow-lg group"
+                              onClick={() => {
+                                if (otherUser?.telegram_username) {
+                                  window.open(getTelegramLink(otherUser.telegram_username), '_blank');
+                                }
+                              }}
+                            >
+                              <TelegramIcon className="w-7 h-7 fill-white group-hover:scale-110 transition-transform" />
+                            </Button>
+                          )}
+                        </div>
                       )}
-                      {showTelegram && (
-                        <Button
-                          variant="outline"
-                          className="h-12 w-full flex items-center justify-center gap-3 border-blue-200 hover:bg-blue-50 transition-colors shadow-sm"
-                          onClick={() => {
-                            if (otherUser?.telegram_username) {
-                              window.open(getTelegramLink(otherUser.telegram_username), '_blank');
-                            }
-                          }}
-                        >
-                          <TelegramIcon className="w-5 h-5 fill-[#0088cc]" />
-                          <span className="font-semibold text-blue-700">Telegram</span>
-                        </Button>
+
+                      {/* Categories Section */}
+                      {otherUser?.categories && otherUser.categories.length > 0 && (
+                        <div className="flex flex-wrap justify-center gap-2 pt-4 px-2">
+                          {otherUser.categories.map((category, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-primary/5 border border-primary/20 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm"
+                            >
+                              <span className="text-[10px] font-bold text-primary uppercase tracking-tight">
+                                {category}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
+
+                    {/* Bio Section Restored */}
+                    {otherUser?.bio && (
+                      <div className="space-y-2 px-2 pt-2 border-t border-dashed border-primary/10 mt-2">
+                        <p className="text-sm text-muted-foreground leading-relaxed italic">
+                          "{otherUser.bio}"
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Job Details Section - Moved to bottom */}
+
+                  {/* Job Details Section - Modernized Grid */}
                   {job && (
                     <div className="space-y-4 px-2 pt-4 border-t border-dashed">
-                      <div className="flex items-center gap-2 text-primary font-semibold text-sm">
-                        <FileText className="w-4 h-4" />
-                        <span>Job Details</span>
+                      <div className="flex items-center gap-2 text-primary font-bold text-base">
+                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 px-2.5 py-1">
+                          <FileText className="w-4 h-4 mr-2" />
+                          Job Details
+                        </Badge>
                       </div>
 
-                      <div className="bg-muted/50 rounded-xl p-4 space-y-3 shadow-sm border border-border/50">
-                        <div className="flex items-start gap-3">
-                          <Info className="w-4 h-4 text-primary mt-1 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold">{formatJobTitle(job)}</p>
+                      <div className="bg-muted/30 rounded-2xl p-5 space-y-4 border border-border/40 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            {job.service_type === 'cleaning' && <Sparkles className="w-5 h-5 text-primary" />}
+                            {job.service_type === 'cooking' && <UtensilsCrossed className="w-5 h-5 text-primary" />}
+                            {job.service_type === 'pickup_delivery' && <Truck className="w-5 h-5 text-primary" />}
+                            {job.service_type === 'nanny' && <Baby className="w-5 h-5 text-primary" />}
+                            {(!job.service_type || job.service_type === 'other_help') && <Briefcase className="w-5 h-5 text-primary" />}
                           </div>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                          <MapPin className="w-4 h-4 text-primary mt-1 shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-muted-foreground">{job.location_city}</p>
-                          </div>
-                        </div>
-
-                        {job.start_at && (
-                          <div className="flex items-start gap-3">
-                            <Clock className="w-4 h-4 text-primary mt-1 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-muted-foreground">{formatDateTimeSimple(job.start_at)}</p>
+                            <h4 className="text-lg font-bold leading-tight truncate">{formatJobTitle(job)}</h4>
+                            <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground">
+                              <MapPin className="w-3.5 h-3.5 shrink-0" />
+                              <span className="text-sm font-medium">{job.location_city}</span>
                             </div>
                           </div>
-                        )}
-
-                        {/* Extra Details (Duration/Frequency/Kids) */}
-                        <div className="pt-2 border-t border-border/30 flex flex-wrap gap-2">
-                          {job.service_type === 'nanny' && job.service_details?.kids_count && (
-                            <Badge variant="outline" className="text-[10px] bg-background">
-                              <Baby className="w-3 h-3 mr-1" />
-                              {job.service_details.kids_count.replace('_', '-')} kids
-                            </Badge>
-                          )}
-                          {!job.service_type && job.children_count > 0 && (
-                            <Badge variant="outline" className="text-[10px] bg-background">
-                              <Baby className="w-3 h-3 mr-1" />
-                              {job.children_count} kids
-                            </Badge>
-                          )}
                         </div>
+
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 pt-3.5 border-t border-border/30">
+                          {job.start_at && (
+                            <div className="flex items-center gap-2.5">
+                              <Calendar className="w-4 h-4 text-white shrink-0" />
+                              <span className="text-sm font-medium leading-tight text-white">{formatDateTimeSimple(job.start_at)}</span>
+                            </div>
+                          )}
+
+                          {job.time_duration && (
+                            <div className="flex items-center gap-2.5">
+                              <Hourglass className="w-4 h-4 text-white shrink-0" />
+                              <span className="text-sm font-medium capitalize text-white">{job.time_duration.replace(/_/g, ' ')}</span>
+                            </div>
+                          )}
+
+                          {job.care_frequency && (
+                            <div className="flex items-center gap-2.5">
+                              <Repeat className="w-4 h-4 text-white shrink-0" />
+                              <span className="text-sm font-medium capitalize text-white">{job.care_frequency.replace(/_/g, ' ')}</span>
+                            </div>
+                          )}
+
+                          {(Number(job.children_count) > 0 || job.service_type === 'nanny') && (
+                            <div className="flex items-center gap-2.5">
+                              <Baby className="w-4 h-4 text-white shrink-0" />
+                              <span className="text-sm font-medium text-white">
+                                {Number(job.children_count) || 0} {job.children_age_group ? `(${formatAgeGroup(job.children_age_group as string)})` : ''} kids
+                              </span>
+                            </div>
+                          )}
+
+                          {formatServiceDetails(job.service_details, job.service_type as string)}
+                        </div>
+
+                        {job.service_details?.custom && (
+                          <div className="flex flex-col gap-1.5 mt-2 w-full bg-background/80 rounded-xl px-4 py-3 border border-border/40 shadow-inner">
+                            <span className="font-bold text-primary/80 text-[10px] uppercase tracking-widest flex items-center gap-2">
+                              <AlignLeft className="w-3 h-3" />
+                              Additional Notes
+                            </span>
+                            <span className="text-foreground/90 text-sm font-medium leading-relaxed whitespace-pre-wrap">
+                              {job.service_details.custom}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1408,16 +1509,15 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             </div>
           </div>
 
-          {/* Mobile Chat Button - fixed above nav bar */}
+          {/* Floating Mobile Chat Toggle - Round button fixed to the right side */}
           {!hideBackButton && (
-            <div className="lg:hidden fixed bottom-[88px] left-0 right-0 z-40 border-t bg-card p-4">
+            <div className="lg:hidden fixed right-4 top-1/2 -translate-y-1/2 z-50">
               <Button
                 onClick={() => setMobileView("chat")}
-                className="w-full"
-                size="lg"
+                className="h-14 w-14 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] bg-primary hover:bg-primary/90 flex items-center justify-center border-none"
+                size="icon"
               >
-                <Send className="w-4 h-4 mr-2" />
-                Open Chat
+                <Send className="w-6 h-6 text-white" />
               </Button>
             </div>
           )}
