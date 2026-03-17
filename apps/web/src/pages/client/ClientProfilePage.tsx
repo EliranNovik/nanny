@@ -327,6 +327,7 @@ export default function ClientProfilePage() {
               <Input
                 id="fullName"
                 placeholder="Enter your full name"
+                className="bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
               />
@@ -338,9 +339,9 @@ export default function ClientProfilePage() {
                 <Input
                   id="city"
                   placeholder="e.g., Tel Aviv"
+                  className="flex-1 bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="flex-1"
                 />
                 <Button
                   type="button"
@@ -368,6 +369,7 @@ export default function ClientProfilePage() {
                 id="phone"
                 type="tel"
                 placeholder="+972 50-123-4567"
+                className="bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
@@ -380,6 +382,7 @@ export default function ClientProfilePage() {
                   id="whatsapp"
                   type="tel"
                   placeholder="+972 50-123-4567"
+                  className="bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                   value={whatsappNumber}
                   onChange={(e) => setWhatsappNumber(e.target.value)}
                 />
@@ -410,6 +413,7 @@ export default function ClientProfilePage() {
                   id="telegram"
                   type="text"
                   placeholder="username (without @)"
+                  className="bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                   value={telegramUsername}
                   onChange={(e) => setTelegramUsername(e.target.value)}
                 />

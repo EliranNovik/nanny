@@ -28,8 +28,8 @@ export function BottomNav() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : profile?.role === "client" ? "/client/profile" : "/dashboard";
 
-  // Nothing on landing page or chat pages
-  if (location.pathname === "/" || location.pathname.startsWith("/chat/")) {
+  // Nothing on landing page, chat pages, or messages page
+  if (location.pathname === "/" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/messages")) {
     return null;
   }
 
@@ -37,12 +37,12 @@ export function BottomNav() {
     (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications;
 
   const TopHeader = (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/60 dark:bg-background/60 backdrop-blur-md">
-      <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-mesh border-none">
+      <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between relative">
         <button
           type="button"
           onClick={() => setProfileMenuOpen(true)}
-          className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg hover:bg-white/50 dark:hover:bg-muted/50 transition-colors py-1 -my-1 px-1 -mx-1"
+          className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg hover:bg-white/10 transition-colors py-1 -my-1 px-1 -mx-1"
           aria-label="Open profile menu"
         >
           <Avatar className="h-8 w-8 flex-shrink-0 border-2 border-background/50">
@@ -52,17 +52,34 @@ export function BottomNav() {
             </AvatarFallback>
           </Avatar>
           <span className="flex items-center gap-1 min-w-0">
-            <span className="text-sm font-medium text-foreground truncate">
+            <span className="text-sm font-medium text-white truncate">
               {profile?.full_name ?? user?.email ?? "User"}
             </span>
-            <ChevronDown className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+            <ChevronDown className="w-4 h-4 flex-shrink-0 text-white/80" />
           </span>
         </button>
+
+        {/* Center Logo */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex justify-center items-center">
+          <button
+            onClick={() => navigate("/client/create")}
+            className="group transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center p-1"
+            title="Find a helper"
+            aria-label="Find a helper"
+          >
+            <img
+              src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+              alt="Logo"
+              className="w-10 h-10 object-contain rounded-xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+            />
+          </button>
+        </div>
+
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={openReportModal}
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-muted transition-colors"
+            className="p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
             aria-label="Report"
             title="Report"
           >
@@ -71,7 +88,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-muted transition-colors"
+            className="relative p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
@@ -180,9 +197,9 @@ export function BottomNav() {
         {ProfileMenuModal}
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-full max-w-xs mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+            <div className="w-full max-w-xs mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
               <div className="flex items-center justify-center min-w-max px-4 py-2">
-                <div className="flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 text-muted-foreground" title="Getting Started">
+                <div className="flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 text-black dark:text-white" title="Getting Started">
                   <Home className="w-8 h-8" />
                 </div>
               </div>
@@ -210,7 +227,7 @@ export function BottomNav() {
         {TopHeader}
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-full max-w-sm sm:max-w-md mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+            <div className="w-full max-w-sm sm:max-w-md mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
               <div className="flex items-center justify-around min-w-max px-4 py-2 gap-4">
                 {/* First two items */}
                 {userNav.slice(0, 2).map((item) => {
@@ -230,7 +247,7 @@ export function BottomNav() {
                         "flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 transition-colors relative",
                         isActive
                           ? "text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          : "text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5"
                       )}
                       title={item.label}
                     >
@@ -274,7 +291,7 @@ export function BottomNav() {
                         "flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 transition-colors relative",
                         isActive
                           ? "text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          : "text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5"
                       )}
                       title={item.label}
                     >
@@ -309,9 +326,9 @@ export function BottomNav() {
         {TopHeader}
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-full max-w-xs mx-auto bg-card/95 backdrop-blur-md border rounded-full shadow-lg overflow-x-auto scrollbar-hide">
+            <div className="w-full max-w-xs mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
               <div className="flex items-center justify-center min-w-max px-4 py-2">
-                <div className="flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 text-muted-foreground" title="Loading...">
+                <div className="flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 text-black dark:text-white" title="Loading...">
                   <Home className="w-8 h-8" />
                 </div>
               </div>

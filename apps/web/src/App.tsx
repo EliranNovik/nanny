@@ -96,6 +96,23 @@ function AppRoutes() {
       {/* Landing - no header, no extra padding */}
       <Route path="/" element={<LandingPage />} />
 
+      <Route
+        path="/messages"
+        element={
+          <ProtectedRoute>
+            <MessagesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/messages/:conversationId"
+        element={
+          <ProtectedRoute>
+            <MessagesPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>
         <Route path="/about" element={<AboutPage />} />
@@ -136,22 +153,6 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <ClientProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/messages"
-          element={
-            <ProtectedRoute>
-              <MessagesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/messages/:conversationId"
-          element={
-            <ProtectedRoute>
-              <MessagesPage />
             </ProtectedRoute>
           }
         />

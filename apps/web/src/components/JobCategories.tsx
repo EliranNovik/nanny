@@ -85,7 +85,7 @@ export default function JobCategories() {
           );
         })}
       </div>
-      <p className="text-center text-muted-foreground italic">
+      <p className="text-center text-white/70 italic">
         (and more...)
       </p>
     </div>

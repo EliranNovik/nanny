@@ -41,13 +41,13 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen gradient-mesh flex flex-col">
       {/* Header - taller on mobile, glassy */}
-      <header className="fixed top-0 left-0 right-0 w-full z-50 border-b bg-white/90 backdrop-blur-lg md:bg-background/80 md:backdrop-blur-sm min-h-[72px] md:min-h-0 flex items-center">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/30 backdrop-blur-xl border-none min-h-[72px] md:min-h-0 flex items-center">
         <div className="max-w-7xl mx-auto px-4 w-full py-4 md:py-4">
           <div className="flex items-center justify-between">
             {/* Hamburger Menu - Mobile Only: icon only, no box */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-foreground hover:text-foreground/80 transition-colors"
+              className="md:hidden p-2 text-white hover:text-gray-700 transition-colors"
               aria-label="Toggle menu"
             >
               {isMenuOpen ? (
@@ -80,7 +80,7 @@ export default function LandingPage() {
                       .slice(0, 2) || "?"}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-foreground truncate">
+                <span className="text-sm font-medium text-white truncate">
                   Hi, {profile?.full_name?.split(" ")[0] || "there"}
                 </span>
               </div>
@@ -105,19 +105,19 @@ export default function LandingPage() {
 
             {/* Mobile Menu */}
             {isMenuOpen && (
-              <div className="md:hidden fixed top-[72px] left-0 right-0 bg-white/95 backdrop-blur-md border-b shadow-lg z-50">
+              <div className="md:hidden fixed top-[72px] left-0 right-0 bg-background/95 backdrop-blur-md z-50">
                 <nav className="flex flex-col p-4 space-y-4">
                   <Link
                     to="/about"
                     onClick={() => setIsMenuOpen(false)}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
                   >
                     About Us
                   </Link>
                   <Link
                     to="/contact"
                     onClick={() => setIsMenuOpen(false)}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
                   >
                     Contact
                   </Link>
@@ -126,28 +126,28 @@ export default function LandingPage() {
                       <Link
                         to={dashboardPath}
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
                       >
                         Dashboard
                       </Link>
                       <Link
                         to={jobsPath}
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
                       >
                         Jobs
                       </Link>
                       <Link
                         to="/messages"
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
                       >
                         Messages
                       </Link>
                       <Link
                         to={profilePath}
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
                       >
                         Profile
                       </Link>
@@ -167,13 +167,13 @@ export default function LandingPage() {
             <nav className="hidden md:flex items-center gap-6">
               <Link
                 to="/about"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
               >
                 About Us
               </Link>
               <Link
                 to="/contact"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
               >
                 Contact
               </Link>
@@ -205,7 +205,7 @@ export default function LandingPage() {
             <h1 className="text-4xl md:text-5xl font-bold">
               Find Help in Minutes
             </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+            <p className="text-lg text-gray-600 max-w-xl mx-auto">
               Connect with trusted helpers or find families who need your services
             </p>
 
@@ -300,7 +300,7 @@ export default function LandingPage() {
                                   }`}
                               />
                             ))}
-                            <span className="text-sm text-white/70 ml-1">4.5</span>
+                            <span className="text-sm text-gray-600 ml-1">4.5</span>
                           </div>
                         </div>
                         <p className="text-sm text-white/90 leading-relaxed">
@@ -334,7 +334,7 @@ export default function LandingPage() {
                                   }`}
                               />
                             ))}
-                            <span className="text-sm text-white/70 ml-1">4.5</span>
+                            <span className="text-sm text-gray-600 ml-1">4.5</span>
                           </div>
                         </div>
                         <p className="text-sm text-white/90 leading-relaxed">
@@ -382,7 +382,7 @@ export default function LandingPage() {
               {/* John D. Review Box */}
               <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg">
                 <div className="flex items-start gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0 text-gray-900 font-bold text-sm">
                     JD
                   </div>
                   <div className="flex-1">
@@ -413,7 +413,7 @@ export default function LandingPage() {
               {/* Maria R. Review Box */}
               <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg">
                 <div className="flex items-start gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center flex-shrink-0 text-gray-900 font-bold text-sm">
                     MR
                   </div>
                   <div className="flex-1">
@@ -454,8 +454,8 @@ export default function LandingPage() {
                   <ClipboardList className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-foreground">1. Post your request</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-base md:text-lg font-medium text-white">1. Post your request</p>
+                  <p className="text-sm text-gray-600 mt-1">
                     Answer a few short filter questions with simple taps. We match you with helpers who meet your criteria.
                   </p>
                 </div>
@@ -465,8 +465,8 @@ export default function LandingPage() {
                   <Users className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-foreground">2. Get matched</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-base md:text-lg font-medium text-white">2. Get matched</p>
+                  <p className="text-sm text-gray-600 mt-1">
                     Helpers in your area see your request and respond. You’ll see who’s available and interested.
                   </p>
                 </div>
@@ -476,8 +476,8 @@ export default function LandingPage() {
                   <UserCheck className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-foreground">3. Choose your helper</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-base md:text-lg font-medium text-white">3. Choose your helper</p>
+                  <p className="text-sm text-gray-600 mt-1">
                     Look at profiles and pick the person who fits you best. No pressure—you’re in control.
                   </p>
                 </div>
@@ -487,8 +487,8 @@ export default function LandingPage() {
                   <MessageCircle className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-foreground">4. Chat and confirm</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-base md:text-lg font-medium text-white">4. Chat and confirm</p>
+                  <p className="text-sm text-gray-600 mt-1">
                     Message your helper to sort out details, schedule, and anything else. Confirm when you’re both ready.
                   </p>
                 </div>
@@ -498,8 +498,8 @@ export default function LandingPage() {
                   <CheckCircle2 className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-foreground">5. You’re all set</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-base md:text-lg font-medium text-white">5. You’re all set</p>
+                  <p className="text-sm text-gray-600 mt-1">
                     Your helper comes at the agreed time. Relax—you’ve found the right person.
                   </p>
                 </div>

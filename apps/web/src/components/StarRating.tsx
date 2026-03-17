@@ -100,11 +100,11 @@ export function StarRating({
 
             {/* Rating number and count */}
             <div className={cn("flex items-center gap-1", textSizeClasses[size])}>
-                <span className="font-medium text-foreground">
+                <span className="font-medium text-slate-900 dark:text-slate-100">
                     {rating > 0 ? rating.toFixed(1) : "New"}
                 </span>
                 {showCount && totalRatings !== undefined && totalRatings > 0 && (
-                    <span className="text-muted-foreground">
+                    <span className="text-slate-600 dark:text-slate-400">
                         ({totalRatings})
                     </span>
                 )}

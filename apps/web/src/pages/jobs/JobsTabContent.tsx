@@ -11,7 +11,6 @@ import {
     Briefcase, Hourglass, Repeat, Baby, ArrowUpCircle, ArrowDownCircle, Package, Home, AlignLeft,
     Sparkles, UtensilsCrossed, Truck, HelpCircle
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import JobMap from "@/components/JobMap";
 import JobReviewModal from "@/components/JobReviewModal";
 import { StarRating } from "@/components/StarRating";
@@ -62,7 +61,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
                 {details.from_address && <div className="flex items-start gap-2 col-span-1"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm">{details.from_address} (From)</span></div>}
                 {details.to_address && <div className="flex items-start gap-2 col-span-1"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm">{details.to_address} (To)</span></div>}
                 {details.weight && <div className="flex items-center gap-2 col-span-1"><Package className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
-                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted/50 rounded-xl px-3.5 py-2.5 border border-border/30"><span className="font-semibold text-foreground/60 text-xs uppercase tracking-wider">Notes</span><span className="text-foreground/90 text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
+                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">NOTES</span><span className="text-white text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
             </>
         );
     }
@@ -71,7 +70,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
         return (
             <>
                 {details.home_size && <div className="flex items-center gap-2 col-span-1"><Home className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.home_size)} size</span></div>}
-                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted/50 rounded-xl px-3.5 py-2.5 border border-border/30"><span className="font-semibold text-foreground/60 text-xs uppercase tracking-wider">Notes</span><span className="text-foreground/90 text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
+                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">NOTES</span><span className="text-white text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
             </>
         )
     }
@@ -91,9 +90,9 @@ function formatServiceDetails(details: any, serviceType?: string) {
                 );
             })}
             {details.custom && (
-                <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted/50 rounded-xl px-3.5 py-2.5 border border-border/30">
-                    <span className="font-semibold text-foreground/60 text-xs uppercase tracking-wider">Notes</span>
-                    <span className="text-foreground/90 text-sm font-medium whitespace-pre-wrap">{details.custom}</span>
+                <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm">
+                    <span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">NOTES</span>
+                    <span className="text-white text-sm font-medium whitespace-pre-wrap">{details.custom}</span>
                 </div>
             )}
         </>
@@ -234,115 +233,115 @@ export default function JobsTabContent() {
                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;
 
                     return (
-                        <Card key={job.id} className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden bg-background">
+                        <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                             <CardContent className="p-0">
-                                <div className="px-5 py-3 flex items-center justify-between border-b border-border/30 bg-primary/5">
+                                <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
                                     <div className="flex items-center gap-2">
-                                        {job.status === 'locked' ? <Calendar className="w-4 h-4 text-primary" /> : job.status === 'active' ? <Clock className="w-4 h-4 text-emerald-500" /> : <CheckCircle2 className="w-4 h-4 text-muted-foreground" />}
-                                        <span className={cn("text-sm font-semibold capitalize", job.status === 'locked' ? 'text-primary' : job.status === 'active' ? 'text-emerald-600' : 'text-muted-foreground')}>
+                                        {job.status === 'locked' ? <Calendar className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : job.status === 'active' ? <Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : <CheckCircle2 className="w-4 h-4 text-slate-900 dark:text-slate-100" />}
+                                        <span className="text-sm font-bold capitalize text-slate-900 dark:text-slate-100 tracking-tight">
                                             {getJobStatusBadge(job.status).label}
                                         </span>
                                     </div>
-                                    <Badge variant="default" className="flex items-center gap-1 text-xs px-2.5 py-0.5 shadow-sm font-semibold">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+                                    <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-primary text-white shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
                                 </div>
 
-                                {otherParty && (
-                                    <div className="px-5 py-4 border-b border-border/40">
-                                        <div className="flex items-center gap-3.5">
-                                            <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
-                                                <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
-                                                <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{otherParty.full_name?.charAt(0).toUpperCase() || "?"}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col gap-1">
-                                                <p className="font-bold text-xl leading-tight text-foreground">{otherParty.full_name || "User"}</p>
-                                                <div className="flex items-center flex-wrap gap-2 mt-0.5">
-                                                    {job.location_city && (
-                                                        <div className="flex items-center text-muted-foreground text-sm font-medium">
-                                                            <MapPin className="w-4 h-4 mr-1 text-primary/70" /> {job.location_city}
-                                                        </div>
-                                                    )}
-                                                    {(otherParty.average_rating ?? 0) > 0 && (
-                                                        <StarRating rating={otherParty.average_rating ?? 0} totalRatings={otherParty.total_ratings ?? 0} size="sm" showCount={true} />
-                                                    )}
+                                <div className="bg-white dark:bg-zinc-900">
+                                    {otherParty && (
+                                        <div className="px-5 py-4">
+                                            <div className="flex items-center gap-3.5">
+                                                <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
+                                                    <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
+                                                    <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{otherParty.full_name?.charAt(0).toUpperCase() || "?"}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex flex-col gap-1">
+                                                    <p className="font-bold text-xl leading-tight text-slate-900 dark:text-slate-100">{otherParty.full_name || "User"}</p>
+                                                    <div className="flex items-center flex-wrap gap-2 mt-0.5">
+                                                        {job.location_city && (
+                                                            <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium">
+                                                                <MapPin className="w-4 h-4 mr-1 text-primary/70" /> {job.location_city}
+                                                            </div>
+                                                        )}
+                                                        {(otherParty.average_rating ?? 0) > 0 && (
+                                                            <StarRating rating={otherParty.average_rating ?? 0} totalRatings={otherParty.total_ratings ?? 0} size="sm" showCount={true} />
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {/* Extended Job Details */}
-                                <div className="px-5 pt-4 pb-2">
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-base text-muted-foreground">
-                                        {job.start_at && (
-                                            <div className="flex flex-wrap items-center gap-2 col-span-2 bg-muted/30 px-3.5 py-2.5 rounded-xl mb-1 border border-border/40">
-                                                <Clock className="w-5 h-5 text-primary flex-shrink-0" />
-                                                <span className="font-bold text-foreground">{new Date(job.start_at).toLocaleDateString()}</span>
-                                                <span className="text-muted-foreground font-medium">at</span>
-                                                <span className="font-bold text-foreground">{new Date(job.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                            </div>
-                                        )}
-                                        {!otherParty && job.location_city && (
-                                            <div className="flex items-center gap-2 col-span-1">
-                                                <MapPin className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground text-sm">{job.location_city}</span>
-                                            </div>
-                                        )}
-                                        {job.care_type && (
-                                            <div className="flex items-center gap-2 col-span-1">
-                                                <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
-                                            </div>
-                                        )}
-                                        {job.time_duration && (
-                                            <div className="flex items-center gap-2 col-span-1">
-                                                <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground text-sm">{job.time_duration.replace(/_/g, '-')}</span>
-                                            </div>
-                                        )}
-                                        {job.care_frequency && (
-                                            <div className="flex items-center gap-2 col-span-1">
-                                                <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
-                                            </div>
-                                        )}
-                                        {job.children_count ? (
-                                            <div className="flex items-center gap-2 col-span-1">
-                                                <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
-                                            </div>
-                                        ) : null}
-                                        {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
-                                    </div>
-                                </div>
-
-                                {/* Job Map */}
-                                {(job.service_type === 'pickup_delivery' || (!otherParty && job.location_city)) && job.status !== 'completed' && job.status !== 'cancelled' ? (
-                                    <div className="px-5 pb-4 mt-2">
-                                        <div className="rounded-xl overflow-hidden border border-border/40 shadow-sm">
-                                            <JobMap job={job} />
+                                    {/* Extended Job Details */}
+                                    <div className="px-5 pt-4 pb-2">
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-base text-slate-600 dark:text-slate-400">
+                                            {job.start_at && (
+                                                <div className="flex flex-wrap items-center gap-2 col-span-2 bg-slate-100 dark:bg-zinc-800 px-3.5 py-2.5 rounded-xl mb-1 border border-black/5 dark:border-white/5">
+                                                    <Clock className="w-5 h-5 text-primary flex-shrink-0" />
+                                                    <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(job.start_at).toLocaleDateString()}</span>
+                                                    <span className="text-slate-600 dark:text-slate-400 font-medium">at</span>
+                                                    <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(job.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
+                                            )}
+                                            {!otherParty && job.location_city && (
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <MapPin className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.location_city}</span>
+                                                </div>
+                                            )}
+                                            {job.care_type && (
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
+                                                </div>
+                                            )}
+                                            {job.time_duration && (
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.time_duration.replace(/_/g, '-')}</span>
+                                                </div>
+                                            )}
+                                            {job.care_frequency && (
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
+                                                </div>
+                                            )}
+                                            {job.children_count ? (
+                                                <div className="flex items-center gap-2 col-span-1">
+                                                    <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
+                                                </div>
+                                            ) : null}
+                                            {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
                                         </div>
                                     </div>
-                                ) : null}
 
-                                <div className="px-5 pb-5 pt-1 flex gap-3">
-                                    <Button className="flex-1 h-12 text-base font-semibold border-2" variant="outline" onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}>
-                                        <MessageCircle className="w-5 h-5 mr-2" />
-                                        Job Details
-                                    </Button>
-                                    <Button
-                                        className="flex-1 h-12 text-base font-semibold shadow-md btn-animate bg-emerald-600 hover:bg-emerald-700 text-white"
-                                        onClick={() => {
-                                            const otherPartyIdLocal = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
-                                            const otherPartyLocal = otherPartyIdLocal ? profiles[otherPartyIdLocal] : null;
-                                            if (otherPartyLocal) {
-                                                setReviewJob({
-                                                    jobId: job.id,
-                                                    reviewee: otherPartyLocal,
-                                                    revieweeRole: otherPartyIdLocal === job.client_id ? "client" : "freelancer",
-                                                });
-                                            } else {
-                                                supabase.from("job_requests").update({ status: "completed" }).eq("id", job.id).then(() => loadJobs());
-                                            }
-                                        }}
-                                    >
-                                        <CheckCircle2 className="w-5 h-5 mr-2" />
-                                        Job Done
-                                    </Button>
+                                    {/* Job Map */}
+                                    {(job.service_type === 'pickup_delivery' || (!otherParty && job.location_city)) && job.status !== 'completed' && job.status !== 'cancelled' ? (
+                                        <div className="mt-2 overflow-hidden">
+                                            <JobMap job={job} />
+                                        </div>
+                                    ) : null}
+
+                                    <div className="px-5 pb-5 pt-1 flex gap-3">
+                                        <Button className="flex-1 h-12 text-base font-semibold border-0 bg-primary/10 text-primary hover:bg-primary/20" variant="outline" onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}>
+                                            <MessageCircle className="w-5 h-5 mr-2" />
+                                            Job Details
+                                        </Button>
+                                        <Button
+                                            className="flex-1 h-12 text-base font-semibold shadow-md btn-animate bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            onClick={() => {
+                                                const otherPartyIdLocal = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
+                                                const otherPartyLocal = otherPartyIdLocal ? profiles[otherPartyIdLocal] : null;
+                                                if (otherPartyLocal) {
+                                                    setReviewJob({
+                                                        jobId: job.id,
+                                                        reviewee: otherPartyLocal,
+                                                        revieweeRole: otherPartyIdLocal === job.client_id ? "client" : "freelancer",
+                                                    });
+                                                } else {
+                                                    supabase.from("job_requests").update({ status: "completed" }).eq("id", job.id).then(() => loadJobs());
+                                                }
+                                            }}
+                                        >
+                                            <CheckCircle2 className="w-5 h-5 mr-2" />
+                                            Job Done
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -352,7 +351,7 @@ export default function JobsTabContent() {
 
             {/* Past Jobs – always stacks vertically below active cards */}
             {pastJobs.length > 0 && (
-                <Card className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+                <Card className="rounded-2xl border-none shadow-none">
                     <CardHeader className="cursor-pointer px-5 py-4" onClick={() => setPastJobsExpanded(!pastJobsExpanded)}>
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-xl font-bold">Past Jobs</CardTitle>

@@ -1175,14 +1175,14 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       {!hideBackButton && (
         <div
           className={cn(
-            "fixed inset-y-0 left-0 w-full lg:w-[400px] bg-card border-r z-40 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
+            "fixed inset-y-0 left-0 w-full lg:w-[400px] bg-white/10 backdrop-blur-xl border-r border-white/10 z-40 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
             // On mobile: show when mobileView is 'steps', on desktop: always show
             mobileView === "steps" || showContactPanel ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
           <div className="h-screen lg:h-full flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="p-4 border-b flex-shrink-0">
+            <div className="p-4 bg-white/80 dark:bg-white/5 backdrop-blur-md border-b border-white/10 flex-shrink-0 rounded-t-2xl">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Button
@@ -1198,10 +1198,11 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                         navigate("/messages");
                       }
                     }}
+                    className="text-black dark:text-white"
                   >
                     <ArrowLeft className="w-5 h-5" />
                   </Button>
-                  <h2 className="text-lg font-semibold">
+                  <h2 className="text-lg font-semibold text-black dark:text-white">
                     {conversation?.job_id === null && currentUserProfile?.is_admin ? "Issue Reports" : ""}
                   </h2>
                 </div>
@@ -1431,14 +1432,14 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                   {/* Job Details Section - Modernized Grid */}
                   {job && (
                     <div className="space-y-4 px-2 pt-4 border-t border-dashed">
-                      <div className="flex items-center gap-2 text-primary font-bold text-base">
-                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 px-2.5 py-1">
+                      <div className="flex items-center gap-2 font-bold text-base">
+                        <Badge variant="outline" className="bg-white/30 dark:bg-background/30 backdrop-blur-xl text-white border-white/20 px-3 py-1.5 shadow-sm font-bold tracking-tight">
                           <FileText className="w-4 h-4 mr-2" />
-                          Job Details
+                          JOB DETAILS
                         </Badge>
                       </div>
 
-                      <div className="bg-muted/30 rounded-2xl p-5 space-y-4 border border-border/40 shadow-sm">
+                      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 space-y-4 border border-white/10 shadow-sm">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                             {job.service_type === 'cleaning' && <Sparkles className="w-5 h-5 text-primary" />}
@@ -1448,8 +1449,8 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                             {(!job.service_type || job.service_type === 'other_help') && <Briefcase className="w-5 h-5 text-primary" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-lg font-bold leading-tight truncate">{formatJobTitle(job)}</h4>
-                            <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground">
+                            <h4 className="text-lg font-bold leading-tight truncate text-white">{formatJobTitle(job)}</h4>
+                            <div className="flex items-center gap-1.5 mt-0.5 text-white/70">
                               <MapPin className="w-3.5 h-3.5 shrink-0" />
                               <span className="text-sm font-medium">{job.location_city}</span>
                             </div>
@@ -1459,29 +1460,29 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                         <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 pt-3.5 border-t border-border/30">
                           {job.start_at && (
                             <div className="flex items-center gap-2.5">
-                              <Calendar className="w-4 h-4 text-white shrink-0" />
-                              <span className="text-sm font-medium leading-tight text-white">{formatDateTimeSimple(job.start_at)}</span>
+                              <Calendar className="w-4 h-4 text-black dark:text-white shrink-0" />
+                              <span className="text-sm font-medium leading-tight text-black dark:text-white">{formatDateTimeSimple(job.start_at)}</span>
                             </div>
                           )}
 
                           {job.time_duration && (
                             <div className="flex items-center gap-2.5">
-                              <Hourglass className="w-4 h-4 text-white shrink-0" />
-                              <span className="text-sm font-medium capitalize text-white">{job.time_duration.replace(/_/g, ' ')}</span>
+                              <Hourglass className="w-4 h-4 text-black dark:text-white shrink-0" />
+                              <span className="text-sm font-medium capitalize text-black dark:text-white">{job.time_duration.replace(/_/g, ' ')}</span>
                             </div>
                           )}
 
                           {job.care_frequency && (
                             <div className="flex items-center gap-2.5">
-                              <Repeat className="w-4 h-4 text-white shrink-0" />
-                              <span className="text-sm font-medium capitalize text-white">{job.care_frequency.replace(/_/g, ' ')}</span>
+                              <Repeat className="w-4 h-4 text-black dark:text-white shrink-0" />
+                              <span className="text-sm font-medium capitalize text-black dark:text-white">{job.care_frequency.replace(/_/g, ' ')}</span>
                             </div>
                           )}
 
                           {(Number(job.children_count) > 0 || job.service_type === 'nanny') && (
                             <div className="flex items-center gap-2.5">
-                              <Baby className="w-4 h-4 text-white shrink-0" />
-                              <span className="text-sm font-medium text-white">
+                              <Baby className="w-4 h-4 text-black dark:text-white shrink-0" />
+                              <span className="text-sm font-medium text-black dark:text-white">
                                 {Number(job.children_count) || 0} {job.children_age_group ? `(${formatAgeGroup(job.children_age_group as string)})` : ''} kids
                               </span>
                             </div>
@@ -1491,14 +1492,14 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                         </div>
 
                         {job.service_details?.custom && (
-                          <div className="flex flex-col gap-1.5 mt-2 w-full bg-background/80 rounded-xl px-4 py-3 border border-border/40 shadow-inner">
-                            <span className="font-bold text-primary/80 text-[10px] uppercase tracking-widest flex items-center gap-2">
+                          <div className="flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm">
+                            <span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">
                               <AlignLeft className="w-3 h-3" />
-                              Additional Notes
+                              NOTES
                             </span>
-                            <span className="text-foreground/90 text-sm font-medium leading-relaxed whitespace-pre-wrap">
+                            <p className="text-white text-sm font-medium leading-relaxed">
                               {job.service_details.custom}
-                            </span>
+                            </p>
                           </div>
                         )}
                       </div>
@@ -1522,16 +1523,15 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             </div>
           )}
         </div>
-      )}
-
-      {/* Main Chat Area */}
+      )
+      }
       <div className={cn(
         "flex-1 flex flex-col min-w-0 transition-opacity duration-300 relative",
         // On mobile: hide when 'steps' view is active
         !hideBackButton && mobileView === "steps" && "hidden lg:flex"
       )}>
         {/* Header - Fixed */}
-        <header className="flex-shrink-0 border-b bg-card px-4 py-3 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto md:top-auto">
+        <header className="flex-shrink-0 border-none bg-white/80 dark:bg-background/80 backdrop-blur-md px-4 py-3 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto md:top-auto shadow-sm">
           <div className="flex items-center gap-3">
             {!hideBackButton && (
               <Button
@@ -1545,7 +1545,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                     navigate("/messages");
                   }
                 }}
-                className="lg:hidden"
+                className="lg:hidden text-black dark:text-white"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -1559,13 +1559,13 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             </Avatar>
 
             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => !hideBackButton && setShowContactPanel(!showContactPanel)}>
-              <h2 className="font-semibold truncate">
+              <h2 className="font-semibold truncate text-black dark:text-white">
                 {conversation?.job_id === null
                   ? (currentUserProfile?.is_admin ? (otherUser?.full_name || "User") : "Support")
                   : (otherUser?.full_name || "User")}
               </h2>
               {!hideBackButton && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-black/60 dark:text-white/60">
                   Tap for contact info
                 </p>
               )}
@@ -1580,6 +1580,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                     // Phone call functionality
                     console.log("Call", otherUser?.full_name);
                   }}
+                  className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
                 >
                   <Phone className="w-5 h-5" />
                 </Button>
@@ -1719,7 +1720,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                           )}>
                             <span className={cn(
                               "text-[10px]",
-                              isOwn ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                              isOwn ? "text-primary-foreground/70" : "text-white/60"
                             )}>
                               {formatTime(msg.created_at)}
                             </span>
@@ -1747,21 +1748,22 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           </div>
         </div>
 
-        {/* ── Mobile Input Bar (fixed above nav, hidden on desktop) ── */}
+        {/* ── Mobile Input Bar (fixed bottom, hidden on desktop) ── */}
         <div className={cn(
-          "lg:hidden fixed bottom-[72px] left-0 right-0 z-10 px-4 py-3",
-          "bg-background/95 backdrop-blur-md border-t border-border/50 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]",
+          "lg:hidden fixed left-0 right-0 z-10 px-4 py-3",
+          hideBackButton ? "bottom-0" : "bottom-[72px]",
+          "bg-transparent border-t border-white/10",
           !hideBackButton && mobileView === "steps" && "hidden"
         )}>
           {selectedFile && (
-            <div className="mb-2 flex items-center gap-2 p-2 bg-muted rounded-lg">
+            <div className="mb-2 flex items-center gap-2 p-2 bg-primary/20 backdrop-blur-md rounded-lg border border-primary/20 text-black">
               {getFileType(selectedFile.name) === "image" ? (
                 <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
               ) : (
                 <File className="w-5 h-5 text-primary flex-shrink-0" />
               )}
               <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
-              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={removeSelectedFile}>
+              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 text-primary hover:bg-primary/30" onClick={removeSelectedFile}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -1771,50 +1773,52 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               accept="image/*,video/*,.pdf,.doc,.docx,.txt"
               style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} />
             <Button type="button" variant="ghost" size="icon"
-              className="rounded-full h-10 w-10 flex-shrink-0 hover:bg-muted transition-colors"
+              className="rounded-full h-10 w-10 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 transition-colors text-primary"
               onClick={() => fileInputRef.current?.click()} disabled={sending || uploading}>
               <Paperclip className="w-5 h-5" />
             </Button>
-            <Input ref={inputRef} placeholder={selectedFile ? "Add a message (optional)..." : "Type a message..."}
+            <Input ref={inputRef} placeholder={selectedFile ? "Add a message..." : "Type a message..."}
               value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border-2 focus:border-primary h-10 text-sm bg-background"
+              className="flex-1 rounded-full border border-primary/20 focus:border-primary/40 h-10 text-sm bg-primary/20 text-black placeholder:text-black/50 shadow-sm backdrop-blur-md"
               disabled={sending || uploading} />
-            <Button type="submit" size="icon" className="rounded-full h-10 w-10 flex-shrink-0"
+            <Button type="submit" size="icon" className="rounded-full h-10 w-10 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 text-primary"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}>
               {(sending || uploading) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </form>
         </div>
 
-        {/* ── Desktop Input Bar (fixed above nav, to the right of side panel) ── */}
+        {/* ── Desktop Input Bar (fixed bottom, to the right of side panel) ── */}
         <div className={cn(
-          "hidden lg:block fixed bottom-[80px] left-[400px] right-0 z-10 px-6 py-2",
+          "hidden lg:block fixed left-[400px] right-0 z-10 px-6 py-2",
+          hideBackButton ? "bottom-0" : "bottom-[80px]",
+          "bg-transparent border-t border-white/10",
           !hideBackButton && mobileView === "steps" && "lg:block"
         )}>
           {selectedFile && (
-            <div className="mb-2 flex items-center gap-2 p-2 bg-muted rounded-lg max-w-4xl mx-auto">
+            <div className="mb-2 flex items-center gap-2 p-2 bg-primary/20 backdrop-blur-md rounded-lg border border-primary/20 text-black max-w-4xl mx-auto">
               {getFileType(selectedFile.name) === "image" ? (
                 <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
               ) : (
                 <File className="w-5 h-5 text-primary flex-shrink-0" />
               )}
               <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
-              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={removeSelectedFile}>
+              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 text-primary hover:bg-primary/30" onClick={removeSelectedFile}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           )}
           <form onSubmit={handleSend} className="flex gap-2 max-w-4xl mx-auto items-center">
             <Button type="button" variant="ghost" size="icon"
-              className="rounded-full h-10 w-10 flex-shrink-0 hover:bg-muted transition-colors"
+              className="rounded-full h-10 w-10 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 transition-colors text-primary"
               onClick={() => fileInputRef.current?.click()} disabled={sending || uploading}>
               <Paperclip className="w-5 h-5" />
             </Button>
-            <Input ref={inputRef} placeholder={selectedFile ? "Add a message (optional)..." : "Type a message..."}
+            <Input ref={inputRef} placeholder={selectedFile ? "Add a message..." : "Type a message..."}
               value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border-2 focus:border-primary h-10 text-sm bg-background"
+              className="flex-1 rounded-full border border-primary/20 focus:border-primary/40 h-10 text-sm bg-primary/20 text-black placeholder:text-black/50 shadow-sm backdrop-blur-md"
               disabled={sending || uploading} />
-            <Button type="submit" size="icon" className="rounded-full h-10 w-10 flex-shrink-0"
+            <Button type="submit" size="icon" className="rounded-full h-10 w-10 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 text-primary"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}>
               {(sending || uploading) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
@@ -1823,43 +1827,46 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       </div>
 
       {/* Overlay for mobile contact panel */}
-      {!hideBackButton && showContactPanel && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setShowContactPanel(false)}
-        />
-      )}
+      {
+        !hideBackButton && showContactPanel && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+            onClick={() => setShowContactPanel(false)}
+          />
+        )
+      }
 
       {/* Image Modal */}
-      {selectedImage && selectedImage.attachment_url && (
-        <ImageModal
-          isOpen={isImageModalOpen}
-          onClose={() => {
-            setIsImageModalOpen(false);
-            setSelectedImage(null);
-          }}
-          currentImage={{
-            id: selectedImage.id,
-            attachment_url: selectedImage.attachment_url,
-            attachment_name: selectedImage.attachment_name || null,
-            sender_id: selectedImage.sender_id,
-            created_at: selectedImage.created_at,
-          }}
-          allImages={messages
-            .filter((m) => m.attachment_url && m.attachment_type === "image")
-            .map((m) => ({
-              id: m.id,
-              attachment_url: m.attachment_url!,
-              attachment_name: m.attachment_name || null,
-              sender_id: m.sender_id,
-              created_at: m.created_at,
-            }))}
-          onImageSelect={(image) => {
-            const found = messages.find((m) => m.id === image.id);
-            if (found && found.attachment_url) setSelectedImage(found);
-          }}
-        />
-      )}
+      {
+        selectedImage && selectedImage.attachment_url && (
+          <ImageModal
+            isOpen={isImageModalOpen}
+            onClose={() => {
+              setIsImageModalOpen(false);
+              setSelectedImage(null);
+            }}
+            currentImage={{
+              id: selectedImage.id,
+              attachment_url: selectedImage.attachment_url,
+              attachment_name: selectedImage.attachment_name || null,
+              sender_id: selectedImage.sender_id,
+              created_at: selectedImage.created_at,
+            }}
+            allImages={messages
+              .filter((m) => m.attachment_url && m.attachment_type === "image")
+              .map((m) => ({
+                id: m.id,
+                attachment_url: m.attachment_url!,
+                attachment_name: m.attachment_name || null,
+                sender_id: m.sender_id,
+                created_at: m.created_at,
+              }))}
+            onImageSelect={(image) => {
+              const found = messages.find((m) => m.id === image.id);
+              if (found && found.attachment_url) setSelectedImage(found);
+            }}
+          />
+        )}
 
       {/* Modals outside main layout */}
       <Dialog open={showReviseModal} onOpenChange={setShowReviseModal}>
@@ -2142,6 +2149,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

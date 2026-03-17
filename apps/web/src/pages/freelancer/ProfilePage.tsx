@@ -551,6 +551,7 @@ export default function FreelancerProfilePage() {
                 <Input
                   id="fullName"
                   placeholder="Enter your full name"
+                  className="bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                 />
@@ -563,6 +564,7 @@ export default function FreelancerProfilePage() {
                   id="phone"
                   type="tel"
                   placeholder="+972 50-123-4567"
+                  className="bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
@@ -575,6 +577,7 @@ export default function FreelancerProfilePage() {
                     id="whatsapp"
                     type="tel"
                     placeholder="+972 50-123-4567"
+                    className="bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                     value={whatsappNumber}
                     onChange={(e) => setWhatsappNumber(e.target.value)}
                   />
@@ -605,6 +608,7 @@ export default function FreelancerProfilePage() {
                     id="telegram"
                     type="text"
                     placeholder="username (without @)"
+                    className="bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                     value={telegramUsername}
                     onChange={(e) => setTelegramUsername(e.target.value)}
                   />
@@ -637,9 +641,9 @@ export default function FreelancerProfilePage() {
                   <Input
                     id="city"
                     placeholder="e.g., Tel Aviv"
+                    className="flex-1 bg-primary/5 border-2 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="flex-1"
                   />
                   <Button
                     type="button"
@@ -711,7 +715,7 @@ export default function FreelancerProfilePage() {
                 <Label htmlFor="bio">Bio</Label>
                 <textarea
                   id="bio"
-                  className="mt-1.5 flex min-h-[100px] w-full rounded-lg border-2 border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-1.5 flex min-h-[100px] w-full border-2 bg-primary/5 border-primary/20 hover:border-primary/30 focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all rounded-xl px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white/5 dark:border-white/10 dark:hover:border-white/20 dark:focus:bg-white/10"
                   placeholder="Share your experience, what you love about childcare, etc."
                   value={data.bio}
                   onChange={(e) => updateField("bio", e.target.value)}

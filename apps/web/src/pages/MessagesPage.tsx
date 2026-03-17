@@ -439,15 +439,15 @@ export default function MessagesPage() {
 
   // Show contact panel with conversation list and chat inline
   return (
-    <div className="h-screen flex bg-background overflow-hidden">
+    <div className="h-screen flex gradient-mesh overflow-hidden">
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div className={cn(
         "w-full md:w-80 lg:w-96 border-r bg-card flex flex-col flex-shrink-0",
         "md:flex",
         mobileView === "contacts" ? "flex" : "hidden md:flex"
       )}>
-        {/* Header - Fixed */}
-        <div className="p-4 border-b flex-shrink-0 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto bg-card">
+        {/* Header - Fixed on mobile, integrated on desktop */}
+        <div className="p-4 border-b flex-shrink-0 bg-card/50 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -462,7 +462,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Conversations List */}
-        <ScrollArea className="flex-1 md:pt-0 pt-[73px]">
+        <ScrollArea className="flex-1">
           {conversations.length === 0 ? (
             <div className="p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
@@ -476,7 +476,7 @@ export default function MessagesPage() {
               </p>
             </div>
           ) : (
-            <div className="divide-y pb-32">
+            <div className="divide-y space-y-0.5">
               {conversations.map((convo) => {
                 const initials = convo.other_user_profile?.full_name
                   ?.split(" ")
@@ -644,8 +644,8 @@ export default function MessagesPage() {
 
           return (
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Mobile Back Button Header - Fixed */}
-              <div className="md:hidden p-4 border-b bg-card fixed top-0 left-0 right-0 z-20">
+              {/* Mobile Back Button Header - Sticky */}
+              <div className="md:hidden p-4 border-b bg-card/80 backdrop-blur-md sticky top-0 z-20">
                 <div className="flex items-center gap-3">
                   <Button
                     variant="ghost"
@@ -670,8 +670,8 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              {/* Chat Page - Hide header on mobile since we have our own */}
-              <div className="flex-1 overflow-hidden relative md:pt-0 pt-[73px]">
+              {/* Chat Page area */}
+              <div className="flex-1 overflow-hidden relative">
                 <div className="messages-chat-container h-full">
                   <ChatPage
                     conversationId={conversationId}

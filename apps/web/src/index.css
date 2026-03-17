@@ -4,26 +4,34 @@
 
 @layer base {
   :root {
-    --background: 30 25% 97%;
-    --foreground: 20 15% 15%;
+    --background: 30 50% 98%;
+    --foreground: 25 20% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 20 15% 15%;
+    --card-foreground: 25 20% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 20 15% 15%;
+    --popover-foreground: 25 20% 12%;
     --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 180 45% 85%;
-    --secondary-foreground: 180 45% 25%;
-    --muted: 30 15% 92%;
-    --muted-foreground: 20 10% 45%;
-    --accent: 340 75% 55%;
+    --secondary: 25 20% 95%;
+    --secondary-foreground: 25 20% 12%;
+    --muted: 25 10% 95%;
+    --muted-foreground: 25 10% 45%;
+    --accent: 25 95% 53%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 30 15% 88%;
-    --input: 30 15% 88%;
+    --border: 25 10% 90%;
+    --input: 25 10% 90%;
     --ring: 25 95% 53%;
     --radius: 0.75rem;
+
+    /* Sunset Mesh Colors - Vibrant Modern Theme */
+    --mesh-1: 15 80% 65% / 0.6;
+    --mesh-2: 30 90% 60% / 0.5;
+    --mesh-3: 340 70% 70% / 0.4;
+    --mesh-4: 45 95% 65% / 0.5;
+    --mesh-5: 10 85% 60% / 0.5;
+    --mesh-6: 30 50% 90% / 0.8;
   }
 
   .dark {
@@ -46,6 +54,14 @@
     --border: 20 15% 22%;
     --input: 20 15% 22%;
     --ring: 25 95% 53%;
+
+    /* Original Dark Mesh Colors */
+    --mesh-1: 25 95% 53% / 0.25;
+    --mesh-2: 180 45% 85% / 0.35;
+    --mesh-3: 340 75% 55% / 0.2;
+    --mesh-4: 25 60% 70% / 0.2;
+    --mesh-5: 180 45% 70% / 0.25;
+    --mesh-6: 30 90% 95% / 0.5;
   }
 }
 
@@ -53,6 +69,7 @@
   * {
     @apply border-border;
   }
+
   html {
     /* Prevent overscroll/bounce on mobile */
     overscroll-behavior: none;
@@ -65,6 +82,11 @@
     height: 100%;
     overflow: hidden;
   }
+
+  .bg-card {
+    @apply backdrop-blur-xl transition-all duration-300 border-none shadow-none;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -81,7 +103,7 @@
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   /* Ensure main app container handles scrolling */
   #root {
     position: relative;
@@ -92,7 +114,7 @@
     overscroll-behavior: none;
     overscroll-behavior-y: none;
   }
-  
+
   /* Prevent overscroll on all scrollable containers and pages */
   [class*="gradient-mesh"],
   .gradient-mesh {
@@ -123,12 +145,15 @@
 
 /* Hide scrollbar utility for mobile */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
+  display: none;
+  /* Chrome, Safari and Opera */
 }
 
 /* Range slider styling */
@@ -190,6 +215,7 @@ input[type="range"].slider::-moz-range-thumb:hover {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -201,6 +227,7 @@ input[type="range"].slider::-moz-range-thumb:hover {
     opacity: 0;
     transform: translateX(20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -212,6 +239,7 @@ input[type="range"].slider::-moz-range-thumb:hover {
     opacity: 0;
     transform: translateX(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -223,9 +251,11 @@ input[type="range"].slider::-moz-range-thumb:hover {
     opacity: 0;
     transform: scale(0.8) translateY(10px);
   }
+
   50% {
     transform: scale(1.05);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -249,16 +279,33 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 /* Smooth animations */
-.animate-stagger > * {
+.animate-stagger>* {
   animation: fade-in 0.4s ease-out backwards;
 }
 
-.animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
-.animate-stagger > *:nth-child(2) { animation-delay: 50ms; }
-.animate-stagger > *:nth-child(3) { animation-delay: 100ms; }
-.animate-stagger > *:nth-child(4) { animation-delay: 150ms; }
-.animate-stagger > *:nth-child(5) { animation-delay: 200ms; }
-.animate-stagger > *:nth-child(6) { animation-delay: 250ms; }
+.animate-stagger>*:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.animate-stagger>*:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.animate-stagger>*:nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.animate-stagger>*:nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.animate-stagger>*:nth-child(5) {
+  animation-delay: 200ms;
+}
+
+.animate-stagger>*:nth-child(6) {
+  animation-delay: 250ms;
+}
 
 /* Gradient backgrounds */
 .gradient-primary {
@@ -268,16 +315,18 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .gradient-mesh {
   /* Prevent background from scrolling with content */
   position: relative;
-  background: 
-    radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.25) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.35) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.2) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.2) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.25) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, hsl(30 90% 95% / 0.5) 0px, transparent 100%);
-  /* Ensure background color extends beyond viewport */
   background-color: hsl(var(--background));
-  /* Prevent overscroll bounce on mobile */
+  background-image:
+    /* Mesh Gradients */
+    radial-gradient(at 0% 0%, hsl(var(--mesh-1)) 0px, transparent 70%),
+    radial-gradient(at 100% 0%, hsl(var(--mesh-2)) 0px, transparent 70%),
+    radial-gradient(at 50% 115%, hsl(var(--mesh-3)) 0px, transparent 80%),
+    radial-gradient(at 100% 100%, hsl(var(--mesh-4)) 0px, transparent 70%),
+    radial-gradient(at 0% 100%, hsl(var(--mesh-5)) 0px, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, hsl(var(--mesh-6)) 0px, transparent 150%);
+  /* Made central spot bigger */
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed;
   overscroll-behavior: none;
   overscroll-behavior-y: none;
 }
@@ -286,28 +335,35 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .bg-gradient-mesh {
   background-color: hsl(var(--background));
   background-image:
-    radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.25) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.35) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.2) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.2) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.25) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, hsl(30 90% 95% / 0.5) 0px, transparent 100%);
+    /* Mesh Gradients */
+    radial-gradient(at 0% 0%, hsl(var(--mesh-1)) 0px, transparent 70%),
+    radial-gradient(at 100% 0%, hsl(var(--mesh-2)) 0px, transparent 70%),
+    radial-gradient(at 50% 115%, hsl(var(--mesh-3)) 0px, transparent 80%),
+    radial-gradient(at 100% 100%, hsl(var(--mesh-4)) 0px, transparent 70%),
+    radial-gradient(at 0% 100%, hsl(var(--mesh-5)) 0px, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, hsl(var(--mesh-6)) 0px, transparent 150%);
+  /* Enlarged central spot */
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed;
 }
 
 /* Hide ChatPage header and job summary on mobile when embedded in MessagesPage */
 @media (max-width: 767px) {
+
   .messages-chat-container header,
-  .messages-chat-container > div > header {
+  .messages-chat-container>div>header {
     display: none !important;
   }
+
   /* Hide job summary header that appears below the main header */
-  .messages-chat-container > div > div.flex-shrink-0.border-b.bg-muted\/30 {
+  .messages-chat-container>div>div.flex-shrink-0.border-b.bg-muted\/30 {
     display: none !important;
   }
 }
 
 /* Ensure input field is visible on desktop in ChatPage - same floating style as mobile */
 @media (min-width: 768px) {
+
   /* Keep fixed positioning on desktop too, just like mobile */
   div.chat-input-container {
     position: fixed !important;
@@ -323,7 +379,7 @@ input[type="range"].slider::-moz-range-thumb:hover {
     max-width: 100% !important;
     padding: 0.75rem 1rem !important;
   }
-  
+
   /* Ensure the form inside is visible */
   div.chat-input-container form {
     display: flex !important;
@@ -334,7 +390,7 @@ input[type="range"].slider::-moz-range-thumb:hover {
     margin-left: auto !important;
     margin-right: auto !important;
   }
-  
+
   /* Ensure all interactive elements are visible */
   div.chat-input-container input,
   div.chat-input-container button {
@@ -343,4 +399,3 @@ input[type="range"].slider::-moz-range-thumb:hover {
     opacity: 1 !important;
   }
 }
-

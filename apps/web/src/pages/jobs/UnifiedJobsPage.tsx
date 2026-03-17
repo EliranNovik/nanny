@@ -25,17 +25,17 @@ export default function UnifiedJobsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="flex h-14 w-full bg-muted/50 p-1.5 rounded-full border border-border/50 shadow-inner mb-8">
+          <TabsList className="flex h-14 w-full bg-white/5 backdrop-blur-md p-1.5 rounded-full border-none shadow-none mb-8">
             <TabsTrigger
               value="jobs"
-              className="flex-1 rounded-full h-full text-base font-semibold transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground gap-2"
+              className="flex-1 rounded-full h-full text-base font-semibold transition-all data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=active]:shadow-none gap-2 text-white/60"
             >
               <Briefcase className="w-5 h-5" />
               Live Jobs
             </TabsTrigger>
             <TabsTrigger
               value="requests"
-              className="flex-1 rounded-full h-full text-base font-semibold transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground gap-2"
+              className="flex-1 rounded-full h-full text-base font-semibold transition-all data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=active]:shadow-none gap-2 text-white/60"
             >
               <Bell className="w-5 h-5" />
               Requests
