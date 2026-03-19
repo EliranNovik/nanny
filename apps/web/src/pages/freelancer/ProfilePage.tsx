@@ -27,6 +27,7 @@ import { getCityFromLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ServiceCategoriesPicker } from "@/components/ServiceCategoriesPicker";
+import { LocationRadiusPicker, type LocationRadiusValue } from "@/components/LocationRadiusPicker";
 
 interface FreelancerData {
   bio: string;
@@ -64,6 +65,10 @@ export default function FreelancerProfilePage() {
   const [shareWhatsapp, setShareWhatsapp] = useState(false);
   const [shareTelegram, setShareTelegram] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  const [locationRadius, setLocationRadius] = useState<LocationRadiusValue>({
+    address: "",
+    radius: 10,
+  });
   const hasFetchedRef = useRef<string | null>(null);
   const fetchingRef = useRef(false);
 
@@ -92,6 +97,12 @@ export default function FreelancerProfilePage() {
       setShareWhatsapp(profile.share_whatsapp || false);
       setShareTelegram(profile.share_telegram || false);
       setCategories(profile.categories || []);
+      setLocationRadius({
+        address: (profile as any).address || "",
+        lat: (profile as any).location_lat ?? undefined,
+        lng: (profile as any).location_lng ?? undefined,
+        radius: (profile as any).service_radius ?? 10,
+      });
     }
   }, [profile]);
 
@@ -412,6 +423,10 @@ export default function FreelancerProfilePage() {
       if (JSON.stringify(categories) !== JSON.stringify(profile?.categories || [])) {
         profileUpdates.categories = categories;
       }
+      profileUpdates.address = locationRadius.address || null;
+      profileUpdates.location_lat = locationRadius.lat ?? null;
+      profileUpdates.location_lng = locationRadius.lng ?? null;
+      profileUpdates.service_radius = locationRadius.radius;
 
       if (Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase.from("profiles").upsert({
@@ -735,11 +750,23 @@ export default function FreelancerProfilePage() {
                 Select all the types of services you can provide
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
               <ServiceCategoriesPicker
                 selectedCategories={categories}
                 onChange={setCategories}
               />
+
+              {/* Service Radius */}
+              <div className="pt-4 border-t">
+                <div className="mb-3">
+                  <p className="font-medium text-sm">Service Area</p>
+                  <p className="text-xs text-muted-foreground">Set the area where you are willing to take job requests</p>
+                </div>
+                <LocationRadiusPicker
+                  value={locationRadius}
+                  onChange={setLocationRadius}
+                />
+              </div>
             </CardContent>
           </Card>
 

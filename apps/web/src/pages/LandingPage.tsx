@@ -47,7 +47,7 @@ export default function LandingPage() {
             {/* Hamburger Menu - Mobile Only: icon only, no box */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-white hover:text-gray-700 transition-colors"
+              className="md:hidden p-2 text-black hover:text-gray-600 transition-colors"
               aria-label="Toggle menu"
             >
               {isMenuOpen ? (
@@ -80,7 +80,7 @@ export default function LandingPage() {
                       .slice(0, 2) || "?"}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-white truncate">
+                <span className="text-sm font-medium text-black truncate">
                   Hi, {profile?.full_name?.split(" ")[0] || "there"}
                 </span>
               </div>

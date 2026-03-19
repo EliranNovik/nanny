@@ -4,34 +4,26 @@
 
 @layer base {
   :root {
-    --background: 30 50% 98%;
-    --foreground: 25 20% 12%;
+    --background: 30 25% 97%;
+    --foreground: 20 15% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 25 20% 12%;
+    --card-foreground: 20 15% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 25 20% 12%;
+    --popover-foreground: 20 15% 15%;
     --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 25 20% 95%;
-    --secondary-foreground: 25 20% 12%;
-    --muted: 25 10% 95%;
-    --muted-foreground: 25 10% 45%;
-    --accent: 25 95% 53%;
+    --secondary: 180 45% 85%;
+    --secondary-foreground: 180 45% 25%;
+    --muted: 30 15% 92%;
+    --muted-foreground: 20 10% 45%;
+    --accent: 340 75% 55%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 25 10% 90%;
-    --input: 25 10% 90%;
+    --border: 30 15% 88%;
+    --input: 30 15% 88%;
     --ring: 25 95% 53%;
     --radius: 0.75rem;
-
-    /* Sunset Mesh Colors - Vibrant Modern Theme */
-    --mesh-1: 15 80% 65% / 0.6;
-    --mesh-2: 30 90% 60% / 0.5;
-    --mesh-3: 340 70% 70% / 0.4;
-    --mesh-4: 45 95% 65% / 0.5;
-    --mesh-5: 10 85% 60% / 0.5;
-    --mesh-6: 30 50% 90% / 0.8;
   }
 
   .dark {
@@ -54,14 +46,6 @@
     --border: 20 15% 22%;
     --input: 20 15% 22%;
     --ring: 25 95% 53%;
-
-    /* Original Dark Mesh Colors */
-    --mesh-1: 25 95% 53% / 0.25;
-    --mesh-2: 180 45% 85% / 0.35;
-    --mesh-3: 340 75% 55% / 0.2;
-    --mesh-4: 25 60% 70% / 0.2;
-    --mesh-5: 180 45% 70% / 0.25;
-    --mesh-6: 30 90% 95% / 0.5;
   }
 }
 
@@ -315,18 +299,15 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .gradient-mesh {
   /* Prevent background from scrolling with content */
   position: relative;
+  background: 
+    radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.2) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.15) 0px, transparent 50%);
+  /* Ensure background color extends beyond viewport */
   background-color: hsl(var(--background));
-  background-image:
-    /* Mesh Gradients */
-    radial-gradient(at 0% 0%, hsl(var(--mesh-1)) 0px, transparent 70%),
-    radial-gradient(at 100% 0%, hsl(var(--mesh-2)) 0px, transparent 70%),
-    radial-gradient(at 50% 115%, hsl(var(--mesh-3)) 0px, transparent 80%),
-    radial-gradient(at 100% 100%, hsl(var(--mesh-4)) 0px, transparent 70%),
-    radial-gradient(at 0% 100%, hsl(var(--mesh-5)) 0px, transparent 70%),
-    radial-gradient(ellipse at 50% 50%, hsl(var(--mesh-6)) 0px, transparent 150%);
-  /* Made central spot bigger */
-  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-  background-attachment: fixed;
+  /* Prevent overscroll bounce on mobile */
   overscroll-behavior: none;
   overscroll-behavior-y: none;
 }
@@ -335,16 +316,11 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .bg-gradient-mesh {
   background-color: hsl(var(--background));
   background-image:
-    /* Mesh Gradients */
-    radial-gradient(at 0% 0%, hsl(var(--mesh-1)) 0px, transparent 70%),
-    radial-gradient(at 100% 0%, hsl(var(--mesh-2)) 0px, transparent 70%),
-    radial-gradient(at 50% 115%, hsl(var(--mesh-3)) 0px, transparent 80%),
-    radial-gradient(at 100% 100%, hsl(var(--mesh-4)) 0px, transparent 70%),
-    radial-gradient(at 0% 100%, hsl(var(--mesh-5)) 0px, transparent 70%),
-    radial-gradient(ellipse at 50% 50%, hsl(var(--mesh-6)) 0px, transparent 150%);
-  /* Enlarged central spot */
-  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-  background-attachment: fixed;
+    radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.2) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.15) 0px, transparent 50%);
 }
 
 /* Hide ChatPage header and job summary on mobile when embedded in MessagesPage */

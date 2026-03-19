@@ -61,7 +61,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
                 {details.from_address && <div className="flex items-start gap-2 col-span-1"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm">{details.from_address} (From)</span></div>}
                 {details.to_address && <div className="flex items-start gap-2 col-span-1"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm">{details.to_address} (To)</span></div>}
                 {details.weight && <div className="flex items-center gap-2 col-span-1"><Package className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
-                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">NOTES</span><span className="text-white text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
+                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest flex items-center gap-2">NOTES</span><span className="text-foreground text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
             </>
         );
     }
@@ -70,7 +70,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
         return (
             <>
                 {details.home_size && <div className="flex items-center gap-2 col-span-1"><Home className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.home_size)} size</span></div>}
-                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">NOTES</span><span className="text-white text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
+                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest flex items-center gap-2">NOTES</span><span className="text-foreground text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
             </>
         )
     }
@@ -114,17 +114,48 @@ export default function JobsTabContent() {
         reviewee: Profile;
         revieweeRole: "client" | "freelancer";
     } | null>(null);
+    const [isFirstLoad, setIsFirstLoad] = useState(true);
+
+    // 1. Fetch cache on mount
+    useEffect(() => {
+        if (!user) return;
+        try {
+            const cacheKey = `jobs_tab_cache_${user.id}`;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                // Use cache if less than 1 hour old
+                if (Date.now() - timestamp < 3600000) {
+                    setActiveJobs(data.activeJobs || []);
+                    setPastJobs(data.pastJobs || []);
+                    setProfiles(data.profiles || {});
+                    setConversations(data.conversations || {});
+                    setLoading(false); // Show cached data
+                }
+            }
+        } catch (e) {
+            console.error("Cache load error:", e);
+        }
+    }, [user]);
 
     const loadJobs = async () => {
         if (!user) return;
-        setLoading(true);
+        if (isFirstLoad && loading) {
+            // we are already showing cache or initial loader
+        } else {
+            // if not first load, don't show full page loader? 
+            // for now keep it simple to avoid flicker
+        }
+        
         try {
-            const { data: allJobs } = await supabase
+            const { data: allJobs, error: jobsError } = await supabase
                 .from("job_requests")
                 .select("*")
                 .or(`client_id.eq.${user.id},selected_freelancer_id.eq.${user.id}`)
                 .in("status", ["locked", "active", "completed", "cancelled"])
                 .order("created_at", { ascending: false });
+
+            if (jobsError) throw jobsError;
 
             if (allJobs) {
                 const active = allJobs.filter(j => j.status === "locked" || j.status === "active");
@@ -140,39 +171,47 @@ export default function JobsTabContent() {
                     if (j.selected_freelancer_id && j.selected_freelancer_id !== user.id) profileIds.add(j.selected_freelancer_id);
                 });
 
-                if (profileIds.size > 0) {
-                    const { data: profileData } = await supabase
-                        .from("profiles")
-                        .select("id, full_name, photo_url, average_rating, total_ratings")
-                        .in("id", Array.from(profileIds));
+                let pMap: Record<string, Profile> = {};
+                let convMap: Record<string, string> = {};
 
-                    if (profileData) {
-                        const pMap: Record<string, Profile> = {};
-                        profileData.forEach(p => pMap[p.id] = p);
-                        setProfiles(pMap);
-                    }
+                const [profRes, convRes] = await Promise.all([
+                    profileIds.size > 0 
+                        ? supabase.from("profiles").select("id, full_name, photo_url, average_rating, total_ratings").in("id", Array.from(profileIds))
+                        : Promise.resolve({ data: [] }),
+                    active.length > 0
+                        ? supabase.from("conversations").select("id, job_id").in("job_id", active.map(a => a.id))
+                        : Promise.resolve({ data: [] })
+                ]);
+
+                if (profRes.data) {
+                    (profRes.data as any[]).forEach(p => pMap[p.id] = p);
                 }
-
-                if (active.length > 0) {
-                    const { data: convs } = await supabase
-                        .from("conversations")
-                        .select("id, job_id")
-                        .in("job_id", active.map(a => a.id));
-
-                    if (convs) {
-                        const convMap: Record<string, string> = {};
-                        convs.forEach(c => {
-                            if (c.job_id) convMap[c.job_id] = c.id;
-                        });
-                        setConversations(convMap);
-                    }
+                if (convRes.data) {
+                    (convRes.data as any[]).forEach(c => {
+                        if (c.job_id) convMap[c.job_id] = c.id;
+                    });
                 }
+                
+                setProfiles(pMap);
+                setConversations(convMap);
 
+                // Update cache
+                const cacheKey = `jobs_tab_cache_${user.id}`;
+                localStorage.setItem(cacheKey, JSON.stringify({
+                    timestamp: Date.now(),
+                    data: {
+                        activeJobs: active,
+                        pastJobs: past,
+                        profiles: pMap,
+                        conversations: convMap
+                    }
+                }));
             }
         } catch (e) {
             console.error("Error loading jobs:", e);
         } finally {
             setLoading(false);
+            setIsFirstLoad(false);
         }
     }
 
@@ -233,8 +272,8 @@ export default function JobsTabContent() {
                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;
 
                     return (
-                        <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                            <CardContent className="p-0">
+                        <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full">
+                            <CardContent className="p-0 flex-1 flex flex-col">
                                 <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
                                     <div className="flex items-center gap-2">
                                         {job.status === 'locked' ? <Calendar className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : job.status === 'active' ? <Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : <CheckCircle2 className="w-4 h-4 text-slate-900 dark:text-slate-100" />}
@@ -242,10 +281,10 @@ export default function JobsTabContent() {
                                             {getJobStatusBadge(job.status).label}
                                         </span>
                                     </div>
-                                    <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-primary text-white shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+                                    <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-orange-100 text-orange-500 shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
                                 </div>
 
-                                <div className="bg-white dark:bg-zinc-900">
+                                <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
                                     {otherParty && (
                                         <div className="px-5 py-4">
                                             <div className="flex items-center gap-3.5">
@@ -310,14 +349,14 @@ export default function JobsTabContent() {
                                         </div>
                                     </div>
 
-                                    {/* Job Map */}
+                                    {/* Job Map - Nested Look */}
                                     {(job.service_type === 'pickup_delivery' || (!otherParty && job.location_city)) && job.status !== 'completed' && job.status !== 'cancelled' ? (
-                                        <div className="mt-2 overflow-hidden">
+                                        <div className="mt-2 mx-4 overflow-hidden h-28 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
                                             <JobMap job={job} />
                                         </div>
                                     ) : null}
 
-                                    <div className="px-5 pb-5 pt-1 flex gap-3">
+                                    <div className="px-5 pb-5 pt-1 flex gap-3 mt-auto">
                                         <Button className="flex-1 h-12 text-base font-semibold border-0 bg-primary/10 text-primary hover:bg-primary/20" variant="outline" onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}>
                                             <MessageCircle className="w-5 h-5 mr-2" />
                                             Job Details

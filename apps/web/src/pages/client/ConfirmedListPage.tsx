@@ -471,9 +471,11 @@ export default function ConfirmedListPage() {
                   </div>
                 )}
 
-                {/* Job Map */}
+                {/* Job Map - Nested Look */}
                 {(job.service_type === 'pickup_delivery' || job.location_city) && (
-                  <JobMap job={job} />
+                  <div className="mt-4 mx-4 overflow-hidden h-28 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                    <JobMap job={job} />
+                  </div>
                 )}
               </div>
             </CardContent>

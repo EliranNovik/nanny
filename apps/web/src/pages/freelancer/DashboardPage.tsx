@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Baby, Sparkles, Clock, MapPin, ArrowRight, Loader2, Bell, Briefcase,
-  UtensilsCrossed, Truck, HelpCircle, Calendar, Repeat,
-  Hourglass, MessageCircle, ChevronRight
+  UtensilsCrossed, Truck, HelpCircle, Calendar, MessageCircle, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/StarRating";
@@ -56,136 +55,231 @@ interface ClientProfile {
 }
 
 export default function FreelancerDashboardPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [activeJobs, setActiveJobs] = useState<JobRequest[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [clientProfiles, setClientProfiles] = useState<Record<string, ClientProfile>>({});
-  const [lastConversation, setLastConversation] = useState<{
-    id: string;
-    otherName: string | null;
-    otherPhoto: string | null;
-    lastMessage: string | null;
-    lastMessageTime: string | null;
-  } | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
 
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [myRequests, setMyRequests] = useState<MyPostedRequest[]>([]);
   const [requestsTab, setRequestsTab] = useState<"invitations" | "my">("invitations");
+  
+  const [earningsToday, setEarningsToday] = useState(0);
+  const [recentMessages, setRecentMessages] = useState<any[]>([]);
+
+  // Load cache on mount
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const cacheKey = `freelancer_dashboard_cache_${user.id}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        // Use cache if less than 1 hour old
+        if (Date.now() - timestamp < 3600000) {
+          setActiveJobs(data.activeJobs || []);
+          setClientProfiles(data.clientProfiles || {});
+          setInvitations(data.invitations || []);
+          setMyRequests(data.myRequests || []);
+          setEarningsToday(data.earningsToday || 0);
+          setRecentMessages(data.recentMessages || []);
+          setLoading(false); // Show cached data immediately
+        }
+      }
+    } catch (e) {
+      console.error("Cache load error:", e);
+    }
+  }, [user]);
 
   useEffect(() => {
     async function load() {
       if (!user) return;
+      
       try {
-        // Active jobs (freelancer is selected)
-        const { data: jobs } = await supabase
-          .from("job_requests")
-          .select("*")
-          .eq("selected_freelancer_id", user.id)
-          .in("status", ["locked", "active"])
-          .order("created_at", { ascending: false })
-          .limit(3);
-
-        const activeJobsList = jobs || [];
-        setActiveJobs(activeJobsList);
-
-        if (activeJobsList.length > 0) {
-          const clientIds = Array.from(new Set(activeJobsList.map(j => j.client_id)));
-          const { data: profiles } = await supabase
-            .from("profiles")
-            .select("id, full_name, photo_url, average_rating, total_ratings")
-            .in("id", clientIds);
-
-          const profileMap: Record<string, ClientProfile> = {};
-          profiles?.forEach(p => {
-            profileMap[p.id] = p;
-          });
-          setClientProfiles(profileMap);
-
-          // Get conversation for the first active job
-          const { data: conv } = await supabase
+        const [activeJobsRes, latestConvRes, invitationsRes, myPostedRes, earningsTodayRes, recentMessagesRes] = await Promise.all([
+          // 1. Active jobs (freelancer is selected)
+          supabase
+            .from("job_requests")
+            .select("*")
+            .eq("selected_freelancer_id", user.id)
+            .in("status", ["locked", "active"])
+            .order("created_at", { ascending: false })
+            .limit(3),
+            
+          // 2. Latest conversation
+          supabase
             .from("conversations")
-            .select("id")
-            .eq("job_id", activeJobsList[0].id)
-            .maybeSingle();
-          setActiveConversationId(conv?.id || null);
-        }
-
-        // Latest conversation (most recent, any job)
-        const { data: convRows } = await supabase
-          .from("conversations")
-          .select("id, job_id, client_id")
-          .eq("freelancer_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (convRows) {
-          const { data: otherProfile } = await supabase
-            .from("profiles")
-            .select("full_name, photo_url")
-            .eq("id", convRows.client_id)
-            .single();
-          const { data: lastMsg } = await supabase
-            .from("messages")
-            .select("body, created_at")
-            .eq("conversation_id", convRows.id)
+            .select("id, client_id")
+            .eq("freelancer_id", user.id)
             .order("created_at", { ascending: false })
             .limit(1)
-            .maybeSingle();
-          setLastConversation({
-            id: convRows.id,
-            otherName: otherProfile?.full_name || null,
-            otherPhoto: otherProfile?.photo_url || null,
-            lastMessage: lastMsg?.body || null,
-            lastMessageTime: lastMsg?.created_at || null,
-          });
+            .maybeSingle(),
+            
+          // 3. Invitations
+          supabase
+            .from("job_candidate_notifications")
+            .select(`id, job_id, status, created_at,
+              job_requests (
+                id, client_id, service_type, care_type, children_count, children_age_group,
+                location_city, start_at, created_at, service_details, time_duration, care_frequency, selected_freelancer_id,
+                profiles!job_requests_client_id_fkey ( full_name, photo_url )
+              )`)
+            .eq("freelancer_id", user.id)
+            .in("status", ["pending", "opened"])
+            .order("created_at", { ascending: false })
+            .limit(3),
+            
+          // 4. My Posted Requests
+          supabase
+            .from("job_requests")
+            .select("*")
+            .eq("client_id", user.id)
+            .in("status", ["ready", "notifying", "confirmations_closed"])
+            .order("created_at", { ascending: false })
+            .limit(3),
+
+          // 5. Earnings Today
+          supabase
+            .from("payments")
+            .select("total_amount")
+            .eq("freelancer_id", user.id)
+            .gte("created_at", new Date().toISOString().split('T')[0]),
+
+          // 6. Recent Messages (last 3 conversations)
+          supabase
+            .from("conversations")
+            .select(`
+              id, 
+              client_id, 
+              created_at,
+              messages (
+                body, 
+                created_at,
+                sender_id
+              ),
+              profiles:client_id (
+                full_name,
+                photo_url
+              )
+            `)
+            .eq("freelancer_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(3)
+        ]);
+
+        const earningsSum = (earningsTodayRes.data || []).reduce((acc: number, curr: any) => acc + Number(curr.total_amount), 0);
+        setEarningsToday(earningsSum);
+
+        const processedMessages = (recentMessagesRes.data || []).map((conv: any) => {
+          const lastMsg = conv.messages?.sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )[0];
+          
+          return {
+            id: conv.id,
+            otherName: conv.profiles?.full_name || "Client",
+            otherPhoto: conv.profiles?.photo_url || null,
+            lastMessage: lastMsg?.body || "No messages yet",
+            lastMessageTime: lastMsg?.created_at || conv.created_at,
+            isUnread: lastMsg ? lastMsg.sender_id !== user.id : false, // Simplistic unread check
+          };
+        });
+        setRecentMessages(processedMessages);
+
+        const activeJobsList = activeJobsRes.data || [];
+        setActiveJobs(activeJobsList);
+        
+        let profileMap: Record<string, ClientProfile> = {};
+        if (activeJobsList.length > 0) {
+          const clientIds = Array.from(new Set(activeJobsList.map(j => j.client_id)));
+          const [profRes, convRes] = await Promise.all([
+            supabase
+              .from("profiles")
+              .select("id, full_name, photo_url, average_rating, total_ratings")
+              .in("id", clientIds),
+            supabase
+              .from("conversations")
+              .select("id")
+              .eq("job_id", activeJobsList[0].id)
+              .maybeSingle()
+          ]);
+          
+          profRes.data?.forEach(p => { profileMap[p.id] = p; });
+          setClientProfiles(profileMap);
+          
+          // Set active conversation ID
+          if (convRes.data?.id) {
+            setActiveConversationId(convRes.data.id);
+          } else {
+            // Fallback: try to find any conversation with this client
+            const { data: fallbackConv } = await supabase
+              .from("conversations")
+              .select("id")
+              .eq("client_id", activeJobsList[0].client_id)
+              .eq("freelancer_id", user.id)
+              .limit(1)
+              .maybeSingle();
+            setActiveConversationId(fallbackConv?.id || null);
+          }
         }
 
-        // Invitations (notifications sent to this freelancer)
-        const { data: notifs } = await supabase
-          .from("job_candidate_notifications")
-          .select(`id, job_id, status, created_at,
-            job_requests (
-              id, client_id, service_type, care_type, children_count, children_age_group,
-              location_city, start_at, created_at, service_details, time_duration, care_frequency, selected_freelancer_id,
-              profiles!job_requests_client_id_fkey ( full_name, photo_url )
-            )`)
-          .eq("freelancer_id", user.id)
-          .in("status", ["pending", "opened"])
-          .order("created_at", { ascending: false })
-          .limit(3);
+        // Process latest conversation dependencies
+        const latestConv = latestConvRes.data;
+        if (latestConv) {
+          // No need to process latestConv separately anymore, recentMessages handles it
+        }
 
+        // Process invitations and my posted requests
+        const myRequestsList = myPostedRes.data || [];
+        setMyRequests(myRequestsList);
+        
+        const rawInvitations = invitationsRes.data || [];
         const { data: confs } = await supabase
           .from("job_confirmations")
           .select("job_id, status")
           .eq("freelancer_id", user.id);
+          
         const confirmedIds = new Set((confs || []).filter(c => c.status === "available").map(c => c.job_id));
         const declinedIds = new Set((confs || []).filter(c => c.status === "declined").map(c => c.job_id));
 
-        const mapped = (notifs || [])
+        const mappedInvitations = rawInvitations
           .filter((n: any) => n.job_requests)
           .map((n: any) => ({
             ...n,
             isConfirmed: confirmedIds.has(n.job_id),
             isDeclined: declinedIds.has(n.job_id),
           }));
-        setInvitations(mapped);
+        setInvitations(mappedInvitations);
 
-        // My Posted Requests (freelancer also acts as a client)
-        const { data: openReqs } = await supabase
-          .from("job_requests")
-          .select("*")
-          .eq("client_id", user.id)
-          .in("status", ["ready", "notifying", "confirmations_closed"])
-          .order("created_at", { ascending: false })
-          .limit(3);
-        setMyRequests(openReqs || []);
+        // Fetch own rating if not in profile
+        const { data: myProf } = await supabase
+          .from("profiles")
+          .select("average_rating, total_ratings")
+          .eq("id", user.id)
+          .single();
+
+        // Update cache
+        const cacheKey = `freelancer_dashboard_cache_${user.id}`;
+        localStorage.setItem(cacheKey, JSON.stringify({
+          timestamp: Date.now(),
+          data: {
+            activeJobs: activeJobsList,
+            clientProfiles: profileMap,
+            activeConversationId: activeConversationId,
+            invitations: mappedInvitations,
+            myRequests: myRequestsList,
+            earningsToday: earningsSum,
+            recentMessages: processedMessages,
+            myRating: myProf
+          }
+        }));
 
       } catch (e) {
-        console.error(e);
+        console.error("Dashboard load error:", e);
       } finally {
         setLoading(false);
       }
@@ -211,16 +305,7 @@ export default function FreelancerDashboardPage() {
     return <Briefcase className="w-3.5 h-3.5" />;
   }
 
-  function getJobStatusBadge(status: string): { label: string; variant: "default" | "secondary" | "outline" } {
-    const map: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-      locked: { label: "In Progress", variant: "default" },
-      active: { label: "In Progress", variant: "default" },
-      ready: { label: "Ready", variant: "secondary" },
-      notifying: { label: "Checking availability", variant: "secondary" },
-      confirmations_closed: { label: "Waiting confirmations", variant: "secondary" },
-    };
-    return map[status] || { label: status, variant: "outline" };
-  }
+
 
   if (loading) {
     return (
@@ -233,144 +318,237 @@ export default function FreelancerDashboardPage() {
   return (
     <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8 space-y-6">
-
-
-
-        {/* Active Job Card - styled like client's */}
-        {activeJobs[0] && (
-          <Card className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-            <CardContent className="p-0">
-              {/* Header bar */}
-              <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
-                <div className="flex items-center gap-2">
-                  {activeJobs[0].status === "active"
-                    ? <Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" />
-                    : <Calendar className="w-4 h-4 text-slate-900 dark:text-slate-100" />}
-                  <span className="text-sm font-bold capitalize text-slate-900 dark:text-slate-100 tracking-tight">
-                    {getJobStatusBadge(activeJobs[0].status).label}
-                  </span>
-                </div>
-                <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-primary text-white shadow-sm">
-                  {getServiceIcon(activeJobs[0].service_type)}{formatJobTitle(activeJobs[0])}
-                </Badge>
+        {/* KPI Cards Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card 
+            className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.98]"
+            onClick={() => navigate("/freelancer/active-jobs")}
+          >
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Active Jobs</span>
+                <Briefcase className="w-4 h-4" />
               </div>
+              <p className="text-2xl font-bold text-foreground">{activeJobs.length}</p>
+            </CardContent>
+          </Card>
 
-              <div className="bg-white dark:bg-zinc-900">
-                {/* Client info */}
-                {clientProfiles[activeJobs[0].client_id] && (
-                  <div className="px-5 py-4">
-                    <div className="flex items-center gap-3.5">
-                      <Avatar className="w-14 h-14 border-2 border-primary/10 shadow-sm">
-                        <AvatarImage src={clientProfiles[activeJobs[0].client_id].photo_url || undefined} className="object-cover" />
-                        <AvatarFallback className="bg-primary/5 text-primary font-bold text-xl">
-                          {clientProfiles[activeJobs[0].client_id].full_name?.charAt(0).toUpperCase() || "?"}
+          <Card 
+            className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.98]"
+            onClick={() => navigate("/freelancer/active-jobs?tab=requests")}
+          >
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Requests</span>
+                <Bell className="w-4 h-4" />
+              </div>
+              <p className="text-2xl font-bold text-orange-500">{invitations.length}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Earnings Today</span>
+                <span className="text-xs font-bold">₪</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">₪{earningsToday}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Avg Rating</span>
+                <StarRating rating={1} size="sm" showCount={false} />
+              </div>
+              <div className="flex items-baseline gap-1">
+                <p className="text-2xl font-bold text-foreground">{(profile as any)?.average_rating || "0.0"}</p>
+                <span className="text-[10px] text-muted-foreground">/ 5.0</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* PRO-LEVEL ACTIVE JOB SECTION */}
+        {activeJobs[0] && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                ACTIVE JOB
+              </h2>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Started 2h ago</span>
+            </div>
+
+            <Card className="border-none shadow-[10px_10px_40px_rgba(0,0,0,0.06)] rounded-[2rem] overflow-hidden bg-white dark:bg-zinc-900">
+              <CardContent className="p-0">
+                <div className="p-6">
+                  {/* Top section: Client + Status */}
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="w-16 h-16 border-4 border-primary/5 shadow-md flex-shrink-0">
+                        <AvatarImage src={clientProfiles[activeJobs[0].client_id]?.photo_url || undefined} className="object-cover" />
+                        <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">
+                          {clientProfiles[activeJobs[0].client_id]?.full_name?.charAt(0).toUpperCase() || "?"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex flex-col gap-0.5">
-                        <p className="font-bold text-lg leading-tight">{clientProfiles[activeJobs[0].client_id].full_name || "Client"}</p>
-                        <StarRating rating={clientProfiles[activeJobs[0].client_id].average_rating ?? 0} totalRatings={clientProfiles[activeJobs[0].client_id].total_ratings ?? 0} size="sm" showCount={true} />
-                        {activeJobs[0].location_city && (
-                          <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm">
-                            <MapPin className="w-3.5 h-3.5 mr-1 text-primary/70" />{activeJobs[0].location_city}
-                          </div>
-                        )}
+                      <div>
+                        <h3 className="text-xl font-bold leading-tight">{clientProfiles[activeJobs[0].client_id]?.full_name || "Client"}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <StarRating rating={clientProfiles[activeJobs[0].client_id]?.average_rating ?? 0} size="sm" />
+                          <span className="text-xs font-medium text-muted-foreground">({clientProfiles[activeJobs[0].client_id]?.total_ratings || 0})</span>
+                        </div>
+                      </div>
+                    </div>
+                    <Badge className="bg-primary/10 text-primary border-none font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider">
+                      {formatJobTitle(activeJobs[0])}
+                    </Badge>
+                  </div>
+
+                  {/* Job Details Grid */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center text-primary shadow-sm">
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">DISTANCE</p>
+                        <p className="font-bold text-sm">2.4 km (8 min)</p>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center text-primary shadow-sm">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">DURATION</p>
+                        <p className="font-bold text-sm">{activeJobs[0].time_duration?.replace('_', '-') || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
-                )}
 
-                {/* Job Map */}
-                {(activeJobs[0].service_type === 'pickup_delivery' || activeJobs[0].location_city) ? (
-                  <div className="mt-2 overflow-hidden">
+                  {/* Nested Map Preview */}
+                  <div className="mx-4 rounded-3xl overflow-hidden mb-6 h-28 shadow-sm border border-black/5 dark:border-white/5 group relative">
                     <JobMap job={activeJobs[0]} />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="absolute bottom-3 right-3 rounded-full font-bold shadow-lg border-none opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        const query = encodeURIComponent(activeJobs[0].location_city || "");
+                        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                      }}
+                    >
+                      <MapPin className="w-3.5 h-3.5 mr-1.5" /> Open in Maps
+                    </Button>
                   </div>
-                ) : null}
 
-                {/* Details */}
-                <div className="px-5 pt-4 pb-2">
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-600 dark:text-slate-400">
-                    {activeJobs[0].start_at && (
-                      <div className="flex flex-wrap items-center gap-2 col-span-2 bg-slate-100 dark:bg-zinc-800/30 px-3 py-2 rounded-xl border border-border/40 mb-1">
-                        <Clock className="w-4 h-4 text-primary flex-shrink-0" />
-                        <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(activeJobs[0].start_at).toLocaleDateString()}</span>
-                        <span className="text-slate-600 dark:text-slate-400">at</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(activeJobs[0].start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  {/* Actions */}
+                  <div className="grid grid-cols-4 gap-3">
+                    <Button 
+                      variant="ghost" 
+                      className="h-20 rounded-3xl bg-blue-50/50 hover:bg-blue-100/50 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 flex flex-col items-center justify-center gap-2 group transition-all px-0"
+                      onClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate("/messages")}
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center text-blue-500 shadow-sm group-hover:scale-110 transition-transform">
+                        <MessageCircle className="w-6 h-6" />
                       </div>
-                    )}
-                    {activeJobs[0].time_duration && (
-                      <div className="flex items-center gap-2 col-span-1">
-                        <Hourglass className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
-                        <span className="font-medium text-slate-900 dark:text-slate-100 text-xs">{activeJobs[0].time_duration.replace(/_/g, "-")}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Chat</span>
+                    </Button>
+
+                    <Button 
+                      variant="ghost"                   
+                      className="h-20 rounded-3xl bg-emerald-50/50 hover:bg-emerald-100/50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 flex flex-col items-center justify-center gap-2 group transition-all px-0"
+                      onClick={() => {
+                        const query = encodeURIComponent(activeJobs[0].location_city || "");
+                        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                      }}
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center text-emerald-500 shadow-sm group-hover:scale-110 transition-transform">
+                        <MapPin className="w-6 h-6" />
                       </div>
-                    )}
-                    {activeJobs[0].care_frequency && (
-                      <div className="flex items-center gap-2 col-span-1">
-                        <Repeat className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
-                        <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-xs">{activeJobs[0].care_frequency.replace(/_/g, " ")}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Navigate</span>
+                    </Button>
+
+                    <Button 
+                      variant="ghost" 
+                      className="h-20 rounded-3xl bg-orange-50/50 hover:bg-orange-100/50 dark:bg-orange-900/10 dark:hover:bg-orange-900/20 flex flex-col items-center justify-center gap-2 group transition-all px-0"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center text-orange-500 shadow-sm group-hover:scale-110 transition-transform">
+                        <ChevronRight className="w-6 h-6" />
                       </div>
-                    )}
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400">Route</span>
+                    </Button>
+
+                    <Button 
+                      className="h-20 rounded-3xl bg-primary hover:bg-primary/90 flex flex-col items-center justify-center gap-2 group shadow-lg px-0"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center transition-transform group-hover:scale-110">
+                        <ArrowRight className="w-6 h-6 text-white" />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">Finish</span>
+                    </Button>
                   </div>
                 </div>
-
-                {/* Buttons */}
-                <div className="px-5 pb-5 pt-2 flex gap-3">
-                  <Button className="flex-1 h-11 text-sm font-semibold border-2" variant="outline"
-                    onClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate(`/freelancer/active-jobs`)}>
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Contact
-                  </Button>
-                  <Button className="flex-1 h-11 text-sm font-semibold bg-primary hover:bg-primary/90 text-white shadow-md"
-                    onClick={() => navigate("/freelancer/active-jobs")}>
-                    <ArrowRight className="w-4 h-4 mr-2" />
-                    Show More
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
-        {/* Latest Messages */}
-        {lastConversation && (
-          <Card className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-            <CardContent className="p-0">
-              <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
-                <h2 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                  <MessageCircle className="w-4 h-4 text-slate-900 dark:text-slate-100" /> MESSAGES
-                </h2>
-                <Button variant="ghost" size="sm" className="gap-1 text-[10px] uppercase tracking-wider h-7 text-white/80 hover:text-white hover:bg-white/10"
-                  onClick={() => navigate(`/chat/${lastConversation.id}`)}>
-                  Open <ArrowRight className="w-3 h-3" />
-                </Button>
-              </div>
-              <div className="bg-white dark:bg-zinc-900">
-                <div className="px-5 py-4 flex items-center gap-3 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                  onClick={() => navigate(`/chat/${lastConversation.id}`)}>
-                  <Avatar className="w-12 h-12 border-2 border-primary/10 shadow-sm flex-shrink-0">
-                    <AvatarImage src={lastConversation.otherPhoto || undefined} className="object-cover" />
-                    <AvatarFallback className="bg-primary/5 text-primary font-bold text-lg">
-                      {lastConversation.otherName?.charAt(0).toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
+        {/* Enhanced Messages List */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              MESSAGES
+            </h2>
+            <Button variant="ghost" size="sm" className="text-xs font-bold text-primary">View All</Button>
+          </div>
+          
+          <div className="space-y-3">
+            {recentMessages.length > 0 ? recentMessages.map((msg) => (
+              <Card key={msg.id} className="border-none shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 transition-colors cursor-pointer group"
+                onClick={() => navigate(`/chat/${msg.id}`)}>
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="relative">
+                    <Avatar className="w-12 h-12 shadow-sm flex-shrink-0">
+                      <AvatarImage src={msg.otherPhoto || undefined} className="object-cover" />
+                      <AvatarFallback className="bg-primary/5 text-primary font-bold">
+                        {msg.otherName?.charAt(0).toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    {msg.isUnread && (
+                      <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-orange-500 border-2 border-white dark:border-zinc-900 rounded-full" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">{lastConversation.otherName || "Client"}</p>
-                      {lastConversation.lastMessageTime && (
-                        <span className="text-xs text-slate-600 dark:text-slate-400 flex-shrink-0 ml-2">
-                          {new Date(lastConversation.lastMessageTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      )}
+                      <p className="font-bold text-sm">{msg.otherName}</p>
+                      <span className="text-[10px] font-medium text-muted-foreground">
+                        {msg.lastMessageTime ? new Date(msg.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </span>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
-                      {lastConversation.lastMessage || "No messages yet"}
+                    <p className={cn("text-xs truncate", msg.isUnread ? "font-bold text-foreground" : "text-muted-foreground")}>
+                      {msg.lastMessage}
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-full px-3 border border-primary/10">
+                      REPLY
+                    </Button>
+                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center">
+                      <ArrowRight className="w-4 h-4 text-primary" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )) : (
+              <p className="text-center text-muted-foreground py-8 text-sm italic">No recent messages</p>
+            )}
+          </div>
+        </div>
 
         {/* Latest Requests with toggle */}
         <Card className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
@@ -393,7 +571,7 @@ export default function FreelancerDashboardPage() {
                     onClick={() => setRequestsTab("invitations")}
                     className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
                       requestsTab === "invitations"
-                        ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-800 dark:text-white"
+                        ? "bg-orange-500 text-white shadow-sm"
                         : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
                   >
                     <Bell className="w-3.5 h-3.5" /> Invitations
@@ -402,7 +580,7 @@ export default function FreelancerDashboardPage() {
                     onClick={() => setRequestsTab("my")}
                     className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
                       requestsTab === "my"
-                        ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-800 dark:text-white"
+                        ? "bg-orange-500 text-white shadow-sm"
                         : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
                   >
                     <Briefcase className="w-3.5 h-3.5" /> My Requests
@@ -460,11 +638,6 @@ export default function FreelancerDashboardPage() {
                           {req.start_at && <><Calendar className="w-3 h-3 ml-1" />{new Date(req.start_at).toLocaleDateString()}</>}
                         </div>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className="text-xs flex-shrink-0 border-black/10 dark:border-white/10 text-slate-600 dark:text-slate-400">
-                        {getJobStatusBadge(req.status).label}
-                      </Badge>
                       <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
                     </div>
                   )) : (

@@ -37,12 +37,12 @@ export function BottomNav() {
     (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications;
 
   const TopHeader = (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-mesh border-none">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between relative">
         <button
           type="button"
           onClick={() => setProfileMenuOpen(true)}
-          className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg hover:bg-white/10 transition-colors py-1 -my-1 px-1 -mx-1"
+          className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors py-1 -my-1 px-1 -mx-1"
           aria-label="Open profile menu"
         >
           <Avatar className="h-8 w-8 flex-shrink-0 border-2 border-background/50">
@@ -52,10 +52,10 @@ export function BottomNav() {
             </AvatarFallback>
           </Avatar>
           <span className="flex items-center gap-1 min-w-0">
-            <span className="text-sm font-medium text-white truncate">
+            <span className="text-sm font-medium text-black dark:text-white truncate">
               {profile?.full_name ?? user?.email ?? "User"}
             </span>
-            <ChevronDown className="w-4 h-4 flex-shrink-0 text-white/80" />
+            <ChevronDown className="w-4 h-4 flex-shrink-0 text-black/80 dark:text-white/80" />
           </span>
         </button>
 
@@ -79,7 +79,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={openReportModal}
-            className="p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+            className="p-2 rounded-full text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/20 transition-colors"
             aria-label="Report"
             title="Report"
           >
@@ -88,7 +88,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+            className="relative p-2 rounded-full text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/20 transition-colors"
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
@@ -228,13 +228,12 @@ export function BottomNav() {
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-2xl mx-auto px-4 pb-3">
             <div className="w-full max-w-sm sm:max-w-md mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
-              <div className="flex items-center justify-around min-w-max px-4 py-2 gap-4">
+              <div className="flex items-center justify-between w-full px-6 py-2">
                 {/* First two items */}
                 {userNav.slice(0, 2).map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname.startsWith(item.path);
 
-                  // Calculate badges for jobs tab
                   const jobsBadgeCount = item.path === "/jobs"
                     ? (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications
                     : 0;
@@ -244,24 +243,22 @@ export function BottomNav() {
                       key={item.path}
                       to={item.path}
                       className={cn(
-                        "flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 transition-colors relative",
-                        isActive
-                          ? "text-primary"
-                          : "text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                        "flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative group",
+                        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                       )}
-                      title={item.label}
                     >
-                      <div className="relative">
-                        <Icon className="w-8 h-8" />
-                        {jobsBadgeCount > 0 && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -top-2.5 -right-2.5 h-6 min-w-6 flex items-center justify-center px-1 text-[11px] font-bold"
-                          >
-                            {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
-                          </Badge>
-                        )}
-                      </div>
+                      <Icon className={cn("w-6 h-6 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
+                      {isActive && (
+                        <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary animate-in zoom-in duration-300" />
+                      )}
+                      {jobsBadgeCount > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center px-1 text-[8px] font-bold border-2 border-background"
+                        >
+                          {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
+                        </Badge>
+                      )}
                     </Link>
                   );
                 })}
@@ -270,11 +267,10 @@ export function BottomNav() {
                 <button
                   type="button"
                   onClick={() => navigate("/client/create")}
-                  className="flex items-center justify-center h-14 w-14 rounded-full flex-shrink-0 bg-orange-500 text-white hover:bg-orange-600 shadow-lg transition-colors mx-3"
-                  title="Find a helper"
-                  aria-label="Find a helper"
+                  className="flex items-center justify-center h-12 w-12 rounded-2xl bg-primary text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_12px_24px_rgba(249,115,22,0.4)] transition-all hover:scale-110 active:scale-95 -translate-y-1"
+                  aria-label="Create Job"
                 >
-                  <Plus className="w-9 h-9" />
+                  <Plus className="w-7 h-7" />
                 </button>
 
                 {/* Last two items */}
@@ -288,24 +284,22 @@ export function BottomNav() {
                       key={item.path}
                       to={item.path}
                       className={cn(
-                        "flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 transition-colors relative",
-                        isActive
-                          ? "text-primary"
-                          : "text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                        "flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative group",
+                        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                       )}
-                      title={item.label}
                     >
-                      <div className="relative">
-                        <Icon className="w-8 h-8" />
-                        {showMessageBadge && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -top-2.5 -right-2.5 h-6 min-w-6 flex items-center justify-center px-1 text-[11px] font-bold"
-                          >
-                            {unreadMessages > 9 ? "9+" : unreadMessages}
-                          </Badge>
-                        )}
-                      </div>
+                      <Icon className={cn("w-6 h-6 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
+                      {isActive && (
+                        <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary animate-in zoom-in duration-300" />
+                      )}
+                      {showMessageBadge && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center px-1 text-[8px] font-bold border-2 border-background"
+                        >
+                          {unreadMessages > 9 ? "9+" : unreadMessages}
+                        </Badge>
+                      )}
                     </Link>
                   );
                 })}

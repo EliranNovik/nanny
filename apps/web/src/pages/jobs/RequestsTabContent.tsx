@@ -64,7 +64,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
                 {details.from_address && <div className="flex items-start gap-2 col-span-1"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm">{details.from_address} (From)</span></div>}
                 {details.to_address && <div className="flex items-start gap-2 col-span-1"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm">{details.to_address} (To)</span></div>}
                 {details.weight && <div className="flex items-center gap-2 col-span-1"><Package className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
-                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">NOTES</span><span className="text-white text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
+                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest flex items-center gap-2">NOTES</span><span className="text-foreground text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
             </>
         );
     }
@@ -73,7 +73,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
         return (
             <>
                 {details.home_size && <div className="flex items-center gap-2 col-span-1"><Home className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.home_size)} size</span></div>}
-                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">NOTES</span><span className="text-white text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
+                {details.custom && <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted rounded-xl px-4 py-3 border-none shadow-sm"><span className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest flex items-center gap-2">NOTES</span><span className="text-foreground text-sm font-medium whitespace-pre-wrap">{details.custom}</span></div>}
             </>
         )
     }
@@ -93,9 +93,9 @@ function formatServiceDetails(details: any, serviceType?: string) {
                 );
             })}
             {details.custom && (
-                <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm">
-                    <span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">NOTES</span>
-                    <span className="text-white text-sm font-medium whitespace-pre-wrap">{details.custom}</span>
+                <div className="col-span-2 flex flex-col gap-1.5 mt-2 w-full bg-muted rounded-xl px-4 py-3 border-none shadow-sm">
+                    <span className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest flex items-center gap-2">NOTES</span>
+                    <span className="text-foreground text-sm font-medium whitespace-pre-wrap">{details.custom}</span>
                 </div>
             )}
         </>
@@ -114,90 +114,114 @@ export default function RequestsTabContent() {
     const [myOpenRequests, setMyOpenRequests] = useState<JobRequest[]>([]);
     const [inboundNotifications, setInboundNotifications] = useState<InboundNotification[]>([]);
     const [myProfile, setMyProfile] = useState<{ photo_url: string | null; full_name: string | null } | null>(null);
+    const [isFirstLoad, setIsFirstLoad] = useState(true);
 
+    // 1. Fetch cache on mount
     useEffect(() => {
-        async function loadRequests() {
-            if (!user) return;
-            try {
-                // 1. Fetch Outbound ("My Open Requests") -> Jobs where I am the client and status is open
-                const { data: openJobs } = await supabase
+        if (!user) return;
+        try {
+            const cacheKey = `requests_tab_cache_${user.id}`;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                // Use cache if less than 1 hour old
+                if (Date.now() - timestamp < 3600000) {
+                    setMyOpenRequests(data.myOpenRequests || []);
+                    setInboundNotifications(data.inboundNotifications || []);
+                    setMyProfile(data.myProfile || null);
+                    setLoading(false); // Show cached data
+                }
+            }
+        } catch (e) {
+            console.error("Cache load error:", e);
+        }
+    }, [user]);
+
+    const loadRequests = async () => {
+        if (!user) return;
+        if (isFirstLoad && loading) {
+            // showing cache or initial loader
+        }
+        
+        try {
+            // Stage 1: Parallel fetch independent top-level data
+            const [openJobsRes, profileRes, notifsRes] = await Promise.all([
+                supabase
                     .from("job_requests")
                     .select("*")
                     .eq("client_id", user.id)
                     .in("status", ["ready", "notifying", "confirmations_closed"])
-                    .order("created_at", { ascending: false });
-
-                setMyOpenRequests(openJobs || []);
-
-                // Fetch own profile photo
-                const { data: profileData } = await supabase
+                    .order("created_at", { ascending: false }),
+                supabase
                     .from("profiles")
                     .select("photo_url, full_name")
                     .eq("id", user.id)
-                    .single();
-                if (profileData) setMyProfile(profileData);
-
-                // 2. Fetch Inbound -> Notifications where I am the candidate
-                const { data: notificationsData } = await supabase
+                    .single(),
+                supabase
                     .from("job_candidate_notifications")
                     .select(`
-            id, job_id, status, created_at,
-            job_requests (
-              id, client_id, service_type, care_type, children_count, children_age_group, location_city, start_at, service_details, time_duration, care_frequency,
-              profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
-            )
-          `)
+                        id, job_id, status, created_at,
+                        job_requests (
+                          id, client_id, service_type, care_type, children_count, children_age_group, location_city, start_at, service_details, time_duration, care_frequency,
+                          profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
+                        )
+                    `)
                     .eq("freelancer_id", user.id)
                     .in("status", ["pending", "opened"])
-                    .order("created_at", { ascending: false });
+                    .order("created_at", { ascending: false })
+            ]);
 
-                if (notificationsData) {
-                    // Check confirmations to see what's confirmed or declined
-                    const { data: confirmationsData } = await supabase
-                        .from("job_confirmations")
-                        .select("job_id, status")
-                        .eq("freelancer_id", user.id);
+            const openJobs = openJobsRes.data || [];
+            const profileData = profileRes.data || null;
+            const notificationsData = notifsRes.data || [];
 
-                    const confirmedJobIds = new Set((confirmationsData || []).filter(c => c.status === "available").map(c => c.job_id));
-                    const declinedJobIds = new Set((confirmationsData || []).filter(c => c.status === "declined").map(c => c.job_id));
+            setMyOpenRequests(openJobs);
+            setMyProfile(profileData);
 
-                    const validNotifications = notificationsData
-                        .filter((n: any) => n.job_requests)
-                        .map((n: any) => ({
-                            ...n,
-                            isConfirmed: confirmedJobIds.has(n.job_id),
-                            isDeclined: declinedJobIds.has(n.job_id)
-                        }));
+            // Stage 2: Parallel fetch dependent data (confirmations and conversations)
 
-                    setInboundNotifications(validNotifications as InboundNotification[]);
+
+            const [confsRes] = await Promise.all([
+                supabase
+                    .from("job_confirmations")
+                    .select("job_id, status")
+                    .eq("freelancer_id", user.id)
+            ]);
+
+            // Process notifications with confirmations
+            const confirmedJobIds = new Set((confsRes.data || []).filter(c => c.status === "available").map(c => c.job_id));
+            const declinedJobIds = new Set((confsRes.data || []).filter(c => c.status === "declined").map(c => c.job_id));
+
+            const validNotifications = notificationsData
+                .filter((n: any) => n.job_requests)
+                .map((n: any) => ({
+                    ...n,
+                    isConfirmed: confirmedJobIds.has(n.job_id),
+                    isDeclined: declinedJobIds.has(n.job_id)
+                }));
+
+            setInboundNotifications(validNotifications as InboundNotification[]);
+
+            // Update cache
+            const cacheKey = `requests_tab_cache_${user.id}`;
+            localStorage.setItem(cacheKey, JSON.stringify({
+                timestamp: Date.now(),
+                data: {
+                    myOpenRequests: openJobs,
+                    inboundNotifications: validNotifications,
+                    myProfile: profileData
                 }
+            }));
 
-                // Add conversation fetching
-                const allJobIds = [
-                    ...(openJobs || []).map(j => j.id),
-                    ...(notificationsData || []).map((n: any) => n.job_id)
-                ];
-
-                if (allJobIds.length > 0) {
-                    const { data: convs } = await supabase
-                        .from("conversations")
-                        .select("id, job_id, client_id, freelancer_id")
-                        .in("job_id", allJobIds)
-                        .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`);
-
-                    if (convs) {
-                        const convMap: Record<string, string> = {};
-                        convs.forEach(c => {
-                            if (c.job_id) convMap[c.job_id] = c.id;
-                        });
-                    }
-                }
-            } catch (e) {
-                console.error("Error loading requests:", e);
-            } finally {
-                setLoading(false);
-            }
+        } catch (e) {
+            console.error("Error loading requests:", e);
+        } finally {
+            setLoading(false);
+            setIsFirstLoad(false);
         }
+    };
+
+    useEffect(() => {
         loadRequests();
     }, [user]);
 
@@ -304,8 +328,8 @@ export default function RequestsTabContent() {
                             const isDeclined = notif.isDeclined;
 
                             return (
-                                <Card key={notif.id} className={cn("transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]", isDeclined && "opacity-60")}>
-                                    <CardContent className="p-0">
+                                <Card key={notif.id} className={cn("transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full", isDeclined && "opacity-60")}>
+                                    <CardContent className="p-0 flex-1 flex flex-col">
                                         <div className={cn(
                                             "px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm",
                                             isDeclined && "opacity-80",
@@ -321,12 +345,12 @@ export default function RequestsTabContent() {
                                                 )}
                                             </div>
                                             <Badge variant="outline" className={cn(
-                                                "flex items-center gap-1 text-xs px-2.5 py-1 shadow-sm font-bold border-0 bg-primary text-white",
+                                                "flex items-center gap-1 text-xs px-2.5 py-1 shadow-sm font-bold border-0 bg-orange-100 text-orange-500",
                                                 isDeclined && "opacity-80"
                                             )}>{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
                                         </div>
 
-                                        <div className="bg-white dark:bg-zinc-900">
+                                        <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
                                             <div className="px-5 py-4">
                                                 {job.profiles && (
                                                     <div className="flex items-center gap-3.5">
@@ -394,7 +418,7 @@ export default function RequestsTabContent() {
                                                 </div>
                                             ) : null}
 
-                                            <div className="px-5 pb-5 pt-1 flex flex-col gap-3">
+                                            <div className="px-5 pb-5 pt-1 flex flex-col gap-3 mt-auto">
 
                                                 {!isConfirmed && !isDeclined && (
                                                     <div className="flex gap-2 w-full mt-2">
@@ -443,16 +467,16 @@ export default function RequestsTabContent() {
                 {myOpenRequests.length > 0 ? (
                     <div className="flex flex-nowrap md:block md:space-y-4 overflow-x-auto pb-6 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0 mt-2">
                         {myOpenRequests.map((job) => (
-                            <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                                <CardContent className="p-0">
+                            <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full">
+                                <CardContent className="p-0 flex-1 flex flex-col">
                                     <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
                                         <div className="flex items-center gap-2">
                                             <Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" />
                                             <span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">{getJobStatusBadge(job.status)}</span>
                                         </div>
-                                        <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-primary text-white truncate shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+                                        <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-orange-100 text-orange-500 truncate shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
                                     </div>
-                                    <div className="bg-white dark:bg-zinc-900">
+                                    <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
                                         <div className="px-5 py-4">
                                             <div className="flex items-center gap-3.5">
                                                 <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
@@ -460,7 +484,7 @@ export default function RequestsTabContent() {
                                                     <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{(myProfile?.full_name || user?.email || "M").charAt(0).toUpperCase()}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex flex-col gap-1">
-                                                    <p className="font-semibold text-base leading-tight text-slate-900 dark:text-slate-100">My Request</p>
+
                                                     <div className="flex items-center gap-2 mt-0.5 text-sm text-slate-600 dark:text-slate-400 font-medium">
                                                         <MapPin className="w-4 h-4 text-primary/70" /> {job.location_city}
                                                         <span className="mx-1 opacity-50">•</span>
@@ -505,15 +529,15 @@ export default function RequestsTabContent() {
                                             </div>
                                         </div>
 
-                                        {/* Job Map */}
+                                        {/* Job Map - Nested Look */}
                                         {(job.service_type === 'pickup_delivery' || job.location_city) ? (
-                                            <div className="mt-2 overflow-hidden">
+                                            <div className="mt-2 mx-4 overflow-hidden h-28 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
                                                 <JobMap job={job} />
                                             </div>
                                         ) : null}
 
-                                        <div className="px-5 pb-5 pt-1 flex gap-3">
-                                            <Button className="flex-1 h-12 text-base font-semibold shadow-md btn-animate" onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}>
+                                        <div className="px-5 pb-6 pt-1 flex gap-3 mt-auto">
+                                            <Button className="flex-1 h-14 text-base font-bold shadow-lg btn-animate bg-orange-500 hover:bg-orange-600 text-white rounded-2xl" onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}>
                                                 <CheckCircle2 className="w-5 h-5 mr-2" /> View Helpers
                                             </Button>
                                         </div>

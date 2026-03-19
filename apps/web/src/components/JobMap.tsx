@@ -6,8 +6,7 @@ const libraries: ("places")[] = ["places"];
 
 const mapContainerStyle = {
     width: "100%",
-    height: "300px",
-    borderRadius: "0.5rem",
+    height: "100%",
 };
 
 const defaultCenter = {
@@ -100,10 +99,10 @@ export default function JobMap({ job }: JobMapProps) {
     }, [isLoaded, job?.id, job?.service_type, job?.location_city]);
 
     if (loadError) return <div className="p-4 text-center text-red-500 bg-red-50 rounded-lg">Error loading map</div>;
-    if (!isLoaded) return <div className="h-[300px] bg-muted animate-pulse rounded-lg flex items-center justify-center text-muted-foreground">Loading Map...</div>;
+    if (!isLoaded) return <div className="h-full w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-muted-foreground">Loading Map...</div>;
 
     return (
-        <div className="relative rounded-lg overflow-hidden border mt-4">
+        <div className="relative w-full h-full overflow-hidden">
             {loading && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-sm">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
