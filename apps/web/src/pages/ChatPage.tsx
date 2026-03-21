@@ -1046,7 +1046,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
   function formatServiceDetails(details: any, serviceType?: string) {
     if (!details) return null;
-    if (typeof details === 'string') return <div className="col-span-2 flex items-start gap-2 text-foreground font-medium"><AlignLeft className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> {details}</div>;
+    if (typeof details === 'string') return <div className="col-span-2 flex items-start gap-2 text-foreground font-medium"><AlignLeft className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> {details}</div>;
 
     const formatValue = (val: any) => {
       if (typeof val !== 'string') return String(val);
@@ -1062,9 +1062,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     if (serviceType === 'pickup_delivery') {
       return (
         <>
-          {details.from_address && <div className="flex items-start gap-2"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.from_address} (From)</span></div>}
-          {details.to_address && <div className="flex items-start gap-2"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.to_address} (To)</span></div>}
-          {details.weight && <div className="flex items-center gap-2"><Package className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
+          {details.from_address && <div className="flex items-start gap-2"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.from_address} (From)</span></div>}
+          {details.to_address && <div className="flex items-start gap-2"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.to_address} (To)</span></div>}
+          {details.weight && <div className="flex items-center gap-2"><Package className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
         </>
       );
     }
@@ -1072,7 +1072,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     if (serviceType === 'cleaning') {
       return (
         <>
-          {details.home_size && <div className="flex items-center gap-2"><Home className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.home_size)} size</span></div>}
+          {details.home_size && <div className="flex items-center gap-2"><Home className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.home_size)} size</span></div>}
         </>
       )
     }
@@ -1086,7 +1086,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           if (key === 'from_lat' || key === 'from_lng' || key === 'to_lat' || key === 'to_lng') return null;
           return (
             <div key={key} className="flex items-center gap-2">
-              <AlignLeft className="w-4 h-4 text-primary/70 flex-shrink-0" />
+              <AlignLeft className="w-4 h-4 text-orange-500 flex-shrink-0" />
               <span className="font-medium text-foreground capitalize text-sm">{formatValue(value)} {key.replace(/_/g, ' ')}</span>
             </div>
           );
@@ -1433,13 +1433,13 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                   {job && (
                     <div className="space-y-4 px-2 pt-4 border-t border-dashed">
                       <div className="flex items-center gap-2 font-bold text-base">
-                        <Badge variant="outline" className="bg-white/30 dark:bg-background/30 backdrop-blur-xl text-white border-white/20 px-3 py-1.5 shadow-sm font-bold tracking-tight">
+                        <Badge variant="outline" className="bg-slate-100 dark:bg-background/30 backdrop-blur-xl text-slate-900 dark:text-white border-slate-200 dark:border-white/20 px-3 py-1.5 shadow-sm font-bold tracking-tight">
                           <FileText className="w-4 h-4 mr-2" />
                           JOB DETAILS
                         </Badge>
                       </div>
 
-                      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 space-y-4 border border-white/10 shadow-sm">
+                      <div className="bg-slate-50/50 dark:bg-white/10 backdrop-blur-md rounded-2xl p-5 space-y-4 border border-slate-200 dark:border-white/10 shadow-sm">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                             {job.service_type === 'cleaning' && <Sparkles className="w-5 h-5 text-primary" />}
@@ -1449,8 +1449,8 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                             {(!job.service_type || job.service_type === 'other_help') && <Briefcase className="w-5 h-5 text-primary" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-lg font-bold leading-tight truncate text-white">{formatJobTitle(job)}</h4>
-                            <div className="flex items-center gap-1.5 mt-0.5 text-white/70">
+                            <h4 className="text-lg font-bold leading-tight truncate text-slate-900 dark:text-white">{formatJobTitle(job)}</h4>
+                            <div className="flex items-center gap-1.5 mt-0.5 text-slate-600 dark:text-white/70">
                               <MapPin className="w-3.5 h-3.5 shrink-0" />
                               <span className="text-sm font-medium">{job.location_city}</span>
                             </div>
@@ -1460,28 +1460,28 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                         <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 pt-3.5 border-t border-border/30">
                           {job.start_at && (
                             <div className="flex items-center gap-2.5">
-                              <Calendar className="w-4 h-4 text-black dark:text-white shrink-0" />
+                              <Calendar className="w-4 h-4 text-orange-500 shrink-0" />
                               <span className="text-sm font-medium leading-tight text-black dark:text-white">{formatDateTimeSimple(job.start_at)}</span>
                             </div>
                           )}
 
                           {job.time_duration && (
                             <div className="flex items-center gap-2.5">
-                              <Hourglass className="w-4 h-4 text-black dark:text-white shrink-0" />
+                              <Hourglass className="w-4 h-4 text-orange-500 shrink-0" />
                               <span className="text-sm font-medium capitalize text-black dark:text-white">{job.time_duration.replace(/_/g, ' ')}</span>
                             </div>
                           )}
 
                           {job.care_frequency && (
                             <div className="flex items-center gap-2.5">
-                              <Repeat className="w-4 h-4 text-black dark:text-white shrink-0" />
+                              <Repeat className="w-4 h-4 text-orange-500 shrink-0" />
                               <span className="text-sm font-medium capitalize text-black dark:text-white">{job.care_frequency.replace(/_/g, ' ')}</span>
                             </div>
                           )}
 
                           {(Number(job.children_count) > 0 || job.service_type === 'nanny') && (
                             <div className="flex items-center gap-2.5">
-                              <Baby className="w-4 h-4 text-black dark:text-white shrink-0" />
+                              <Baby className="w-4 h-4 text-orange-500 shrink-0" />
                               <span className="text-sm font-medium text-black dark:text-white">
                                 {Number(job.children_count) || 0} {job.children_age_group ? `(${formatAgeGroup(job.children_age_group as string)})` : ''} kids
                               </span>
@@ -1720,7 +1720,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                           )}>
                             <span className={cn(
                               "text-[10px]",
-                              isOwn ? "text-primary-foreground/70" : "text-white/60"
+                              isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
                             )}>
                               {formatTime(msg.created_at)}
                             </span>

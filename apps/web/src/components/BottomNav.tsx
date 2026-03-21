@@ -199,8 +199,8 @@ export function BottomNav() {
           <div className="max-w-2xl mx-auto px-4 pb-3">
             <div className="w-full max-w-xs mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
               <div className="flex items-center justify-center min-w-max px-4 py-2">
-                <div className="flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 text-black dark:text-white" title="Getting Started">
-                  <Home className="w-8 h-8" />
+                <div className="flex items-center justify-center py-4 px-6 rounded-full flex-shrink-0 text-black dark:text-white" title="Getting Started">
+                  <Home className="w-9 h-9" />
                 </div>
               </div>
             </div>
@@ -227,8 +227,8 @@ export function BottomNav() {
         {TopHeader}
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-full max-w-sm sm:max-w-md mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
-              <div className="flex items-center justify-between w-full px-6 py-2">
+            <div className="w-full max-w-md sm:max-w-lg mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
+              <div className="flex items-center justify-between w-full px-8 py-3">
                 {/* First two items */}
                 {userNav.slice(0, 2).map((item) => {
                   const Icon = item.icon;
@@ -247,14 +247,14 @@ export function BottomNav() {
                         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Icon className={cn("w-6 h-6 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
+                      <Icon className={cn("w-7 h-7 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
                       {isActive && (
                         <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary animate-in zoom-in duration-300" />
                       )}
                       {jobsBadgeCount > 0 && (
                         <Badge
                           variant="destructive"
-                          className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center px-1 text-[8px] font-bold border-2 border-background"
+                          className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold border-2 border-background"
                         >
                           {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
                         </Badge>
@@ -267,10 +267,10 @@ export function BottomNav() {
                 <button
                   type="button"
                   onClick={() => navigate("/client/create")}
-                  className="flex items-center justify-center h-12 w-12 rounded-2xl bg-primary text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_12px_24px_rgba(249,115,22,0.4)] transition-all hover:scale-110 active:scale-95 -translate-y-1"
+                  className="flex items-center justify-center h-14 w-14 rounded-2xl bg-primary text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_12px_24px_rgba(249,115,22,0.4)] transition-all hover:scale-110 active:scale-95 -translate-y-1"
                   aria-label="Create Job"
                 >
-                  <Plus className="w-7 h-7" />
+                  <Plus className="w-8 h-8" />
                 </button>
 
                 {/* Last two items */}
@@ -295,7 +295,7 @@ export function BottomNav() {
                       {showMessageBadge && (
                         <Badge
                           variant="destructive"
-                          className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center px-1 text-[8px] font-bold border-2 border-background"
+                          className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold border-2 border-background"
                         >
                           {unreadMessages > 9 ? "9+" : unreadMessages}
                         </Badge>
@@ -322,8 +322,8 @@ export function BottomNav() {
           <div className="max-w-2xl mx-auto px-4 pb-3">
             <div className="w-full max-w-xs mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
               <div className="flex items-center justify-center min-w-max px-4 py-2">
-                <div className="flex items-center justify-center py-3.5 px-4.5 rounded-full flex-shrink-0 text-black dark:text-white" title="Loading...">
-                  <Home className="w-8 h-8" />
+                <div className="flex items-center justify-center py-4 px-6 rounded-full flex-shrink-0 text-black dark:text-white" title="Loading...">
+                  <Home className="w-9 h-9" />
                 </div>
               </div>
             </div>

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Baby, Sparkles, Clock, MapPin, ArrowRight, Loader2, Bell, Briefcase,
-  UtensilsCrossed, Truck, HelpCircle, Calendar, Repeat,
+  UtensilsCrossed, Truck, HelpCircle, Calendar,
   MessageCircle, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -278,6 +278,17 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8 space-y-6">
+        {/* Welcome Section */}
+        <div className="mb-2 px-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+            Welcome back, {profile?.full_name?.split(' ')[0] || 'User'}!
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 text-sm font-medium flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-orange-500" />
+            Here's what's happening with your requests today.
+          </p>
+        </div>
+
         {/* KPI Cards Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card 
@@ -341,10 +352,10 @@ export default function DashboardPage() {
               <div className="px-5 py-4 border-b border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/50">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                     <span className="text-xs font-bold uppercase tracking-wider text-primary">Live Job</span>
                   </div>
-                  <Badge className="bg-primary/10 text-primary border-none font-bold px-3 py-1 rounded-full text-[10px] uppercase tracking-wider">
+                   <Badge className="bg-primary/10 text-primary border-none font-bold px-3 py-1 rounded-full text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                    {getServiceIcon(activeJob.service_type)}
                     {formatJobTitle(activeJob)}
                   </Badge>
                 </div>
@@ -372,8 +383,8 @@ export default function DashboardPage() {
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Duration</span>
                     <div className="flex items-center gap-1.5 text-foreground bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
-                      <Clock className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-xs font-bold">{activeJob.time_duration?.replace(/_/g, " ") || "2 Hours"}</span>
+                      <Clock className="w-3.5 h-3.5 text-orange-500" />
+                      <span className="text-xs font-bold">{activeJob.time_duration?.replace(/_/g, " ").replace(/(\d+)\s+(\d+)/, "$1-$2") || "2 Hours"}</span>
                     </div>
                   </div>
                 </div>
@@ -393,7 +404,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Actions Grid */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <Button 
                     variant="ghost" 
                     className="h-20 rounded-3xl bg-blue-50/50 hover:bg-blue-100/50 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 flex flex-col items-center justify-center gap-2 group transition-all"
@@ -409,8 +420,14 @@ export default function DashboardPage() {
                     variant="ghost" 
                     className="h-20 rounded-3xl bg-emerald-50/50 hover:bg-emerald-100/50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 flex flex-col items-center justify-center gap-2 group transition-all"
                     onClick={() => {
-                      const query = encodeURIComponent(activeJob.location_city || "");
-                      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                      if (activeJob.service_type === 'pickup_delivery' && activeJob.service_details?.from_address && activeJob.service_details?.to_address) {
+                        const origin = encodeURIComponent(activeJob.service_details.from_address);
+                        const destination = encodeURIComponent(activeJob.service_details.to_address);
+                        window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
+                      } else {
+                        const query = encodeURIComponent(activeJob.location_city || "");
+                        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                      }
                     }}
                   >
                     <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center text-emerald-500 shadow-sm group-hover:scale-110 transition-transform">
@@ -419,15 +436,7 @@ export default function DashboardPage() {
                     <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Navigate</span>
                   </Button>
 
-                  <Button 
-                    variant="ghost" 
-                    className="h-20 rounded-3xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 flex flex-col items-center justify-center gap-2 group transition-all"
-                  >
-                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-slate-600 shadow-sm group-hover:scale-110 transition-transform">
-                      <Repeat className="w-6 h-6" />
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400">Modify</span>
-                  </Button>
+
                 </div>
               </div>
             </CardContent>
@@ -518,7 +527,7 @@ export default function DashboardPage() {
             <div className="bg-white dark:bg-zinc-900">
               <div className="px-5 py-3 border-b border-black/5 dark:border-white/5">
                 {/* Toggle */}
-                <div className="flex gap-1 bg-black/5 dark:bg-white/5 rounded-xl p-1 border border-black/5 dark:border-white/5">
+                <div className="flex gap-1 bg-white dark:bg-zinc-900 rounded-xl p-1 border border-black/10 dark:border-white/10 shadow-sm">
                   <button
                     onClick={() => setRequestsTab("my")}
                     className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
