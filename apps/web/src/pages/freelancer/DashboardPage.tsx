@@ -7,12 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Baby, Sparkles, Clock, MapPin, ArrowRight, Loader2, Bell, Briefcase,
+  Baby, Sparkles, MapPin, ArrowRight, Loader2, Bell, Briefcase,
   UtensilsCrossed, Truck, HelpCircle, Calendar, MessageCircle, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/StarRating";
-import JobMap from "@/components/JobMap";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import DashboardLiveJobCard from "@/components/DashboardLiveJobCard";
 
 interface JobRequest {
   id: string;
@@ -70,6 +71,7 @@ export default function FreelancerDashboardPage() {
   
   const [earningsToday, setEarningsToday] = useState(0);
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
+  const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
 
   // Load cache on mount
   useEffect(() => {
@@ -388,113 +390,30 @@ export default function FreelancerDashboardPage() {
               <h2 className="text-lg font-bold flex items-center gap-2">
                 ACTIVE JOB
               </h2>
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Started 2h ago</span>
             </div>
 
-            <Card className="border-none shadow-[10px_10px_40px_rgba(0,0,0,0.06)] rounded-[2rem] overflow-hidden bg-white dark:bg-zinc-900">
-              <CardContent className="p-0">
-                <div className="p-6">
-                  {/* Top section: Client + Status */}
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="w-16 h-16 border-4 border-primary/5 shadow-md flex-shrink-0">
-                        <AvatarImage src={clientProfiles[activeJobs[0].client_id]?.photo_url || undefined} className="object-cover" />
-                        <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">
-                          {clientProfiles[activeJobs[0].client_id]?.full_name?.charAt(0).toUpperCase() || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="text-xl font-bold leading-tight">{clientProfiles[activeJobs[0].client_id]?.full_name || "Client"}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <StarRating rating={clientProfiles[activeJobs[0].client_id]?.average_rating ?? 0} size="sm" />
-                          <span className="text-xs font-medium text-muted-foreground">({clientProfiles[activeJobs[0].client_id]?.total_ratings || 0})</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Badge className="bg-primary/10 text-primary border-none font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider flex items-center gap-1.5">
-                      {getServiceIcon(activeJobs[0].service_type)}
-                      {formatJobTitle(activeJobs[0])}
-                    </Badge>
-                  </div>
-
-                  {/* Job Details Grid */}
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center text-orange-500 shadow-sm">
-                        <MapPin className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">DISTANCE</p>
-                        <p className="font-bold text-sm">2.4 km (8 min)</p>
-                      </div>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center text-orange-500 shadow-sm">
-                        <Clock className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">DURATION</p>
-                        <p className="font-bold text-sm">{activeJobs[0].time_duration?.replace(/_/g, " ").replace(/(\d+)\s+(\d+)/, "$1-$2") || 'N/A'}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Nested Map Preview */}
-                  <div className="mx-4 rounded-3xl overflow-hidden mb-6 h-28 shadow-sm border border-black/5 dark:border-white/5 group relative">
-                    <JobMap job={activeJobs[0]} />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      className="absolute bottom-3 right-3 rounded-full font-bold shadow-lg border-none opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => {
-                        const query = encodeURIComponent(activeJobs[0].location_city || "");
-                        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                      }}
-                    >
-                      <MapPin className="w-3.5 h-3.5 mr-1.5" /> Open in Maps
-                    </Button>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button 
-                      variant="ghost" 
-                      className="h-20 rounded-3xl bg-blue-50/50 hover:bg-blue-100/50 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 flex flex-col items-center justify-center gap-2 group transition-all px-0"
-                      onClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate("/messages")}
-                    >
-                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center text-blue-500 shadow-sm group-hover:scale-110 transition-transform">
-                        <MessageCircle className="w-6 h-6" />
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Chat</span>
-                    </Button>
-
-                    <Button 
-                      variant="ghost"                   
-                      className="h-20 rounded-3xl bg-emerald-50/50 hover:bg-emerald-100/50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 flex flex-col items-center justify-center gap-2 group transition-all px-0"
-                      onClick={() => {
-                        const job = activeJobs[0];
-                        if (job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address) {
-                          const origin = encodeURIComponent(job.service_details.from_address);
-                          const destination = encodeURIComponent(job.service_details.to_address);
-                          window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
-                        } else {
-                          const query = encodeURIComponent(job.location_city || "");
-                          window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                        }
-                      }}
-                    >
-                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center text-emerald-500 shadow-sm group-hover:scale-110 transition-transform">
-                        <MapPin className="w-6 h-6" />
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Navigate</span>
-                    </Button>
-
-
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <DashboardLiveJobCard 
+              job={activeJobs[0]}
+              participant={{
+                full_name: clientProfiles[activeJobs[0].client_id]?.full_name || "Client",
+                photo_url: clientProfiles[activeJobs[0].client_id]?.photo_url || undefined,
+                average_rating: clientProfiles[activeJobs[0].client_id]?.average_rating,
+                total_ratings: clientProfiles[activeJobs[0].client_id]?.total_ratings
+              }}
+              onMapClick={() => setSelectedMapJob(activeJobs[0])}
+              onChatClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate("/messages")}
+              onNavigateClick={() => {
+                const job = activeJobs[0];
+                if (job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address) {
+                  const origin = encodeURIComponent(job.service_details.from_address);
+                  const destination = encodeURIComponent(job.service_details.to_address);
+                  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
+                } else {
+                  const query = encodeURIComponent(job.location_city || "");
+                  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                }
+              }}
+            />
           </div>
         )}
 
@@ -566,25 +485,25 @@ export default function FreelancerDashboardPage() {
             </div>
             <div className="bg-white dark:bg-zinc-900">
               <div className="px-5 py-3 border-b border-black/5 dark:border-white/5">
-                {/* Toggle */}
-                <div className="flex gap-1 bg-white dark:bg-zinc-900 rounded-xl p-1 border border-black/10 dark:border-white/10 shadow-sm">
+                {/* Toggle - Smaller & Built-in */}
+                <div className="flex items-center justify-center gap-1.5 p-1 bg-black/5 dark:bg-white/5 rounded-xl w-fit mx-auto">
                   <button
                     onClick={() => setRequestsTab("invitations")}
-                    className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
+                    className={cn("flex items-center justify-center gap-1.5 py-1 px-4 rounded-lg text-[10px] font-bold transition-all",
                       requestsTab === "invitations"
-                        ? "bg-orange-500 text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
+                        ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white")}
                   >
-                    <Bell className="w-3.5 h-3.5" /> Invitations
+                    <Bell className="w-3 h-3" /> Invitations
                   </button>
                   <button
                     onClick={() => setRequestsTab("my")}
-                    className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
+                    className={cn("flex items-center justify-center gap-1.5 py-1 px-4 rounded-lg text-[10px] font-bold transition-all",
                       requestsTab === "my"
-                        ? "bg-orange-500 text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
+                        ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white")}
                   >
-                    <Briefcase className="w-3.5 h-3.5" /> My Requests
+                    <Briefcase className="w-3 h-3" /> My Requests
                   </button>
                 </div>
               </div>
@@ -670,6 +589,11 @@ export default function FreelancerDashboardPage() {
           </Card>
         )}
 
+        <FullscreenMapModal 
+          job={selectedMapJob} 
+          isOpen={!!selectedMapJob} 
+          onClose={() => setSelectedMapJob(null)} 
+        />
       </div>
     </div>
   );

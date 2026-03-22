@@ -16,9 +16,10 @@ const defaultCenter = {
 
 interface JobMapProps {
     job: any;
+    onRouteInfo?: (info: { distance: string; duration: string }) => void;
 }
 
-export default function JobMap({ job }: JobMapProps) {
+export default function JobMap({ job, onRouteInfo }: JobMapProps) {
     const { isLoaded, loadError } = useJsApiLoader({
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
         libraries,
@@ -69,8 +70,15 @@ export default function JobMap({ job }: JobMapProps) {
                     travelMode: google.maps.TravelMode.DRIVING,
                 }, (result, status) => {
                     setLoading(false);
-                    if (status === "OK") {
+                    if (status === "OK" && result) {
                         setDirections(result);
+                        const route = result.routes[0];
+                        if (route && route.legs[0] && onRouteInfo) {
+                            onRouteInfo({
+                                distance: route.legs[0].distance?.text || "",
+                                duration: route.legs[0].duration?.text || "",
+                            });
+                        }
                     } else {
                         console.error("Directions request failed due to " + status);
                     }

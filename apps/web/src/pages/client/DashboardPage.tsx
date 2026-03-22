@@ -7,13 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Baby, Sparkles, Clock, MapPin, ArrowRight, Loader2, Bell, Briefcase,
+  Baby, Sparkles, MapPin, ArrowRight, Loader2, Bell, Briefcase,
   UtensilsCrossed, Truck, HelpCircle, Calendar,
   MessageCircle, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/StarRating";
-import JobMap from "@/components/JobMap";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import DashboardLiveJobCard from "@/components/DashboardLiveJobCard";
 
 interface JobRequest {
   id: string;
@@ -63,6 +64,7 @@ export default function DashboardPage() {
   const [myRequests, setMyRequests] = useState<JobRequest[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [requestsTab, setRequestsTab] = useState<"my" | "invitations">("my");
+  const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
 
   // Load cache on mount
   useEffect(() => {
@@ -346,101 +348,35 @@ export default function DashboardPage() {
 
         {/* Active Job Card - styled like Live Jobs tab */}
         {activeJob && (
-          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white dark:bg-zinc-900">
-            <CardContent className="p-0">
-              {/* Status Header */}
-              <div className="px-5 py-4 border-b border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/50">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-primary">Live Job</span>
-                  </div>
-                   <Badge className="bg-primary/10 text-primary border-none font-bold px-3 py-1 rounded-full text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                    {getServiceIcon(activeJob.service_type)}
-                    {formatJobTitle(activeJob)}
-                  </Badge>
-                </div>
-                
-              </div>
-
-              <div className="p-5">
-                {/* Top Info Section */}
-                <div className="flex items-start justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-md">
-                      <AvatarImage src={selectedFreelancer?.photo_url || undefined} className="object-cover" />
-                      <AvatarFallback className="bg-primary/5 text-primary text-xl font-bold">
-                        {selectedFreelancer?.full_name?.charAt(0) || "H"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-bold text-lg leading-none mb-1.5">{selectedFreelancer?.full_name || "Helper"}</h3>
-                      <div className="flex items-center gap-2">
-                        <StarRating rating={selectedFreelancer?.average_rating || 5} size="sm" />
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{selectedFreelancer?.total_ratings || 0} REVIEWS</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Duration</span>
-                    <div className="flex items-center gap-1.5 text-foreground bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
-                      <Clock className="w-3.5 h-3.5 text-orange-500" />
-                      <span className="text-xs font-bold">{activeJob.time_duration?.replace(/_/g, " ").replace(/(\d+)\s+(\d+)/, "$1-$2") || "2 Hours"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Map Preview - Nested Look */}
-                <div className="relative h-28 mx-4 rounded-3xl overflow-hidden mb-6 border border-black/5 dark:border-white/5 group shadow-sm">
-                  <JobMap job={activeJob} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm hover:bg-white text-[10px] font-bold h-7 rounded-full shadow-lg"
-                    onClick={() => navigate("/jobs")}
-                  >
-                    OPEN IN MAPS
-                  </Button>
-                </div>
-
-                {/* Actions Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Button 
-                    variant="ghost" 
-                    className="h-20 rounded-3xl bg-blue-50/50 hover:bg-blue-100/50 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 flex flex-col items-center justify-center gap-2 group transition-all"
-                    onClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate("/messages")}
-                  >
-                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center text-blue-500 shadow-sm group-hover:scale-110 transition-transform">
-                      <MessageCircle className="w-6 h-6" />
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Chat</span>
-                  </Button>
-
-                  <Button 
-                    variant="ghost" 
-                    className="h-20 rounded-3xl bg-emerald-50/50 hover:bg-emerald-100/50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 flex flex-col items-center justify-center gap-2 group transition-all"
-                    onClick={() => {
-                      if (activeJob.service_type === 'pickup_delivery' && activeJob.service_details?.from_address && activeJob.service_details?.to_address) {
-                        const origin = encodeURIComponent(activeJob.service_details.from_address);
-                        const destination = encodeURIComponent(activeJob.service_details.to_address);
-                        window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
-                      } else {
-                        const query = encodeURIComponent(activeJob.location_city || "");
-                        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                      }
-                    }}
-                  >
-                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center text-emerald-500 shadow-sm group-hover:scale-110 transition-transform">
-                      <MapPin className="w-6 h-6" />
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Navigate</span>
-                  </Button>
-
-
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                ACTIVE JOB
+              </h2>
+            </div>
+            
+            <DashboardLiveJobCard 
+              job={activeJob}
+              participant={{
+                full_name: selectedFreelancer?.full_name || "Helper",
+                photo_url: selectedFreelancer?.photo_url || undefined,
+                average_rating: selectedFreelancer?.average_rating,
+                total_ratings: selectedFreelancer?.total_ratings
+              }}
+              onMapClick={() => setSelectedMapJob(activeJob)}
+              onChatClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate("/messages")}
+              onNavigateClick={() => {
+                if (activeJob.service_type === 'pickup_delivery' && activeJob.service_details?.from_address && activeJob.service_details?.to_address) {
+                  const origin = encodeURIComponent(activeJob.service_details.from_address);
+                  const destination = encodeURIComponent(activeJob.service_details.to_address);
+                  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
+                } else {
+                  const query = encodeURIComponent(activeJob.location_city || "");
+                  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                }
+              }}
+            />
+          </div>
         )}
 
         <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white dark:bg-zinc-900">
@@ -526,25 +462,25 @@ export default function DashboardPage() {
             </div>
             <div className="bg-white dark:bg-zinc-900">
               <div className="px-5 py-3 border-b border-black/5 dark:border-white/5">
-                {/* Toggle */}
-                <div className="flex gap-1 bg-white dark:bg-zinc-900 rounded-xl p-1 border border-black/10 dark:border-white/10 shadow-sm">
+                {/* Toggle - Smaller & Built-in */}
+                <div className="flex items-center justify-center gap-1.5 p-1 bg-black/5 dark:bg-white/5 rounded-xl w-fit mx-auto">
                   <button
                     onClick={() => setRequestsTab("my")}
-                    className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
+                    className={cn("flex items-center justify-center gap-1.5 py-1 px-4 rounded-lg text-[10px] font-bold transition-all",
                       requestsTab === "my"
-                        ? "bg-orange-500 text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
+                        ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white")}
                   >
-                    <Briefcase className="w-3.5 h-3.5" /> My Requests
+                    <Briefcase className="w-3 h-3" /> My Requests
                   </button>
                   <button
                     onClick={() => setRequestsTab("invitations")}
-                    className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
+                    className={cn("flex items-center justify-center gap-1.5 py-1 px-4 rounded-lg text-[10px] font-bold transition-all",
                       requestsTab === "invitations"
-                        ? "bg-orange-500 text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
+                        ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white")}
                   >
-                    <Bell className="w-3.5 h-3.5" /> Invitations
+                    <Bell className="w-3 h-3" /> Invitations
                   </button>
                 </div>
               </div>
@@ -629,6 +565,11 @@ export default function DashboardPage() {
           </Card>
         )}
 
+        <FullscreenMapModal 
+          job={selectedMapJob} 
+          isOpen={!!selectedMapJob} 
+          onClose={() => setSelectedMapJob(null)} 
+        />
       </div>
     </div>
   );
