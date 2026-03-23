@@ -41,7 +41,7 @@ const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
         {/* Left: Square Map Preview */}
         <div 
           className="relative w-28 h-28 md:w-32 md:h-32 rounded-[1.5rem] overflow-hidden flex-shrink-0 cursor-pointer border border-black/5 dark:border-white/5 shadow-inner"
-          onClick={onMapClick}
+          onClick={(e) => { e.stopPropagation(); onMapClick(); }}
         >
           <div className="absolute inset-0 z-0">
             <JobMap job={job} />

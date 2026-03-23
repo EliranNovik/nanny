@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from "@react-google-maps/api";
 import { Loader2 } from "lucide-react";
+import MapFallback from "./MapFallback";
 
 const libraries: ("places")[] = ["places"];
 
@@ -29,13 +30,25 @@ export default function JobMap({ job, onRouteInfo }: JobMapProps) {
     const [center, setCenter] = useState<{ lat: number; lng: number }>(defaultCenter);
     const [markerPosition, setMarkerPosition] = useState<{ lat: number; lng: number } | null>(null);
     const [loading, setLoading] = useState(false);
+    const [showFallback, setShowFallback] = useState(false);
 
     // Use a ref to track if we've initialized for this specific job ID to prevent infinite loops/re-renders
     // but allow updates if job ID changes
     const processedJobIdRef = useRef<string | null>(null);
 
     useEffect(() => {
+        // If map fails to load within 10 seconds, offer fallback
+        const timer = setTimeout(() => {
+            if (!isLoaded && !loadError) setShowFallback(true);
+        }, 10000);
+        return () => clearTimeout(timer);
+    }, [isLoaded, loadError]);
+
+    useEffect(() => {
         if (!isLoaded || !job) return;
+        
+        // Hide fallback if map finally loads
+        setShowFallback(false);
 
         // Check if we need to process this job
         // We process if we haven't processed ANY job yet, or if the job ID changed
@@ -106,8 +119,11 @@ export default function JobMap({ job, onRouteInfo }: JobMapProps) {
         setupMap();
     }, [isLoaded, job?.id, job?.service_type, job?.location_city]);
 
-    if (loadError) return <div className="p-4 text-center text-red-500 bg-red-50 rounded-lg">Error loading map</div>;
-    if (!isLoaded) return <div className="h-full w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-muted-foreground">Loading Map...</div>;
+    if (loadError || showFallback) return <MapFallback job={job} onRetry={() => setShowFallback(false)} />;
+    if (!isLoaded) return <div className="h-full w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-muted-foreground flex-col gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="text-xs font-bold uppercase tracking-widest opacity-50">Initializing Map...</span>
+    </div>;
 
     return (
         <div className="relative w-full h-full overflow-hidden">
