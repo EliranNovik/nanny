@@ -15,7 +15,9 @@ import {
   RotateCcw,
   StopCircle,
   X,
-  Sparkles
+  Sparkles,
+  UploadCloud,
+  Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -208,6 +210,51 @@ export default function ConfirmedListPage() {
 
     return () => clearInterval(timerInterval);
   }, [job, startTime]);
+
+  async function handleFiles(files: File[]) {
+    if (!files.length || !jobId) return;
+    setSavingDetails(true);
+    try {
+      const newImages: string[] = [];
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${jobId}/${Math.random()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('job-images')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('job-images')
+          .getPublicUrl(filePath);
+          
+        newImages.push(publicUrl);
+      }
+
+      const currentImages = job?.service_details?.images || [];
+      const updatedDetails = {
+        ...(job?.service_details || {}),
+        images: [...currentImages, ...newImages]
+      };
+
+      const { error: dbError } = await supabase
+        .from('job_requests')
+        .update({ service_details: updatedDetails })
+        .eq('id', jobId);
+
+      if (dbError) throw dbError;
+
+      addToast({ title: "Images Uploaded", description: "Your images have been added to the request.", variant: "success" });
+      fetchJobDirectly();
+    } catch (err: any) {
+      console.error("[ConfirmedListPage] Error uploading images:", err);
+      addToast({ title: "Upload Failed", description: err.message || "Could not upload images.", variant: "error" });
+    } finally {
+      setSavingDetails(false);
+    }
+  }
 
   // Sync customDetails from job data (v2)
   useEffect(() => {
@@ -536,87 +583,79 @@ export default function ConfirmedListPage() {
                 Upload photos to help helpers understand the task better (e.g., items to pick up, area to clean).
               </p>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Upload Photos</span>
-                  <div>
-                    <input
-                      type="file"
-                      id="job-image-upload"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        if (!e.target.files?.length || !jobId) return;
-                        setSavingDetails(true);
-                        try {
-                          const newImages: string[] = [];
-                          for (let i = 0; i < e.target.files.length; i++) {
-                            const file = e.target.files[i];
-                            const fileExt = file.name.split('.').pop();
-                            const filePath = `${jobId}/${Math.random()}.${fileExt}`;
-                            
-                            const { error: uploadError } = await supabase.storage
-                              .from('job-images')
-                              .upload(filePath, file);
+              <div className="space-y-6">
+                <input
+                  type="file"
+                  id="job-image-upload"
+                  multiple
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = e.target.files;
+                    if (!files?.length || !jobId) return;
+                    await handleFiles(Array.from(files));
+                  }}
+                />
 
-                            if (uploadError) throw uploadError;
-
-                            const { data: { publicUrl } } = supabase.storage
-                              .from('job-images')
-                              .getPublicUrl(filePath);
-                              
-                            newImages.push(publicUrl);
-                          }
-
-                          const currentImages = job?.service_details?.images || [];
-                          const updatedDetails = {
-                            ...(job?.service_details || {}),
-                            images: [...currentImages, ...newImages]
-                          };
-
-                          const { error: dbError } = await supabase
-                            .from('job_requests')
-                            .update({ service_details: updatedDetails })
-                            .eq('id', jobId);
-
-                          if (dbError) throw dbError;
-
-                          addToast({ title: "Images Uploaded", description: "Your images have been added to the request.", variant: "success" });
-                          fetchJobDirectly();
-                        } catch (err: any) {
-                          console.error("[ConfirmedListPage] Error uploading images:", err);
-                          addToast({ title: "Upload Failed", description: err.message || "Could not upload images.", variant: "error" });
-                        } finally {
-                          setSavingDetails(false);
-                        }
-                      }}
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      disabled={savingDetails}
-                      onClick={() => document.getElementById('job-image-upload')?.click()}
-                    >
-                      {savingDetails ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      Upload Photos
-                    </Button>
+                <div
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-primary', 'bg-primary/5'); }}
+                  onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove('border-primary', 'bg-primary/5'); }}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-primary', 'bg-primary/5');
+                    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                    if (files.length > 0 && jobId) await handleFiles(files);
+                  }}
+                  className={cn(
+                    "relative group cursor-pointer transition-all duration-300",
+                    "border-2 border-dashed border-border/60 hover:border-primary/50 hover:bg-primary/5",
+                    "rounded-[2.5rem] p-10 text-center flex flex-col items-center justify-center gap-3",
+                    savingDetails && "opacity-50 pointer-events-none"
+                  )}
+                  onClick={() => document.getElementById('job-image-upload')?.click()}
+                >
+                  <div className="w-20 h-20 rounded-[1.8rem] bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-500">
+                    <UploadCloud className="w-10 h-10" />
                   </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-foreground">Drag & Drop or Take Photo</h4>
+                    <p className="text-sm text-muted-foreground mt-1 px-4">Tap to open camera or drag files here</p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="mt-2 rounded-2xl font-black gap-2 px-8 py-6 h-auto"
+                    disabled={savingDetails}
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span className="sm:hidden">Capture Photos</span>
+                    <span className="hidden sm:inline">Add Photos</span>
+                  </Button>
+
+                  {savingDetails && (
+                    <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px] rounded-[2.5rem] flex items-center justify-center z-10">
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <span className="text-xs font-bold text-primary uppercase tracking-widest">Uploading...</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
+
                 {job?.service_details?.images && job.service_details.images.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
                     {job.service_details.images.map((img: string, idx: number) => (
-                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-black/10 dark:border-white/10 group cursor-zoom-in">
-                        <img 
-                          src={img} 
-                          alt={`Job detail ${idx + 1}`} 
+                      <div key={idx} className="relative aspect-square rounded-[1.5rem] overflow-hidden border border-black/10 dark:border-white/10 group cursor-zoom-in shadow-sm hover:shadow-md transition-all">
+                        <img
+                          src={img}
+                          alt={`Job detail ${idx + 1}`}
                           className="w-full h-full object-cover"
                           onClick={() => setLightboxIndex(idx)}
                         />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-start justify-end p-2 pointer-events-none">
-                           <button 
-                             className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg pointer-events-auto"
+                        <div className="absolute inset-x-0 top-0 p-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                           <button
+                             className="bg-black/50 hover:bg-black/70 backdrop-blur-md text-white rounded-full p-2 shadow-lg scale-90 hover:scale-100 transition-all"
                              onClick={async (e) => {
                                 e.stopPropagation();
                                 if(!confirm("Are you sure you want to remove this image?")) return;
@@ -624,12 +663,12 @@ export default function ConfirmedListPage() {
                                 try {
                                     const newImgList = job.service_details.images.filter((_: any, i: number) => i !== idx);
                                     const updatedDetails = { ...job.service_details, images: newImgList };
-                                    
+
                                     const { error } = await supabase
                                         .from('job_requests')
                                         .update({ service_details: updatedDetails })
                                         .eq('id', jobId);
-                                        
+
                                     if (error) throw error;
                                     addToast({ title: "Image Removed", description: "Image successfully deleted", variant: "success" });
                                     fetchJobDirectly();

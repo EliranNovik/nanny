@@ -109,33 +109,37 @@ export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle, isO
 
                     {/* Top Left Badges */}
                     <div className="absolute top-6 left-6 z-40 flex flex-col items-start gap-2">
-                        <Badge className="bg-orange-500/95 backdrop-blur-md text-white border-none px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] shadow-xl rounded-full flex items-center gap-2 ring-1 ring-white/20">
+                        <Badge className="bg-orange-500/95 backdrop-blur-md text-white border-none px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] shadow-xl rounded-full flex items-center gap-2">
                             {getServiceIcon(job.service_type)}
                             {formatJobTitle(job)}
                         </Badge>
-                        {isOwnRequest && (
-                            <div className="flex items-center gap-2">
-                                <Badge className="bg-emerald-500/95 backdrop-blur-md text-white border-none px-3 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xl rounded-full flex items-center gap-1.5 ring-1 ring-emerald-400/30">
-                                    My Request
-                                </Badge>
-                                <Badge className="bg-zinc-900/80 backdrop-blur-md text-orange-400 border-none px-3 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xl rounded-full flex items-center gap-1.5 ring-1 ring-white/10">
-                                    <Clock className="w-3.5 h-3.5 animate-pulse" />
-                                    <LiveTimer createdAt={job.created_at} />
-                                </Badge>
-                            </div>
-                        )}
                     </div>
+
+                    {/* Centered Bottom Badges for own requests */}
+                    {isOwnRequest && (
+                        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-700">
+                            <Badge className="bg-emerald-500/95 backdrop-blur-md text-white border-none px-3 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xl rounded-full flex items-center gap-1.5 ring-1 ring-emerald-400/30">
+                                My Request
+                            </Badge>
+                            <Badge className="bg-zinc-900/80 backdrop-blur-md text-orange-400 border-none px-3 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xl rounded-full flex items-center gap-1.5 ring-1 ring-white/10">
+                                <Clock className="w-3.5 h-3.5 animate-pulse" />
+                                <LiveTimer createdAt={job.created_at} />
+                            </Badge>
+                        </div>
+                    )}
 
                     {/* Unified Identity & Temporal Unit */}
                     {client && (
                         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-40 p-5 rounded-[2.5rem] bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-1000">
-                            {/* Pinned Real-time Timer */}
-                            <div className="absolute top-5 right-7 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity duration-300">
-                                <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
-                                <span className="text-white text-[9px] font-black uppercase tracking-wider tabular-nums [text-shadow:_0_1px_2px_rgba(0,0,0,0.8)]">
-                                    <LiveTimer createdAt={job.created_at} />
-                                </span>
-                            </div>
+                            {/* Pinned Real-time Timer - only shown if not own request (to avoid redundancy) */}
+                            {!isOwnRequest && (
+                                <div className="absolute top-5 right-7 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity duration-300">
+                                    <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+                                    <span className="text-white text-[9px] font-black uppercase tracking-wider tabular-nums [text-shadow:_0_1px_2px_rgba(0,0,0,0.8)]">
+                                        <LiveTimer createdAt={job.created_at} />
+                                    </span>
+                                </div>
+                            )}
 
                             <div className="flex items-center gap-4">
                                 <div className="relative shrink-0">

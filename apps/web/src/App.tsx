@@ -26,6 +26,7 @@ import ChatPage from "@/pages/ChatPage";
 import CalendarPage from "@/pages/CalendarPage";
 import AdminPage from "@/pages/admin/AdminPage";
 import PaymentsPage from "@/pages/PaymentsPage";
+import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -189,6 +190,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <UnifiedJobsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/jobs/:jobId/details"
+          element={
+            <ProtectedRoute>
+              <PastJobDetailsPage />
             </ProtectedRoute>
           }
         />

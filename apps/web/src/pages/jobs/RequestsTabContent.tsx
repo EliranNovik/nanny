@@ -507,9 +507,9 @@ export default function RequestsTabContent() {
 
                                                     <div className="mt-auto flex flex-col gap-4">
                                                         {job.location_city && (
-                                                            <div className="flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-full border border-black/5 dark:border-white/5 w-fit mx-auto">
-                                                                <MapPin className="w-4 h-4 text-primary" />
-                                                                <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
+                                                            <div className="flex items-center justify-center gap-1 w-fit mx-auto text-slate-500 dark:text-slate-400">
+                                                                <MapPin className="w-3.5 h-3.5" />
+                                                                <span className="text-[11px] font-bold uppercase tracking-wider">{job.location_city}</span>
                                                             </div>
                                                         )}
                                                         {!isConfirmed && !isDeclined && (
@@ -784,9 +784,9 @@ export default function RequestsTabContent() {
 
                                                     <div className="mt-auto flex flex-col gap-4">
                                                         {job.location_city && (
-                                                            <div className="flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-full border border-black/5 dark:border-white/5 w-fit mx-auto">
-                                                                <MapPin className="w-4 h-4 text-primary" />
-                                                                <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
+                                                            <div className="flex items-center justify-center gap-1 w-fit mx-auto text-slate-500 dark:text-slate-400">
+                                                                <MapPin className="w-3.5 h-3.5" />
+                                                                <span className="text-[11px] font-bold uppercase tracking-wider">{job.location_city}</span>
                                                             </div>
                                                         )}
 

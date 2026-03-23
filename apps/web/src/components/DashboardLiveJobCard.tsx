@@ -19,6 +19,7 @@ interface DashboardLiveJobCardProps {
   onMapClick: () => void;
   onChatClick: () => void;
   onNavigateClick: () => void;
+  onDetailsClick: () => void;
 }
 
 const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
@@ -26,12 +27,16 @@ const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
   participant,
   onMapClick,
   onChatClick,
-  onNavigateClick
+  onNavigateClick,
+  onDetailsClick
 }) => {
   const isPickupDelivery = job.service_type === 'pickup_delivery' || job.care_type === 'pickup_delivery';
 
   return (
-    <Card className={cn("group relative border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] overflow-hidden bg-white dark:bg-zinc-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500")}>
+    <Card 
+      className={cn("group relative border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] overflow-hidden bg-white dark:bg-zinc-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 cursor-pointer active:scale-[0.99]")}
+      onClick={onDetailsClick}
+    >
       <CardContent className="p-4 flex gap-4 items-center">
         {/* Left: Square Map Preview */}
         <div 

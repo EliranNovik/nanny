@@ -14,6 +14,7 @@ import {
   MapPin,
   Baby,
   Calendar,
+  AlignLeft,
   ChevronDown,
   ChevronUp
 } from "lucide-react";
@@ -280,16 +281,27 @@ export default function FreelancerActiveJobsPage() {
                   {formatAgeGroup(activeJob.children_age_group)}
                 </div>
               </div>
-              {conversations[activeJob.id] && (
+              <div className="flex gap-3 mb-4">
                 <Button 
-                  className="w-full" 
+                  className="flex-1" 
+                  variant="outline"
                   size="lg" 
-                  onClick={() => navigate(`/chat/${conversations[activeJob.id].id}`)}
+                  onClick={() => navigate(`/jobs/${activeJob.id}/details`)}
                 >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Open Chat
+                  <AlignLeft className="w-4 h-4 mr-2" />
+                  Details
                 </Button>
-              )}
+                {conversations[activeJob.id] && (
+                  <Button 
+                    className="flex-1" 
+                    size="lg" 
+                    onClick={() => navigate(`/chat/${conversations[activeJob.id].id}`)}
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Open Chat
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -327,6 +339,14 @@ export default function FreelancerActiveJobsPage() {
                           </Badge>
                         </div>
                       </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="ml-4 font-bold h-8 px-3"
+                        onClick={() => navigate(`/jobs/${job.id}/details`)}
+                      >
+                        View
+                      </Button>
                     </div>
                   );
                 })}

@@ -2,7 +2,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import JobMap from "./JobMap";
 import { 
   X, ArrowUpCircle, ArrowDownCircle, 
-  Car, ChevronUp, ChevronDown, Sparkles, Calendar
+  Car, ChevronUp, ChevronDown, Sparkles, Calendar, Star
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -102,20 +102,41 @@ export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalP
               {!isMobileExpanded ? (
                 <div className="flex items-center justify-between mt-1">
                   <div className="flex items-center gap-3">
-                    <Avatar className="w-10 h-10 border border-orange-500/20">
-                      <AvatarImage src={otherUser?.photo_url || undefined} />
-                      <AvatarFallback className="bg-orange-50 text-orange-600 text-xs font-bold">
-                        {otherUser?.full_name?.charAt(0) || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
-                        {otherUser?.full_name || "Syncing profile..."}
-                      </p>
-                      <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">
-                         {isPickupDelivery && routeInfo ? `${routeInfo.distance} • ${routeInfo.duration}` : "Tap to show more"}
-                      </p>
-                    </div>
+                    {otherUser ? (
+                      <>
+                        <Avatar className="w-10 h-10 border border-orange-500/20 shadow-sm">
+                          <AvatarImage src={otherUser.photo_url || undefined} className="object-cover" />
+                          <AvatarFallback className="bg-orange-50 text-orange-600 text-xs font-bold">
+                            {otherUser.full_name?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+                            {otherUser.full_name || "Syncing profile..."}
+                          </p>
+                          <div className="flex items-center gap-2">
+                             {(otherUser.rating || otherUser.average_rating) > 0 && (
+                               <div className="flex items-center gap-1">
+                                 <Star className="w-3 h-3 text-orange-400 fill-orange-400" />
+                                 <span className="text-[10px] font-bold text-slate-500">{(otherUser.rating || otherUser.average_rating).toFixed(1)}</span>
+                               </div>
+                             )}
+                             <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">
+                                {isPickupDelivery && routeInfo ? `${routeInfo.distance} • ${routeInfo.duration}` : "Tap to show more"}
+                             </p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">My Request</p>
+                        {routeInfo && (
+                          <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">
+                            {routeInfo.distance} • {routeInfo.duration}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <button className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-zinc-800/50 px-3 py-1.5 rounded-full">
                     Details <ChevronUp className="w-3 h-3" />
@@ -127,16 +148,27 @@ export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalP
                   {/* User Profile Info */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <Avatar className="w-16 h-16 border-2 border-orange-500/20 shadow-lg">
-                        <AvatarImage src={otherUser?.photo_url || undefined} />
-                        <AvatarFallback className="bg-orange-50 text-orange-600 text-xl font-bold">
-                          {otherUser?.full_name?.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h2 className="text-xl font-extrabold text-slate-900 dark:text-white leading-tight">{otherUser?.full_name}</h2>
-                        <StarRating rating={otherUser?.rating || 0} totalRatings={otherUser?.totalRatings} size="sm" />
-                      </div>
+                      {otherUser ? (
+                        <>
+                          <Avatar className="w-16 h-16 border-2 border-orange-500/20 shadow-lg">
+                            <AvatarImage src={otherUser.photo_url || undefined} className="object-cover" />
+                            <AvatarFallback className="bg-orange-50 text-orange-600 text-xl font-bold">
+                              {otherUser.full_name?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white leading-tight">{otherUser.full_name}</h2>
+                            <StarRating rating={otherUser.rating || otherUser.average_rating || 0} totalRatings={otherUser.totalRatings || otherUser.total_ratings} size="sm" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-600">
+                             <Sparkles className="w-6 h-6" />
+                          </div>
+                          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">My Request</h2>
+                        </div>
+                      )}
                     </div>
                     <button 
                       onClick={() => setIsMobileExpanded(false)}
@@ -204,6 +236,12 @@ export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalP
                   </div>
 
                   <div className="pt-2">
+                     {job.service_details?.custom && (
+                       <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-3xl border border-black/5 dark:border-white/5 mb-4">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">NOTES</p>
+                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-snug whitespace-pre-wrap">{job.service_details.custom}</p>
+                       </div>
+                     )}
                      <p className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-[0.2em] mb-4">Live Location Enabled</p>
                   </div>
 

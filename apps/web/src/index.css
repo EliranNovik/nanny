@@ -16,9 +16,9 @@
     --secondary-foreground: 180 45% 25%;
     --muted: 30 15% 92%;
     --muted-foreground: 20 10% 45%;
-    --accent: 340 75% 55%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
+    --accent: 240 10% 4%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 0% 0%;
     --destructive-foreground: 0 0% 98%;
     --border: 30 15% 88%;
     --input: 30 15% 88%;
@@ -39,9 +39,9 @@
     --secondary-foreground: 180 30% 90%;
     --muted: 20 15% 20%;
     --muted-foreground: 30 10% 60%;
-    --accent: 340 75% 55%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
+    --accent: 240 10% 4%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 0% 0%;
     --destructive-foreground: 0 0% 98%;
     --border: 20 15% 22%;
     --input: 20 15% 22%;

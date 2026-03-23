@@ -371,17 +371,17 @@ export default function JobsTabContent() {
                                             </div>
                                         )}
 
-                                        <div className="flex gap-3 px-4 pb-4 mt-auto">
+                                        <div className="flex gap-3 mt-auto pt-4">
                                             <Button
                                                 variant="outline"
-                                                className="flex-1 h-12 border-0 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-xl text-sm sm:text-base font-bold shadow-sm btn-animate gap-2"
+                                                className="flex-1 h-14 border-0 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-2xl text-sm sm:text-base font-bold shadow-sm btn-animate gap-2"
                                                 onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}
                                             >
-                                                <MessageCircle className="w-4 h-4" />
+                                                <MessageCircle className="w-5 h-5" />
                                                 Chat
                                             </Button>
                                             <Button
-                                                className="flex-1 h-12 text-sm sm:text-base font-bold shadow-sm btn-animate bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2"
+                                                className="flex-1 h-14 text-sm sm:text-base font-bold shadow-md btn-animate bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl gap-2"
                                                 onClick={() => {
                                                     if (otherParty) {
                                                         setReviewJob({
@@ -394,7 +394,7 @@ export default function JobsTabContent() {
                                                     }
                                                 }}
                                             >
-                                                <CheckCircle2 className="w-4 h-4" />
+                                                <CheckCircle2 className="w-5 h-5" />
                                                 Done
                                             </Button>
                                         </div>
@@ -513,19 +513,19 @@ export default function JobsTabContent() {
                                 const otherParty = otherPartyId ? profiles[otherPartyId] : null;
 
                                 return (
-                                    <div key={job.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20 gap-3">
+                                    <div key={job.id} className="relative flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20 gap-3 min-h-[100px]">
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1.5">
+                                            <div className="flex items-center gap-2 mb-1.5 translate-y-2 sm:translate-y-0">
                                                 <span className="font-semibold text-base">{new Date(job.created_at).toLocaleDateString()}</span>
                                                 <span className="text-base text-muted-foreground truncate">{formatJobTitle(job)}</span>
                                             </div>
                                             {otherParty && (
-                                                <div className="flex items-center gap-2 mt-1 mb-2">
-                                                    <Avatar className="w-6 h-6 border bg-background">
+                                                <div className="flex items-center gap-2 mt-1 mb-2 translate-y-2 sm:translate-y-0 text-slate-900 dark:text-white">
+                                                    <Avatar className="w-6 h-6 border bg-background shadow-sm">
                                                         <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
-                                                        <AvatarFallback className="text-[10px]">{otherParty.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                                                        <AvatarFallback className="text-[10px] bg-slate-100">{otherParty.full_name?.charAt(0) || 'U'}</AvatarFallback>
                                                     </Avatar>
-                                                    <p className="text-sm font-medium text-foreground">
+                                                    <p className="text-sm font-bold truncate">
                                                         {otherParty.full_name}
                                                     </p>
                                                     {(otherParty.average_rating ?? 0) > 0 && (
@@ -533,12 +533,17 @@ export default function JobsTabContent() {
                                                     )}
                                                 </div>
                                             )}
-                                            <Badge variant={getJobStatusBadge(job.status).variant} className="text-xs px-2.5 py-0.5">
+                                        </div>
+
+                                        {/* ABSOLUTE POSITIONED BADGE (Black/White) */}
+                                        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 h-fit">
+                                            <Badge className="bg-black dark:bg-zinc-100 dark:text-black text-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border-none shadow-md">
                                                 {getJobStatusBadge(job.status).label}
                                             </Badge>
                                         </div>
-                                        <div className="flex-shrink-0">
-                                            <Button variant="outline" size="sm" className="w-full sm:w-auto mt-2 sm:mt-0 font-semibold" onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}>
+
+                                        <div className="flex-shrink-0 mt-4 sm:mt-0">
+                                            <Button variant="outline" size="sm" className="w-full sm:w-auto h-10 px-6 font-bold border-black/10 hover:bg-orange-500 hover:text-white hover:border-orange-500 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md" onClick={() => navigate(`/jobs/${job.id}/details`)}>
                                                 View
                                             </Button>
                                         </div>

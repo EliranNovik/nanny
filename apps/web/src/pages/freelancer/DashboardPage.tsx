@@ -410,6 +410,7 @@ export default function FreelancerDashboardPage() {
                   }}
                   onMapClick={() => setSelectedMapJob(job)}
                   onChatClick={() => activeConversationIds[job.id] ? navigate(`/chat/${activeConversationIds[job.id]}`) : navigate("/messages")}
+                  onDetailsClick={() => navigate(`/jobs/${job.id}/details`)}
                   onNavigateClick={() => {
                     if (job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address) {
                       const origin = encodeURIComponent(job.service_details.from_address);
