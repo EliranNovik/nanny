@@ -247,7 +247,7 @@ export function BottomNav() {
                         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Icon className={cn("w-7 h-7 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
+                      <Icon className={cn("w-8 h-8 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
                       {isActive && (
                         <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary animate-in zoom-in duration-300" />
                       )}
@@ -288,7 +288,7 @@ export function BottomNav() {
                         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Icon className={cn("w-6 h-6 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
+                      <Icon className={cn("w-8 h-8 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
                       {isActive && (
                         <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary animate-in zoom-in duration-300" />
                       )}

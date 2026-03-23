@@ -51,7 +51,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
 
     const formatValue = (val: any) => {
         if (typeof val !== 'string') return String(val);
-        // Replace underscore between digits with a hyphen, rest of underscores with spaces
+        // Replace underscores between digits with a hyphen for ranges (e.g., "1_4" -> "1-4")
         let formatted = val.replace(/(\d)_(\d)/g, '$1-$2').replace(/_/g, ' ');
         // For special keys, 'plus' -> '+' 
         if (formatted.includes('plus')) {
@@ -96,6 +96,38 @@ function formatServiceDetails(details: any, serviceType?: string) {
     );
 }
 
+const LiveTimer = ({ createdAt }: { createdAt: string }) => {
+    const [elapsed, setElapsed] = useState(0);
+
+    useEffect(() => {
+        const start = new Date(createdAt).getTime();
+        const update = () => {
+            const now = Date.now();
+            setElapsed(Math.floor((now - start) / 1000));
+        };
+        update();
+        const interval = setInterval(update, 1000);
+        return () => clearInterval(interval);
+    }, [createdAt]);
+
+    const formatElapsedTime = (seconds: number): string => {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+
+        if (days > 0) {
+            return `${days}d ${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+        }
+        if (hours > 0) {
+            return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+        }
+        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    };
+
+    return <>{formatElapsedTime(elapsed)}</>;
+};
+
 export default function RequestsTabContent() {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -138,7 +170,7 @@ export default function RequestsTabContent() {
         if (isFirstLoad && loading) {
             // showing cache or initial loader
         }
-        
+
         try {
             // Stage 1: Parallel fetch independent top-level data
             const [openJobsRes, profileRes, notifsRes] = await Promise.all([
@@ -158,7 +190,7 @@ export default function RequestsTabContent() {
                     .select(`
                         id, job_id, status, created_at,
                         job_requests (
-                          id, client_id, service_type, care_type, children_count, children_age_group, location_city, start_at, service_details, time_duration, care_frequency,
+                          id, client_id, service_type, care_type, children_count, children_age_group, location_city, start_at, service_details, time_duration, care_frequency, created_at,
                           profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
                         )
                     `)
@@ -175,14 +207,31 @@ export default function RequestsTabContent() {
             setMyProfile(profileData);
 
             // Stage 2: Parallel fetch dependent data (confirmations and conversations)
-
-
-            const [confsRes] = await Promise.all([
+            const [confsRes, openJobCountsRes] = await Promise.all([
                 supabase
                     .from("job_confirmations")
                     .select("job_id, status")
-                    .eq("freelancer_id", user.id)
+                    .eq("freelancer_id", user.id),
+                supabase
+                    .from("job_confirmations")
+                    .select("job_id")
+                    .in("job_id", openJobs.map(j => j.id))
+                    .eq("status", "available")
             ]);
+
+            // Map counts
+            const countsMap = (openJobCountsRes.data || []).reduce((acc: any, curr: any) => {
+                acc[curr.job_id] = (acc[curr.job_id] || 0) + 1;
+                return acc;
+            }, {});
+
+            const processedOpenJobs = openJobs.map((job: any) => ({
+                ...job,
+                acceptedCount: countsMap[job.id] || 0
+            }));
+
+            setMyOpenRequests(processedOpenJobs);
+            setMyProfile(profileData);
 
             // Process notifications with confirmations
             const confirmedJobIds = new Set((confsRes.data || []).filter(c => c.status === "available").map(c => c.job_id));
@@ -312,515 +361,535 @@ export default function RequestsTabContent() {
         <>
             <div className="space-y-6">
 
-            {/* SECTION: INBOUND NOTIFICATIONS */}
-            <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-primary" /> Invitations to Job
-                </h2>
-                {inboundNotifications.length > 0 ? (
-                    <div className="flex flex-nowrap md:block md:space-y-4 overflow-x-auto pb-6 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0 mt-2">
-                        {inboundNotifications.map((notif) => {
-                            const job = notif.job_requests;
-                            const isConfirmed = notif.isConfirmed;
-                            const isDeclined = notif.isDeclined;
+                {/* SECTION: INBOUND NOTIFICATIONS */}
+                <div className="space-y-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <Bell className="w-5 h-5 text-primary" /> Invitations to Job
+                    </h2>
+                    {inboundNotifications.length > 0 ? (
+                        <div className="flex flex-nowrap md:block md:space-y-4 overflow-x-auto pb-6 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0 mt-2">
+                            {inboundNotifications.map((notif) => {
+                                const job = notif.job_requests;
+                                const isConfirmed = notif.isConfirmed;
+                                const isDeclined = notif.isDeclined;
 
-                            return (
-                                <Card key={notif.id} className={cn("transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full", isDeclined && "opacity-60")}>
-                                    <CardContent className="p-0 flex-1 flex flex-col">
-                                        <div className={cn(
-                                            "px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm",
-                                            isDeclined && "opacity-80",
-                                            isConfirmed && "bg-emerald-50 dark:bg-emerald-900/10"
-                                        )}>
-                                            <div className="flex items-center gap-2">
-                                                {isDeclined ? (
-                                                    <><XCircle className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Declined</span></>
-                                                ) : isConfirmed ? (
-                                                    <><CheckCircle2 className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Confirmed!</span></>
-                                                ) : (
-                                                    <><Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Pending Response</span></>
-                                                )}
-                                            </div>
-                                            <Badge variant="outline" className={cn(
-                                                "flex items-center gap-1 text-xs px-2.5 py-1 shadow-sm font-bold border-0 bg-orange-100 text-orange-500",
-                                                isDeclined && "opacity-80"
-                                            )}>{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
-                                        </div>
-
-                                        {['pickup_delivery', 'cleaning', 'cooking', 'nanny', 'other_help'].includes(job.service_type || '') ? (
-                                            <div className="flex-1 flex flex-col p-4 bg-white dark:bg-zinc-900 overflow-hidden">
-                                                {/* Top Row: Map/Image + Info */}
-                                                <div className="flex flex-row gap-4 mb-4">
-                                                    {/* Left: Square Preview */}
-                                                    <div 
-                                                        className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer border border-black/5 dark:border-white/5 shadow-inner group"
-                                                        onClick={() => {
-                                                            if (job.service_type === 'pickup_delivery') {
-                                                                setSelectedMapJob(job);
-                                                            } else {
-                                                                setSelectedJobDetails(job);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <div className="absolute inset-0 z-0">
-                                                            {job.service_type === 'pickup_delivery' ? (
-                                                                <JobMap job={job} />
-                                                            ) : (
-                                                                <img 
-                                                                    src={
-                                                                        job.service_type === 'cleaning' ? "/cleaning-mar22.png" : 
-                                                                        job.service_type === 'cooking' ? "/cooking-mar22.png" : 
-                                                                        job.service_type === 'nanny' ? "/nanny-mar22.png" :
-                                                                        "/other-mar22.png"
-                                                                    } 
-                                                                    alt={formatJobTitle(job)} 
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            )}
-                                                        </div>
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
-                                                        <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/20 to-transparent z-20">
-                                                            <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 mx-auto w-fit">
-                                                                {job.service_type === 'pickup_delivery' ? (
-                                                                    <MapPin className="w-2 h-2 text-primary" />
-                                                                ) : job.service_type === 'cleaning' ? (
-                                                                    <Sparkles className="w-2 h-2 text-primary" />
-                                                                ) : job.service_type === 'cooking' ? (
-                                                                    <UtensilsCrossed className="w-2 h-2 text-primary" />
-                                                                ) : job.service_type === 'nanny' ? (
-                                                                    <Baby className="w-2 h-2 text-primary" />
-                                                                ) : (
-                                                                    <HelpCircle className="w-2 h-2 text-primary" />
-                                                                )}
-                                                                {job.service_type === 'pickup_delivery' ? "Live" : "Service"}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Right: Info Area */}
-                                                    <div className="flex-1 flex flex-col min-w-0">
-                                                        <div className="flex items-start justify-between mb-2">
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border border-primary/10 flex-shrink-0">
-                                                                    <AvatarImage src={job.profiles?.photo_url || undefined} className="object-cover" />
-                                                                    <AvatarFallback className="bg-primary/5 text-primary text-xs sm:text-sm font-bold">
-                                                                        {job.profiles?.full_name?.charAt(0) || "C"}
-                                                                    </AvatarFallback>
-                                                                </Avatar>
-                                                                <div className="min-w-0">
-                                                                    <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
-                                                                        {job.profiles?.full_name || "Client"}
-                                                                    </p>
-                                                                    <div className="flex items-center gap-1">
-                                                                        {(job.profiles?.average_rating ?? 0) > 0 && (
-                                                                            <StarRating rating={job.profiles?.average_rating || 0} size="md" />
-                                                                        )}
-                                                                        <span className="text-[10px] sm:text-xs font-bold text-slate-400">({job.profiles?.total_ratings || 0})</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="hidden md:grid md:grid-cols-2 gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
-                                                            {job.start_at && (
-                                                                <div className="flex items-center gap-1 text-slate-500 py-0.5 mt-1 border-b border-black/5 dark:border-white/5 pb-1 sm:border-0 sm:pb-0">
-                                                                    <Clock className="w-2.5 h-2.5 text-primary" />
-                                                                    <span className="text-sm font-bold uppercase tracking-tight text-foreground">
-                                                                        {new Date(job.start_at).toLocaleDateString()} • {new Date(job.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {job.time_duration && (
-                                                                <div className="flex items-center gap-1 text-slate-500 py-0.5 sm:mt-1">
-                                                                    <Briefcase className="w-2.5 h-2.5 text-primary" />
-                                                                    <span className="text-sm font-bold uppercase tracking-tight text-foreground">{job.time_duration.replace(/_/g, '-')}</span>
-                                                                </div>
-                                                            )}
-                                                            {job.location_city && (
-                                                                <div className="flex items-center gap-1 text-slate-500 py-0.5 mt-1 border-b border-black/5 dark:border-white/5 pb-1 sm:border-0 sm:pb-0">
-                                                                    <MapPin className="w-2.5 h-2.5 text-primary" />
-                                                                    <span className="text-sm font-bold uppercase tracking-tight text-foreground truncate max-w-[120px]">{job.location_city}</span>
-                                                                </div>
-                                                            )}
-                                                            {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Full Width Notes (if any) */}
-                                                {job.service_details?.custom && (
-                                                    <div className="hidden md:block mb-4 w-full bg-slate-50 dark:bg-zinc-800/50 rounded-xl px-4 py-3 border border-black/5 dark:border-white/5 shadow-sm">
-                                                        <span className="font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-1.5 underline decoration-primary/30 underline-offset-4">NOTES</span>
-                                                        <span className="text-slate-700 dark:text-slate-200 text-sm font-medium whitespace-pre-wrap leading-relaxed">{job.service_details.custom}</span>
-                                                    </div>
-                                                )}
-
-                                                {!isConfirmed && !isDeclined && (
-                                                    <div className="flex gap-3 mt-auto">
-                                                        <Button
-                                                            variant="default"
-                                                            className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm"
-                                                            disabled={confirming === notif.id || deleting === notif.id}
-                                                            onClick={() => handleConfirm(job.id, notif.id)}
-                                                        >
-                                                            {confirming === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                                                            Accept
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            className="flex-1 h-11 border-0 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl text-xs sm:text-sm font-bold shadow-sm"
-                                                            disabled={confirming === notif.id || deleting === notif.id}
-                                                            onClick={() => handleDecline(notif.id)}
-                                                        >
-                                                            {deleting === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
-                                                            Decline
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            /* Default Vertical Layout */
-                                            <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
-                                                <div className="px-5 py-4">
-                                                    {job.profiles && (
-                                                        <div className="flex items-center gap-3.5">
-                                                            <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
-                                                                <AvatarImage src={job.profiles.photo_url || undefined} className="object-cover" />
-                                                                <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{job.profiles.full_name?.charAt(0).toUpperCase() || "C"}</AvatarFallback>
-                                                            </Avatar>
-                                                            <div className="flex flex-col gap-1">
-                                                                <p className="font-bold text-xl leading-tight text-slate-900 dark:text-slate-100">{job.profiles.full_name || "Client"}</p>
-                                                                <div className="flex items-center flex-wrap gap-2 mt-0.5">
-                                                                    <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium">
-                                                                        <MapPin className="w-4 h-4 mr-1 text-primary/70" /> {job.location_city}
-                                                                    </div>
-                                                                    <span className="text-slate-600/30 dark:text-slate-400/30 hidden sm:inline">•</span>
-                                                                    <StarRating
-                                                                        rating={job.profiles.average_rating || 0}
-                                                                        totalRatings={job.profiles.total_ratings || 0}
-                                                                        size="sm"
-                                                                        showCount={true}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                return (
+                                    <Card key={notif.id} className={cn("transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full", isDeclined && "opacity-60")}>
+                                        <CardContent className="p-0 flex-1 flex flex-col">
+                                            <div className={cn(
+                                                "px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm",
+                                                isDeclined && "opacity-80",
+                                                isConfirmed && "bg-emerald-50 dark:bg-emerald-900/10"
+                                            )}>
+                                                <div className="flex items-center gap-2">
+                                                    {isDeclined ? (
+                                                        <><XCircle className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Declined</span></>
+                                                    ) : isConfirmed ? (
+                                                        <><CheckCircle2 className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Confirmed!</span></>
+                                                    ) : (
+                                                        <><Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Pending Response</span></>
                                                     )}
                                                 </div>
+                                                <Badge variant="outline" className={cn(
+                                                    "flex items-center gap-1 text-xs px-2.5 py-1 shadow-sm font-bold border-0 bg-orange-100 text-orange-500",
+                                                    isDeclined && "opacity-80"
+                                                )}>{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+                                            </div>
 
-                                                <div className="px-5 pt-4 pb-2">
-                                                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-base text-slate-600 dark:text-slate-400">
-                                                        {job.start_at && (
-                                                            <div className="flex flex-wrap items-center gap-2 col-span-2 bg-slate-100 dark:bg-zinc-800 px-3.5 py-2.5 rounded-xl mb-1 border border-black/5 dark:border-white/5">
-                                                                <Clock className="w-5 h-5 text-primary flex-shrink-0" />
-                                                                <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(job.start_at).toLocaleDateString()}</span>
-                                                                <span className="text-slate-600 dark:text-slate-400 font-medium">at</span>
-                                                                <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(job.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            {['pickup_delivery', 'cleaning', 'cooking', 'nanny', 'other_help'].includes(job.service_type || '') ? (
+                                                <div className="flex-1 flex flex-col p-4 bg-white dark:bg-zinc-900 overflow-hidden">
+                                                    {/* Top Row: Map/Image + Info */}
+                                                    <div className="flex flex-row gap-4 mb-4">
+                                                        {/* Left: Square Preview */}
+                                                        <div
+                                                            className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer border border-black/5 dark:border-white/5 shadow-inner group"
+                                                            onClick={() => {
+                                                                if (job.service_type === 'pickup_delivery') {
+                                                                    setSelectedMapJob(job);
+                                                                } else {
+                                                                    setSelectedJobDetails(job);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div className="absolute inset-0 z-0">
+                                                                {job.service_type === 'pickup_delivery' ? (
+                                                                    <JobMap job={job} />
+                                                                ) : (
+                                                                    <img
+                                                                        src={
+                                                                            job.service_type === 'cleaning' ? "/cleaning-mar22.png" :
+                                                                                job.service_type === 'cooking' ? "/cooking-mar22.png" :
+                                                                                    job.service_type === 'nanny' ? "/nanny-mar22.png" :
+                                                                                        "/other-mar22.png"
+                                                                        }
+                                                                        alt={formatJobTitle(job)}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                )}
                                                             </div>
-                                                        )}
-                                                        {job.care_type && (
-                                                            <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                                <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
+                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
+                                                            <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/20 to-transparent z-20">
+                                                                <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 mx-auto w-fit">
+                                                                    {job.service_type === 'pickup_delivery' ? (
+                                                                        <MapPin className="w-2 h-2 text-primary" />
+                                                                    ) : job.service_type === 'cleaning' ? (
+                                                                        <Sparkles className="w-2 h-2 text-primary" />
+                                                                    ) : job.service_type === 'cooking' ? (
+                                                                        <UtensilsCrossed className="w-2 h-2 text-primary" />
+                                                                    ) : job.service_type === 'nanny' ? (
+                                                                        <Baby className="w-2 h-2 text-primary" />
+                                                                    ) : (
+                                                                        <HelpCircle className="w-2 h-2 text-primary" />
+                                                                    )}
+                                                                    {job.service_type === 'pickup_delivery' ? "Live" : "Service"}
+                                                                </div>
                                                             </div>
-                                                        )}
-                                                        {job.time_duration && (
-                                                            <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                                <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.time_duration.replace(/_/g, '-')}</span>
-                                                            </div>
-                                                        )}
-                                                        {job.care_frequency && (
-                                                            <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                                <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
-                                                            </div>
-                                                        )}
-                                                        {job.children_count ? (
-                                                            <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                                <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
-                                                            </div>
-                                                        ) : null}
-                                                        {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
-                                                    </div>
-                                                </div>
+                                                        </div>
 
-                                                {/* Job Map */}
-                                                {(job.service_type === 'pickup_delivery' || job.location_city) ? (
-                                                    <div 
-                                                        className="mt-2 overflow-hidden relative cursor-pointer group"
-                                                        onClick={() => setSelectedMapJob(job)}
-                                                    >
-                                                        <JobMap job={job} />
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
-                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-black/5 dark:border-white/5 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 pointer-events-none">
-                                                                <MapPin className="w-3 h-3 text-primary" />
-                                                                Expand View
+                                                        {/* Right: Info Area */}
+                                                        <div className="flex-1 flex flex-col min-w-0">
+                                                            <div className="flex items-start justify-between mb-2">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border border-primary/10 flex-shrink-0">
+                                                                        <AvatarImage src={job.profiles?.photo_url || undefined} className="object-cover" />
+                                                                        <AvatarFallback className="bg-primary/5 text-primary text-xs sm:text-sm font-bold">
+                                                                            {job.profiles?.full_name?.charAt(0) || "C"}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                                                                            {job.profiles?.full_name || "Client"}
+                                                                        </p>
+                                                                        <div className="flex items-center gap-1">
+                                                                            {(job.profiles?.average_rating ?? 0) > 0 && (
+                                                                                <StarRating rating={job.profiles?.average_rating || 0} size="md" />
+                                                                            )}
+                                                                            <span className="text-[10px] sm:text-xs font-bold text-slate-400">({job.profiles?.total_ratings || 0})</span>
+                                                                        </div>
+                                                                        {job.location_city && (
+                                                                            <div className="flex items-center gap-1 mt-1">
+                                                                                <MapPin className="w-3.5 h-3.5 text-primary" />
+                                                                                <span className="text-sm sm:text-base font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="hidden md:grid md:grid-cols-2 gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
+                                                                <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-500 py-1 px-3 bg-orange-50 dark:bg-orange-500/10 rounded-full border border-orange-100 dark:border-orange-500/20 mt-1 w-fit">
+                                                                    <Clock className="w-3.5 h-3.5 animate-pulse" />
+                                                                    <span className="text-sm font-black uppercase tracking-tight">
+                                                                        <LiveTimer createdAt={job.created_at} />
+                                                                    </span>
+                                                                </div>
+                                                                {job.time_duration && (
+                                                                    <div className="flex items-center gap-1 text-slate-500 py-0.5 sm:mt-1">
+                                                                        <Briefcase className="w-2.5 h-2.5 text-primary" />
+                                                                        <span className="text-sm font-bold uppercase tracking-tight text-foreground">{job.time_duration.replace(/_/g, '-')}</span>
+                                                                    </div>
+                                                                )}
+                                                                {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                ) : null}
 
-                                                <div className="px-5 pb-5 pt-1 flex flex-col gap-3 mt-auto">
+                                                    {/* Full Width Notes (if any) */}
+                                                    {job.service_details?.custom && (
+                                                        <div className="mb-4 w-full bg-slate-50 dark:bg-zinc-800/50 rounded-xl px-4 py-3 border border-black/5 dark:border-white/5 shadow-sm">
+                                                            <span className="font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-1.5 underline decoration-primary/30 underline-offset-4">NOTES</span>
+                                                            <span className="text-slate-700 dark:text-slate-200 text-sm font-medium whitespace-pre-wrap leading-relaxed">{job.service_details.custom}</span>
+                                                        </div>
+                                                    )}
+
                                                     {!isConfirmed && !isDeclined && (
-                                                        <div className="flex gap-2 w-full mt-2">
+                                                        <div className="flex gap-3 mt-auto">
                                                             <Button
                                                                 variant="default"
-                                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl h-11"
+                                                                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm"
                                                                 disabled={confirming === notif.id || deleting === notif.id}
                                                                 onClick={() => handleConfirm(job.id, notif.id)}
                                                             >
                                                                 {confirming === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
                                                                 Accept
                                                             </Button>
-                                                            <Button
-                                                                variant="outline"
-                                                                className="flex-1 border-0 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-2xl h-11"
-                                                                disabled={confirming === notif.id || deleting === notif.id}
-                                                                onClick={() => handleDecline(notif.id)}
-                                                            >
-                                                                {deleting === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
-                                                                Decline
-                                                            </Button>
+                                                            <div className="flex-1 relative">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    className="w-full h-11 border-0 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl text-xs sm:text-sm font-bold shadow-sm"
+                                                                    disabled={confirming === notif.id || deleting === notif.id}
+                                                                    onClick={() => handleDecline(notif.id)}
+                                                                >
+                                                                    {deleting === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+                                                                    Decline
+                                                                </Button>
+                                                                {/* Live Timer Badge */}
+                                                                {job.created_at && !isConfirmed && !isDeclined && (
+                                                                    <div className="absolute -top-3 -right-2 bg-red-500 text-white text-xs font-black px-2.5 py-1 rounded-full shadow-lg border-2 border-white dark:border-zinc-900 animate-in zoom-in duration-300 flex items-center gap-1.5">
+                                                                        <Clock className="w-3 h-3" />
+                                                                        <LiveTimer createdAt={job.created_at} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
-                        <CardContent className="p-6 text-center text-muted-foreground">
-                            <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-                            <p className="text-sm">No new invitations right now.</p>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
-
-            {/* SECTION: MY OUTBOUND REQUESTS */}
-            <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-primary" /> My Posted Requests
-                </h2>
-                {myOpenRequests.length > 0 ? (
-                    <div className="flex flex-nowrap md:block md:space-y-4 overflow-x-auto pb-6 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0 mt-2">
-                        {myOpenRequests.map((job) => (
-                            <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full">
-                                <CardContent className="p-0 flex-1 flex flex-col">
-                                    <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
-                                        <div className="flex items-center gap-2">
-                                            <Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" />
-                                            <span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">{getJobStatusBadge(job.status)}</span>
-                                        </div>
-                                        <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-orange-100 text-orange-500 truncate shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
-                                    </div>
-                                    <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
-                                        {['pickup_delivery', 'cleaning', 'cooking', 'nanny', 'other_help'].includes(job.service_type || '') ? (
-                                            <div className="flex-1 flex flex-col p-4 bg-white dark:bg-zinc-900 overflow-hidden">
-                                                {/* Top Row: Map/Image + Info */}
-                                                <div className="flex flex-row gap-4 mb-4">
-                                                    {/* Left: Square Preview */}
-                                                    <div 
-                                                        className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer border border-black/5 dark:border-white/5 shadow-inner group"
-                                                        onClick={() => {
-                                                            if (job.service_type === 'pickup_delivery') {
-                                                                setSelectedMapJob(job);
-                                                            } else {
-                                                                setSelectedJobDetails(job);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <div className="absolute inset-0 z-0">
-                                                            {job.service_type === 'pickup_delivery' ? (
-                                                                <JobMap job={job} />
-                                                            ) : (
-                                                                <img 
-                                                                    src={
-                                                                        job.service_type === 'cleaning' ? "/cleaning-mar22.png" : 
-                                                                        job.service_type === 'cooking' ? "/cooking-mar22.png" : 
-                                                                        job.service_type === 'nanny' ? "/nanny-mar22.png" :
-                                                                        "/other-mar22.png"
-                                                                    } 
-                                                                    alt={formatJobTitle(job)} 
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            )}
-                                                        </div>
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
-                                                        <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/20 to-transparent z-20">
-                                                            <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 mx-auto w-fit">
-                                                                {job.service_type === 'pickup_delivery' ? (
-                                                                    <MapPin className="w-2 h-2 text-primary" />
-                                                                ) : job.service_type === 'cleaning' ? (
-                                                                    <Sparkles className="w-2 h-2 text-primary" />
-                                                                ) : job.service_type === 'cooking' ? (
-                                                                    <UtensilsCrossed className="w-2 h-2 text-primary" />
-                                                                ) : job.service_type === 'nanny' ? (
-                                                                    <Baby className="w-2 h-2 text-primary" />
-                                                                ) : (
-                                                                    <HelpCircle className="w-2 h-2 text-primary" />
-                                                                )}
-                                                                {job.service_type === 'pickup_delivery' ? "Live" : "Service"}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Right: Info Area */}
-                                                    <div className="flex-1 flex flex-col min-w-0">
-                                                        <div className="flex items-start justify-between mb-2">
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border border-primary/10 flex-shrink-0">
-                                                                    <AvatarImage src={myProfile?.photo_url || undefined} className="object-cover" />
-                                                                    <AvatarFallback className="bg-primary/5 text-primary text-xs sm:text-sm font-bold">
-                                                                        {(myProfile?.full_name || user?.email || "M").charAt(0).toUpperCase()}
-                                                                    </AvatarFallback>
+                                            ) : (
+                                                /* Default Vertical Layout */
+                                                <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
+                                                    <div className="px-5 py-4">
+                                                        {job.profiles && (
+                                                            <div className="flex items-center gap-3.5">
+                                                                <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
+                                                                    <AvatarImage src={job.profiles.photo_url || undefined} className="object-cover" />
+                                                                    <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{job.profiles.full_name?.charAt(0).toUpperCase() || "C"}</AvatarFallback>
                                                                 </Avatar>
-                                                                <div className="min-w-0">
-                                                                    <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
-                                                                        {myProfile?.full_name || "Me"}
-                                                                    </p>
-                                                                    <div className="flex items-center gap-1 text-[8px] text-slate-500 font-medium">
-                                                                        <MapPin className="w-2 h-2" /> {job.location_city}
+                                                                <div className="flex flex-col gap-1">
+                                                                    <p className="font-bold text-xl leading-tight text-slate-900 dark:text-slate-100">{job.profiles.full_name || "Client"}</p>
+                                                                    <div className="flex items-center flex-wrap gap-2 mt-0.5">
+                                                                        <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium">
+                                                                            <MapPin className="w-4 h-4 mr-1 text-primary/70" /> {job.location_city}
+                                                                        </div>
+                                                                        <span className="text-slate-600/30 dark:text-slate-400/30 hidden sm:inline">•</span>
+                                                                        <StarRating
+                                                                            rating={job.profiles.average_rating || 0}
+                                                                            totalRatings={job.profiles.total_ratings || 0}
+                                                                            size="sm"
+                                                                            showCount={true}
+                                                                        />
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
-                                                            {job.start_at && (
-                                                                <div className="flex items-center gap-1 text-slate-500 py-0.5 mt-1 border-b border-black/5 dark:border-white/5 pb-1 sm:border-0 sm:pb-0">
-                                                                    <Clock className="w-2.5 h-2.5 text-primary" />
-                                                                    <span className="text-sm font-bold uppercase tracking-tight text-foreground">
-                                                                        {new Date(job.start_at).toLocaleDateString()} • {new Date(job.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        )}
+                                                    </div>
+
+                                                    <div className="px-5 pt-4 pb-2">
+                                                        <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-base text-slate-600 dark:text-slate-400">
+                                                            <div className="flex flex-wrap items-center gap-2 col-span-2 bg-orange-50 dark:bg-orange-500/5 px-3.5 py-3 rounded-2xl mb-1 border border-orange-200/50 dark:border-orange-500/10">
+                                                                <Clock className="w-5 h-5 text-orange-500 flex-shrink-0 animate-pulse" />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] uppercase font-black text-orange-600/70 dark:text-orange-400/70 tracking-widest leading-none mb-1">Request Timer</span>
+                                                                    <span className="font-black text-orange-600 dark:text-orange-500 text-xl tabular-nums leading-none tracking-tighter">
+                                                                        <LiveTimer createdAt={job.created_at} />
                                                                     </span>
+                                                                </div>
+                                                            </div>
+                                                            {job.care_type && (
+                                                                <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
+                                                                    <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
                                                                 </div>
                                                             )}
                                                             {job.time_duration && (
-                                                                <div className="flex items-center gap-1 text-slate-500 py-0.5 sm:mt-1">
-                                                                    <Briefcase className="w-2.5 h-2.5 text-primary" />
-                                                                    <span className="text-sm font-bold uppercase tracking-tight text-foreground">{job.time_duration.replace(/_/g, '-')}</span>
+                                                                <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
+                                                                    <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.time_duration.replace(/_/g, '-')}</span>
                                                                 </div>
                                                             )}
-                                                            {job.location_city && (
-                                                                <div className="flex items-center gap-1 text-slate-500 py-0.5 mt-1 border-b border-black/5 dark:border-white/5 pb-1 sm:border-0 sm:pb-0">
-                                                                    <MapPin className="w-2.5 h-2.5 text-primary" />
-                                                                    <span className="text-sm font-bold uppercase tracking-tight text-foreground truncate max-w-[120px]">{job.location_city}</span>
+                                                            {job.care_frequency && (
+                                                                <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
+                                                                    <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
                                                                 </div>
                                                             )}
+                                                            {job.children_count ? (
+                                                                <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
+                                                                    <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
+                                                                </div>
+                                                            ) : null}
                                                             {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                {/* Full Width Notes (if any) */}
-                                                {job.service_details?.custom && (
-                                                    <div className="mb-4 w-full bg-slate-50 dark:bg-zinc-800/50 rounded-xl px-4 py-3 border border-black/5 dark:border-white/5 shadow-sm">
-                                                        <span className="font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-1.5 underline decoration-primary/30 underline-offset-4">NOTES</span>
-                                                        <span className="text-slate-700 dark:text-slate-200 text-sm font-medium whitespace-pre-wrap leading-relaxed">{job.service_details.custom}</span>
+                                                    {/* Job Map */}
+                                                    {(job.service_type === 'pickup_delivery' || job.location_city) ? (
+                                                        <div
+                                                            className="mt-2 overflow-hidden relative cursor-pointer group"
+                                                            onClick={() => setSelectedMapJob(job)}
+                                                        >
+                                                            <JobMap job={job} />
+                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-black/5 dark:border-white/5 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 pointer-events-none">
+                                                                    <MapPin className="w-3 h-3 text-primary" />
+                                                                    Expand View
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
+
+                                                    <div className="px-5 pb-5 pt-1 flex flex-col gap-3 mt-auto">
+                                                        {!isConfirmed && !isDeclined && (
+                                                            <div className="flex gap-2 w-full mt-2">
+                                                                <Button
+                                                                    variant="default"
+                                                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl h-11"
+                                                                    disabled={confirming === notif.id || deleting === notif.id}
+                                                                    onClick={() => handleConfirm(job.id, notif.id)}
+                                                                >
+                                                                    {confirming === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                                                                    Accept
+                                                                </Button>
+                                                                <div className="flex-1 relative">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        className="w-full border-0 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-2xl h-11 text-xs sm:text-sm font-bold"
+                                                                        disabled={confirming === notif.id || deleting === notif.id}
+                                                                        onClick={() => handleDecline(notif.id)}
+                                                                    >
+                                                                        {deleting === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+                                                                        Decline
+                                                                    </Button>
+                                                                    {/* Live Timer Badge */}
+                                                                    {job.created_at && !isConfirmed && !isDeclined && (
+                                                                        <div className="absolute -top-2.5 -right-1.5 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg border-2 border-white dark:border-zinc-900 animate-in zoom-in duration-300 flex items-center gap-1">
+                                                                            <Clock className="w-2.5 h-2.5" />
+                                                                            <LiveTimer createdAt={job.created_at} />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-
-                                                {/* Full Width Button */}
-                                                <div className="mt-auto">
-                                                    <Button 
-                                                        className="w-full h-11 text-xs sm:text-sm font-bold shadow-sm bg-orange-500 hover:bg-orange-600 text-white rounded-xl flex items-center justify-center gap-2"
-                                                        onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}
-                                                    >
-                                                        <Users className="w-4 h-4" />
-                                                        View Helpers
-                                                    </Button>
                                                 </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                            <CardContent className="p-6 text-center text-muted-foreground">
+                                <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                                <p className="text-sm">No new invitations right now.</p>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+
+                {/* SECTION: MY OUTBOUND REQUESTS */}
+                <div className="space-y-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-primary" /> My Posted Requests
+                    </h2>
+                    {myOpenRequests.length > 0 ? (
+                        <div className="flex flex-nowrap md:block md:space-y-4 overflow-x-auto pb-6 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0 mt-2">
+                            {myOpenRequests.map((job) => (
+                                <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full">
+                                    <CardContent className="p-0 flex-1 flex flex-col">
+                                        <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
+                                            <div className="flex items-center gap-2">
+                                                <Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" />
+                                                <span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">{getJobStatusBadge(job.status)}</span>
                                             </div>
-                                        ) : (
-                                            /* Default Vertical Layout for other service types */
-                                            <>
-                                                <div className="px-5 py-4">
-                                                    <div className="flex items-center gap-3.5">
-                                                        <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
-                                                            <AvatarImage src={myProfile?.photo_url || undefined} className="object-cover" />
-                                                            <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{(myProfile?.full_name || user?.email || "M").charAt(0).toUpperCase()}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="flex flex-col gap-1">
-                                                            <div className="flex items-center gap-2 mt-0.5 text-sm text-slate-600 dark:text-slate-400 font-medium">
-                                                                <MapPin className="w-4 h-4 text-primary/70" /> {job.location_city}
-                                                                <span className="mx-1 opacity-50">•</span>
-                                                                <Clock className="w-4 h-4 text-primary/70" /> {new Date(job.created_at).toLocaleDateString()}
+                                            <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-orange-100 text-orange-500 truncate shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+                                        </div>
+                                        <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
+                                            {['pickup_delivery', 'cleaning', 'cooking', 'nanny', 'other_help'].includes(job.service_type || '') ? (
+                                                <div className="flex-1 flex flex-col p-4 bg-white dark:bg-zinc-900 overflow-hidden">
+                                                    {/* Top Row: Map/Image + Info */}
+                                                    <div className="flex flex-row gap-4 mb-4">
+                                                        {/* Left: Square Preview */}
+                                                        <div
+                                                            className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer border border-black/5 dark:border-white/5 shadow-inner group"
+                                                            onClick={() => {
+                                                                if (job.service_type === 'pickup_delivery') {
+                                                                    setSelectedMapJob(job);
+                                                                } else {
+                                                                    setSelectedJobDetails(job);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div className="absolute inset-0 z-0">
+                                                                {job.service_type === 'pickup_delivery' ? (
+                                                                    <JobMap job={job} />
+                                                                ) : (
+                                                                    <img
+                                                                        src={
+                                                                            job.service_type === 'cleaning' ? "/cleaning-mar22.png" :
+                                                                                job.service_type === 'cooking' ? "/cooking-mar22.png" :
+                                                                                    job.service_type === 'nanny' ? "/nanny-mar22.png" :
+                                                                                        "/other-mar22.png"
+                                                                        }
+                                                                        alt={formatJobTitle(job)}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
+                                                            <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/20 to-transparent z-20">
+                                                                <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 mx-auto w-fit">
+                                                                    {job.service_type === 'pickup_delivery' ? (
+                                                                        <MapPin className="w-2 h-2 text-primary" />
+                                                                    ) : job.service_type === 'cleaning' ? (
+                                                                        <Sparkles className="w-2 h-2 text-primary" />
+                                                                    ) : job.service_type === 'cooking' ? (
+                                                                        <UtensilsCrossed className="w-2 h-2 text-primary" />
+                                                                    ) : job.service_type === 'nanny' ? (
+                                                                        <Baby className="w-2 h-2 text-primary" />
+                                                                    ) : (
+                                                                        <HelpCircle className="w-2 h-2 text-primary" />
+                                                                    )}
+                                                                    {job.service_type === 'pickup_delivery' ? "Live" : "Service"}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Right: Info Area (Notes or Location) */}
+                                                        <div className="flex-1 flex flex-col min-w-0 justify-center">
+                                                            {job.service_details?.custom ? (
+                                                                <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-xl px-4 py-3 border border-black/5 dark:border-white/5 shadow-sm">
+                                                                    <span className="font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-1.5 underline decoration-primary/30 underline-offset-4">NOTES</span>
+                                                                    <span className="text-slate-700 dark:text-slate-200 text-sm font-medium whitespace-pre-wrap leading-relaxed line-clamp-3">{job.service_details.custom}</span>
+                                                                </div>
+                                                            ) : (
+                                                                job.location_city && (
+                                                                    <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-black/5 dark:border-white/5 w-fit">
+                                                                        <MapPin className="w-3.5 h-3.5 text-primary" />
+                                                                        <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
+                                                                    </div>
+                                                                )
+                                                            )}
+
+                                                            <div className="hidden md:grid md:grid-cols-2 gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400 mt-2">
+                                                                <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-500 py-1 px-3 bg-orange-50 dark:bg-orange-500/10 rounded-full border border-orange-100 dark:border-orange-500/20 mt-1 w-fit">
+                                                                    <Clock className="w-3.5 h-3.5 animate-pulse" />
+                                                                    <span className="text-sm font-black uppercase tracking-tight">
+                                                                        <LiveTimer createdAt={job.created_at} />
+                                                                    </span>
+                                                                </div>
+                                                                {job.time_duration && (
+                                                                    <div className="flex items-center gap-1 text-slate-500 py-0.5">
+                                                                        <Briefcase className="w-2.5 h-2.5 text-primary" />
+                                                                        <span className="text-sm font-bold uppercase tracking-tight text-foreground">{job.time_duration.replace(/_/g, '-')}</span>
+                                                                    </div>
+                                                                )}
+                                                                {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="px-5 pt-4 pb-2">
-                                                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-base text-slate-600 dark:text-slate-400">
-                                                        {job.start_at && (
-                                                            <div className="flex flex-wrap items-center gap-2 col-span-2 bg-slate-100 dark:bg-zinc-800 px-3.5 py-2.5 rounded-xl mb-1 border border-black/5 dark:border-white/5">
-                                                                <Clock className="w-5 h-5 text-orange-500 flex-shrink-0" />
-                                                                <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(job.start_at).toLocaleDateString()}</span>
-                                                                <span className="text-slate-600 dark:text-slate-400 font-medium">at</span>
-                                                                <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(job.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    {/* Standalone Location (if notes exist) */}
+                                                    {job.service_details?.custom && job.location_city && (
+                                                        <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-black/5 dark:border-white/5 w-fit mb-2">
+                                                            <MapPin className="w-3.5 h-3.5 text-primary" />
+                                                            <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Full Width Button */}
+                                                    <div className="mt-auto relative group/btn">
+                                                        <Button
+                                                            className="w-full h-11 text-xs sm:text-sm font-bold shadow-sm bg-orange-500 hover:bg-orange-600 text-white rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                                                            onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}
+                                                        >
+                                                            <Users className="w-4 h-4" />
+                                                            View Helpers
+                                                        </Button>
+
+                                                        {/* Acceptance Count Badge */}
+                                                        {typeof (job as any).acceptedCount === 'number' && (
+                                                            <div className={`absolute -top-3 -right-3 ${(job as any).acceptedCount > 0 ? 'bg-emerald-500 ring-emerald-500/20' : 'bg-slate-400 ring-slate-400/20'} text-white text-xs font-black w-8 h-8 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900 shadow-lg animate-in zoom-in duration-300 ring-4`}>
+                                                                {(job as any).acceptedCount}
                                                             </div>
                                                         )}
-                                                        {job.care_type && (
-                                                            <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                                <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
-                                                            </div>
-                                                        )}
-                                                        {job.time_duration && (
-                                                            <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                                <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.time_duration.replace(/_/g, '-')}</span>
-                                                            </div>
-                                                        )}
-                                                        {job.care_frequency && (
-                                                            <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                                <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
-                                                            </div>
-                                                        )}
-                                                        {job.children_count ? (
-                                                            <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                                <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
-                                                            </div>
-                                                        ) : null}
-                                                        {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
                                                     </div>
                                                 </div>
+                                            ) : (
+                                                /* Default Vertical Layout for other service types */
+                                                <>
+                                                    <div className="px-5 py-4">
+                                                        <div className="flex items-center gap-3.5">
+                                                            <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
+                                                                <AvatarImage src={myProfile?.photo_url || undefined} className="object-cover" />
+                                                                <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{(myProfile?.full_name || user?.email || "M").charAt(0).toUpperCase()}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="flex items-center gap-2 mt-0.5 text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                                                    <MapPin className="w-4 h-4 text-primary/70" /> {job.location_city}
+                                                                    <span className="mx-1 opacity-50">•</span>
+                                                                    <Clock className="w-4 h-4 text-primary/70" /> {new Date(job.created_at).toLocaleDateString()}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
-                                                <div className="px-5 pb-6 pt-1 flex gap-3 mt-auto">
-                                                    <Button className="flex-1 h-11 text-base font-bold shadow-lg btn-animate bg-orange-500 hover:bg-orange-600 text-white rounded-2xl" onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}>
-                                                        <CheckCircle2 className="w-5 h-5 mr-2" /> View Helpers
-                                                    </Button>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                ) : (
-                    <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
-                        <CardContent className="p-6 text-center text-muted-foreground">
-                            <p className="text-sm mb-3">You haven't posted any requests yet.</p>
-                            <Button variant="outline" size="sm" onClick={() => navigate("/client/create")}>
-                                Post a Request
-                            </Button>
-                        </CardContent>
-                    </Card>
-                )}
+                                                    <div className="px-5 pt-4 pb-2">
+                                                        <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-base text-slate-600 dark:text-slate-400">
+                                                            <div className="flex flex-wrap items-center gap-2 col-span-2 bg-orange-50 dark:bg-orange-500/5 px-3.5 py-3 rounded-2xl mb-1 border border-orange-200/50 dark:border-orange-500/10">
+                                                                <Clock className="w-5 h-5 text-orange-500 flex-shrink-0 animate-pulse" />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] uppercase font-black text-orange-600/70 dark:text-orange-400/70 tracking-widest leading-none mb-1">Request Timer</span>
+                                                                    <span className="font-black text-orange-600 dark:text-orange-500 text-xl tabular-nums leading-none tracking-tighter">
+                                                                        <LiveTimer createdAt={job.created_at} />
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            {job.care_type && (
+                                                                <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
+                                                                    <Briefcase className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
+                                                                </div>
+                                                            )}
+                                                            {job.time_duration && (
+                                                                <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
+                                                                    <Hourglass className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.time_duration.replace(/_/g, '-')}</span>
+                                                                </div>
+                                                            )}
+                                                            {job.care_frequency && (
+                                                                <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
+                                                                    <Repeat className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
+                                                                </div>
+                                                            )}
+                                                            {job.children_count ? (
+                                                                <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
+                                                                    <Baby className="w-4 h-4 text-primary/70 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
+                                                                </div>
+                                                            ) : null}
+                                                            {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="px-5 pb-6 pt-1 flex flex-col gap-3 mt-auto relative group/btn">
+                                                        <Button className="w-full h-11 text-base font-bold shadow-lg btn-animate bg-orange-500 hover:bg-orange-600 text-white rounded-2xl transition-all active:scale-[0.98]" onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}>
+                                                            <CheckCircle2 className="w-5 h-5 mr-2" /> View Helpers
+                                                        </Button>
+
+                                                        {/* Acceptance Count Badge */}
+                                                        {typeof (job as any).acceptedCount === 'number' && (
+                                                            <div className={`absolute top-[-8px] right-[8px] ${(job as any).acceptedCount > 0 ? 'bg-emerald-500 ring-emerald-500/20' : 'bg-slate-400 ring-slate-400/20'} text-white text-xs font-black w-8 h-8 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900 shadow-lg animate-in zoom-in duration-300 ring-4`}>
+                                                                {(job as any).acceptedCount}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : (
+                        <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                            <CardContent className="p-6 text-center text-muted-foreground">
+                                <p className="text-sm mb-3">You haven't posted any requests yet.</p>
+                                <Button variant="outline" size="sm" onClick={() => navigate("/client/create")}>
+                                    Post a Request
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
             </div>
-        </div>
 
-        <FullscreenMapModal 
-            job={selectedMapJob} 
-            isOpen={!!selectedMapJob} 
-            onClose={() => setSelectedMapJob(null)} 
-        />
+            <FullscreenMapModal
+                job={selectedMapJob}
+                isOpen={!!selectedMapJob}
+                onClose={() => setSelectedMapJob(null)}
+            />
 
-        <JobDetailsModal 
-            isOpen={!!selectedJobDetails}
-            onOpenChange={(open) => !open && setSelectedJobDetails(null)}
-            job={selectedJobDetails}
-            formatJobTitle={formatJobTitle}
-        />
-    </>
+            <JobDetailsModal
+                isOpen={!!selectedJobDetails}
+                onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+                job={selectedJobDetails}
+                formatJobTitle={formatJobTitle}
+            />
+        </>
     );
 }

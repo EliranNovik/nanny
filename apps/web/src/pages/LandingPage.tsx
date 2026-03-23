@@ -6,6 +6,7 @@ import JobCategories from "@/components/JobCategories";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -25,6 +26,28 @@ export default function LandingPage() {
       { threshold: 0, rootMargin: "0px 0px -10px 0px" }
     );
     observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Scroll Reveal Animation Effect
+  useEffect(() => {
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: "0px 0px -50px 0px"
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('opacity-100', 'translate-y-0');
+          entry.target.classList.remove('opacity-0', 'translate-y-10');
+        }
+      });
+    }, observerOptions);
+
+    const revealElements = document.querySelectorAll('.scroll-reveal');
+    revealElements.forEach(el => observer.observe(el));
+
     return () => observer.disconnect();
   }, []);
 
@@ -259,17 +282,17 @@ export default function LandingPage() {
                   </div>
 
                   {/* Oval (pill) buttons - Mobile Only: on image, centered, top (ref for scroll) */}
-                  <div ref={buttonsRef} className="absolute left-1/2 -translate-x-1/2 top-6 flex flex-row gap-2 md:hidden z-20">
+                  <div ref={buttonsRef} className="absolute left-1/2 -translate-x-1/2 top-6 flex flex-row gap-3 md:hidden z-20 w-full px-4 justify-center">
                     <Button
                       onClick={handleSearchingForJob}
-                      className="h-11 rounded-full px-5 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-shrink-0 gap-2 text-sm font-medium"
+                      className="h-11 rounded-full px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 min-w-[140px] gap-2 text-sm font-medium whitespace-nowrap"
                     >
                       <Briefcase className="w-5 h-5 flex-shrink-0" />
                       Find a Job
                     </Button>
                     <Button
                       onClick={handleHiringHelper}
-                      className="h-11 rounded-full px-5 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-shrink-0 gap-2 text-sm font-medium"
+                      className="h-11 rounded-full px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 min-w-[140px] gap-2 text-sm font-medium whitespace-nowrap"
                     >
                       <Users className="w-5 h-5 flex-shrink-0" />
                       Hire a Helper
@@ -380,9 +403,9 @@ export default function LandingPage() {
               </div>
 
               {/* John D. Review Box */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg">
+              <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg scroll-reveal opacity-0 translate-y-10 transition-all duration-700">
                 <div className="flex items-start gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0 text-gray-900 font-bold text-sm">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
                     JD
                   </div>
                   <div className="flex-1">
@@ -411,9 +434,9 @@ export default function LandingPage() {
               </div>
 
               {/* Maria R. Review Box */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg">
+              <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg scroll-reveal opacity-0 translate-y-10 transition-all duration-700">
                 <div className="flex items-start gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center flex-shrink-0 text-gray-900 font-bold text-sm">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
                     MR
                   </div>
                   <div className="flex-1">
@@ -444,8 +467,8 @@ export default function LandingPage() {
           </div>
 
           {/* How finding a helper works */}
-          <div className="max-w-6xl mx-auto pt-12 px-4">
-            <h2 className="text-2xl md:text-3xl font-semibold text-center mb-8 md:mb-10">
+          <div className="max-w-6xl mx-auto pt-12 px-4 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 delay-200">
+            <h2 className="text-2xl md:text-3xl font-semibold text-center mb-8 md:mb-10 text-black">
               How finding a helper works
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -454,7 +477,7 @@ export default function LandingPage() {
                   <ClipboardList className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-white">1. Post your request</p>
+                  <p className="text-base md:text-lg font-medium text-black">1. Post your request</p>
                   <p className="text-sm text-gray-600 mt-1">
                     Answer a few short filter questions with simple taps. We match you with helpers who meet your criteria.
                   </p>
@@ -465,7 +488,7 @@ export default function LandingPage() {
                   <Users className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-white">2. Get matched</p>
+                  <p className="text-base md:text-lg font-medium text-black">2. Get matched</p>
                   <p className="text-sm text-gray-600 mt-1">
                     Helpers in your area see your request and respond. You’ll see who’s available and interested.
                   </p>
@@ -476,7 +499,7 @@ export default function LandingPage() {
                   <UserCheck className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-white">3. Choose your helper</p>
+                  <p className="text-base md:text-lg font-medium text-black">3. Choose your helper</p>
                   <p className="text-sm text-gray-600 mt-1">
                     Look at profiles and pick the person who fits you best. No pressure—you’re in control.
                   </p>
@@ -487,7 +510,7 @@ export default function LandingPage() {
                   <MessageCircle className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-white">4. Chat and confirm</p>
+                  <p className="text-base md:text-lg font-medium text-black">4. Chat and confirm</p>
                   <p className="text-sm text-gray-600 mt-1">
                     Message your helper to sort out details, schedule, and anything else. Confirm when you’re both ready.
                   </p>
@@ -498,7 +521,7 @@ export default function LandingPage() {
                   <CheckCircle2 className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="md:flex-1">
-                  <p className="text-base md:text-lg font-medium text-white">5. You’re all set</p>
+                  <p className="text-base md:text-lg font-medium text-black">5. You’re all set</p>
                   <p className="text-sm text-gray-600 mt-1">
                     Your helper comes at the agreed time. Relax—you’ve found the right person.
                   </p>
@@ -508,17 +531,17 @@ export default function LandingPage() {
           </div>
 
           {/* Job Categories */}
-          <div className="space-y-6 pt-12">
-            <h2 className="text-2xl font-semibold text-center">
+          <div className="space-y-6 pt-12 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
+            <h2 className="text-2xl font-semibold text-center text-black">
               Services
             </h2>
             <JobCategories />
           </div>
 
           {/* Recent Orders Section */}
-          <div className="pt-12">
+          <div className="pt-12 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-semibold text-center mb-6">
+              <h2 className="text-2xl font-semibold text-center mb-6 text-black">
                 Recent Orders
               </h2>
               <div className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
@@ -642,17 +665,17 @@ export default function LandingPage() {
       {/* Fixed bottom bar - Mobile only, when buttons scroll out of view */}
       {showFixedButtons && (
         <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 pt-3 bg-background/95 backdrop-blur-md border-t shadow-lg z-40 md:hidden">
-          <div className="max-w-lg mx-auto flex flex-row gap-2 justify-center">
+          <div className="max-w-lg mx-auto flex flex-row gap-3 justify-center px-2">
             <Button
               onClick={handleSearchingForJob}
-              className="h-11 rounded-full px-5 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 gap-2 text-sm font-medium"
+              className="h-11 rounded-full px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 min-w-[140px] gap-2 text-sm font-medium whitespace-nowrap"
             >
               <Briefcase className="w-5 h-5 flex-shrink-0" />
               Find a Job
             </Button>
             <Button
               onClick={handleHiringHelper}
-              className="h-11 rounded-full px-5 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 gap-2 text-sm font-medium"
+              className="h-11 rounded-full px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 min-w-[140px] gap-2 text-sm font-medium whitespace-nowrap"
             >
               <Users className="w-5 h-5 flex-shrink-0" />
               Hire a Helper
@@ -660,6 +683,8 @@ export default function LandingPage() {
           </div>
         </div>
       )}
+      {/* WhatsApp Floating Contact Button */}
+      <WhatsAppButton phoneNumber="972541234567" />
     </div>
   );
 }

@@ -25,19 +25,29 @@ export function Toast({ title, description, variant = "default", onClose, action
   }
 
   const Icon = icons[variant]
+  
+  const variantStyles = {
+    default: "border-orange-200 bg-white shadow-orange-500/5",
+    success: "border-emerald-200 bg-white/95 backdrop-blur-md shadow-emerald-500/10",
+    error: "border-red-200 bg-white shadow-red-500/5",
+    warning: "border-amber-200 bg-white shadow-amber-500/5",
+    info: "border-blue-200 bg-white shadow-blue-500/5",
+  }[variant]
 
-  // Icon colour stays orange for all variants; only the icon subtly differs
   const iconColor = {
     default: "text-orange-500",
-    success: "text-orange-500",
-    error: "text-orange-500",
-    warning: "text-orange-500",
-    info: "text-orange-500",
+    success: "text-emerald-500",
+    error: "text-red-500",
+    warning: "text-amber-500",
+    info: "text-blue-500",
   }[variant]
 
   return (
     <div
-      className="group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-xl border border-orange-200 bg-white p-4 pr-8 shadow-lg transition-all"
+      className={cn(
+        "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-xl border p-4 pr-8 shadow-lg transition-all",
+        variantStyles
+      )}
     >
       <div className="flex items-start gap-3 flex-1">
         <Icon className={cn("h-5 w-5 shrink-0 mt-0.5", iconColor)} />

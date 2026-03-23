@@ -10,6 +10,7 @@ interface StarRatingProps {
     interactive?: boolean;
     onChange?: (rating: number) => void;
     className?: string;
+    numberClassName?: string;
 }
 
 export function StarRating({
@@ -20,6 +21,7 @@ export function StarRating({
     interactive = false,
     onChange,
     className,
+    numberClassName,
 }: StarRatingProps) {
     const [hoverRating, setHoverRating] = useState<number | null>(null);
 
@@ -100,7 +102,7 @@ export function StarRating({
 
             {/* Rating number and count */}
             <div className={cn("flex items-center gap-1", textSizeClasses[size])}>
-                <span className="font-medium text-slate-900 dark:text-slate-100">
+                <span className={cn("font-medium text-slate-900 dark:text-slate-100", numberClassName)}>
                     {rating > 0 ? rating.toFixed(1) : "New"}
                 </span>
                 {showCount && totalRatings !== undefined && totalRatings > 0 && (

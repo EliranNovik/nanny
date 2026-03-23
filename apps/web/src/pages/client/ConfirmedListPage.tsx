@@ -167,7 +167,7 @@ export default function ConfirmedListPage() {
 
       if (error) throw error;
 
-      addToast({ title: "Details Saved", description: "Your custom details have been added to the request.", variant: "default" });
+      addToast({ title: "Details Saved", description: "Your custom details have been added to the request.", variant: "success" });
       fetchJobDirectly();
     } catch (err: any) {
       console.error("[ConfirmedListPage] Error saving details:", err);
@@ -205,6 +205,13 @@ export default function ConfirmedListPage() {
 
     return () => clearInterval(timerInterval);
   }, [job, startTime]);
+
+  // Sync customDetails from job data (v2)
+  useEffect(() => {
+    if (job?.service_details?.custom !== undefined && customDetails === "") {
+        setCustomDetails(job.service_details.custom || "");
+    }
+  }, [job?.service_details?.custom]);
 
   async function handleSelect(freelancerId: string) {
     setSelecting(freelancerId);
@@ -494,13 +501,16 @@ export default function ConfirmedListPage() {
                   Add any extra details, instructions, or requirements for this job. These will be visible to helpers.
                 </p>
                 <Textarea
-                  placeholder={job?.service_details?.custom || "Type your custom job details here..."}
+                  placeholder="Type your custom job details here..."
                   className="min-h-[100px] mb-4 bg-muted/30 focus-visible:bg-background resize-y"
                   value={customDetails}
                   onChange={(e) => setCustomDetails(e.target.value)}
                 />
                 <div className="flex justify-end">
-                  <Button onClick={handleSaveDetails} disabled={savingDetails || !customDetails.trim()}>
+                  <Button 
+                    onClick={handleSaveDetails} 
+                    disabled={savingDetails || customDetails.trim() === (job?.service_details?.custom || "").trim()}
+                  >
                     {savingDetails ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                     Save Details
                   </Button>

@@ -41,7 +41,7 @@ interface Profile {
     total_ratings?: number;
 }
 
-function formatServiceDetails(details: any, serviceType?: string) {
+function formatServiceDetails(details: any, serviceType?: string, minimal = false) {
     if (!details) return null;
     if (typeof details === 'string') return <div className="col-span-2 flex items-start gap-2 text-foreground font-medium"><AlignLeft className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> {details}</div>;
 
@@ -61,7 +61,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
             <>
                 {details.from_address && <div className="flex items-start gap-2"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.from_address}</span></div>}
                 {details.to_address && <div className="flex items-start gap-2"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.to_address}</span></div>}
-                {details.weight && <div className="flex items-center gap-2"><Package className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
+                {!minimal && details.weight && <div className="flex items-center gap-2"><Package className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
             </>
         );
     }
@@ -346,22 +346,19 @@ export default function JobsTabContent() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
-                                                    {job.start_at && (
-                                                        <div className="flex items-center gap-1 text-slate-500 py-0.5 mt-1 border-b border-black/5 dark:border-white/5 pb-1 sm:border-0 sm:pb-0">
-                                                            <Clock className="w-2.5 h-2.5 text-orange-500" />
-                                                            <span className="text-sm font-bold uppercase tracking-tight text-foreground">
-                                                                {new Date(job.start_at).toLocaleDateString()} • {new Date(job.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </span>
+                                                <div className="flex-1 flex flex-col min-w-0 justify-center">
+                                                    {job.service_type === 'pickup_delivery' ? (
+                                                        <div className="space-y-1">
+                                                            {job.service_details && formatServiceDetails(job.service_details, job.service_type, true)}
                                                         </div>
+                                                    ) : (
+                                                        job.time_duration && (
+                                                            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-black/5 dark:border-white/5 w-fit">
+                                                                <Hourglass className="w-3.5 h-3.5 text-primary" />
+                                                                <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.time_duration.replace(/_/g, '-')}</span>
+                                                            </div>
+                                                        )
                                                     )}
-                                                    {job.time_duration && (
-                                                        <div className="flex items-center gap-1 text-slate-500 py-0.5 sm:mt-1">
-                                                            <Briefcase className="w-2.5 h-2.5 text-orange-500" />
-                                                            <span className="text-sm font-bold uppercase tracking-tight text-foreground">{job.time_duration.replace(/_/g, '-')}</span>
-                                                        </div>
-                                                    )}
-                                                    {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
                                                 </div>
                                             </div>
                                         </div>
@@ -374,16 +371,17 @@ export default function JobsTabContent() {
                                             </div>
                                         )}
 
-                                        <div className="flex gap-3 mt-auto">
-                                            <Button 
-                                                className="flex-1 h-11 text-xs sm:text-sm font-bold border-0 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl shadow-sm" 
-                                                variant="outline" 
+                                        <div className="flex gap-3 px-4 pb-4 mt-auto">
+                                            <Button
+                                                variant="outline"
+                                                className="flex-1 h-12 border-0 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-xl text-sm sm:text-base font-bold shadow-sm btn-animate gap-2"
                                                 onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}
                                             >
-                                                Details
+                                                <MessageCircle className="w-4 h-4" />
+                                                Chat
                                             </Button>
                                             <Button
-                                                className="flex-1 h-11 text-xs sm:text-sm font-bold shadow-sm btn-animate bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+                                                className="flex-1 h-12 text-sm sm:text-base font-bold shadow-sm btn-animate bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2"
                                                 onClick={() => {
                                                     if (otherParty) {
                                                         setReviewJob({
@@ -396,6 +394,7 @@ export default function JobsTabContent() {
                                                     }
                                                 }}
                                             >
+                                                <CheckCircle2 className="w-4 h-4" />
                                                 Done
                                             </Button>
                                         </div>
@@ -468,12 +467,12 @@ export default function JobsTabContent() {
                                         </div>
 
                                         <div className="px-5 pb-5 pt-1 flex gap-3 mt-auto">
-                                            <Button className="flex-1 h-12 text-base font-semibold border-0 bg-primary/10 text-primary hover:bg-primary/20 rounded-2xl" variant="outline" onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}>
-                                                <MessageCircle className="w-5 h-5 mr-2" />
-                                                Job Details
+                                            <Button className="flex-1 h-14 text-sm sm:text-base font-bold border-0 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-2xl gap-2 shadow-sm" variant="outline" onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}>
+                                                <MessageCircle className="w-5 h-5" />
+                                                Chat
                                             </Button>
                                             <Button
-                                                className="flex-1 h-12 text-base font-semibold shadow-md btn-animate bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl"
+                                                className="flex-1 h-14 text-sm sm:text-base font-bold shadow-md btn-animate bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl gap-2"
                                                 onClick={() => {
                                                     if (otherParty) {
                                                         setReviewJob({
@@ -486,8 +485,8 @@ export default function JobsTabContent() {
                                                     }
                                                 }}
                                             >
-                                                <CheckCircle2 className="w-5 h-5 mr-2" />
-                                                Job Done
+                                                <CheckCircle2 className="w-5 h-5" />
+                                                Done
                                             </Button>
                                         </div>
                                     </div>

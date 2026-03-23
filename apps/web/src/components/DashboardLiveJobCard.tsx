@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, MessageCircle, Navigation, Clock, ChevronRight } from "lucide-react";
+import { MapPin, MessageCircle, ChevronRight } from "lucide-react";
 import { StarRating } from "@/components/StarRating";
 import JobMap from "@/components/JobMap";
 import { cn } from "@/lib/utils";
@@ -66,56 +66,41 @@ const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
                     {participant.full_name}
                   </p>
                   <div className="flex items-center gap-1.5">
-                    <StarRating rating={participant.average_rating || 5} size="md" />
-                    <span className="text-[10px] font-bold text-slate-400">({participant.total_ratings || 0})</span>
+                    <StarRating rating={participant.average_rating || 5} size="sm" showCount={false} className="scale-90 origin-left sm:scale-100" />
+                    <span className="text-[9px] font-bold text-slate-400">({participant.total_ratings || 0})</span>
                   </div>
                 </div>
               </div>
 
-              <Badge className="bg-primary/5 text-primary border-none font-bold text-[10px] px-3 py-1.5 rounded-xl uppercase tracking-wider flex-shrink-0 shadow-sm">
+              <Badge className="bg-primary/5 text-primary border-none font-bold text-[9px] sm:text-[10px] px-2 sm:px-3 py-1 rounded-lg sm:rounded-xl uppercase tracking-wider flex-shrink-0 shadow-sm">
                 {isPickupDelivery ? "Pickup & Delivery" : (job.care_type || job.service_type)?.replace(/_/g, " ") || "Active Job"}
               </Badge>
             </div>
           </div>
 
-          {/* Actions & Metrics */}
-          <div className="flex items-center justify-between mt-auto">
-            <div className="flex items-center gap-1.5">
-               <div className="flex items-center gap-1 text-slate-500 bg-slate-50 dark:bg-zinc-800/50 px-2 py-1.5 rounded-xl border border-black/5 dark:border-white/5">
-                  <Clock className="w-3.5 h-3.5 text-orange-500" />
-                  <span className="text-[10px] font-bold uppercase tracking-tight">{job.time_duration?.replace(/_/g, "-") || "2h"}</span>
-               </div>
-               {isPickupDelivery && (
-                  <div className="flex items-center gap-1 text-slate-500 bg-slate-50 dark:bg-zinc-800/50 px-2 py-1.5 rounded-xl border border-black/5 dark:border-white/5">
-                     <Navigation className="w-3.5 h-3.5 text-blue-500" />
-                     <span className="text-[10px] font-bold uppercase tracking-tight">Active</span>
-                  </div>
-               )}
-            </div>
-
-            <div className="flex items-center gap-2">
-               <Button 
-                 variant="ghost" 
-                 size="icon"
-                 className="w-11 h-11 rounded-2xl bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100/50 dark:border-blue-900/20"
-                 onClick={(e) => { e.stopPropagation(); onChatClick(); }}
-               >
-                 <MessageCircle className="w-5 h-5" />
-               </Button>
-               <Button 
-                 variant="ghost" 
-                 size="icon"
-                 className="w-11 h-11 rounded-2xl bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-100/50 dark:border-emerald-900/20"
-                 onClick={(e) => { e.stopPropagation(); onNavigateClick(); }}
-               >
-                 <MapPin className="w-5 h-5" />
-               </Button>
-            </div>
+          {/* Centered Actions with Text Labels */}
+          <div className="flex items-center gap-2 mt-auto">
+             <Button 
+               variant="ghost" 
+               className="flex-1 h-10 rounded-xl bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100/50 dark:border-blue-900/20 gap-1.5 text-[10px] font-bold"
+               onClick={(e) => { e.stopPropagation(); onChatClick(); }}
+             >
+               <MessageCircle className="w-4 h-4" />
+               CHAT
+             </Button>
+             <Button 
+               variant="ghost" 
+               className="flex-1 h-10 rounded-xl bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-100/50 dark:border-emerald-900/20 gap-1.5 text-[10px] font-bold"
+               onClick={(e) => { e.stopPropagation(); onNavigateClick(); }}
+             >
+               <MapPin className="w-4 h-4" />
+               NAVIGATE
+             </Button>
           </div>
         </div>
 
         {/* Far Right: Chevron */}
-        <div className="hidden md:flex items-center justify-center p-2 text-slate-300 group-hover:text-primary transition-colors">
+        <div className="hidden lg:flex items-center justify-center p-2 text-slate-300 group-hover:text-primary transition-colors">
           <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
         </div>
       </CardContent>
