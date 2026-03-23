@@ -31,6 +31,37 @@ export default function JobMap({ job, onRouteInfo }: JobMapProps) {
     const [markerPosition, setMarkerPosition] = useState<{ lat: number; lng: number } | null>(null);
     const [loading, setLoading] = useState(false);
     const [showFallback, setShowFallback] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // MutationObserver to detect Google Maps error modals (gm-err-container)
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList') {
+                    const hasError = containerRef.current?.querySelector('.gm-err-container');
+                    if (hasError) {
+                        console.warn("Google Maps error container detected (Development Mode likely). Triggering fallback.");
+                        setShowFallback(true);
+                    }
+                }
+            }
+        });
+
+        observer.observe(containerRef.current, { childList: true, subtree: true });
+        
+        // Also check periodically for the "Development purposes only" watermark/modal
+        const checkInterval = setInterval(() => {
+            const hasError = containerRef.current?.querySelector('.gm-err-container');
+            if (hasError) setShowFallback(true);
+        }, 2000);
+
+        return () => {
+            observer.disconnect();
+            clearInterval(checkInterval);
+        };
+    }, [isLoaded]);
 
     // Use a ref to track if we've initialized for this specific job ID to prevent infinite loops/re-renders
     // but allow updates if job ID changes
@@ -47,8 +78,8 @@ export default function JobMap({ job, onRouteInfo }: JobMapProps) {
     useEffect(() => {
         if (!isLoaded || !job) return;
         
-        // Hide fallback if map finally loads
-        setShowFallback(false);
+        // Hide fallback if map finally loads (and stays clean)
+        // setShowFallback(false); // Removed to prevent flickering if error persists
 
         // Check if we need to process this job
         // We process if we haven't processed ANY job yet, or if the job ID changed
@@ -94,6 +125,10 @@ export default function JobMap({ job, onRouteInfo }: JobMapProps) {
                         }
                     } else {
                         console.error("Directions request failed due to " + status);
+                        // If directions fail, it's also a good signal for fallback
+                        if (status === 'OVER_QUERY_LIMIT' || status === 'REQUEST_DENIED') {
+                            setShowFallback(true);
+                        }
                     }
                 });
             }
@@ -111,6 +146,9 @@ export default function JobMap({ job, onRouteInfo }: JobMapProps) {
                         setMarkerPosition(pos);
                     } else {
                         console.error("Geocode was not successful for the following reason: " + status);
+                        if (status === 'OVER_QUERY_LIMIT' || status === 'REQUEST_DENIED') {
+                            setShowFallback(true);
+                        }
                     }
                 });
             }
@@ -126,7 +164,7 @@ export default function JobMap({ job, onRouteInfo }: JobMapProps) {
     </div>;
 
     return (
-        <div className="relative w-full h-full overflow-hidden">
+        <div ref={containerRef} className="relative w-full h-full overflow-hidden">
             {loading && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-sm">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
