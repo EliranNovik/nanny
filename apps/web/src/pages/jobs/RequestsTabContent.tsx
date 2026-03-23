@@ -96,7 +96,7 @@ function formatServiceDetails(details: any, serviceType?: string) {
     );
 }
 
-const LiveTimer = ({ createdAt }: { createdAt: string }) => {
+const LiveTimer = ({ createdAt, render }: { createdAt: string; render?: (props: { time: string; expired: boolean }) => React.ReactNode }) => {
     const [elapsed, setElapsed] = useState(0);
 
     useEffect(() => {
@@ -125,7 +125,14 @@ const LiveTimer = ({ createdAt }: { createdAt: string }) => {
         return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     };
 
-    return <>{formatElapsedTime(elapsed)}</>;
+    const timeStr = formatElapsedTime(elapsed);
+    const expired = elapsed > 90; // Default threshold
+
+    if (render) {
+        return <>{render({ time: timeStr, expired })}</>;
+    }
+
+    return <>{timeStr}</>;
 };
 
 export default function RequestsTabContent() {
@@ -524,10 +531,17 @@ export default function RequestsTabContent() {
                                                                 </Button>
                                                                 {/* Live Timer Badge */}
                                                                 {job.created_at && !isConfirmed && !isDeclined && (
-                                                                    <div className="absolute -top-3 -right-2 bg-red-500 text-white text-xs font-black px-2.5 py-1 rounded-full shadow-lg border-2 border-white dark:border-zinc-900 animate-in zoom-in duration-300 flex items-center gap-1.5">
-                                                                        <Clock className="w-3 h-3" />
-                                                                        <LiveTimer createdAt={job.created_at} />
-                                                                    </div>
+                                                                    <LiveTimer createdAt={job.created_at} render={({ time, expired }: { time: string; expired: boolean }) => (
+                                                                        <div className={cn(
+                                                                            "absolute -top-3 -right-2 text-white font-black shadow-lg border-2 border-white dark:border-zinc-900 animate-in zoom-in duration-300 flex items-center shadow-emerald-500/20",
+                                                                            expired 
+                                                                                ? "bg-emerald-500 px-2 py-1 rounded-full text-[10px] gap-1" 
+                                                                                : "bg-red-500 px-2.5 py-1 rounded-full text-xs gap-1.5"
+                                                                        )}>
+                                                                            <Clock className={cn(expired ? "w-2.5 h-2.5" : "w-3 h-3")} />
+                                                                            {expired ? `Open ${time}` : time}
+                                                                        </div>
+                                                                    )} />
                                                                 )}
                                                             </div>
                                                         </div>

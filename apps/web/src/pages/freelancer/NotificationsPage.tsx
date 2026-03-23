@@ -157,6 +157,35 @@ function RouteMap({ fromLat, fromLng, toLat, toLng }: RouteMapProps) {
     </div>
   );
 }
+const LiveTimer = ({ createdAt, render }: { createdAt: string; render?: (props: { time: string; expired: boolean }) => React.ReactNode }) => {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const start = new Date(createdAt).getTime();
+    const update = () => {
+      const now = Date.now();
+      setElapsed(Math.floor((now - start) / 1000));
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  const formatElapsedTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const timeStr = formatElapsedTime(elapsed);
+  const expired = elapsed > 90;
+
+  if (render) {
+    return <>{render({ time: timeStr, expired })}</>;
+  }
+
+  return <>{timeStr}</>;
+};
 
 export default function NotificationsPage() {
   const { user } = useAuth();
@@ -488,21 +517,6 @@ export default function NotificationsPage() {
     }
   }
 
-  function getTimeRemaining(endTime: string): { minutes: number; seconds: number; expired: boolean } {
-    const end = new Date(endTime).getTime();
-    const now = Date.now();
-    const diff = end - now;
-
-    if (diff <= 0) {
-      return { minutes: 0, seconds: 0, expired: true };
-    }
-
-    return {
-      minutes: Math.floor(diff / 60000),
-      seconds: Math.floor((diff % 60000) / 1000),
-      expired: false,
-    };
-  }
 
   function formatCareType(type: string): string {
     const map: Record<string, string> = {
@@ -634,7 +648,6 @@ export default function NotificationsPage() {
         <div className="space-y-4 animate-stagger">
           {notifications.map((notif) => {
             const job = notif.job_requests;
-            const time = getTimeRemaining(job.confirm_ends_at);
             const isConfirmed = notif.isConfirmed || false;
             const isDeclined = notif.isDeclined || false;
 
@@ -647,53 +660,48 @@ export default function NotificationsPage() {
                 )}
               >
                 <CardContent className="p-0">
-                  {/* Timer Bar */}
-                  <div className={cn(
-                    "px-4 py-2 flex items-center justify-between",
-                    isDeclined
-                      ? "bg-red-500/10"
-                      : time.expired
-                        ? "bg-muted"
+                    <div className={cn(
+                      "px-4 py-2 flex items-center justify-between",
+                      isDeclined
+                        ? "bg-red-500/10"
                         : isConfirmed
                           ? "bg-emerald-500/10"
                           : "bg-primary/10"
-                  )}>
-                    <div className="flex items-center gap-2">
-                      {isDeclined ? (
-                        <>
-                          <XCircle className="w-4 h-4 text-red-500" />
-                          <span className="text-sm font-medium text-red-600">
-                            Client Declined
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Clock className={cn(
-                            "w-4 h-4",
-                            time.expired
-                              ? "text-muted-foreground"
-                              : isConfirmed
-                                ? "text-emerald-500"
-                                : "text-primary animate-pulse-soft"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        {isDeclined ? (
+                          <>
+                            <XCircle className="w-4 h-4 text-red-500" />
+                            <span className="text-sm font-medium text-red-600">
+                              Client Declined
+                            </span>
+                          </>
+                        ) : (
+                          <LiveTimer createdAt={notif.created_at} render={({ time, expired }) => (
+                            <div className="flex items-center gap-2">
+                              <Clock className={cn(
+                                "w-4 h-4",
+                                isConfirmed
+                                  ? "text-emerald-500"
+                                  : "text-primary animate-pulse-soft"
+                              )} />
+                              <span className={cn(
+                                "text-sm font-medium",
+                                (expired || isConfirmed)
+                                  ? "text-emerald-600"
+                                  : "text-primary"
+                              )}>
+                                {isConfirmed
+                                  ? "Confirmed!"
+                                  : expired
+                                    ? `Open ${time}`
+                                    : `${time} left`}
+                              </span>
+                            </div>
                           )} />
-                          <span className={cn(
-                            "text-sm font-medium",
-                            time.expired
-                              ? "text-muted-foreground"
-                              : isConfirmed
-                                ? "text-emerald-600"
-                                : "text-primary"
-                          )}>
-                            {time.expired
-                              ? "Expired"
-                              : isConfirmed
-                                ? "Confirmed!"
-                                : `${time.minutes}:${time.seconds.toString().padStart(2, "0")} left`}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <Badge variant={isDeclined ? "destructive" : time.expired ? "outline" : "default"}>
+                        )}
+                      </div>
+                      <Badge variant={isDeclined ? "destructive" : "default"}>
                       {job.service_type ? formatServiceType(job.service_type).icon + " " + formatServiceType(job.service_type).label : formatCareType(job.care_type || "")}
                     </Badge>
                   </div>
@@ -913,67 +921,71 @@ export default function NotificationsPage() {
                       </div>
                     )}
 
-                    {!isDeclined && !time.expired && !isConfirmed && (
-                      <Button
-                        className="w-full"
-                        size="lg"
-                        onClick={() => handleConfirm(job.id, notif.id)}
-                        disabled={confirming === notif.id}
-                      >
-                        {confirming === notif.id ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                        )}
-                        I'm Available!
-                      </Button>
-                    )}
-
-                    {!isDeclined && isConfirmed && (
-                      <div className="flex items-center justify-center gap-2 text-emerald-600 py-2">
-                        <CheckCircle2 className="w-5 h-5" />
-                        <span className="font-medium">You confirmed availability</span>
-                      </div>
-                    )}
-
-                    {time.expired && !isConfirmed && !isDeclined && (
-                      <div className="flex flex-col items-center gap-3 py-2">
-                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                          <XCircle className="w-5 h-5" />
-                          <span>Open Job</span>
-                        </div>
-                        <div className="w-full space-y-2">
-                          <Button
-                            size="sm"
-                            onClick={() => openOpenJobAcceptModal(job.id, notif.id)}
-                            disabled={acceptingOpenJob}
-                            className="w-full"
-                          >
-                            <MessageSquare className="w-4 h-4 mr-2" />
-                            Accept Open Job
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(notif.id)}
-                            disabled={deleting === notif.id}
-                            className="w-full"
-                          >
-                            {deleting === notif.id ? (
-                              <>
+                    <LiveTimer createdAt={notif.created_at} render={({ expired }) => (
+                      <div className="space-y-4">
+                        {!isDeclined && !isConfirmed && (
+                          expired ? (
+                            <div className="flex flex-col items-center gap-3 py-2">
+                              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                                <XCircle className="w-5 h-5" />
+                                <span>Open Job</span>
+                              </div>
+                              <div className="w-full space-y-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => openOpenJobAcceptModal(job.id, notif.id)}
+                                  disabled={acceptingOpenJob}
+                                  className="w-full"
+                                >
+                                  <MessageSquare className="w-4 h-4 mr-2" />
+                                  Accept Open Job
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDelete(notif.id)}
+                                  disabled={deleting === notif.id}
+                                  className="w-full"
+                                >
+                                  {deleting === notif.id ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                      Deleting...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Remove Request
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              className="w-full"
+                              size="lg"
+                              onClick={() => handleConfirm(job.id, notif.id)}
+                              disabled={confirming === notif.id}
+                            >
+                              {confirming === notif.id ? (
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Deleting...
-                              </>
-                            ) : (
-                              <>
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Remove Request
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                              ) : (
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                              )}
+                              I'm Available!
+                            </Button>
+                          )
+                        )}
+
+                        {!isDeclined && isConfirmed && (
+                          <div className="flex items-center justify-center gap-2 text-emerald-600 py-2">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="font-medium">You confirmed availability</span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    )} />
                   </div>
                 </CardContent>
               </Card>

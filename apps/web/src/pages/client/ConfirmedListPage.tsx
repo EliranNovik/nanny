@@ -705,21 +705,23 @@ export default function ConfirmedListPage() {
           </div>
         </div>
 
-        {/* Empty State - removed windowEnded check since jobs stay open */}
-        <Card className="border-0 shadow-lg text-center py-12 mt-10">
-          <CardContent>
-            <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-              <Clock className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h3 className="font-semibold text-lg mb-2">No Confirmations</h3>
-            <p className="text-muted-foreground mb-4">
-
-            </p>
-            <Button onClick={() => navigate("/client/create")}>
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Empty State */}
+        {freelancers.length === 0 && (
+          <Card className="border-0 shadow-lg text-center py-12 mt-10">
+            <CardContent>
+              <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                <Clock className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">No Confirmations</h3>
+              <p className="text-muted-foreground mb-4">
+                Still waiting for helpers to confirm availability.
+              </p>
+              <Button onClick={() => navigate("/client/create")}>
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div >
     </div >
   );

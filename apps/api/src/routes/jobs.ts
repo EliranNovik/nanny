@@ -126,25 +126,7 @@ jobsRouter.post("/:jobId/confirm", async (req: Request, res: Response): Promise<
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
 
-  // Ensure still in window
-  const { data: job } = await supabaseAdmin
-    .from("job_requests")
-    .select("*")
-    .eq("id", jobId)
-    .single();
-
-  if (!job) {
-    res.status(404).json({ error: "Job not found" });
-    return;
-  }
-
-  const now = new Date();
-  if (!job.confirm_ends_at || now > new Date(job.confirm_ends_at)) {
-    res.status(400).json({ error: "Confirmation window ended" });
-    return;
-  }
-
-  // Insert confirmation
+  // Insert confirmation (Expiration window check removed)
   const { error } = await supabaseAdmin
     .from("job_confirmations")
     .upsert({ job_id: jobId, freelancer_id: user.id, status: "available" });
