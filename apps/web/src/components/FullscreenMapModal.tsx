@@ -80,7 +80,7 @@ export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalP
         </div>
         
         <div className="flex-1 w-full h-full relative">
-          <JobMap job={job} onRouteInfo={setRouteInfo} />
+          <JobMap job={job} onRouteInfo={setRouteInfo} onClose={onClose} />
 
           {/* UNIFIED VIEW: Expandable Swipe Card (Desktop & Mobile) */}
           <div 

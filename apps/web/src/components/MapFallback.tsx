@@ -1,4 +1,4 @@
-import { MapPin, ExternalLink } from "lucide-react";
+import { MapPin, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getNativeMapUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -8,9 +8,10 @@ interface MapFallbackProps {
   job: any;
   className?: string;
   onRetry?: () => void;
+  onClose?: () => void;
 }
 
-export default function MapFallback({ job, className, onRetry }: MapFallbackProps) {
+export default function MapFallback({ job, className, onRetry, onClose }: MapFallbackProps) {
   if (!job) return null;
 
   const isPickupDelivery = job.service_type === 'pickup_delivery';
@@ -45,7 +46,7 @@ export default function MapFallback({ job, className, onRetry }: MapFallbackProp
       <InternalMap job={job} />
 
       {/* Glassy Blurred Overlay for Navigation Options */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-[400px] z-[1000]">
+      <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[92%] max-w-[400px] z-[1000]">
         <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-2xl flex flex-col gap-3">
           <div className="flex items-center justify-between mb-1 px-1">
              <div className="flex flex-col">
@@ -83,11 +84,26 @@ export default function MapFallback({ job, className, onRetry }: MapFallbackProp
         </div>
       </div>
 
+      {/* Close Button (if provided) */}
+      {onClose && (
+        <div className="absolute top-4 right-4 z-[1001]">
+          <button 
+            onClick={onClose}
+            className="p-3 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-full shadow-2xl hover:bg-white dark:hover:bg-zinc-800 transition-all border border-black/5 dark:border-white/5 group"
+          >
+            <X className="w-5 h-5 text-slate-900 dark:text-white group-hover:scale-110 transition-transform" />
+          </button>
+        </div>
+      )}
+
       {/* Warning watermark if needed (discretely) */}
-      <div className="absolute top-4 right-4 z-[1000] opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className={cn(
+        "absolute top-4 z-[1000] opacity-0 group-hover:opacity-100 transition-opacity",
+        onClose ? "right-20" : "right-4"
+      )}>
         <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
-           <MapPin className="w-3 h-3 text-orange-400" />
-           <span className="text-[10px] font-bold text-white uppercase tracking-wider">Preview Only</span>
+           <MapPin className="w-2.5 h-2.5 text-orange-400" />
+           <span className="text-[9px] font-bold text-white uppercase tracking-wider">Preview Only</span>
         </div>
       </div>
     </div>

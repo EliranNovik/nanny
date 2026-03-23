@@ -18,9 +18,10 @@ const defaultCenter = {
 interface JobMapProps {
     job: any;
     onRouteInfo?: (info: { distance: string; duration: string }) => void;
+    onClose?: () => void;
 }
 
-export default function JobMap({ job, onRouteInfo }: JobMapProps) {
+export default function JobMap({ job, onRouteInfo, onClose }: JobMapProps) {
     const { isLoaded, loadError } = useJsApiLoader({
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
         libraries,
@@ -157,7 +158,7 @@ export default function JobMap({ job, onRouteInfo }: JobMapProps) {
         setupMap();
     }, [isLoaded, job?.id, job?.service_type, job?.location_city]);
 
-    if (loadError || showFallback) return <MapFallback job={job} onRetry={() => setShowFallback(false)} />;
+    if (loadError || showFallback) return <MapFallback job={job} onRetry={() => setShowFallback(false)} onClose={onClose} />;
     if (!isLoaded) return <div className="h-full w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-muted-foreground flex-col gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <span className="text-xs font-bold uppercase tracking-widest opacity-50">Initializing Map...</span>
