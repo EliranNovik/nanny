@@ -1,7 +1,8 @@
-import { MapPin, Navigation, ExternalLink, Compass } from "lucide-react";
+import { MapPin, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getNativeMapUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import InternalMap from "./InternalMap";
 
 interface MapFallbackProps {
   job: any;
@@ -20,67 +21,75 @@ export default function MapFallback({ job, className, onRetry }: MapFallbackProp
   const providers = [
     { 
       name: 'Google Maps', 
-      icon: <Navigation className="w-5 h-5" />, 
+      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/a/aa/Google_Maps_icon_%282020%29.png" alt="Google" className="w-4 h-4 object-contain" />, 
       url: getNativeMapUrl(job, 'google'),
-      color: 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
+      color: 'bg-white/10 hover:bg-white/20 text-white'
     },
     { 
       name: 'Apple Maps', 
-      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Apple_Maps_icon.png" alt="Apple" className="w-5 h-5 rounded-md" />, 
+      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Apple_Maps_icon.png" alt="Apple" className="w-4 h-4 rounded-sm object-contain" />, 
       url: getNativeMapUrl(job, 'apple'),
-      color: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100'
+      color: 'bg-white/10 hover:bg-white/20 text-white'
     },
     { 
       name: 'Waze', 
-      icon: <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_x-vP_k-k_k-k_k-k_k-k_k-k_k-k_k-k_k" alt="Waze" className="w-5 h-5 rounded-full" />, 
+      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/Waze_icon.png" alt="Waze" className="w-4 h-4 object-contain" />, 
       url: getNativeMapUrl(job, 'waze'),
-      color: 'bg-sky-50 text-sky-600 border-sky-100 hover:bg-sky-100'
+      color: 'bg-white/10 hover:bg-white/20 text-white'
     }
   ];
 
   return (
-    <div className={cn(
-      "h-full w-full bg-slate-50 dark:bg-zinc-900/50 flex flex-col items-center justify-center p-8 text-center",
-      className
-    )}>
-      <div className="w-20 h-20 rounded-[2rem] bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 mb-6 animate-pulse">
-        <MapPin className="w-10 h-10" />
+    <div className={cn("relative w-full h-full bg-slate-100 dark:bg-zinc-950 group overflow-hidden", className)}>
+      {/* The Internal Map is now the FIRST and DEFAULT fallback */}
+      <InternalMap job={job} />
+
+      {/* Glassy Blurred Overlay for Navigation Options */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-[400px] z-[1000]">
+        <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-2xl flex flex-col gap-3">
+          <div className="flex items-center justify-between mb-1 px-1">
+             <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest leading-none mb-1">Backup View active</span>
+                <span className="text-xs font-extrabold text-white truncate max-w-[180px]">Navigating to {address}</span>
+             </div>
+             {onRetry && (
+               <button 
+                 onClick={onRetry}
+                 className="text-[10px] font-bold text-orange-400 hover:text-orange-300 uppercase tracking-wider transition-all"
+               >
+                 Retry Google
+               </button>
+             )}
+          </div>
+
+          <div className="flex gap-2">
+            {providers.map((p) => (
+              <Button
+                key={p.name}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "flex-1 h-10 rounded-xl border border-white/5 flex items-center justify-center gap-2 transition-all active:scale-95 group/btn",
+                  p.color
+                )}
+                onClick={() => window.open(p.url, '_blank')}
+              >
+                <div className="z-10 flex-shrink-0 group-hover/btn:scale-110 transition-transform">{p.icon}</div>
+                <span className="text-[11px] font-bold z-10 hidden sm:inline truncate">{p.name.split(' ')[0]}</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-30 group-hover/btn:opacity-100 transition-opacity z-10 ml-auto sm:ml-0" />
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">Can't Load Preview</h3>
-      <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 max-w-xs">
-        We're having trouble loading the embedded map, but you can still navigate to <span className="font-bold text-slate-700 dark:text-slate-200">{address}</span> using your favorite app.
-      </p>
-
-      <div className="grid grid-cols-1 gap-3 w-full max-w-[280px]">
-        {providers.map((p) => (
-          <Button
-            key={p.name}
-            variant="outline"
-            className={cn(
-              "h-14 rounded-2xl border flex items-center justify-start gap-3 px-5 transition-all active:scale-95 group",
-              p.color
-            )}
-            onClick={() => window.open(p.url, '_blank')}
-          >
-            {p.icon}
-            <div className="flex flex-col items-start">
-               <span className="text-xs font-bold uppercase tracking-widest opacity-60 leading-none mb-1">Open In</span>
-               <span className="text-sm font-bold leading-none">{p.name}</span>
-            </div>
-            <ExternalLink className="w-3 h-3 ml-auto opacity-40 group-hover:opacity-100 transition-opacity" />
-          </Button>
-        ))}
+      {/* Warning watermark if needed (discretely) */}
+      <div className="absolute top-4 right-4 z-[1000] opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
+           <MapPin className="w-3 h-3 text-orange-400" />
+           <span className="text-[10px] font-bold text-white uppercase tracking-wider">Preview Only</span>
+        </div>
       </div>
-
-      {onRetry && (
-        <button 
-          onClick={onRetry}
-          className="mt-8 text-xs font-bold text-slate-400 hover:text-orange-500 uppercase tracking-widest transition-colors flex items-center gap-2"
-        >
-          <Compass className="w-4 h-4" /> Try Loading Again
-        </button>
-      )}
     </div>
   );
 }
