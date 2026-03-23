@@ -1,4 +1,4 @@
-import { MapPin, ExternalLink, X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getNativeMapUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -22,19 +22,19 @@ export default function MapFallback({ job, className, onRetry, onClose }: MapFal
   const providers = [
     { 
       name: 'Google Maps', 
-      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/a/aa/Google_Maps_icon_%282020%29.png" alt="Google" className="w-4 h-4 object-contain" />, 
+      icon: <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" className="w-5 h-5 object-contain" />, 
       url: getNativeMapUrl(job, 'google'),
       color: 'bg-white/10 hover:bg-white/20 text-white'
     },
     { 
       name: 'Apple Maps', 
-      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Apple_Maps_icon.png" alt="Apple" className="w-4 h-4 rounded-sm object-contain" />, 
+      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Apple_Maps_icon.png/120px-Apple_Maps_icon.png" className="w-5 h-5 rounded-sm object-contain" />, 
       url: getNativeMapUrl(job, 'apple'),
       color: 'bg-white/10 hover:bg-white/20 text-white'
     },
     { 
       name: 'Waze', 
-      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/Waze_icon.png" alt="Waze" className="w-4 h-4 object-contain" />, 
+      icon: <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Waze_icon.png/120px-Waze_icon.png" className="w-5 h-5 object-contain" />, 
       url: getNativeMapUrl(job, 'waze'),
       color: 'bg-white/10 hover:bg-white/20 text-white'
     }
@@ -50,7 +50,7 @@ export default function MapFallback({ job, className, onRetry, onClose }: MapFal
         <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-2xl flex flex-col gap-3">
           <div className="flex items-center justify-between mb-1 px-1">
              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest leading-none mb-1">Backup View active</span>
+                <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest leading-none mb-1">Secure Backup View</span>
                 <span className="text-xs font-extrabold text-white truncate max-w-[180px]">Navigating to {address}</span>
              </div>
              {onRetry && (
@@ -96,16 +96,6 @@ export default function MapFallback({ job, className, onRetry, onClose }: MapFal
         </div>
       )}
 
-      {/* Warning watermark if needed (discretely) */}
-      <div className={cn(
-        "absolute top-4 z-[1000] opacity-0 group-hover:opacity-100 transition-opacity",
-        onClose ? "right-20" : "right-4"
-      )}>
-        <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
-           <MapPin className="w-2.5 h-2.5 text-orange-400" />
-           <span className="text-[9px] font-bold text-white uppercase tracking-wider">Preview Only</span>
-        </div>
-      </div>
     </div>
   );
 }

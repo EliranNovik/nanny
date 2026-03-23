@@ -344,11 +344,14 @@ export default function DashboardPage() {
             <CardContent className="p-4 flex flex-col gap-1">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Rating</span>
-                <StarRating rating={1} size="sm" showCount={false} />
+                <StarRating rating={profile?.average_rating || 5} size="sm" showCount={false} />
               </div>
               <div className="flex items-baseline gap-1">
-                <p className="text-2xl font-bold text-foreground">{(profile as any)?.average_rating || "5.0"}</p>
-                <span className="text-[10px] text-muted-foreground">/ 5.0</span>
+                <p className="text-2xl font-bold text-foreground">{profile?.average_rating ? profile.average_rating.toFixed(1) : "5.0"}</p>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-muted-foreground leading-none">/ 5.0</span>
+                  <span className="text-[8px] font-bold text-slate-400 mt-0.5">({profile?.total_ratings || 0})</span>
+                </div>
               </div>
             </CardContent>
           </Card>

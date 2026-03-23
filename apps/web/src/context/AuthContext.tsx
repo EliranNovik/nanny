@@ -16,6 +16,8 @@ interface Profile {
   share_telegram?: boolean;
   categories?: string[];
   is_available_for_jobs?: boolean;
+  average_rating?: number;
+  total_ratings?: number;
 }
 
 interface AuthContextType {
