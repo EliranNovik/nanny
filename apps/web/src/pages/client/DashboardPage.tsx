@@ -57,9 +57,9 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [activeJob, setActiveJob] = useState<JobRequest | null>(null);
-  const [selectedFreelancer, setSelectedFreelancer] = useState<Profile | null>(null);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeJobs, setActiveJobs] = useState<JobRequest[]>([]);
+  const [freelancerProfiles, setFreelancerProfiles] = useState<Record<string, Profile>>({});
+  const [activeConversationIds, setActiveConversationIds] = useState<Record<string, string>>({});
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
   const [myRequests, setMyRequests] = useState<JobRequest[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -76,10 +76,11 @@ export default function DashboardPage() {
         const { data, timestamp } = JSON.parse(cached);
         // Use cache if less than 1 hour old
         if (Date.now() - timestamp < 3600000) {
-          setActiveJob(data.activeJob);
-          setSelectedFreelancer(data.selectedFreelancer);
-          setMyRequests(data.myRequests);
-          setInvitations(data.invitations);
+          setActiveJobs(data.activeJobs || []);
+          setFreelancerProfiles(data.freelancerProfiles || {});
+          setActiveConversationIds(data.activeConversationIds || {});
+          setMyRequests(data.myRequests || []);
+          setInvitations(data.invitations || []);
           setRecentMessages(data.recentMessages || []);
           setLoading(false); 
         }
@@ -95,15 +96,13 @@ export default function DashboardPage() {
       
       try {
         const [activeJobRes, openRequestsRes, invitationsRes, recentMessagesRes] = await Promise.all([
-          // 1. Active job
+          // 1. Active jobs
           supabase
             .from("job_requests")
             .select("*")
             .eq("client_id", user.id)
             .in("status", ["locked", "active"])
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
+            .order("created_at", { ascending: false }),
             
           // 2. Open requests
           supabase
@@ -150,43 +149,51 @@ export default function DashboardPage() {
         ]);
 
         // Process active job dependencies
-        const job = activeJobRes.data;
-        setActiveJob(job);
-        
-        let freelancerData = null;
-        let conversationId = null;
-        
-        if (job?.selected_freelancer_id) {
-          const [profRes, convRes] = await Promise.all([
-            supabase
-              .from("profiles")
-              .select("full_name, photo_url, average_rating, total_ratings")
-              .eq("id", job.selected_freelancer_id)
-              .single(),
-            supabase
-              .from("conversations")
-              .select("id")
-              .eq("job_id", job.id)
-              .maybeSingle()
-          ]);
-          freelancerData = profRes.data;
-          if (convRes.data?.id) {
-            conversationId = convRes.data.id;
-          } else {
-            // Fallback: try to find any conversation with this freelancer
-            const { data: fallbackConv } = await supabase
-              .from("conversations")
-              .select("id")
-              .eq("client_id", user.id)
-              .eq("freelancer_id", job.selected_freelancer_id)
-              .limit(1)
-              .maybeSingle();
-            conversationId = fallbackConv?.id || null;
-          }
+        const jobs = activeJobRes.data || [];
+        setActiveJobs(jobs);
 
-          setSelectedFreelancer(freelancerData);
-          setActiveConversationId(conversationId);
+        let profileMap: Record<string, Profile> = {};
+        let conversationMap: Record<string, string> = {};
+
+        if (jobs.length > 0) {
+          const freelancerIds = Array.from(new Set(jobs.map((j: any) => j.selected_freelancer_id).filter(Boolean))) as string[];
+          const jobIds = jobs.map((j: any) => j.id);
+
+          if (freelancerIds.length > 0) {
+            const [profRes, convRes, fallbackConvRes] = await Promise.all([
+              supabase
+                .from("profiles")
+                .select("id, full_name, photo_url, average_rating, total_ratings")
+                .in("id", freelancerIds),
+              supabase
+                .from("conversations")
+                .select("id, job_id, freelancer_id")
+                .in("job_id", jobIds),
+              supabase
+                .from("conversations")
+                .select("id, freelancer_id, client_id")
+                .eq("client_id", user.id)
+                .in("freelancer_id", freelancerIds)
+            ]);
+
+            profRes.data?.forEach(p => { profileMap[p.id] = p; });
+
+            jobs.forEach((job: any) => {
+              const conv = convRes.data?.find(c => c.job_id === job.id);
+              if (conv) {
+                conversationMap[job.id] = conv.id;
+              } else {
+                const fallback = fallbackConvRes.data?.find(c => c.freelancer_id === job.selected_freelancer_id);
+                if (fallback) {
+                   conversationMap[job.id] = fallback.id;
+                }
+              }
+            });
+          }
         }
+
+        setFreelancerProfiles(profileMap);
+        setActiveConversationIds(conversationMap);
 
         // Process recent messages
         const processedMessages = (recentMessagesRes.data || []).map((conv: any) => {
@@ -232,8 +239,9 @@ export default function DashboardPage() {
         localStorage.setItem(cacheKey, JSON.stringify({
           timestamp: Date.now(),
           data: {
-            activeJob: job,
-            selectedFreelancer: freelancerData,
+            activeJobs: jobs,
+            freelancerProfiles: profileMap,
+            activeConversationIds: conversationMap,
             myRequests: requestsList,
             invitations: mappedInvitations,
             recentMessages: processedMessages
@@ -302,7 +310,7 @@ export default function DashboardPage() {
                 <span className="text-[11px] font-bold uppercase tracking-wider">Active Jobs</span>
                 <Briefcase className="w-4 h-4" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{activeJob ? 1 : 0}</p>
+              <p className="text-2xl font-bold text-foreground">{activeJobs.length}</p>
             </CardContent>
           </Card>
 
@@ -346,36 +354,41 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Active Job Card - styled like Live Jobs tab */}
-        {activeJob && (
+        {/* Active Jobs Card - styled like Live Jobs tab */}
+        {activeJobs.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                ACTIVE JOB
+              <h2 className="text-lg font-bold flex items-center gap-2 uppercase">
+                ACTIVE {activeJobs.length === 1 ? 'JOB' : 'JOBS'}
               </h2>
             </div>
             
-            <DashboardLiveJobCard 
-              job={activeJob}
-              participant={{
-                full_name: selectedFreelancer?.full_name || "Helper",
-                photo_url: selectedFreelancer?.photo_url || undefined,
-                average_rating: selectedFreelancer?.average_rating,
-                total_ratings: selectedFreelancer?.total_ratings
-              }}
-              onMapClick={() => setSelectedMapJob(activeJob)}
-              onChatClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate("/messages")}
-              onNavigateClick={() => {
-                if (activeJob.service_type === 'pickup_delivery' && activeJob.service_details?.from_address && activeJob.service_details?.to_address) {
-                  const origin = encodeURIComponent(activeJob.service_details.from_address);
-                  const destination = encodeURIComponent(activeJob.service_details.to_address);
-                  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
-                } else {
-                  const query = encodeURIComponent(activeJob.location_city || "");
-                  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                }
-              }}
-            />
+            <div className="space-y-4">
+              {activeJobs.map(job => (
+                <DashboardLiveJobCard 
+                  key={job.id}
+                  job={job}
+                  participant={{
+                    full_name: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.full_name || "Helper" : "Helper",
+                    photo_url: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.photo_url || undefined : undefined,
+                    average_rating: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.average_rating : undefined,
+                    total_ratings: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.total_ratings : undefined
+                  }}
+                  onMapClick={() => setSelectedMapJob(job)}
+                  onChatClick={() => activeConversationIds[job.id] ? navigate(`/chat/${activeConversationIds[job.id]}`) : navigate("/messages")}
+                  onNavigateClick={() => {
+                    if (job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address) {
+                      const origin = encodeURIComponent(job.service_details.from_address);
+                      const destination = encodeURIComponent(job.service_details.to_address);
+                      window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
+                    } else {
+                      const query = encodeURIComponent(job.location_city || "");
+                      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                    }
+                  }}
+                />
+              ))}
+            </div>
           </div>
         )}
 
@@ -534,7 +547,7 @@ export default function DashboardPage() {
                         <Badge
                           variant={isDeclined ? "destructive" : isConfirmed ? "default" : "secondary"}
                           className={cn("text-xs flex-shrink-0", !isDeclined && !isConfirmed && "bg-black/5 text-black/70 border-none")}>
-                          {isDeclined ? "Declined" : isConfirmed ? "Confirmed" : "Pending"}
+                          {isDeclined ? "Declined" : isConfirmed ? "Waiting for confirmation" : "Pending"}
                         </Badge>
                         <ChevronRight className="w-4 h-4 text-black/30 flex-shrink-0" />
                       </div>
@@ -552,7 +565,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* No active job empty state */}
-        {!activeJob && myRequests.length === 0 && (
+        {activeJobs.length === 0 && myRequests.length === 0 && (
           <Card className="border-0 shadow-lg text-center py-12 bg-white dark:bg-zinc-900">
             <CardContent>
               <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-zinc-800 mx-auto mb-4 flex items-center justify-center">

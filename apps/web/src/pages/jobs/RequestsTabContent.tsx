@@ -384,23 +384,32 @@ export default function RequestsTabContent() {
                                     <Card key={notif.id} className={cn("transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full", isDeclined && "opacity-60")}>
                                         <CardContent className="p-0 flex-1 flex flex-col">
                                             <div className={cn(
-                                                "px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm",
-                                                isDeclined && "opacity-80",
-                                                isConfirmed && "bg-emerald-50 dark:bg-emerald-900/10"
+                                                "relative px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm",
+                                                isDeclined && "opacity-80"
                                             )}>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 relative z-10 w-1/3">
                                                     {isDeclined ? (
                                                         <><XCircle className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Declined</span></>
                                                     ) : isConfirmed ? (
-                                                        <><CheckCircle2 className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Confirmed!</span></>
+                                                        <><CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /><span className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tracking-tight">Waiting for confirmation</span></>
                                                     ) : (
                                                         <><Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" /><span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">Pending Response</span></>
                                                     )}
                                                 </div>
-                                                <Badge variant="outline" className={cn(
-                                                    "flex items-center gap-1 text-xs px-2.5 py-1 shadow-sm font-bold border-0 bg-orange-100 text-orange-500",
-                                                    isDeclined && "opacity-80"
-                                                )}>{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+
+                                                <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1.5 text-orange-600 dark:text-orange-500 py-1 px-3 bg-orange-50 dark:bg-orange-500/10 rounded-full border border-orange-100 dark:border-orange-500/20 z-10">
+                                                    <Clock className="w-3.5 h-3.5 animate-pulse" />
+                                                    <span className="text-sm font-black uppercase tracking-tight">
+                                                        <LiveTimer createdAt={job.created_at} />
+                                                    </span>
+                                                </div>
+
+                                                <div className="relative z-10 w-1/3 flex justify-end">
+                                                    <Badge variant="outline" className={cn(
+                                                        "flex items-center gap-1 text-xs px-2.5 py-1 shadow-sm font-bold border-0 bg-orange-100 text-orange-500",
+                                                        isDeclined && "opacity-80"
+                                                    )}>{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+                                                </div>
                                             </div>
 
                                             {['pickup_delivery', 'cleaning', 'cooking', 'nanny', 'other_help'].includes(job.service_type || '') ? (
@@ -473,22 +482,10 @@ export default function RequestsTabContent() {
                                                                             )}
                                                                             <span className="text-[10px] sm:text-xs font-bold text-slate-400">({job.profiles?.total_ratings || 0})</span>
                                                                         </div>
-                                                                        {job.location_city && (
-                                                                            <div className="flex items-center gap-1 mt-1">
-                                                                                <MapPin className="w-3.5 h-3.5 text-primary" />
-                                                                                <span className="text-sm sm:text-base font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
-                                                                            </div>
-                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <div className="hidden md:grid md:grid-cols-2 gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
-                                                                <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-500 py-1 px-3 bg-orange-50 dark:bg-orange-500/10 rounded-full border border-orange-100 dark:border-orange-500/20 mt-1 w-fit">
-                                                                    <Clock className="w-3.5 h-3.5 animate-pulse" />
-                                                                    <span className="text-sm font-black uppercase tracking-tight">
-                                                                        <LiveTimer createdAt={job.created_at} />
-                                                                    </span>
-                                                                </div>
                                                                 {job.time_duration && (
                                                                     <div className="flex items-center gap-1 text-slate-500 py-0.5 sm:mt-1">
                                                                         <Briefcase className="w-2.5 h-2.5 text-primary" />
@@ -508,44 +505,52 @@ export default function RequestsTabContent() {
                                                         </div>
                                                     )}
 
-                                                    {!isConfirmed && !isDeclined && (
-                                                        <div className="flex gap-3 mt-auto">
-                                                            <Button
-                                                                variant="default"
-                                                                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm"
-                                                                disabled={confirming === notif.id || deleting === notif.id}
-                                                                onClick={() => handleConfirm(job.id, notif.id)}
-                                                            >
-                                                                {confirming === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                                                                Accept
-                                                            </Button>
-                                                            <div className="flex-1 relative">
-                                                                <Button
-                                                                    variant="outline"
-                                                                    className="w-full h-11 border-0 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl text-xs sm:text-sm font-bold shadow-sm"
-                                                                    disabled={confirming === notif.id || deleting === notif.id}
-                                                                    onClick={() => handleDecline(notif.id)}
-                                                                >
-                                                                    {deleting === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
-                                                                    Decline
-                                                                </Button>
-                                                                {/* Live Timer Badge */}
-                                                                {job.created_at && !isConfirmed && !isDeclined && (
-                                                                    <LiveTimer createdAt={job.created_at} render={({ time, expired }: { time: string; expired: boolean }) => (
-                                                                        <div className={cn(
-                                                                            "absolute -top-3 -right-2 text-white font-black shadow-lg border-2 border-white dark:border-zinc-900 animate-in zoom-in duration-300 flex items-center shadow-emerald-500/20",
-                                                                            expired 
-                                                                                ? "bg-emerald-500 px-2 py-1 rounded-full text-[10px] gap-1" 
-                                                                                : "bg-red-500 px-2.5 py-1 rounded-full text-xs gap-1.5"
-                                                                        )}>
-                                                                            <Clock className={cn(expired ? "w-2.5 h-2.5" : "w-3 h-3")} />
-                                                                            {expired ? `Open ${time}` : time}
-                                                                        </div>
-                                                                    )} />
-                                                                )}
+                                                    <div className="mt-auto flex flex-col gap-4">
+                                                        {job.location_city && (
+                                                            <div className="flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-full border border-black/5 dark:border-white/5 w-fit mx-auto">
+                                                                <MapPin className="w-4 h-4 text-primary" />
+                                                                <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        )}
+                                                        {!isConfirmed && !isDeclined && (
+                                                            <div className="flex gap-3">
+                                                                <Button
+                                                                    variant="default"
+                                                                    className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm"
+                                                                    disabled={confirming === notif.id || deleting === notif.id}
+                                                                    onClick={() => handleConfirm(job.id, notif.id)}
+                                                                >
+                                                                    {confirming === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                                                                    Accept
+                                                                </Button>
+                                                                <div className="flex-1 relative">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        className="w-full h-11 border-0 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl text-xs sm:text-sm font-bold shadow-sm"
+                                                                        disabled={confirming === notif.id || deleting === notif.id}
+                                                                        onClick={() => handleDecline(notif.id)}
+                                                                    >
+                                                                        {deleting === notif.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+                                                                        Decline
+                                                                    </Button>
+                                                                    {/* Live Timer Badge */}
+                                                                    {job.created_at && !isConfirmed && !isDeclined && (
+                                                                        <LiveTimer createdAt={job.created_at} render={({ time, expired }: { time: string; expired: boolean }) => (
+                                                                            <div className={cn(
+                                                                                "absolute -top-3 -right-2 text-white font-black shadow-lg border-2 border-white dark:border-zinc-900 animate-in zoom-in duration-300 flex items-center shadow-emerald-500/20",
+                                                                                expired 
+                                                                                    ? "bg-emerald-500 px-2 py-1 rounded-full text-[10px] gap-1" 
+                                                                                    : "bg-red-500 px-2.5 py-1 rounded-full text-xs gap-1.5"
+                                                                            )}>
+                                                                                <Clock className={cn(expired ? "w-2.5 h-2.5" : "w-3 h-3")} />
+                                                                                {expired ? `Open ${time}` : time}
+                                                                            </div>
+                                                                        )} />
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 /* Default Vertical Layout */
@@ -688,12 +693,22 @@ export default function RequestsTabContent() {
                             {myOpenRequests.map((job) => (
                                 <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full">
                                     <CardContent className="p-0 flex-1 flex flex-col">
-                                        <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
-                                            <div className="flex items-center gap-2">
+                                        <div className="relative px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
+                                            <div className="flex items-center gap-2 relative z-10 w-1/3">
                                                 <Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" />
                                                 <span className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">{getJobStatusBadge(job.status)}</span>
                                             </div>
-                                            <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-orange-100 text-orange-500 truncate shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+
+                                            <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1.5 text-orange-600 dark:text-orange-500 py-1 px-3 bg-orange-50 dark:bg-orange-500/10 rounded-full border border-orange-100 dark:border-orange-500/20 z-10">
+                                                <Clock className="w-3.5 h-3.5 animate-pulse" />
+                                                <span className="text-sm font-black uppercase tracking-tight">
+                                                    <LiveTimer createdAt={job.created_at} />
+                                                </span>
+                                            </div>
+
+                                            <div className="relative z-10 w-1/3 flex justify-end">
+                                                <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-orange-100 text-orange-500 truncate shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+                                            </div>
                                         </div>
                                         <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
                                             {['pickup_delivery', 'cleaning', 'cooking', 'nanny', 'other_help'].includes(job.service_type || '') ? (
@@ -748,27 +763,14 @@ export default function RequestsTabContent() {
 
                                                         {/* Right: Info Area (Notes or Location) */}
                                                         <div className="flex-1 flex flex-col min-w-0 justify-center">
-                                                            {job.service_details?.custom ? (
+                                                            {job.service_details?.custom && (
                                                                 <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-xl px-4 py-3 border border-black/5 dark:border-white/5 shadow-sm">
                                                                     <span className="font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-1.5 underline decoration-primary/30 underline-offset-4">NOTES</span>
                                                                     <span className="text-slate-700 dark:text-slate-200 text-sm font-medium whitespace-pre-wrap leading-relaxed line-clamp-3">{job.service_details.custom}</span>
                                                                 </div>
-                                                            ) : (
-                                                                job.location_city && (
-                                                                    <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-black/5 dark:border-white/5 w-fit">
-                                                                        <MapPin className="w-3.5 h-3.5 text-primary" />
-                                                                        <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
-                                                                    </div>
-                                                                )
                                                             )}
 
                                                             <div className="hidden md:grid md:grid-cols-2 gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400 mt-2">
-                                                                <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-500 py-1 px-3 bg-orange-50 dark:bg-orange-500/10 rounded-full border border-orange-100 dark:border-orange-500/20 mt-1 w-fit">
-                                                                    <Clock className="w-3.5 h-3.5 animate-pulse" />
-                                                                    <span className="text-sm font-black uppercase tracking-tight">
-                                                                        <LiveTimer createdAt={job.created_at} />
-                                                                    </span>
-                                                                </div>
                                                                 {job.time_duration && (
                                                                     <div className="flex items-center gap-1 text-slate-500 py-0.5">
                                                                         <Briefcase className="w-2.5 h-2.5 text-primary" />
@@ -780,30 +782,31 @@ export default function RequestsTabContent() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Standalone Location (if notes exist) */}
-                                                    {job.service_details?.custom && job.location_city && (
-                                                        <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-black/5 dark:border-white/5 w-fit mb-2">
-                                                            <MapPin className="w-3.5 h-3.5 text-primary" />
-                                                            <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Full Width Button */}
-                                                    <div className="mt-auto relative group/btn">
-                                                        <Button
-                                                            className="w-full h-11 text-xs sm:text-sm font-bold shadow-sm bg-orange-500 hover:bg-orange-600 text-white rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                                                            onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}
-                                                        >
-                                                            <Users className="w-4 h-4" />
-                                                            View Helpers
-                                                        </Button>
-
-                                                        {/* Acceptance Count Badge */}
-                                                        {typeof (job as any).acceptedCount === 'number' && (
-                                                            <div className={`absolute -top-3 -right-3 ${(job as any).acceptedCount > 0 ? 'bg-emerald-500 ring-emerald-500/20' : 'bg-slate-400 ring-slate-400/20'} text-white text-xs font-black w-8 h-8 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900 shadow-lg animate-in zoom-in duration-300 ring-4`}>
-                                                                {(job as any).acceptedCount}
+                                                    <div className="mt-auto flex flex-col gap-4">
+                                                        {job.location_city && (
+                                                            <div className="flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-full border border-black/5 dark:border-white/5 w-fit mx-auto">
+                                                                <MapPin className="w-4 h-4 text-primary" />
+                                                                <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.location_city}</span>
                                                             </div>
                                                         )}
+
+                                                        {/* Full Width Button */}
+                                                        <div className="relative group/btn">
+                                                            <Button
+                                                                className="w-full h-11 text-xs sm:text-sm font-bold shadow-sm bg-orange-500 hover:bg-orange-600 text-white rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                                                                onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}
+                                                            >
+                                                                <Users className="w-4 h-4" />
+                                                                View Helpers
+                                                            </Button>
+
+                                                            {/* Acceptance Count Badge */}
+                                                            {typeof (job as any).acceptedCount === 'number' && (
+                                                                <div className={`absolute -top-3 -right-3 ${(job as any).acceptedCount > 0 ? 'bg-emerald-500 ring-emerald-500/20' : 'bg-slate-400 ring-slate-400/20'} text-white text-xs font-black w-8 h-8 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900 shadow-lg animate-in zoom-in duration-300 ring-4`}>
+                                                                    {(job as any).acceptedCount}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -903,6 +906,7 @@ export default function RequestsTabContent() {
                 onOpenChange={(open) => !open && setSelectedJobDetails(null)}
                 job={selectedJobDetails}
                 formatJobTitle={formatJobTitle}
+                isOwnRequest={selectedJobDetails?.client_id === user?.id}
             />
         </>
     );

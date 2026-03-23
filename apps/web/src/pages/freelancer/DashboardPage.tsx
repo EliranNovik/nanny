@@ -62,7 +62,7 @@ export default function FreelancerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeJobs, setActiveJobs] = useState<JobRequest[]>([]);
   const [clientProfiles, setClientProfiles] = useState<Record<string, ClientProfile>>({});
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationIds, setActiveConversationIds] = useState<Record<string, string>>({});
 
 
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -85,6 +85,7 @@ export default function FreelancerDashboardPage() {
         if (Date.now() - timestamp < 3600000) {
           setActiveJobs(data.activeJobs || []);
           setClientProfiles(data.clientProfiles || {});
+          setActiveConversationIds(data.activeConversationIds || {});
           setInvitations(data.invitations || []);
           setMyRequests(data.myRequests || []);
           setEarningsToday(data.earningsToday || 0);
@@ -109,8 +110,7 @@ export default function FreelancerDashboardPage() {
             .select("*")
             .eq("selected_freelancer_id", user.id)
             .in("status", ["locked", "active"])
-            .order("created_at", { ascending: false })
-            .limit(3),
+            .order("created_at", { ascending: false }),
             
           // 2. Latest conversation
           supabase
@@ -196,37 +196,42 @@ export default function FreelancerDashboardPage() {
         setActiveJobs(activeJobsList);
         
         let profileMap: Record<string, ClientProfile> = {};
+        let conversationMap: Record<string, string> = {};
         if (activeJobsList.length > 0) {
-          const clientIds = Array.from(new Set(activeJobsList.map(j => j.client_id)));
-          const [profRes, convRes] = await Promise.all([
+          const clientIds = Array.from(new Set(activeJobsList.map((j: any) => j.client_id)));
+          const jobIds = activeJobsList.map((j: any) => j.id);
+
+          const [profRes, convRes, fallbackConvRes] = await Promise.all([
             supabase
               .from("profiles")
               .select("id, full_name, photo_url, average_rating, total_ratings")
               .in("id", clientIds),
             supabase
               .from("conversations")
-              .select("id")
-              .eq("job_id", activeJobsList[0].id)
-              .maybeSingle()
+              .select("id, job_id, client_id")
+              .in("job_id", jobIds),
+            supabase
+              .from("conversations")
+              .select("id, client_id, freelancer_id")
+              .eq("freelancer_id", user.id)
+              .in("client_id", clientIds)
           ]);
           
           profRes.data?.forEach(p => { profileMap[p.id] = p; });
-          setClientProfiles(profileMap);
           
-          // Set active conversation ID
-          if (convRes.data?.id) {
-            setActiveConversationId(convRes.data.id);
-          } else {
-            // Fallback: try to find any conversation with this client
-            const { data: fallbackConv } = await supabase
-              .from("conversations")
-              .select("id")
-              .eq("client_id", activeJobsList[0].client_id)
-              .eq("freelancer_id", user.id)
-              .limit(1)
-              .maybeSingle();
-            setActiveConversationId(fallbackConv?.id || null);
-          }
+          activeJobsList.forEach((job: any) => {
+            const conv = convRes.data?.find(c => c.job_id === job.id);
+            if (conv) {
+              conversationMap[job.id] = conv.id;
+            } else {
+              const fallback = fallbackConvRes.data?.find(c => c.client_id === job.client_id);
+              if (fallback) {
+                 conversationMap[job.id] = fallback.id;
+              }
+            }
+          });
+          setClientProfiles(profileMap);
+          setActiveConversationIds(conversationMap);
         }
 
         // Process latest conversation dependencies
@@ -271,7 +276,7 @@ export default function FreelancerDashboardPage() {
           data: {
             activeJobs: activeJobsList,
             clientProfiles: profileMap,
-            activeConversationId: activeConversationId,
+            activeConversationIds: conversationMap,
             invitations: mappedInvitations,
             myRequests: myRequestsList,
             earningsToday: earningsSum,
@@ -384,36 +389,40 @@ export default function FreelancerDashboardPage() {
         </div>
 
         {/* PRO-LEVEL ACTIVE JOB SECTION */}
-        {activeJobs[0] && (
+        {activeJobs.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                ACTIVE JOB
+              <h2 className="text-lg font-bold flex items-center gap-2 uppercase">
+                ACTIVE {activeJobs.length === 1 ? 'JOB' : 'JOBS'}
               </h2>
             </div>
 
-            <DashboardLiveJobCard 
-              job={activeJobs[0]}
-              participant={{
-                full_name: clientProfiles[activeJobs[0].client_id]?.full_name || "Client",
-                photo_url: clientProfiles[activeJobs[0].client_id]?.photo_url || undefined,
-                average_rating: clientProfiles[activeJobs[0].client_id]?.average_rating,
-                total_ratings: clientProfiles[activeJobs[0].client_id]?.total_ratings
-              }}
-              onMapClick={() => setSelectedMapJob(activeJobs[0])}
-              onChatClick={() => activeConversationId ? navigate(`/chat/${activeConversationId}`) : navigate("/messages")}
-              onNavigateClick={() => {
-                const job = activeJobs[0];
-                if (job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address) {
-                  const origin = encodeURIComponent(job.service_details.from_address);
-                  const destination = encodeURIComponent(job.service_details.to_address);
-                  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
-                } else {
-                  const query = encodeURIComponent(job.location_city || "");
-                  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                }
-              }}
-            />
+            <div className="space-y-4">
+              {activeJobs.map(job => (
+                <DashboardLiveJobCard 
+                  key={job.id}
+                  job={job}
+                  participant={{
+                    full_name: clientProfiles[job.client_id]?.full_name || "Client",
+                    photo_url: clientProfiles[job.client_id]?.photo_url || undefined,
+                    average_rating: clientProfiles[job.client_id]?.average_rating,
+                    total_ratings: clientProfiles[job.client_id]?.total_ratings
+                  }}
+                  onMapClick={() => setSelectedMapJob(job)}
+                  onChatClick={() => activeConversationIds[job.id] ? navigate(`/chat/${activeConversationIds[job.id]}`) : navigate("/messages")}
+                  onNavigateClick={() => {
+                    if (job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address) {
+                      const origin = encodeURIComponent(job.service_details.from_address);
+                      const destination = encodeURIComponent(job.service_details.to_address);
+                      window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
+                    } else {
+                      const query = encodeURIComponent(job.location_city || "");
+                      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                    }
+                  }}
+                />
+              ))}
+            </div>
           </div>
         )}
 
@@ -532,7 +541,7 @@ export default function FreelancerDashboardPage() {
                         <Badge
                           variant={isDeclined ? "destructive" : isConfirmed ? "default" : "secondary"}
                           className={cn("text-xs flex-shrink-0", !isDeclined && !isConfirmed && "bg-white/10 text-slate-600 dark:text-slate-400 border-black/10 dark:border-white/10")}>
-                          {isDeclined ? "Declined" : isConfirmed ? "Confirmed" : "Pending"}
+                          {isDeclined ? "Declined" : isConfirmed ? "Waiting for confirmation" : "Pending"}
                         </Badge>
                         <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
                       </div>

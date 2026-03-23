@@ -1,12 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Briefcase, Users, LogIn, Baby, Sparkles, Star, Flag, Menu, X, Home, ClipboardList, UserCheck, MessageCircle, CheckCircle2 } from "lucide-react";
+import { Briefcase, Users, LogIn, Baby, Sparkles, Star, Flag, Menu, X, Home, ClipboardList, UserCheck, MessageCircle, CheckCircle2, Soup, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import JobCategories from "@/components/JobCategories";
+import Benefits from "@/components/Benefits";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -17,6 +19,21 @@ export default function LandingPage() {
   const dashboardPath = profile?.role === "freelancer" ? "/freelancer/dashboard" : "/dashboard";
   const jobsPath = profile?.role === "freelancer" ? "/freelancer/active-jobs" : "/client/active-jobs";
   const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : "/client/profile";
+  
+  const recentActivityRef = useRef<HTMLDivElement>(null);
+  const reviewsRef = useRef<HTMLDivElement>(null);
+
+  const scrollLeft = (ref: React.RefObject<HTMLDivElement>) => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: -400, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = (ref: React.RefObject<HTMLDivElement>) => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: 400, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     const el = buttonsRef.current;
@@ -254,7 +271,7 @@ export default function LandingPage() {
                       <Button
                         onClick={handleSearchingForJob}
                         size="lg"
-                        className="h-32 flex flex-col items-center justify-center gap-3 text-base bg-orange-500 hover:bg-orange-600 text-white shadow-lg rounded-lg min-w-[250px]"
+                        className="h-32 flex flex-col items-center justify-center gap-3 text-base bg-white hover:bg-gray-50 text-orange-500 shadow-lg rounded-lg min-w-[250px]"
                       >
                         <Briefcase className="w-8 h-8" />
                         <span className="text-base font-medium">Searching for a Job</span>
@@ -285,7 +302,7 @@ export default function LandingPage() {
                   <div ref={buttonsRef} className="absolute left-1/2 -translate-x-1/2 top-6 flex flex-row gap-3 md:hidden z-20 w-full px-4 justify-center">
                     <Button
                       onClick={handleSearchingForJob}
-                      className="h-11 rounded-full px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 min-w-[140px] gap-2 text-sm font-medium whitespace-nowrap"
+                      className="h-11 rounded-full px-8 bg-white hover:bg-gray-50 text-orange-500 shadow-lg flex-1 min-w-[140px] gap-2 text-sm font-medium whitespace-nowrap"
                     >
                       <Briefcase className="w-5 h-5 flex-shrink-0" />
                       Find a Job
@@ -299,171 +316,9 @@ export default function LandingPage() {
                     </Button>
                   </div>
                 </div>
-
-                {/* Left Service Boxes - Desktop Only - Inside image, extending slightly on larger screens */}
-                <div className="hidden md:block absolute left-6 xl:left-0 top-[320px] xl:-translate-x-12 w-[350px] z-20">
-                  {/* Review Box */}
-                  <div className="bg-orange-500/20 backdrop-blur-md rounded-2xl p-6 border border-orange-400/30 shadow-lg">
-                    <div className="flex items-start gap-4 mb-3">
-                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-base">
-                        JD
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="text-base font-semibold text-white">John D.</h4>
-                          <div className="flex items-center gap-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${i < 4
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : i === 4
-                                    ? "fill-yellow-200 text-yellow-200"
-                                    : "fill-gray-300 text-gray-300"
-                                  }`}
-                              />
-                            ))}
-                            <span className="text-sm text-gray-600 ml-1">4.5</span>
-                          </div>
-                        </div>
-                        <p className="text-sm text-white/90 leading-relaxed">
-                          "Sarah was absolutely amazing with our two kids! She was punctual, caring, and our children loved spending time with her. Highly recommend her services!"
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Service Boxes - Desktop Only - Inside image, extending slightly on larger screens */}
-                <div className="hidden md:block absolute right-6 xl:right-0 bottom-6 xl:translate-x-12 w-[350px] z-20">
-                  {/* Review Box */}
-                  <div className="bg-orange-500/20 backdrop-blur-md rounded-2xl p-6 border border-orange-400/30 shadow-lg">
-                    <div className="flex items-start gap-4 mb-3">
-                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-base">
-                        MR
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="text-base font-semibold text-white">Maria R.</h4>
-                          <div className="flex items-center gap-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${i < 4
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : i === 4
-                                    ? "fill-yellow-200 text-yellow-200"
-                                    : "fill-gray-300 text-gray-300"
-                                  }`}
-                              />
-                            ))}
-                            <span className="text-sm text-gray-600 ml-1">4.5</span>
-                          </div>
-                        </div>
-                        <p className="text-sm text-white/90 leading-relaxed">
-                          "The cleaning service was exceptional! Our home has never looked better. The team was professional, thorough, and left everything sparkling clean. Will definitely use again!"
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
-            {/* Mobile Glassy Boxes - Below Image */}
-            <div className="md:hidden space-y-4 mt-6">
-              {/* Childcare Service Box */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                    <Baby className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Childcare
-                  </h3>
-                </div>
-                <p className="text-xs text-gray-700 leading-relaxed">
-                  Find trusted nannies and babysitters for your children. Professional childcare services tailored to your family's needs.
-                </p>
-              </div>
-
-              {/* House Cleaning Service Box */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    House Cleaning
-                  </h3>
-                </div>
-                <p className="text-xs text-gray-700 leading-relaxed">
-                  Professional cleaning services to keep your home spotless. Regular or one-time deep cleaning available.
-                </p>
-              </div>
-
-              {/* John D. Review Box */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg scroll-reveal opacity-0 translate-y-10 transition-all duration-700">
-                <div className="flex items-start gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
-                    JD
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-sm font-semibold text-gray-900">John D.</h4>
-                      <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-3 h-3 ${i < 4
-                              ? "fill-yellow-400 text-yellow-400"
-                              : i === 4
-                                ? "fill-yellow-200 text-yellow-200"
-                                : "fill-gray-300 text-gray-300"
-                              }`}
-                          />
-                        ))}
-                        <span className="text-xs text-gray-600 ml-1">4.5</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-700 leading-relaxed">
-                      "Sarah was absolutely amazing with our two kids! She was punctual, caring, and our children loved spending time with her. Highly recommend her services!"
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Maria R. Review Box */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-lg scroll-reveal opacity-0 translate-y-10 transition-all duration-700">
-                <div className="flex items-start gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
-                    MR
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-sm font-semibold text-gray-900">Maria R.</h4>
-                      <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-3 h-3 ${i < 4
-                              ? "fill-yellow-400 text-yellow-400"
-                              : i === 4
-                                ? "fill-yellow-200 text-yellow-200"
-                                : "fill-gray-300 text-gray-300"
-                              }`}
-                          />
-                        ))}
-                        <span className="text-xs text-gray-600 ml-1">4.5</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-700 leading-relaxed">
-                      "The cleaning service was exceptional! Our home has never looked better. The team was professional, thorough, and left everything sparkling clean. Will definitely use again!"
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* How finding a helper works */}
@@ -531,131 +386,207 @@ export default function LandingPage() {
           </div>
 
           {/* Job Categories */}
-          <div className="space-y-6 pt-12 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
+          <div className="space-y-6 pt-32 mt-12 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
             <h2 className="text-2xl font-semibold text-center text-black">
               Services
             </h2>
             <JobCategories />
           </div>
 
+          {/* Benefits Section */}
+          <div className="scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
+            <Benefits />
+          </div>
+
           {/* Recent Orders Section */}
           <div className="pt-12 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
-            <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-semibold text-center mb-6 text-black">
-                Recent Orders
-              </h2>
-              <div className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
-                {/* Order 1 */}
-                <div className="border-b border-gray-200 pb-4 last:border-b-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm">
-                          AS
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">Anna S.</h3>
-                          <p className="text-sm text-muted-foreground">Childcare Service</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-foreground/80 mb-2">
-                        Looking for a reliable nanny for my 3-year-old daughter, 3 days a week from 9 AM to 2 PM. Must have experience with toddlers.
-                      </p>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">Rate:</span>
-                        <span className="font-semibold text-foreground">₪80/hour</span>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" className="flex-shrink-0 gap-2">
-                      <Flag className="w-4 h-4" />
-                      Report
-                    </Button>
-                  </div>
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="relative mb-10">
+                <h2 className="text-2xl md:text-3xl font-bold text-center text-black">
+                  Recent Activity
+                </h2>
+                <div className="hidden md:flex gap-2 absolute right-0 top-1/2 -translate-y-1/2">
+                  <Button variant="outline" size="icon" className="rounded-full shadow-sm w-10 h-10 border-gray-200 bg-white/50 backdrop-blur-sm" onClick={() => scrollLeft(recentActivityRef)}>
+                    <ChevronLeft className="w-5 h-5 text-gray-700" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="rounded-full shadow-sm w-10 h-10 border-gray-200 bg-white/50 backdrop-blur-sm" onClick={() => scrollRight(recentActivityRef)}>
+                    <ChevronRight className="w-5 h-5 text-gray-700" />
+                  </Button>
                 </div>
+              </div>
 
-                {/* Order 2 */}
-                <div className="border-b border-gray-200 pb-4 last:border-b-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-semibold text-sm">
-                          DL
+              <div ref={recentActivityRef} className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 scrollbar-hide -mx-4 px-4 scroll-smooth">
+                {[
+                  {
+                    name: "Anna S.",
+                    initials: "AS",
+                    role: "Childcare Service",
+                    icon: <Baby className="w-5 h-5 text-purple-500" />,
+                    gradient: "from-blue-400 to-indigo-500",
+                    description: "Looking for a reliable nanny for my 3-year-old daughter, 3 days a week from 9 AM to 2 PM. Must have experience with toddlers.",
+                    rate: "₪80/hour"
+                  },
+                  {
+                    name: "David L.",
+                    initials: "DL",
+                    role: "House Cleaning",
+                    icon: <Sparkles className="w-5 h-5 text-orange-500" />,
+                    gradient: "from-orange-400 to-red-500",
+                    description: "Need deep cleaning for a 4-bedroom apartment. Includes kitchen, bathrooms, and all common areas. One-time service needed this weekend.",
+                    rate: "₪120/hour"
+                  },
+                  {
+                    name: "Rachel M.",
+                    initials: "RS",
+                    role: "Childcare Service",
+                    icon: <Baby className="w-5 h-5 text-purple-500" />,
+                    gradient: "from-purple-400 to-pink-500",
+                    description: "Seeking an experienced babysitter for evening care, 2-3 times per week. Two children ages 5 and 7. Must be available from 6 PM to 10 PM.",
+                    rate: "₪90/hour"
+                  },
+                  {
+                    name: "Tom K.",
+                    initials: "TM",
+                    role: "House Cleaning",
+                    icon: <Sparkles className="w-5 h-5 text-orange-500" />,
+                    gradient: "from-green-400 to-emerald-500",
+                    description: "Regular weekly cleaning service for a 3-bedroom house. Prefer someone who can come every Thursday morning. Long-term arrangement preferred.",
+                    rate: "₪100/hour"
+                  },
+                  {
+                    name: "Yael B.",
+                    initials: "YB",
+                    role: "Private Chef",
+                    icon: <Soup className="w-5 h-5 text-red-500" />,
+                    gradient: "from-red-400 to-orange-500",
+                    description: "Looking for someone to help with weekly meal prep and cooking for a family of 5. Healthy, balanced meals preferred.",
+                    rate: "₪150/hour"
+                  }
+                ].map((order, idx) => (
+                  <div
+                    key={idx}
+                    className="min-w-[320px] md:min-w-[380px] snap-center bg-white rounded-3xl border border-gray-100 shadow-xl p-6 transition-all duration-500 hover:scale-[1.02] hover:bg-gray-50 group"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "h-12 w-12 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-base shadow-inner",
+                          order.gradient
+                        )}>
+                          {order.initials}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-foreground">David L.</h3>
-                          <p className="text-sm text-muted-foreground">House Cleaning</p>
+                          <h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-primary transition-colors">
+                            {order.name}
+                          </h3>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {order.icon}
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              {order.role}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <p className="text-sm text-foreground/80 mb-2">
-                        Need deep cleaning for a 4-bedroom apartment. Includes kitchen, bathrooms, and all common areas. One-time service needed this weekend.
-                      </p>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">Rate:</span>
-                        <span className="font-semibold text-foreground">₪120/hour</span>
-                      </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full">
+                        <Flag className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm" className="flex-shrink-0 gap-2">
-                      <Flag className="w-4 h-4" />
-                      Report
-                    </Button>
-                  </div>
-                </div>
 
-                {/* Order 3 */}
-                <div className="border-b border-gray-200 pb-4 last:border-b-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
-                          RS
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">Rachel M.</h3>
-                          <p className="text-sm text-muted-foreground">Childcare Service</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-foreground/80 mb-2">
-                        Seeking an experienced babysitter for evening care, 2-3 times per week. Two children ages 5 and 7. Must be available from 6 PM to 10 PM.
-                      </p>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">Rate:</span>
-                        <span className="font-semibold text-foreground">₪90/hour</span>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" className="flex-shrink-0 gap-2">
-                      <Flag className="w-4 h-4" />
-                      Report
-                    </Button>
-                  </div>
-                </div>
+                    <p className="text-sm text-gray-700 leading-relaxed min-h-[4.5rem] mb-6">
+                      {order.description}
+                    </p>
 
-                {/* Order 4 */}
-                <div className="pb-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-semibold text-sm">
-                          TM
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">Tom K.</h3>
-                          <p className="text-sm text-muted-foreground">House Cleaning</p>
-                        </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pricing</span>
+                        <span className="font-black text-xl text-primary">{order.rate}</span>
                       </div>
-                      <p className="text-sm text-foreground/80 mb-2">
-                        Regular weekly cleaning service for a 3-bedroom house. Prefer someone who can come every Thursday morning. Long-term arrangement preferred.
-                      </p>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">Rate:</span>
-                        <span className="font-semibold text-foreground">₪100/hour</span>
+                      <Button variant="secondary" size="sm" className="rounded-full bg-gray-50 hover:bg-gray-100 border-gray-100 shadow-sm font-bold text-xs uppercase tracking-tight">
+                        View Details
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+
+          {/* Reviews Section */}
+          <div className="pt-24 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
+            <div className="max-w-7xl mx-auto px-4 pb-12">
+              <div className="relative mb-10">
+                <h2 className="text-2xl md:text-3xl font-bold text-center text-black">
+                  About our helpers
+                </h2>
+                <div className="hidden md:flex gap-2 absolute right-0 top-1/2 -translate-y-1/2">
+                  <Button variant="outline" size="icon" className="rounded-full shadow-sm w-10 h-10 border-gray-200 bg-white/50 backdrop-blur-sm" onClick={() => scrollLeft(reviewsRef)}>
+                    <ChevronLeft className="w-5 h-5 text-gray-700" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="rounded-full shadow-sm w-10 h-10 border-gray-200 bg-white/50 backdrop-blur-sm" onClick={() => scrollRight(reviewsRef)}>
+                    <ChevronRight className="w-5 h-5 text-gray-700" />
+                  </Button>
+                </div>
+              </div>
+              <div ref={reviewsRef} className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 scrollbar-hide -mx-4 px-4 scroll-smooth">
+                {[
+                  {
+                    name: "John D.",
+                    initials: "JD",
+                    gradient: "from-blue-400 to-purple-500",
+                    rating: 4.5,
+                    text: "Sarah was absolutely amazing with our two kids! She was punctual, caring, and our children loved spending time with her. Highly recommend her services!"
+                  },
+                  {
+                    name: "Maria R.",
+                    initials: "MR",
+                    gradient: "from-green-400 to-teal-500",
+                    rating: 5,
+                    text: "The cleaning service was exceptional! Our home has never looked better. The team was professional, thorough, and left everything sparkling clean. Will definitely use again!"
+                  },
+                  {
+                    name: "Sophie T.",
+                    initials: "ST",
+                    gradient: "from-orange-400 to-pink-500",
+                    rating: 4.8,
+                    text: "I hired help for move-out cleaning and it was perfect. Saved me so much time and stress. Highly recommended!"
+                  },
+                  {
+                    name: "Michael B.",
+                    initials: "MB",
+                    gradient: "from-red-400 to-indigo-500",
+                    rating: 5,
+                    text: "Found an excellent cook for our family dinner. The food was delicious and the kitchen was left spotless. Truly professional service."
+                  }
+                ].map((review, idx) => (
+                  <div
+                    key={idx}
+                    className="min-w-[320px] md:min-w-[400px] snap-center bg-white rounded-3xl border border-gray-100 shadow-xl p-8 hover:bg-gray-50 transition-all duration-300 group"
+                  >
+                    <div className="flex items-start gap-5">
+                      <div className={cn(
+                        "h-14 w-14 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-lg shadow-inner flex-shrink-0",
+                        review.gradient
+                      )}>
+                        {review.initials}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-4 mb-2">
+                          <h4 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">
+                            {review.name}
+                          </h4>
+                          <div className="flex items-center gap-1 bg-yellow-400/10 px-2 py-1 rounded-full">
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            <span className="text-xs font-black text-yellow-700">{review.rating}</span>
+                          </div>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed italic text-sm md:text-base">
+                          "{review.text}"
+                        </p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" className="flex-shrink-0 gap-2">
-                      <Flag className="w-4 h-4" />
-                      Report
-                    </Button>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -668,7 +599,7 @@ export default function LandingPage() {
           <div className="max-w-lg mx-auto flex flex-row gap-3 justify-center px-2">
             <Button
               onClick={handleSearchingForJob}
-              className="h-11 rounded-full px-8 bg-orange-500 hover:bg-orange-600 text-white shadow-lg flex-1 min-w-[140px] gap-2 text-sm font-medium whitespace-nowrap"
+              className="h-11 rounded-full px-8 bg-white hover:bg-gray-50 text-orange-500 shadow-lg flex-1 min-w-[140px] gap-2 text-sm font-medium whitespace-nowrap"
             >
               <Briefcase className="w-5 h-5 flex-shrink-0" />
               Find a Job

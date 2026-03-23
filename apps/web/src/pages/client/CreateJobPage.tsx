@@ -17,59 +17,77 @@ import {
   Loader2,
   Sparkles,
   Navigation,
-  Check
+  Check,
+  Truck,
+  Baby,
+  Wrench,
+  Calendar,
+  Timer,
+  Repeat,
+  Hourglass,
+  Watch,
+  History as HistoryIcon,
+  Sun,
+  Home,
+  Building2,
+  Trees,
+  User,
+  Users,
+  UserPlus,
+  Dumbbell,
+  Soup
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Step 1: Service Types
 const SERVICE_TYPES = [
-  { id: "cleaning", label: "Cleaning", icon: "🧹" },
-  { id: "cooking", label: "Cooking", icon: "👨‍🍳" },
-  { id: "pickup_delivery", label: "Pick up - delivery", icon: "🚗" },
-  { id: "nanny", label: "Nanny", icon: "👶" },
-  { id: "other_help", label: "Other help", icon: "🛠️" },
+  { id: "cleaning", label: "Cleaning", icon: <Sparkles className="w-8 h-8 text-primary" />, description: "Professional home care" },
+  { id: "cooking", label: "Cooking", icon: <Soup className="w-8 h-8 text-orange-500" />, description: "Delicious meals at home" },
+  { id: "pickup_delivery", label: "Pick up - delivery", icon: <Truck className="w-8 h-8 text-blue-500" />, description: "Quick courier services" },
+  { id: "nanny", label: "Nanny", icon: <Baby className="w-8 h-8 text-pink-500" />, description: "Trusted childcare" },
+  { id: "other_help", label: "Other help", icon: <Wrench className="w-8 h-8 text-slate-500" />, description: "Repairs & heavy lifting" },
 ];
 
 // Step 2: Care Frequency
 const CARE_FREQUENCIES = [
-  { id: "one_time", label: "One time", icon: "1️⃣" },
-  { id: "part_time", label: "Part time", icon: "⏰" },
-  { id: "regularly", label: "Regularly", icon: "📅" },
+  { id: "one_time", label: "One time", icon: <Calendar className="w-8 h-8 text-primary" /> },
+  { id: "part_time", label: "Part time", icon: <Timer className="w-8 h-8 text-emerald-500" /> },
+  { id: "regularly", label: "Regularly", icon: <Repeat className="w-8 h-8 text-indigo-500" /> },
 ];
 
 // Step 4: Time Duration
 const TIME_DURATIONS = [
-  { id: "1_2_hours", label: "1-2 hours", icon: "⏱️" },
-  { id: "3_4_hours", label: "3-4 hours", icon: "🕐" },
-  { id: "5_6_hours", label: "5-6 hours", icon: "🕔" },
-  { id: "full_day", label: "Full day", icon: "☀️" },
+  { id: "1_2_hours", label: "1-2 hours", icon: <Hourglass className="w-8 h-8 text-amber-500" /> },
+  { id: "3_4_hours", label: "3-4 hours", icon: <Watch className="w-8 h-8 text-emerald-500" /> },
+  { id: "5_6_hours", label: "5-6 hours", icon: <HistoryIcon className="w-8 h-8 text-blue-500" /> },
+  { id: "full_day", label: "Full day", icon: <Sun className="w-8 h-8 text-orange-500" /> },
 ];
 
 // Step 5: Service-specific options
 const CLEANING_TYPES = [
-  { id: "house", label: "House cleaning", icon: "🏠" },
-  { id: "office", label: "Office cleaning", icon: "🏢" },
-  { id: "garden", label: "Garden (outdoor)", icon: "🌳" },
+  { id: "house", label: "House cleaning", icon: <Home className="w-8 h-8 text-primary" /> },
+  { id: "office", label: "Office cleaning", icon: <Building2 className="w-8 h-8 text-slate-500" /> },
+  { id: "garden", label: "Garden (outdoor)", icon: <Trees className="w-8 h-8 text-emerald-600" /> },
 ];
 
 const COOKING_PEOPLE_COUNTS = [
-  { id: "1_4", label: "1-4 people", icon: "👤" },
-  { id: "4_6", label: "4-6 people", icon: "👥" },
-  { id: "6_10", label: "6-10 people", icon: "👨‍👩‍👧‍👦" },
-  { id: "10_plus", label: "10+ people", icon: "👨‍👩‍👧‍👦" },
+  { id: "1_4", label: "1-4 people", icon: <User className="w-8 h-8 text-primary" /> },
+  { id: "4_6", label: "4-6 people", icon: <Users className="w-8 h-8 text-primary" /> },
+  { id: "6_10", label: "6-10 people", icon: <Users className="w-8 h-8 text-primary" /> },
+  { id: "10_plus", label: "10+ people", icon: <UserPlus className="w-8 h-8 text-primary" /> },
 ];
 
 const NANNY_KIDS_COUNTS = [
-  { id: "1_2", label: "1-2 kids", icon: "👶" },
-  { id: "2_4", label: "2-4 kids", icon: "👶👶" },
-  { id: "4_6", label: "4-6 kids", icon: "👨‍👩‍👧‍👦" },
-  { id: "8_plus", label: "8+ kids", icon: "👨‍👩‍👧‍👦" },
+  { id: "1_2", label: "1-2 kids", icon: <Baby className="w-8 h-8 text-primary" /> },
+  { id: "2_4", label: "2-4 kids", icon: <Baby className="w-8 h-8 text-primary" /> },
+  { id: "4_6", label: "4-6 kids", icon: <Users className="w-8 h-8 text-primary" /> },
+  { id: "8_plus", label: "8+ kids", icon: <UserPlus className="w-8 h-8 text-primary" /> },
 ];
 
 const OTHER_HELP_TYPES = [
-  { id: "technical", label: "Technical", icon: "🔧" },
-  { id: "heavy_lifting", label: "Heavy lifting", icon: "💪" },
-  { id: "caregiving", label: "Caregiving (Olders)", icon: "👴" },
+  { id: "technical", label: "Technical", icon: <Wrench className="w-8 h-8 text-slate-600" /> },
+  { id: "heavy_lifting", label: "Heavy lifting", icon: <Dumbbell className="w-8 h-8 text-slate-800" /> },
+  { id: "caregiving", label: "Caregiving (Olders)", icon: <Heart className="w-8 h-8 text-red-500" /> },
 ];
 
 const STORAGE_KEY = "create_job_form_data";
@@ -364,14 +382,23 @@ export default function CreateJobPage() {
                     key={type.id}
                     onClick={() => { updateField("service_type", type.id); setStep(2); }}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                      "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group relative overflow-hidden",
                       jobData.service_type === type.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
+                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/5 ring-1 ring-primary/20"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30"
                     )}
                   >
-                    <span className="text-2xl">{type.icon}</span>
-                    <span className="font-medium">{type.label}</span>
+                    <div className="flex-shrink-0">
+                      {type.icon}
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-bold text-base block leading-none">{type.label}</span>
+                      {type.description && <span className="text-xs text-muted-foreground mt-1 block">{type.description}</span>}
+                    </div>
+                    <ArrowRight className={cn(
+                      "w-4 h-4 transition-all duration-300 opacity-0 -translate-x-2",
+                      jobData.service_type === type.id ? "opacity-100 translate-x-0 text-primary" : "group-hover:opacity-100 group-hover:translate-x-0"
+                    )} />
                   </button>
                 ))}
               </div>
@@ -385,14 +412,16 @@ export default function CreateJobPage() {
                     key={freq.id}
                     onClick={() => { updateField("care_frequency", freq.id); setStep(3); }}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                      "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
                       jobData.care_frequency === freq.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
+                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30"
                     )}
                   >
-                    <span className="text-2xl">{freq.icon}</span>
-                    <span className="font-medium">{freq.label}</span>
+                    <div className="flex-shrink-0">
+                      {freq.icon}
+                    </div>
+                    <span className="font-bold text-base">{freq.label}</span>
                   </button>
                 ))}
               </div>
@@ -467,14 +496,16 @@ export default function CreateJobPage() {
                     key={duration.id}
                     onClick={() => { updateField("time_duration", duration.id); setStep(5); }}
                     className={cn(
-                      "p-4 rounded-xl border-2 transition-all text-center",
+                      "p-4 rounded-2xl border-2 transition-all text-center flex flex-col items-center justify-center gap-2 group",
                       jobData.time_duration === duration.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
+                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30"
                     )}
                   >
-                    <span className="text-2xl">{duration.icon}</span>
-                    <p className="text-sm font-medium mt-2">{duration.label}</p>
+                    <div className="flex-shrink-0 mb-1">
+                      {duration.icon}
+                    </div>
+                    <p className="font-bold text-xs">{duration.label}</p>
                   </button>
                 ))}
               </div>
@@ -487,20 +518,22 @@ export default function CreateJobPage() {
                 {jobData.service_type === "cleaning" && (
                   <div className="space-y-4">
                     <div className="grid gap-3">
-                      <label className="text-sm font-medium">Type of cleaning</label>
+                      <label className="text-sm font-medium text-muted-foreground ml-1">Type of cleaning</label>
                       {CLEANING_TYPES.map((type) => (
                         <button
                           key={type.id}
                           onClick={() => updateServiceDetail("cleaning_type", type.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
                             jobData.service_details.cleaning_type === type.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/50"
+                              ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
+                              : "border-border hover:border-primary/50 hover:bg-muted/30"
                           )}
                         >
-                          <span className="text-2xl">{type.icon}</span>
-                          <span className="font-medium">{type.label}</span>
+                          <div className="flex-shrink-0">
+                            {type.icon}
+                          </div>
+                          <span className="font-bold text-base">{type.label}</span>
                         </button>
                       ))}
                     </div>
@@ -511,20 +544,22 @@ export default function CreateJobPage() {
                 {jobData.service_type === "cooking" && (
                   <div className="space-y-4">
                     <div className="grid gap-3">
-                      <label className="text-sm font-medium">How many people?</label>
+                      <label className="text-sm font-medium text-muted-foreground ml-1">How many people?</label>
                       {COOKING_PEOPLE_COUNTS.map((count) => (
                         <button
                           key={count.id}
                           onClick={() => updateServiceDetail("people_count", count.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
                             jobData.service_details.people_count === count.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/50"
+                              ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
+                              : "border-border hover:border-primary/50 hover:bg-muted/30"
                           )}
                         >
-                          <span className="text-2xl">{count.icon}</span>
-                          <span className="font-medium">{count.label}</span>
+                          <div className="flex-shrink-0">
+                            {count.icon}
+                          </div>
+                          <span className="font-bold text-base">{count.label}</span>
                         </button>
                       ))}
                     </div>
@@ -567,20 +602,22 @@ export default function CreateJobPage() {
                 {jobData.service_type === "nanny" && (
                   <div className="space-y-4">
                     <div className="grid gap-3">
-                      <label className="text-sm font-medium">How many kids?</label>
+                      <label className="text-sm font-medium text-muted-foreground ml-1">How many kids?</label>
                       {NANNY_KIDS_COUNTS.map((count) => (
                         <button
                           key={count.id}
                           onClick={() => updateServiceDetail("kids_count", count.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
                             jobData.service_details.kids_count === count.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/50"
+                              ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
+                              : "border-border hover:border-primary/50 hover:bg-muted/30"
                           )}
                         >
-                          <span className="text-2xl">{count.icon}</span>
-                          <span className="font-medium">{count.label}</span>
+                          <div className="flex-shrink-0">
+                            {count.icon}
+                          </div>
+                          <span className="font-bold text-base">{count.label}</span>
                         </button>
                       ))}
                     </div>
@@ -591,20 +628,22 @@ export default function CreateJobPage() {
                 {jobData.service_type === "other_help" && (
                   <div className="space-y-4">
                     <div className="grid gap-3">
-                      <label className="text-sm font-medium">Type of help</label>
+                      <label className="text-sm font-medium text-muted-foreground ml-1">Type of help</label>
                       {OTHER_HELP_TYPES.map((type) => (
                         <button
                           key={type.id}
                           onClick={() => updateServiceDetail("other_type", type.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
                             jobData.service_details.other_type === type.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/50"
+                              ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
+                              : "border-border hover:border-primary/50 hover:bg-muted/30"
                           )}
                         >
-                          <span className="text-2xl">{type.icon}</span>
-                          <span className="font-medium">{type.label}</span>
+                          <div className="flex-shrink-0">
+                            {type.icon}
+                          </div>
+                          <span className="font-bold text-base">{type.label}</span>
                         </button>
                       ))}
                     </div>

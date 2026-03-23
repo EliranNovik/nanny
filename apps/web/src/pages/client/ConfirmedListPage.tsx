@@ -495,25 +495,137 @@ export default function ConfirmedListPage() {
               <CardContent className="p-6">
                 <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
                   <MessageCircle className="w-5 h-5 text-primary" />
-                  Additional Job Details
+                  Additional Job Details & Images
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Add any extra details, instructions, or requirements for this job. These will be visible to helpers.
+                  Add any extra details, instructions, or photos for this job. These will be visible to helpers.
                 </p>
-                <Textarea
-                  placeholder="Type your custom job details here..."
-                  className="min-h-[100px] mb-4 bg-muted/30 focus-visible:bg-background resize-y"
-                  value={customDetails}
-                  onChange={(e) => setCustomDetails(e.target.value)}
-                />
-                <div className="flex justify-end">
-                  <Button 
-                    onClick={handleSaveDetails} 
-                    disabled={savingDetails || customDetails.trim() === (job?.service_details?.custom || "").trim()}
-                  >
-                    {savingDetails ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    Save Details
-                  </Button>
+
+                <div className="space-y-4">
+                  <Textarea
+                    placeholder="Type your custom job details here..."
+                    className="min-h-[100px] bg-muted/30 focus-visible:bg-background resize-y"
+                    value={customDetails}
+                    onChange={(e) => setCustomDetails(e.target.value)}
+                  />
+
+                  {/* Image Upload Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Job Images</span>
+                      <div>
+                        <input
+                          type="file"
+                          id="job-image-upload"
+                          multiple
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (!e.target.files?.length || !jobId) return;
+                            setSavingDetails(true);
+                            try {
+                              const newImages: string[] = [];
+                              for (let i = 0; i < e.target.files.length; i++) {
+                                const file = e.target.files[i];
+                                const fileExt = file.name.split('.').pop();
+                                const filePath = `${jobId}/${Math.random()}.${fileExt}`;
+                                
+                                const { error: uploadError } = await supabase.storage
+                                  .from('job-images')
+                                  .upload(filePath, file);
+
+                                if (uploadError) throw uploadError;
+
+                                const { data: { publicUrl } } = supabase.storage
+                                  .from('job-images')
+                                  .getPublicUrl(filePath);
+                                  
+                                newImages.push(publicUrl);
+                              }
+
+                              const currentImages = job?.service_details?.images || [];
+                              const updatedDetails = {
+                                ...(job?.service_details || {}),
+                                images: [...currentImages, ...newImages]
+                              };
+
+                              const { error: dbError } = await supabase
+                                .from('job_requests')
+                                .update({ service_details: updatedDetails })
+                                .eq('id', jobId);
+
+                              if (dbError) throw dbError;
+
+                              addToast({ title: "Images Uploaded", description: "Your images have been added to the request.", variant: "success" });
+                              fetchJobDirectly();
+                            } catch (err: any) {
+                              console.error("[ConfirmedListPage] Error uploading images:", err);
+                              addToast({ title: "Upload Failed", description: err.message || "Could not upload images.", variant: "error" });
+                            } finally {
+                              setSavingDetails(false);
+                            }
+                          }}
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          disabled={savingDetails}
+                          onClick={() => document.getElementById('job-image-upload')?.click()}
+                        >
+                          {savingDetails ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          Upload Photos
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {job?.service_details?.images && job.service_details.images.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {job.service_details.images.map((img: string, idx: number) => (
+                          <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-black/10 dark:border-white/10 group">
+                            <img src={img} alt={`Job detail ${idx + 1}`} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-start justify-end p-2">
+                               <button 
+                                 className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
+                                 onClick={async () => {
+                                    if(!confirm("Are you sure you want to remove this image?")) return;
+                                    setSavingDetails(true);
+                                    try {
+                                        const newImgList = job.service_details.images.filter((_: any, i: number) => i !== idx);
+                                        const updatedDetails = { ...job.service_details, images: newImgList };
+                                        
+                                        const { error } = await supabase
+                                            .from('job_requests')
+                                            .update({ service_details: updatedDetails })
+                                            .eq('id', jobId);
+                                            
+                                        if (error) throw error;
+                                        addToast({ title: "Image Removed", description: "Image successfully deleted", variant: "success" });
+                                        fetchJobDirectly();
+                                    } catch (err: any) {
+                                        addToast({ title: "Error", description: err.message, variant: "error" });
+                                    } finally {
+                                        setSavingDetails(false);
+                                    }
+                                 }}
+                               >
+                                 <X className="w-4 h-4" />
+                               </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end pt-2 border-t">
+                    <Button 
+                      onClick={handleSaveDetails} 
+                      disabled={savingDetails || customDetails.trim() === (job?.service_details?.custom || "").trim()}
+                    >
+                      {savingDetails ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      Save Notes
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

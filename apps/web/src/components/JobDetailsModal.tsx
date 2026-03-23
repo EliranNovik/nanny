@@ -13,12 +13,14 @@ import {
 } from "lucide-react";
 import { StarRating } from "./StarRating";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { ImageLightboxModal } from "./ImageLightboxModal";
 
 interface JobDetailsModalProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     job: any;
     formatJobTitle: (job: any) => string;
+    isOwnRequest?: boolean;
 }
 
 const LiveTimer = ({ createdAt }: { createdAt: string }) => {
@@ -53,7 +55,8 @@ const LiveTimer = ({ createdAt }: { createdAt: string }) => {
     return <>{formatElapsedTime(elapsed)}</>;
 };
 
-export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle }: JobDetailsModalProps) {
+export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle, isOwnRequest }: JobDetailsModalProps) {
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     if (!job) return null;
 
     const getServiceIcon = (serviceType?: string) => {
@@ -104,12 +107,23 @@ export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle }: J
                         <X className="w-6 h-6" />
                     </button>
 
-                    {/* Service Pill - Top Left Standalone */}
-                    <div className="absolute top-6 left-6 z-40">
+                    {/* Top Left Badges */}
+                    <div className="absolute top-6 left-6 z-40 flex flex-col items-start gap-2">
                         <Badge className="bg-orange-500/95 backdrop-blur-md text-white border-none px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] shadow-xl rounded-full flex items-center gap-2 ring-1 ring-white/20">
                             {getServiceIcon(job.service_type)}
                             {formatJobTitle(job)}
                         </Badge>
+                        {isOwnRequest && (
+                            <div className="flex items-center gap-2">
+                                <Badge className="bg-emerald-500/95 backdrop-blur-md text-white border-none px-3 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xl rounded-full flex items-center gap-1.5 ring-1 ring-emerald-400/30">
+                                    My Request
+                                </Badge>
+                                <Badge className="bg-zinc-900/80 backdrop-blur-md text-orange-400 border-none px-3 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xl rounded-full flex items-center gap-1.5 ring-1 ring-white/10">
+                                    <Clock className="w-3.5 h-3.5 animate-pulse" />
+                                    <LiveTimer createdAt={job.created_at} />
+                                </Badge>
+                            </div>
+                        )}
                     </div>
 
                     {/* Unified Identity & Temporal Unit */}
@@ -263,6 +277,34 @@ export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle }: J
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {/* Job Images Section */}
+                    {job.service_details?.images && job.service_details.images.length > 0 && (
+                        <div className="space-y-4">
+                            <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] px-1">Job Photos</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                {job.service_details.images.map((img: string, idx: number) => (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        className="relative aspect-video rounded-[1.5rem] overflow-hidden border border-zinc-100 dark:border-zinc-800/60 shadow-sm hover:ring-2 hover:ring-orange-400 transition-all cursor-zoom-in"
+                                        onClick={() => setLightboxIndex(idx)}
+                                    >
+                                        <img src={img} alt={`Job photo ${idx + 1}`} className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {lightboxIndex !== null && (
+                        <ImageLightboxModal
+                            images={job.service_details?.images || []}
+                            initialIndex={lightboxIndex}
+                            isOpen={lightboxIndex !== null}
+                            onClose={() => setLightboxIndex(null)}
+                        />
                     )}
 
                     {/* Immersive Notes Section */}

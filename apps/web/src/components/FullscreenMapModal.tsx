@@ -11,6 +11,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 
 interface FullscreenMapModalProps {
   job: any;
@@ -23,6 +24,7 @@ export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalP
   const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
   const [otherUser, setOtherUser] = useState<any>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!job || !user || !isOpen) return;
@@ -204,6 +206,20 @@ export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalP
                   <div className="pt-2">
                      <p className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-[0.2em] mb-4">Live Location Enabled</p>
                   </div>
+
+                  {/* Job Photos */}
+                  {job.service_details?.images && job.service_details.images.length > 0 && (
+                    <div className="space-y-3 pb-4">
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">📸 Job Photos</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {job.service_details.images.map((img: string, idx: number) => (
+                          <div key={idx} className="relative aspect-video rounded-2xl overflow-hidden border border-black/5 dark:border-white/5 shadow-sm">
+                            <img src={img} alt="Job photo" className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
