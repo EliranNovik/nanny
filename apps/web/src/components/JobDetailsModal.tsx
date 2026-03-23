@@ -233,7 +233,7 @@ export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle, isO
 
                             {/* Exhaustive Loop for Service details */}
                             {job.service_details && Object.entries(job.service_details).map(([key, value]) => {
-                                if (key === 'custom') return null;
+                                if (key === 'custom' || key === 'images') return null;
                                 if (key === 'from_lat' || key === 'from_lng' || key === 'to_lat' || key === 'to_lng') return null;
                                 // Skip fields already handled or generic ones if redundant
                                 if (key === 'care_type' || key === 'children_count' || key === 'care_frequency') return null;

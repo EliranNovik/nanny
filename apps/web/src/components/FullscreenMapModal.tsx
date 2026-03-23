@@ -213,12 +213,26 @@ export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalP
                       <h4 className="font-bold text-slate-900 dark:text-white text-sm">📸 Job Photos</h4>
                       <div className="grid grid-cols-2 gap-2">
                         {job.service_details.images.map((img: string, idx: number) => (
-                          <div key={idx} className="relative aspect-video rounded-2xl overflow-hidden border border-black/5 dark:border-white/5 shadow-sm">
+                          <button
+                            key={idx}
+                            type="button"
+                            className="relative aspect-video rounded-2xl overflow-hidden border border-black/5 dark:border-white/5 shadow-sm hover:ring-2 hover:ring-orange-400 transition-all cursor-zoom-in"
+                            onClick={() => setLightboxIndex(idx)}
+                          >
                             <img src={img} alt="Job photo" className="w-full h-full object-cover" />
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  {lightboxIndex !== null && (
+                    <ImageLightboxModal
+                      images={job.service_details?.images || []}
+                      initialIndex={lightboxIndex}
+                      isOpen={lightboxIndex !== null}
+                      onClose={() => setLightboxIndex(null)}
+                    />
                   )}
                 </div>
               )}
