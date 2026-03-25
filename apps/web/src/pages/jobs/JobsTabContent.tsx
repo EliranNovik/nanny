@@ -2,19 +2,21 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-    Calendar, Clock, MapPin, ChevronDown, ChevronUp, MessageCircle, Loader2, CheckCircle2,
-    Briefcase, Hourglass, Repeat, Baby, ArrowUpCircle, ArrowDownCircle, Package, Home, AlignLeft,
-    Sparkles, UtensilsCrossed, Truck, HelpCircle
+    MapPin, ChevronDown, ChevronUp, Loader2, CheckCircle2,
+    Clock, MessageSquare, Sparkles, UtensilsCrossed,
+    Truck, Baby, HelpCircle
 } from "lucide-react";
 import JobMap from "@/components/JobMap";
 import JobReviewModal from "@/components/JobReviewModal";
 import { StarRating } from "@/components/StarRating";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
 
 interface JobRequest {
     id: string;
@@ -41,56 +43,6 @@ interface Profile {
     total_ratings?: number;
 }
 
-function formatServiceDetails(details: any, serviceType?: string, minimal = false) {
-    if (!details) return null;
-    if (typeof details === 'string') return <div className="col-span-2 flex items-start gap-2 text-foreground font-medium"><AlignLeft className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> {details}</div>;
-
-    const formatValue = (val: any) => {
-        if (typeof val !== 'string') return String(val);
-        // Replace underscore between digits with a hyphen, rest of underscores with spaces
-        let formatted = val.replace(/(\d)_(\d)/g, '$1-$2').replace(/_/g, ' ');
-        // For special keys, 'plus' -> '+' 
-        if (formatted.includes('plus')) {
-            formatted = formatted.replace('plus', '+');
-        }
-        return formatted;
-    };
-
-    if (serviceType === 'pickup_delivery') {
-        return (
-            <>
-                {details.from_address && <div className="flex items-start gap-2"><ArrowUpCircle className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.from_address}</span></div>}
-                {details.to_address && <div className="flex items-start gap-2"><ArrowDownCircle className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground leading-tight text-sm truncate">{details.to_address}</span></div>}
-                {!minimal && details.weight && <div className="flex items-center gap-2"><Package className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.weight)} kg</span></div>}
-            </>
-        );
-    }
-
-    if (serviceType === 'cleaning') {
-        return (
-            <>
-                {details.home_size && <div className="flex items-center gap-2"><Home className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-foreground capitalize text-sm">{formatValue(details.home_size)} size</span></div>}
-            </>
-        )
-    }
-
-    // fallback for generic JSON object
-    return (
-        <>
-            {Object.entries(details).map(([key, value]) => {
-                if (key === 'custom') return null; // handled separately below
-                // hide raw coordinates if they exist
-                if (key === 'from_lat' || key === 'from_lng' || key === 'to_lat' || key === 'to_lng') return null;
-                return (
-                    <div key={key} className="flex items-center gap-2 col-span-1">
-                        <AlignLeft className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                        <span className="font-medium text-foreground capitalize text-sm">{formatValue(value)} {key.replace(/_/g, ' ')}</span>
-                    </div>
-                );
-            })}
-        </>
-    );
-}
 
 export default function JobsTabContent() {
     const { user } = useAuth();
@@ -109,6 +61,7 @@ export default function JobsTabContent() {
     } | null>(null);
     const [isFirstLoad, setIsFirstLoad] = useState(true);
     const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
+    const [selectedJobDetails, setSelectedJobDetails] = useState<JobRequest | null>(null);
 
     // 1. Fetch cache on mount
     useEffect(() => {
@@ -140,7 +93,7 @@ export default function JobsTabContent() {
             // if not first load, don't show full page loader? 
             // for now keep it simple to avoid flicker
         }
-        
+
         try {
             const { data: allJobs, error: jobsError } = await supabase
                 .from("job_requests")
@@ -169,7 +122,7 @@ export default function JobsTabContent() {
                 let convMap: Record<string, string> = {};
 
                 const [profRes, convRes] = await Promise.all([
-                    profileIds.size > 0 
+                    profileIds.size > 0
                         ? supabase.from("profiles").select("id, full_name, photo_url, average_rating, total_ratings").in("id", Array.from(profileIds))
                         : Promise.resolve({ data: [] }),
                     active.length > 0
@@ -185,7 +138,7 @@ export default function JobsTabContent() {
                         if (c.job_id) convMap[c.job_id] = c.id;
                     });
                 }
-                
+
                 setProfiles(pMap);
                 setConversations(convMap);
 
@@ -214,13 +167,18 @@ export default function JobsTabContent() {
     }, [user]);
 
     function getJobStatusBadge(status: string) {
-        const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-            locked: { label: "In progress", variant: "default" },
-            active: { label: "In progress", variant: "default" },
-            completed: { label: "Completed", variant: "outline" },
-            cancelled: { label: "Cancelled", variant: "destructive" },
+        const map: Record<string, { label: string; className: string }> = {
+            locked: { label: "In progress", className: "bg-blue-600 text-white shadow-blue-500/20" },
+            active: { label: "In progress", className: "bg-blue-600 text-white shadow-blue-500/20" },
+            confirmed: { label: "Confirmed", className: "bg-emerald-500 text-white shadow-emerald-500/20" },
+            completed: { label: "Completed", className: "bg-green-600 text-white shadow-green-500/20" },
+            cancelled: { label: "Cancelled", className: "bg-slate-500 text-white shadow-slate-500/20" },
         };
-        return map[status] || { label: status, variant: "outline" };
+        const config = map[status] || { label: status, className: "bg-slate-400 text-white" };
+        return { 
+            label: config.label, 
+            className: cn("h-8 px-3.5 rounded-full text-[11px] uppercase font-black tracking-wider border-none shadow-lg transition-transform hover:scale-105", config.className)
+        };
     }
 
     function formatJobTitle(job: JobRequest) {
@@ -233,335 +191,250 @@ export default function JobsTabContent() {
     }
 
     function getServiceIcon(serviceType?: string) {
-        if (serviceType === 'cleaning') return <Sparkles className="w-3.5 h-3.5" />;
-        if (serviceType === 'cooking') return <UtensilsCrossed className="w-3.5 h-3.5" />;
-        if (serviceType === 'pickup_delivery') return <Truck className="w-3.5 h-3.5" />;
-        if (serviceType === 'nanny') return <Baby className="w-3.5 h-3.5" />;
-        if (serviceType === 'other_help') return <HelpCircle className="w-3.5 h-3.5" />;
-        return <Baby className="w-3.5 h-3.5" />;
+        switch (serviceType) {
+            case 'cleaning': return <Sparkles className="w-4 h-4" />;
+            case 'cooking': return <UtensilsCrossed className="w-4 h-4" />;
+            case 'pickup_delivery': return <Truck className="w-4 h-4" />;
+            case 'nanny': return <Baby className="w-4 h-4" />;
+            default: return <HelpCircle className="w-4 h-4" />;
+        }
     }
+
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
     return (
         <>
             <div className="space-y-6 mt-2">
-            {reviewJob && (
-                <JobReviewModal
-                    open={!!reviewJob}
-                    jobId={reviewJob.jobId}
-                    reviewee={reviewJob.reviewee}
-                    revieweeRole={reviewJob.revieweeRole}
-                    onClose={() => setReviewJob(null)}
-                    onConfirmed={() => {
-                        setReviewJob(null);
-                        loadJobs();
-                    }}
-                />
-            )}
+                {reviewJob && (
+                    <JobReviewModal
+                        open={!!reviewJob}
+                        jobId={reviewJob.jobId}
+                        reviewee={reviewJob.reviewee}
+                        revieweeRole={reviewJob.revieweeRole}
+                        onClose={() => setReviewJob(null)}
+                        onConfirmed={() => {
+                            setReviewJob(null);
+                            loadJobs();
+                        }}
+                    />
+                )}
 
-            {/* Active jobs – horizontal scroll on mobile, vertical stack on md+ */}
-            <div className="flex flex-nowrap md:block md:space-y-6 overflow-x-auto pb-2 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0">
-                {activeJobs.map(job => {
-                    const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
-                    const otherParty = otherPartyId ? profiles[otherPartyId] : null;
+                {/* Active jobs – horizontal scroll on mobile, vertical stack on md+ */}
+                <div className="flex flex-nowrap md:block md:space-y-6 overflow-x-auto pb-4 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0">
+                    {activeJobs.map(job => {
+                        const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
+                        const otherParty = otherPartyId ? profiles[otherPartyId] : null;
+                        const statusBadge = getJobStatusBadge(job.status);
 
-                    return (
-                        <Card key={job.id} className="transition-all min-w-[85vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full">
-                            <CardContent className="p-0 flex-1 flex flex-col">
-                                <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
-                                    <div className="flex items-center gap-2">
-                                        {job.status === 'locked' ? <Calendar className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : job.status === 'active' ? <Clock className="w-4 h-4 text-slate-900 dark:text-slate-100" /> : <CheckCircle2 className="w-4 h-4 text-slate-900 dark:text-slate-100" />}
-                                        <span className="text-sm font-bold capitalize text-slate-900 dark:text-slate-100 tracking-tight">
-                                            {getJobStatusBadge(job.status).label}
-                                        </span>
+                        return (
+                            <Card key={job.id} className="transition-all duration-300 min-w-[88vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-[32px] overflow-hidden border border-black/[0.03] dark:border-white/[0.03] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] flex flex-col h-full group bg-white dark:bg-zinc-900/50 backdrop-blur-sm">
+                                <div 
+                                    className="relative w-full h-56 overflow-hidden group/img cursor-pointer"
+                                    onClick={() => job.service_type === 'pickup_delivery' ? setSelectedMapJob(job) : setSelectedJobDetails(job)}
+                                >
+                                    {job.service_type === 'pickup_delivery' ? (
+                                        <div className="absolute inset-0 z-0">
+                                            <JobMap job={job} />
+                                        </div>
+                                    ) : (
+                                        <img 
+                                            src={job.service_type === 'cleaning' ? "/cleaning-mar22.png" : job.service_type === 'cooking' ? "/cooking-mar22.png" : job.service_type === 'nanny' ? "/nanny-mar22.png" : "/other-mar22.png"} 
+                                            alt={formatJobTitle(job)} 
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110" 
+                                        />
+                                    )}
+                                    {/* Modern Gradient Overlays */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
+                                    <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent z-10" />
+                                    
+                                    {/* Top Overlays */}
+                                    <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
+                                        <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full h-8 px-3.5 shadow-lg">
+                                            <div className="text-orange-400">
+                                                {getServiceIcon(job.service_type)}
+                                            </div>
+                                            <span className="text-[11px] font-black uppercase tracking-[0.1em] text-white">
+                                                {formatJobTitle(job)}
+                                            </span>
+                                        </div>
+                                        <Badge className={statusBadge.className}>
+                                            {statusBadge.label}
+                                        </Badge>
                                     </div>
-                                    <Badge variant="outline" className="flex items-center gap-1 text-xs px-2.5 py-1 font-bold border-0 bg-orange-100 text-orange-500 shadow-sm">{getServiceIcon(job.service_type)}{formatJobTitle(job)}</Badge>
+
+                                    {/* Bottom Overlays: Title & Rating */}
+                                    <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="w-10 h-10 border-2 border-white/30 shadow-2xl flex-shrink-0">
+                                                <AvatarImage src={otherParty?.photo_url || ""} />
+                                                <AvatarFallback className="bg-orange-500 text-white font-black text-sm">
+                                                    {otherParty?.full_name?.charAt(0) || "C"}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <h3 className="text-[24px] font-black text-white truncate tracking-tight drop-shadow-xl">
+                                                {otherParty?.full_name || "Client"}
+                                            </h3>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {otherParty?.average_rating ? (
+                                                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10">
+                                                    <StarRating rating={otherParty.average_rating} size="sm" />
+                                                    <span className="text-[14px] font-black text-white/95">
+                                                        {otherParty.average_rating.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[14px] font-bold text-white/80 italic drop-shadow-md">New Client</span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {['pickup_delivery', 'cleaning', 'cooking', 'nanny', 'other_help'].includes(job.service_type || '') ? (
-                                    <div className="flex-1 flex flex-col p-4 bg-white dark:bg-zinc-900 overflow-hidden">
-                                        {/* Top Row: Map/Image + Info */}
-                                        <div className="flex flex-row gap-4 mb-4">
-                                            {/* Left: Square Preview */}
-                                            <div 
-                                                className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer border border-black/5 dark:border-white/5 shadow-inner group"
-                                                onClick={() => job.service_type === 'pickup_delivery' && setSelectedMapJob(job)}
-                                            >
-                                                <div className="absolute inset-0 z-0">
-                                                    {job.service_type === 'pickup_delivery' ? (
-                                                        <JobMap job={job} />
-                                                    ) : (
-                                                        <img 
-                                                            src={
-                                                                job.service_type === 'cleaning' ? "/cleaning-mar22.png" : 
-                                                                job.service_type === 'cooking' ? "/cooking-mar22.png" : 
-                                                                job.service_type === 'nanny' ? "/nanny-mar22.png" :
-                                                                "/other-mar22.png"
-                                                            } 
-                                                            alt={formatJobTitle(job)} 
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    )}
+                                <CardContent 
+                                    className="p-6 flex-1 flex flex-col gap-6 cursor-pointer"
+                                    onClick={() => setSelectedJobDetails(job)}
+                                >
+                                    {/* Info Segments */}
+                                    <div className="flex flex-col gap-4">
+                                        <div className="grid grid-cols-2 gap-x-4">
+                                            {job.time_duration && (
+                                                <div className="flex items-center gap-2.5 text-[15px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
+                                                    <Clock className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                                                    <span className="truncate">{job.time_duration.replace(/_/g, '-')}</span>
                                                 </div>
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
-                                                <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/20 to-transparent z-20">
-                                                    <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 mx-auto w-fit">
-                                                        {job.service_type === 'pickup_delivery' ? (
-                                                            <MapPin className="w-2 h-2 text-primary" />
-                                                        ) : job.service_type === 'cleaning' ? (
-                                                            <Sparkles className="w-2 h-2 text-primary" />
-                                                        ) : job.service_type === 'cooking' ? (
-                                                            <UtensilsCrossed className="w-2 h-2 text-primary" />
-                                                        ) : job.service_type === 'nanny' ? (
-                                                            <Baby className="w-2 h-2 text-primary" />
-                                                        ) : (
-                                                            <HelpCircle className="w-2 h-2 text-primary" />
-                                                        )}
-                                                        {job.service_type === 'pickup_delivery' ? "Live" : "Service"}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Right: Info Area */}
-                                            <div className="flex-1 flex flex-col min-w-0">
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border border-primary/10 flex-shrink-0">
-                                                            <AvatarImage src={otherParty?.photo_url || undefined} className="object-cover" />
-                                                            <AvatarFallback className="bg-primary/5 text-primary text-xs sm:text-sm font-bold">
-                                                                {otherParty?.full_name?.charAt(0) || "U"}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
-                                                                {otherParty?.full_name}
-                                                            </p>
-                                                            <div className="flex items-center gap-1">
-                                                                {(otherParty?.average_rating ?? 0) > 0 && (
-                                                                    <StarRating rating={otherParty?.average_rating || 0} size="md" />
-                                                                )}
-                                                                <span className="text-[10px] sm:text-xs font-bold text-slate-400">({otherParty?.total_ratings || 0})</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-1 flex flex-col min-w-0 justify-center">
-                                                    {job.service_type === 'pickup_delivery' ? (
-                                                        <div className="space-y-1">
-                                                            {job.service_details && formatServiceDetails(job.service_details, job.service_type, true)}
-                                                        </div>
-                                                    ) : (
-                                                        job.time_duration && (
-                                                            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-black/5 dark:border-white/5 w-fit">
-                                                                <Hourglass className="w-3.5 h-3.5 text-primary" />
-                                                                <span className="text-sm font-bold text-foreground/80 uppercase tracking-tight">{job.time_duration.replace(/_/g, '-')}</span>
-                                                            </div>
-                                                        )
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Full Width Notes (if any) */}
-                                        {job.service_details?.custom && (
-                                            <div className="mb-4 w-full bg-slate-50 dark:bg-zinc-800/50 rounded-xl px-4 py-3 border border-black/5 dark:border-white/5 shadow-sm">
-                                                <span className="font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-1.5 underline decoration-primary/30 underline-offset-4">NOTES</span>
-                                                <span className="text-slate-700 dark:text-slate-200 text-sm font-medium whitespace-pre-wrap leading-relaxed">{job.service_details.custom}</span>
-                                            </div>
-                                        )}
-
-                                        <div className="flex gap-3 mt-auto pt-4">
-                                            <Button
-                                                variant="outline"
-                                                className="flex-1 h-14 border-0 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-2xl text-sm sm:text-base font-bold shadow-sm btn-animate gap-2"
-                                                onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}
-                                            >
-                                                <MessageCircle className="w-5 h-5" />
-                                                Chat
-                                            </Button>
-                                            <Button
-                                                className="flex-1 h-14 text-sm sm:text-base font-bold shadow-md btn-animate bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl gap-2"
-                                                onClick={() => {
-                                                    if (otherParty) {
-                                                        setReviewJob({
-                                                            jobId: job.id,
-                                                            reviewee: otherParty,
-                                                            revieweeRole: otherPartyId === job.client_id ? "client" : "freelancer",
-                                                        });
-                                                    } else {
-                                                        supabase.from("job_requests").update({ status: "completed" }).eq("id", job.id).then(() => loadJobs());
-                                                    }
-                                                }}
-                                            >
-                                                <CheckCircle2 className="w-5 h-5" />
-                                                Done
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    /* Default Vertical Layout for other service types */
-                                    <div className="bg-white dark:bg-zinc-900 flex-1 flex flex-col">
-                                        {otherParty && (
-                                            <div className="px-5 py-4">
-                                                <div className="flex items-center gap-3.5">
-                                                    <Avatar className="w-16 h-16 border-2 border-primary/10 shadow-sm relative">
-                                                        <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
-                                                        <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">{otherParty.full_name?.charAt(0).toUpperCase() || "?"}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex flex-col gap-1">
-                                                        <p className="font-bold text-xl leading-tight text-slate-900 dark:text-slate-100">{otherParty.full_name || "User"}</p>
-                                                        <div className="flex items-center flex-wrap gap-2 mt-0.5">
-                                                            {job.location_city && (
-                                                                <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium">
-                                                                    <MapPin className="w-4 h-4 mr-1 text-primary/70" /> {job.location_city}
-                                                                </div>
-                                                            )}
-                                                            {(otherParty.average_rating ?? 0) > 0 && (
-                                                                <StarRating rating={otherParty.average_rating ?? 0} totalRatings={otherParty.total_ratings ?? 0} size="sm" showCount={true} />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Extended Job Details */}
-                                        <div className="px-5 pt-4 pb-2">
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-base text-slate-600 dark:text-slate-400">
-                                                {job.start_at && (
-                                                    <div className="flex flex-wrap items-center gap-2 col-span-2 bg-slate-100 dark:bg-zinc-800 px-3.5 py-2.5 rounded-xl mb-1 border border-black/5 dark:border-white/5">
-                                                        <Clock className="w-5 h-5 text-orange-500 flex-shrink-0" />
-                                                        <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(job.start_at).toLocaleDateString()}</span>
-                                                        <span className="text-slate-600 dark:text-slate-400 font-medium">at</span>
-                                                        <span className="font-bold text-slate-900 dark:text-slate-100">{new Date(job.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    </div>
-                                                )}
-                                                {!otherParty && job.location_city && (
-                                                    <div className="flex items-center gap-2 col-span-1">
-                                                        <MapPin className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.location_city}</span>
-                                                    </div>
-                                                )}
-                                                {job.care_type && (
-                                                    <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                        <Briefcase className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_type.replace('_', ' ')} type</span>
-                                                    </div>
-                                                )}
-                                                {job.time_duration && (
-                                                    <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                        <Hourglass className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.time_duration.replace(/_/g, '-')}</span>
-                                                    </div>
-                                                )}
-                                                {job.care_frequency && (
-                                                    <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                        <Repeat className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 capitalize text-sm">{job.care_frequency.replace(/_/g, ' ')}</span>
-                                                    </div>
-                                                )}
-                                                {job.children_count ? (
-                                                    <div className="flex items-center gap-2 col-span-1 border border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-800/20 px-2 py-1.5 rounded-lg">
-                                                        <Baby className="w-4 h-4 text-orange-500 flex-shrink-0" /> <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{job.children_count} {job.children_age_group ? `(${job.children_age_group})` : ''} kids</span>
-                                                    </div>
-                                                ) : null}
-                                                {job.service_details && formatServiceDetails(job.service_details, job.service_type)}
-                                            </div>
-                                        </div>
-
-                                        <div className="px-5 pb-5 pt-1 flex gap-3 mt-auto">
-                                            <Button className="flex-1 h-14 text-sm sm:text-base font-bold border-0 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-2xl gap-2 shadow-sm" variant="outline" onClick={() => conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`)}>
-                                                <MessageCircle className="w-5 h-5" />
-                                                Chat
-                                            </Button>
-                                            <Button
-                                                className="flex-1 h-14 text-sm sm:text-base font-bold shadow-md btn-animate bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl gap-2"
-                                                onClick={() => {
-                                                    if (otherParty) {
-                                                        setReviewJob({
-                                                            jobId: job.id,
-                                                            reviewee: otherParty,
-                                                            revieweeRole: otherPartyId === job.client_id ? "client" : "freelancer",
-                                                        });
-                                                    } else {
-                                                        supabase.from("job_requests").update({ status: "completed" }).eq("id", job.id).then(() => loadJobs());
-                                                    }
-                                                }}
-                                            >
-                                                <CheckCircle2 className="w-5 h-5" />
-                                                Done
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-            </div>
-
-            {/* Past Jobs – always stacks vertically below active cards */}
-            {pastJobs.length > 0 && (
-                <Card className="rounded-2xl border-none shadow-none">
-                    <CardHeader className="cursor-pointer px-5 py-4" onClick={() => setPastJobsExpanded(!pastJobsExpanded)}>
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-xl font-bold">Past Jobs</CardTitle>
-                            {pastJobsExpanded ? <ChevronUp className="w-6 h-6 text-muted-foreground" /> : <ChevronDown className="w-6 h-6 text-muted-foreground" />}
-                        </div>
-                    </CardHeader>
-                    {pastJobsExpanded && (
-                        <CardContent className="space-y-3 px-5 pb-5 pt-0">
-                            {pastJobs.map(job => {
-                                const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
-                                const otherParty = otherPartyId ? profiles[otherPartyId] : null;
-
-                                return (
-                                    <div key={job.id} className="relative flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20 gap-3 min-h-[100px]">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1.5 translate-y-2 sm:translate-y-0">
-                                                <span className="font-semibold text-base">{new Date(job.created_at).toLocaleDateString()}</span>
-                                                <span className="text-base text-muted-foreground truncate">{formatJobTitle(job)}</span>
-                                            </div>
-                                            {otherParty && (
-                                                <div className="flex items-center gap-2 mt-1 mb-2 translate-y-2 sm:translate-y-0 text-slate-900 dark:text-white">
-                                                    <Avatar className="w-6 h-6 border bg-background shadow-sm">
-                                                        <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
-                                                        <AvatarFallback className="text-[10px] bg-slate-100">{otherParty.full_name?.charAt(0) || 'U'}</AvatarFallback>
-                                                    </Avatar>
-                                                    <p className="text-sm font-bold truncate">
-                                                        {otherParty.full_name}
-                                                    </p>
-                                                    {(otherParty.average_rating ?? 0) > 0 && (
-                                                        <StarRating rating={otherParty.average_rating ?? 0} totalRatings={otherParty.total_ratings ?? 0} size="sm" showCount={true} />
-                                                    )}
+                                            )}
+                                            {job.location_city && (
+                                                <div className="flex items-center gap-2.5 text-[15px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
+                                                    <MapPin className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                                                    <span className="truncate">{job.location_city}</span>
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* ABSOLUTE POSITIONED BADGE (Black/White) */}
-                                        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 h-fit">
-                                            <Badge className="bg-black dark:bg-zinc-100 dark:text-black text-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border-none shadow-md">
-                                                {getJobStatusBadge(job.status).label}
-                                            </Badge>
-                                        </div>
-
-                                        <div className="flex-shrink-0 mt-4 sm:mt-0">
-                                            <Button variant="outline" size="sm" className="w-full sm:w-auto h-10 px-6 font-bold border-black/10 hover:bg-orange-500 hover:text-white hover:border-orange-500 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md" onClick={() => navigate(`/jobs/${job.id}/details`)}>
-                                                View
-                                            </Button>
-                                        </div>
+                                        {(job.status === 'active' || job.status === 'locked') && (
+                                            <div className="flex items-center gap-2.5 text-[14px] text-orange-400 font-bold tracking-tight">
+                                                <Clock className="w-4 h-4 flex-shrink-0" />
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="opacity-60 font-medium">In progress since</span>
+                                                    <span className="text-slate-600 dark:text-slate-400">{new Date(job.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                );
-                            })}
-                        </CardContent>
-                    )}
-                </Card>
-            )}
-        </div>
 
-        <FullscreenMapModal 
-            job={selectedMapJob} 
-            isOpen={!!selectedMapJob} 
-            onClose={() => setSelectedMapJob(null)} 
-        />
-    </>
+                                    {/* Action Content Blocks: Notes */}
+                                    {job.service_details?.custom && (
+                                        <div className="pt-5 border-t border-slate-100 dark:border-white/5">
+                                            <div className="bg-slate-50 dark:bg-white/5 rounded-[20px] px-5 py-4 border border-slate-100 dark:border-white/5 flex flex-col gap-2">
+                                                <div className="font-black text-slate-400 dark:text-slate-500 text-[11px] uppercase tracking-[0.15em] flex items-center gap-2 opacity-80">
+                                                    <MessageSquare className="w-3.5 h-3.5" /> Note
+                                                </div>
+                                                <p className="text-[15px] text-slate-700 dark:text-slate-200 font-medium leading-relaxed italic">
+                                                    "{job.service_details.custom}"
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Buttons Area - Standardized CTA Hierarchy */}
+                                    <div className="flex gap-4 mt-auto pt-6 border-t border-slate-100 dark:border-white/5">
+                                         <Button variant="outline" className="flex-1 h-12 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 rounded-[18px] text-[16px] font-bold transition-all active:scale-[0.96]" onClick={(e) => { e.stopPropagation(); conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`); }}>
+                                             <MessageSquare className="w-4 h-4 mr-2" /> Message
+                                         </Button>
+                                         <Button className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white rounded-[18px] text-[16px] font-bold shadow-[0_8px_20px_rgba(22,163,74,0.25)] transition-all active:scale-[0.96]" onClick={(e) => {
+                                             e.stopPropagation();
+                                             if (otherParty) {
+                                                 setReviewJob({
+                                                     jobId: job.id,
+                                                     reviewee: otherParty,
+                                                     revieweeRole: otherPartyId === job.client_id ? "client" : "freelancer",
+                                                 });
+                                             } else {
+                                                 supabase.from("job_requests").update({ status: "completed" }).eq("id", job.id).then(() => loadJobs());
+                                             }
+                                         }}>
+                                             <CheckCircle2 className="w-4 h-4 mr-2" /> Done
+                                         </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+
+                {/* Past Jobs – always stacks vertically below active cards */}
+                {pastJobs.length > 0 && (
+                    <Card className="rounded-2xl border-none shadow-none">
+                        <CardHeader className="cursor-pointer px-5 py-4" onClick={() => setPastJobsExpanded(!pastJobsExpanded)}>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-xl font-bold">Past Jobs</CardTitle>
+                                {pastJobsExpanded ? <ChevronUp className="w-6 h-6 text-muted-foreground" /> : <ChevronDown className="w-6 h-6 text-muted-foreground" />}
+                            </div>
+                        </CardHeader>
+                        {pastJobsExpanded && (
+                            <CardContent className="space-y-3 px-5 pb-5 pt-0">
+                                {pastJobs.map(job => {
+                                    const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
+                                    const otherParty = otherPartyId ? profiles[otherPartyId] : null;
+
+                                    return (
+                                        <div key={job.id} className="relative flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20 gap-3 min-h-[100px]">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1.5 translate-y-2 sm:translate-y-0">
+                                                    <span className="font-semibold text-base">{new Date(job.created_at).toLocaleDateString()}</span>
+                                                    <span className="text-base text-muted-foreground truncate">{formatJobTitle(job)}</span>
+                                                </div>
+                                                {otherParty && (
+                                                    <div className="flex items-center gap-2 mt-1 mb-2 translate-y-2 sm:translate-y-0 text-slate-900 dark:text-white">
+                                                        <Avatar className="w-6 h-6 border bg-background shadow-sm">
+                                                            <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
+                                                            <AvatarFallback className="text-[10px] bg-slate-100">{otherParty.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                                                        </Avatar>
+                                                        <p className="text-sm font-bold truncate">
+                                                            {otherParty.full_name}
+                                                        </p>
+                                                        {(otherParty.average_rating ?? 0) > 0 && (
+                                                            <StarRating rating={otherParty.average_rating ?? 0} totalRatings={otherParty.total_ratings ?? 0} size="sm" showCount={true} />
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* ABSOLUTE POSITIONED BADGE */}
+                                            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 h-fit">
+                                                <Badge className={cn("px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-none rounded-full", getJobStatusBadge(job.status).className)}>
+                                                    {getJobStatusBadge(job.status).label}
+                                                </Badge>
+                                            </div>
+
+                                            <div className="flex-shrink-0 mt-4 sm:mt-0">
+                                                <Button variant="outline" size="sm" className="w-full sm:w-auto h-10 px-6 font-bold border-slate-200 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all duration-300 shadow-sm" onClick={() => navigate(`/jobs/${job.id}/details`)}>
+                                                    View
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </CardContent>
+                        )}
+                    </Card>
+                )}
+            </div>
+
+            <FullscreenMapModal
+                job={selectedMapJob}
+                isOpen={!!selectedMapJob}
+                onClose={() => setSelectedMapJob(null)}
+            />
+
+            <JobDetailsModal
+                job={selectedJobDetails}
+                isOpen={!!selectedJobDetails}
+                onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+                formatJobTitle={formatJobTitle}
+            />
+        </>
     );
 }
 

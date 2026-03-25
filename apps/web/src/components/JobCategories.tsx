@@ -1,10 +1,11 @@
-import { Baby, Sparkles, Truck, ChefHat, HelpCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Baby, Sparkles, Truck, ChefHat, HelpCircle, CheckCircle2, ArrowRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -130,7 +131,13 @@ export default function JobCategories() {
                 </div>
               </DialogTrigger>
 
-              <DialogContent className="max-w-2xl p-0 overflow-hidden border-none rounded-[2.5rem] bg-white shadow-2xl flex flex-col max-h-[90vh]">
+              <DialogContent className="w-full h-[100dvh] max-w-none sm:max-w-2xl p-0 overflow-hidden border-none rounded-none sm:rounded-[2.5rem] bg-white shadow-2xl flex flex-col sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
+                {/* Close Button */}
+                <DialogClose className="absolute right-4 top-4 md:right-6 md:top-6 z-50 p-2.5 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-colors focus:outline-none">
+                  <X className="w-5 h-5" />
+                  <span className="sr-only">Close</span>
+                </DialogClose>
+
                 {/* Full Bleed Image Header */}
                 <div className="relative h-64 md:h-80 w-full flex-shrink-0">
                   <img src={category.image} alt={category.title} className="w-full h-full object-cover" />

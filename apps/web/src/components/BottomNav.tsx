@@ -195,12 +195,12 @@ export function BottomNav() {
       <>
         {TopHeader}
         {ProfileMenuModal}
-        <nav className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-full max-w-xs mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+          <div className="max-w-2xl mx-auto px-4 pb-4 pointer-events-auto">
+            <div className="w-full max-w-xs mx-auto bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
               <div className="flex items-center justify-center min-w-max px-4 py-2">
-                <div className="flex items-center justify-center py-4 px-6 rounded-full flex-shrink-0 text-black dark:text-white" title="Getting Started">
-                  <Home className="w-9 h-9" />
+                <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
+                  <Home className="w-6 h-6" />
                 </div>
               </div>
             </div>
@@ -225,10 +225,10 @@ export function BottomNav() {
     return (
       <>
         {TopHeader}
-        <nav className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-full max-w-md sm:max-w-lg mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
-              <div className="flex items-center justify-between w-full px-8 py-3">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+          <div className="max-w-2xl mx-auto px-4 pb-4 pointer-events-auto">
+            <div className="w-full max-w-[400px] sm:max-w-md mx-auto bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+              <div className="flex items-center justify-between w-full px-5 py-2">
                 {/* First two items */}
                 {userNav.slice(0, 2).map((item) => {
                   const Icon = item.icon;
@@ -243,18 +243,18 @@ export function BottomNav() {
                       key={item.path}
                       to={item.path}
                       className={cn(
-                        "flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative group",
-                        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                        "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
+                        isActive ? "text-orange-600 dark:text-orange-500" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                       )}
                     >
-                      <Icon className={cn("w-8 h-8 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
-                      {isActive && (
-                        <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary animate-in zoom-in duration-300" />
-                      )}
+                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-2xl transition-all duration-300 relative", isActive ? "bg-orange-50 dark:bg-orange-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                        <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7" : "w-7 h-7 group-hover:scale-110")} />
+                      </div>
+
                       {jobsBadgeCount > 0 && (
                         <Badge
                           variant="destructive"
-                          className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold border-2 border-background"
+                          className="absolute top-1 right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[9px] font-bold border-2 border-white dark:border-zinc-900 shadow-sm"
                         >
                           {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
                         </Badge>
@@ -267,7 +267,7 @@ export function BottomNav() {
                 <button
                   type="button"
                   onClick={() => navigate("/client/create")}
-                  className="flex items-center justify-center h-14 w-14 rounded-2xl bg-primary text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_12px_24px_rgba(249,115,22,0.4)] transition-all hover:scale-110 active:scale-95 -translate-y-1"
+                  className="flex items-center justify-center h-[52px] w-[52px] rounded-full bg-orange-500 text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_12px_24px_rgba(249,115,22,0.4)] transition-all hover:scale-105 active:scale-95 mx-1"
                   aria-label="Create Job"
                 >
                   <Plus className="w-8 h-8" />
@@ -284,18 +284,18 @@ export function BottomNav() {
                       key={item.path}
                       to={item.path}
                       className={cn(
-                        "flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative group",
-                        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                        "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
+                        isActive ? "text-orange-600 dark:text-orange-500" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                       )}
                     >
-                      <Icon className={cn("w-8 h-8 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
-                      {isActive && (
-                        <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary animate-in zoom-in duration-300" />
-                      )}
+                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-2xl transition-all duration-300 relative", isActive ? "bg-orange-50 dark:bg-orange-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                        <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7" : "w-7 h-7 group-hover:scale-110")} />
+                      </div>
+
                       {showMessageBadge && (
                         <Badge
                           variant="destructive"
-                          className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center px-1 text-[10px] font-bold border-2 border-background"
+                          className="absolute top-1 right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[9px] font-bold border-2 border-white dark:border-zinc-900 shadow-sm"
                         >
                           {unreadMessages > 9 ? "9+" : unreadMessages}
                         </Badge>
@@ -318,12 +318,12 @@ export function BottomNav() {
     return (
       <>
         {TopHeader}
-        <nav className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="max-w-2xl mx-auto px-4 pb-3">
-            <div className="w-full max-w-xs mx-auto bg-white/80 dark:bg-background/80 backdrop-blur-md border-none rounded-full shadow-xl overflow-x-auto scrollbar-hide">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+          <div className="max-w-2xl mx-auto px-4 pb-4 pointer-events-auto">
+            <div className="w-full max-w-xs mx-auto bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
               <div className="flex items-center justify-center min-w-max px-4 py-2">
-                <div className="flex items-center justify-center py-4 px-6 rounded-full flex-shrink-0 text-black dark:text-white" title="Loading...">
-                  <Home className="w-9 h-9" />
+                <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
+                  <Home className="w-6 h-6" />
                 </div>
               </div>
             </div>

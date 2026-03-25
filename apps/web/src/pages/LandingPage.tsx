@@ -21,6 +21,26 @@ export default function LandingPage() {
 
   const recentActivityRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const [isOverHero, setIsOverHero] = useState(true);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsOverHero(entry.isIntersecting);
+      },
+      {
+        rootMargin: "-72px 0px 0px 0px",
+        threshold: 0,
+      }
+    );
+
+    if (heroRef.current) {
+      observer.observe(heroRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const scrollLeft = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
@@ -76,7 +96,10 @@ export default function LandingPage() {
             {/* Hamburger Menu - Mobile Only: icon only, no box */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-black hover:text-gray-600 transition-colors"
+              className={cn(
+                "md:hidden p-2 transition-colors",
+                isOverHero && !isMenuOpen ? "text-white hover:text-gray-200" : "text-black hover:text-gray-600"
+              )}
               aria-label="Toggle menu"
             >
               {isMenuOpen ? (
@@ -109,7 +132,10 @@ export default function LandingPage() {
                       .slice(0, 2) || "?"}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-black truncate">
+                <span className={cn(
+                  "text-sm font-medium truncate transition-colors duration-300",
+                  isOverHero ? "text-white" : "text-black"
+                )}>
                   Hi, {profile?.full_name?.split(" ")[0] || "there"}
                 </span>
               </div>
@@ -117,18 +143,20 @@ export default function LandingPage() {
 
             {/* Log In / Home - Mobile Only (right side of header) */}
             {user ? (
-              <Link to={dashboardPath} className="md:hidden">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Home className="w-4 h-4" />
-                  Home
-                </Button>
+              <Link to={dashboardPath} className={cn(
+                "md:hidden flex items-center gap-1.5 text-sm font-medium transition-colors duration-300",
+                isOverHero ? "text-white hover:text-gray-200" : "text-black hover:text-gray-600"
+              )}>
+                <Home className="w-4 h-4" />
+                Home
               </Link>
             ) : (
-              <Link to="/login" className="md:hidden">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <LogIn className="w-4 h-4" />
-                  Log In
-                </Button>
+              <Link to="/login" className={cn(
+                "md:hidden flex items-center gap-1.5 text-sm font-medium transition-colors duration-300",
+                isOverHero ? "text-white hover:text-gray-200" : "text-black hover:text-gray-600"
+              )}>
+                <LogIn className="w-4 h-4" />
+                Log In
               </Link>
             )}
 
@@ -196,29 +224,37 @@ export default function LandingPage() {
             <nav className="hidden md:flex items-center gap-6">
               <Link
                 to="/about"
-                className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
+                className={cn(
+                  "text-sm font-medium transition-colors",
+                  isOverHero ? "text-white/90 hover:text-white" : "text-gray-600 hover:text-black"
+                )}
               >
                 About Us
               </Link>
               <Link
                 to="/contact"
-                className="text-sm font-medium text-gray-600 hover:text-white transition-colors"
+                className={cn(
+                  "text-sm font-medium transition-colors",
+                  isOverHero ? "text-white/90 hover:text-white" : "text-gray-600 hover:text-black"
+                )}
               >
                 Contact
               </Link>
               {user ? (
-                <Link to={dashboardPath}>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Home className="w-4 h-4" />
-                    Home
-                  </Button>
+                <Link to={dashboardPath} className={cn(
+                  "flex items-center gap-1.5 text-sm font-medium transition-colors",
+                  isOverHero ? "text-white/90 hover:text-white" : "text-gray-600 hover:text-black"
+                )}>
+                  <Home className="w-4 h-4" />
+                  Home
                 </Link>
               ) : (
-                <Link to="/login">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <LogIn className="w-4 h-4" />
-                    Log In
-                  </Button>
+                <Link to="/login" className={cn(
+                  "flex items-center gap-1.5 text-sm font-medium transition-colors",
+                  isOverHero ? "text-white/90 hover:text-white" : "text-gray-600 hover:text-black"
+                )}>
+                  <LogIn className="w-4 h-4" />
+                  Log In
                 </Link>
               )}
             </nav>
@@ -229,7 +265,7 @@ export default function LandingPage() {
       {/* Main Content - No top padding to allow Hero to flow behind header */}
       <main className="flex-1 pt-0">
         {/* Full-Screen Hero Section */}
-        <section className="relative w-full h-[90vh] md:h-[110vh] overflow-hidden group/hero">
+        <section ref={heroRef} className="relative w-full h-[90vh] md:h-[110vh] overflow-hidden group/hero">
           {/* Background Image - Full Bleed */}
           <img
             src="/background image new.png"

@@ -84,7 +84,7 @@ export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle, isO
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-white dark:bg-zinc-950 focus:outline-none">
+            <DialogContent className="w-full h-[100dvh] max-w-none sm:max-w-lg p-0 overflow-hidden rounded-none sm:rounded-[2.5rem] border-none shadow-2xl bg-white dark:bg-zinc-950 focus:outline-none flex flex-col sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
                 <VisuallyHidden>
                     <DialogTitle>{formatJobTitle(job)} Details</DialogTitle>
                 </VisuallyHidden>
@@ -171,7 +171,7 @@ export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle, isO
                     )}
                 </div>
 
-                <div className="p-8 space-y-8 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                <div className="p-8 space-y-8 overflow-y-auto flex-1 min-h-0 sm:max-h-[60vh] custom-scrollbar">
                     {/* Primary Insight Grid */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800/50 flex flex-col gap-1.5 shadow-sm transition-all hover:shadow-md">

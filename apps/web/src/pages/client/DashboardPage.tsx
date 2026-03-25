@@ -290,10 +290,10 @@ export default function DashboardPage() {
       <div className="max-w-2xl mx-auto pt-8 space-y-6">
         {/* Welcome Section */}
         <div className="mb-2 px-1">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+          <h1 className="text-[28px] font-bold text-slate-900 dark:text-white mb-1">
             Welcome back, {profile?.full_name?.split(' ')[0] || 'User'}!
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 text-sm font-medium flex items-center gap-2">
+          <p className="text-slate-600 dark:text-slate-400 text-[15px] font-medium flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-orange-500" />
             Here's what's happening with your requests today.
           </p>
@@ -307,10 +307,10 @@ export default function DashboardPage() {
           >
             <CardContent className="p-4 flex flex-col gap-1">
               <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Active Jobs</span>
+                <span className="text-[13px] font-bold uppercase tracking-wider">Active Jobs</span>
                 <Briefcase className="w-4 h-4" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{activeJobs.length}</p>
+              <p className="text-[32px] font-bold text-foreground leading-tight">{activeJobs.length}</p>
             </CardContent>
           </Card>
 
@@ -320,10 +320,10 @@ export default function DashboardPage() {
           >
             <CardContent className="p-4 flex flex-col gap-1">
               <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[11px] font-bold uppercase tracking-wider">My Requests</span>
+                <span className="text-[13px] font-bold uppercase tracking-wider">My Requests</span>
                 <Bell className="w-4 h-4" />
               </div>
-              <p className="text-2xl font-bold text-orange-500">{myRequests.length}</p>
+              <p className="text-[32px] font-bold text-orange-500 leading-tight">{myRequests.length}</p>
             </CardContent>
           </Card>
 
@@ -333,23 +333,23 @@ export default function DashboardPage() {
           >
             <CardContent className="p-4 flex flex-col gap-1">
               <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Inbound</span>
+                <span className="text-[13px] font-bold uppercase tracking-wider">Inbound</span>
                 <span className="text-xs font-bold text-primary">NEW</span>
               </div>
-              <p className="text-2xl font-bold text-foreground">{invitations.length}</p>
+              <p className="text-[32px] font-bold text-foreground leading-tight">{invitations.length}</p>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
             <CardContent className="p-4 flex flex-col gap-1">
               <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Rating</span>
+                <span className="text-[13px] font-bold uppercase tracking-wider">Rating</span>
                 <StarRating rating={profile?.average_rating || 5} size="sm" showCount={false} />
               </div>
               <div className="flex items-baseline gap-1">
-                <p className="text-2xl font-bold text-foreground">{profile?.average_rating ? profile.average_rating.toFixed(1) : "5.0"}</p>
+                <p className="text-[32px] font-bold text-foreground leading-tight">{profile?.average_rating ? profile.average_rating.toFixed(1) : "5.0"}</p>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-muted-foreground leading-none">/ 5.0</span>
+                  <span className="text-[12px] text-muted-foreground leading-none">/ 5.0</span>
                   <span className="text-[8px] font-bold text-slate-400 mt-0.5">({profile?.total_ratings || 0})</span>
                 </div>
               </div>
@@ -361,7 +361,7 @@ export default function DashboardPage() {
         {activeJobs.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold flex items-center gap-2 uppercase">
+              <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
                 ACTIVE {activeJobs.length === 1 ? 'JOB' : 'JOBS'}
               </h2>
             </div>
@@ -396,53 +396,40 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white dark:bg-zinc-900">
-          <CardContent className="p-0">
-            <div className="px-5 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/5">
-              <h2 className="text-sm font-bold flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center">
-                  <MessageCircle className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                </div>
-                MESSAGES
-              </h2>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary"
-                onClick={() => navigate("/messages")}
-              >
-                VIEW ALL
-              </Button>
-            </div>
-            
-            <div className="divide-y divide-black/5 dark:divide-white/5">
-              {recentMessages.length > 0 ? recentMessages.map((msg) => (
-                <div 
-                  key={msg.id} 
-                  className="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-all group"
-                  onClick={() => navigate(`/chat/${msg.id}`)}
-                >
+        {/* Fragmented Messages List */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
+              <MessageCircle className="w-6 h-6 text-primary" />
+              MESSAGES
+            </h2>
+            <Button variant="ghost" size="sm" className="text-xs font-bold text-primary" onClick={() => navigate("/messages")}>View All</Button>
+          </div>
+          
+          <div className="space-y-3">
+            {recentMessages.length > 0 ? recentMessages.map((msg) => (
+              <Card key={msg.id} className="border-none shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group"
+                onClick={() => navigate(`/chat/${msg.id}`)}>
+                <CardContent className="p-4 flex items-center gap-4">
                   <div className="relative">
-                    <Avatar className="w-12 h-12 border border-black/5">
-                      <AvatarImage src={msg.otherPhoto} className="object-cover" />
+                    <Avatar className="w-12 h-12 shadow-sm flex-shrink-0">
+                      <AvatarImage src={msg.otherPhoto || undefined} className="object-cover" />
                       <AvatarFallback className="bg-primary/5 text-primary font-bold">
-                        {msg.otherName.charAt(0)}
+                        {msg.otherName?.charAt(0).toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
                     {msg.isUnread && (
-                      <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary border-2 border-white dark:border-zinc-900 rounded-full" />
+                      <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-orange-500 border-2 border-white dark:border-zinc-900 rounded-full" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className={cn("text-sm font-bold truncate", msg.isUnread ? "text-foreground" : "text-slate-700 dark:text-slate-300")}>
-                        {msg.otherName}
-                      </p>
-                      <span className="text-[10px] font-bold text-muted-foreground">
-                        {msg.lastMessageTime ? new Date(msg.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                    <div className="flex items-center justify-between mb-0.5">
+                      <p className="font-bold text-[16px]">{msg.otherName}</p>
+                      <span className="text-[12px] font-medium text-muted-foreground">
+                        {msg.lastMessageTime ? new Date(msg.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                     </div>
-                    <p className={cn("text-xs truncate", msg.isUnread ? "font-semibold text-slate-900 dark:text-slate-100" : "text-muted-foreground")}>
+                    <p className={cn("text-[14px] truncate", msg.isUnread ? "font-bold text-foreground" : "text-muted-foreground")}>
                       {msg.lastMessage}
                     </p>
                   </div>
@@ -454,36 +441,34 @@ export default function DashboardPage() {
                       <ArrowRight className="w-4 h-4 text-primary" />
                     </div>
                   </div>
-                </div>
-              )) : (
-                <div className="px-5 py-10 text-center text-muted-foreground">
-                  <p className="text-sm">No recent messages</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            )) : (
+              <p className="text-center text-muted-foreground py-8 text-sm italic">No recent messages</p>
+            )}
+          </div>
+        </div>
 
-        {/* Latest Requests with toggle */}
-        <Card className="border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden">
-          <CardContent className="p-0">
-            {/* Section header */}
-            <div className="px-5 py-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-black/10 dark:border-white/10 shadow-sm">
-              <h2 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                <Bell className="w-4 h-4 text-slate-900 dark:text-slate-100" /> LATEST REQUESTS
-              </h2>
-              <Button variant="ghost" size="sm" className="gap-1 text-[10px] uppercase tracking-wider h-7 text-white/80 hover:text-white hover:bg-white/10"
-                onClick={() => navigate("/client/jobs")}>
-                View All <ArrowRight className="w-3 h-3" />
-              </Button>
-            </div>
-            <div className="bg-white dark:bg-zinc-900">
-              <div className="px-5 py-3 border-b border-black/5 dark:border-white/5">
-                {/* Toggle - Smaller & Built-in */}
+        {/* Latest Requests with fragmented cards */}
+        <div className="space-y-4">
+            {/* Section header & Toggle Container */}
+            <div className="bg-white dark:bg-zinc-900/50 backdrop-blur-sm border border-black/[0.03] dark:border-white/[0.03] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[24px] p-2">
+              <div className="px-4 py-3 flex items-center justify-between border-b border-black/5 dark:border-white/5 mb-2">
+                <h2 className="text-[18px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
+                  <Bell className="w-5 h-5 text-slate-900 dark:text-slate-100" /> LATEST REQUESTS
+                </h2>
+                <Button variant="ghost" size="sm" className="gap-1 text-[10px] uppercase tracking-wider h-7 text-white/80 hover:text-white hover:bg-white/10"
+                  onClick={() => navigate("/client/jobs")}>
+                  View All <ArrowRight className="w-3 h-3" />
+                </Button>
+              </div>
+              
+              <div className="px-3 pb-2">
+                {/* Toggle - Fragmented Style */}
                 <div className="flex items-center justify-center gap-1.5 p-1 bg-black/5 dark:bg-white/5 rounded-xl w-fit mx-auto">
                   <button
                     onClick={() => setRequestsTab("my")}
-                    className={cn("flex items-center justify-center gap-1.5 py-1 px-4 rounded-lg text-[10px] font-bold transition-all",
+                    className={cn("flex items-center justify-center gap-1.5 py-1.5 px-5 rounded-lg text-[12px] font-bold transition-all",
                       requestsTab === "my"
                         ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
                         : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white")}
@@ -492,7 +477,7 @@ export default function DashboardPage() {
                   </button>
                   <button
                     onClick={() => setRequestsTab("invitations")}
-                    className={cn("flex items-center justify-center gap-1.5 py-1 px-4 rounded-lg text-[10px] font-bold transition-all",
+                    className={cn("flex items-center justify-center gap-1.5 py-1.5 px-5 rounded-lg text-[12px] font-bold transition-all",
                       requestsTab === "invitations"
                         ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
                         : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white")}
@@ -501,26 +486,29 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* Content */}
-              <div className="divide-y divide-black/5">
+            {/* Content - Fragmented Cards */}
+            <div className="space-y-3">
                 {requestsTab === "my" ? (
                   myRequests.length > 0 ? myRequests.map((req) => (
-                    <div key={req.id}
-                      className="px-5 py-4 flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                    <Card key={req.id}
+                      className="border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
                       onClick={() => navigate("/client/active-jobs")}>
+                      <CardContent className="px-5 py-4 flex items-center gap-4">
                       <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
                         {getServiceIcon(req.service_type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">{formatJobTitle(req)}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-600 dark:text-slate-400">
+                        <p className="font-semibold text-[16px] text-slate-900 dark:text-slate-100">{formatJobTitle(req)}</p>
+                        <div className="flex items-center gap-2 mt-0.5 text-[14px] text-slate-600 dark:text-slate-400">
                           <MapPin className="w-3 h-3" /> {req.location_city}
                           {req.start_at && <><Calendar className="w-3 h-3 ml-1" />{new Date(req.start_at).toLocaleDateString()}</>}
                         </div>
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
-                    </div>
+                    </CardContent>
+                  </Card>
                   )) : (
                     <div className="px-5 py-10 text-center text-slate-600/60 dark:text-slate-400/60">
                       <Briefcase className="w-10 h-10 mx-auto mb-2 opacity-30" />
@@ -536,37 +524,37 @@ export default function DashboardPage() {
                     const isDeclined = notif.isDeclined;
                     const isConfirmed = notif.isConfirmed;
                     return (
-                      <div key={notif.id}
-                        className={cn("px-5 py-4 flex items-center gap-3 hover:bg-black/5 transition-colors cursor-pointer", isDeclined && "opacity-60")}
+                      <Card key={notif.id}
+                        className={cn("border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer transition-all", isDeclined && "opacity-60")}
                         onClick={() => navigate("/client/active-jobs?tab=requests")}>
+                        <CardContent className="px-5 py-4 flex items-center gap-4">
                         <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
                           {getServiceIcon(job?.service_type)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-black">{formatJobTitle(job)}</p>
-                          <div className="flex items-center gap-2 mt-0.5 text-xs text-black/60">
+                          <p className="font-semibold text-[16px] text-slate-900 dark:text-slate-100">{formatJobTitle(job)}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-[14px] text-slate-600 dark:text-slate-400">
                             <MapPin className="w-3 h-3" /> {job?.location_city}
                           </div>
                         </div>
                         <Badge
                           variant={isDeclined ? "destructive" : isConfirmed ? "default" : "secondary"}
-                          className={cn("text-xs flex-shrink-0", !isDeclined && !isConfirmed && "bg-black/5 text-black/70 border-none")}>
+                          className={cn("text-[12px] flex-shrink-0", !isDeclined && !isConfirmed && "bg-white/10 text-slate-600 dark:text-slate-400 border-black/10 dark:border-white/10")}>
                           {isDeclined ? "Declined" : isConfirmed ? "Waiting for confirmation" : "Pending"}
                         </Badge>
-                        <ChevronRight className="w-4 h-4 text-black/30 flex-shrink-0" />
-                      </div>
+                        <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
+                      </CardContent>
+                    </Card>
                     );
                   }) : (
-                    <div className="px-5 py-10 text-center text-black/40">
+                    <div className="px-5 py-10 text-center text-slate-600/60 dark:text-slate-400/60">
                       <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
                       <p className="text-sm">No invitations right now</p>
                     </div>
                   )
                 )}
-              </div>
             </div>
-          </CardContent>
-        </Card>
+        </div>
 
         {/* No active job empty state */}
         {activeJobs.length === 0 && myRequests.length === 0 && (

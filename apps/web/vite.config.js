@@ -10,6 +10,7 @@ export default defineConfig({
         allowedHosts: [
             'c46872e6d739.ngrok-free.app',
             '9538501d3d45.ngrok-free.app',
+            '6ca2-2a00-a041-f225-300-11a4-a07c-e100-2873.ngrok-free.app',
             '.ngrok-free.app', // Allow all ngrok subdomains
         ],
     },
