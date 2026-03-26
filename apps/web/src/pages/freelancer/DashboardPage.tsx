@@ -7,12 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Baby, Sparkles, MapPin, ArrowRight, Loader2, Bell, Briefcase,
-  UtensilsCrossed, Truck, HelpCircle, Calendar, MessageCircle, ChevronRight
+  MapPin, ArrowRight, Loader2, Bell, Briefcase, Sparkles,
+  UtensilsCrossed, Truck, HelpCircle, Baby,
+  MessageCircle, Calendar, ChevronRight, Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StarRating } from "@/components/StarRating";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { LiveTimer } from "@/components/LiveTimer";
 import DashboardLiveJobCard from "@/components/DashboardLiveJobCard";
 
 interface JobRequest {
@@ -326,67 +327,65 @@ export default function FreelancerDashboardPage() {
     <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
       <div className="max-w-2xl mx-auto pt-8 space-y-6">
         {/* Welcome Section */}
-        <div className="mb-2 px-1">
-          <h1 className="text-[28px] font-bold text-slate-900 dark:text-white mb-1">
-            Welcome back, {profile?.full_name?.split(' ')[0] || 'User'}!
+        <div className="mb-4 px-1">
+          <h1 className="text-[32px] font-bold text-slate-900 dark:text-white leading-tight">
+            Welcome back, {profile?.full_name?.split(' ')[0] || 'User'}
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 text-[15px] font-medium flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-orange-500" />
-            Here's what's happening with your jobs today.
+          <p className="text-slate-500 dark:text-slate-400 text-[16px] font-medium mt-1">
+            Overview of your activity today
           </p>
         </div>
 
         {/* KPI Cards Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card 
-            className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.98]"
-            onClick={() => navigate("/freelancer/active-jobs")}
+            className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
+            onClick={() => navigate("/jobs")}
           >
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[13px] font-bold uppercase tracking-wider">Active Jobs</span>
-                <Briefcase className="w-4 h-4" />
-              </div>
-              <p className="text-[32px] font-bold text-foreground leading-tight">{activeJobs.length}</p>
+            <CardContent className="p-4 flex flex-col h-full">
+              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Active Jobs</span>
+              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{activeJobs.length}</p>
+              <span className="text-[11px] font-medium text-slate-400 mt-auto">Ongoing now</span>
             </CardContent>
           </Card>
 
           <Card 
-            className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.98]"
-            onClick={() => navigate("/freelancer/active-jobs?tab=requests")}
+            className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
+            onClick={() => navigate("/jobs")}
           >
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[13px] font-bold uppercase tracking-wider">Requests</span>
-                <Bell className="w-4 h-4" />
-              </div>
-              <p className="text-[32px] font-bold text-orange-500 leading-tight">{invitations.length}</p>
+            <CardContent className="p-4 flex flex-col h-full">
+              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Requests</span>
+              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{myRequests.length}</p>
+              <span className="text-[11px] font-medium text-slate-400 mt-auto">Pending review</span>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[13px] font-bold uppercase tracking-wider">Earnings Today</span>
-                <span className="text-xs font-bold">₪</span>
+          <Card 
+            className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
+            onClick={() => navigate("/jobs")}
+          >
+            <CardContent className="p-4 flex flex-col h-full">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Inbound</span>
+                {invitations.length > 0 && (
+                  <Badge className="bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 border-none text-[9px] font-black h-4 px-1.5 rounded-full">NEW</Badge>
+                )}
               </div>
-              <p className="text-[32px] font-bold text-foreground leading-tight">₪{earningsToday}</p>
+              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{invitations.length}</p>
+              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Earnings</span>
+              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">₪{earningsToday}</p>
+              <span className="text-[11px] font-medium text-slate-400 mt-auto">Total today</span>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[13px] font-bold uppercase tracking-wider">Avg Rating</span>
-                <StarRating rating={profile?.average_rating || 5} size="sm" showCount={false} />
+          <Card className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl overflow-hidden hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
+            <CardContent className="p-4 flex flex-col h-full">
+              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Avg Rating</span>
+              <div className="flex items-baseline gap-1.5 mb-2 leading-none">
+                <p className="text-[32px] font-bold text-slate-900 dark:text-white">{profile?.average_rating ? profile.average_rating.toFixed(1) : "0.0"}</p>
+                <span className="text-[14px] font-bold text-slate-400">/ 5.0</span>
               </div>
-              <div className="flex items-baseline gap-1">
-                <p className="text-[32px] font-bold text-foreground leading-tight">{profile?.average_rating ? profile.average_rating.toFixed(1) : "0.0"}</p>
-                <div className="flex flex-col">
-                  <span className="text-[12px] text-muted-foreground leading-none">/ 5.0</span>
-                  <span className="text-[8px] font-bold text-slate-400 mt-0.5">({profile?.total_ratings || 0})</span>
-                </div>
-              </div>
+              <span className="text-[11px] font-medium text-slate-400 mt-auto">Based on {profile?.total_ratings || 0} reviews</span>
             </CardContent>
           </Card>
         </div>
@@ -396,6 +395,7 @@ export default function FreelancerDashboardPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
+                <Briefcase className="w-6 h-6 text-primary" />
                 ACTIVE {activeJobs.length === 1 ? 'JOB' : 'JOBS'}
               </h2>
             </div>
@@ -440,7 +440,7 @@ export default function FreelancerDashboardPage() {
             <Button variant="ghost" size="sm" className="text-xs font-bold text-primary">View All</Button>
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
             {recentMessages.length > 0 ? recentMessages.map((msg) => (
               <Card key={msg.id} className="border-none shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 transition-colors cursor-pointer group"
                 onClick={() => navigate(`/chat/${msg.id}`)}>
@@ -483,47 +483,42 @@ export default function FreelancerDashboardPage() {
           </div>
         </div>
 
-        {/* Latest Requests with fragmented cards */}
+        {/* Latest Requests */}
         <div className="space-y-4">
-            {/* Section header & Toggle Container */}
-            <div className="bg-white dark:bg-zinc-900/50 backdrop-blur-sm border border-black/[0.03] dark:border-white/[0.03] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[24px] p-2">
-              <div className="px-4 py-3 flex items-center justify-between border-b border-black/5 dark:border-white/5 mb-2">
-                <h2 className="text-[18px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
-                  <Bell className="w-5 h-5 text-slate-900 dark:text-slate-100" /> LATEST REQUESTS
-                </h2>
-                <Button variant="ghost" size="sm" className="gap-1 text-[10px] uppercase tracking-wider h-7 text-white/80 hover:text-white hover:bg-white/10"
-                  onClick={() => navigate("/freelancer/active-jobs")}>
-                  View All <ArrowRight className="w-3 h-3" />
-                </Button>
+          <div className="flex items-center justify-between">
+            <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
+              <Bell className="w-6 h-6 text-orange-500" /> REQUESTS
+            </h2>
+            <div className="flex items-center gap-4">
+              {/* Toggle - Integrated Style */}
+              <div className="flex items-center p-1 bg-slate-100/50 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5 shadow-sm">
+                <button
+                  onClick={() => setRequestsTab("invitations")}
+                  className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    requestsTab === "invitations" 
+                      ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
+                      : "text-slate-500 hover:text-slate-700")}
+                >
+                  Incoming Requests
+                </button>
+                <button
+                  onClick={() => setRequestsTab("my")}
+                  className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    requestsTab === "my" 
+                      ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
+                      : "text-slate-500 hover:text-slate-700")}
+                >
+                  My Requests
+                </button>
               </div>
-              
-              <div className="px-3 pb-2">
-                {/* Toggle - Fragmented Style */}
-                <div className="flex items-center justify-center gap-1.5 p-1 bg-black/5 dark:bg-white/5 rounded-xl w-fit mx-auto">
-                  <button
-                    onClick={() => setRequestsTab("invitations")}
-                    className={cn("flex items-center justify-center gap-1.5 py-1.5 px-5 rounded-lg text-[12px] font-bold transition-all",
-                      requestsTab === "invitations"
-                        ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white")}
-                  >
-                    <Bell className="w-3 h-3" /> Invitations
-                  </button>
-                  <button
-                    onClick={() => setRequestsTab("my")}
-                    className={cn("flex items-center justify-center gap-1.5 py-1.5 px-5 rounded-lg text-[12px] font-bold transition-all",
-                      requestsTab === "my"
-                        ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white")}
-                  >
-                    <Briefcase className="w-3 h-3" /> My Requests
-                  </button>
-                </div>
-              </div>
+              <Button variant="ghost" size="sm" className="text-xs font-bold text-primary" onClick={() => navigate("/freelancer/active-jobs")}>
+                View All
+              </Button>
             </div>
+          </div>
 
             {/* Content - Fragmented Cards */}
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
                 {requestsTab === "invitations" ? (
                   invitations.length > 0 ? invitations.map((notif) => {
                     const job = notif.job_requests;
@@ -544,11 +539,19 @@ export default function FreelancerDashboardPage() {
                               {job?.start_at && <><Calendar className="w-3 h-3 ml-1" />{new Date(job.start_at).toLocaleDateString()}</>}
                             </div>
                           </div>
-                          <Badge
-                            variant={isDeclined ? "destructive" : isConfirmed ? "default" : "secondary"}
-                            className={cn("text-[12px] flex-shrink-0", !isDeclined && !isConfirmed && "bg-white/10 text-slate-600 dark:text-slate-400 border-black/10 dark:border-white/10")}>
-                            {isDeclined ? "Declined" : isConfirmed ? "Waiting for confirmation" : "Pending"}
-                          </Badge>
+                          <div className="flex flex-col items-end gap-1.5 ml-auto">
+                            <Badge
+                              variant={isDeclined ? "destructive" : isConfirmed ? "default" : "secondary"}
+                              className={cn("text-[12px] flex-shrink-0", !isDeclined && !isConfirmed && "bg-white/10 text-slate-600 dark:text-slate-400 border-black/10 dark:border-white/10")}>
+                              {isDeclined ? "Declined" : isConfirmed ? "Waiting for confirmation" : "Pending"}
+                            </Badge>
+                            {!isDeclined && !isConfirmed && job?.created_at && (
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-100 dark:border-orange-500/20">
+                                <Clock className="w-3 h-3" />
+                                <LiveTimer createdAt={job.created_at} />
+                              </div>
+                            )}
+                          </div>
                           <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
                         </CardContent>
                       </Card>
@@ -556,7 +559,7 @@ export default function FreelancerDashboardPage() {
                   }) : (
                     <div className="px-5 py-10 text-center text-slate-600/60 dark:text-slate-400/60">
                       <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">No invitations right now</p>
+                      <p className="text-sm">No incoming requests right now</p>
                     </div>
                   )
                 ) : (
@@ -568,13 +571,19 @@ export default function FreelancerDashboardPage() {
                       <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
                         {getServiceIcon(req.service_type)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[16px] text-slate-900 dark:text-slate-100">{formatJobTitle(req)}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-[14px] text-slate-600 dark:text-slate-400">
-                          <MapPin className="w-3 h-3" /> {req.location_city}
-                          {req.start_at && <><Calendar className="w-3 h-3 ml-1" />{new Date(req.start_at).toLocaleDateString()}</>}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[16px] text-slate-900 dark:text-slate-100">{formatJobTitle(req)}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-[14px] text-slate-600 dark:text-slate-400">
+                            <MapPin className="w-3 h-3" /> {req.location_city}
+                            {req.start_at && <><Calendar className="w-3 h-3 ml-1" />{new Date(req.start_at).toLocaleDateString()}</>}
+                          </div>
                         </div>
-                      </div>
+                        {req.created_at && (
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-100 dark:border-orange-500/20 mr-2">
+                             <Clock className="w-3 h-3" />
+                             <LiveTimer createdAt={req.created_at} />
+                          </div>
+                        )}
                       <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
                     </CardContent>
                   </Card>

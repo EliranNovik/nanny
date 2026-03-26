@@ -9,14 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-    Bell, Clock, MapPin, CheckCircle2, Loader2, MessageSquare, 
-    Sparkles, UtensilsCrossed, Truck, HelpCircle, Baby, XCircle
+    Bell, Clock, MapPin, CheckCircle2, Loader2, MessageSquare, XCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import JobMap from "@/components/JobMap";
 import { StarRating } from "@/components/StarRating";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
+import { LiveTimer } from "@/components/LiveTimer";
 
 interface JobRequest {
     id: string;
@@ -44,44 +44,6 @@ interface InboundNotification {
     job_requests: JobRequest & { profiles?: { full_name: string; photo_url: string | null; average_rating?: number; total_ratings?: number; } };
 }
 
-const LiveTimer = ({ createdAt, render }: { createdAt: string; render?: (props: { time: string; expired: boolean }) => React.ReactNode }) => {
-    const [elapsed, setElapsed] = useState(0);
-
-    useEffect(() => {
-        const start = new Date(createdAt).getTime();
-        const update = () => {
-            const now = Date.now();
-            setElapsed(Math.floor((now - start) / 1000));
-        };
-        update();
-        const interval = setInterval(update, 1000);
-        return () => clearInterval(interval);
-    }, [createdAt]);
-
-    const formatElapsedTime = (seconds: number): string => {
-        const days = Math.floor(seconds / 86400);
-        const hours = Math.floor((seconds % 86400) / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-
-        if (days > 0) {
-            return `${days}d ${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-        }
-        if (hours > 0) {
-            return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-        }
-        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-    };
-
-    const timeStr = formatElapsedTime(elapsed);
-    const expired = elapsed > 90; // Default threshold
-
-    if (render) {
-        return <>{render({ time: timeStr, expired })}</>;
-    }
-
-    return <>{timeStr}</>;
-};
 
 export default function RequestsTabContent() {
     const { user } = useAuth();
@@ -294,15 +256,6 @@ export default function RequestsTabContent() {
         return "Service Request";
     }
 
-    function getServiceIcon(serviceType?: string) {
-        if (serviceType === 'cleaning') return <Sparkles className="w-3.5 h-3.5" />;
-        if (serviceType === 'cooking') return <UtensilsCrossed className="w-3.5 h-3.5" />;
-        if (serviceType === 'pickup_delivery') return <Truck className="w-3.5 h-3.5" />;
-        if (serviceType === 'nanny') return <Baby className="w-3.5 h-3.5" />;
-        if (serviceType === 'other_help') return <HelpCircle className="w-3.5 h-3.5" />;
-        return <Baby className="w-3.5 h-3.5" />;
-    }
-
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
     return (
@@ -343,15 +296,7 @@ export default function RequestsTabContent() {
                                             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent z-10" />
                                             
                                             {/* Top Overlays */}
-                                            <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
-                                                <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full h-8 px-3.5 shadow-lg">
-                                                    <div className="text-orange-400">
-                                                        {getServiceIcon(job.service_type)}
-                                                    </div>
-                                                    <span className="text-[11px] font-black uppercase tracking-[0.1em] text-white">
-                                                        {formatJobTitle(job)}
-                                                    </span>
-                                                </div>
+                                            <div className="absolute top-4 left-4 right-4 flex justify-end items-start z-20">
                                                 <Badge className={cn("h-8 px-3.5 rounded-full text-[11px] uppercase font-black tracking-wider border-none shadow-lg transition-transform", 
                                                     isDeclined ? "bg-slate-200 text-slate-600" :
                                                     isConfirmed ? "bg-emerald-500 text-white" :
@@ -364,7 +309,7 @@ export default function RequestsTabContent() {
                                             {/* Bottom Overlays: Title & Rating */}
                                             <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
                                                 <div className="flex items-center gap-3">
-                                                    <Avatar className="w-10 h-10 border-2 border-white/30 shadow-2xl flex-shrink-0">
+                                                    <Avatar className="w-14 h-14 border-2 border-white/30 shadow-2xl flex-shrink-0">
                                                         <AvatarImage src={job.profiles?.photo_url || ""} />
                                                         <AvatarFallback className="bg-orange-500 text-white font-black text-sm">
                                                             {job.profiles?.full_name?.charAt(0) || "C"}
@@ -374,17 +319,20 @@ export default function RequestsTabContent() {
                                                         {job.profiles?.full_name || "Client"}
                                                     </h3>
                                                 </div>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-3">
                                                     {job.profiles?.average_rating ? (
-                                                        <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10">
+                                                        <div className="flex items-center gap-1.5 bg-white/70 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/20 shadow-sm">
                                                             <StarRating rating={job.profiles.average_rating} size="sm" />
-                                                            <span className="text-[14px] font-black text-white/95">
+                                                            <span className="text-[14px] font-black text-slate-900">
                                                                 {job.profiles.average_rating.toFixed(1)}
                                                             </span>
                                                         </div>
                                                     ) : (
                                                         <span className="text-[14px] font-bold text-white/80 italic drop-shadow-md">New Client</span>
                                                     )}
+                                                    <span className="text-[12px] font-black text-white/90 uppercase tracking-[0.15em] drop-shadow-md ml-auto">
+                                                        {formatJobTitle(job)}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -466,7 +414,7 @@ export default function RequestsTabContent() {
                         <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">
                                 <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-                                <p className="text-sm">No new invitations right now.</p>
+                                <p className="text-sm">No new incoming requests right now.</p>
                             </CardContent>
                         </Card>
                     )}
@@ -511,7 +459,7 @@ export default function RequestsTabContent() {
                                         {/* Bottom Overlays: Title */}
                                         <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="w-10 h-10 border-2 border-white/30 shadow-2xl flex-shrink-0">
+                                                <Avatar className="w-14 h-14 border-2 border-white/30 shadow-2xl flex-shrink-0">
                                                     <AvatarImage src={userProfile?.photo_url || ""} />
                                                     <AvatarFallback className="bg-orange-500 text-white font-black text-sm">
                                                         {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || "U"}

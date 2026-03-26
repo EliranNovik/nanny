@@ -302,7 +302,7 @@ export default function NotificationsPage() {
         newNotifications.forEach((notif: any) => {
           const job = notif.job_requests;
           addToast({
-            title: "New Job Request!",
+            title: "New Incoming Request!",
             description: `${job?.location_city || "Location"} - ${job?.care_type || "Care"} needed`,
             variant: "info",
             duration: 5000,
@@ -635,7 +635,7 @@ export default function NotificationsPage() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Bell className="w-6 h-6 text-primary" />
-              Job Requests
+              Incoming Requests
             </h1>
             <p className="text-muted-foreground">
               {notifications.length === 0

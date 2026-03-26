@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     MapPin, ChevronDown, ChevronUp, Loader2, CheckCircle2,
-    Clock, MessageSquare, Sparkles, UtensilsCrossed,
-    Truck, Baby, HelpCircle
+    Clock, MessageSquare
 } from "lucide-react";
 import JobMap from "@/components/JobMap";
 import JobReviewModal from "@/components/JobReviewModal";
@@ -190,15 +189,6 @@ export default function JobsTabContent() {
         return `Nanny – ${Number(job.children_count) || 0} kid(s)`;
     }
 
-    function getServiceIcon(serviceType?: string) {
-        switch (serviceType) {
-            case 'cleaning': return <Sparkles className="w-4 h-4" />;
-            case 'cooking': return <UtensilsCrossed className="w-4 h-4" />;
-            case 'pickup_delivery': return <Truck className="w-4 h-4" />;
-            case 'nanny': return <Baby className="w-4 h-4" />;
-            default: return <HelpCircle className="w-4 h-4" />;
-        }
-    }
 
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -249,15 +239,8 @@ export default function JobsTabContent() {
                                     <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent z-10" />
                                     
                                     {/* Top Overlays */}
-                                    <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
-                                        <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full h-8 px-3.5 shadow-lg">
-                                            <div className="text-orange-400">
-                                                {getServiceIcon(job.service_type)}
-                                            </div>
-                                            <span className="text-[11px] font-black uppercase tracking-[0.1em] text-white">
-                                                {formatJobTitle(job)}
-                                            </span>
-                                        </div>
+                                    {/* Top Overlays */}
+                                    <div className="absolute top-4 left-4 right-4 flex justify-end items-start z-20">
                                         <Badge className={statusBadge.className}>
                                             {statusBadge.label}
                                         </Badge>
@@ -276,17 +259,20 @@ export default function JobsTabContent() {
                                                 {otherParty?.full_name || "Client"}
                                             </h3>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-3">
                                             {otherParty?.average_rating ? (
-                                                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10">
+                                                <div className="flex items-center gap-1.5 bg-white/70 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/20 shadow-sm">
                                                     <StarRating rating={otherParty.average_rating} size="sm" />
-                                                    <span className="text-[14px] font-black text-white/95">
+                                                    <span className="text-[14px] font-black text-slate-900">
                                                         {otherParty.average_rating.toFixed(1)}
                                                     </span>
                                                 </div>
                                             ) : (
                                                 <span className="text-[14px] font-bold text-white/80 italic drop-shadow-md">New Client</span>
                                             )}
+                                            <span className="text-[12px] font-black text-white/90 uppercase tracking-[0.15em] drop-shadow-md ml-auto">
+                                                {formatJobTitle(job)}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

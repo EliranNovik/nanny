@@ -37,49 +37,36 @@ export function BottomNav() {
     (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications;
 
   const TopHeader = (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-background/80 backdrop-blur-md border-b border-border/50">
-      <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between relative">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border-b border-border/40 transition-all">
+      <div className="max-w-2xl mx-auto px-5 py-2.5 flex items-center justify-between">
         <button
           type="button"
           onClick={() => setProfileMenuOpen(true)}
-          className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors py-1 -my-1 px-1 -mx-1"
+          className="flex items-center gap-3 min-w-0 group"
           aria-label="Open profile menu"
         >
-          <Avatar className="h-8 w-8 flex-shrink-0 border-2 border-background/50">
+          <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
             <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
-            <AvatarFallback className="text-xs">
+            <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
               {(profile?.full_name ?? user?.email ?? "User").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="flex items-center gap-1 min-w-0">
-            <span className="text-sm font-medium text-black dark:text-white truncate">
-              {profile?.full_name ?? user?.email ?? "User"}
+          <div className="flex flex-col text-left min-w-0">
+            <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
+              {profile?.full_name?.split(' ')[0] ?? "User"}
+              <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
             </span>
-            <ChevronDown className="w-4 h-4 flex-shrink-0 text-black/80 dark:text-white/80" />
-          </span>
+            <span className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
+              Account Overview
+            </span>
+          </div>
         </button>
 
-        {/* Center Logo */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex justify-center items-center">
-          <button
-            onClick={() => navigate("/client/create")}
-            className="group transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center p-1"
-            title="Find a helper"
-            aria-label="Find a helper"
-          >
-            <img
-              src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-              alt="Logo"
-              className="w-10 h-10 object-contain rounded-xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-            />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={openReportModal}
-            className="p-2 rounded-full text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/20 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90"
             aria-label="Report"
             title="Report"
           >
@@ -88,14 +75,14 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative p-2 rounded-full text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/20 transition-colors"
+            className="relative p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90"
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
             {notificationBadgeCount > 0 && (
               <Badge
                 variant="destructive"
-                className="absolute -top-0.5 -right-0.5 h-4 min-w-4 flex items-center justify-center px-1 text-[10px] font-bold"
+                className="absolute top-1.5 right-1.5 h-4 min-w-4 flex items-center justify-center px-1 text-[9px] font-black border-2 border-white dark:border-zinc-900"
               >
                 {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
               </Badge>
@@ -226,9 +213,9 @@ export function BottomNav() {
       <>
         {TopHeader}
         <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
-          <div className="max-w-2xl mx-auto px-4 pb-4 pointer-events-auto">
-            <div className="w-full max-w-[400px] sm:max-w-md mx-auto bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-              <div className="flex items-center justify-between w-full px-5 py-2">
+          <div className="max-w-2xl mx-auto px-6 pb-6 pointer-events-auto">
+            <div className="w-full max-w-[380px] mx-auto bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+              <div className="flex items-center justify-between w-full px-4 py-1.5">
                 {/* First two items */}
                 {userNav.slice(0, 2).map((item) => {
                   const Icon = item.icon;
@@ -244,11 +231,11 @@ export function BottomNav() {
                       to={item.path}
                       className={cn(
                         "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
-                        isActive ? "text-orange-600 dark:text-orange-500" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                        isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                       )}
                     >
-                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-2xl transition-all duration-300 relative", isActive ? "bg-orange-50 dark:bg-orange-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
-                        <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7" : "w-7 h-7 group-hover:scale-110")} />
+                      <div className={cn("flex flex-col items-center justify-center w-[44px] h-[44px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                        <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 fill-current" : "w-6 h-6 group-hover:scale-110")} />
                       </div>
 
                       {jobsBadgeCount > 0 && (
@@ -267,10 +254,10 @@ export function BottomNav() {
                 <button
                   type="button"
                   onClick={() => navigate("/client/create")}
-                  className="flex items-center justify-center h-[52px] w-[52px] rounded-full bg-orange-500 text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_12px_24px_rgba(249,115,22,0.4)] transition-all hover:scale-105 active:scale-95 mx-1"
+                  className="flex items-center justify-center h-[48px] w-[48px] rounded-full bg-orange-500 text-white shadow-[0_4px_16px_rgba(249,115,22,0.3)] hover:shadow-[0_8px_20px_rgba(249,115,22,0.4)] transition-all hover:scale-105 active:scale-95 mx-1"
                   aria-label="Create Job"
                 >
-                  <Plus className="w-8 h-8" />
+                  <Plus className="w-7 h-7" />
                 </button>
 
                 {/* Last two items */}
@@ -285,11 +272,11 @@ export function BottomNav() {
                       to={item.path}
                       className={cn(
                         "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
-                        isActive ? "text-orange-600 dark:text-orange-500" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                        isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                       )}
                     >
-                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-2xl transition-all duration-300 relative", isActive ? "bg-orange-50 dark:bg-orange-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
-                        <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7" : "w-7 h-7 group-hover:scale-110")} />
+                      <div className={cn("flex flex-col items-center justify-center w-[44px] h-[44px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                        <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 fill-current" : "w-6 h-6 group-hover:scale-110")} />
                       </div>
 
                       {showMessageBadge && (
