@@ -212,26 +212,26 @@ export default function PastJobDetailsPage() {
                     <Button 
                         variant="ghost" 
                         size="icon"
-                        className="rounded-full bg-white dark:bg-zinc-800 shadow-sm border border-black/5 hover:bg-slate-50 transition-all"
+                        className="rounded-full bg-white/90 shadow-sm border border-black/5 hover:bg-white transition-all"
                         onClick={() => navigate(-1)}
                     >
                         <ArrowLeft className="w-5 h-5 text-slate-600" />
                     </Button>
-                    <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Past Job Details</h1>
+                    <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Past Job Details</h1>
                 </div>
 
                 <div className="space-y-8">
                     {/* Hero Section: Compact Card with Header & Image Overlay */}
-                    <Card className="rounded-3xl border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden bg-white dark:bg-zinc-900">
+                    <Card className="rounded-3xl border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden bg-white/95">
                         {/* HEADER BAR */}
-                        <div className="bg-slate-900 dark:bg-black px-6 py-4 flex items-center justify-between">
+                        <div className="bg-white px-6 py-4 flex items-center justify-between border-b border-black/5">
                             <div className="flex items-center gap-3">
-                                <div className={`p-1.5 rounded-lg bg-white/10 ${statusColor}`}>
+                                <div className={`p-1.5 rounded-lg bg-slate-100 ${statusColor}`}>
                                     {statusIcon}
                                 </div>
                                 <span className={`font-bold text-sm tracking-wide uppercase ${statusColor}`}>{statusLabel}</span>
                             </div>
-                            <Badge variant="outline" className="bg-white/10 border-none text-white font-bold px-3 py-1 scale-110">
+                            <Badge variant="outline" className="bg-slate-50 border border-black/10 text-slate-700 font-bold px-3 py-1 scale-110">
                                 {job.service_type === 'cleaning' && <Sparkles className="w-3.5 h-3.5 mr-2" />}
                                 {job.service_type === 'cooking' && <UtensilsCrossed className="w-3.5 h-3.5 mr-2" />}
                                 {job.service_type === 'pickup_delivery' && <Truck className="w-3.5 h-3.5 mr-2" />}
@@ -243,7 +243,7 @@ export default function PastJobDetailsPage() {
 
                         <CardContent className="p-0">
                             {/* Tall Image/Map with Light Overlay */}
-                            <div className="relative h-96 md:h-[450px] overflow-hidden bg-slate-50 dark:bg-zinc-800">
+                            <div className="relative h-96 md:h-[450px] overflow-hidden bg-slate-50">
                                 <div className="absolute inset-0 z-0">
                                     {isTransport ? (
                                         <JobMap job={job} />
@@ -262,11 +262,11 @@ export default function PastJobDetailsPage() {
                                 </div>
                                 
                                 {/* LIGHT BOTTOM OVERLAY WITH DETAILS */}
-                                <div className="absolute inset-x-4 bottom-4 p-6 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl z-20 rounded-[2.5rem] border border-white/20 shadow-2xl">
+                                <div className="absolute inset-x-4 bottom-4 p-6 bg-white/80 backdrop-blur-xl z-20 rounded-[2.5rem] border border-white/40 shadow-2xl">
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-500/80 uppercase tracking-[0.2em] mb-2">START DATE</span>
-                                            <div className="flex items-center gap-3 text-slate-900 dark:text-white">
+                                            <div className="flex items-center gap-3 text-slate-900">
                                                 <Calendar className="w-5 h-5 text-orange-500" />
                                                 <span className="font-extrabold text-base sm:text-lg">
                                                     {job.confirm_starts_at ? new Date(job.confirm_starts_at).toLocaleDateString() : (job.start_at ? new Date(job.start_at).toLocaleDateString() : 'N/A')}
@@ -275,7 +275,7 @@ export default function PastJobDetailsPage() {
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-500/80 uppercase tracking-[0.2em] mb-2">END DATE</span>
-                                            <div className="flex items-center gap-3 text-slate-900 dark:text-white">
+                                            <div className="flex items-center gap-3 text-slate-900">
                                                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                                                 <span className="font-extrabold text-base sm:text-lg">
                                                     {job.confirm_ends_at ? new Date(job.confirm_ends_at).toLocaleDateString() : (job.start_at ? new Date(job.start_at).toLocaleDateString() : 'N/A')}
@@ -284,14 +284,14 @@ export default function PastJobDetailsPage() {
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-500/80 uppercase tracking-[0.2em] mb-2">CITY</span>
-                                            <div className="flex items-center gap-3 text-slate-900 dark:text-white">
+                                            <div className="flex items-center gap-3 text-slate-900">
                                                 <MapPin className="w-5 h-5 text-orange-500" />
                                                 <span className="font-extrabold text-base sm:text-lg truncate">{job.location_city}</span>
                                             </div>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-500/80 uppercase tracking-[0.2em] mb-2">DURATION</span>
-                                            <div className="flex items-center gap-3 text-slate-900 dark:text-white">
+                                            <div className="flex items-center gap-3 text-slate-900">
                                                 <Hourglass className="w-5 h-5 text-orange-500" />
                                                 <span className="font-extrabold text-base sm:text-lg capitalize">{job.time_duration?.replace(/_ /g, '-') || 'N/A'}</span>
                                             </div>
@@ -304,30 +304,30 @@ export default function PastJobDetailsPage() {
 
                     {/* COLLABORATOR INFO: Separated from hero card */}
                     {otherParty && (
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-black/5">
+                        <div className="bg-white/95 rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-black/5">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                 <div className="flex items-center gap-6">
-                                    <Avatar className="w-20 h-20 border-4 border-slate-50 dark:border-zinc-800 shadow-xl">
+                                    <Avatar className="w-20 h-20 border-4 border-slate-50 shadow-xl">
                                         <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
                                         <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">
                                             {otherParty.full_name?.charAt(0) || 'U'}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0">
-                                        <p className="font-extrabold text-2xl text-slate-900 dark:text-slate-100 truncate tracking-tight">{otherParty.full_name}</p>
+                                        <p className="font-extrabold text-2xl text-slate-900 truncate tracking-tight">{otherParty.full_name}</p>
                                         <div className="flex items-center gap-2 mt-1">
                                             <Star className="w-5 h-5 text-orange-400 fill-orange-400" />
-                                            <span className="font-bold text-lg text-slate-700 dark:text-slate-300">{otherParty.average_rating || 0}</span>
+                                            <span className="font-bold text-lg text-slate-700">{otherParty.average_rating || 0}</span>
                                             <span className="text-sm font-bold text-slate-400">({otherParty.total_ratings || 0})</span>
                                         </div>
-                                        <Badge className="mt-3 bg-slate-100 dark:bg-zinc-800 text-slate-500 font-bold border-none px-4 py-1.5 rounded-xl">
+                                        <Badge className="mt-3 bg-slate-100 text-slate-500 font-bold border-none px-4 py-1.5 rounded-xl">
                                             {job.client_id === user?.id ? 'Your Helper' : 'Your Client'}
                                         </Badge>
                                     </div>
                                 </div>
                                 {otherParty.bio && (
                                     <div className="flex-1 max-w-xl md:ml-12 border-l-4 border-orange-500/20 pl-6 py-2">
-                                        <p className="text-base text-slate-500 dark:text-slate-400 italic leading-relaxed">
+                                        <p className="text-base text-slate-500 italic leading-relaxed">
                                             "{otherParty.bio}"
                                         </p>
                                     </div>
@@ -344,14 +344,14 @@ export default function PastJobDetailsPage() {
                         </div>
 
                         <div className="space-y-6">
-                            <h3 className="font-bold text-lg tracking-tight px-1 text-slate-400">Additional Context</h3>
+                            <h3 className="font-bold text-lg tracking-tight px-1 text-slate-500">Additional Context</h3>
                             {job.service_details?.custom ? (
-                                <div className="p-4 bg-slate-900 dark:bg-black rounded-3xl border border-white/5 shadow-2xl">
-                                    <span className="font-bold text-white/40 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-3 underline decoration-white/10 underline-offset-8">HISTORICAL NOTES</span>
-                                    <span className="text-white/90 text-sm font-medium whitespace-pre-wrap leading-relaxed">{job.service_details.custom}</span>
+                                <div className="p-4 bg-white rounded-3xl border border-black/5 shadow-sm">
+                                    <span className="font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-3 underline decoration-slate-200 underline-offset-8">Historical Notes</span>
+                                    <span className="text-slate-700 text-sm font-medium whitespace-pre-wrap leading-relaxed">{job.service_details.custom}</span>
                                 </div>
                             ) : (
-                                <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-3xl border border-dashed border-black/10 flex items-center justify-center text-slate-400 font-bold text-xs">
+                                <div className="p-6 bg-slate-50 rounded-3xl border border-dashed border-black/10 flex items-center justify-center text-slate-400 font-bold text-xs">
                                     No additional notes for this job.
                                 </div>
                             )}
@@ -362,7 +362,7 @@ export default function PastJobDetailsPage() {
                     <div className="pt-8">
                         {conversationId && (
                             <Button 
-                                className="w-full h-16 rounded-3xl bg-slate-900 hover:bg-black text-white font-bold text-lg shadow-2xl transition-all active:scale-[0.98]"
+                                className="w-full h-16 rounded-3xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
                                 onClick={() => navigate(`/chat/${conversationId}`)}
                             >
                                 <MessageCircle className="w-6 h-6 mr-3" />

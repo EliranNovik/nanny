@@ -21,9 +21,9 @@ export default function UnifiedJobsPage() {
     <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
       <div className="max-w-4xl mx-auto pt-8">
         
-        {/* Pro Segmented Control Tab Switcher - Horizontal Scroll on Mobile */}
-        <div className="flex items-center justify-center mb-10 mt-2">
-          <div className="flex p-1.5 bg-slate-100/80 dark:bg-zinc-800/80 backdrop-blur-md rounded-[24px] border border-black/5 dark:border-white/5 shadow-inner max-w-full overflow-x-auto no-scrollbar">
+        {/* Sticky segmented tabs under header on all screen sizes */}
+        <div className="sticky top-14 z-30 mb-8 mt-1 py-1">
+          <div className="flex p-1.5 bg-background/60 dark:bg-zinc-900/55 backdrop-blur-sm rounded-[24px] border border-primary/15 max-w-full overflow-x-auto no-scrollbar">
             <div className="flex min-w-max gap-1">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -35,11 +35,11 @@ export default function UnifiedJobsPage() {
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 rounded-[18px] text-sm font-bold transition-all duration-300 whitespace-nowrap",
                       isActive
-                        ? "bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm scale-[1.02]"
-                        : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        ? "bg-orange-500 text-white scale-[1.03] shadow-sm"
+                        : "text-slate-500 hover:text-foreground dark:text-slate-300 dark:hover:text-white"
                     )}
                   >
-                    <Icon className={cn("w-4 h-4 transition-colors", isActive ? "text-orange-500" : "text-slate-400")} />
+                    <Icon className={cn("w-4 h-4 transition-colors", isActive ? "text-white" : "text-slate-400 dark:text-slate-400")} />
                     {tab.label}
                   </button>
                 );

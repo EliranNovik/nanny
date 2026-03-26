@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from "@react-google-maps/api";
 import { Loader2 } from "lucide-react";
-import MapFallback from "./MapFallback";
 
 const libraries: ("places")[] = ["places"];
 
@@ -22,8 +21,9 @@ interface JobMapProps {
 }
 
 export default function JobMap({ job, onRouteInfo, onClose }: JobMapProps) {
+    const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
     const { isLoaded, loadError } = useJsApiLoader({
-        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+        googleMapsApiKey: mapsApiKey,
         libraries,
     });
 
@@ -31,36 +31,36 @@ export default function JobMap({ job, onRouteInfo, onClose }: JobMapProps) {
     const [center, setCenter] = useState<{ lat: number; lng: number }>(defaultCenter);
     const [markerPosition, setMarkerPosition] = useState<{ lat: number; lng: number } | null>(null);
     const [loading, setLoading] = useState(false);
-    const [showFallback, setShowFallback] = useState(false);
+    const [mapError, setMapError] = useState<string | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // MutationObserver to detect Google Maps error modals (gm-err-container)
+    // Detect Google Maps auth/runtime errors and show actionable guidance.
     useEffect(() => {
-        if (!containerRef.current) return;
+        if (!containerRef.current || !isLoaded) return;
 
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
                     const hasError = containerRef.current?.querySelector('.gm-err-container');
                     if (hasError) {
-                        console.warn("Google Maps error container detected (Development Mode likely). Triggering fallback.");
-                        setShowFallback(true);
+                        setMapError("Google Maps authorization failed for this domain. Please check API key restrictions and billing.");
                     }
                 }
             }
         });
 
         observer.observe(containerRef.current, { childList: true, subtree: true });
-        
-        // Also check periodically for the "Development purposes only" watermark/modal
-        const checkInterval = setInterval(() => {
-            const hasError = containerRef.current?.querySelector('.gm-err-container');
-            if (hasError) setShowFallback(true);
-        }, 2000);
+
+        // Google invokes this global callback on auth failures.
+        const previousAuthFailure = (window as any).gm_authFailure;
+        (window as any).gm_authFailure = () => {
+            setMapError("Google Maps auth failure. This usually means the deployed domain is not allowed in API key referrers.");
+            if (typeof previousAuthFailure === "function") previousAuthFailure();
+        };
 
         return () => {
             observer.disconnect();
-            clearInterval(checkInterval);
+            (window as any).gm_authFailure = previousAuthFailure;
         };
     }, [isLoaded]);
 
@@ -69,18 +69,7 @@ export default function JobMap({ job, onRouteInfo, onClose }: JobMapProps) {
     const processedJobIdRef = useRef<string | null>(null);
 
     useEffect(() => {
-        // If map fails to load within 10 seconds, offer fallback
-        const timer = setTimeout(() => {
-            if (!isLoaded && !loadError) setShowFallback(true);
-        }, 10000);
-        return () => clearTimeout(timer);
-    }, [isLoaded, loadError]);
-
-    useEffect(() => {
         if (!isLoaded || !job) return;
-        
-        // Hide fallback if map finally loads (and stays clean)
-        // setShowFallback(false); // Removed to prevent flickering if error persists
 
         // Check if we need to process this job
         // We process if we haven't processed ANY job yet, or if the job ID changed
@@ -126,9 +115,8 @@ export default function JobMap({ job, onRouteInfo, onClose }: JobMapProps) {
                         }
                     } else {
                         console.error("Directions request failed due to " + status);
-                        // If directions fail, it's also a good signal for fallback
                         if (status === 'OVER_QUERY_LIMIT' || status === 'REQUEST_DENIED') {
-                            setShowFallback(true);
+                            setMapError("Google Maps request denied. Check Maps API enablement, billing, and HTTP referrer restrictions.");
                         }
                     }
                 });
@@ -148,7 +136,7 @@ export default function JobMap({ job, onRouteInfo, onClose }: JobMapProps) {
                     } else {
                         console.error("Geocode was not successful for the following reason: " + status);
                         if (status === 'OVER_QUERY_LIMIT' || status === 'REQUEST_DENIED') {
-                            setShowFallback(true);
+                            setMapError("Google Geocoding request denied. Check API restrictions and billing.");
                         }
                     }
                 });
@@ -158,7 +146,50 @@ export default function JobMap({ job, onRouteInfo, onClose }: JobMapProps) {
         setupMap();
     }, [isLoaded, job?.id, job?.service_type, job?.location_city]);
 
-    if (loadError || showFallback) return <MapFallback job={job} onRetry={() => setShowFallback(false)} onClose={onClose} />;
+    if (!mapsApiKey) {
+        return (
+            <div className="h-full w-full bg-muted rounded-lg border border-destructive/20 p-4 flex items-center justify-center text-center">
+                <div className="space-y-2">
+                    <p className="text-sm font-semibold text-destructive">Google Maps API key is missing</p>
+                    <p className="text-xs text-muted-foreground">Set `VITE_GOOGLE_MAPS_API_KEY` in the deployed web environment.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (loadError || mapError) {
+        return (
+            <div className="h-full w-full bg-muted rounded-lg border border-destructive/20 p-4 flex items-center justify-center text-center">
+                <div className="space-y-3 max-w-md">
+                    <p className="text-sm font-semibold text-destructive">Google Maps failed to load</p>
+                    <p className="text-xs text-muted-foreground">
+                        {mapError || "Script load failed. Verify the API key, enabled APIs, billing, and allowed HTTP referrers."}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                        Current host: <span className="font-mono">{window.location.host}</span>
+                    </p>
+                    <div className="flex items-center justify-center gap-2">
+                        <button
+                            type="button"
+                            className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground"
+                            onClick={() => window.location.reload()}
+                        >
+                            Retry
+                        </button>
+                        {onClose && (
+                            <button
+                                type="button"
+                                className="text-xs px-3 py-1.5 rounded-md border border-border"
+                                onClick={onClose}
+                            >
+                                Close
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
     if (!isLoaded) return <div className="h-full w-full bg-muted animate-pulse rounded-lg flex items-center justify-center text-muted-foreground flex-col gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <span className="text-xs font-bold uppercase tracking-widest opacity-50">Initializing Map...</span>

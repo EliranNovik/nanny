@@ -6,7 +6,9 @@ import {
   MessageSquare, 
   Briefcase, 
   ChevronLeft, 
+  ChevronRight,
   CheckCircle2,
+  ShieldCheck,
   Clock,
   Star,
   Phone,
@@ -27,6 +29,7 @@ interface PublicProfile {
   photo_url: string | null;
   bio: string | null;
   role: string | null;
+  categories?: string[];
   whatsapp_number?: string | null;
   telegram_username?: string | null;
   average_rating?: number;
@@ -49,6 +52,8 @@ interface SharedJob {
   service_type: string;
   status: string;
   created_at: string;
+  client_id: string;
+  selected_freelancer_id: string | null;
 }
 
 export default function PublicProfilePage() {
@@ -71,7 +76,7 @@ export default function PublicProfilePage() {
         // 1. Fetch Basic Profile
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("id, full_name, photo_url, role, whatsapp_number_e164, telegram_username, average_rating, total_ratings")
+          .select("id, full_name, photo_url, role, categories, whatsapp_number_e164, telegram_username, average_rating, total_ratings")
           .eq("id", userId)
           .single();
 
@@ -90,15 +95,55 @@ export default function PublicProfilePage() {
           whatsapp_number: profileData.whatsapp_number_e164
         });
 
-        // 3. Fetch Shared Jobs
-        const { data: jobsData, error: jobsError } = await supabase
-          .from("job_requests")
-          .select("id, service_type, status, created_at")
-          .or(`and(client_id.eq.${currentUser.id},selected_freelancer_id.eq.${userId}),and(client_id.eq.${userId},selected_freelancer_id.eq.${currentUser.id})`)
-          .order("created_at", { ascending: false });
+        // 3. Fetch Shared Jobs + Pending notifications between these two users
+        const [jobsRes, pendingRes] = await Promise.all([
+          supabase
+            .from("job_requests")
+            .select("id, service_type, status, created_at, client_id, selected_freelancer_id")
+            .or(`and(client_id.eq.${currentUser.id},selected_freelancer_id.eq.${userId}),and(client_id.eq.${userId},selected_freelancer_id.eq.${currentUser.id})`)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("job_candidate_notifications")
+            .select(`
+              job_id, status, created_at, freelancer_id,
+              job_requests (
+                id, service_type, status, created_at, client_id, selected_freelancer_id
+              )
+            `)
+            .in("status", ["pending", "opened"])
+            .in("freelancer_id", [currentUser.id, userId])
+            .order("created_at", { ascending: false })
+        ]);
 
-        if (jobsError) throw jobsError;
-        setSharedJobs(jobsData || []);
+        if (jobsRes.error) throw jobsRes.error;
+        if (pendingRes.error) throw pendingRes.error;
+
+        const shared = jobsRes.data || [];
+        const pendingFromNotifications: SharedJob[] = (pendingRes.data || [])
+          .filter((n: any) => {
+            const jr = n.job_requests;
+            if (!jr) return false;
+
+            // Keep only pending jobs between current user and viewed user
+            const isCurrentAsClient = jr.client_id === currentUser.id && n.freelancer_id === userId;
+            const isViewedAsClient = jr.client_id === userId && n.freelancer_id === currentUser.id;
+            return isCurrentAsClient || isViewedAsClient;
+          })
+          .map((n: any) => ({
+            id: n.job_requests.id,
+            service_type: n.job_requests.service_type,
+            status: "pending",
+            created_at: n.job_requests.created_at || n.created_at,
+            client_id: n.job_requests.client_id,
+            selected_freelancer_id: n.job_requests.selected_freelancer_id || null,
+          }));
+
+        // Merge while avoiding duplicates by job id
+        const mergedMap = new Map<string, SharedJob>();
+        [...shared, ...pendingFromNotifications].forEach((job: SharedJob) => {
+          if (!mergedMap.has(job.id)) mergedMap.set(job.id, job);
+        });
+        setSharedJobs(Array.from(mergedMap.values()));
 
         // 4. Fetch Reviews
         const { data: reviewsData, error: reviewsError } = await supabase
@@ -149,7 +194,16 @@ export default function PublicProfilePage() {
   if (!profile) return null;
 
   const activeJobs = sharedJobs.filter(j => j.status === "confirmed" || j.status === "active");
+  const pendingJobs = sharedJobs.filter(j =>
+    j.status === "pending" ||
+    j.status === "opened" ||
+    j.status === "ready" ||
+    j.status === "notifying" ||
+    j.status === "confirmations_closed"
+  );
   const pastJobs = sharedJobs.filter(j => j.status === "completed" || j.status === "cancelled");
+  const helpedOthersCount = sharedJobs.filter(j => j.selected_freelancer_id === userId).length;
+  const gotHelpedCount = sharedJobs.filter(j => j.client_id === userId).length;
 
   return (
     <div className="min-h-screen gradient-mesh pb-32">
@@ -171,12 +225,17 @@ export default function PublicProfilePage() {
           <div className="lg:col-span-1 space-y-6">
             <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.06)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[32px] overflow-hidden bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl">
               <CardContent className="p-8 flex flex-col items-center text-center">
-                <Avatar className="w-32 h-32 border-4 border-white dark:border-zinc-800 shadow-2xl mb-6">
-                  <AvatarImage src={profile.photo_url || undefined} className="object-cover" />
-                  <AvatarFallback className="text-4xl font-black bg-primary/5 text-primary uppercase">
-                    {profile.full_name?.slice(0, 2) || "??"}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative mb-6">
+                  <Avatar className="w-32 h-32 shadow-2xl ring-2 ring-emerald-500/80 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900">
+                    <AvatarImage src={profile.photo_url || undefined} className="object-cover" />
+                    <AvatarFallback className="text-4xl font-black bg-primary/5 text-primary uppercase">
+                      {profile.full_name?.slice(0, 2) || "??"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md border-2 border-white dark:border-zinc-900">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                </div>
 
                 <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-2">
                   {profile.full_name}
@@ -188,10 +247,22 @@ export default function PublicProfilePage() {
                     totalRatings={profile.total_ratings || 0}
                     size="md"
                   />
-                  <Badge variant="secondary" className="uppercase tracking-widest text-[10px] font-black px-3 py-1">
-                    {profile.role || "Helper"}
-                  </Badge>
                 </div>
+
+                {profile.categories && profile.categories.length > 0 && (
+                  <div className="w-full mb-6">
+                    <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2 text-center">
+                      Job With
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {profile.categories.map((category, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-[10px] font-bold uppercase tracking-tight">
+                          {category.replace(/_/g, " ")}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {profile.bio && (
                   <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-8 italic">
@@ -199,14 +270,20 @@ export default function PublicProfilePage() {
                   </p>
                 )}
 
-                <div className="w-full space-y-3 pt-6 border-t border-slate-100 dark:border-white/5">
-                  <Button className="w-full rounded-2xl h-12 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    SEND MESSAGE
-                  </Button>
-                  
-                  {/* Social Buttons: Round Icons */}
+                <div className="w-full pt-6 border-t border-slate-100 dark:border-white/5">
+                  {/* Contact Buttons: Round Icons */}
                   <div className="flex items-center justify-center gap-4 py-2">
+                    <button
+                      onClick={() => addToast({
+                        title: "Coming soon",
+                        description: "Direct message will be available here soon.",
+                        variant: "default",
+                      })}
+                      className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-110 active:scale-95 transition-all"
+                      title="Send message"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                    </button>
                     {profile.whatsapp_number && (
                       <button 
                         onClick={() => window.open(`https://wa.me/${profile.whatsapp_number}`, '_blank')}
@@ -233,15 +310,12 @@ export default function PublicProfilePage() {
             {/* Quick Stats */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/50 dark:bg-zinc-900/50 p-6 rounded-[24px] border border-black/5 dark:border-white/5">
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Total Jobs</p>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">{sharedJobs.length}</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Helped Others</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{helpedOthersCount}</p>
               </div>
               <div className="bg-white/50 dark:bg-zinc-900/50 p-6 rounded-[24px] border border-black/5 dark:border-white/5">
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Status</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Profile Verified</p>
-                </div>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Got Helped</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{gotHelpedCount}</p>
               </div>
             </div>
           </div>
@@ -259,8 +333,19 @@ export default function PublicProfilePage() {
               </div>
               
               <div className="space-y-4">
-                {activeJobs.length > 0 ? activeJobs.map(job => (
-                  <Card key={job.id} className="group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] transition-all rounded-[24px] overflow-hidden bg-white/80 dark:bg-zinc-900/80">
+                {[...pendingJobs, ...activeJobs].length > 0 ? [...pendingJobs, ...activeJobs].map(job => (
+                  <Card
+                    key={job.id}
+                    onClick={() => {
+                      if (pendingJobs.some((p) => p.id === job.id)) {
+                        navigate("/jobs", { state: { tab: "pending" } });
+                      }
+                    }}
+                    className={cn(
+                      "group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] transition-all rounded-[24px] overflow-hidden bg-white/80 dark:bg-zinc-900/80",
+                      pendingJobs.some((p) => p.id === job.id) && "cursor-pointer"
+                    )}
+                  >
                     <CardContent className="p-6 flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
@@ -270,50 +355,25 @@ export default function PublicProfilePage() {
                           <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors capitalize">
                             {job.service_type?.replace('_', ' ')}
                           </p>
-                          <p className="text-xs text-slate-400 font-medium">Started {new Date(job.created_at).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-none px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
-                        {job.status}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-                )) : (
-                  <div className="p-12 text-center rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/5 bg-slate-100/30 dark:bg-white/2">
-                    <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-400 font-medium">No active jobs with this user</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Active Jobs */}
-            <div>
-              <div className="flex items-center gap-3 mb-6 px-2">
-                <div className="w-10 h-10 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-orange-500" />
-                </div>
-                <h2 className="text-xl font-black tracking-tight uppercase">Active Engagements</h2>
-              </div>
-              
-              <div className="space-y-4">
-                {activeJobs.length > 0 ? activeJobs.map(job => (
-                  <Card key={job.id} className="group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] transition-all rounded-[24px] overflow-hidden bg-white/80 dark:bg-zinc-900/80">
-                    <CardContent className="p-6 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                          <Briefcase className="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors capitalize">
-                            {job.service_type?.replace('_', ' ')}
+                          <p className="text-xs text-slate-400 font-medium">
+                            {pendingJobs.some((p) => p.id === job.id)
+                              ? `Requested on ${new Date(job.created_at).toLocaleDateString()}`
+                              : `Started ${new Date(job.created_at).toLocaleDateString()}`}
                           </p>
-                          <p className="text-xs text-slate-400 font-medium">Started {new Date(job.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <Badge className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-none px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
-                        {job.status}
-                      </Badge>
+                      {pendingJobs.some((p) => p.id === job.id) ? (
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-none px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
+                            Waiting for confirmation
+                          </Badge>
+                          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
+                        </div>
+                      ) : (
+                        <Badge className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-none px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
+                          {job.status}
+                        </Badge>
+                      )}
                     </CardContent>
                   </Card>
                 )) : (
@@ -331,12 +391,18 @@ export default function PublicProfilePage() {
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                 </div>
-                <h2 className="text-xl font-black tracking-tight uppercase">Job History</h2>
+                <h2 className="text-xl font-black tracking-tight">
+                  {`${profile.full_name || "This user"}, helped you in ...`}
+                </h2>
               </div>
 
               <div className="space-y-4">
                 {pastJobs.length > 0 ? pastJobs.map(job => (
-                  <Card key={job.id} className="group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] rounded-[24px] overflow-hidden bg-white/80 dark:bg-zinc-900/80">
+                  <Card
+                    key={job.id}
+                    onClick={() => navigate(`/jobs/${job.id}/details`)}
+                    className="group cursor-pointer border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] rounded-[24px] overflow-hidden bg-white/80 dark:bg-zinc-900/80"
+                  >
                     <CardContent className="p-6 flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
@@ -349,10 +415,11 @@ export default function PublicProfilePage() {
                           <p className="text-xs text-slate-400 font-medium">Completed on {new Date(job.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 border-emerald-200 bg-emerald-50">
                           {job.status}
                         </Badge>
+                        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
                       </div>
                     </CardContent>
                   </Card>
