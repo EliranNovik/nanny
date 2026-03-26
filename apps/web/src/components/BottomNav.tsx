@@ -15,6 +15,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { UserSearch } from "./UserSearch";
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
@@ -56,11 +57,13 @@ export function BottomNav() {
               {profile?.full_name?.split(' ')[0] ?? "User"}
               <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
             </span>
-            <span className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
-              Account Overview
-            </span>
           </div>
         </button>
+
+        {/* Global User Search */}
+        <div className="flex-1 max-w-[180px] sm:max-w-xs mx-2 sm:mx-4">
+          <UserSearch />
+        </div>
 
         <div className="flex items-center gap-2">
           <button
@@ -182,13 +185,11 @@ export function BottomNav() {
       <>
         {TopHeader}
         {ProfileMenuModal}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
-          <div className="max-w-2xl mx-auto px-4 pb-4 pointer-events-auto">
-            <div className="w-full max-w-xs mx-auto bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-              <div className="flex items-center justify-center min-w-max px-4 py-2">
-                <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
-                  <Home className="w-6 h-6" />
-                </div>
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
+            <div className="flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
+              <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
+                <Home className="w-7 h-7" />
               </div>
             </div>
           </div>
@@ -212,86 +213,103 @@ export function BottomNav() {
     return (
       <>
         {TopHeader}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
-          <div className="max-w-2xl mx-auto px-6 pb-6 pointer-events-auto">
-            <div className="w-full max-w-[380px] mx-auto bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-              <div className="flex items-center justify-between w-full px-4 py-1.5">
-                {/* First two items */}
-                {userNav.slice(0, 2).map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname.startsWith(item.path);
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="w-full md:max-w-md md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
+            <div className="flex items-center justify-between w-full max-w-2xl mx-auto px-6 py-2">
+              {/* First two items */}
+              {userNav.slice(0, 2).map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname.startsWith(item.path);
 
-                  const jobsBadgeCount = item.path === "/jobs"
-                    ? (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications
-                    : 0;
+                const jobsBadgeCount = item.path === "/jobs"
+                  ? (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications
+                  : 0;
 
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
-                        isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
-                      )}
-                    >
-                      <div className={cn("flex flex-col items-center justify-center w-[44px] h-[44px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
-                        <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 fill-current" : "w-6 h-6 group-hover:scale-110")} />
-                      </div>
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
+                      isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                    )}
+                  >
+                    <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                      <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
+                    </div>
 
-                      {jobsBadgeCount > 0 && (
-                        <Badge
-                          variant="destructive"
-                          className="absolute top-1 right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[9px] font-bold border-2 border-white dark:border-zinc-900 shadow-sm"
-                        >
-                          {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
-                        </Badge>
-                      )}
-                    </Link>
-                  );
-                })}
+                    {/* Tooltip Label */}
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
+                      <span className="uppercase tracking-widest">{item.label}</span>
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
+                    </div>
 
-                {/* Center Plus Button */}
-                <button
-                  type="button"
-                  onClick={() => navigate("/client/create")}
-                  className="flex items-center justify-center h-[48px] w-[48px] rounded-full bg-orange-500 text-white shadow-[0_4px_16px_rgba(249,115,22,0.3)] hover:shadow-[0_8px_20px_rgba(249,115,22,0.4)] transition-all hover:scale-105 active:scale-95 mx-1"
-                  aria-label="Create Job"
-                >
-                  <Plus className="w-7 h-7" />
-                </button>
+                    {jobsBadgeCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute top-1 right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[9px] font-bold border-2 border-white dark:border-zinc-900 shadow-sm"
+                      >
+                        {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
+                      </Badge>
+                    )}
+                  </Link>
+                );
+              })}
 
-                {/* Last two items */}
-                {userNav.slice(2).map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname.startsWith(item.path);
-                  const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
+              {/* Center Plus Button */}
+              <button
+                type="button"
+                onClick={() => navigate("/client/create")}
+                className="flex items-center justify-center h-[52px] w-[52px] rounded-full bg-orange-500 text-white shadow-[0_4px_16px_rgba(249,115,22,0.3)] hover:shadow-[0_8px_20px_rgba(249,115,22,0.4)] transition-all hover:scale-105 active:scale-95 mx-2 -mt-2 group/plus"
+                aria-label="Create Job"
+              >
+                <Plus className="w-8 h-8" />
+                {/* Tooltip Label for Plus */}
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-orange-600 border border-white/20 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover/plus:opacity-100 group-hover/plus:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
+                  <span className="uppercase tracking-widest whitespace-nowrap">Create Job</span>
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-orange-600" />
+                </div>
+              </button>
 
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
-                        isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
-                      )}
-                    >
-                      <div className={cn("flex flex-col items-center justify-center w-[44px] h-[44px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
-                        <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 fill-current" : "w-6 h-6 group-hover:scale-110")} />
-                      </div>
+              {/* Last two items */}
+              {userNav.slice(2).map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname.startsWith(item.path);
+                const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
 
-                      {showMessageBadge && (
-                        <Badge
-                          variant="destructive"
-                          className="absolute top-1 right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[9px] font-bold border-2 border-white dark:border-zinc-900 shadow-sm"
-                        >
-                          {unreadMessages > 9 ? "9+" : unreadMessages}
-                        </Badge>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
+                      isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                    )}
+                  >
+                    <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                      <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
+                    </div>
+
+                    {/* Tooltip Label */}
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
+                      <span className="uppercase tracking-widest">{item.label}</span>
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
+                    </div>
+
+                    {showMessageBadge && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute top-1 right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[9px] font-bold border-2 border-white dark:border-zinc-900 shadow-sm"
+                      >
+                        {unreadMessages > 9 ? "9+" : unreadMessages}
+                      </Badge>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
+            {/* Safe area padding */}
+            <div className="h-[env(safe-area-inset-bottom,0px)] w-full" />
           </div>
         </nav>
         {ProfileMenuModal}
@@ -305,13 +323,11 @@ export function BottomNav() {
     return (
       <>
         {TopHeader}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
-          <div className="max-w-2xl mx-auto px-4 pb-4 pointer-events-auto">
-            <div className="w-full max-w-xs mx-auto bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-              <div className="flex items-center justify-center min-w-max px-4 py-2">
-                <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
-                  <Home className="w-6 h-6" />
-                </div>
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
+            <div className="max-w-2xl mx-auto flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
+              <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
+                <Home className="w-7 h-7" />
               </div>
             </div>
           </div>

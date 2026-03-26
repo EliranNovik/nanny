@@ -27,6 +27,7 @@ import CalendarPage from "@/pages/CalendarPage";
 import AdminPage from "@/pages/admin/AdminPage";
 import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
+import PublicProfilePage from "@/pages/PublicProfilePage";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -180,6 +181,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute>
+              <PublicProfilePage />
             </ProtectedRoute>
           }
         />
