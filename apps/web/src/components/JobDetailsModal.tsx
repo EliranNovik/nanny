@@ -4,10 +4,9 @@ import {
     DialogContent,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-    MapPin, Clock, Hourglass, Users, X,
+    MapPin, Clock, Hourglass, X,
     Sparkles, UtensilsCrossed, Baby, HelpCircle, AlignLeft,
     Calendar, Briefcase, RefreshCw, Globe, CheckCircle2, Loader2
 } from "lucide-react";
@@ -96,86 +95,87 @@ export function JobDetailsModal({
                     <DialogTitle>{formatJobTitle(job)} Details</DialogTitle>
                 </VisuallyHidden>
 
-                {/* Hero Section with Image - Zero Margin Top */}
-                <div className="relative w-full h-[22rem] sm:h-[28rem] overflow-hidden bg-zinc-950">
+                {/* Hero — slimmer image strip + restrained badges */}
+                <div className="relative h-[13rem] w-full shrink-0 overflow-hidden bg-zinc-950 sm:h-[15rem]">
                     <img
                         src={getServiceImage(job.service_type)}
                         alt={formatJobTitle(job)}
-                        className="w-full h-full object-cover select-none opacity-90"
+                        className="h-full w-full object-cover select-none"
                     />
-                    {/* Refined Modern Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-black/75" />
 
-                    {/* Close Button - Precision Position */}
                     <button
+                        type="button"
                         onClick={() => onOpenChange(false)}
-                        className="absolute top-6 right-6 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white transition-all border border-white/20 active:scale-95 shadow-2xl"
+                        className="absolute right-3 top-3 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-black/50 active:scale-95"
+                        aria-label="Close"
                     >
-                        <X className="w-6 h-6" />
+                        <X className="h-5 w-5" />
                     </button>
 
-                    {/* Top Left Badges */}
-                    <div className="absolute top-6 left-6 z-40 flex flex-col items-start gap-2">
-                        <Badge className="bg-orange-500/95 backdrop-blur-md text-white border-none px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] shadow-xl rounded-full flex items-center gap-2">
-                            {getServiceIcon(job.service_type)}
-                            {formatJobTitle(job)}
-                        </Badge>
+                    {/* Service category — subtle chip, top-left */}
+                    <div className="absolute left-3 top-3 z-40 max-w-[70%]">
+                        <div className="inline-flex items-center gap-1.5 rounded-md border border-white/25 bg-black/35 px-2.5 py-1.5 text-white shadow-sm backdrop-blur-md">
+                            <span className="text-white/90 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                                {getServiceIcon(job.service_type)}
+                            </span>
+                            <span className="text-[11px] font-semibold uppercase tracking-wide">
+                                {formatJobTitle(job)}
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Centered Bottom Badges for own requests */}
-                    {isOwnRequest && (
-                        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-700">
-                            <Badge className="bg-emerald-500/95 backdrop-blur-md text-white border-none px-3 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xl rounded-full flex items-center gap-1.5 ring-1 ring-emerald-400/30">
-                                My Request
-                            </Badge>
-                            <Badge className="bg-zinc-900/80 backdrop-blur-md text-orange-400 border-none px-3 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xl rounded-full flex items-center gap-1.5 ring-1 ring-white/10">
-                                <Clock className="w-3.5 h-3.5 animate-pulse" />
-                                <LiveTimer createdAt={job.created_at} />
-                            </Badge>
-                        </div>
-                    )}
-
-                    {/* Unified Identity & Temporal Unit */}
-                    {client && (
-                        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-40 p-5 rounded-[2.5rem] bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-1000">
-                            {/* Pinned Real-time Timer - only shown if not own request (to avoid redundancy) */}
-                            {!isOwnRequest && (
-                                <div className="absolute top-5 right-7 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity duration-300">
-                                    <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
-                                    <span className="text-white text-[9px] font-black uppercase tracking-wider tabular-nums [text-shadow:_0_1px_2px_rgba(0,0,0,0.8)]">
-                                        <LiveTimer createdAt={job.created_at} />
-                                    </span>
+                    {/* Bottom stack: own-request meta + client (gradient dock) */}
+                    <div className="absolute inset-x-0 bottom-0 z-40 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-3 pb-3 pt-10 sm:px-4 sm:pb-3.5 sm:pt-12">
+                        {isOwnRequest && (
+                            <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                                <span className="text-[10px] font-medium uppercase tracking-wider text-white/75">
+                                    Your listing
+                                </span>
+                                <div className="flex items-center gap-1.5 rounded border border-white/15 bg-black/45 px-2 py-1 font-mono text-[11px] tabular-nums text-white/95 backdrop-blur-sm">
+                                    <Clock className="h-3 w-3 shrink-0 text-white/60" aria-hidden />
+                                    <LiveTimer createdAt={job.created_at} />
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            <div className="flex items-center gap-4">
-                                <div className="relative shrink-0">
-                                    <Avatar className="w-14 h-14 shadow-2xl">
+                        {client && (
+                            <div className="rounded-xl border border-white/15 bg-black/30 p-3 backdrop-blur-md sm:p-3.5">
+                                {!isOwnRequest && (
+                                    <div className="mb-2 flex items-center justify-end gap-1.5 border-b border-white/10 pb-2">
+                                        <Clock className="h-3.5 w-3.5 text-white/50" aria-hidden />
+                                        <span className="font-mono text-[10px] tabular-nums text-white/80">
+                                            <LiveTimer createdAt={job.created_at} />
+                                        </span>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-12 w-12 shrink-0 shadow-lg ring-2 ring-white/10 sm:h-14 sm:w-14">
                                         <AvatarImage src={client.photo_url || ''} className="object-cover" />
-                                        <AvatarFallback className="bg-zinc-800 text-white font-black text-xl">
+                                        <AvatarFallback className="bg-zinc-800 text-lg font-bold text-white">
                                             {client.full_name?.charAt(0)}
                                         </AvatarFallback>
                                     </Avatar>
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-xl font-black text-white tracking-tighter leading-none mb-1 shadow-sm truncate">
-                                        {client.full_name}
-                                    </span>
-                                    <div className="flex items-center gap-3">
-                                        <StarRating
-                                            rating={client.average_rating || 0}
-                                            size="sm"
-                                            numberClassName="text-white/50"
-                                        />
-                                        <div className="flex items-center gap-1.5 text-white/50 font-black text-[8px] uppercase tracking-[0.1em]">
-                                            <Users className="w-3 h-3" />
-                                            <span>{client.total_ratings || 0} Reviews</span>
+                                    <div className="flex min-w-0 flex-1 flex-col">
+                                        <span className="truncate text-base font-bold leading-tight text-white drop-shadow-sm sm:text-lg">
+                                            {client.full_name}
+                                        </span>
+                                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                                            <StarRating
+                                                rating={client.average_rating || 0}
+                                                size="sm"
+                                                numberClassName="text-white/70"
+                                            />
+                                            <span className="text-[9px] font-semibold uppercase tracking-wide text-white/45">
+                                                {client.total_ratings || 0} reviews
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 <div className="p-8 space-y-8 overflow-y-auto flex-1 min-h-0 sm:max-h-[60vh] custom-scrollbar">

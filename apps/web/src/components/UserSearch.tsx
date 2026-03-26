@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { Search, X, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,7 +12,13 @@ interface SearchResult {
   role: string | null;
 }
 
-export function UserSearch() {
+interface UserSearchProps {
+  className?: string;
+  /** Minimal underline-style field (e.g. mobile header next to icon) — no filled rounded box */
+  variant?: "default" | "inline";
+}
+
+export function UserSearch({ className, variant = "default" }: UserSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,10 +61,17 @@ export function UserSearch() {
     return () => clearTimeout(debounce);
   }, [query]);
 
+  const isInline = variant === "inline";
+
   return (
-    <div ref={searchRef} className="relative w-full max-w-[200px] sm:max-w-xs group">
+    <div ref={searchRef} className={cn("group relative w-full max-w-[200px] sm:max-w-xs", className)}>
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+        <Search
+          className={cn(
+            "absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary",
+            isInline && "left-0 w-[18px] h-[18px] text-slate-500 dark:text-slate-400"
+          )}
+        />
         <input
           type="text"
           value={query}
@@ -66,24 +80,41 @@ export function UserSearch() {
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder={window.innerWidth < 400 ? "Search..." : "Search helpers..."}
-          className="w-full h-10 pl-10 pr-10 bg-black/5 dark:bg-white/5 border-none rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400"
+          placeholder="Search helpers..."
+          autoComplete="off"
+          className={cn(
+            "w-full text-sm transition-all placeholder:text-slate-400",
+            isInline
+              ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-7 pr-8 text-slate-900 shadow-none focus-visible:outline-none focus-visible:ring-0 focus:border-primary dark:border-white/35 dark:text-white dark:focus:border-primary"
+              : "h-10 rounded-2xl border-none bg-black/5 pl-10 pr-10 focus:ring-2 focus:ring-primary/20 dark:bg-white/5"
+          )}
         />
         {query && (
           <button
+            type="button"
             onClick={() => {
               setQuery("");
               setResults([]);
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors"
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 p-0.5 transition-colors",
+              isInline ? "right-0 hover:opacity-70" : "right-3 hover:bg-black/10 dark:hover:bg-white/10 rounded-full"
+            )}
           >
-            <X className="w-3.5 h-3.5 text-slate-400" />
+            <X className="h-3.5 w-3.5 text-slate-400" />
           </button>
         )}
       </div>
 
-      {isOpen && (query.length > 0) && (
-        <div className="absolute top-full mt-3 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+      {isOpen && query.length > 0 && (
+        <div
+          className={cn(
+            "absolute left-0 right-0 top-full z-[100] mt-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
+            isInline
+              ? "rounded-xl border border-slate-200/50 bg-white/90 shadow-md backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/90"
+              : "rounded-2xl border border-slate-200/50 bg-white/95 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+          )}
+        >
           <div className="p-2 space-y-1">
             {loading ? (
               <div className="flex items-center justify-center py-8">

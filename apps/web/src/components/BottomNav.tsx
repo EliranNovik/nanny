@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useReportIssue } from "@/context/ReportIssueContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useConfirmationCounts } from "@/hooks/useConfirmationCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
-import { Home, MessageCircle, User, Bell, Briefcase, AlertCircle, Plus, ChevronDown, LogOut, Pencil } from "lucide-react";
+import { Home, MessageCircle, User, Bell, Briefcase, Plus, ChevronDown, LogOut, Pencil, Search, X, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,21 +12,52 @@ import { NotificationsModal } from "@/components/NotificationsModal";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { UserSearch } from "./UserSearch";
+import { JobsTabBar } from "@/components/jobs/JobsTabBar";
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { openReportModal } = useReportIssue();
   const { unreadNotifications, unreadMessages } = useUnreadCounts();
   const { totalConfirmations } = useConfirmationCounts();
   const { scheduleChanges } = useScheduleChanges();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const mobileSearchClusterRef = useRef<HTMLDivElement>(null);
   const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : profile?.role === "client" ? "/client/profile" : "/dashboard";
+
+  const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
+  const isProfileHub =
+    pathnameNorm === "/client/profile" || pathnameNorm === "/freelancer/profile";
+  const isProfileSubpage = /^\/(client|freelancer)\/profile\/.+/.test(pathnameNorm);
+  const profileBackTarget =
+    isProfileHub
+      ? pathnameNorm.startsWith("/freelancer")
+        ? "/freelancer/dashboard"
+        : "/dashboard"
+      : isProfileSubpage
+        ? pathnameNorm.startsWith("/freelancer")
+          ? "/freelancer/profile"
+          : "/client/profile"
+        : null;
+  const showProfileBack = profileBackTarget !== null;
+  const isJobsPage = pathnameNorm === "/jobs";
+
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+    const close = (e: MouseEvent) => {
+      if (mobileSearchClusterRef.current && !mobileSearchClusterRef.current.contains(e.target as Node)) {
+        setMobileSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [mobileSearchOpen]);
 
   // Nothing on landing page, chat pages, or messages page
   if (location.pathname === "/" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/messages")) {
@@ -37,44 +67,49 @@ export function BottomNav() {
   const notificationBadgeCount =
     (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications;
 
-  const TopHeader = (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border-b border-border/40 transition-all">
-      <div className="max-w-2xl mx-auto px-5 py-2.5 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setProfileMenuOpen(true)}
-          className="flex items-center gap-3 min-w-0 group"
-          aria-label="Open profile menu"
-        >
-          <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
-            <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
-            <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
-              {(profile?.full_name ?? user?.email ?? "User").slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col text-left min-w-0">
-            <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
-              {profile?.full_name?.split(' ')[0] ?? "User"}
-              <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
-            </span>
-          </div>
-        </button>
-
-        {/* Global User Search */}
-        <div className="flex-1 max-w-[180px] sm:max-w-xs mx-2 sm:mx-4">
-          <UserSearch />
-        </div>
-
-        <div className="flex items-center gap-2">
+  /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
+  const DesktopHeader = (
+    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border-b border-border/40 transition-all">
+      <div className="max-w-2xl mx-auto px-5 py-2.5 flex items-center justify-between gap-2">
+        {showProfileBack ? (
           <button
             type="button"
-            onClick={openReportModal}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90"
-            aria-label="Report"
-            title="Report"
+            onClick={() => navigate(profileBackTarget!)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
+            aria-label="Back"
           >
-            <AlertCircle className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setProfileMenuOpen(true)}
+            className="flex items-center gap-3 min-w-0 group"
+            aria-label="Open profile menu"
+          >
+            <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
+              <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+              <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
+                {(profile?.full_name ?? user?.email ?? "User").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col text-left min-w-0">
+              <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
+                {profile?.full_name?.split(' ')[0] ?? "User"}
+                <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
+              </span>
+            </div>
+          </button>
+        )}
+
+        <div className="flex flex-1 items-center gap-2 min-w-0 mx-2 sm:mx-4">
+          <div className="min-w-0 flex-1 max-w-[180px] sm:max-w-xs">
+            <UserSearch />
+          </div>
+          {isJobsPage && <JobsTabBar />}
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
@@ -96,9 +131,97 @@ export function BottomNav() {
     </header>
   );
 
+  /** Mobile only: floating row — search + notifications (top-right). When search is open, spans width and hides bell. */
+  const MobileFloatingActions = (
+    <div
+      className={cn(
+        "md:hidden fixed z-[60] pointer-events-none",
+        mobileSearchOpen
+          ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
+          : "right-[max(0.75rem,env(safe-area-inset-right))]"
+      )}
+      style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
+    >
+      <div
+        ref={mobileSearchClusterRef}
+        className={cn(
+          "pointer-events-auto flex flex-row flex-nowrap items-center gap-2",
+          mobileSearchOpen ? "w-full justify-end" : "max-w-[calc(100vw-1rem)] justify-end"
+        )}
+      >
+        {mobileSearchOpen && (
+          <div className="min-w-0 flex-1 shrink animate-in fade-in slide-in-from-right-2 duration-200">
+            <UserSearch variant="inline" className="max-w-none w-full" />
+          </div>
+        )}
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen((v) => !v)}
+            className="rounded-full bg-white/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-white active:scale-95 dark:border dark:border-border/60 dark:bg-zinc-900/90 dark:text-slate-300 dark:hover:bg-zinc-800"
+            aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
+            aria-expanded={mobileSearchOpen}
+          >
+            {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+          </button>
+        </div>
+        {!mobileSearchOpen && (
+          <button
+            type="button"
+            onClick={() => setNotificationsOpen(true)}
+            className="relative shrink-0 rounded-full border border-border/60 bg-white/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-white active:scale-95 dark:bg-zinc-900/90 dark:text-slate-300 dark:hover:bg-zinc-800"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {notificationBadgeCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -right-0.5 -top-0.5 h-4 min-w-4 border-2 border-white px-1 text-[9px] font-black dark:border-zinc-900"
+              >
+                {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
+              </Badge>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  /** Mobile: fixed back (left), same vertical band as search + bell (right) */
+  const MobileProfileBack =
+    showProfileBack && !mobileSearchOpen ? (
+      <div
+        className="md:hidden fixed z-[60] pointer-events-none"
+        style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
+      >
+        <button
+          type="button"
+          onClick={() => navigate(profileBackTarget!)}
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-border/60 shadow-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-zinc-800 transition-all active:scale-95"
+          aria-label="Back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+      </div>
+    ) : null;
+
+  /** Mobile jobs: tab pill top-left (search + bell stay top-right) */
+  const MobileJobsTabLeft =
+    isJobsPage && !showProfileBack && !mobileSearchOpen ? (
+      <div
+        className="md:hidden fixed z-[60] pointer-events-none"
+        style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
+      >
+        <div className="pointer-events-auto">
+          <JobsTabBar menuAlign="left" />
+        </div>
+      </div>
+    ) : null;
+
   const ProfileMenuModal = (
     <Dialog open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
       <DialogContent className="max-w-xs p-4 gap-3 rounded-xl left-4 right-4 top-14 translate-x-0 translate-y-0 w-[calc(100%-2rem)] max-w-sm data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2">
+        <DialogTitle className="sr-only">Account menu</DialogTitle>
         <div className="flex flex-col gap-1">
           <Button
             variant="ghost"
@@ -141,7 +264,9 @@ export function BottomNav() {
   if (location.pathname === "/login") {
     return (
       <>
-        {TopHeader}
+        {DesktopHeader}
+        {MobileProfileBack}
+        {MobileJobsTabLeft}
         {ProfileMenuModal}
         <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       </>
@@ -183,7 +308,10 @@ export function BottomNav() {
   if (location.pathname === "/onboarding" && !profile) {
     return (
       <>
-        {TopHeader}
+        {DesktopHeader}
+        {MobileProfileBack}
+        {MobileJobsTabLeft}
+        {MobileFloatingActions}
         {ProfileMenuModal}
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
@@ -203,16 +331,20 @@ export function BottomNav() {
   if ((profile && !profile.is_admin) || (!profile && (location.pathname.startsWith("/client") || location.pathname.startsWith("/freelancer")))) {
     const isFreelancer = profile?.role === "freelancer";
 
+    const profileTabPath = isFreelancer ? "/freelancer/profile" : "/client/profile";
     const userNav = [
       { path: isFreelancer ? "/freelancer/dashboard" : "/dashboard", icon: Home, label: isFreelancer ? "Home" : "Dashboard" },
       { path: "/jobs", icon: Briefcase, label: "Jobs" },
       { path: "/messages", icon: MessageCircle, label: "Messages" },
-      { path: isFreelancer ? "/freelancer/profile" : "/client/profile", icon: User, label: "Profile" },
+      { path: profileTabPath, icon: User, label: "Profile" },
     ];
 
     return (
       <>
-        {TopHeader}
+        {DesktopHeader}
+        {MobileProfileBack}
+        {MobileJobsTabLeft}
+        {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="w-full md:max-w-md md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
             <div className="flex items-center justify-between w-full max-w-2xl mx-auto px-6 py-2">
@@ -271,8 +403,8 @@ export function BottomNav() {
                 </div>
               </button>
 
-              {/* Last two items */}
-              {userNav.slice(2).map((item) => {
+              {/* Messages: mobile + desktop */}
+              {userNav.slice(2, 3).map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname.startsWith(item.path);
                 const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
@@ -290,7 +422,6 @@ export function BottomNav() {
                       <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
                     </div>
 
-                    {/* Tooltip Label */}
                     <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
                       <span className="uppercase tracking-widest">{item.label}</span>
                       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
@@ -307,6 +438,53 @@ export function BottomNav() {
                   </Link>
                 );
               })}
+
+              {/* Profile: mobile = avatar opens menu; desktop = user icon link */}
+              {(() => {
+                const isActive = location.pathname.startsWith(profileTabPath);
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setProfileMenuOpen(true)}
+                      className={cn(
+                        "md:hidden flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
+                        isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      )}
+                      aria-label="Open profile menu"
+                    >
+                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative overflow-hidden", isActive ? "bg-blue-50 dark:bg-blue-500/10 ring-2 ring-blue-500/30" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                        <Avatar className="h-9 w-9 border border-black/10">
+                          <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+                          <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
+                            {(profile?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
+                        <span className="uppercase tracking-widest">Profile</span>
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
+                      </div>
+                    </button>
+
+                    <Link
+                      to={profileTabPath}
+                      className={cn(
+                        "hidden md:flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
+                        isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      )}
+                    >
+                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                        <User className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
+                      </div>
+                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
+                        <span className="uppercase tracking-widest">Profile</span>
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
+                      </div>
+                    </Link>
+                  </>
+                );
+              })()}
             </div>
             {/* Safe area padding */}
             <div className="h-[env(safe-area-inset-bottom,0px)] w-full" />
@@ -322,7 +500,10 @@ export function BottomNav() {
   if (user) {
     return (
       <>
-        {TopHeader}
+        {DesktopHeader}
+        {MobileProfileBack}
+        {MobileJobsTabLeft}
+        {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
             <div className="max-w-2xl mx-auto flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">

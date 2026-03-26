@@ -218,7 +218,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
 
     return (
         <>
-            <div className="space-y-6 mt-2">
+            <div className="space-y-10">
                 {reviewJob && (
                     <JobReviewModal
                         open={!!reviewJob}
@@ -235,12 +235,12 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
 
                 {/* LIVE JOBS SECTION */}
                 {activeTab === 'jobs' && (
-                    <div className="space-y-10">
+                    <div className="space-y-14">
                         <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
                             <Briefcase className="w-6 h-6 text-orange-500" /> Active Jobs
                         </h2>
                         {activeJobs.length > 0 ? (
-                            <div className="flex flex-col md:space-y-10 gap-10 md:gap-0">
+                            <div className="flex flex-col gap-14 md:gap-0 md:space-y-14">
                                 {activeJobs.map(job => {
                                     const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
                                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;
@@ -259,7 +259,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                 activeId && activeId !== `card-${job.id}` ? "opacity-100" : "opacity-0"
                                             )} />
                                             <div 
-                                                className="relative w-full h-56 overflow-hidden group/img cursor-pointer"
+                                                className="relative h-36 w-full overflow-hidden group/img cursor-pointer sm:h-40"
                                                 onClick={() => job.service_type === 'pickup_delivery' ? setSelectedMapJob(job) : setSelectedJobDetails(job)}
                                             >
                                                 {job.service_type === 'pickup_delivery' ? (
@@ -270,7 +270,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                 <div className="absolute inset-0 bg-black/40 z-10" />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                                 <div className="absolute top-4 right-4 z-20"><Badge className={statusBadge.className}>{statusBadge.label}</Badge></div>
-                                                <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
+                                                <div className="absolute bottom-3 left-6 right-6 flex flex-col gap-2 z-20">
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="w-16 h-16 border-2 border-white/30 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
                                                             <AvatarImage src={otherParty?.photo_url || ""} />
@@ -304,14 +304,6 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                         <div className="flex items-center gap-1.5"><span className="opacity-60 font-medium">Confirmed since</span><span className="text-slate-600 dark:text-slate-400">{new Date(job.created_at).toLocaleDateString()}</span></div>
                                                     </div>
                                                 </div>
-                                                {job.service_details?.custom && (
-                                                    <div className="pt-6 border-t border-slate-100 dark:border-white/5">
-                                                        <div className="bg-slate-50 dark:bg-white/5 rounded-[24px] px-6 py-5 border border-slate-100 dark:border-white/5 flex flex-col gap-3">
-                                                            <div className="font-black text-slate-400 dark:text-slate-500 text-[13px] uppercase tracking-[0.15em] flex items-center gap-2 opacity-80"><MessageSquare className="w-4 h-4" /> Note</div>
-                                                            <p className="text-[17px] text-slate-700 dark:text-slate-200 font-medium leading-relaxed italic">"{job.service_details.custom}"</p>
-                                                        </div>
-                                                    </div>
-                                                )}
                                                 <div className="flex gap-4 mt-auto pt-6 border-t border-slate-100 dark:border-white/5">
                                                     <Button variant="outline" className="flex-1 h-12 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 rounded-[18px] text-[16px] font-bold transition-all active:scale-[0.96]" onClick={(e) => { e.stopPropagation(); conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`); }}><MessageSquare className="w-4 h-4 mr-2" /> Message</Button>
                                                     <Button className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white rounded-[18px] text-[16px] font-bold shadow-[0_8px_20px_rgba(22,163,74,0.25)] transition-all active:scale-[0.96]" onClick={(e) => {
@@ -339,12 +331,12 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
 
                 {/* PAST JOBS SECTION */}
                 {activeTab === 'past' && (
-                    <div className="space-y-10">
+                    <div className="space-y-14">
                         <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
                             <CheckCircle2 className="w-6 h-6 text-orange-500" /> Past Jobs
                         </h2>
                         {pastJobs.length > 0 ? (
-                            <div className="space-y-10">
+                            <div className="space-y-14">
                                 {pastJobs.map(job => {
                                     const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
                                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;

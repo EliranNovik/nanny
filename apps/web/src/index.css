@@ -55,16 +55,35 @@
   }
 
   html {
-    /* Prevent overscroll/bounce on mobile */
     overscroll-behavior: none;
     overscroll-behavior-y: none;
-    /* Fixed background that doesn't scroll - matches gradient base */
-    background-color: hsl(var(--background));
-    /* Prevent rubber band effect on iOS */
-    position: fixed;
+    /* Let ::before paint edge-to-edge; avoids flat band above gradient-mesh content */
+    background-color: transparent;
     width: 100%;
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+    isolation: isolate;
+  }
+
+  /* Full-screen mesh behind all routes (status bar + safe areas) — same stack as .gradient-mesh had */
+  html::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    min-height: 100%;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.2) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.15) 0px, transparent 50%);
+    pointer-events: none;
   }
 
   .bg-card {
@@ -72,40 +91,46 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
-    /* Prevent overscroll/bounce on mobile */
+    margin: 0;
     overscroll-behavior: none;
     overscroll-behavior-y: none;
-    /* Fixed background that matches the gradient-mesh base */
-    background-color: hsl(var(--background));
-    /* Prevent rubber band effect on iOS - body handles scrolling */
-    position: fixed;
+    background-color: transparent;
     width: 100%;
-    height: 100%;
-    overflow-y: auto;
+    min-height: 100%;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
     overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Ensure main app container handles scrolling */
+  /* Safe-area insets: pad the app shell so content clears notch; mesh stays full-bleed via html::before */
   #root {
     position: relative;
+    z-index: 0;
     width: 100%;
     min-height: 100vh;
-    background-color: hsl(var(--background));
-    /* Prevent overscroll */
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+    background-color: transparent;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
     overscroll-behavior: none;
     overscroll-behavior-y: none;
   }
 
-  /* Prevent overscroll on all scrollable containers and pages */
+  /* Page sections: no second paint layer (mesh is global on html::before) */
   [class*="gradient-mesh"],
   .gradient-mesh {
     overscroll-behavior: none;
     overscroll-behavior-y: none;
-    /* Ensure background color extends to prevent white showing */
-    background-color: hsl(var(--background));
+    background-color: transparent;
+    background-image: none;
   }
 }
 
@@ -297,17 +322,11 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 .gradient-mesh {
-  /* Prevent background from scrolling with content */
   position: relative;
-  background: 
-    radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.15) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.2) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.1) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.15) 0px, transparent 50%);
-  /* Ensure background color extends beyond viewport */
-  background-color: hsl(var(--background));
-  /* Prevent overscroll bounce on mobile */
+  /* Mesh + base color live on html::before (fixed, full viewport) */
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   overscroll-behavior: none;
   overscroll-behavior-y: none;
 }

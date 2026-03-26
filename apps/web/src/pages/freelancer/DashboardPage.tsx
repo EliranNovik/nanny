@@ -653,7 +653,7 @@ export default function FreelancerDashboardPage() {
               </div>
               <h3 className="font-semibold text-lg mb-2">Welcome!</h3>
               <p className="text-slate-600 dark:text-slate-400 mb-4">Complete your profile to start receiving job requests.</p>
-              <Button onClick={() => navigate("/freelancer/profile/edit")}>Complete Profile</Button>
+              <Button onClick={() => navigate("/freelancer/profile")}>Complete Profile</Button>
             </CardContent>
           </Card>
         )}

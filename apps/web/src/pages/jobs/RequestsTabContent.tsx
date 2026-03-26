@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
     MapPin, Bell, Clock, XCircle, CheckCircle2, Loader2,
-    MessageSquare, Hourglass, ClipboardList
+    Hourglass, ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import JobMap from "@/components/JobMap";
@@ -285,16 +285,16 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
 
     return (
         <>
-            <div className="space-y-6">
+            <div className="space-y-10">
 
                 {/* SECTION: INCOMING REQUESTS (Requests Tab) */}
                 {activeTab === 'requests' && (
-                    <div className="space-y-8">
+                    <div className="space-y-12">
                         <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
                             <Bell className="w-6 h-6 text-orange-500" /> Incoming Requests
                         </h2>
                         {inboundNotifications.filter(n => !n.isConfirmed).length > 0 ? (
-                            <div className="flex flex-col md:space-y-10 gap-10 md:gap-0 mt-2">
+                            <div className="mt-3 flex flex-col gap-14 md:gap-0 md:space-y-14">
                                 {inboundNotifications.filter(n => !n.isConfirmed).map((notif) => {
                                 const job = notif.job_requests;
                                 const isConfirmed = notif.isConfirmed;
@@ -316,7 +316,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             activeId && activeId !== `card-${notif.id}` ? "opacity-100" : "opacity-0"
                                         )} />
                                         <div 
-                                            className="relative w-full h-56 overflow-hidden group/img cursor-pointer"
+                                            className="relative h-36 w-full overflow-hidden group/img cursor-pointer sm:h-40"
                                             onClick={() => job.service_type === 'pickup_delivery' ? setSelectedMapJob(job) : setSelectedJobDetails(job)}
                                         >
                                             {job.service_type === 'pickup_delivery' ? (
@@ -347,7 +347,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             </div>
 
                                             {/* Bottom Overlays: Title & Rating */}
-                                            <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
+                                            <div className="absolute bottom-3 left-6 right-6 flex flex-col gap-2 z-20">
                                                 <div className="flex items-center gap-3">
                                                     <Avatar className="w-16 h-16 border-2 border-white/30 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
                                                         <AvatarImage src={job.profiles?.photo_url || ""} />
@@ -411,20 +411,6 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 )}
                                             </div>
 
-                                            {/* Action Content Blocks: Notes */}
-                                            {job.service_details?.custom && (
-                                                <div className="pt-6 border-t border-slate-100 dark:border-white/5">
-                                                    <div className="bg-slate-50 dark:bg-white/5 rounded-[24px] px-6 py-5 border border-slate-100 dark:border-white/5 flex flex-col gap-3">
-                                                        <div className="font-black text-slate-400 dark:text-slate-500 text-[13px] uppercase tracking-[0.15em] flex items-center gap-2 opacity-80">
-                                                            <MessageSquare className="w-4 h-4" /> Note
-                                                        </div>
-                                                        <p className="text-[17px] text-slate-700 dark:text-slate-200 font-medium leading-relaxed italic">
-                                                            "{job.service_details.custom}"
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            )}
-
                                             {/* Buttons Area - Standardized CTA Hierarchy */}
                                             {!isConfirmed && !isDeclined && (
                                                 <div className="flex gap-4 mt-auto pt-6 border-t border-slate-100 dark:border-white/5">
@@ -471,12 +457,12 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
 
                 {/* SECTION: PENDING JOBS (Pending Tab) */}
                 {activeTab === 'pending' && (
-                    <div className="space-y-8">
+                    <div className="space-y-12">
                         <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
                             <Hourglass className="w-6 h-6 text-orange-500" /> Pending Jobs
                         </h2>
                         {inboundNotifications.filter(n => n.isConfirmed).length > 0 ? (
-                            <div className="flex flex-col md:space-y-10 gap-10 md:gap-0 mt-2">
+                            <div className="mt-3 flex flex-col gap-14 md:gap-0 md:space-y-14">
                                 {inboundNotifications.filter(n => n.isConfirmed).map((n) => {
                                     const job = n.job_requests;
                                     return (
@@ -492,7 +478,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 activeId && activeId !== `card-${n.id}` ? "opacity-100" : "opacity-0"
                                             )} />
                                             <div 
-                                                className="relative w-full h-56 overflow-hidden group/img cursor-pointer"
+                                                className="relative h-36 w-full overflow-hidden group/img cursor-pointer sm:h-40"
                                                 onClick={() => job.service_type === 'pickup_delivery' ? setSelectedMapJob(job) : setSelectedJobDetails(job)}
                                             >
                                                 {job.service_type === 'pickup_delivery' ? (
@@ -503,14 +489,14 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 <div className="absolute inset-0 bg-black/40 z-10" />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                                 
-                                                {/* Top Left Confirmed Badge */}
-                                                <div className="absolute top-4 left-4 z-20">
-                                                    <Badge className="h-8 px-4 rounded-full bg-amber-500 text-white text-[11px] uppercase font-black tracking-widest border-none shadow-lg">
+                                                {/* Top right — pending confirmation */}
+                                                <div className="absolute right-4 top-4 z-20 text-right">
+                                                    <Badge className="h-8 rounded-full border-none bg-amber-500 px-4 text-[11px] font-black uppercase tracking-widest text-white shadow-lg">
                                                         Waiting for Confirmation
                                                     </Badge>
                                                 </div>
 
-                                                <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
+                                                <div className="absolute bottom-3 left-6 right-6 flex flex-col gap-2 z-20">
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="w-16 h-16 border-2 border-white/30 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
                                                             <AvatarImage src={job.profiles?.photo_url || ""} />
@@ -568,12 +554,12 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
 
                 {/* SECTION: MY OUTBOUND REQUESTS (My Requests Tab) */}
                 {activeTab === 'my_requests' && (
-                    <div className="space-y-8">
-                        <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 mt-4">
+                    <div className="space-y-12">
+                        <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
                             <ClipboardList className="w-6 h-6 text-orange-500" /> My Posted Requests
                         </h2>
                     {myOpenRequests.length > 0 ? (
-                        <div className="flex flex-col md:space-y-10 gap-10 md:gap-0 mt-2">
+                        <div className="mt-3 flex flex-col gap-14 md:gap-0 md:space-y-14">
                             {myOpenRequests.map((job) => (
                                 <Card 
                                     key={job.id} 
@@ -587,7 +573,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         activeId && activeId !== `card-${job.id}` ? "opacity-100" : "opacity-0"
                                     )} />
                                     <div 
-                                        className="relative w-full h-56 overflow-hidden group/img cursor-pointer"
+                                        className="relative h-36 w-full overflow-hidden group/img cursor-pointer sm:h-40"
                                         onClick={() => job.service_type === 'pickup_delivery' ? setSelectedMapJob(job) : setSelectedJobDetails(job)}
                                     >
                                         {job.service_type === 'pickup_delivery' ? (
@@ -615,7 +601,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         </div>
 
                                         {/* Bottom Overlays: Title */}
-                                        <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
+                                        <div className="absolute bottom-3 left-6 right-6 flex flex-col gap-2 z-20">
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="w-16 h-16 border-2 border-white/30 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
                                                     <AvatarImage src={userProfile?.photo_url || ""} />
@@ -623,7 +609,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                         {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || "U"}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <h3 className="text-[24px] font-black text-white truncate tracking-tight drop-shadow-xl">
+                                                <h3 className="truncate text-[17px] font-black leading-snug tracking-tight text-white drop-shadow-xl sm:text-[19px]">
                                                     {formatJobTitle(job)} Request
                                                 </h3>
                                             </div>
@@ -664,20 +650,6 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 </div>
                                             )}
                                         </div>
-
-                                        {/* Action Content Blocks: Notes */}
-                                        {job.service_details?.custom && (
-                                            <div className="pt-5 border-t border-slate-100 dark:border-white/5">
-                                                <div className="bg-slate-50 dark:bg-white/5 rounded-[20px] px-5 py-4 border border-slate-100 dark:border-white/5 flex flex-col gap-2">
-                                                    <div className="font-black text-slate-400 dark:text-slate-500 text-[11px] uppercase tracking-[0.15em] flex items-center gap-2 opacity-80">
-                                                        <MessageSquare className="w-3.5 h-3.5" /> Note
-                                                    </div>
-                                                    <p className="text-[15px] text-slate-700 dark:text-slate-200 font-medium leading-relaxed italic">
-                                                        "{job.service_details.custom}"
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
 
                                         <div className="mt-auto flex flex-col gap-4 pt-6 border-t border-slate-100 dark:border-white/5">
                                             <div className="relative group/btn w-full">

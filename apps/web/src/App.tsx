@@ -17,9 +17,22 @@ import OnboardingPage from "@/pages/OnboardingPage";
 import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
 import DashboardPage from "@/pages/client/DashboardPage";
-import ClientProfilePage from "@/pages/client/ClientProfilePage";
+import ClientProfileLayout from "@/pages/client/profile/ClientProfileLayout";
+import ClientProfileHub from "@/pages/client/profile/ClientProfileHub";
+import ClientProfilePersonalPage from "@/pages/client/profile/ClientProfilePersonalPage";
+import ClientProfileServicesPage from "@/pages/client/profile/ClientProfileServicesPage";
+import ClientProfileAppearancePage from "@/pages/client/profile/ClientProfileAppearancePage";
 import MessagesPage from "@/pages/MessagesPage";
-import ProfilePage from "@/pages/freelancer/ProfilePage";
+import FreelancerProfileLayout from "@/pages/freelancer/profile/FreelancerProfileLayout";
+import FreelancerProfileHub from "@/pages/freelancer/profile/FreelancerProfileHub";
+import FreelancerProfilePersonalPage from "@/pages/freelancer/profile/FreelancerProfilePersonalPage";
+import FreelancerProfileAvailabilityPage from "@/pages/freelancer/profile/FreelancerProfileAvailabilityPage";
+import FreelancerProfileAboutPage from "@/pages/freelancer/profile/FreelancerProfileAboutPage";
+import FreelancerProfileServicesPage from "@/pages/freelancer/profile/FreelancerProfileServicesPage";
+import FreelancerProfileLanguagesPage from "@/pages/freelancer/profile/FreelancerProfileLanguagesPage";
+import FreelancerProfileExperiencePage from "@/pages/freelancer/profile/FreelancerProfileExperiencePage";
+import FreelancerProfileRatesPage from "@/pages/freelancer/profile/FreelancerProfileRatesPage";
+import FreelancerProfileAppearancePage from "@/pages/freelancer/profile/FreelancerProfileAppearancePage";
 import FreelancerDashboardPage from "@/pages/freelancer/DashboardPage";
 import UnifiedJobsPage from "@/pages/jobs/UnifiedJobsPage";
 import ChatPage from "@/pages/ChatPage";
@@ -81,10 +94,10 @@ function RoleRedirect() {
   return <Navigate to="/freelancer/dashboard" replace />;
 }
 
-/** Wraps page content with top padding so fixed header does not overlap content */
+/** Wraps page content with top padding. Desktop: fixed header (BottomNav). Mobile: spacing below status bar (safe area is on body). */
 function PageLayoutWithHeader() {
   return (
-    <div className="min-h-screen pt-14">
+    <div className="min-h-[100dvh] min-h-[-webkit-fill-available] pt-4 md:pt-14">
       <Outlet />
     </div>
   );
@@ -154,10 +167,15 @@ function AppRoutes() {
           path="/client/profile"
           element={
             <ProtectedRoute>
-              <ClientProfilePage />
+              <ClientProfileLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<ClientProfileHub />} />
+          <Route path="personal" element={<ClientProfilePersonalPage />} />
+          <Route path="services" element={<ClientProfileServicesPage />} />
+          <Route path="appearance" element={<ClientProfileAppearancePage />} />
+        </Route>
 
         {/* Freelancer routes */}
         <Route
@@ -172,18 +190,21 @@ function AppRoutes() {
           path="/freelancer/profile"
           element={
             <ProtectedRoute>
-              <ProfilePage />
+              <FreelancerProfileLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/freelancer/profile/edit"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route index element={<FreelancerProfileHub />} />
+          <Route path="personal" element={<FreelancerProfilePersonalPage />} />
+          <Route path="availability" element={<FreelancerProfileAvailabilityPage />} />
+          <Route path="about" element={<FreelancerProfileAboutPage />} />
+          <Route path="services" element={<FreelancerProfileServicesPage />} />
+          <Route path="languages" element={<FreelancerProfileLanguagesPage />} />
+          <Route path="experience" element={<FreelancerProfileExperiencePage />} />
+          <Route path="rates" element={<FreelancerProfileRatesPage />} />
+          <Route path="appearance" element={<FreelancerProfileAppearancePage />} />
+        </Route>
+        <Route path="/freelancer/profile/edit" element={<Navigate to="/freelancer/profile" replace />} />
 
         <Route
           path="/profile/:userId"
