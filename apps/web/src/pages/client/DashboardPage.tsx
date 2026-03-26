@@ -62,6 +62,7 @@ export default function DashboardPage() {
   const [activeConversationIds, setActiveConversationIds] = useState<Record<string, string>>({});
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
   const [myRequests, setMyRequests] = useState<JobRequest[]>([]);
+  const [confirmedCounts, setConfirmedCounts] = useState<Record<string, number>>({});
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [requestsTab, setRequestsTab] = useState<"my" | "invitations">("my");
   const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
@@ -131,19 +132,17 @@ export default function DashboardPage() {
             .from("conversations")
             .select(`
               id, 
+              client_id,
               freelancer_id, 
               created_at,
               messages (
                 body, 
                 created_at,
-                sender_id
-              ),
-              profiles:freelancer_id (
-                full_name,
-                photo_url
+                sender_id,
+                read_at
               )
             `)
-            .eq("client_id", user.id)
+            .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
             .order("created_at", { ascending: false })
             .limit(3)
         ]);
@@ -195,26 +194,47 @@ export default function DashboardPage() {
         setFreelancerProfiles(profileMap);
         setActiveConversationIds(conversationMap);
 
-        // Process recent messages
-        const processedMessages = (recentMessagesRes.data || []).map((conv: any) => {
+        // Process recent messages with unified identity detection
+        const processedMessages = await Promise.all((recentMessagesRes.data || []).map(async (conv: any) => {
           const lastMsg = conv.messages?.sort((a: any, b: any) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )[0];
           
+          const otherUserId = conv.client_id === user.id ? conv.freelancer_id : conv.client_id;
+          const { data: otherProfile } = await supabase
+            .from("profiles")
+            .select("full_name, photo_url")
+            .eq("id", otherUserId)
+            .single();
+
           return {
             id: conv.id,
-            otherName: conv.profiles?.full_name || "Helper",
-            otherPhoto: conv.profiles?.photo_url || null,
+            otherName: otherProfile?.full_name || "Helper",
+            otherPhoto: otherProfile?.photo_url || null,
             lastMessage: lastMsg?.body || "No messages yet",
             lastMessageTime: lastMsg?.created_at || conv.created_at,
-            isUnread: lastMsg ? lastMsg.sender_id !== user.id : false,
+            isUnread: lastMsg ? (lastMsg.sender_id !== user.id && !lastMsg.read_at) : false,
           };
-        });
-        setRecentMessages(processedMessages);
+        }));
+        setRecentMessages(processedMessages.filter(m => m.lastMessage !== "No messages yet"));
 
         // Process requests and invitations
         const requestsList = openRequestsRes.data || [];
         setMyRequests(requestsList);
+        
+        if (requestsList.length > 0) {
+          const { data: allConfs } = await supabase
+            .from("job_confirmations")
+            .select("job_id")
+            .in("job_id", requestsList.map(r => r.id))
+            .eq("status", "available");
+          
+          const counts: Record<string, number> = {};
+          allConfs?.forEach(c => {
+            counts[c.job_id] = (counts[c.job_id] || 0) + 1;
+          });
+          setConfirmedCounts(counts);
+        }
         
         const rawInvitations = invitationsRes.data || [];
         const { data: confs } = await supabase
@@ -352,40 +372,55 @@ export default function DashboardPage() {
 
         {/* Active Jobs Card - styled like Live Jobs tab */}
         {activeJobs.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
               <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
                 <Briefcase className="w-6 h-6 text-primary" />
-                ACTIVE {activeJobs.length === 1 ? 'JOB' : 'JOBS'}
+                ACTIVE JOBS
               </h2>
+              <Badge className="bg-primary/10 text-primary border-none font-black px-2.5 py-0.5 rounded-lg text-[14px]">
+                {activeJobs.length}
+              </Badge>
             </div>
             
-            <div className="space-y-4">
-              {activeJobs.map(job => (
-                <DashboardLiveJobCard 
-                  key={job.id}
-                  job={job}
-                  participant={{
-                    full_name: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.full_name || "Helper" : "Helper",
-                    photo_url: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.photo_url || undefined : undefined,
-                    average_rating: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.average_rating : undefined,
-                    total_ratings: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.total_ratings : undefined
-                  }}
-                  onMapClick={() => setSelectedMapJob(job)}
-                  onChatClick={() => activeConversationIds[job.id] ? navigate(`/chat/${activeConversationIds[job.id]}`) : navigate("/messages")}
-                  onDetailsClick={() => navigate(`/jobs/${job.id}/details`)}
-                  onNavigateClick={() => {
-                    if (job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address) {
-                      const origin = encodeURIComponent(job.service_details.from_address);
-                      const destination = encodeURIComponent(job.service_details.to_address);
-                      window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
-                    } else {
-                      const query = encodeURIComponent(job.location_city || "");
-                      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                    }
-                  }}
-                />
-              ))}
+            <div className="relative -mx-4 group/carousel">
+              <div className="flex overflow-x-auto gap-4 px-4 pb-8 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                {activeJobs.map(job => (
+                  <div key={job.id} className="min-w-[85vw] md:min-w-[420px] snap-center">
+                    <DashboardLiveJobCard 
+                      job={job}
+                      participant={{
+                        full_name: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.full_name || "Helper" : "Helper",
+                        photo_url: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.photo_url || undefined : undefined,
+                        average_rating: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.average_rating : undefined,
+                        total_ratings: job.selected_freelancer_id ? freelancerProfiles[job.selected_freelancer_id]?.total_ratings : undefined
+                      }}
+                      onMapClick={() => setSelectedMapJob(job)}
+                      onChatClick={() => activeConversationIds[job.id] ? navigate(`/chat/${activeConversationIds[job.id]}`) : navigate("/messages")}
+                      onDetailsClick={() => navigate(`/jobs/${job.id}/details`)}
+                      onNavigateClick={() => {
+                        if (job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address) {
+                          const origin = encodeURIComponent(job.service_details.from_address);
+                          const destination = encodeURIComponent(job.service_details.to_address);
+                          window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
+                        } else {
+                          const query = encodeURIComponent(job.location_city || "");
+                          window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Optional: Indicator that there are more cards */}
+              {activeJobs.length > 1 && (
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 opacity-0 group-hover/carousel:opacity-100 transition-opacity pointer-events-none md:flex">
+                  <div className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center border border-white/10 shadow-lg">
+                    <ChevronRight className="w-6 h-6 text-white animate-pulse" />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -403,10 +438,13 @@ export default function DashboardPage() {
           <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
             {recentMessages.length > 0 ? recentMessages.map((msg) => (
               <Card key={msg.id} className="border-none shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group"
-                onClick={() => navigate(`/chat/${msg.id}`)}>
+                onClick={() => {
+                  setRecentMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isUnread: false } : m));
+                  navigate(`/chat/${msg.id}`);
+                }}>
                 <CardContent className="p-4 flex items-center gap-4">
                   <div className="relative">
-                    <Avatar className="w-12 h-12 shadow-sm flex-shrink-0">
+                    <Avatar className="w-14 h-14 shadow-md flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
                       <AvatarImage src={msg.otherPhoto || undefined} className="object-cover" />
                       <AvatarFallback className="bg-primary/5 text-primary font-bold">
                         {msg.otherName?.charAt(0).toUpperCase() || "?"}
@@ -452,10 +490,10 @@ export default function DashboardPage() {
             </h2>
             <div className="flex items-center gap-4">
               {/* Toggle - Integrated Style */}
-              <div className="flex items-center p-1 bg-slate-100/50 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5 shadow-sm">
+               <div className="flex items-center p-1 bg-slate-100/50 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5 shadow-sm">
                 <button
                   onClick={() => setRequestsTab("my")}
-                  className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-all",
                     requestsTab === "my" 
                       ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
                       : "text-slate-500 hover:text-slate-700")}
@@ -464,12 +502,12 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => setRequestsTab("invitations")}
-                  className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-all",
                     requestsTab === "invitations" 
                       ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
                       : "text-slate-500 hover:text-slate-700")}
                 >
-                  Incoming Requests
+                  Incoming
                 </button>
               </div>
               <Button variant="ghost" size="sm" className="text-xs font-bold text-primary" onClick={() => navigate("/client/jobs")}>
@@ -496,7 +534,14 @@ export default function DashboardPage() {
                           {req.start_at && <><Calendar className="w-3 h-3 ml-1" />{new Date(req.start_at).toLocaleDateString()}</>}
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
+                      <div className="flex items-center gap-3 ml-auto">
+                        {confirmedCounts[req.id] > 0 && (
+                          <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none text-[11px] font-black px-3 py-1 rounded-full shadow-md transition-all">
+                            {confirmedCounts[req.id]} {confirmedCounts[req.id] === 1 ? 'Helper' : 'Helpers'} Accepted
+                          </Badge>
+                        )}
+                        <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
+                      </div>
                     </CardContent>
                   </Card>
                   )) : (

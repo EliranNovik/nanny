@@ -9,7 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-    Bell, Clock, MapPin, CheckCircle2, Loader2, MessageSquare, XCircle
+    MapPin, Bell, Clock, XCircle, CheckCircle2, Loader2,
+    MessageSquare, Hourglass, ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import JobMap from "@/components/JobMap";
@@ -45,7 +46,11 @@ interface InboundNotification {
 }
 
 
-export default function RequestsTabContent() {
+interface RequestsTabContentProps {
+    activeTab: 'my_requests' | 'requests' | 'pending';
+}
+
+export default function RequestsTabContent({ activeTab }: RequestsTabContentProps) {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { addToast } = useToast();
@@ -59,6 +64,7 @@ export default function RequestsTabContent() {
     const [userProfile, setUserProfile] = useState<{ full_name: string; photo_url: string | null } | null>(null);
     const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
     const [selectedJobDetails, setSelectedJobDetails] = useState<JobRequest | null>(null);
+    const [activeId, setActiveId] = useState<string | null>(null);
 
     // 1. Fetch cache on mount
     useEffect(() => {
@@ -178,6 +184,25 @@ export default function RequestsTabContent() {
         loadRequests();
     }, [user]);
 
+    // Smart Mobile Scroll Focus Logic
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+                    setActiveId(entry.target.id);
+                }
+            });
+        }, { 
+            threshold: 0.5,
+            rootMargin: '-15% 0px -15% 0px' // Focus on the middle 70% of the screen
+        });
+
+        const cards = document.querySelectorAll('[data-job-card]');
+        cards.forEach(card => observer.observe(card));
+        
+        return () => observer.disconnect();
+    }, [inboundNotifications, myOpenRequests, activeTab]);
+
     async function handleConfirm(jobId: string, notifId: string) {
         setConfirming(notifId);
         try {
@@ -191,8 +216,8 @@ export default function RequestsTabContent() {
             );
 
             addToast({
-                title: "Job Accepted",
-                description: "You have confirmed your availability for this job.",
+                title: "Job Accepted!",
+                description: "It's been moved to Pending Jobs while we wait for the client's final confirmation.",
                 variant: "success",
             });
         } catch (err: any) {
@@ -262,20 +287,34 @@ export default function RequestsTabContent() {
         <>
             <div className="space-y-6">
 
-                {/* SECTION: INCOMING REQUESTS */}
-                <div className="space-y-4">
-                    <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
-                        <Bell className="w-6 h-6 text-orange-500" /> Incoming Requests
-                    </h2>
-                    {inboundNotifications.length > 0 ? (
-                        <div className="flex flex-nowrap md:block md:space-y-4 overflow-x-auto pb-6 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0 mt-2">
-                            {inboundNotifications.map((notif) => {
+                {/* SECTION: INCOMING REQUESTS (Requests Tab) */}
+                {activeTab === 'requests' && (
+                    <div className="space-y-8">
+                        <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
+                            <Bell className="w-6 h-6 text-orange-500" /> Incoming Requests
+                        </h2>
+                        {inboundNotifications.filter(n => !n.isConfirmed).length > 0 ? (
+                            <div className="flex flex-col md:space-y-10 gap-10 md:gap-0 mt-2">
+                                {inboundNotifications.filter(n => !n.isConfirmed).map((notif) => {
                                 const job = notif.job_requests;
                                 const isConfirmed = notif.isConfirmed;
                                 const isDeclined = notif.isDeclined;
 
                                 return (
-                                    <Card key={notif.id} className={cn("transition-all duration-300 min-w-[88vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-[32px] overflow-hidden border border-black/[0.03] dark:border-white/[0.03] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group", isDeclined && "opacity-60")}>
+                                        <Card 
+                                            key={notif.id} 
+                                            id={`card-${notif.id}`}
+                                            data-job-card
+                                            className={cn(
+                                                "transition-all duration-500 w-full md:max-w-3xl md:mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative", 
+                                                isDeclined && "opacity-60"
+                                            )}
+                                        >
+                                        {/* Smart Mobile Scroll Overlay */}
+                                        <div className={cn(
+                                            "absolute inset-0 bg-zinc-900/20 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none md:hidden z-[100]",
+                                            activeId && activeId !== `card-${notif.id}` ? "opacity-100" : "opacity-0"
+                                        )} />
                                         <div 
                                             className="relative w-full h-56 overflow-hidden group/img cursor-pointer"
                                             onClick={() => job.service_type === 'pickup_delivery' ? setSelectedMapJob(job) : setSelectedJobDetails(job)}
@@ -292,7 +331,8 @@ export default function RequestsTabContent() {
                                                 />
                                             )}
                                             {/* Modern Gradient Overlays */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
+                                            <div className="absolute inset-0 bg-black/40 z-10" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent z-10" />
                                             
                                             {/* Top Overlays */}
@@ -309,7 +349,7 @@ export default function RequestsTabContent() {
                                             {/* Bottom Overlays: Title & Rating */}
                                             <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
                                                 <div className="flex items-center gap-3">
-                                                    <Avatar className="w-14 h-14 border-2 border-white/30 shadow-2xl flex-shrink-0">
+                                                    <Avatar className="w-16 h-16 border-2 border-white/30 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
                                                         <AvatarImage src={job.profiles?.photo_url || ""} />
                                                         <AvatarFallback className="bg-orange-500 text-white font-black text-sm">
                                                             {job.profiles?.full_name?.charAt(0) || "C"}
@@ -319,14 +359,16 @@ export default function RequestsTabContent() {
                                                         {job.profiles?.full_name || "Client"}
                                                     </h3>
                                                 </div>
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2 px-0.5">
                                                     {job.profiles?.average_rating ? (
-                                                        <div className="flex items-center gap-1.5 bg-white/70 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/20 shadow-sm">
-                                                            <StarRating rating={job.profiles.average_rating} size="sm" />
-                                                            <span className="text-[14px] font-black text-slate-900">
-                                                                {job.profiles.average_rating.toFixed(1)}
-                                                            </span>
-                                                        </div>
+                                                        <StarRating 
+                                                            rating={job.profiles.average_rating} 
+                                                            size="sm" 
+                                                            showCount={false}
+                                                            starClassName="text-white"
+                                                            emptyStarClassName="text-white/30"
+                                                            numberClassName="text-white drop-shadow-md text-[14px]"
+                                                        />
                                                     ) : (
                                                         <span className="text-[14px] font-bold text-white/80 italic drop-shadow-md">New Client</span>
                                                     )}
@@ -342,25 +384,25 @@ export default function RequestsTabContent() {
                                             onClick={() => setSelectedJobDetails(job)}
                                         >
                                             {/* Info Segments */}
-                                            <div className="flex flex-col gap-4">
-                                                <div className="grid grid-cols-2 gap-x-4">
+                                            <div className="flex flex-col gap-6">
+                                                <div className="grid grid-cols-2 gap-x-6">
                                                     {job.time_duration && (
-                                                        <div className="flex items-center gap-2.5 text-[15px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
-                                                            <Clock className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                                                        <div className="flex items-center gap-3 text-[17px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
+                                                            <Clock className="w-6 h-6 text-slate-400 flex-shrink-0" />
                                                             <span className="truncate">{job.time_duration.replace(/_/g, '-')}</span>
                                                         </div>
                                                     )}
                                                     {job.location_city && (
-                                                        <div className="flex items-center gap-2.5 text-[15px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
-                                                            <MapPin className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                                                        <div className="flex items-center gap-3 text-[17px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
+                                                            <MapPin className="w-6 h-6 text-slate-400 flex-shrink-0" />
                                                             <span className="truncate">{job.location_city}</span>
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 {job.created_at && !isConfirmed && !isDeclined && (
-                                                    <div className="flex items-center gap-2.5 text-[14px] text-orange-400 font-bold tracking-tight">
-                                                        <Clock className="w-4 h-4 flex-shrink-0" />
+                                                    <div className="flex items-center gap-3 text-[16px] text-orange-400 font-bold tracking-tight">
+                                                        <Clock className="w-5 h-5 flex-shrink-0" />
                                                         <div className="flex items-center gap-1.5">
                                                             <span className="opacity-60 font-medium">Expires in</span>
                                                             <LiveTimer createdAt={job.created_at} />
@@ -371,12 +413,12 @@ export default function RequestsTabContent() {
 
                                             {/* Action Content Blocks: Notes */}
                                             {job.service_details?.custom && (
-                                                <div className="pt-5 border-t border-slate-100 dark:border-white/5">
-                                                    <div className="bg-slate-50 dark:bg-white/5 rounded-[20px] px-5 py-4 border border-slate-100 dark:border-white/5 flex flex-col gap-2">
-                                                        <div className="font-black text-slate-400 dark:text-slate-500 text-[11px] uppercase tracking-[0.15em] flex items-center gap-2 opacity-80">
-                                                            <MessageSquare className="w-3.5 h-3.5" /> Note
+                                                <div className="pt-6 border-t border-slate-100 dark:border-white/5">
+                                                    <div className="bg-slate-50 dark:bg-white/5 rounded-[24px] px-6 py-5 border border-slate-100 dark:border-white/5 flex flex-col gap-3">
+                                                        <div className="font-black text-slate-400 dark:text-slate-500 text-[13px] uppercase tracking-[0.15em] flex items-center gap-2 opacity-80">
+                                                            <MessageSquare className="w-4 h-4" /> Note
                                                         </div>
-                                                        <p className="text-[15px] text-slate-700 dark:text-slate-200 font-medium leading-relaxed italic">
+                                                        <p className="text-[17px] text-slate-700 dark:text-slate-200 font-medium leading-relaxed italic">
                                                             "{job.service_details.custom}"
                                                         </p>
                                                     </div>
@@ -389,7 +431,10 @@ export default function RequestsTabContent() {
                                                     <Button
                                                         variant="outline"
                                                         className="flex-1 h-12 rounded-[18px] border-slate-200 dark:border-white/10 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-500/10 transition-all active:scale-[0.96] font-bold"
-                                                        onClick={() => handleDecline(notif.id)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDecline(notif.id);
+                                                        }}
                                                         disabled={deleting === notif.id || confirming === notif.id}
                                                     >
                                                         {deleting === notif.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
@@ -397,7 +442,10 @@ export default function RequestsTabContent() {
                                                     </Button>
                                                     <Button
                                                         className="flex-1 h-12 rounded-[18px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_8px_20px_rgba(5,150,105,0.2)] transition-all active:scale-[0.96] font-bold"
-                                                        onClick={() => handleConfirm(job.id, notif.id)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleConfirm(job.id, notif.id);
+                                                        }}
                                                         disabled={deleting === notif.id || confirming === notif.id}
                                                     >
                                                         {confirming === notif.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
@@ -419,16 +467,125 @@ export default function RequestsTabContent() {
                         </Card>
                     )}
                 </div>
+                )}
 
-                {/* SECTION: MY OUTBOUND REQUESTS */}
-                <div className="space-y-4">
-                    <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 mt-4">
-                        <Clock className="w-6 h-6 text-orange-500" /> My Posted Requests
-                    </h2>
+                {/* SECTION: PENDING JOBS (Pending Tab) */}
+                {activeTab === 'pending' && (
+                    <div className="space-y-8">
+                        <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
+                            <Hourglass className="w-6 h-6 text-orange-500" /> Pending Jobs
+                        </h2>
+                        {inboundNotifications.filter(n => n.isConfirmed).length > 0 ? (
+                            <div className="flex flex-col md:space-y-10 gap-10 md:gap-0 mt-2">
+                                {inboundNotifications.filter(n => n.isConfirmed).map((n) => {
+                                    const job = n.job_requests;
+                                    return (
+                                        <Card 
+                                            key={n.id} 
+                                            id={`card-${n.id}`}
+                                            data-job-card
+                                            className="transition-all duration-500 w-full md:max-w-3xl md:mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative"
+                                        >
+                                            {/* Smart Mobile Scroll Overlay */}
+                                            <div className={cn(
+                                                "absolute inset-0 bg-zinc-900/20 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none md:hidden z-[100]",
+                                                activeId && activeId !== `card-${n.id}` ? "opacity-100" : "opacity-0"
+                                            )} />
+                                            <div 
+                                                className="relative w-full h-56 overflow-hidden group/img cursor-pointer"
+                                                onClick={() => job.service_type === 'pickup_delivery' ? setSelectedMapJob(job) : setSelectedJobDetails(job)}
+                                            >
+                                                {job.service_type === 'pickup_delivery' ? (
+                                                    <div className="absolute inset-0 z-0"><JobMap job={job} /></div>
+                                                ) : (
+                                                    <img src={job.service_type === 'cleaning' ? "/cleaning-mar22.png" : job.service_type === 'cooking' ? "/cooking-mar22.png" : job.service_type === 'nanny' ? "/nanny-mar22.png" : "/other-mar22.png"} alt={formatJobTitle(job)} className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110" />
+                                                )}
+                                                <div className="absolute inset-0 bg-black/40 z-10" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
+                                                
+                                                {/* Top Left Confirmed Badge */}
+                                                <div className="absolute top-4 left-4 z-20">
+                                                    <Badge className="h-8 px-4 rounded-full bg-amber-500 text-white text-[11px] uppercase font-black tracking-widest border-none shadow-lg">
+                                                        Waiting for Confirmation
+                                                    </Badge>
+                                                </div>
+
+                                                <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="w-16 h-16 border-2 border-white/30 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
+                                                            <AvatarImage src={job.profiles?.photo_url || ""} />
+                                                            <AvatarFallback className="bg-orange-500 text-white font-black text-sm">{job.profiles?.full_name?.charAt(0) || "C"}</AvatarFallback>
+                                                        </Avatar>
+                                                        <h3 className="text-[24px] font-black text-white truncate tracking-tight drop-shadow-xl">{job.profiles?.full_name || "Client"}</h3>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        {job.profiles?.average_rating ? (
+                                                            <div className="flex items-center gap-2 px-0.5">
+                                                                <StarRating 
+                                                                    rating={job.profiles.average_rating} 
+                                                                    size="sm" 
+                                                                    showCount={false}
+                                                                    starClassName="text-white"
+                                                                    emptyStarClassName="text-white/30"
+                                                                    numberClassName="text-white drop-shadow-md text-[14px]"
+                                                                />
+                                                            </div>
+                                                        ) : <span className="text-[14px] font-bold text-white/80 italic drop-shadow-md">New Client</span>}
+                                                        <span className="text-[12px] font-black text-white/90 uppercase tracking-[0.15em] drop-shadow-md ml-auto">{formatJobTitle(job)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <CardContent className="p-7 flex-1 flex flex-col gap-7" onClick={() => setSelectedJobDetails(job)}>
+                                                <div className="flex flex-col gap-6">
+                                                    <div className="flex items-center justify-between w-full gap-3 text-[16px] text-orange-400 font-bold tracking-tight">
+                                                        <div className="flex items-center gap-3">
+                                                            <Clock className="w-5 h-5 flex-shrink-0" />
+                                                            <span>Waiting for client confirmation...</span>
+                                                        </div>
+                                                        <LiveTimer createdAt={job.created_at} />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-auto pt-6 border-t border-slate-100 dark:border-white/5">
+                                                    <Button variant="outline" className="w-full h-12 rounded-[18px] border-slate-200 dark:border-white/10 text-slate-500 font-bold" disabled>
+                                                        Pending Final Step
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                                <CardContent className="p-6 text-center text-muted-foreground">
+                                    <Hourglass className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                                    <p className="text-sm">No pending jobs at the moment.</p>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                )}
+
+                {/* SECTION: MY OUTBOUND REQUESTS (My Requests Tab) */}
+                {activeTab === 'my_requests' && (
+                    <div className="space-y-8">
+                        <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 mt-4">
+                            <ClipboardList className="w-6 h-6 text-orange-500" /> My Posted Requests
+                        </h2>
                     {myOpenRequests.length > 0 ? (
-                        <div className="flex flex-nowrap md:block md:space-y-4 overflow-x-auto pb-6 snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 gap-4 md:gap-0 mt-2">
+                        <div className="flex flex-col md:space-y-10 gap-10 md:gap-0 mt-2">
                             {myOpenRequests.map((job) => (
-                                <Card key={job.id} className="transition-all duration-300 min-w-[88vw] md:min-w-0 w-full flex-shrink-0 snap-center md:snap-none md:flex-shrink rounded-[32px] overflow-hidden border border-black/[0.03] dark:border-white/[0.03] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group">
+                                <Card 
+                                    key={job.id} 
+                                    id={`card-${job.id}`}
+                                    data-job-card
+                                    className="transition-all duration-500 w-full md:max-w-3xl md:mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative"
+                                >
+                                    {/* Smart Scroll Overlay */}
+                                    <div className={cn(
+                                        "absolute inset-0 bg-zinc-900/40 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none z-[100]",
+                                        activeId && activeId !== `card-${job.id}` ? "opacity-100" : "opacity-0"
+                                    )} />
                                     <div 
                                         className="relative w-full h-56 overflow-hidden group/img cursor-pointer"
                                         onClick={() => job.service_type === 'pickup_delivery' ? setSelectedMapJob(job) : setSelectedJobDetails(job)}
@@ -445,7 +602,8 @@ export default function RequestsTabContent() {
                                             />
                                         )}
                                         {/* Modern Gradient Overlays */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
+                                        <div className="absolute inset-0 bg-black/40 z-10" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent z-10" />
                                         
                                         {/* Top Overlays */}
@@ -459,7 +617,7 @@ export default function RequestsTabContent() {
                                         {/* Bottom Overlays: Title */}
                                         <div className="absolute bottom-5 left-6 right-6 flex flex-col gap-2 z-20">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="w-14 h-14 border-2 border-white/30 shadow-2xl flex-shrink-0">
+                                                <Avatar className="w-16 h-16 border-2 border-white/30 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
                                                     <AvatarImage src={userProfile?.photo_url || ""} />
                                                     <AvatarFallback className="bg-orange-500 text-white font-black text-sm">
                                                         {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || "U"}
@@ -480,25 +638,25 @@ export default function RequestsTabContent() {
                                         onClick={() => setSelectedJobDetails(job)}
                                     >
                                         {/* Info Segments */}
-                                        <div className="flex flex-col gap-4">
-                                            <div className="grid grid-cols-2 gap-x-4">
+                                        <div className="flex flex-col gap-6">
+                                            <div className="grid grid-cols-2 gap-x-6">
                                                 {job.time_duration && (
-                                                    <div className="flex items-center gap-2.5 text-[15px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
-                                                        <Clock className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                                                    <div className="flex items-center gap-3 text-[17px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
+                                                        <Clock className="w-6 h-6 text-slate-400 flex-shrink-0" />
                                                         <span className="truncate">{job.time_duration.replace(/_/g, '-')}</span>
                                                     </div>
                                                 )}
                                                 {job.location_city && (
-                                                    <div className="flex items-center gap-2.5 text-[15px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
-                                                        <MapPin className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                                                    <div className="flex items-center gap-3 text-[17px] text-slate-700 dark:text-slate-300 font-semibold tracking-tight">
+                                                        <MapPin className="w-6 h-6 text-slate-400 flex-shrink-0" />
                                                         <span className="truncate">{job.location_city}</span>
                                                     </div>
                                                 )}
                                             </div>
                                             
                                             {job.created_at && (
-                                                <div className="flex items-center gap-2.5 text-[14px] text-orange-400 font-bold tracking-tight">
-                                                    <Clock className="w-4 h-4 flex-shrink-0" />
+                                                <div className="flex items-center gap-3 text-[16px] text-orange-400 font-bold tracking-tight">
+                                                    <Clock className="w-5 h-5 flex-shrink-0" />
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="opacity-60 font-medium">Active for</span>
                                                         <LiveTimer createdAt={job.created_at} />
@@ -556,12 +714,19 @@ export default function RequestsTabContent() {
                         </Card>
                     )}
                 </div>
+                )}
             </div>
 
             <FullscreenMapModal
                 job={selectedMapJob}
                 isOpen={!!selectedMapJob}
                 onClose={() => setSelectedMapJob(null)}
+                onConfirm={selectedMapJob ? () => {
+                    const notif = inboundNotifications.find(n => n.job_id === selectedMapJob.id);
+                    if (notif) handleConfirm(selectedMapJob.id, notif.id);
+                } : undefined}
+                isConfirming={confirming !== null}
+                showAcceptButton={selectedMapJob ? inboundNotifications.some(n => n.job_id === selectedMapJob.id && !n.isConfirmed && !n.isDeclined) : false}
             />
 
             <JobDetailsModal
@@ -570,6 +735,12 @@ export default function RequestsTabContent() {
                 job={selectedJobDetails}
                 formatJobTitle={formatJobTitle}
                 isOwnRequest={selectedJobDetails?.client_id === user?.id}
+                onConfirm={selectedJobDetails ? () => {
+                    const notif = inboundNotifications.find(n => n.job_id === selectedJobDetails.id);
+                    if (notif) handleConfirm(selectedJobDetails.id, notif.id);
+                } : undefined}
+                isConfirming={confirming !== null}
+                showAcceptButton={selectedJobDetails ? inboundNotifications.some(n => n.job_id === selectedJobDetails.id && !n.isConfirmed && !n.isDeclined) : false}
             />
         </>
     );

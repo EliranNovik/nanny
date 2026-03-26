@@ -9,8 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     MapPin, Clock, Hourglass, Users, X,
     Sparkles, UtensilsCrossed, Baby, HelpCircle, AlignLeft,
-    Calendar, Briefcase, RefreshCw, Globe
+    Calendar, Briefcase, RefreshCw, Globe, CheckCircle2, Loader2
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { StarRating } from "./StarRating";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ImageLightboxModal } from "./ImageLightboxModal";
@@ -21,6 +22,9 @@ interface JobDetailsModalProps {
     job: any;
     formatJobTitle: (job: any) => string;
     isOwnRequest?: boolean;
+    onConfirm?: () => void;
+    isConfirming?: boolean;
+    showAcceptButton?: boolean;
 }
 
 const LiveTimer = ({ createdAt }: { createdAt: string }) => {
@@ -55,7 +59,10 @@ const LiveTimer = ({ createdAt }: { createdAt: string }) => {
     return <>{formatElapsedTime(elapsed)}</>;
 };
 
-export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle, isOwnRequest }: JobDetailsModalProps) {
+export function JobDetailsModal({ 
+    isOpen, onOpenChange, job, formatJobTitle, isOwnRequest, 
+    onConfirm, isConfirming, showAcceptButton 
+}: JobDetailsModalProps) {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     if (!job) return null;
 
@@ -326,6 +333,26 @@ export function JobDetailsModal({ isOpen, onOpenChange, job, formatJobTitle, isO
                         </div>
                     )}
                 </div>
+
+                {/* Fixed Bottom Action Bar for Freelancers */}
+                {showAcceptButton && onConfirm && (
+                    <div className="p-6 bg-white dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-center animate-in slide-in-from-bottom-4 duration-500">
+                        <Button
+                            className="w-full h-14 rounded-[20px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all active:scale-[0.98] font-black text-lg flex items-center justify-center gap-3"
+                            onClick={onConfirm}
+                            disabled={isConfirming}
+                        >
+                            {isConfirming ? (
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="w-6 h-6" />
+                                    Accept Invitation
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );

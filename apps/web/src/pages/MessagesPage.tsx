@@ -4,13 +4,11 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Loader2, ArrowLeft, Check, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
-import { getJobStageBadge } from "@/lib/jobStages";
 
 interface Conversation {
   id: string;
@@ -18,6 +16,7 @@ interface Conversation {
   client_id: string;
   freelancer_id: string;
   created_at: string;
+  other_user_id?: string;
   other_user_profile?: {
     full_name: string | null;
     photo_url: string | null;
@@ -89,23 +88,14 @@ export default function MessagesPage() {
       try {
         let convos;
 
-        // Fetch conversations based on user role
-        if (profile.role === "client") {
-          const { data } = await supabase
-            .from("conversations")
-            .select("id, job_id, client_id, freelancer_id, created_at")
-            .eq("client_id", user.id)
-            .order("created_at", { ascending: false });
-          convos = data;
-        } else {
-          // Freelancer
-          const { data } = await supabase
-            .from("conversations")
-            .select("id, job_id, client_id, freelancer_id, created_at")
-            .eq("freelancer_id", user.id)
-            .order("created_at", { ascending: false });
-          convos = data;
-        }
+        // Fetch all conversations where user is client or freelancer
+        const { data: allConvos } = await supabase
+          .from("conversations")
+          .select("id, job_id, client_id, freelancer_id, created_at")
+          .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
+          .order("created_at", { ascending: false });
+        
+        convos = allConvos;
 
         if (!convos || convos.length === 0) {
           setConversations([]);
@@ -113,13 +103,15 @@ export default function MessagesPage() {
           return;
         }
 
-        // Group conversations by other user ID first
         const conversationsByUser = new Map<string, typeof convos>();
-
         for (const convo of convos) {
-          const otherUserId = profile.role === "client"
+          // Identify the other user ID correctly regardless of current profile role
+          const otherUserId = convo.client_id === user.id
             ? convo.freelancer_id
             : convo.client_id;
+
+          // Skip self-conversations if they exist
+          if (otherUserId === user.id) continue;
 
           if (!conversationsByUser.has(otherUserId)) {
             conversationsByUser.set(otherUserId, []);
@@ -164,12 +156,13 @@ export default function MessagesPage() {
             // Fetch job info for the most recent conversation
             const { data: job } = await supabase
               .from("job_requests")
-              .select("id, status, stage, care_type, children_count, children_age_group, start_at")
+              .select("id, status, stage, care_type, service_type, children_count, children_age_group, start_at")
               .eq("id", mostRecentConversation.job_id)
               .single();
 
             return {
               ...mostRecentConversation,
+              other_user_id: otherUserId,
               other_user_profile: {
                 full_name: otherProfile?.full_name || null,
                 photo_url: otherProfile?.photo_url || null,
@@ -249,8 +242,8 @@ export default function MessagesPage() {
               return;
             }
 
-            // Determine other user ID based on role
-            const otherUserId = profile.role === "client"
+            // Identify the other user ID correctly regardless of current profile role
+            const otherUserId = convoData.client_id === user.id
               ? convoData.freelancer_id
               : convoData.client_id;
 
@@ -416,13 +409,14 @@ export default function MessagesPage() {
     return date.toLocaleDateString();
   }
 
-  function handleConversationClick(convoId: string) {
+  // Handle selecting a conversation
+  const handleConversationClick = (convoId: string) => {
     setSearchParams({ conversation: convoId });
     // On mobile, switch to chat view
     if (window.innerWidth < 768) {
       setMobileView("chat");
     }
-  }
+  };
 
   function handleBackToContacts() {
     setSearchParams({});
@@ -487,46 +481,42 @@ export default function MessagesPage() {
                 const isActive = conversationId === convo.id;
 
                 // Format job label
-                const formatJobLabel = (job: typeof convo.job) => {
+                const formatJobLabel = (job: any) => {
                   if (!job) return "";
+                  const serviceTypeMap: Record<string, string> = {
+                    cleaning: "Cleaning",
+                    cooking: "Cooking",
+                    pickup_delivery: "Pickup & Delivery",
+                    nanny: "Nanny",
+                    other_help: "Other Help",
+                  };
                   const careTypeMap: Record<string, string> = {
                     occasional: "One-time",
                     part_time: "Part-time",
                     full_time: "Full-time",
                   };
-                  const careType = careTypeMap[job.care_type] || job.care_type;
+
+                  const serviceName = serviceTypeMap[job.service_type] || "Job";
+                  const careTypeName = careTypeMap[job.care_type] || job.care_type || "";
+
+                  if (job.status === "completed") {
+                    return `${serviceName} – Completed`;
+                  }
 
                   if (job.start_at) {
                     const startDate = new Date(job.start_at);
                     const today = new Date();
                     const isToday = startDate.toDateString() === today.toDateString();
                     if (isToday) {
-                      return `Nanny – Today`;
+                      return `${serviceName} – Today`;
                     }
-                    return `Nanny – ${startDate.toLocaleDateString()}`;
+                    return `${serviceName} – ${startDate.toLocaleDateString()}`;
                   }
 
-                  if (job.status === "completed") {
-                    return "Nanny – Completed";
-                  }
-
-                  return `Nanny – ${careType}`;
-                };
-
-                // Get job status badge
-                const getJobStatus = (job: typeof convo.job) => {
-                  if (!job) return null;
-                  if (job.status === "active" || job.status === "locked") {
-                    return { label: "Active", variant: "default" as const };
-                  }
-                  if (job.status === "completed") {
-                    return { label: "Completed", variant: "outline" as const };
-                  }
-                  return null;
+                  return careTypeName ? `${serviceName} – ${careTypeName}` : serviceName;
                 };
 
                 const jobLabel = formatJobLabel(convo.job);
-                const jobStatus = getJobStatus(convo.job);
 
                 return (
                   <div
@@ -556,31 +546,21 @@ export default function MessagesPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <p className={cn(
-                            "font-semibold truncate text-sm",
-                            convo.unread_count > 0 && "font-bold"
+                            "font-bold truncate text-[16px] text-slate-900 dark:text-slate-100",
+                            convo.unread_count > 0 && "font-black"
                           )}>
                             {convo.other_user_profile?.full_name || "User"}
                           </p>
                           {convo.last_message && (
-                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                            <span className="text-[12px] font-bold text-muted-foreground/60 flex-shrink-0">
                               {formatTime(convo.last_message.created_at)}
                             </span>
                           )}
                         </div>
                         {/* Job Label */}
                         {jobLabel && (
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="text-xs text-muted-foreground truncate">{jobLabel}</span>
-                            {jobStatus && (
-                              <Badge variant={jobStatus.variant} className="text-[10px] px-1.5 py-0 h-4">
-                                {jobStatus.label}
-                              </Badge>
-                            )}
-                            {convo.job?.stage && (
-                              <Badge variant={getJobStageBadge(convo.job.stage).variant} className="text-[10px] px-1.5 py-0 h-4">
-                                {getJobStageBadge(convo.job.stage).label}
-                              </Badge>
-                            )}
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className="text-[13px] font-semibold text-primary/80 truncate">{jobLabel}</span>
                           </div>
                         )}
                         {convo.last_message && (
@@ -589,19 +569,19 @@ export default function MessagesPage() {
                               {convo.last_message.sender_id === user?.id && (
                                 <div className="flex-shrink-0">
                                   {convo.last_message.read_at && convo.last_message.read_by ? (
-                                    <CheckCheck className="w-3.5 h-3.5 text-blue-500" />
+                                    <CheckCheck className="w-4 h-4 text-blue-500" />
                                   ) : convo.last_message.read_at ? (
-                                    <CheckCheck className="w-3.5 h-3.5 text-muted-foreground/60" />
+                                    <CheckCheck className="w-4 h-4 text-muted-foreground/60" />
                                   ) : (
-                                    <Check className="w-3.5 h-3.5 text-muted-foreground/60" />
+                                    <Check className="w-4 h-4 text-muted-foreground/60" />
                                   )}
                                 </div>
                               )}
                               <p className={cn(
-                                "text-xs truncate",
+                                "text-[14px] truncate leading-tight",
                                 convo.unread_count > 0
-                                  ? "text-foreground font-medium"
-                                  : "text-muted-foreground"
+                                  ? "text-foreground font-bold"
+                                  : "text-muted-foreground font-medium"
                               )}>
                                 {convo.last_message.sender_id === user?.id && "You: "}
                                 {convo.last_message.attachment_type
@@ -631,9 +611,7 @@ export default function MessagesPage() {
         {conversationId ? (() => {
           // Find the conversation to get the otherUserId
           const selectedConvo = conversations.find(c => c.id === conversationId);
-          const otherUserId = selectedConvo
-            ? (profile?.role === "client" ? selectedConvo.freelancer_id : selectedConvo.client_id)
-            : undefined;
+          const otherUserId = selectedConvo?.other_user_id;
 
           const otherUserProfile = selectedConvo?.other_user_profile;
           const otherInitials = otherUserProfile?.full_name
@@ -666,6 +644,16 @@ export default function MessagesPage() {
                         {otherUserProfile?.full_name || "User"}
                       </h2>
                     </div>
+                    {/* Desktop Back Button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(profile?.role === "client" ? "/dashboard" : "/freelancer/dashboard")}
+                      className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Back</span>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -674,6 +662,7 @@ export default function MessagesPage() {
               <div className="flex-1 overflow-hidden relative">
                 <div className="messages-chat-container h-full">
                   <ChatPage
+                    key={conversationId || "none"}
                     conversationId={conversationId}
                     hideBackButton={true}
                     otherUserId={otherUserId}

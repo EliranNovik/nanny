@@ -11,6 +11,8 @@ interface StarRatingProps {
     onChange?: (rating: number) => void;
     className?: string;
     numberClassName?: string;
+    starClassName?: string;
+    emptyStarClassName?: string;
 }
 
 export function StarRating({
@@ -22,6 +24,8 @@ export function StarRating({
     onChange,
     className,
     numberClassName,
+    starClassName,
+    emptyStarClassName,
 }: StarRatingProps) {
     const [hoverRating, setHoverRating] = useState<number | null>(null);
 
@@ -75,7 +79,7 @@ export function StarRating({
                             <Star
                                 className={cn(
                                     sizeClasses[size],
-                                    "text-muted-foreground/30"
+                                    emptyStarClassName || "text-muted-foreground/30"
                                 )}
                                 fill="none"
                             />
@@ -89,7 +93,7 @@ export function StarRating({
                                     <Star
                                         className={cn(
                                             sizeClasses[size],
-                                            "text-yellow-500"
+                                            starClassName || "text-yellow-500"
                                         )}
                                         fill="currentColor"
                                     />
@@ -102,7 +106,7 @@ export function StarRating({
 
             {/* Rating number and count */}
             <div className={cn("flex items-center gap-1", textSizeClasses[size])}>
-                <span className={cn("font-medium text-slate-900 dark:text-slate-100", numberClassName)}>
+                <span className={cn("font-black", numberClassName || "text-slate-900 dark:text-slate-100")}>
                     {rating > 0 ? rating.toFixed(1) : "New"}
                 </span>
                 {showCount && totalRatings !== undefined && totalRatings > 0 && (

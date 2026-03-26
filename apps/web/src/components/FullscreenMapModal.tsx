@@ -2,8 +2,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import JobMap from "./JobMap";
 import { 
   X, ArrowUpCircle, ArrowDownCircle, 
-  Car, ChevronUp, ChevronDown, Sparkles, Calendar, Star
+  Car, ChevronUp, ChevronDown, Sparkles, Calendar, Star, CheckCircle2, Loader2
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -17,13 +18,26 @@ interface FullscreenMapModalProps {
   job: any;
   isOpen: boolean;
   onClose: () => void;
+  onConfirm?: () => void;
+  isConfirming?: boolean;
+  showAcceptButton?: boolean;
 }
 
-export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalProps) {
+export function FullscreenMapModal({ 
+  job, isOpen, onClose, 
+  onConfirm, isConfirming, showAcceptButton 
+}: FullscreenMapModalProps) {
   const { user } = useAuth();
   const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
   const [otherUser, setOtherUser] = useState<any>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && job) {
+      // Auto-expand for non-delivery jobs (where map is just a city marker)
+      setIsMobileExpanded(job.service_type !== 'pickup_delivery');
+    }
+  }, [isOpen, job?.id]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -261,6 +275,26 @@ export function FullscreenMapModal({ job, isOpen, onClose }: FullscreenMapModalP
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Accept Button for Freelancers */}
+                  {showAcceptButton && onConfirm && (
+                    <div className="mt-6 animate-in slide-in-from-bottom-4 duration-500">
+                      <Button
+                        className="w-full h-14 rounded-[20px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all active:scale-[0.98] font-black text-lg flex items-center justify-center gap-3"
+                        onClick={onConfirm}
+                        disabled={isConfirming}
+                      >
+                        {isConfirming ? (
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-6 h-6" />
+                            Accept Invitation
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
 

@@ -833,12 +833,16 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   useEffect(() => {
     if (!loading && messages.length > 0 && isInitialLoadRef.current) {
       // Instant scroll on initial load
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         scrollToBottom(false);
         isInitialLoadRef.current = false;
+        
+        // Secondary check forced - some scrolling systems need extra cycles
+        setTimeout(() => scrollToBottom(false), 150);
       }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [loading]); // Only trigger when loading changes from true to false
+  }, [loading, messages]); // Trigger when loading or messages first arrive
 
   // Mark messages as read when viewing
   useEffect(() => {
@@ -1374,28 +1378,28 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-14 w-14 rounded-full border-none bg-primary hover:bg-primary/90 hover:scale-110 transition-all shadow-lg group"
+                              className="h-14 w-14 rounded-full border-none bg-[#25D366] hover:bg-[#22c35e] hover:scale-110 transition-all shadow-lg group"
                               onClick={() => {
                                 if (otherUser?.whatsapp_number_e164) {
                                   window.open(getWhatsAppLink(otherUser.whatsapp_number_e164), '_blank');
                                 }
                               }}
                             >
-                              <WhatsAppIcon className="w-8 h-8 fill-white group-hover:scale-110 transition-transform" />
+                              <WhatsAppIcon className="w-8 h-8 fill-white text-white group-hover:scale-110 transition-transform" />
                             </Button>
                           )}
                           {showTelegram && (
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-14 w-14 rounded-full border-none bg-primary hover:bg-primary/90 hover:scale-110 transition-all shadow-lg group"
+                              className="h-14 w-14 rounded-full border-none bg-[#0088cc] hover:bg-[#007bbf] hover:scale-110 transition-all shadow-lg group"
                               onClick={() => {
                                 if (otherUser?.telegram_username) {
                                   window.open(getTelegramLink(otherUser.telegram_username), '_blank');
                                 }
                               }}
                             >
-                              <TelegramIcon className="w-7 h-7 fill-white group-hover:scale-110 transition-transform" />
+                              <TelegramIcon className="w-7 h-7 fill-white text-white group-hover:scale-110 transition-transform" />
                             </Button>
                           )}
                         </div>
@@ -1559,13 +1563,13 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             </Avatar>
 
             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => !hideBackButton && setShowContactPanel(!showContactPanel)}>
-              <h2 className="font-semibold truncate text-black dark:text-white">
+              <h2 className="text-[18px] font-bold truncate text-black dark:text-white">
                 {conversation?.job_id === null
                   ? (currentUserProfile?.is_admin ? (otherUser?.full_name || "User") : "Support")
                   : (otherUser?.full_name || "User")}
               </h2>
               {!hideBackButton && (
-                <p className="text-xs text-black/60 dark:text-white/60">
+                <p className="text-[13px] font-medium text-black/60 dark:text-white/60">
                   Tap for contact info
                 </p>
               )}
@@ -1643,9 +1647,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                       )}
                     >
                       {!isOwn && (
-                        <Avatar className="w-8 h-8 flex-shrink-0 mb-1">
+                        <Avatar className="w-10 h-10 flex-shrink-0 mb-1">
                           <AvatarImage src={otherUser?.photo_url || undefined} />
-                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                          <AvatarFallback className="text-[12px] font-bold bg-primary/10 text-primary">
                             {otherInitials}
                           </AvatarFallback>
                         </Avatar>
@@ -1708,7 +1712,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                           )}
 
                           {msg.body && (
-                            <p className="text-sm md:text-[15px] leading-relaxed break-words whitespace-pre-wrap">
+                            <p className="text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap">
                               {msg.body}
                             </p>
                           )}
@@ -1773,17 +1777,17 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               accept="image/*,video/*,.pdf,.doc,.docx,.txt"
               style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} />
             <Button type="button" variant="ghost" size="icon"
-              className="rounded-full h-10 w-10 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 transition-colors text-primary"
+              className="rounded-full h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 transition-colors text-primary"
               onClick={() => fileInputRef.current?.click()} disabled={sending || uploading}>
-              <Paperclip className="w-5 h-5" />
+              <Paperclip className="w-6 h-6" />
             </Button>
             <Input ref={inputRef} placeholder={selectedFile ? "Add a message..." : "Type a message..."}
               value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border border-primary/20 focus:border-primary/40 h-10 text-sm bg-primary/20 text-black placeholder:text-black/50 shadow-sm backdrop-blur-md"
+              className="flex-1 rounded-full border border-primary/20 focus:border-primary/40 h-12 text-[16px] font-medium bg-primary/20 text-black placeholder:text-black/50 shadow-sm backdrop-blur-md"
               disabled={sending || uploading} />
-            <Button type="submit" size="icon" className="rounded-full h-10 w-10 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 text-primary"
+            <Button type="submit" size="icon" className="rounded-full h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 text-primary"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}>
-              {(sending || uploading) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {(sending || uploading) ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </form>
         </div>
@@ -1810,17 +1814,17 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           )}
           <form onSubmit={handleSend} className="flex gap-2 max-w-4xl mx-auto items-center">
             <Button type="button" variant="ghost" size="icon"
-              className="rounded-full h-10 w-10 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 transition-colors text-primary"
+              className="rounded-full h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 transition-colors text-primary"
               onClick={() => fileInputRef.current?.click()} disabled={sending || uploading}>
-              <Paperclip className="w-5 h-5" />
+              <Paperclip className="w-6 h-6" />
             </Button>
             <Input ref={inputRef} placeholder={selectedFile ? "Add a message..." : "Type a message..."}
               value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border border-primary/20 focus:border-primary/40 h-10 text-sm bg-primary/20 text-black placeholder:text-black/50 shadow-sm backdrop-blur-md"
+              className="flex-1 rounded-full border border-primary/20 focus:border-primary/40 h-12 text-[16px] font-medium bg-primary/20 text-black placeholder:text-black/50 shadow-sm backdrop-blur-md"
               disabled={sending || uploading} />
-            <Button type="submit" size="icon" className="rounded-full h-10 w-10 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 text-primary"
+            <Button type="submit" size="icon" className="rounded-full h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 text-primary"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}>
-              {(sending || uploading) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {(sending || uploading) ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </form>
         </div>
