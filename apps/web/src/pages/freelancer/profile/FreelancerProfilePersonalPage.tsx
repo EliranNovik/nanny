@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { ProfileSubpageLayout } from "@/components/profile/ProfileSubpageLayout";
 import { ViewEditFieldRow } from "@/components/profile/ViewEditFieldRow";
+import { ProfileImageCropModal } from "@/components/profile/ProfileImageCropModal";
 import type { FreelancerProfileFormContext } from "@/hooks/useFreelancerProfileForm";
 import { Save, Loader2, Camera, X, Navigation, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,8 @@ type Snapshot = {
 export default function FreelancerProfilePersonalPage() {
   const ctx = useOutletContext<FreelancerProfileFormContext>();
   const [editing, setEditing] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
   const snapshotRef = useRef<Snapshot | null>(null);
 
   function beginEdit() {
@@ -70,6 +73,18 @@ export default function FreelancerProfilePersonalPage() {
       .join("")
       .toUpperCase() || "?";
 
+  function onChoosePhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      ctx.handleImageUpload(e);
+      return;
+    }
+    setCropFile(file);
+    setCropOpen(true);
+    if (ctx.fileInputRef.current) ctx.fileInputRef.current.value = "";
+  }
+
   return (
     <ProfileSubpageLayout title="Personal & contact" description="How you appear and how others can reach you">
       <div className="space-y-8">
@@ -112,7 +127,7 @@ export default function FreelancerProfilePersonalPage() {
             ref={ctx.fileInputRef}
             type="file"
             accept="image/*"
-            onChange={ctx.handleImageUpload}
+            onChange={onChoosePhoto}
             className="hidden"
             disabled={ctx.uploading}
           />
@@ -295,6 +310,19 @@ export default function FreelancerProfilePersonalPage() {
 
         {!editing && <p className="text-center text-[13px] text-muted-foreground">Tap Edit to update your details</p>}
       </div>
+      <ProfileImageCropModal
+        file={cropFile}
+        open={cropOpen}
+        onCancel={() => {
+          setCropOpen(false);
+          setCropFile(null);
+        }}
+        onConfirm={async (file) => {
+          await ctx.handleImageUploadFile(file);
+          setCropOpen(false);
+          setCropFile(null);
+        }}
+      />
     </ProfileSubpageLayout>
   );
 }

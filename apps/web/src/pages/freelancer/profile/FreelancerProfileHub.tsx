@@ -3,6 +3,7 @@ import { useReportIssue } from "@/context/ReportIssueContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileMenuRow } from "@/components/profile/ProfileMenuRow";
+import { StarRating } from "@/components/StarRating";
 import type { FreelancerProfileFormContext } from "@/hooks/useFreelancerProfileForm";
 import {
   AlertCircle,
@@ -57,6 +58,17 @@ export default function FreelancerProfileHub() {
             </AvatarFallback>
           </Avatar>
           <h1 className="text-2xl font-semibold tracking-tight">{fullName || "Your profile"}</h1>
+          <div className="mt-1.5 flex items-center gap-2">
+            <StarRating
+              rating={profile?.average_rating || 0}
+              size="sm"
+              showCount={false}
+              numberClassName="text-[13px] font-semibold text-foreground/70"
+            />
+            <span className="text-[12px] text-muted-foreground">
+              {profile?.total_ratings ? `${profile.total_ratings} reviews` : "No reviews yet"}
+            </span>
+          </div>
           <p className="text-sm text-muted-foreground mt-1">{profile?.city || "Complete your details"}</p>
         </div>
 

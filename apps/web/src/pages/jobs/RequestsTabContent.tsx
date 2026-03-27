@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
     MapPin, Bell, Clock, XCircle, CheckCircle2, Loader2,
-    Hourglass, ClipboardList
+    Hourglass, ClipboardList, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import JobMap from "@/components/JobMap";
@@ -269,7 +269,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
             confirmed: { label: "Confirmed", className: "bg-emerald-500 text-white shadow-emerald-500/20" },
         };
         const config = map[status] || { label: status, className: "bg-slate-400 text-white" };
-        return <Badge className={cn("h-8 px-3.5 rounded-full text-[11px] uppercase font-black tracking-wider border-none shadow-lg transition-transform hover:scale-105", config.className)}>{config.label}</Badge>;
+        return <Badge className={cn("h-7 px-3 rounded-full text-[10px] uppercase font-black tracking-wide border-none shadow-md transition-transform hover:scale-105", config.className)}>{config.label}</Badge>;
     }
 
     function formatJobTitle(job: JobRequest) {
@@ -280,6 +280,9 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
         if (job.service_type === 'other_help') return 'Other Help';
         return "Service Request";
     }
+
+    const incomingItems = inboundNotifications.filter((n) => !n.isConfirmed);
+    const pendingItems = inboundNotifications.filter((n) => n.isConfirmed);
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
@@ -293,9 +296,10 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
                             <Bell className="w-6 h-6 text-orange-500" /> Incoming Requests
                         </h2>
-                        {inboundNotifications.filter(n => !n.isConfirmed).length > 0 ? (
-                            <div className="mt-3 flex flex-col gap-14 md:gap-0 md:space-y-14">
-                                {inboundNotifications.filter(n => !n.isConfirmed).map((notif) => {
+                        {incomingItems.length > 0 ? (
+                            <>
+                            <div className="mt-3 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 md:block md:space-y-14 md:overflow-visible">
+                                {incomingItems.map((notif) => {
                                 const job = notif.job_requests;
                                 const isConfirmed = notif.isConfirmed;
                                 const isDeclined = notif.isDeclined;
@@ -306,7 +310,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             id={`card-${notif.id}`}
                                             data-job-card
                                             className={cn(
-                                                "transition-all duration-500 w-full md:max-w-3xl md:mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative", 
+                                                "transition-all duration-500 w-[82vw] max-w-[82vw] shrink-0 snap-start md:w-full md:max-w-3xl md:mx-auto md:shrink rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative", 
                                                 isDeclined && "opacity-60"
                                             )}
                                         >
@@ -334,10 +338,15 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             <div className="absolute inset-0 bg-black/40 z-10" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent z-10" />
+                                            <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 md:hidden">
+                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </span>
+                                            </div>
                                             
                                             {/* Top Overlays */}
                                             <div className="absolute top-4 left-4 right-4 flex justify-end items-start z-20">
-                                                <Badge className={cn("h-8 px-3.5 rounded-full text-[11px] uppercase font-black tracking-wider border-none shadow-lg transition-transform", 
+                                                <Badge className={cn("h-7 px-3 rounded-full text-[10px] uppercase font-black tracking-wide border-none shadow-md transition-transform",
                                                     isDeclined ? "bg-slate-200 text-slate-600" :
                                                     isConfirmed ? "bg-emerald-500 text-white" :
                                                     "bg-amber-500 text-white"
@@ -444,6 +453,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                 );
                             })}
                         </div>
+                        </>
                     ) : (
                         <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">
@@ -461,16 +471,17 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
                             <Hourglass className="w-6 h-6 text-orange-500" /> Pending Jobs
                         </h2>
-                        {inboundNotifications.filter(n => n.isConfirmed).length > 0 ? (
-                            <div className="mt-3 flex flex-col gap-14 md:gap-0 md:space-y-14">
-                                {inboundNotifications.filter(n => n.isConfirmed).map((n) => {
+                        {pendingItems.length > 0 ? (
+                            <>
+                            <div className="mt-3 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 md:block md:space-y-14 md:overflow-visible">
+                                {pendingItems.map((n) => {
                                     const job = n.job_requests;
                                     return (
                                         <Card 
                                             key={n.id} 
                                             id={`card-${n.id}`}
                                             data-job-card
-                                            className="transition-all duration-500 w-full md:max-w-3xl md:mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative"
+                                            className="transition-all duration-500 w-[82vw] max-w-[82vw] shrink-0 snap-start md:w-full md:max-w-3xl md:mx-auto md:shrink rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative"
                                         >
                                             {/* Smart Mobile Scroll Overlay */}
                                             <div className={cn(
@@ -488,10 +499,15 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 )}
                                                 <div className="absolute inset-0 bg-black/40 z-10" />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
+                                                <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 md:hidden">
+                                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    </span>
+                                                </div>
                                                 
                                                 {/* Top right — pending confirmation */}
                                                 <div className="absolute right-4 top-4 z-20 text-right">
-                                                    <Badge className="h-8 rounded-full border-none bg-amber-500 px-4 text-[11px] font-black uppercase tracking-widest text-white shadow-lg">
+                                                    <Badge className="h-7 rounded-full border-none bg-amber-500 px-3 text-[10px] font-black uppercase tracking-wide text-white shadow-md">
                                                         Waiting for Confirmation
                                                     </Badge>
                                                 </div>
@@ -526,7 +542,9 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                     <div className="flex items-center justify-between w-full gap-3 text-[16px] text-orange-400 font-bold tracking-tight">
                                                         <div className="flex items-center gap-3">
                                                             <Clock className="w-5 h-5 flex-shrink-0" />
-                                                            <span>Waiting for client confirmation...</span>
+                                                            <span>
+                                                                Waiting for {job.profiles?.full_name || "other user"}...
+                                                            </span>
                                                         </div>
                                                         <LiveTimer createdAt={job.created_at} />
                                                     </div>
@@ -541,6 +559,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     );
                                 })}
                             </div>
+                            </>
                         ) : (
                             <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                                 <CardContent className="p-6 text-center text-muted-foreground">
@@ -559,13 +578,14 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                             <ClipboardList className="w-6 h-6 text-orange-500" /> My Posted Requests
                         </h2>
                     {myOpenRequests.length > 0 ? (
-                        <div className="mt-3 flex flex-col gap-14 md:gap-0 md:space-y-14">
+                        <>
+                        <div className="mt-3 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 md:block md:space-y-14 md:overflow-visible">
                             {myOpenRequests.map((job) => (
                                 <Card 
                                     key={job.id} 
                                     id={`card-${job.id}`}
                                     data-job-card
-                                    className="transition-all duration-500 w-full md:max-w-3xl md:mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative"
+                                    className="transition-all duration-500 w-[82vw] max-w-[82vw] shrink-0 snap-start md:w-full md:max-w-3xl md:mx-auto md:shrink rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative"
                                 >
                                     {/* Smart Scroll Overlay */}
                                     <div className={cn(
@@ -591,6 +611,11 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         <div className="absolute inset-0 bg-black/40 z-10" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent z-10" />
+                                        <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 md:hidden">
+                                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
+                                                <ChevronRight className="h-4 w-4" />
+                                            </span>
+                                        </div>
                                         
                                         {/* Top Overlays */}
                                         <div className="absolute top-4 left-4 right-4 flex justify-end items-start z-20">
@@ -613,8 +638,14 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                     {formatJobTitle(job)} Request
                                                 </h3>
                                             </div>
-                                            <div className="flex items-center gap-1.5 mt-0.5 text-[14px] text-white/80 font-medium drop-shadow-md">
-                                                Posted {new Date(job.created_at).toLocaleDateString()}
+                                            <div className="mt-0.5 flex items-center gap-2 text-[14px] font-medium text-white/80 drop-shadow-md">
+                                                <span>Posted {new Date(job.created_at).toLocaleDateString()}</span>
+                                                {job.created_at && (
+                                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/30 px-2 py-0.5 text-[11px] font-semibold text-white/90">
+                                                        <Clock className="h-3.5 w-3.5" />
+                                                        <LiveTimer createdAt={job.created_at} />
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -640,15 +671,6 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 )}
                                             </div>
                                             
-                                            {job.created_at && (
-                                                <div className="flex items-center gap-3 text-[16px] text-orange-400 font-bold tracking-tight">
-                                                    <Clock className="w-5 h-5 flex-shrink-0" />
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="opacity-60 font-medium">Active for</span>
-                                                        <LiveTimer createdAt={job.created_at} />
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
 
                                         <div className="mt-auto flex flex-col gap-4 pt-6 border-t border-slate-100 dark:border-white/5">
@@ -675,6 +697,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                 </Card>
                             ))}
                         </div>
+                        </>
                     ) : (
                         <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">

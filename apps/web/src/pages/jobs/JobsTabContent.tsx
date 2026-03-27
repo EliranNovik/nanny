@@ -199,7 +199,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
         const config = map[status] || { label: status, className: "bg-slate-400 text-white" };
         return { 
             label: config.label, 
-            className: cn("h-8 px-4 rounded-full text-[11px] uppercase font-black tracking-widest border-none shadow-lg transition-transform hover:scale-105", config.className)
+            className: cn("h-7 px-3 rounded-full text-[10px] uppercase font-black tracking-wide border-none shadow-md transition-transform hover:scale-105", config.className)
         };
     }
 
@@ -240,7 +240,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                             <Briefcase className="w-6 h-6 text-orange-500" /> Active Jobs
                         </h2>
                         {activeJobs.length > 0 ? (
-                            <div className="flex flex-col gap-14 md:gap-0 md:space-y-14">
+                            <div className="space-y-14">
                                 {activeJobs.map(job => {
                                     const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
                                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;
@@ -251,7 +251,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             key={job.id} 
                                             id={`card-${job.id}`}
                                             data-job-card
-                                            className="transition-all duration-500 w-full md:max-w-3xl md:mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full group bg-white dark:bg-zinc-900/50 backdrop-blur-sm relative"
+                                            className="transition-all duration-500 w-[82vw] max-w-[82vw] shrink-0 snap-start md:w-full md:max-w-3xl md:mx-auto md:shrink rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full group bg-white dark:bg-zinc-900/50 backdrop-blur-sm relative"
                                         >
                                             {/* Smart Scroll Overlay */}
                                             <div className={cn(
@@ -270,6 +270,11 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                 <div className="absolute inset-0 bg-black/40 z-10" />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                                 <div className="absolute top-4 right-4 z-20"><Badge className={statusBadge.className}>{statusBadge.label}</Badge></div>
+                                                <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 md:hidden">
+                                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    </span>
+                                                </div>
                                                 <div className="absolute bottom-3 left-6 right-6 flex flex-col gap-2 z-20">
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="w-16 h-16 border-2 border-white/30 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">
@@ -346,8 +351,12 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             key={job.id} 
                                             id={`card-${job.id}`}
                                             data-job-card
-                                            className="group relative flex flex-col sm:flex-row sm:items-center justify-between p-7 rounded-[32px] border border-black/[0.05] dark:border-white/5 bg-white dark:bg-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 transition-all duration-500 gap-6 overflow-hidden"
+                                            className="group relative w-full flex flex-col sm:flex-row sm:items-center justify-between p-7 rounded-[32px] border border-black/[0.05] dark:border-white/5 bg-white dark:bg-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 transition-all duration-500 gap-6 overflow-hidden"
                                         >
+                                            <div className={cn(
+                                                "absolute inset-0 bg-zinc-900/25 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none md:hidden z-[10]",
+                                                activeId && activeId !== `card-${job.id}` ? "opacity-100" : "opacity-0"
+                                            )} />
                                             <div className="flex items-center gap-5 flex-1 min-w-0">
                                                 <div className="relative">
                                                     <Avatar className="w-16 h-16 border-2 border-white dark:border-zinc-800 shadow-2xl flex-shrink-0 transition-transform duration-500 group-hover:scale-110">

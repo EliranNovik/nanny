@@ -4,27 +4,32 @@ import { cn } from "@/lib/utils";
 import { Search, X, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { StarRating } from "@/components/StarRating";
 
 interface SearchResult {
   id: string;
   full_name: string | null;
   photo_url: string | null;
-  role: string | null;
+  average_rating: number | null;
+  total_ratings: number | null;
 }
 
 interface UserSearchProps {
   className?: string;
   /** Minimal underline-style field (e.g. mobile header next to icon) — no filled rounded box */
   variant?: "default" | "inline";
+  autoFocus?: boolean;
+  onResultSelect?: () => void;
 }
 
-export function UserSearch({ className, variant = "default" }: UserSearchProps) {
+export function UserSearch({ className, variant = "default", autoFocus = false, onResultSelect }: UserSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -37,6 +42,12 @@ export function UserSearch({ className, variant = "default" }: UserSearchProps) 
   }, []);
 
   useEffect(() => {
+    if (!autoFocus) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 30);
+    return () => clearTimeout(t);
+  }, [autoFocus]);
+
+  useEffect(() => {
     const searchUsers = async () => {
       if (query.trim().length === 0) {
         setResults([]);
@@ -47,7 +58,7 @@ export function UserSearch({ className, variant = "default" }: UserSearchProps) 
       setLoading(true);
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, photo_url, role")
+        .select("id, full_name, photo_url, average_rating, total_ratings")
         .ilike("full_name", `%${query}%`)
         .limit(5);
 
@@ -68,11 +79,12 @@ export function UserSearch({ className, variant = "default" }: UserSearchProps) 
       <div className="relative">
         <Search
           className={cn(
-            "absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary",
+            "absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-slate-600 dark:group-focus-within:text-slate-300",
             isInline && "left-0 w-[18px] h-[18px] text-slate-500 dark:text-slate-400"
           )}
         />
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => {
@@ -83,10 +95,10 @@ export function UserSearch({ className, variant = "default" }: UserSearchProps) 
           placeholder="Search helpers..."
           autoComplete="off"
           className={cn(
-            "w-full text-sm transition-all placeholder:text-slate-400",
+            "w-full text-sm transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
             isInline
-              ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-7 pr-8 text-slate-900 shadow-none focus-visible:outline-none focus-visible:ring-0 focus:border-primary dark:border-white/35 dark:text-white dark:focus:border-primary"
-              : "h-10 rounded-2xl border-none bg-black/5 pl-10 pr-10 focus:ring-2 focus:ring-primary/20 dark:bg-white/5"
+              ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-7 pr-8 text-slate-900 shadow-none focus-visible:outline-none focus-visible:ring-0 focus:border-slate-600 dark:border-white/35 dark:text-white dark:focus:border-slate-300"
+              : "h-10 rounded-2xl border border-slate-300/70 bg-black/5 pl-10 pr-10 shadow-none focus:border-slate-400 dark:border-zinc-600/70 dark:bg-white/5 dark:focus:border-zinc-500"
           )}
         />
         {query && (
@@ -128,6 +140,7 @@ export function UserSearch({ className, variant = "default" }: UserSearchProps) 
                     navigate(`/profile/${result.id}`);
                     setIsOpen(false);
                     setQuery("");
+                    onResultSelect?.();
                   }}
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all group/item text-left"
                 >
@@ -138,12 +151,20 @@ export function UserSearch({ className, variant = "default" }: UserSearchProps) 
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate group-hover/item:text-primary transition-colors">
+                    <p className="text-sm font-bold truncate transition-colors group-hover/item:text-slate-700 dark:group-hover/item:text-slate-200">
                       {result.full_name}
                     </p>
-                    <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-0.5">
-                      {result.role || "User"}
-                    </p>
+                    <div className="mt-0.5">
+                      <StarRating
+                        rating={result.average_rating || 0}
+                        totalRatings={result.total_ratings || 0}
+                        size="sm"
+                        className="gap-1"
+                        starClassName="text-slate-500 dark:text-slate-300"
+                        emptyStarClassName="text-slate-300 dark:text-slate-600"
+                        numberClassName="text-[11px] text-slate-600 dark:text-slate-300"
+                      />
+                    </div>
                   </div>
                 </button>
               ))

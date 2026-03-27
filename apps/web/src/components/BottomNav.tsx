@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useConfirmationCounts } from "@/hooks/useConfirmationCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
-import { Home, MessageCircle, User, Bell, Briefcase, Plus, ChevronDown, LogOut, Pencil, Search, X, ArrowLeft } from "lucide-react";
+import { Home, MessageCircle, User, Bell, Briefcase, ChevronDown, LogOut, Pencil, Search, X, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,6 +29,7 @@ export function BottomNav() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchClusterRef = useRef<HTMLDivElement>(null);
+  const previousPathnameRef = useRef(location.pathname);
   const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : profile?.role === "client" ? "/client/profile" : "/dashboard";
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
@@ -58,6 +59,13 @@ export function BottomNav() {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [mobileSearchOpen]);
+
+  useEffect(() => {
+    if (previousPathnameRef.current !== location.pathname && mobileSearchOpen) {
+      setMobileSearchOpen(false);
+    }
+    previousPathnameRef.current = location.pathname;
+  }, [location.pathname, mobileSearchOpen]);
 
   // Nothing on landing page, chat pages, or messages page
   if (location.pathname === "/" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/messages")) {
@@ -151,7 +159,13 @@ export function BottomNav() {
       >
         {mobileSearchOpen && (
           <div className="min-w-0 flex-1 shrink animate-in fade-in slide-in-from-right-2 duration-200">
-            <UserSearch variant="inline" className="max-w-none w-full" />
+            <div className="rounded-2xl border border-slate-200/70 bg-white/95 p-2 shadow-[0_10px_25px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:border-zinc-700/70 dark:bg-zinc-900/95">
+              <UserSearch
+                autoFocus
+                onResultSelect={() => setMobileSearchOpen(false)}
+                className="max-w-none w-full"
+              />
+            </div>
           </div>
         )}
         <div className="relative shrink-0">
@@ -313,7 +327,7 @@ export function BottomNav() {
         {MobileJobsTabLeft}
         {MobileFloatingActions}
         {ProfileMenuModal}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
           <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
             <div className="flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
@@ -345,9 +359,9 @@ export function BottomNav() {
         {MobileProfileBack}
         {MobileJobsTabLeft}
         {MobileFloatingActions}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <div className="w-full md:max-w-md md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
-            <div className="flex items-center justify-between w-full max-w-2xl mx-auto px-6 py-2">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible">
+          <div className="w-full md:max-w-md md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto overflow-visible">
+            <div className="flex items-center justify-between w-full max-w-2xl mx-auto px-6 py-2 overflow-visible">
               {/* First two items */}
               {userNav.slice(0, 2).map((item) => {
                 const Icon = item.icon;
@@ -362,19 +376,14 @@ export function BottomNav() {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
-                      isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
+                      isActive ? "text-slate-700 dark:text-slate-200" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                     )}
                   >
-                    <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                    <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-slate-100 dark:bg-zinc-800/80 text-slate-700 dark:text-slate-200" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
                       <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
                     </div>
-
-                    {/* Tooltip Label */}
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
-                      <span className="uppercase tracking-widest">{item.label}</span>
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
-                    </div>
+                    <span className="mt-0.5 text-[10px] font-semibold leading-none">{item.label}</span>
 
                     {jobsBadgeCount > 0 && (
                       <Badge
@@ -389,19 +398,21 @@ export function BottomNav() {
               })}
 
               {/* Center Plus Button */}
-              <button
-                type="button"
-                onClick={() => navigate("/client/create")}
-                className="flex items-center justify-center h-[52px] w-[52px] rounded-full bg-orange-500 text-white shadow-[0_4px_16px_rgba(249,115,22,0.3)] hover:shadow-[0_8px_20px_rgba(249,115,22,0.4)] transition-all hover:scale-105 active:scale-95 mx-2 -mt-2 group/plus"
-                aria-label="Create Job"
-              >
-                <Plus className="w-8 h-8" />
-                {/* Tooltip Label for Plus */}
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-orange-600 border border-white/20 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover/plus:opacity-100 group-hover/plus:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
-                  <span className="uppercase tracking-widest whitespace-nowrap">Create Job</span>
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-orange-600" />
-                </div>
-              </button>
+              <div className="mx-2 flex flex-col items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => navigate("/client/create")}
+                  className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-transparent text-white transition-all hover:scale-105 active:scale-95"
+                  aria-label="Post Job"
+                >
+                  <img
+                    src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+                    alt=""
+                    className="h-[52px] w-[52px] rounded-full object-cover"
+                  />
+                </button>
+                <span className="mt-0.5 text-[10px] font-semibold leading-none text-slate-400 dark:text-slate-500">Post</span>
+              </div>
 
               {/* Messages: mobile + desktop */}
               {userNav.slice(2, 3).map((item) => {
@@ -414,18 +425,14 @@ export function BottomNav() {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
-                      isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
+                      isActive ? "text-slate-700 dark:text-slate-200" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                     )}
                   >
-                    <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                    <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-slate-100 dark:bg-zinc-800/80" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
                       <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
                     </div>
-
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
-                      <span className="uppercase tracking-widest">{item.label}</span>
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
-                    </div>
+                    <span className="mt-0.5 text-[10px] font-semibold leading-none">{item.label}</span>
 
                     {showMessageBadge && (
                       <Badge
@@ -448,12 +455,12 @@ export function BottomNav() {
                       type="button"
                       onClick={() => setProfileMenuOpen(true)}
                       className={cn(
-                        "md:hidden flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
-                        isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                        "md:hidden flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
+                        isActive ? "text-slate-700 dark:text-slate-200" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                       )}
                       aria-label="Open profile menu"
                     >
-                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative overflow-hidden", isActive ? "bg-blue-50 dark:bg-blue-500/10 ring-2 ring-blue-500/30" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative overflow-visible", isActive ? "bg-slate-100 dark:bg-zinc-800/80 ring-1 ring-slate-300/70 dark:ring-zinc-700/70" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
                         <Avatar className="h-9 w-9 border border-black/10">
                           <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
                           <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
@@ -461,26 +468,20 @@ export function BottomNav() {
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
-                        <span className="uppercase tracking-widest">Profile</span>
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
-                      </div>
+                      <span className="mt-0.5 text-[10px] font-semibold leading-none">Profile</span>
                     </button>
 
                     <Link
                       to={profileTabPath}
                       className={cn(
-                        "hidden md:flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative group",
-                        isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                        "hidden md:flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
+                        isActive ? "text-slate-700 dark:text-slate-200" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                       )}
                     >
-                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-blue-50 dark:bg-blue-500/10" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
+                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-slate-100 dark:bg-zinc-800/80" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
                         <User className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
                       </div>
-                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 border border-white/10 text-white text-[10px] font-bold rounded-xl opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none shadow-2xl backdrop-blur-md z-[60] flex items-center justify-center">
-                        <span className="uppercase tracking-widest">Profile</span>
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900 dark:border-t-zinc-800" />
-                      </div>
+                      <span className="mt-0.5 text-[10px] font-semibold leading-none">Profile</span>
                     </Link>
                   </>
                 );
@@ -504,7 +505,7 @@ export function BottomNav() {
         {MobileProfileBack}
         {MobileJobsTabLeft}
         {MobileFloatingActions}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
           <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-white dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
             <div className="max-w-2xl mx-auto flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">

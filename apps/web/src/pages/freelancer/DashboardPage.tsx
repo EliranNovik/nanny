@@ -359,7 +359,7 @@ export default function FreelancerDashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card 
             className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
-            onClick={() => navigate("/jobs")}
+            onClick={() => navigate("/jobs?tab=jobs")}
           >
             <CardContent className="p-4 flex flex-col h-full">
               <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Active Jobs</span>
@@ -370,7 +370,7 @@ export default function FreelancerDashboardPage() {
 
           <Card 
             className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
-            onClick={() => navigate("/jobs")}
+            onClick={() => navigate("/jobs?tab=my_requests")}
           >
             <CardContent className="p-4 flex flex-col h-full">
               <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Requests</span>
@@ -381,7 +381,7 @@ export default function FreelancerDashboardPage() {
 
           <Card 
             className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
-            onClick={() => navigate("/jobs")}
+            onClick={() => navigate("/jobs?tab=requests")}
           >
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between mb-1">
@@ -397,7 +397,10 @@ export default function FreelancerDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl overflow-hidden hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
+          <Card
+            className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl overflow-hidden hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer active:scale-[0.98]"
+            onClick={() => navigate("/freelancer/profile")}
+          >
             <CardContent className="p-4 flex flex-col h-full">
               <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Avg Rating</span>
               <div className="flex items-baseline gap-1.5 mb-2 leading-none">

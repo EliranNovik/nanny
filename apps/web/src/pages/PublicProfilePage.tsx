@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { 
   MessageSquare, 
   Briefcase, 
-  ChevronLeft, 
+  ArrowLeft, 
   ChevronRight,
   CheckCircle2,
   ShieldCheck,
@@ -207,33 +207,33 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen gradient-mesh pb-32">
-      <div className="max-w-4xl mx-auto px-4 pt-8">
-        
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate(-1)}
-          className="mb-8 gap-2 hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all group"
-        >
-          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Back
-        </Button>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="md:hidden fixed z-[60] pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-border/60 shadow-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-zinc-800 transition-all active:scale-95"
+        style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
+        aria-label="Back"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </button>
+
+      <div className="max-w-4xl mx-auto px-4 pt-[calc(4.75rem+env(safe-area-inset-top))] md:pt-10">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Column: User Card */}
           <div className="lg:col-span-1 space-y-6">
-            <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.06)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[32px] overflow-hidden bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl">
-              <CardContent className="p-8 flex flex-col items-center text-center">
-                <div className="relative mb-6">
-                  <Avatar className="w-32 h-32 shadow-2xl ring-2 ring-emerald-500/80 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900">
+            <Card className="border border-slate-200/70 dark:border-zinc-800 shadow-[0_12px_35px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.35)] rounded-[28px] overflow-hidden bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md">
+              <CardContent className="p-7 sm:p-8 flex flex-col items-center text-center">
+                <div className="relative mb-5">
+                  <Avatar className="w-28 h-28 shadow-xl ring-2 ring-slate-200 dark:ring-zinc-700">
                     <AvatarImage src={profile.photo_url || undefined} className="object-cover" />
                     <AvatarFallback className="text-4xl font-black bg-primary/5 text-primary uppercase">
                       {profile.full_name?.slice(0, 2) || "??"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md border-2 border-white dark:border-zinc-900">
-                    <ShieldCheck className="w-4 h-4" />
+                  <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md border-2 border-white dark:border-zinc-900">
+                    <ShieldCheck className="w-3.5 h-3.5" />
                   </div>
                 </div>
 
@@ -254,9 +254,13 @@ export default function PublicProfilePage() {
                     <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2 text-center">
                       Job With
                     </p>
-                    <div className="flex flex-wrap justify-center gap-2">
+                    <div className="flex flex-wrap justify-center gap-2.5">
                       {profile.categories.map((category, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-[10px] font-bold uppercase tracking-tight">
+                        <Badge
+                          key={idx}
+                          variant="secondary"
+                          className="rounded-full border border-slate-200/80 bg-white/90 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-[1px] hover:shadow-[0_10px_18px_rgba(15,23,42,0.12)] dark:border-zinc-700 dark:bg-zinc-800/90 dark:text-slate-200"
+                        >
                           {category.replace(/_/g, " ")}
                         </Badge>
                       ))}
@@ -265,7 +269,7 @@ export default function PublicProfilePage() {
                 )}
 
                 {profile.bio && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-8 italic">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-8">
                     "{profile.bio}"
                   </p>
                 )}
@@ -279,7 +283,7 @@ export default function PublicProfilePage() {
                         description: "Direct message will be available here soon.",
                         variant: "default",
                       })}
-                      className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-110 active:scale-95 transition-all"
+                      className="w-11 h-11 rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/20 dark:shadow-slate-100/20 hover:scale-105 active:scale-95 transition-all"
                       title="Send message"
                     >
                       <MessageSquare className="w-5 h-5" />
@@ -309,11 +313,11 @@ export default function PublicProfilePage() {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/50 dark:bg-zinc-900/50 p-6 rounded-[24px] border border-black/5 dark:border-white/5">
+              <div className="bg-white/85 dark:bg-zinc-900/75 p-6 rounded-[20px] border border-slate-200/70 dark:border-zinc-800">
                 <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Helped Others</p>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">{helpedOthersCount}</p>
               </div>
-              <div className="bg-white/50 dark:bg-zinc-900/50 p-6 rounded-[24px] border border-black/5 dark:border-white/5">
+              <div className="bg-white/85 dark:bg-zinc-900/75 p-6 rounded-[20px] border border-slate-200/70 dark:border-zinc-800">
                 <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Got Helped</p>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">{gotHelpedCount}</p>
               </div>

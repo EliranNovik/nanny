@@ -179,8 +179,7 @@ export function useFreelancerProfileForm() {
     }));
   }
 
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function handleImageUploadFile(file: File) {
     if (!file || !user) return;
 
     if (!file.type.startsWith("image/")) {
@@ -245,6 +244,12 @@ export function useFreelancerProfileForm() {
         fileInputRef.current.value = "";
       }
     }
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await handleImageUploadFile(file);
   }
 
   async function handleRemovePhoto() {
@@ -438,6 +443,7 @@ export function useFreelancerProfileForm() {
     data,
     updateField,
     toggleLanguage,
+    handleImageUploadFile,
     handleImageUpload,
     handleRemovePhoto,
     handleGetLocation,
