@@ -15,9 +15,12 @@ export function JobCardLocationBar({ location, trailing, className }: JobCardLoc
     return (
         <div
             className={cn(
-                "relative z-[110] flex min-h-0 shrink-0 items-center border-b border-slate-200/90 bg-slate-100 px-3 py-2.5 sm:px-4",
-                "md:py-3.5 md:px-5",
-                "dark:border-white/10 dark:bg-zinc-800/95",
+                "relative z-[110] flex min-h-0 shrink-0 items-center border-b px-3 py-2.5 sm:px-4 md:py-3.5 md:px-5",
+                /* Mobile: soft orange wash — aligned with app mesh / --background */
+                "max-md:border-orange-200/45 max-md:bg-gradient-to-b max-md:from-orange-50/85 max-md:via-[hsl(32_28%_97%)] max-md:to-[hsl(var(--background))] max-md:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.55)]",
+                "max-md:dark:border-orange-900/40 max-md:dark:from-orange-950/25 max-md:dark:via-[hsl(22_14%_14%)] max-md:dark:to-[hsl(var(--background))] max-md:dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]",
+                /* Desktop: unchanged grey strip */
+                "md:border-slate-200/90 md:bg-slate-100 md:shadow-none dark:md:border-white/10 dark:md:bg-zinc-800/95",
                 className
             )}
         >
@@ -30,7 +33,7 @@ export function JobCardLocationBar({ location, trailing, className }: JobCardLoc
                         : "w-full flex-1 md:absolute md:inset-x-0 md:px-5"
                 )}
             >
-                <span className="max-w-full truncate text-center text-[13px] font-semibold text-slate-800 md:text-[15px] md:font-bold dark:text-slate-100">
+                <span className="max-w-full truncate text-center text-[15px] font-semibold tracking-tight text-slate-800 max-md:dark:text-orange-50/95 md:text-[15px] md:font-bold md:tracking-normal dark:text-slate-100">
                     {text}
                 </span>
             </div>

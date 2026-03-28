@@ -256,7 +256,11 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
     function getJobStatusBadge(status: string) {
         const map: Record<string, { label: string; className: string }> = {
             ready: { label: "Waiting", className: "bg-amber-500 text-white shadow-amber-500/20" },
-            notifying: { label: "In Progress", className: "bg-slate-500 text-white shadow-slate-500/20" },
+            notifying: {
+                label: "In Progress",
+                className:
+                    "bg-slate-200 text-slate-700 shadow-sm border border-slate-300/70 dark:bg-zinc-600 dark:text-zinc-100 dark:border-zinc-500/40",
+            },
             confirmations_closed: { label: "Waiting", className: "bg-amber-500 text-white shadow-amber-500/20" },
             confirmed: { label: "Confirmed", className: "bg-emerald-500 text-white shadow-emerald-500/20" },
         };
@@ -388,7 +392,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 ) : (
                                                     <span className="text-[12px] font-semibold text-slate-500">New client</span>
                                                 )}
-                                                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
+                                                <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
                                             </div>
                                             <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
                                                 <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
@@ -453,7 +457,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                             <span className="text-[14px] font-bold italic text-white/80 drop-shadow-md">New Client</span>
                                                         )}
                                                     </div>
-                                                    <span className="w-full text-center text-[15px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[16px]">
+                                                    <span className="w-full text-center text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
                                                         {formatJobTitle(job)}
                                                     </span>
                                                 </div>
@@ -620,7 +624,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                     ) : (
                                                         <span className="text-[12px] font-semibold text-slate-500">New client</span>
                                                     )}
-                                                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
+                                                    <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
                                                 </div>
                                                 <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
                                                     <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
@@ -685,7 +689,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                                 <span className="text-[14px] font-bold italic text-white/80 drop-shadow-md">New Client</span>
                                                             )}
                                                         </div>
-                                                        <span className="w-full text-center text-[15px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[16px]">
+                                                        <span className="w-full text-center text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
                                                             {formatJobTitle(job)}
                                                         </span>
                                                     </div>
@@ -796,22 +800,22 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
                                         </div>
                                         <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
-                                            <span className="text-[12px] font-semibold text-slate-500 dark:text-slate-400">
+                                            <span className="text-[15px] font-bold leading-snug text-slate-800 dark:text-slate-100">
                                                 Posted {new Date(job.created_at).toLocaleDateString()}
                                             </span>
-                                            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                                            <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                                                 {formatJobTitle(job)}
                                             </span>
                                             {job.created_at && (
                                                 <div className="mt-1 flex w-full min-w-0 items-center justify-between gap-2 border-t border-slate-200/80 pt-1.5 dark:border-white/10">
-                                                    <div className="flex min-w-0 items-center gap-1.5 text-[13px] font-bold text-orange-500 dark:text-orange-400">
-                                                        <Clock className="h-4 w-4 shrink-0" aria-hidden />
+                                                    <div className="flex min-w-0 items-center gap-2 text-[16px] font-bold text-orange-500 dark:text-orange-400">
+                                                        <Clock className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
                                                         <span>Active</span>
                                                     </div>
                                                     <LiveTimer
                                                         createdAt={job.created_at}
                                                         render={({ time }) => (
-                                                            <span className="shrink-0 tabular-nums text-[13px] font-bold text-red-600 dark:text-red-400">
+                                                            <span className="shrink-0 tabular-nums text-[16px] font-bold text-orange-500 dark:text-orange-400">
                                                                 {time}
                                                             </span>
                                                         )}
@@ -850,20 +854,20 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 <span className="text-[14px] font-bold italic text-white/80 drop-shadow-md">
                                                     Posted {new Date(job.created_at).toLocaleDateString()}
                                                 </span>
-                                                <span className="text-[15px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[16px]">
+                                                <span className="text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
                                                     {formatJobTitle(job)}
                                                 </span>
                                             </div>
                                             {job.created_at && (
-                                                <div className="flex w-full items-center justify-between gap-2 border-t border-white/20 pt-2 text-[15px] font-bold">
+                                                <div className="flex w-full items-center justify-between gap-2 border-t border-white/20 pt-2 text-[17px] font-bold">
                                                     <div className="flex min-w-0 items-center gap-2 text-orange-200">
-                                                        <Clock className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
+                                                        <Clock className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
                                                         <span>Active</span>
                                                     </div>
                                                     <LiveTimer
                                                         createdAt={job.created_at}
                                                         render={({ time }) => (
-                                                            <span className="shrink-0 tabular-nums text-[15px] font-bold text-red-300 drop-shadow-md">
+                                                            <span className="shrink-0 tabular-nums text-[17px] font-bold text-orange-200 drop-shadow-md">
                                                                 {time}
                                                             </span>
                                                         )}

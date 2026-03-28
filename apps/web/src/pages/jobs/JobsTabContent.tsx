@@ -324,7 +324,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                     ) : (
                                                         <span className="text-[12px] font-semibold text-slate-500 dark:text-slate-400">New client</span>
                                                     )}
-                                                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
+                                                    <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
                                                 </div>
                                                 <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
                                                     <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
@@ -388,7 +388,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                                 <span className="text-[14px] font-bold text-white/80 italic drop-shadow-md">New Client</span>
                                                             )}
                                                         </div>
-                                                        <span className="w-full text-center text-[15px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[16px]">
+                                                        <span className="w-full text-center text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
                                                             {formatJobTitle(job)}
                                                         </span>
                                                     </div>
@@ -509,7 +509,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                     ) : (
                                                         <span className="text-[12px] font-semibold text-slate-500">New client</span>
                                                     )}
-                                                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
+                                                    <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
                                                 </div>
                                                 <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
                                                     <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
@@ -575,7 +575,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                                 <span className="text-[14px] font-bold italic text-white/80 drop-shadow-md">New Client</span>
                                                             )}
                                                         </div>
-                                                        <span className="w-full text-center text-[15px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[16px]">
+                                                        <span className="w-full text-center text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
                                                             {formatJobTitle(job)}
                                                         </span>
                                                     </div>

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Briefcase, Bell, ClipboardList, Hourglass, CheckCircle2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,14 +20,11 @@ interface JobsTabBarProps {
   menuAlign?: "left" | "right";
 }
 
-/** Collapsed: active tab only; tap opens list, pick tab, closes. */
+/** Mobile: native `<select>` (OS picker). Desktop: pill + anchored menu. */
 export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth < 768 : false
-  );
   const [counts, setCounts] = useState<Record<JobsTabId, number>>({
     my_requests: 0,
     requests: 0,
@@ -42,24 +38,16 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
   const active = JOBS_TABS.find((t) => t.id === activeId) ?? JOBS_TABS.find((t) => t.id === "requests")!;
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  useEffect(() => {
     if (!open) return;
-    if (isMobile) return;
     const close = (e: MouseEvent) => {
+      if (!window.matchMedia("(min-width: 768px)").matches) return;
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
-  }, [open, isMobile]);
+  }, [open]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -122,25 +110,52 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
   }
 
   const ActiveIcon = active.icon;
-  const canPortal = typeof document !== "undefined";
 
   return (
     <div ref={containerRef} className="relative shrink-0">
+      {/* Mobile: native OS picker (no bottom sheet) */}
+      <div className="relative max-w-[min(72vw,16rem)] md:hidden">
+        <ActiveIcon
+          className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-primary"
+          aria-hidden
+        />
+        <select
+          value={activeId}
+          aria-label="Jobs section"
+          onChange={(e) => select(e.target.value)}
+          className={cn(
+            "h-10 w-full min-w-0 cursor-pointer appearance-none rounded-full border border-slate-200 bg-white py-2 pl-10 pr-10 text-[14px] font-semibold text-slate-900 shadow-sm",
+            "dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+          )}
+        >
+          {JOBS_TABS.map((tab) => (
+            <option key={tab.id} value={tab.id}>
+              {tab.label} ({counts[tab.id as JobsTabId] ?? 0})
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-zinc-400"
+          aria-hidden
+        />
+      </div>
+
+      {/* Desktop: button + anchored menu */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          "flex h-10 max-w-[min(72vw,16rem)] items-center gap-2 rounded-full border px-3.5 py-1.5 text-left text-[14px] font-semibold shadow-sm transition-colors",
+          "hidden h-10 max-w-[17rem] items-center gap-2 rounded-full border px-4 py-1.5 text-left text-[16px] font-bold shadow-sm transition-colors md:flex",
           "border-slate-200 bg-white text-slate-900",
           "hover:bg-slate-50",
           "dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800",
-          "md:max-w-[17rem] md:justify-center md:gap-2.5 md:px-4 md:text-[16px] md:font-bold"
+          "md:justify-center md:gap-2.5"
         )}
       >
-        <ActiveIcon className="h-4 w-4 shrink-0 text-primary md:h-[1.125rem] md:w-[1.125rem]" aria-hidden />
-        <span className="min-w-0 flex-1 truncate md:flex-none md:text-center">{active.label}</span>
+        <ActiveIcon className="h-[1.125rem] w-[1.125rem] shrink-0 text-primary" aria-hidden />
+        <span className="min-w-0 flex-none text-center">{active.label}</span>
         <span
           className="inline-flex min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
           aria-label={`${counts[activeId] ?? 0} items`}
@@ -152,10 +167,10 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
         />
       </button>
 
-      {open && !isMobile && (
+      {open && (
         <div
           className={cn(
-            "absolute top-full z-[80] mt-2 w-[min(calc(100vw-2rem),17rem)] rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-zinc-600 dark:bg-zinc-900",
+            "absolute top-full z-[80] mt-2 hidden w-[min(calc(100vw-2rem),17rem)] rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-zinc-600 dark:bg-zinc-900 md:block",
             menuAlign === "left" ? "left-0" : "right-0"
           )}
           role="listbox"
@@ -199,63 +214,6 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
             );
           })}
         </div>
-      )}
-
-      {open && isMobile && canPortal &&
-        createPortal(
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[260] bg-black/35 backdrop-blur-[1px] md:hidden"
-            aria-label="Close tab picker"
-            onClick={() => setOpen(false)}
-          />
-          <div className="fixed inset-x-0 bottom-0 z-[270] rounded-t-[1.75rem] border border-slate-200/90 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_45px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:border-zinc-700/80 dark:bg-zinc-900/95 md:hidden">
-            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-zinc-600" />
-            <div className="mb-3 border-b border-slate-200/70 px-1 pb-2 dark:border-zinc-700/70">
-              <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-zinc-400">Switch jobs tab</p>
-            </div>
-
-            <div className="space-y-2">
-              {JOBS_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const selected = tab.id === activeId;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => select(tab.id)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-all duration-200 active:scale-[0.99]",
-                      selected
-                        ? "border-orange-300/80 bg-gradient-to-r from-orange-50 to-amber-50 text-orange-800 shadow-[0_8px_20px_rgba(249,115,22,0.15)] dark:border-orange-700/70 dark:from-orange-950/50 dark:to-amber-950/40 dark:text-orange-200"
-                        : "border-transparent bg-slate-50/80 text-slate-900 hover:border-slate-200 hover:bg-slate-100 dark:bg-zinc-800/70 dark:text-zinc-100 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-5 w-5 shrink-0 transition-transform",
-                        selected ? "text-orange-600 dark:text-orange-400" : "text-slate-600 dark:text-zinc-400"
-                      )}
-                    />
-                    <span className="flex-1 text-[15px] font-medium">{tab.label}</span>
-                    <span
-                      className={cn(
-                        "inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold leading-none shadow-sm",
-                        selected
-                          ? "bg-orange-100 text-orange-700 ring-1 ring-orange-200 dark:bg-orange-900/60 dark:text-orange-200 dark:ring-orange-700/60"
-                          : "bg-slate-200 text-slate-600 ring-1 ring-slate-300/70 dark:bg-zinc-700 dark:text-zinc-300 dark:ring-zinc-600"
-                      )}
-                    >
-                      {counts[tab.id as JobsTabId] ?? 0}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </>,
-        document.body
       )}
     </div>
   );

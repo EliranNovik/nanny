@@ -90,7 +90,7 @@ export function JobDetailsModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="w-full h-[100dvh] max-w-none sm:max-w-lg p-0 overflow-hidden rounded-none sm:rounded-[2.5rem] border-none shadow-2xl bg-white dark:bg-zinc-950 focus:outline-none flex flex-col sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
+            <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-none bg-[hsl(var(--background))] p-0 shadow-2xl focus:outline-none dark:bg-zinc-950 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[2.5rem]">
                 <VisuallyHidden>
                     <DialogTitle>{formatJobTitle(job)} Details</DialogTitle>
                 </VisuallyHidden>
@@ -180,111 +180,139 @@ export function JobDetailsModal({
                     </div>
                 </div>
 
-                <div className="p-8 space-y-8 overflow-y-auto flex-1 min-h-0 sm:max-h-[60vh] custom-scrollbar">
-                    {/* Primary Insight Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800/50 flex flex-col gap-1.5 shadow-sm transition-all hover:shadow-md">
-                            <span className="text-[11px] uppercase font-black text-zinc-400 tracking-[0.1em]">Target Location</span>
-                            <div className="flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100 font-black">
-                                <MapPin className="w-5 h-5 text-orange-500" />
-                                <span className="truncate text-lg tracking-tight">{job.location_city}</span>
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[hsl(var(--background))] px-4 pb-6 pt-4 custom-scrollbar sm:max-h-[60vh] sm:space-y-8 sm:p-8 sm:pb-8 space-y-6">
+                    {/* At-a-glance: single warm surface, split — no separate grey tiles */}
+                    <div className="overflow-hidden rounded-[1.25rem] bg-white/90 shadow-[0_2px_24px_-4px_rgba(249,115,22,0.12)] ring-1 ring-orange-200/40 dark:bg-zinc-900/70 dark:ring-orange-900/35 sm:rounded-3xl">
+                        <div className="grid grid-cols-2 divide-x divide-orange-100/70 dark:divide-zinc-700/80">
+                            <div className="flex flex-col gap-2 p-4 sm:p-5">
+                                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/75 dark:text-orange-400/90">
+                                    Target location
+                                </span>
+                                <div className="flex min-w-0 items-start gap-2">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/12 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
+                                        <MapPin className="h-4 w-4" strokeWidth={2.25} />
+                                    </div>
+                                    <span className="pt-0.5 text-[15px] font-bold leading-snug tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-base">
+                                        {job.location_city}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800/50 flex flex-col gap-1.5 shadow-sm transition-all hover:shadow-md">
-                            <span className="text-[11px] uppercase font-black text-zinc-400 tracking-[0.1em]">Time Duration</span>
-                            <div className="flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100 font-black">
-                                <Hourglass className="w-5 h-5 text-orange-500" />
-                                <span className="text-lg tracking-tight capitalize">{clean(job.time_duration) || "Flexible"}</span>
+                            <div className="flex flex-col gap-2 p-4 sm:p-5">
+                                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/75 dark:text-orange-400/90">
+                                    Time duration
+                                </span>
+                                <div className="flex min-w-0 items-start gap-2">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/12 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
+                                        <Hourglass className="h-4 w-4" strokeWidth={2.25} />
+                                    </div>
+                                    <span className="pt-0.5 text-[15px] font-bold capitalize leading-snug tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-base">
+                                        {clean(job.time_duration) || "Flexible"}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Secondary & Dynamic Service Details */}
-                    <div className="space-y-4">
-                        <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] px-1">Service Particulars</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Service particulars — stacked list, touch-friendly, no grey boxes */}
+                    <div className="space-y-3">
+                        <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
+                            Service particulars
+                        </h3>
+                        <div className="overflow-hidden rounded-[1.25rem] bg-white/90 ring-1 ring-orange-100/60 dark:bg-zinc-900/60 dark:ring-zinc-700/60 sm:rounded-2xl">
+                            <div className="divide-y divide-orange-50 dark:divide-zinc-800/90">
                             {job.start_at && (
-                                <div className="flex items-center gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-100/50 dark:border-zinc-800/50 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                                    <Calendar className="w-5 h-5 text-orange-500" />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Scheduled For</span>
-                                        <span className="text-sm font-black text-zinc-800 dark:text-zinc-200">
+                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                                        <Calendar className="h-5 w-5" strokeWidth={2} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Scheduled for</span>
+                                        <p className="mt-0.5 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
                                             {new Date(job.start_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                        </p>
                                     </div>
                                 </div>
                             )}
                             {job.care_type && (
-                                <div className="flex items-center gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-100/50 dark:border-zinc-800/50 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                                    <Briefcase className="w-5 h-5 text-orange-500" />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Care Type</span>
-                                        <span className="text-sm font-black text-zinc-800 dark:text-zinc-200 capitalize">{clean(job.care_type)}</span>
+                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                                        <Briefcase className="h-5 w-5" strokeWidth={2} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Care type</span>
+                                        <p className="mt-0.5 text-[15px] font-semibold capitalize leading-snug text-zinc-900 dark:text-zinc-100">{clean(job.care_type)}</p>
                                     </div>
                                 </div>
                             )}
                             {job.children_count > 0 && (
-                                <div className="flex items-center gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-100/50 dark:border-zinc-800/50 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                                    <Baby className="w-5 h-5 text-orange-500" />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Children</span>
-                                        <span className="text-sm font-black text-zinc-800 dark:text-zinc-200">
+                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                                        <Baby className="h-5 w-5" strokeWidth={2} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Children</span>
+                                        <p className="mt-0.5 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
                                             {job.children_count} {job.children_age_group ? `(${clean(job.children_age_group)})` : ''}
-                                        </span>
+                                        </p>
                                     </div>
                                 </div>
                             )}
                             {job.care_frequency && (
-                                <div className="flex items-center gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-100/50 dark:border-zinc-800/50 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                                    <RefreshCw className="w-5 h-5 text-orange-500" />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Frequency</span>
-                                        <span className="text-sm font-black text-zinc-800 dark:text-zinc-200 capitalize">{clean(job.care_frequency)}</span>
+                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                                        <RefreshCw className="h-5 w-5" strokeWidth={2} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Frequency</span>
+                                        <p className="mt-0.5 text-[15px] font-semibold capitalize leading-snug text-zinc-900 dark:text-zinc-100">{clean(job.care_frequency)}</p>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Exhaustive Loop for Service details */}
                             {job.service_details && Object.entries(job.service_details).map(([key, value]) => {
                                 if (key === 'custom' || key === 'images') return null;
                                 if (key === 'from_lat' || key === 'from_lng' || key === 'to_lat' || key === 'to_lng') return null;
-                                // Skip fields already handled or generic ones if redundant
                                 if (key === 'care_type' || key === 'children_count' || key === 'care_frequency') return null;
 
                                 return (
-                                    <div key={key} className="flex items-center gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-100/50 dark:border-zinc-800/50 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                                        <AlignLeft className="w-5 h-5 text-orange-500" />
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{clean(key)}</span>
-                                            <span className="text-sm font-black text-zinc-800 dark:text-zinc-200 capitalize">{clean(String(value))}</span>
+                                    <div key={key} className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                                            <AlignLeft className="h-5 w-5" strokeWidth={2} />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{clean(key)}</span>
+                                            <p className="mt-0.5 text-[15px] font-semibold capitalize leading-snug text-zinc-900 dark:text-zinc-100">{clean(String(value))}</p>
                                         </div>
                                     </div>
                                 );
                             })}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Bio & Languages Section - Minimalist Integration */}
+                    {/* Bio & languages */}
                     {client && (client.bio || client.languages) && (
-                        <div className="space-y-4">
-                            <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] px-1">Biographical Background</h3>
-                            <div className="bg-zinc-50 dark:bg-zinc-900/40 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800/50 space-y-4">
+                        <div className="space-y-3">
+                            <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
+                                About
+                            </h3>
+                            <div className="space-y-4 rounded-[1.25rem] bg-gradient-to-br from-orange-50/90 via-white to-white p-5 ring-1 ring-orange-100/70 dark:from-orange-950/25 dark:via-zinc-900/80 dark:to-zinc-950 dark:ring-orange-900/30 sm:rounded-3xl sm:p-6">
                                 {client.bio && (
-                                    <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium leading-relaxed italic">
-                                        "{client.bio}"
+                                    <p className="text-[15px] font-medium leading-relaxed text-zinc-700 dark:text-zinc-200 sm:text-sm">
+                                        {client.bio}
                                     </p>
                                 )}
-                                <div className="flex flex-wrap gap-2.5">
+                                <div className="flex flex-wrap gap-2">
                                     {client.city && (
-                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-50 dark:bg-orange-500/5 border border-orange-100/50 dark:border-orange-500/10">
-                                            <MapPin className="w-3 h-3 text-orange-500" />
-                                            <span className="text-[10px] font-black uppercase text-orange-600 dark:text-orange-400">{client.city}</span>
+                                        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-700 shadow-sm ring-1 ring-orange-200/60 dark:bg-zinc-900/80 dark:text-orange-300 dark:ring-orange-800/50">
+                                            <MapPin className="h-3.5 w-3.5 text-orange-500" />
+                                            {client.city}
                                         </div>
                                     )}
                                     {client.languages && Array.isArray(client.languages) && client.languages.map((lang: string) => (
-                                        <div key={lang} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-                                            <Globe className="w-3 h-3 text-zinc-400" />
-                                            <span className="text-[10px] font-black uppercase text-zinc-500 dark:text-zinc-400">{lang}</span>
+                                        <div key={lang} className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-600 ring-1 ring-orange-100/50 dark:bg-zinc-800/90 dark:text-zinc-300 dark:ring-zinc-600/60">
+                                            <Globe className="h-3.5 w-3.5 text-orange-500/90" />
+                                            {lang}
                                         </div>
                                     ))}
                                 </div>
@@ -292,19 +320,21 @@ export function JobDetailsModal({
                         </div>
                     )}
 
-                    {/* Job Images Section */}
+                    {/* Job photos */}
                     {job.service_details?.images && job.service_details.images.length > 0 && (
-                        <div className="space-y-4">
-                            <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] px-1">Job Photos</h3>
-                            <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-3">
+                            <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
+                                Job photos
+                            </h3>
+                            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                                 {job.service_details.images.map((img: string, idx: number) => (
                                     <button
                                         key={idx}
                                         type="button"
-                                        className="relative aspect-video rounded-[1.5rem] overflow-hidden border border-zinc-100 dark:border-zinc-800/60 shadow-sm hover:ring-2 hover:ring-orange-400 transition-all cursor-zoom-in"
+                                        className="relative aspect-video overflow-hidden rounded-2xl ring-1 ring-orange-100/70 shadow-sm transition hover:ring-2 hover:ring-orange-400/80 dark:ring-zinc-700/80 cursor-zoom-in active:scale-[0.99]"
                                         onClick={() => setLightboxIndex(idx)}
                                     >
-                                        <img src={img} alt={`Job photo ${idx + 1}`} className="w-full h-full object-cover" />
+                                        <img src={img} alt={`Job photo ${idx + 1}`} className="h-full w-full object-cover" />
                                     </button>
                                 ))}
                             </div>
@@ -320,17 +350,15 @@ export function JobDetailsModal({
                         />
                     )}
 
-                    {/* Immersive Notes Section */}
+                    {/* Notes */}
                     {job.service_details?.custom && (
-                        <div className="space-y-4">
-                            <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] flex items-center gap-2.5">
-                                <AlignLeft className="w-4 h-4 text-orange-500" /> Notes & Requirements
+                        <div className="space-y-3">
+                            <h3 className="flex items-center gap-2 px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
+                                <AlignLeft className="h-4 w-4 text-orange-500" strokeWidth={2.25} />
+                                Notes & requirements
                             </h3>
-                            <div className="relative">
-                                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-orange-500 rounded-full opacity-20" />
-                                <p className="text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/80 p-6 rounded-[2rem] text-base font-medium leading-relaxed border border-zinc-100 dark:border-zinc-800 italic shadow-inner">
-                                    "{job.service_details.custom}"
-                                </p>
+                            <div className="rounded-[1.25rem] border-l-[3px] border-orange-500 bg-orange-50/60 px-4 py-4 text-[15px] font-medium leading-relaxed text-zinc-800 shadow-sm dark:border-orange-500/80 dark:bg-orange-950/30 dark:text-zinc-100 sm:rounded-2xl sm:px-5 sm:py-5 sm:text-base">
+                                {job.service_details.custom}
                             </div>
                         </div>
                     )}
@@ -338,7 +366,7 @@ export function JobDetailsModal({
 
                 {/* Fixed Bottom Action Bar for Freelancers */}
                 {showAcceptButton && onConfirm && (
-                    <div className="p-6 bg-white dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-center animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex animate-in items-center justify-center border-t border-orange-100/50 bg-white/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 dark:border-zinc-800 dark:bg-zinc-950/95 sm:p-6">
                         <Button
                             className="w-full h-14 rounded-[20px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all active:scale-[0.98] font-black text-lg flex items-center justify-center gap-3"
                             onClick={onConfirm}

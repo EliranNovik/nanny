@@ -100,7 +100,7 @@ const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
               {participant.full_name}
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-2.5">
-              <span className="truncate text-[14px] font-semibold uppercase tracking-wide text-white/90 sm:text-[16px]">
+              <span className="truncate text-[15px] font-semibold uppercase tracking-wide text-white/90 sm:text-[17px]">
                 {formatJobTitle(job)}
               </span>
               {participant.average_rating && (
