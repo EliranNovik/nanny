@@ -182,7 +182,7 @@ export function JobDetailsModal({
 
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[hsl(var(--background))] px-4 pb-6 pt-4 custom-scrollbar sm:max-h-[60vh] sm:space-y-8 sm:p-8 sm:pb-8 space-y-6">
                     {/* At-a-glance: single warm surface, split — no separate grey tiles */}
-                    <div className="overflow-hidden rounded-[1.25rem] bg-white/90 shadow-[0_2px_24px_-4px_rgba(249,115,22,0.12)] ring-1 ring-orange-200/40 dark:bg-zinc-900/70 dark:ring-orange-900/35 sm:rounded-3xl">
+                    <div className="overflow-hidden rounded-[1.25rem] bg-card/90 shadow-[0_2px_24px_-4px_rgba(249,115,22,0.12)] ring-1 ring-orange-200/40 dark:bg-zinc-900/70 dark:ring-orange-900/35 sm:rounded-3xl">
                         <div className="grid grid-cols-2 divide-x divide-orange-100/70 dark:divide-zinc-700/80">
                             <div className="flex flex-col gap-2 p-4 sm:p-5">
                                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/75 dark:text-orange-400/90">
@@ -218,7 +218,7 @@ export function JobDetailsModal({
                         <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
                             Service particulars
                         </h3>
-                        <div className="overflow-hidden rounded-[1.25rem] bg-white/90 ring-1 ring-orange-100/60 dark:bg-zinc-900/60 dark:ring-zinc-700/60 sm:rounded-2xl">
+                        <div className="overflow-hidden rounded-[1.25rem] bg-card/90 ring-1 ring-orange-100/60 dark:bg-zinc-900/60 dark:ring-zinc-700/60 sm:rounded-2xl">
                             <div className="divide-y divide-orange-50 dark:divide-zinc-800/90">
                             {job.start_at && (
                                 <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
@@ -296,7 +296,7 @@ export function JobDetailsModal({
                             <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
                                 About
                             </h3>
-                            <div className="space-y-4 rounded-[1.25rem] bg-gradient-to-br from-orange-50/90 via-white to-white p-5 ring-1 ring-orange-100/70 dark:from-orange-950/25 dark:via-zinc-900/80 dark:to-zinc-950 dark:ring-orange-900/30 sm:rounded-3xl sm:p-6">
+                            <div className="space-y-4 rounded-[1.25rem] bg-gradient-to-br from-orange-50/90 via-card to-card p-5 ring-1 ring-orange-100/70 dark:from-orange-950/25 dark:via-zinc-900/80 dark:to-zinc-950 dark:ring-orange-900/30 sm:rounded-3xl sm:p-6">
                                 {client.bio && (
                                     <p className="text-[15px] font-medium leading-relaxed text-zinc-700 dark:text-zinc-200 sm:text-sm">
                                         {client.bio}
@@ -304,13 +304,13 @@ export function JobDetailsModal({
                                 )}
                                 <div className="flex flex-wrap gap-2">
                                     {client.city && (
-                                        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-700 shadow-sm ring-1 ring-orange-200/60 dark:bg-zinc-900/80 dark:text-orange-300 dark:ring-orange-800/50">
+                                        <div className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-700 shadow-sm ring-1 ring-orange-200/60 dark:bg-zinc-900/80 dark:text-orange-300 dark:ring-orange-800/50">
                                             <MapPin className="h-3.5 w-3.5 text-orange-500" />
                                             {client.city}
                                         </div>
                                     )}
                                     {client.languages && Array.isArray(client.languages) && client.languages.map((lang: string) => (
-                                        <div key={lang} className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-600 ring-1 ring-orange-100/50 dark:bg-zinc-800/90 dark:text-zinc-300 dark:ring-zinc-600/60">
+                                        <div key={lang} className="inline-flex items-center gap-1.5 rounded-full bg-card/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-600 ring-1 ring-orange-100/50 dark:bg-zinc-800/90 dark:text-zinc-300 dark:ring-zinc-600/60">
                                             <Globe className="h-3.5 w-3.5 text-orange-500/90" />
                                             {lang}
                                         </div>
@@ -366,7 +366,7 @@ export function JobDetailsModal({
 
                 {/* Fixed Bottom Action Bar for Freelancers */}
                 {showAcceptButton && onConfirm && (
-                    <div className="flex animate-in items-center justify-center border-t border-orange-100/50 bg-white/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 dark:border-zinc-800 dark:bg-zinc-950/95 sm:p-6">
+                    <div className="flex animate-in items-center justify-center border-t border-orange-100/50 bg-card/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 dark:border-zinc-800 dark:bg-zinc-950/95 sm:p-6">
                         <Button
                             className="w-full h-14 rounded-[20px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all active:scale-[0.98] font-black text-lg flex items-center justify-center gap-3"
                             onClick={onConfirm}

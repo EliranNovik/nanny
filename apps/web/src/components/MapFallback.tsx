@@ -89,7 +89,7 @@ export default function MapFallback({ job, className, onRetry, onClose }: MapFal
         <div className="absolute top-4 right-4 z-[1001]">
           <button 
             onClick={onClose}
-            className="p-3 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-full shadow-2xl hover:bg-white dark:hover:bg-zinc-800 transition-all border border-black/5 dark:border-white/5 group"
+            className="p-3 bg-card/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-full shadow-2xl hover:bg-card dark:hover:bg-zinc-800 transition-all border border-black/5 dark:border-white/5 group"
           >
             <X className="w-5 h-5 text-slate-900 dark:text-white group-hover:scale-110 transition-transform" />
           </button>

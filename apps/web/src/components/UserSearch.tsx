@@ -123,8 +123,8 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
           className={cn(
             "absolute left-0 right-0 top-full z-[100] mt-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
             isInline
-              ? "rounded-xl border border-slate-200/50 bg-white/90 shadow-md backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/90"
-              : "rounded-2xl border border-slate-200/50 bg-white/95 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+              ? "rounded-xl border border-slate-200/50 bg-card/90 shadow-md backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/90"
+              : "rounded-2xl border border-slate-200/50 bg-card/95 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
           )}
         >
           <div className="p-2 space-y-1">

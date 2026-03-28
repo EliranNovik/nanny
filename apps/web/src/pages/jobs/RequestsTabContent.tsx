@@ -323,7 +323,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card dark:bg-zinc-900/50 backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
                                                 isDeclined && "opacity-60"
@@ -564,7 +564,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card dark:bg-zinc-900/50 backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}
@@ -768,7 +768,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     data-job-card
                                     onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                     className={cn(
-                                        "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative",
+                                        "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card dark:bg-zinc-900/50 backdrop-blur-sm group relative",
                                         !isMinMd && "cursor-pointer",
                                         isMinMd && "md:cursor-default"
                                     )}
@@ -908,7 +908,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                     {/* Integrated Acceptance Count */}
                                                     {typeof (job as any).acceptedCount === 'number' && (
                                                         <div className={cn(
-                                                            "flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-[13px] font-black bg-white ring-4 ring-orange-500/10",
+                                                            "flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-[13px] font-black bg-card ring-4 ring-orange-500/10",
                                                             (job as any).acceptedCount > 0 ? "text-orange-600" : "text-slate-400 opacity-50"
                                                         )}>
                                                             {(job as any).acceptedCount}

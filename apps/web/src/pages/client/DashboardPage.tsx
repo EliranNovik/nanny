@@ -498,7 +498,7 @@ export default function DashboardPage() {
                   onClick={() => setRequestsTab("my")}
                   className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-all",
                     requestsTab === "my" 
-                      ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
+                      ? "bg-card dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
                       : "text-slate-500 hover:text-slate-700")}
                 >
                   My Requests
@@ -507,7 +507,7 @@ export default function DashboardPage() {
                   onClick={() => setRequestsTab("invitations")}
                   className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-all",
                     requestsTab === "invitations" 
-                      ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
+                      ? "bg-card dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
                       : "text-slate-500 hover:text-slate-700")}
                 >
                   Incoming
@@ -604,7 +604,7 @@ export default function DashboardPage() {
 
         {/* No active job empty state */}
         {activeJobs.length === 0 && myRequests.length === 0 && (
-          <Card className="border-0 shadow-lg text-center py-12 bg-white dark:bg-zinc-900">
+          <Card className="border-0 shadow-lg text-center py-12 bg-card dark:bg-zinc-900">
             <CardContent>
               <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-zinc-800 mx-auto mb-4 flex items-center justify-center">
                 <Baby className="w-8 h-8 text-slate-600 dark:text-slate-400" />

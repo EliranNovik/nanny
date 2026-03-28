@@ -1179,14 +1179,14 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       {!hideBackButton && (
         <div
           className={cn(
-            "fixed inset-y-0 left-0 w-full lg:w-[400px] bg-white/10 backdrop-blur-xl border-r border-white/10 z-40 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
+            "fixed inset-y-0 left-0 w-full lg:w-[400px] bg-card/10 backdrop-blur-xl border-r border-border/20 z-40 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
             // On mobile: show when mobileView is 'steps', on desktop: always show
             mobileView === "steps" || showContactPanel ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
           <div className="h-screen lg:h-full flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="p-4 bg-white/80 dark:bg-white/5 backdrop-blur-md border-b border-white/10 flex-shrink-0 rounded-t-2xl">
+            <div className="p-4 bg-card/80 dark:bg-white/5 backdrop-blur-md border-b border-border/20 flex-shrink-0 rounded-t-2xl">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Button
@@ -1443,7 +1443,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                         </Badge>
                       </div>
 
-                      <div className="bg-slate-50/50 dark:bg-white/10 backdrop-blur-md rounded-2xl p-5 space-y-4 border border-slate-200 dark:border-white/10 shadow-sm">
+                      <div className="bg-card/60 dark:bg-white/10 backdrop-blur-md rounded-2xl p-5 space-y-4 border border-slate-200 dark:border-white/10 shadow-sm">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                             {job.service_type === 'cleaning' && <Sparkles className="w-5 h-5 text-primary" />}
@@ -1535,7 +1535,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         !hideBackButton && mobileView === "steps" && "hidden lg:flex"
       )}>
         {/* Header - Fixed */}
-        <header className="flex-shrink-0 border-none bg-white/80 dark:bg-background/80 backdrop-blur-md px-4 py-3 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto md:top-auto shadow-sm">
+        <header className="flex-shrink-0 border-none bg-card/80 dark:bg-background/80 backdrop-blur-md px-4 py-3 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto md:top-auto shadow-sm">
           <div className="flex items-center gap-3">
             {!hideBackButton && (
               <Button

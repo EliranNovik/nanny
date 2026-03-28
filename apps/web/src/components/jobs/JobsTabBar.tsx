@@ -124,7 +124,7 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
           aria-label="Jobs section"
           onChange={(e) => select(e.target.value)}
           className={cn(
-            "h-10 w-full min-w-0 cursor-pointer appearance-none rounded-full border border-slate-200 bg-white py-2 pl-10 pr-10 text-[14px] font-semibold text-slate-900 shadow-sm",
+            "h-10 w-full min-w-0 cursor-pointer appearance-none rounded-full border border-slate-200 bg-card py-2 pl-10 pr-10 text-[14px] font-semibold text-slate-900 shadow-sm",
             "dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
           )}
         >
@@ -148,7 +148,7 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
         aria-haspopup="listbox"
         className={cn(
           "hidden h-10 max-w-[17rem] items-center gap-2 rounded-full border px-4 py-1.5 text-left text-[16px] font-bold shadow-sm transition-colors md:flex",
-          "border-slate-200 bg-white text-slate-900",
+          "border-slate-200 bg-card text-slate-900",
           "hover:bg-slate-50",
           "dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800",
           "md:justify-center md:gap-2.5"
@@ -170,7 +170,7 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
       {open && (
         <div
           className={cn(
-            "absolute top-full z-[80] mt-2 hidden w-[min(calc(100vw-2rem),17rem)] rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-zinc-600 dark:bg-zinc-900 md:block",
+            "absolute top-full z-[80] mt-2 hidden w-[min(calc(100vw-2rem),17rem)] rounded-xl border border-slate-200 bg-card py-1.5 shadow-lg dark:border-zinc-600 dark:bg-zinc-900 md:block",
             menuAlign === "left" ? "left-0" : "right-0"
           )}
           role="listbox"

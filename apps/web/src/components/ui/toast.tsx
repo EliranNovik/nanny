@@ -27,11 +27,11 @@ export function Toast({ title, description, variant = "default", onClose, action
   const Icon = icons[variant]
   
   const variantStyles = {
-    default: "border-orange-200 bg-white shadow-orange-500/5",
-    success: "border-emerald-200 bg-white/95 backdrop-blur-md shadow-emerald-500/10",
-    error: "border-red-200 bg-white shadow-red-500/5",
-    warning: "border-amber-200 bg-white shadow-amber-500/5",
-    info: "border-blue-200 bg-white shadow-blue-500/5",
+    default: "border-orange-200 bg-card shadow-orange-500/5",
+    success: "border-emerald-200 bg-card/95 backdrop-blur-md shadow-emerald-500/10",
+    error: "border-red-200 bg-card shadow-red-500/5",
+    warning: "border-amber-200 bg-card shadow-amber-500/5",
+    info: "border-blue-200 bg-card shadow-blue-500/5",
   }[variant]
 
   const iconColor = {

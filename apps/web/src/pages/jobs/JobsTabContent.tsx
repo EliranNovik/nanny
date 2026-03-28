@@ -263,7 +263,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full group bg-white dark:bg-zinc-900/50 backdrop-blur-sm relative",
+                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full group bg-card dark:bg-zinc-900/50 backdrop-blur-sm relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}
@@ -452,7 +452,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-white dark:bg-zinc-900/50 backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card dark:bg-zinc-900/50 backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}

@@ -209,7 +209,7 @@ export default function PublicProfilePage() {
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="md:hidden fixed z-[60] pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-border/60 shadow-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-zinc-800 transition-all active:scale-95"
+        className="md:hidden fixed z-[60] pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-card/90 dark:bg-zinc-900/90 backdrop-blur-md border border-border/60 shadow-lg text-slate-600 dark:text-slate-300 hover:bg-card dark:hover:bg-zinc-800 transition-all active:scale-95"
         style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
         aria-label="Back"
       >
@@ -222,7 +222,7 @@ export default function PublicProfilePage() {
           
           {/* Left Column: User Card */}
           <div className="lg:col-span-1 space-y-6">
-            <Card className="border border-slate-200/70 dark:border-zinc-800 shadow-[0_12px_35px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.35)] rounded-[28px] overflow-hidden bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md">
+            <Card className="border border-slate-200/70 dark:border-zinc-800 shadow-[0_12px_35px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.35)] rounded-[28px] overflow-hidden bg-card/90 dark:bg-zinc-900/90 backdrop-blur-md">
               <CardContent className="p-7 sm:p-8 flex flex-col items-center text-center">
                 <div className="relative mb-5">
                   <Avatar className="w-28 h-28 shadow-xl ring-2 ring-slate-200 dark:ring-zinc-700">
@@ -258,7 +258,7 @@ export default function PublicProfilePage() {
                         <Badge
                           key={idx}
                           variant="secondary"
-                          className="rounded-full border border-slate-200/80 bg-white/90 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-[1px] hover:shadow-[0_10px_18px_rgba(15,23,42,0.12)] dark:border-zinc-700 dark:bg-zinc-800/90 dark:text-slate-200"
+                          className="rounded-full border border-slate-200/80 bg-card/90 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-[1px] hover:shadow-[0_10px_18px_rgba(15,23,42,0.12)] dark:border-zinc-700 dark:bg-zinc-800/90 dark:text-slate-200"
                         >
                           {category.replace(/_/g, " ")}
                         </Badge>
@@ -312,11 +312,11 @@ export default function PublicProfilePage() {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/85 dark:bg-zinc-900/75 p-6 rounded-[20px] border border-slate-200/70 dark:border-zinc-800">
+              <div className="bg-card/85 dark:bg-zinc-900/75 p-6 rounded-[20px] border border-slate-200/70 dark:border-zinc-800">
                 <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Helped Others</p>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">{helpedOthersCount}</p>
               </div>
-              <div className="bg-white/85 dark:bg-zinc-900/75 p-6 rounded-[20px] border border-slate-200/70 dark:border-zinc-800">
+              <div className="bg-card/85 dark:bg-zinc-900/75 p-6 rounded-[20px] border border-slate-200/70 dark:border-zinc-800">
                 <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Got Helped</p>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">{gotHelpedCount}</p>
               </div>
@@ -345,7 +345,7 @@ export default function PublicProfilePage() {
                       }
                     }}
                     className={cn(
-                      "group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] transition-all rounded-[24px] overflow-hidden bg-white/80 dark:bg-zinc-900/80",
+                      "group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] transition-all rounded-[24px] overflow-hidden bg-card/80 dark:bg-zinc-900/80",
                       pendingJobs.some((p) => p.id === job.id) && "cursor-pointer"
                     )}
                   >
@@ -404,7 +404,7 @@ export default function PublicProfilePage() {
                   <Card
                     key={job.id}
                     onClick={() => navigate(`/jobs/${job.id}/details`)}
-                    className="group cursor-pointer border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] rounded-[24px] overflow-hidden bg-white/80 dark:bg-zinc-900/80"
+                    className="group cursor-pointer border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] rounded-[24px] overflow-hidden bg-card/80 dark:bg-zinc-900/80"
                   >
                     <CardContent className="p-6 flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -458,7 +458,7 @@ export default function PublicProfilePage() {
                   return (
                     <div
                       key={review.id}
-                      className="relative bg-white dark:bg-zinc-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl p-8 pt-14 mt-10 hover:shadow-2xl transition-all duration-500 group"
+                      className="relative bg-card dark:bg-zinc-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl p-8 pt-14 mt-10 hover:shadow-2xl transition-all duration-500 group"
                     >
                       {/* Floating Avatar */}
                       <div className={cn(

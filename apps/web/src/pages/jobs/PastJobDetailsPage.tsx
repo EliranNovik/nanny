@@ -212,7 +212,7 @@ export default function PastJobDetailsPage() {
                     <Button 
                         variant="ghost" 
                         size="icon"
-                        className="rounded-full bg-white/90 shadow-sm border border-black/5 hover:bg-white transition-all"
+                        className="rounded-full bg-card/90 shadow-sm border border-black/5 hover:bg-card transition-all"
                         onClick={() => navigate(-1)}
                     >
                         <ArrowLeft className="w-5 h-5 text-slate-600" />
@@ -222,9 +222,9 @@ export default function PastJobDetailsPage() {
 
                 <div className="space-y-8">
                     {/* Hero Section: Compact Card with Header & Image Overlay */}
-                    <Card className="rounded-3xl border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden bg-white/95">
+                    <Card className="rounded-3xl border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden bg-card/95">
                         {/* HEADER BAR */}
-                        <div className="bg-white px-6 py-4 flex items-center justify-between border-b border-black/5">
+                        <div className="bg-card px-6 py-4 flex items-center justify-between border-b border-black/5">
                             <div className="flex items-center gap-3">
                                 <div className={`p-1.5 rounded-lg bg-slate-100 ${statusColor}`}>
                                     {statusIcon}
@@ -262,7 +262,7 @@ export default function PastJobDetailsPage() {
                                 </div>
                                 
                                 {/* LIGHT BOTTOM OVERLAY WITH DETAILS */}
-                                <div className="absolute inset-x-4 bottom-4 p-6 bg-white/80 backdrop-blur-xl z-20 rounded-[2.5rem] border border-white/40 shadow-2xl">
+                                <div className="absolute inset-x-4 bottom-4 p-6 bg-card/80 backdrop-blur-xl z-20 rounded-[2.5rem] border border-border/40 shadow-2xl">
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-500/80 uppercase tracking-[0.2em] mb-2">START DATE</span>
@@ -304,7 +304,7 @@ export default function PastJobDetailsPage() {
 
                     {/* COLLABORATOR INFO: Separated from hero card */}
                     {otherParty && (
-                        <div className="bg-white/95 rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-black/5">
+                        <div className="bg-card/95 rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-black/5">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                 <div className="flex items-center gap-6">
                                     <Avatar className="w-20 h-20 border-4 border-slate-50 shadow-xl">
@@ -346,7 +346,7 @@ export default function PastJobDetailsPage() {
                         <div className="space-y-6">
                             <h3 className="font-bold text-lg tracking-tight px-1 text-slate-500">Additional Context</h3>
                             {job.service_details?.custom ? (
-                                <div className="p-4 bg-white rounded-3xl border border-black/5 shadow-sm">
+                                <div className="p-4 bg-card rounded-3xl border border-black/5 shadow-sm">
                                     <span className="font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2 mb-3 underline decoration-slate-200 underline-offset-8">Historical Notes</span>
                                     <span className="text-slate-700 text-sm font-medium whitespace-pre-wrap leading-relaxed">{job.service_details.custom}</span>
                                 </div>

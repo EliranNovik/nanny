@@ -253,8 +253,8 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 border-none bg-slate-50 dark:bg-zinc-950 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden rounded-[32px]">
-        <DialogHeader className="p-6 pb-4 bg-white dark:bg-zinc-900 border-b border-black/[0.03] dark:border-white/[0.03]">
+      <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 border-none bg-muted dark:bg-zinc-950 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden rounded-[32px]">
+        <DialogHeader className="p-6 pb-4 bg-card dark:bg-zinc-900 border-b border-black/[0.03] dark:border-white/[0.03]">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-orange-500/10 flex items-center justify-center">
@@ -289,7 +289,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
               {alerts.map((alert) => (
                 <div 
                   key={alert.id}
-                  className="group relative flex items-center gap-4 p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300"
+                  className="group relative flex items-center gap-4 p-4 rounded-3xl bg-card dark:bg-zinc-900 border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300"
                 >
                   <div className="relative flex-shrink-0">
                     {alert.sender_photo ? (
@@ -349,7 +349,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
         </ScrollArea>
         
         {alerts.length > 0 && (
-            <div className="p-4 bg-white dark:bg-zinc-900 border-t border-black/[0.03] dark:border-white/[0.03] text-center">
+            <div className="p-4 bg-card dark:bg-zinc-900 border-t border-black/[0.03] dark:border-white/[0.03] text-center">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">End of news feed</p>
             </div>
         )}

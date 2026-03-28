@@ -97,7 +97,7 @@ export default function JobCategories() {
             <Dialog key={category.id}>
               <DialogTrigger asChild>
                 <div
-                  className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-2xl hover:bg-white transition-all duration-700 flex items-center justify-between group overflow-hidden cursor-pointer"
+                  className="bg-card rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-2xl hover:bg-card transition-all duration-700 flex items-center justify-between group overflow-hidden cursor-pointer"
                 >
                   <div className="flex-1 pr-6 flex flex-col items-start text-left">
                     {/* Icon and Title Section */}
@@ -131,7 +131,7 @@ export default function JobCategories() {
                 </div>
               </DialogTrigger>
 
-              <DialogContent className="w-full h-[100dvh] max-w-none sm:max-w-2xl p-0 overflow-hidden border-none rounded-none sm:rounded-[2.5rem] bg-white shadow-2xl flex flex-col sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
+              <DialogContent className="w-full h-[100dvh] max-w-none sm:max-w-2xl p-0 overflow-hidden border-none rounded-none sm:rounded-[2.5rem] bg-card shadow-2xl flex flex-col sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
                 {/* Close Button */}
                 <DialogClose className="absolute right-4 top-4 md:right-6 md:top-6 z-50 p-2.5 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-colors focus:outline-none">
                   <X className="w-5 h-5" />

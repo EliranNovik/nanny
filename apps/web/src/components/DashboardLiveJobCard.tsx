@@ -46,7 +46,7 @@ const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
 
   return (
     <Card 
-      className={cn("group relative border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 transition-all duration-500 cursor-pointer flex flex-col bg-white dark:bg-zinc-900/50 rounded-[24px] overflow-hidden")}
+      className={cn("group relative border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 transition-all duration-500 cursor-pointer flex flex-col bg-card dark:bg-zinc-900/50 rounded-[24px] overflow-hidden")}
       onClick={onDetailsClick}
     >
       {/* LAYER A: MEDIA/HEADER AREA — slim strip; height fits larger overlay text */}
