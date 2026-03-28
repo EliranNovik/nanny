@@ -1,10 +1,11 @@
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
+import { JobAttachedPhotosStrip, jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
-    MapPin, MessageSquare, Clock, Navigation
+    MapPin, MessageSquare, Navigation
 } from "lucide-react";
 import JobMap from "@/components/JobMap";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
   onDetailsClick
 }) => {
   const isPickupDelivery = job.service_type === 'pickup_delivery' || job.care_type === 'pickup_delivery';
+  const attachmentUrls = jobAttachmentImageUrls(job);
 
   const formatJobTitle = (job: any) => {
     if (job.service_type === 'cleaning') return 'Cleaning';
@@ -67,6 +69,16 @@ const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
         {/* Dark Gradient Overlay for readability */}
         <div className="absolute inset-0 bg-black/40 z-10" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-20" />
+
+        {/* Location — top left */}
+        {job.location_city && (
+          <div className="pointer-events-none absolute left-2 top-2 z-[35] max-w-[min(100%,calc(100%-5.5rem))] sm:left-3 sm:top-3">
+            <div className="inline-flex max-w-full items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white shadow-md backdrop-blur-md sm:text-[12px]">
+              <MapPin className="h-3 w-3 shrink-0 opacity-95 sm:h-3.5 sm:w-3.5" aria-hidden />
+              <span className="truncate">{job.location_city}</span>
+            </div>
+          </div>
+        )}
         
         {/* Status Pill Top Right */}
         <div className="absolute top-2 right-2 z-30">
@@ -104,22 +116,10 @@ const DashboardLiveJobCard: React.FC<DashboardLiveJobCardProps> = ({
         </div>
       </div>
 
-      <CardContent className="px-4 py-4 flex flex-col gap-3.5">
-        {/* LAYER B: QUICK DETAILS ROW */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-              <Clock className="w-4 h-4" />
-              <span className="text-[13px] font-semibold">{job.time_duration?.replace(/_/g, '-') || "Ongoing"}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-              <MapPin className="w-4 h-4" />
-              <span className="text-[13px] font-semibold">{job.location_city}</span>
-            </div>
-          </div>
-        </div>
+      <JobAttachedPhotosStrip images={attachmentUrls} />
 
-        {/* LAYER C: ACTIONS */}
+      <CardContent className="px-4 py-4 flex flex-col gap-3.5">
+        {/* LAYER B: ACTIONS */}
         <div className="flex gap-2.5">
           <Button 
             variant="outline" 

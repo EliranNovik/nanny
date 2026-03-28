@@ -136,11 +136,17 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
           "border-slate-200 bg-white text-slate-900",
           "hover:bg-slate-50",
           "dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800",
-          "md:max-w-[15rem]"
+          "md:max-w-[17rem] md:justify-center md:gap-2.5 md:px-4 md:text-[16px] md:font-bold"
         )}
       >
-        <ActiveIcon className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{active.label}</span>
+        <ActiveIcon className="h-4 w-4 shrink-0 text-primary md:h-[1.125rem] md:w-[1.125rem]" aria-hidden />
+        <span className="min-w-0 flex-1 truncate md:flex-none md:text-center">{active.label}</span>
+        <span
+          className="inline-flex min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
+          aria-label={`${counts[activeId] ?? 0} items`}
+        >
+          {counts[activeId] ?? 0}
+        </span>
         <ChevronDown
           className={cn("h-4 w-4 shrink-0 text-slate-500 transition-transform dark:text-zinc-400", open && "rotate-180")}
         />
@@ -165,7 +171,7 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
                 aria-selected={selected}
                 onClick={() => select(tab.id)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 px-3.5 py-3 text-left text-[14px] font-medium transition-colors",
+                  "flex w-full items-center gap-2.5 px-3.5 py-3 text-left text-[14px] font-medium transition-colors md:text-[15px] md:font-semibold",
                   selected
                     ? "bg-orange-50 text-orange-800 dark:bg-orange-950/60 dark:text-orange-200"
                     : "text-slate-900 hover:bg-slate-100 dark:text-zinc-100 dark:hover:bg-zinc-800"

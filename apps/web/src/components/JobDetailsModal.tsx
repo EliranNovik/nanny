@@ -165,6 +165,8 @@ export function JobDetailsModal({
                                             <StarRating
                                                 rating={client.average_rating || 0}
                                                 size="sm"
+                                                starClassName="text-white"
+                                                emptyStarClassName="text-white/30"
                                                 numberClassName="text-white/70"
                                             />
                                             <span className="text-[9px] font-semibold uppercase tracking-wide text-white/45">

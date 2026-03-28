@@ -79,7 +79,7 @@ export function StarRating({
                             <Star
                                 className={cn(
                                     sizeClasses[size],
-                                    emptyStarClassName || "text-muted-foreground/30"
+                                    emptyStarClassName || "text-slate-900/20 dark:text-neutral-500/35"
                                 )}
                                 fill="none"
                             />
@@ -93,7 +93,7 @@ export function StarRating({
                                     <Star
                                         className={cn(
                                             sizeClasses[size],
-                                            starClassName || "text-yellow-500"
+                                            starClassName || "text-slate-950 dark:text-neutral-200"
                                         )}
                                         fill="currentColor"
                                     />
