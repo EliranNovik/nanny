@@ -73,6 +73,8 @@ export function BottomNav() {
     path === "/" ||
     path === "/about" ||
     path === "/contact" ||
+    path === "/login" ||
+    path === "/onboarding" ||
     path.startsWith("/chat/") ||
     path.startsWith("/messages")
   ) {

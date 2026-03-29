@@ -24,7 +24,8 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false, // Disable URL session detection to prevent hanging
+      // Required so email confirmation / magic links can establish a session from the redirect URL.
+      detectSessionInUrl: true,
     },
     db: {
       schema: "public",

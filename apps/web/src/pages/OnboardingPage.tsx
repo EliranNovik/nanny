@@ -5,8 +5,9 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Briefcase, ArrowRight, CheckCircle2, Mail } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ArrowRight, Mail, MapPin, Loader2 } from "lucide-react";
+import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import { getLocationDataFromGps } from "@/lib/location";
 
 type Role = "client" | "freelancer";
 
@@ -15,9 +16,14 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
-  const [role, setRole] = useState<Role | null>(null);
+  /** Default: family / hire flow. Use `?role=freelancer` for helpers. */
+  const [role, setRole] = useState<Role>("client");
   const [fullName, setFullName] = useState("");
   const [city, setCity] = useState("");
+  /** Set when user uses "My location" (saved to profiles.location_lat/lng). */
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,12 +33,11 @@ export default function OnboardingPage() {
   const [profileChecked, setProfileChecked] = useState(false);
   const checkInitiatedRef = useRef(false);
 
-  // Check for role in URL params and pre-select it
+  // Optional: `?role=freelancer` for helper signup (links from marketing)
   useEffect(() => {
     const roleParam = searchParams.get("role");
     if (roleParam === "client" || roleParam === "freelancer") {
       setRole(roleParam);
-      setStep(2); // Skip role selection step
     }
   }, [searchParams]);
 
@@ -94,6 +99,8 @@ export default function OnboardingPage() {
             setRole(profileData.role);
             setFullName(profileData.fullName);
             setCity(profileData.city);
+            if (typeof profileData.location_lat === "number") setLocationLat(profileData.location_lat);
+            if (typeof profileData.location_lng === "number") setLocationLng(profileData.location_lng);
             setRegistrationEmail(profileData.email);
             
             // Create the profile now that user is verified
@@ -130,8 +137,11 @@ export default function OnboardingPage() {
   // Show loading while checking authentication (only briefly)
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen gradient-mesh flex flex-col">
+        <LandingSiteHeader />
+        <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </main>
       </div>
     );
   }
@@ -147,10 +157,25 @@ export default function OnboardingPage() {
     step,
   });
 
+  async function handleUseMyLocation() {
+    setLocationLoading(true);
+    setError("");
+    try {
+      const { city: resolvedCity, lat, lng } = await getLocationDataFromGps();
+      setCity(resolvedCity);
+      setLocationLat(lat);
+      setLocationLng(lng);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not get your location.");
+    } finally {
+      setLocationLoading(false);
+    }
+  }
+
   async function handleNameCitySubmit() {
     console.log("[OnboardingPage] handleNameCitySubmit called", { role, fullName, city });
 
-    if (!role || !fullName.trim() || !city.trim()) {
+    if (!fullName.trim() || !city.trim()) {
       console.log("[OnboardingPage] Validation failed");
       setError("Please fill in all fields");
       return;
@@ -159,7 +184,7 @@ export default function OnboardingPage() {
     // If not logged in, move to registration step
     if (!user) {
       console.log("[OnboardingPage] No user, moving to registration step");
-      setStep(3);
+      setStep(2);
       return;
     }
 
@@ -183,10 +208,15 @@ export default function OnboardingPage() {
     setLoading(true);
     setError("");
 
+    const emailRedirectTo = `${window.location.origin}/login`;
+
     // Register the user directly with Supabase to get full response
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password: password,
+      options: {
+        emailRedirectTo,
+      },
     });
     
     if (signUpError) {
@@ -210,16 +240,20 @@ export default function OnboardingPage() {
       setRegistrationEmail(email.trim());
       
       // Save profile data to localStorage to create after email verification
-      const pendingProfile = {
+      const pendingProfile: Record<string, unknown> = {
         role,
         fullName: fullName.trim(),
         city: city.trim(),
         email: email.trim(),
       };
+      if (locationLat != null && locationLng != null) {
+        pendingProfile.location_lat = locationLat;
+        pendingProfile.location_lng = locationLng;
+      }
       localStorage.setItem("pendingProfile", JSON.stringify(pendingProfile));
       
       setLoading(false);
-      setStep(4); // Move to email verification step
+      setStep(3); // Email verification step
       return;
     }
 
@@ -270,7 +304,7 @@ export default function OnboardingPage() {
     console.log("[OnboardingPage] Got user", { userId: currentUser.id });
 
     // Validate required fields
-    if (!role || !fullName.trim() || !city.trim()) {
+    if (!fullName.trim() || !city.trim()) {
       console.error("[OnboardingPage] Validation failed", { role, fullName, city });
       setError("Missing required profile information. Please complete the form.");
       setLoading(false);
@@ -329,6 +363,8 @@ export default function OnboardingPage() {
       role,
       full_name: fullName.trim(),
       city: city.trim(),
+      location_lat: locationLat,
+      location_lng: locationLng,
     }).select();
 
     console.log("[OnboardingPage] Profile upsert result", { 
@@ -400,28 +436,22 @@ export default function OnboardingPage() {
 
   console.log("[OnboardingPage] Rendering onboarding form");
   return (
-    <div className="min-h-screen gradient-mesh flex items-center justify-center p-4 md:py-12">
-      <div className="app-desktop-centered-narrow animate-fade-in">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {step === 1 
-              ? "What brings you here?" 
-              : step === 2 
-              ? "Tell us about yourself" 
-              : step === 3
-              ? "Create your account"
-              : "Verify your email"}
-          </h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            {step === 1 
-              ? "Choose how you want to use NannyNow"
-              : step === 2
-              ? "Just a few quick details to get started"
-              : step === 3
-              ? "Create an account to continue"
-              : "We've sent you a verification email"}
-          </p>
-        </div>
+    <div className="min-h-screen gradient-mesh flex flex-col">
+      <LandingSiteHeader />
+      <main className="flex w-full flex-1 flex-col items-center justify-center px-4 pb-16 pt-28 md:px-8 md:pb-20 md:pt-36">
+        <div className="animate-fade-in w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-[40rem] mx-auto">
+        {step !== 3 && (
+          <div className="text-center mb-8 md:mb-10">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {step === 1 ? "Your name and city" : "Email and password"}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {step === 1
+                ? "First, tell us your name and city."
+                : "Then create your account. If email confirmation is on, we will send you a link next."}
+            </p>
+          </div>
+        )}
         <div>
             {error && (
               <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -430,50 +460,6 @@ export default function OnboardingPage() {
             )}
 
             {step === 1 && (
-              <div className="grid gap-4">
-                <button
-                  onClick={() => { setRole("client"); setStep(2); }}
-                  className={cn(
-                    "flex items-center gap-4 p-6 rounded-xl border-2 transition-all duration-200 text-left bg-card shadow-sm",
-                    role === "client" 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border hover:border-primary/50 hover:bg-muted/50"
-                  )}
-                >
-                  <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-secondary flex items-center justify-center">
-                    <Users className="w-7 h-7 text-secondary-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">I need a nanny</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Find trusted childcare providers quickly
-                    </p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => { setRole("freelancer"); setStep(2); }}
-                  className={cn(
-                    "flex items-center gap-4 p-6 rounded-xl border-2 transition-all duration-200 text-left bg-card shadow-sm",
-                    role === "freelancer" 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border hover:border-primary/50 hover:bg-muted/50"
-                  )}
-                >
-                  <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <Briefcase className="w-7 h-7 text-accent" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">I'm a nanny</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Get matched with families who need you
-                    </p>
-                  </div>
-                </button>
-              </div>
-            )}
-
-            {step === 2 && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Your Name</Label>
@@ -487,23 +473,55 @@ export default function OnboardingPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    placeholder="e.g., Tel Aviv"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                    <Input
+                      id="city"
+                      className="min-w-0 flex-1"
+                      placeholder="e.g., Tel Aviv"
+                      value={city}
+                      onChange={(e) => {
+                        setCity(e.target.value);
+                        setLocationLat(null);
+                        setLocationLng(null);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0 gap-2 sm:min-w-[10.5rem]"
+                      disabled={locationLoading}
+                      onClick={handleUseMyLocation}
+                      title="Use device location (saves GPS coordinates)"
+                    >
+                      {locationLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+                      )}
+                      My location
+                    </Button>
+                  </div>
+                  {locationLat != null && locationLng != null ? (
+                    <p className="text-xs text-muted-foreground">
+                      Location saved with map coordinates for nearby helpers.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Type a city or use <span className="font-medium">My location</span> to save your position.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setStep(1)}
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => navigate("/")}
                     className="flex-1"
                   >
                     Back
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleNameCitySubmit}
                     disabled={loading}
                     className="flex-1"
@@ -515,7 +533,7 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {step === 3 && (
+            {step === 2 && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -542,15 +560,16 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setStep(2)}
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setStep(1)}
                     disabled={loading}
                     className="flex-1"
                   >
                     Back
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleRegister}
                     disabled={loading}
                     className="flex-1"
@@ -562,58 +581,43 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {step === 4 && (
-              <div className="space-y-6">
-                <div className="flex flex-col items-center justify-center py-6">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                    <Mail className="w-8 h-8 text-primary" />
+            {step === 3 && (
+              <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm md:p-8">
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                    <Mail className="h-7 w-7 text-primary" aria-hidden />
                   </div>
-                  <div className="text-center space-y-2">
-                    <h3 className="text-lg font-semibold">Check your email</h3>
-                    <p className="text-sm text-muted-foreground">
-                      We've sent a verification link to
-                    </p>
-                    <p className="text-sm font-medium text-foreground">
-                      {registrationEmail || email}
-                    </p>
-                  </div>
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+                    Check your email
+                  </h2>
+                  <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                    We sent a confirmation link to{" "}
+                    <span className="font-medium text-foreground">{registrationEmail || email}</span>.
+                    Open the link from Supabase to verify your address—you will be signed in and taken
+                    to your dashboard. If the link doesn’t open the app, sign in here with the same
+                    email and password.
+                  </p>
                 </div>
-
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                    <div className="space-y-1 text-sm">
-                      <p className="font-medium text-foreground">Account created successfully!</p>
-                      <p className="text-muted-foreground">
-                        Please click the verification link in your email to activate your account. 
-                        Once verified, you'll be automatically signed in and your profile will be created.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button 
-                    variant="outline" 
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       localStorage.removeItem("pendingProfile");
-                      setStep(3);
+                      setStep(2);
                     }}
                     className="flex-1"
                   >
                     Back
                   </Button>
-                  <Button 
-                    onClick={() => navigate("/login")}
-                    className="flex-1"
-                  >
-                    Go to Login
+                  <Button onClick={() => navigate("/login")} className="flex-1">
+                    Sign in
                   </Button>
                 </div>
               </div>
             )}
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

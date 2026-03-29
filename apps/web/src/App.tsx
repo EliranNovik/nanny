@@ -113,6 +113,11 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
+      <Route
+        path="/login"
+        element={user ? <Navigate to="/home" replace /> : <LoginPage />}
+      />
+      <Route path="/onboarding" element={<OnboardingPage />} />
 
       <Route
         path="/messages"
@@ -133,12 +138,6 @@ function AppRoutes() {
 
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/home" replace /> : <LoginPage />}
-        />
-        <Route path="/onboarding" element={<OnboardingPage />} />
-
         {/* Client routes */}
         <Route
           path="/dashboard"

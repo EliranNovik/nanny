@@ -97,3 +97,16 @@ export async function getCityFromLocation(): Promise<string> {
   const location = await getCurrentLocation();
   return await reverseGeocode(location.lat, location.lng);
 }
+
+/**
+ * GPS + reverse geocode: city label for display and coordinates for map/radius features.
+ */
+export async function getLocationDataFromGps(): Promise<{
+  city: string;
+  lat: number;
+  lng: number;
+}> {
+  const { lat, lng } = await getCurrentLocation();
+  const city = await reverseGeocode(lat, lng);
+  return { city, lat, lng };
+}

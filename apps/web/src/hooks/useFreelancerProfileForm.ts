@@ -101,7 +101,7 @@ export function useFreelancerProfileForm() {
       }
 
       if (!freelancerProfile) {
-        navigate("/onboarding", { replace: true });
+        navigate("/onboarding?role=freelancer", { replace: true });
         return;
       }
 

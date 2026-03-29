@@ -4,14 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogIn, Users, Menu, X, Home, MessageCircle, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
 
 export type LandingSiteHeaderProps = {
   /** `logo` = fixed MamaLama mark (landing). `back` = return to home (About / Contact). */
   leftCorner?: "logo" | "back";
+  /** Omit fixed top-left mark (e.g. login page shows brand in the card). */
+  hideLeftLogo?: boolean;
+  /** Omit Login / Get started when already on the sign-in screen. */
+  hideLoginCta?: boolean;
+  /** Signed-out only: show Home in the right cluster (e.g. login page). */
+  homeLinkRight?: boolean;
 };
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
-export function LandingSiteHeader({ leftCorner = "logo" }: LandingSiteHeaderProps) {
+export function LandingSiteHeader({
+  leftCorner = "logo",
+  hideLeftLogo = false,
+  hideLoginCta = false,
+  homeLinkRight = false,
+}: LandingSiteHeaderProps) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -19,31 +31,32 @@ export function LandingSiteHeader({ leftCorner = "logo" }: LandingSiteHeaderProp
 
   return (
     <>
-      {leftCorner === "logo" ? (
-        <Link
-          to="/"
-          className="fixed top-8 left-8 z-[60] hidden md:flex items-center gap-2 group/logo transition-all duration-300"
-        >
-          <img
-            src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-            alt="MamaLama Logo"
-            className="h-16 w-auto rounded-xl brightness-110 shadow-lg drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3"
-          />
-          <span className="text-xl font-black text-white drop-shadow-md tracking-tighter hidden lg:block opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">
-            MamaLama
-          </span>
-        </Link>
-      ) : (
-        <Link
-          to="/"
-          className="fixed top-8 left-8 z-[60] hidden md:flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 border border-white/30 px-4 py-2.5 font-bold text-sm shadow-lg shadow-orange-900/20 transition-all active:scale-[0.98]"
-        >
-          <ChevronLeft className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
-          Back to home
-        </Link>
-      )}
+      {!hideLeftLogo &&
+        (leftCorner === "logo" ? (
+          <Link
+            to="/"
+            className="fixed top-8 left-8 z-[60] hidden md:flex items-center gap-2 group/logo transition-all duration-300"
+          >
+            <img
+              src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+              alt="MamaLama Logo"
+              className="h-16 w-auto rounded-xl brightness-110 shadow-lg drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3"
+            />
+            <span className="text-xl font-black text-white drop-shadow-md tracking-tighter hidden lg:block opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">
+              MamaLama
+            </span>
+          </Link>
+        ) : (
+          <Link
+            to="/"
+            className="fixed top-8 left-8 z-[60] hidden md:flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 border border-white/30 px-4 py-2.5 font-bold text-sm shadow-lg shadow-orange-900/20 transition-all active:scale-[0.98]"
+          >
+            <ChevronLeft className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
+            Back to home
+          </Link>
+        ))}
 
-      <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl bg-gradient-to-r from-orange-500 to-red-600 backdrop-blur-md rounded-full border border-white/20 shadow-2xl flex items-center px-4 md:px-8 py-3 transition-all duration-500">
+      <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl min-h-[52px] md:min-h-[60px] bg-gradient-to-r from-orange-500 to-red-600 backdrop-blur-md rounded-full border border-white/20 shadow-2xl flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500">
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-1 sm:gap-2 md:gap-6">
             {leftCorner === "back" && (
@@ -65,7 +78,12 @@ export function LandingSiteHeader({ leftCorner = "logo" }: LandingSiteHeaderProp
             </button>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-8 min-w-0 flex-1 justify-center md:justify-start md:pl-2">
+          <div
+            className={cn(
+              "flex items-center gap-2 md:gap-8 min-w-0 flex-1 justify-center md:justify-start md:pl-2",
+              homeLinkRight && !user && "md:justify-center md:pl-0"
+            )}
+          >
             {user ? (
               <div className="flex items-center gap-4 md:gap-8 min-w-0">
                 <div className="flex items-center gap-3 min-w-0">
@@ -101,15 +119,31 @@ export function LandingSiteHeader({ leftCorner = "logo" }: LandingSiteHeaderProp
                 <Link to="/contact" className="text-sm font-bold hover:text-white/80 transition-colors">
                   Contact
                 </Link>
-                <Link to="/" className="flex items-center gap-1.5 text-sm font-bold hover:text-white/80 transition-colors">
-                  <Home className="w-4 h-4" /> Home
-                </Link>
+                {!homeLinkRight ? (
+                  <Link to="/" className="flex items-center gap-1.5 text-sm font-bold hover:text-white/80 transition-colors">
+                    <Home className="w-4 h-4" /> Home
+                  </Link>
+                ) : null}
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-4">
-            {!user ? (
+          <div className="flex items-center gap-2 md:gap-4">
+            {homeLinkRight && !user ? (
+              <>
+                <Link
+                  to="/"
+                  className="hidden md:inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/10"
+                >
+                  <Home className="h-4 w-4 shrink-0" aria-hidden />
+                  Home
+                </Link>
+                <Link to="/" className="md:hidden inline-flex p-2 text-white hover:text-white/90" aria-label="Home">
+                  <Home className="h-6 w-6" />
+                </Link>
+              </>
+            ) : null}
+            {!hideLoginCta && !user ? (
               <Button
                 variant="ghost"
                 onClick={() => navigate("/login")}
@@ -117,7 +151,7 @@ export function LandingSiteHeader({ leftCorner = "logo" }: LandingSiteHeaderProp
               >
                 Login
               </Button>
-            ) : (
+            ) : user ? (
               <div className="hidden md:flex items-center gap-6 text-white border-l border-white/20 pl-6">
                 <Link
                   to={dashboardPath}
@@ -126,16 +160,16 @@ export function LandingSiteHeader({ leftCorner = "logo" }: LandingSiteHeaderProp
                   <Home className="w-4 h-4" /> Dashboard
                 </Link>
               </div>
-            )}
-            {!user ? (
+            ) : null}
+            {!hideLoginCta && !user ? (
               <button type="button" onClick={() => navigate("/login")} className="md:hidden p-2 text-white">
                 <LogIn className="w-6 h-6" />
               </button>
-            ) : (
+            ) : user ? (
               <button type="button" onClick={() => navigate(dashboardPath)} className="md:hidden p-2 text-white">
                 <Home className="w-6 h-6" />
               </button>
-            )}
+            ) : null}
           </div>
         </div>
       </header>
@@ -165,27 +199,31 @@ export function LandingSiteHeader({ leftCorner = "logo" }: LandingSiteHeaderProp
               >
                 <Home className="w-6 h-6 text-primary" /> Home
               </Link>
-              <div className="h-[1px] bg-slate-100 my-2" />
-              {user ? (
-                <Button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    navigate(dashboardPath);
-                  }}
-                  className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg"
-                >
-                  Dashboard
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    navigate("/login");
-                  }}
-                  className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg"
-                >
-                  Get Started
-                </Button>
+              {(user || !hideLoginCta) && (
+                <>
+                  <div className="h-[1px] bg-slate-100 my-2" />
+                  {user ? (
+                    <Button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        navigate(dashboardPath);
+                      }}
+                      className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg"
+                    >
+                      Dashboard
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        navigate("/login");
+                      }}
+                      className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg"
+                    >
+                      Get Started
+                    </Button>
+                  )}
+                </>
               )}
             </div>
             <button type="button" onClick={() => setIsMenuOpen(false)} className="mt-8 w-full py-4 text-slate-400 font-bold">

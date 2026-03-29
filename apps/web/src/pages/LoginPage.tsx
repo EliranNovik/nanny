@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
@@ -43,6 +44,8 @@ export default function LoginPage() {
             role: profileData.role,
             full_name: profileData.fullName,
             city: profileData.city,
+            location_lat: profileData.location_lat ?? null,
+            location_lng: profileData.location_lng ?? null,
           });
 
           if (profileError) {
@@ -109,7 +112,7 @@ export default function LoginPage() {
           const redirectUrl = roleParam ? `/onboarding?role=${roleParam}` : "/onboarding";
           navigate(redirectUrl, { replace: true });
         }
-      }, 500); // Increased delay to allow profile creation
+      }, 150);
       
       return () => clearTimeout(timer);
     }
@@ -162,8 +165,11 @@ export default function LoginPage() {
   if (authLoading) {
     console.log("[LoginPage] Showing loading spinner", { authLoading, hasUser: !!user, profile });
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen gradient-mesh flex flex-col">
+        <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
+        <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </main>
       </div>
     );
   }
@@ -177,8 +183,10 @@ export default function LoginPage() {
   console.log("[LoginPage] Rendering login form");
 
   return (
-    <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-fade-in">
+    <div className="min-h-screen gradient-mesh flex flex-col">
+      <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
+      <main className="flex flex-1 flex-col items-center justify-center p-4 pt-28 md:pt-36 pb-12">
+        <div className="w-full max-w-md animate-fade-in">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
@@ -190,7 +198,7 @@ export default function LoginPage() {
           </div>
           <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1">
             <Sparkles className="w-4 h-4" />
-            Find childcare in minutes
+            Find a helper in minutes
           </p>
         </div>
 
@@ -199,7 +207,7 @@ export default function LoginPage() {
             <CardTitle>{isSignUp ? "Create Account" : "Welcome Back"}</CardTitle>
             <CardDescription>
               {isSignUp 
-                ? "Start finding or offering childcare today" 
+                ? "Start finding helpers or help others today" 
                 : "Sign in to continue"}
             </CardDescription>
           </CardHeader>
@@ -258,7 +266,8 @@ export default function LoginPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
