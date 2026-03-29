@@ -227,7 +227,11 @@ jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise
   const ids = (confs || []).map((c) => c.freelancer_id);
 
   if (ids.length === 0) {
-    res.json({ freelancers: [], confirm_ends_at: job.confirm_ends_at });
+    res.json({
+      freelancers: [],
+      confirm_ends_at: job.confirm_ends_at,
+      job,
+    });
     return;
   }
 
@@ -253,15 +257,8 @@ jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise
   res.json({
     freelancers: enrichedProfiles || [],
     confirm_ends_at: job.confirm_ends_at,
-    job: {
-      id: job.id,
-      service_type: job.service_type,
-      service_details: job.service_details,
-      location_city: job.location_city,
-      time_duration: job.time_duration,
-      care_frequency: job.care_frequency,
-      created_at: job.created_at, // Ensure created_at is returned
-    },
+    // Full row — client uses one round-trip (no extra Supabase fetch for job)
+    job,
   });
 });
 

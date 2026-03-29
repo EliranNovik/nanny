@@ -13,8 +13,8 @@ export default function ClientProfileHub() {
   const { profile, fullName, photoUrl } = ctx;
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
-      <div className="max-w-lg mx-auto pt-6 md:pt-8">
+    <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
+      <div className="app-desktop-shell pt-6 md:pt-8">
         <div className="flex justify-end mb-10">
           <Button type="button" variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={openReportModal}>
             <AlertCircle className="w-4 h-4" />

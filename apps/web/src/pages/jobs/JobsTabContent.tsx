@@ -250,12 +250,12 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                             <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
                                 <Briefcase className="w-6 h-6 text-orange-500" /> Active Jobs
                             </h2>
-                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                            <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
                                 Jobs happening now—chat with the other person or finish up when the work is done.
                             </p>
                         </div>
                         {activeJobs.length > 0 ? (
-                            <div className="space-y-8">
+                            <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
                                 {activeJobs.map(job => {
                                     const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
                                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;
@@ -268,7 +268,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}
@@ -277,10 +277,12 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                 className={cn(isMinMd && "cursor-pointer")}
                                                 onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                             >
-                                                <JobCardLocationBar
-                                                    location={job.location_city}
-                                                    trailing={<Badge className={statusBadge.className}>{statusBadge.label}</Badge>}
-                                                />
+                                                <div className="md:hidden">
+                                                    <JobCardLocationBar
+                                                        location={job.location_city}
+                                                        trailing={<Badge className={statusBadge.className}>{statusBadge.label}</Badge>}
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="relative flex min-h-0 flex-1 flex-col">
                                             {/* Smart Scroll Overlay */}
@@ -335,9 +337,9 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                     <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
                                                 </div>
                                             </div>
-                                            {/* Desktop: full-width hero */}
+                                            {/* Desktop: hero height capped so cards don’t dominate the viewport */}
                                             <div
-                                                className="relative hidden h-36 w-full overflow-hidden group/img sm:h-40 md:block"
+                                                className="relative hidden h-32 w-full overflow-hidden group/img sm:h-36 md:block md:h-36 lg:h-40"
                                             >
                                                 {job.service_type === "pickup_delivery" ? (
                                                     <div className="absolute inset-0 z-0">
@@ -350,6 +352,9 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                         className="h-full w-full object-cover transition-transform duration-700 group-hover/img:scale-110"
                                                     />
                                                 )}
+                                                <div className="pointer-events-none absolute right-4 top-4 z-[45] [&>*]:md:min-h-[2.25rem] [&>*]:md:px-4 [&>*]:md:text-[11px] [&>*]:md:leading-tight">
+                                                    <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
+                                                </div>
                                                 <div className="absolute inset-0 bg-black/40 z-10" />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                                 <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 pointer-events-none">
@@ -365,20 +370,25 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                     }}
                                                     aria-hidden
                                                 />
-                                                <div className="pointer-events-none absolute bottom-3 left-6 right-6 z-[40] flex flex-col gap-2">
+                                                <div className="pointer-events-none absolute bottom-2 left-4 right-4 z-[40] flex flex-col gap-1.5 sm:bottom-3 sm:left-5 sm:right-5 md:gap-2">
                                                     <button
                                                         type="button"
-                                                        className="pointer-events-auto flex min-w-0 max-w-full items-center gap-3 rounded-xl text-left outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-100"
+                                                        className="pointer-events-auto flex min-w-0 max-w-full items-start gap-2.5 rounded-xl text-left outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-100 sm:gap-3"
                                                         onClick={(e) => goToPublicProfile(e, otherPartyId)}
                                                         disabled={!otherPartyId}
                                                     >
-                                                        <Avatar className="h-20 w-20 flex-shrink-0 border-2 border-white/30 shadow-2xl transition-transform duration-500 group-hover:scale-110">
+                                                        <Avatar className="h-14 w-14 flex-shrink-0 border-2 border-white/30 shadow-lg transition-transform duration-500 group-hover:scale-105 md:h-16 md:w-16">
                                                             <AvatarImage src={otherParty?.photo_url || ""} />
-                                                            <AvatarFallback className="bg-orange-500 text-white font-black text-sm">{otherParty?.full_name?.charAt(0) || "C"}</AvatarFallback>
+                                                            <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white md:text-sm">{otherParty?.full_name?.charAt(0) || "C"}</AvatarFallback>
                                                         </Avatar>
-                                                        <h3 className="min-w-0 flex-1 text-[24px] font-black tracking-tight text-white drop-shadow-xl">{otherParty?.full_name || "Client"}</h3>
+                                                        <div className="min-w-0 flex-1">
+                                                            <h3 className="text-lg font-black leading-tight tracking-tight text-white drop-shadow-xl md:text-xl lg:text-2xl">{otherParty?.full_name || "Client"}</h3>
+                                                            <p className="mt-0.5 text-[13px] font-semibold text-white/90 drop-shadow-md md:text-sm">
+                                                                {job.location_city?.trim() || "Location not set"}
+                                                            </p>
+                                                        </div>
                                                     </button>
-                                                    <div className="flex flex-col gap-1.5 pointer-events-none">
+                                                    <div className="flex flex-col gap-1 pointer-events-none">
                                                         <div className="flex items-center gap-2 px-0.5">
                                                             {otherParty?.average_rating ? (
                                                                 <StarRating
@@ -387,13 +397,13 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                                     showCount={false}
                                                                     starClassName="text-white"
                                                                     emptyStarClassName="text-white/30"
-                                                                    numberClassName="text-white drop-shadow-md text-[14px]"
+                                                                    numberClassName="text-white drop-shadow-md text-[12px] md:text-[13px]"
                                                                 />
                                                             ) : (
-                                                                <span className="text-[14px] font-bold text-white/80 italic drop-shadow-md">New Client</span>
+                                                                <span className="text-[12px] font-bold text-white/80 italic drop-shadow-md md:text-[13px]">New Client</span>
                                                             )}
                                                         </div>
-                                                        <span className="w-full text-center text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
+                                                        <span className="w-full text-center text-[13px] font-black uppercase tracking-[0.12em] text-white/95 drop-shadow-md md:text-[14px] lg:text-[15px]">
                                                             {formatJobTitle(job)}
                                                         </span>
                                                     </div>
@@ -442,12 +452,12 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                     <CheckCircle2 className="w-6 h-6 text-orange-500" /> Past Jobs
                                 </span>
                             </h2>
-                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                            <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
                                 Jobs that are finished or cancelled—your history in one place.
                             </p>
                         </div>
                         {pastJobs.length > 0 ? (
-                            <div className="space-y-8">
+                            <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
                                 {pastJobs.map(job => {
                                     const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
                                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;
@@ -459,7 +469,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}
@@ -468,10 +478,12 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                 className={cn(isMinMd && "cursor-pointer")}
                                                 onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                             >
-                                                <JobCardLocationBar
-                                                    location={job.location_city}
-                                                    trailing={<Badge className={statusBadge.className}>{statusBadge.label}</Badge>}
-                                                />
+                                                <div className="md:hidden">
+                                                    <JobCardLocationBar
+                                                        location={job.location_city}
+                                                        trailing={<Badge className={statusBadge.className}>{statusBadge.label}</Badge>}
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="relative flex min-h-0 flex-1 flex-col">
                                             <div className={cn(
@@ -522,9 +534,9 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                     <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
                                                 </div>
                                             </div>
-                                            {/* Desktop hero */}
+                                            {/* Desktop hero — capped height */}
                                             <div
-                                                className="relative hidden h-36 w-full overflow-hidden group/img sm:h-40 md:block"
+                                                className="relative hidden h-32 w-full overflow-hidden group/img sm:h-36 md:block md:h-36 lg:h-40"
                                             >
                                                 {job.service_type === "pickup_delivery" ? (
                                                     <div className="absolute inset-0 z-0">
@@ -537,6 +549,9 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                         className="h-full w-full object-cover transition-transform duration-700 group-hover/img:scale-110"
                                                     />
                                                 )}
+                                                <div className="pointer-events-none absolute right-4 top-4 z-[45] [&>*]:md:min-h-[2.25rem] [&>*]:md:px-4 [&>*]:md:text-[11px] [&>*]:md:leading-tight">
+                                                    <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
+                                                </div>
                                                 <div className="absolute inset-0 z-10 bg-black/40" />
                                                 <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                                                 <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 pointer-events-none">
@@ -552,20 +567,25 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                     }}
                                                     aria-hidden
                                                 />
-                                                <div className="pointer-events-none absolute bottom-3 left-6 right-6 z-[40] flex flex-col gap-2">
+                                                <div className="pointer-events-none absolute bottom-2 left-4 right-4 z-[40] flex flex-col gap-1.5 sm:bottom-3 sm:left-5 sm:right-5 md:gap-2">
                                                     <button
                                                         type="button"
-                                                        className="pointer-events-auto flex min-w-0 max-w-full items-center gap-3 rounded-xl text-left outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-100"
+                                                        className="pointer-events-auto flex min-w-0 max-w-full items-start gap-2.5 rounded-xl text-left outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-100 sm:gap-3"
                                                         onClick={(e) => goToPublicProfile(e, otherPartyId)}
                                                         disabled={!otherPartyId}
                                                     >
-                                                        <Avatar className="h-20 w-20 flex-shrink-0 border-2 border-white/30 shadow-2xl transition-transform duration-500 group-hover:scale-110">
+                                                        <Avatar className="h-14 w-14 flex-shrink-0 border-2 border-white/30 shadow-lg transition-transform duration-500 group-hover:scale-105 md:h-16 md:w-16">
                                                             <AvatarImage src={otherParty?.photo_url || ""} />
-                                                            <AvatarFallback className="bg-orange-500 text-sm font-black text-white">{otherParty?.full_name?.charAt(0) || "U"}</AvatarFallback>
+                                                            <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white md:text-sm">{otherParty?.full_name?.charAt(0) || "U"}</AvatarFallback>
                                                         </Avatar>
-                                                        <h3 className="min-w-0 flex-1 text-[24px] font-black tracking-tight text-white drop-shadow-xl">{otherParty?.full_name || "User"}</h3>
+                                                        <div className="min-w-0 flex-1">
+                                                            <h3 className="text-lg font-black leading-tight tracking-tight text-white drop-shadow-xl md:text-xl lg:text-2xl">{otherParty?.full_name || "User"}</h3>
+                                                            <p className="mt-0.5 text-[13px] font-semibold text-white/90 drop-shadow-md md:text-sm">
+                                                                {job.location_city?.trim() || "Location not set"}
+                                                            </p>
+                                                        </div>
                                                     </button>
-                                                    <div className="flex flex-col gap-1.5 pointer-events-none">
+                                                    <div className="flex flex-col gap-1 pointer-events-none">
                                                         <div className="flex items-center gap-3">
                                                             {otherParty?.average_rating ? (
                                                                 <div className="flex items-center gap-2 px-0.5">
@@ -575,14 +595,14 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                                                         showCount={false}
                                                                         starClassName="text-white"
                                                                         emptyStarClassName="text-white/30"
-                                                                        numberClassName="text-[14px] text-white drop-shadow-md font-black"
+                                                                        numberClassName="text-[12px] text-white drop-shadow-md font-black md:text-[13px]"
                                                                     />
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-[14px] font-bold italic text-white/80 drop-shadow-md">New Client</span>
+                                                                <span className="text-[12px] font-bold italic text-white/80 drop-shadow-md md:text-[13px]">New Client</span>
                                                             )}
                                                         </div>
-                                                        <span className="w-full text-center text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
+                                                        <span className="w-full text-center text-[13px] font-black uppercase tracking-[0.12em] text-white/95 drop-shadow-md md:text-[14px] lg:text-[15px]">
                                                             {formatJobTitle(job)}
                                                         </span>
                                                     </div>

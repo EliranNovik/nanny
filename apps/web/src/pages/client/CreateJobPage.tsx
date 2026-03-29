@@ -336,8 +336,8 @@ export default function CreateJobPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-32 md:pb-24">
-      <div className="max-w-lg mx-auto pt-8">
+    <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+      <div className="app-desktop-shell pt-8">
         {/* Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -7,11 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  MapPin, ArrowRight, Loader2, Bell, Briefcase, Sparkles,
-  UtensilsCrossed, Truck, HelpCircle, Baby,
-  MessageCircle, Calendar, ChevronRight, Clock, ClipboardList,
+  MapPin, ArrowRight, Loader2, Bell, Briefcase, Baby,
+  MessageCircle, Calendar, ChevronRight, Clock, ClipboardList, Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import JobMap from "@/components/JobMap";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { LiveTimer } from "@/components/LiveTimer";
 import DashboardLiveJobCard from "@/components/DashboardLiveJobCard";
@@ -52,6 +52,16 @@ interface Profile {
   total_ratings?: number;
 }
 
+/** Matches Jobs / Requests tabs — hero image per service (pickup uses map, not this URL). */
+function serviceHeroImageSrc(job: { service_type?: string }) {
+  if (job.service_type === "cleaning") return "/cleaning-mar22.png";
+  if (job.service_type === "cooking") return "/cooking-mar22.png";
+  if (job.service_type === "pickup_delivery") return "";
+  if (job.service_type === "nanny") return "/nanny-mar22.png";
+  if (job.service_type === "other_help") return "/other-mar22.png";
+  return "/nanny-mar22.png";
+}
+
 export default function DashboardPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -63,9 +73,21 @@ export default function DashboardPage() {
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
   const [myRequests, setMyRequests] = useState<JobRequest[]>([]);
   const [confirmedCounts, setConfirmedCounts] = useState<Record<string, number>>({});
+  /** Up to 5 helper profiles per open request (for avatar stack on dashboard cards). */
+  const [confirmedHelperAvatars, setConfirmedHelperAvatars] = useState<
+    Record<string, { id: string; photo_url: string | null; full_name: string | null }[]>
+  >({});
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  /** Incoming job invitations for you as helper (pending action; excludes confirmed/declined). */
+  const [incomingKpiCount, setIncomingKpiCount] = useState(0);
   const [requestsTab, setRequestsTab] = useState<"my" | "invitations">("my");
   const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
+
+  /** Incoming = must still respond (not yet confirmed by you as helper); excludes pending / declined. */
+  const incomingInvitationsOnly = useMemo(
+    () => invitations.filter((n) => !n.isConfirmed && !n.isDeclined),
+    [invitations]
+  );
 
   // Load cache on mount
   useEffect(() => {
@@ -81,7 +103,10 @@ export default function DashboardPage() {
           setFreelancerProfiles(data.freelancerProfiles || {});
           setActiveConversationIds(data.activeConversationIds || {});
           setMyRequests(data.myRequests || []);
+          setConfirmedCounts(data.confirmedCounts || {});
+          setConfirmedHelperAvatars(data.confirmedHelperAvatars || {});
           setInvitations(data.invitations || []);
+          setIncomingKpiCount(data.incomingKpiCount ?? 0);
           setRecentMessages(data.recentMessages || []);
           setLoading(false); 
         }
@@ -125,8 +150,7 @@ export default function DashboardPage() {
               )`)
             .eq("freelancer_id", user.id)
             .in("status", ["pending", "opened"])
-            .order("created_at", { ascending: false })
-            .limit(3),
+            .order("created_at", { ascending: false }),
 
           supabase
             .from("conversations")
@@ -221,21 +245,57 @@ export default function DashboardPage() {
         // Process requests and invitations
         const requestsList = openRequestsRes.data || [];
         setMyRequests(requestsList);
-        
+
+        let confirmedAvatarsForCache: Record<
+          string,
+          { id: string; photo_url: string | null; full_name: string | null }[]
+        > = {};
+        let confirmedCountsForCache: Record<string, number> = {};
+
         if (requestsList.length > 0) {
+          const jobIds = requestsList.map((r) => r.id);
+          type ConfRow = {
+            job_id: string;
+            freelancer_id: string;
+            created_at: string;
+            profiles: { id: string; photo_url: string | null; full_name: string | null } | null;
+          };
           const { data: allConfs } = await supabase
             .from("job_confirmations")
-            .select("job_id")
-            .in("job_id", requestsList.map(r => r.id))
-            .eq("status", "available");
-          
+            .select(
+              `
+              job_id,
+              freelancer_id,
+              created_at,
+              profiles!job_confirmations_freelancer_id_fkey ( id, photo_url, full_name )
+            `
+            )
+            .in("job_id", jobIds)
+            .eq("status", "available")
+            .order("created_at", { ascending: true });
+
           const counts: Record<string, number> = {};
-          allConfs?.forEach(c => {
+          const avatarMap: Record<string, { id: string; photo_url: string | null; full_name: string | null }[]> = {};
+          (allConfs as ConfRow[] | null)?.forEach((c) => {
             counts[c.job_id] = (counts[c.job_id] || 0) + 1;
+            if (!avatarMap[c.job_id]) avatarMap[c.job_id] = [];
+            if (avatarMap[c.job_id].length >= 5) return;
+            const p = c.profiles;
+            avatarMap[c.job_id].push(
+              p
+                ? { id: p.id, photo_url: p.photo_url, full_name: p.full_name }
+                : { id: c.freelancer_id, photo_url: null, full_name: null }
+            );
           });
+          confirmedAvatarsForCache = avatarMap;
+          confirmedCountsForCache = counts;
           setConfirmedCounts(counts);
+          setConfirmedHelperAvatars(avatarMap);
+        } else {
+          setConfirmedCounts({});
+          setConfirmedHelperAvatars({});
         }
-        
+
         const rawInvitations = invitationsRes.data || [];
         const { data: confs } = await supabase
           .from("job_confirmations")
@@ -253,6 +313,10 @@ export default function DashboardPage() {
             isDeclined: declinedIds.has(n.job_id),
           }));
         setInvitations(mappedInvitations);
+        const incomingKpiForCache = mappedInvitations.filter(
+          (n) => !n.isConfirmed && !n.isDeclined
+        ).length;
+        setIncomingKpiCount(incomingKpiForCache);
 
         // Update cache
         const cacheKey = `client_dashboard_cache_${user.id}`;
@@ -263,7 +327,10 @@ export default function DashboardPage() {
             freelancerProfiles: profileMap,
             activeConversationIds: conversationMap,
             myRequests: requestsList,
+            confirmedCounts: confirmedCountsForCache,
+            confirmedHelperAvatars: confirmedAvatarsForCache,
             invitations: mappedInvitations,
+            incomingKpiCount: incomingKpiForCache,
             recentMessages: processedMessages
           }
         }));
@@ -286,15 +353,28 @@ export default function DashboardPage() {
     return "Service Request";
   }
 
-  function getServiceIcon(serviceType?: string) {
-    if (serviceType === "cleaning") return <Sparkles className="w-3.5 h-3.5" />;
-    if (serviceType === "cooking") return <UtensilsCrossed className="w-3.5 h-3.5" />;
-    if (serviceType === "pickup_delivery") return <Truck className="w-3.5 h-3.5" />;
-    if (serviceType === "nanny") return <Baby className="w-3.5 h-3.5" />;
-    if (serviceType === "other_help") return <HelpCircle className="w-3.5 h-3.5" />;
-    return <Briefcase className="w-3.5 h-3.5" />;
+  /** Left thumb: map for pickup & delivery, service hero image otherwise (same as Jobs / Requests tabs). */
+  function renderRequestThumb(job: JobRequest) {
+    return (
+      <div
+        className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none"
+        aria-hidden
+      >
+        {job.service_type === "pickup_delivery" ? (
+          <div className="absolute inset-0 z-0">
+            <JobMap job={job} />
+          </div>
+        ) : (
+          <img
+            src={serviceHeroImageSrc(job)}
+            alt={formatJobTitle(job)}
+            className="h-full w-full object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+      </div>
+    );
   }
-
 
 
   if (loading) {
@@ -306,8 +386,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
-      <div className="max-w-2xl mx-auto pt-8 space-y-6">
+    <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
+      <div className="app-desktop-shell pt-8 space-y-6">
         {/* Welcome Section */}
         <div className="mb-4 px-1">
           <h1 className="text-[32px] font-bold text-slate-900 dark:text-white leading-tight">
@@ -325,7 +405,10 @@ export default function DashboardPage() {
             onClick={() => navigate("/jobs?tab=jobs")}
           >
             <CardContent className="p-4 flex flex-col h-full">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Active Jobs</span>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Active Jobs</span>
+                <Briefcase className="hidden md:block h-5 w-5 shrink-0 text-primary" aria-hidden />
+              </div>
               <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{activeJobs.length}</p>
               <span className="text-[11px] font-medium text-slate-400 mt-auto">Ongoing now</span>
             </CardContent>
@@ -336,7 +419,10 @@ export default function DashboardPage() {
             onClick={() => navigate("/jobs?tab=my_requests")}
           >
             <CardContent className="p-4 flex flex-col h-full">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Requests</span>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">My Requests</span>
+                <ClipboardList className="hidden md:block h-5 w-5 shrink-0 text-primary" aria-hidden />
+              </div>
               <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{myRequests.length}</p>
               <span className="text-[11px] font-medium text-slate-400 mt-auto">Pending review</span>
             </CardContent>
@@ -347,13 +433,16 @@ export default function DashboardPage() {
             onClick={() => navigate("/jobs?tab=requests")}
           >
             <CardContent className="p-4 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Inbound</span>
-                {invitations.length > 0 && (
-                  <Badge className="bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 border-none text-[9px] font-black h-4 px-1.5 rounded-full">NEW</Badge>
-                )}
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Incoming</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {incomingKpiCount > 0 && (
+                    <Badge className="bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 border-none text-[9px] font-black h-4 px-1.5 rounded-full">NEW</Badge>
+                  )}
+                  <Bell className="hidden md:block h-5 w-5 text-primary" aria-hidden />
+                </div>
               </div>
-              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{invitations.length}</p>
+              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{incomingKpiCount}</p>
               <span className="text-[11px] font-medium text-slate-400 mt-auto">New responses</span>
             </CardContent>
           </Card>
@@ -363,7 +452,10 @@ export default function DashboardPage() {
             onClick={() => navigate("/client/profile")}
           >
             <CardContent className="p-4 flex flex-col h-full">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Rating</span>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Rating</span>
+                <Star className="hidden md:block h-5 w-5 shrink-0 text-primary" aria-hidden />
+              </div>
               <div className="flex items-baseline gap-1.5 mb-2 leading-none">
                 <p className="text-[32px] font-bold text-slate-900 dark:text-white">{profile?.average_rating ? profile.average_rating.toFixed(1) : "5.0"}</p>
                 <span className="text-[14px] font-bold text-slate-400">/ 5.0</span>
@@ -428,8 +520,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Fragmented Messages List */}
-        <div className="space-y-4">
+        {/* Messages + Requests: side by side on large screens */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+        <div className="space-y-4 min-w-0">
           <div className="flex items-center justify-between">
             <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
               <MessageCircle className="w-6 h-6 text-primary" />
@@ -484,12 +577,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Latest Requests with fragmented cards */}
-        {/* Latest Requests */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <div className="flex items-center justify-between">
-            <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
-              <Bell className="w-6 h-6 text-orange-500" /> REQUESTS
+            <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
+              <Bell className="w-6 h-6 shrink-0 text-orange-500" aria-hidden />
+              <span className="md:hidden">
+                {requestsTab === "my" ? "My Requests" : "Incoming Requests"}
+              </span>
+              <span className="hidden md:inline uppercase">REQUESTS</span>
             </h2>
             <div className="flex items-center gap-4">
               {/* Segmented control — pill track + floating thumb */}
@@ -533,7 +628,16 @@ export default function DashboardPage() {
                   <span className="hidden md:inline">Incoming</span>
                 </button>
               </div>
-              <Button variant="ghost" size="sm" className="text-xs font-bold text-primary" onClick={() => navigate("/client/jobs")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs font-bold text-primary"
+                onClick={() =>
+                  navigate(
+                    requestsTab === "my" ? "/jobs?tab=my_requests" : "/jobs?tab=requests"
+                  )
+                }
+              >
                 View All
               </Button>
             </div>
@@ -544,12 +648,23 @@ export default function DashboardPage() {
                 {requestsTab === "my" ? (
                   myRequests.length > 0 ? myRequests.map((req) => (
                     <Card key={req.id}
-                      className="border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
-                      onClick={() => navigate("/client/active-jobs")}>
-                      <CardContent className="px-5 py-4 flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
-                        {getServiceIcon(req.service_type)}
-                      </div>
+                      className="relative border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+                      onClick={() => navigate("/jobs?tab=my_requests")}>
+                      {confirmedCounts[req.id] > 0 && (
+                        <div
+                          className="absolute right-2 top-2 z-[1] flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-emerald-500 px-2 text-[12px] font-black tabular-nums text-white shadow-md"
+                          aria-label={`${confirmedCounts[req.id]} matched`}
+                        >
+                          {confirmedCounts[req.id]}
+                        </div>
+                      )}
+                      <CardContent
+                        className={cn(
+                          "flex items-center gap-4 px-5 py-4",
+                          confirmedCounts[req.id] > 0 && "pr-12"
+                        )}
+                      >
+                      {renderRequestThumb(req)}
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-[16px] text-slate-900 dark:text-slate-100">{formatJobTitle(req)}</p>
                         <div className="flex items-center gap-2 mt-0.5 text-[14px] text-slate-600 dark:text-slate-400">
@@ -557,12 +672,59 @@ export default function DashboardPage() {
                           {req.start_at && <><Calendar className="w-3 h-3 ml-1" />{new Date(req.start_at).toLocaleDateString()}</>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 ml-auto">
-                        {confirmedCounts[req.id] > 0 && (
-                          <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none text-[11px] font-black px-3 py-1 rounded-full shadow-md transition-all">
-                            {confirmedCounts[req.id]} {confirmedCounts[req.id] === 1 ? 'Helper' : 'Helpers'} Accepted
-                          </Badge>
-                        )}
+                      <div className="flex items-center gap-3 ml-auto shrink-0">
+                        {confirmedHelperAvatars[req.id]?.length > 0 && (() => {
+                          const helpers = confirmedHelperAvatars[req.id]!.slice(0, 5);
+                          const totalMatched = confirmedCounts[req.id] ?? 0;
+                          const overflow = Math.max(0, totalMatched - helpers.length);
+                          return (
+                            <div
+                              className="flex flex-row items-center justify-end pr-0.5"
+                              aria-label={
+                                totalMatched > 0
+                                  ? `${totalMatched} matched helper${totalMatched === 1 ? "" : "s"}`
+                                  : undefined
+                              }
+                            >
+                              {helpers.map((p, i) => {
+                                const initials =
+                                  p.full_name
+                                    ?.split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .toUpperCase()
+                                    .slice(0, 2) || "?";
+                                return (
+                                  <Avatar
+                                    key={p.id}
+                                    className={cn(
+                                      "h-8 w-8 overflow-hidden shadow-sm md:h-12 md:w-12",
+                                      i > 0 && "-ml-2.5 md:-ml-3"
+                                    )}
+                                    title={p.full_name || undefined}
+                                  >
+                                    <AvatarImage
+                                      src={p.photo_url || undefined}
+                                      alt=""
+                                      className="object-cover"
+                                    />
+                                    <AvatarFallback className="bg-primary/15 text-[10px] font-bold text-primary md:text-xs">
+                                      {initials}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                );
+                              })}
+                              {overflow > 0 && (
+                                <div
+                                  className="-ml-2.5 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-slate-200 px-1.5 text-[11px] font-black tabular-nums text-slate-700 shadow-sm dark:bg-zinc-700 dark:text-zinc-100 md:-ml-3 md:h-12 md:min-w-[2.75rem] md:text-xs"
+                                  title={`${overflow} more`}
+                                >
+                                  +{overflow}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         <ChevronRight className="w-4 h-4 text-slate-600/40 dark:text-slate-400/40 flex-shrink-0" />
                       </div>
                     </CardContent>
@@ -577,18 +739,16 @@ export default function DashboardPage() {
                     </div>
                   )
                 ) : (
-                  invitations.length > 0 ? invitations.map((notif) => {
+                  incomingInvitationsOnly.length > 0 ? incomingInvitationsOnly.map((notif) => {
                     const job = notif.job_requests;
                     const isDeclined = notif.isDeclined;
                     const isConfirmed = notif.isConfirmed;
                     return (
                       <Card key={notif.id}
                         className={cn("border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer transition-all", isDeclined && "opacity-60")}
-                        onClick={() => navigate("/client/active-jobs?tab=requests")}>
+                        onClick={() => navigate("/jobs?tab=requests")}>
                         <CardContent className="px-5 py-4 flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
-                          {getServiceIcon(job?.service_type)}
-                        </div>
+                        {job ? renderRequestThumb(job) : null}
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-[16px] text-slate-900 dark:text-slate-100">{formatJobTitle(job)}</p>
                           <div className="flex items-center gap-2 mt-0.5 text-[14px] text-slate-600 dark:text-slate-400">
@@ -620,6 +780,7 @@ export default function DashboardPage() {
                   )
                 )}
             </div>
+        </div>
         </div>
 
         {/* No active job empty state */}

@@ -1,10 +1,19 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  memo,
+  lazy,
+  Suspense,
+} from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,8 +31,13 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Textarea } from "@/components/ui/textarea";
-import JobMap from "@/components/JobMap";
-import { ImageLightboxModal } from "@/components/ImageLightboxModal";
+const JobMap = lazy(() => import("@/components/JobMap"));
+const ImageLightboxModal = lazy(() =>
+  import("@/components/ImageLightboxModal").then((m) => ({ default: m.ImageLightboxModal }))
+);
+const FullscreenMapModal = lazy(() =>
+  import("@/components/FullscreenMapModal").then((m) => ({ default: m.FullscreenMapModal }))
+);
 
 export const HOME_SIZES = [
   { id: '1_room', label: '1 Room' },
@@ -81,73 +95,133 @@ interface Freelancer {
   is_open_job_accepted?: boolean;
 }
 
+function formatElapsedTime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+}
+
+const ElapsedTimer = memo(function ElapsedTimer({
+  createdAt,
+  startTime,
+}: {
+  createdAt?: string | null;
+  startTime: number;
+}) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => {
+    const tick = () => {
+      const start = createdAt ? new Date(createdAt).getTime() : startTime;
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      setElapsedSeconds(elapsed >= 0 ? elapsed : 0);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [createdAt, startTime]);
+  return <>{formatElapsedTime(elapsedSeconds)}</>;
+});
+
+function freelancerListSignature(rows: Freelancer[]): string {
+  return rows
+    .map(
+      (f) =>
+        `${f.id}\u001f${f.confirmation_note ?? ""}\u001f${f.is_open_job_accepted ? "1" : "0"}`
+    )
+    .join("\u001e");
+}
+
 export default function ConfirmedListPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { addToast } = useToast();
+
+  const seededJob = useMemo(
+    () => (location.state as { job?: any } | null)?.job ?? null,
+    // Re-read when navigation entry changes
+    [location.key]
+  );
+
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
-  const [loading, setLoading] = useState(true);
+  /** Full-page blocker only when we have no job to paint yet */
+  const [loading, setLoading] = useState(() => !seededJob);
+  const [freelancersLoading, setFreelancersLoading] = useState(true);
   const [selecting, setSelecting] = useState<string | null>(null);
   const [declining, setDeclining] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [restarting, setRestarting] = useState(false);
   const [startTime] = useState(Date.now());
-  const [job, setJob] = useState<any>((location.state as any)?.job || null);
+  const [job, setJob] = useState<any>(seededJob);
   const [customDetails, setCustomDetails] = useState("");
   const [savingDetails, setSavingDetails] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
 
-  async function fetchConfirmed() {
+  const fetchInFlight = useRef(false);
+  const lastFreelancerSig = useRef<string>("");
+
+  useEffect(() => {
+    const j = (location.state as { job?: any } | null)?.job;
+    if (j) setJob(j);
+  }, [location.key]);
+
+  const fetchConfirmed = useCallback(async () => {
+    if (!jobId || fetchInFlight.current) return;
+    fetchInFlight.current = true;
     try {
-      console.log("[ConfirmedListPage] Fetching confirmed freelancers for job", jobId);
       const data = await apiGet<{
         freelancers: Freelancer[];
         confirm_ends_at: string;
         job: any;
-      }>(
-        `/api/jobs/${jobId}/confirmed`
-      );
-      console.log("[ConfirmedListPage] Received data:", data);
+      }>(`/api/jobs/${jobId}/confirmed`);
 
-      // Store job details
       if (data.job) {
-        console.log("[ConfirmedListPage] Setting job state with:", data.job);
-        setJob(data.job);
-      } else {
-        console.warn("[ConfirmedListPage] No job data received from API");
+        setJob((prev: any) => (prev ? { ...prev, ...data.job } : data.job));
       }
 
-      // Sort: open job acceptances first, then regular confirmations
       const sorted = [...data.freelancers].sort((a, b) => {
         if (a.is_open_job_accepted && !b.is_open_job_accepted) return -1;
         if (!a.is_open_job_accepted && b.is_open_job_accepted) return 1;
         return 0;
       });
 
-      setFreelancers(sorted);
+      const sig = freelancerListSignature(sorted);
+      if (sig !== lastFreelancerSig.current) {
+        lastFreelancerSig.current = sig;
+        setFreelancers(sorted);
+      }
     } catch (err) {
       console.error("[ConfirmedListPage] Error fetching confirmed freelancers:", err);
       setError("Failed to load job details");
     } finally {
+      fetchInFlight.current = false;
       setLoading(false);
+      setFreelancersLoading(false);
     }
-  }
+  }, [jobId]);
 
-  // Fetch job details directly from Supabase
+  /** Refresh full job row after local edits (notes/images). API already returns full job on poll. */
   async function fetchJobDirectly() {
     if (!jobId) return;
     try {
       const { data, error } = await supabase
-        .from('job_requests')
-        .select('*')
-        .eq('id', jobId)
+        .from("job_requests")
+        .select("*")
+        .eq("id", jobId)
         .single();
 
       if (data && !error) {
-        console.log("[ConfirmedListPage] Fetched job directly:", data);
         setJob((prev: any) => ({ ...prev, ...data }));
       }
     } catch (e) {
@@ -185,31 +259,25 @@ export default function ConfirmedListPage() {
   useEffect(() => {
     if (!jobId) return;
 
-    fetchConfirmed();
+    void fetchConfirmed();
 
-    // Poll every 3 seconds to get new confirmations
-    const interval = setInterval(() => {
-      fetchConfirmed();
-    }, 3000);
+    const POLL_MS = 5000;
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      void fetchConfirmed();
+    };
+    const interval = setInterval(tick, POLL_MS);
 
-
-    fetchJobDirectly();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void fetchConfirmed();
+    };
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [jobId]);
-
-  // Timer effect
-  useEffect(() => {
-    const timerInterval = setInterval(() => {
-      const start = job?.created_at ? new Date(job.created_at).getTime() : startTime;
-      const elapsed = Math.floor((Date.now() - start) / 1000);
-      setElapsedSeconds(elapsed >= 0 ? elapsed : 0);
-    }, 1000);
-
-    return () => clearInterval(timerInterval);
-  }, [job, startTime]);
+  }, [jobId, fetchConfirmed]);
 
   async function handleFiles(files: File[]) {
     if (!files.length || !jobId) return;
@@ -286,11 +354,9 @@ export default function ConfirmedListPage() {
     setError("");
 
     try {
-      console.log("[ConfirmedListPage] Declining freelancer", freelancerId);
       await apiPost(`/api/jobs/${jobId}/decline`, {
         freelancer_id: freelancerId,
       });
-      console.log("[ConfirmedListPage] Freelancer declined successfully");
 
       // Remove from local state
       setFreelancers((prev) => prev.filter((f) => f.id !== freelancerId));
@@ -337,7 +403,6 @@ export default function ConfirmedListPage() {
     setError("");
 
     try {
-      console.log("[ConfirmedListPage] Restarting search for job", jobId);
       await apiPost(`/api/jobs/${jobId}/restart`, {});
       // Refresh the page to reset timer
       window.location.reload();
@@ -347,21 +412,6 @@ export default function ConfirmedListPage() {
     } finally {
       setRestarting(false);
     }
-  }
-
-  function formatElapsedTime(seconds: number): string {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (days > 0) {
-      return `${days}d ${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-    }
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-    }
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
 
   if (loading) {
@@ -376,14 +426,14 @@ export default function ConfirmedListPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
-      <div className="max-w-2xl mx-auto pt-8">
+    <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
+      <div className="app-desktop-shell pt-8">
         {/* Timer Header */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 bg-primary/10">
             <Clock className="w-5 h-5 text-primary animate-pulse-soft" />
             <span className="font-mono font-bold text-lg text-primary">
-              {formatElapsedTime(elapsedSeconds)}
+              <ElapsedTimer createdAt={job?.created_at} startTime={startTime} />
             </span>
           </div>
           <h1 className="text-2xl font-bold mb-2">Waiting for Confirmations...</h1>
@@ -433,11 +483,263 @@ export default function ConfirmedListPage() {
           </div>
         </div>
 
-        {/* Job Request Summary */}
+        {error && (
+          <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Freelancer cards — directly under action buttons */}
+        {freelancers.length > 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-medium text-muted-foreground">
+              {freelancers.length} helper{freelancers.length !== 1 ? "s" : ""} available
+            </span>
+            {freelancers.length > 1 && (
+              <Badge variant="secondary" className="text-xs">
+                +{freelancers.length - 1} more
+              </Badge>
+            )}
+          </div>
+        )}
+        <div
+          className={cn(
+            "flex gap-4 overflow-x-auto overflow-y-hidden pb-3 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth mb-8",
+            freelancers.length === 0 && "hidden"
+          )}
+          style={{ scrollbarWidth: "thin" }}
+        >
+          <div className="flex gap-4 flex-shrink-0 pr-1">
+            {freelancers.map((freelancer, index) => {
+              const fp = freelancer.freelancer_profiles;
+              const initials = freelancer.full_name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase() || "?";
+
+              return (
+                <Card
+                  key={freelancer.id}
+                  className={cn(
+                    "flex w-[min(82vw,300px)] flex-shrink-0 snap-start flex-col overflow-hidden",
+                    "rounded-[28px] border border-slate-300/45 bg-card shadow-none",
+                    "dark:border-zinc-500/35",
+                    "md:shadow-[0_16px_40px_rgba(0,0,0,0.1)] md:dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)]"
+                  )}
+                >
+                  <CardContent className="flex flex-1 flex-col p-0">
+                    {/* Portrait hero — tap opens public profile */}
+                    <button
+                      type="button"
+                      className={cn(
+                        "relative w-full shrink-0 overflow-hidden aspect-[3/4] border-0 bg-transparent p-0 text-left",
+                        "cursor-pointer rounded-t-[26px] transition-[transform,filter] hover:brightness-[1.02] active:scale-[0.995]",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                      )}
+                      onClick={() => navigate(`/profile/${freelancer.id}`)}
+                      aria-label={`View public profile of ${freelancer.full_name}`}
+                    >
+                      {freelancer.photo_url ? (
+                        <img
+                          src={freelancer.photo_url}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover"
+                          loading={index === 0 ? "eager" : "lazy"}
+                          decoding="async"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/25 via-muted to-primary/10">
+                          <Avatar className="h-28 w-28 border-4 border-white/80 shadow-xl ring-2 ring-primary/20">
+                            <AvatarFallback className="bg-primary/15 text-3xl font-black text-primary">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                      )}
+                      <div
+                        className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none"
+                        aria-hidden
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 z-[1] p-4 pt-16 pointer-events-none">
+                        <h3 className="text-[22px] font-black leading-tight tracking-tight text-white drop-shadow-md">
+                          {freelancer.full_name}
+                        </h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <StarRating
+                            rating={fp?.rating_avg || 0}
+                            totalRatings={fp?.rating_count || 0}
+                            size="md"
+                            showCount={true}
+                            numberClassName="text-white drop-shadow-sm"
+                            countClassName="text-white/85"
+                            starClassName="text-amber-400 drop-shadow-sm"
+                            emptyStarClassName="text-white/35"
+                          />
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-3">
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4 shrink-0 text-primary/80" />
+                        <span className="truncate">{freelancer.city || "Location not set"}</span>
+                      </div>
+
+                      {(fp?.hourly_rate_min || fp?.hourly_rate_max) && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Rate </span>
+                          <span className="font-bold text-foreground">
+                            {fp.hourly_rate_min && fp.hourly_rate_max
+                              ? `₪${fp.hourly_rate_min}–${fp.hourly_rate_max}/hr`
+                              : fp.hourly_rate_min
+                                ? `From ₪${fp.hourly_rate_min}/hr`
+                                : `Up to ₪${fp.hourly_rate_max}/hr`}
+                          </span>
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {fp?.has_first_aid && (
+                          <Badge variant="success" className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+                            🩹 First Aid
+                          </Badge>
+                        )}
+                        {fp?.newborn_experience && (
+                          <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+                            👶 Newborn
+                          </Badge>
+                        )}
+                        {fp?.special_needs_experience && (
+                          <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+                            💜 Special Needs
+                          </Badge>
+                        )}
+                      </div>
+
+                      {fp?.bio && (
+                        <p className="line-clamp-3 text-sm leading-snug text-muted-foreground">
+                          {fp.bio}
+                        </p>
+                      )}
+
+                      {freelancer.confirmation_note && (
+                        <div
+                          className={cn(
+                            "rounded-2xl border p-3",
+                            freelancer.is_open_job_accepted
+                              ? "border-amber-500/25 bg-amber-500/10"
+                              : "border-primary/25 bg-primary/8"
+                          )}
+                        >
+                          <p
+                            className={cn(
+                              "mb-1 text-[11px] font-bold uppercase tracking-wide",
+                              freelancer.is_open_job_accepted
+                                ? "text-amber-700 dark:text-amber-400"
+                                : "text-primary"
+                            )}
+                          >
+                            Note from helper
+                          </p>
+                          <p
+                            className={cn(
+                              "text-sm leading-snug",
+                              freelancer.is_open_job_accepted
+                                ? "text-amber-900 dark:text-amber-200"
+                                : "text-foreground"
+                            )}
+                          >
+                            {freelancer.confirmation_note}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-auto flex items-stretch gap-2 border-t border-border/60 bg-muted/40 px-3 py-3 dark:bg-muted/20">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDecline(freelancer.id)}
+                        disabled={declining === freelancer.id || selecting === freelancer.id}
+                        className="h-11 flex-1 gap-1 rounded-2xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        {declining === freelancer.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                        Decline
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSelect(freelancer.id)}
+                        disabled={selecting === freelancer.id || declining === freelancer.id}
+                        className="h-11 flex-[1.15] gap-1.5 rounded-2xl font-bold shadow-sm"
+                      >
+                        {selecting === freelancer.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MessageCircle className="h-4 w-4" />
+                        )}
+                        Select & Chat
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {freelancersLoading && freelancers.length === 0 && (
+          <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 px-4 md:mx-0 md:px-0 mb-8">
+            {[0, 1].map((k) => (
+              <div
+                key={k}
+                className="w-[min(82vw,300px)] flex-shrink-0 snap-start rounded-[28px] border border-border/40 bg-muted/40 overflow-hidden"
+              >
+                <div className="aspect-[3/4] bg-muted animate-pulse" />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                  <div className="h-10 rounded-2xl bg-muted animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!freelancersLoading && freelancers.length === 0 && (
+          <Card className="border-0 shadow-lg text-center py-12 mb-8">
+            <CardContent>
+              <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                <Clock className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">No Confirmations</h3>
+              <p className="text-muted-foreground mb-4">
+                Still waiting for helpers to confirm availability.
+              </p>
+              <Button onClick={() => navigate("/client/create")}>
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Job Request Summary — matches jobs tab cards */}
         {job && (
-          <Card className="border-0 shadow-lg mb-6">
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-lg mb-4">Your Request</h3>
+          <Card
+            className={cn(
+              "mb-6 w-full overflow-hidden rounded-[32px] border border-slate-300/45 bg-card backdrop-blur-sm shadow-none",
+              "dark:border-zinc-500/35",
+              "md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)]"
+            )}
+          >
+            <CardContent className="p-6 md:p-7">
+              <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 mb-4">
+                Your Request
+              </h3>
               <div className="grid gap-3">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -504,15 +806,25 @@ export default function ConfirmedListPage() {
                           <span>{job.service_details.mobility_level.replace(/_/g, ' ')}</span>
                         </div>
                       )}
-                      {job.service_details?.custom && (
-                        <div className="col-span-1 border-t border-border/20 pt-2 mt-2 w-full">
-                          <span className="font-semibold block mb-1">Custom Notes:</span>
-                          <span className="whitespace-pre-wrap leading-tight">{job.service_details.custom}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
+
+                {job.service_details?.custom && (
+                  <div
+                    className={cn(
+                      "mt-4 w-full rounded-2xl border border-slate-200/90 bg-muted/40 p-4 sm:p-5",
+                      "dark:border-border/50 dark:bg-muted/25"
+                    )}
+                  >
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                      Custom notes
+                    </p>
+                    <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
+                      {job.service_details.custom}
+                    </p>
+                  </div>
+                )}
 
                 {/* Pickup/Delivery Addresses */}
                 {job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address && (
@@ -528,10 +840,24 @@ export default function ConfirmedListPage() {
                   </div>
                 )}
 
-                {/* Job Map - Nested Look */}
+                {/* Job Map — tap opens full map modal */}
                 {(job.service_type === 'pickup_delivery' || job.location_city) && (
-                  <div className="mt-4 mx-4 overflow-hidden h-28 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
-                    <JobMap job={job} />
+                  <div className="relative mt-4 h-28 overflow-hidden rounded-2xl border border-slate-200/80 ring-1 ring-black/5 dark:border-border/40 dark:ring-white/10 shadow-sm">
+                    <button
+                      type="button"
+                      className="absolute inset-0 z-10 cursor-pointer rounded-2xl bg-transparent p-0 outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
+                      onClick={() => setMapModalOpen(true)}
+                      aria-label="Open full map"
+                    />
+                    <div className="h-full w-full">
+                      <Suspense
+                        fallback={
+                          <div className="h-full w-full min-h-[7rem] bg-muted animate-pulse" />
+                        }
+                      >
+                        <JobMap job={job} />
+                      </Suspense>
+                    </div>
                   </div>
                 )}
               </div>
@@ -589,7 +915,6 @@ export default function ConfirmedListPage() {
                   id="job-image-upload"
                   multiple
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   onChange={async (e) => {
                     const files = e.target.files;
@@ -619,8 +944,10 @@ export default function ConfirmedListPage() {
                     <UploadCloud className="w-10 h-10" />
                   </div>
                   <div>
-                    <h4 className="text-lg font-bold text-foreground">Drag & Drop or Take Photo</h4>
-                    <p className="text-sm text-muted-foreground mt-1 px-4">Tap to open camera or drag files here</p>
+                    <h4 className="text-lg font-bold text-foreground">Drag & Drop or Add Photos</h4>
+                    <p className="text-sm text-muted-foreground mt-1 px-4">
+                      Tap to choose camera or library — or drag files here on desktop
+                    </p>
                   </div>
                   <Button
                     variant="secondary"
@@ -629,8 +956,7 @@ export default function ConfirmedListPage() {
                     disabled={savingDetails}
                   >
                     <Plus className="w-5 h-5" />
-                    <span className="sm:hidden">Capture Photos</span>
-                    <span className="hidden sm:inline">Add Photos</span>
+                    Add Photos
                   </Button>
 
                   {savingDetails && (
@@ -690,216 +1016,24 @@ export default function ConfirmedListPage() {
             </CardContent>
           </Card>
         )}
-
-        {
-          error && (
-            <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
-              {error}
-            </div>
-          )
-        }
-
-        {/* Freelancer Cards - horizontal scroll, one card at a time */}
-        {freelancers.length > 0 && (
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-medium text-muted-foreground">
-              {freelancers.length} helper{freelancers.length !== 1 ? "s" : ""} available
-            </span>
-            {freelancers.length > 1 && (
-              <Badge variant="secondary" className="text-xs">
-                +{freelancers.length - 1} more
-              </Badge>
-            )}
-          </div>
-        )}
-        <div
-          className={cn(
-            "flex gap-4 overflow-x-auto overflow-y-hidden pb-2 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth",
-            freelancers.length === 0 && "hidden"
-          )}
-          style={{
-            scrollbarWidth: "thin",
-          }}
-        >
-          <div
-            className="flex gap-4 flex-shrink-0"
-            style={{
-              width: freelancers.length > 0
-                ? `calc(${freelancers.length} * 100% + ${(freelancers.length - 1) * 16}px)`
-                : undefined,
-            }}
-          >
-            {freelancers.map((freelancer) => {
-              const fp = freelancer.freelancer_profiles;
-              const initials = freelancer.full_name
-                ?.split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase() || "?";
-
-              return (
-                <Card
-                  key={freelancer.id}
-                  className="border-0 shadow-lg overflow-hidden flex-shrink-0 snap-start flex flex-col"
-                  style={{
-                    width: freelancers.length > 0 ? `calc((100% - ${(freelancers.length - 1) * 16}px) / ${freelancers.length})` : undefined,
-                  }}
-                >
-                  <CardContent className="p-0">
-                    <div className="p-6">
-                      <div className="flex gap-4">
-                        <Avatar className="w-16 h-16 border-2 border-primary/20">
-                          <AvatarImage src={freelancer.photo_url || undefined} />
-                          <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h3 className="font-semibold text-lg">
-                                {freelancer.full_name}
-                              </h3>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                                <MapPin className="w-3.5 h-3.5" />
-                                {freelancer.city || "Location not set"}
-                              </div>
-                            </div>
-
-                            <StarRating
-                              rating={fp?.rating_avg || 0}
-                              totalRatings={fp?.rating_count || 0}
-                              size="sm"
-                              showCount={true}
-                            />
-                          </div>
-
-                          {/* Certificates (left) and Rate (right) */}
-                          <div className="flex items-center justify-between gap-4 mt-3">
-                            <div className="flex flex-wrap gap-2">
-                              {fp?.has_first_aid && (
-                                <Badge variant="success">🩹 First Aid</Badge>
-                              )}
-                              {fp?.newborn_experience && (
-                                <Badge variant="secondary">👶 Newborn Exp.</Badge>
-                              )}
-                              {fp?.special_needs_experience && (
-                                <Badge variant="secondary">💜 Special Needs</Badge>
-                              )}
-                            </div>
-                            {(fp?.hourly_rate_min || fp?.hourly_rate_max) && (
-                              <div className="text-sm flex-shrink-0">
-                                <span className="text-muted-foreground">Rate: </span>
-                                <span className="font-semibold text-foreground">
-                                  {fp.hourly_rate_min && fp.hourly_rate_max
-                                    ? `₪${fp.hourly_rate_min}-${fp.hourly_rate_max}/hr`
-                                    : fp.hourly_rate_min
-                                      ? `From ₪${fp.hourly_rate_min}/hr`
-                                      : `Up to ₪${fp.hourly_rate_max}/hr`}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Bio */}
-                          {fp?.bio && (
-                            <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
-                              {fp.bio}
-                            </p>
-                          )}
-
-                          {/* Confirmation Note */}
-                          {freelancer.confirmation_note && (
-                            <div className={cn(
-                              "mt-4 p-3 rounded-lg border",
-                              freelancer.is_open_job_accepted
-                                ? "bg-amber-500/10 border-amber-500/20"
-                                : "bg-primary/10 border-primary/20"
-                            )}>
-                              <p className={cn(
-                                "text-xs font-medium mb-1",
-                                freelancer.is_open_job_accepted
-                                  ? "text-amber-700 dark:text-amber-400"
-                                  : "text-primary"
-                              )}>
-                                Note from nanny:
-                              </p>
-                              <p className={cn(
-                                "text-sm",
-                                freelancer.is_open_job_accepted
-                                  ? "text-amber-800 dark:text-amber-300"
-                                  : "text-foreground"
-                              )}>
-                                {freelancer.confirmation_note}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action Bar: Decline left, Select right */}
-                    <div className="px-6 py-4 bg-muted/50 border-t flex items-center justify-between gap-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDecline(freelancer.id)}
-                        disabled={declining === freelancer.id || selecting === freelancer.id}
-                        className="gap-1 text-destructive hover:text-destructive"
-                      >
-                        {declining === freelancer.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <X className="w-4 h-4" />
-                        )}
-                        Decline
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleSelect(freelancer.id)}
-                        disabled={selecting === freelancer.id || declining === freelancer.id}
-                        className="gap-1"
-                      >
-                        {selecting === freelancer.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <MessageCircle className="w-4 h-4" />
-                        )}
-                        Select & Chat
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Empty State */}
-        {freelancers.length === 0 && (
-          <Card className="border-0 shadow-lg text-center py-12 mt-10">
-            <CardContent>
-              <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                <Clock className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">No Confirmations</h3>
-              <p className="text-muted-foreground mb-4">
-                Still waiting for helpers to confirm availability.
-              </p>
-              <Button onClick={() => navigate("/client/create")}>
-                Try Again
-              </Button>
-            </CardContent>
-          </Card>
-        )}
         {lightboxIndex !== null && (
-          <ImageLightboxModal
-            images={job.service_details?.images || []}
-            initialIndex={lightboxIndex}
-            isOpen={lightboxIndex !== null}
-            onClose={() => setLightboxIndex(null)}
-          />
+          <Suspense fallback={null}>
+            <ImageLightboxModal
+              images={job.service_details?.images || []}
+              initialIndex={lightboxIndex}
+              isOpen={lightboxIndex !== null}
+              onClose={() => setLightboxIndex(null)}
+            />
+          </Suspense>
+        )}
+        {job && (
+          <Suspense fallback={null}>
+            <FullscreenMapModal
+              job={job}
+              isOpen={mapModalOpen}
+              onClose={() => setMapModalOpen(false)}
+            />
+          </Suspense>
         )}
       </div >
     </div >

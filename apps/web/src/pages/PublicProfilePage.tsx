@@ -13,7 +13,8 @@ import {
   Star,
   Phone,
   Send,
-  User as UserIcon
+  User as UserIcon,
+  Loader2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,13 +58,102 @@ interface SharedJob {
 
 export default function PublicProfilePage() {
   const { userId } = useParams();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, profile: currentProfile } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [sharedJobs, setSharedJobs] = useState<SharedJob[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openingChat, setOpeningChat] = useState(false);
+
+  async function handleOpenDirectChat() {
+    if (!userId || !currentUser || !profile) return;
+    if (userId === currentUser.id) return;
+
+    if (!currentProfile?.role) {
+      addToast({
+        title: "Please wait",
+        description: "Your profile is still loading. Try again in a moment.",
+        variant: "default",
+      });
+      return;
+    }
+
+    const myRole = currentProfile.role;
+    const theirRole = profile.role;
+
+    if (myRole !== "client" && myRole !== "freelancer") {
+      addToast({
+        title: "Messaging unavailable",
+        description: "Your account cannot start a chat from here.",
+        variant: "error",
+      });
+      return;
+    }
+    if (theirRole !== "client" && theirRole !== "freelancer") {
+      addToast({
+        title: "Messaging unavailable",
+        description: "You can only message clients or helpers.",
+        variant: "error",
+      });
+      return;
+    }
+    if (myRole === theirRole) {
+      addToast({
+        title: "Messaging unavailable",
+        description: "You can only message someone in the opposite role (client ↔ helper).",
+        variant: "default",
+      });
+      return;
+    }
+
+    const clientId = myRole === "client" ? currentUser.id : userId;
+    const freelancerId = myRole === "freelancer" ? currentUser.id : userId;
+
+    setOpeningChat(true);
+    try {
+      const { data: existing, error: findErr } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("client_id", clientId)
+        .eq("freelancer_id", freelancerId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (findErr) throw findErr;
+
+      if (existing?.id) {
+        navigate(`/messages?conversation=${existing.id}`);
+        return;
+      }
+
+      const { data: created, error: insErr } = await supabase
+        .from("conversations")
+        .insert({
+          job_id: null,
+          client_id: clientId,
+          freelancer_id: freelancerId,
+        })
+        .select("id")
+        .single();
+
+      if (insErr) throw insErr;
+
+      navigate(`/messages?conversation=${created.id}`);
+    } catch (e: unknown) {
+      console.error(e);
+      const msg = e && typeof e === "object" && "message" in e ? String((e as { message: string }).message) : "Please try again.";
+      addToast({
+        title: "Could not open chat",
+        description: msg,
+        variant: "error",
+      });
+    } finally {
+      setOpeningChat(false);
+    }
+  }
 
   useEffect(() => {
     const fetchProfileAndJobs = async () => {
@@ -216,26 +306,37 @@ export default function PublicProfilePage() {
         <ArrowLeft className="w-5 h-5" />
       </button>
 
-      <div className="max-w-4xl mx-auto px-4 pt-[calc(4.75rem+env(safe-area-inset-top))] md:pt-10">
+      <div className="app-desktop-shell pt-[calc(4.75rem+env(safe-area-inset-top))] md:pt-10">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Column: User Card */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="border border-slate-200/70 dark:border-border/50 shadow-[0_12px_35px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.35)] rounded-[28px] overflow-hidden bg-card/90 backdrop-blur-md">
-              <CardContent className="p-7 sm:p-8 flex flex-col items-center text-center">
-                <div className="relative mb-5">
-                  <Avatar className="w-28 h-28 shadow-xl ring-2 ring-slate-200 dark:ring-zinc-700">
-                    <AvatarImage src={profile.photo_url || undefined} className="object-cover" />
-                    <AvatarFallback className="text-4xl font-black bg-primary/5 text-primary uppercase">
-                      {profile.full_name?.slice(0, 2) || "??"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md border-2 border-white dark:border-zinc-900">
-                    <ShieldCheck className="w-3.5 h-3.5" />
+              <CardContent className="p-0 flex flex-col">
+                {/* Full-width hero — replaces circular avatar */}
+                <div className="relative w-full aspect-[3/4] bg-muted sm:aspect-[4/5]">
+                  {profile.photo_url ? (
+                    <img
+                      src={profile.photo_url}
+                      alt={profile.full_name ? `${profile.full_name} profile photo` : "Profile photo"}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading="eager"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 via-muted to-primary/10">
+                      <span className="text-5xl font-black uppercase tracking-tight text-primary/50 sm:text-6xl">
+                        {profile.full_name?.slice(0, 2) || "??"}
+                      </span>
+                    </div>
+                  )}
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" aria-hidden />
+                  <div className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white/90 bg-emerald-500 text-white shadow-lg dark:border-zinc-900">
+                    <ShieldCheck className="h-4 w-4" />
                   </div>
                 </div>
 
+                <div className="flex flex-col items-center px-7 pb-8 pt-6 text-center sm:px-8 sm:pt-7">
                 <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-2">
                   {profile.full_name}
                 </h1>
@@ -277,15 +378,17 @@ export default function PublicProfilePage() {
                   {/* Contact Buttons: Round Icons */}
                   <div className="flex items-center justify-center gap-4 py-2">
                     <button
-                      onClick={() => addToast({
-                        title: "Coming soon",
-                        description: "Direct message will be available here soon.",
-                        variant: "default",
-                      })}
-                      className="w-11 h-11 rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/20 dark:shadow-slate-100/20 hover:scale-105 active:scale-95 transition-all"
-                      title="Send message"
+                      type="button"
+                      onClick={() => void handleOpenDirectChat()}
+                      disabled={openingChat}
+                      className="w-11 h-11 rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/20 dark:shadow-slate-100/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:pointer-events-none"
+                      title="Open messages"
                     >
-                      <MessageSquare className="w-5 h-5" />
+                      {openingChat ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <MessageSquare className="h-5 w-5" />
+                      )}
                     </button>
                     {profile.whatsapp_number && (
                       <button 
@@ -306,6 +409,7 @@ export default function PublicProfilePage() {
                       </button>
                     )}
                   </div>
+                </div>
                 </div>
               </CardContent>
             </Card>

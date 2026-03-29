@@ -78,7 +78,8 @@ export function BottomNav() {
   /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
   const DesktopHeader = (
     <header className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-card/70 backdrop-blur-md border-b border-border/40 transition-all">
-      <div className="max-w-2xl mx-auto px-5 py-2.5 flex items-center justify-between gap-2">
+      <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
+        <div className="flex min-w-0 justify-start">
         {showProfileBack ? (
           <button
             type="button"
@@ -109,26 +110,26 @@ export function BottomNav() {
             </div>
           </button>
         )}
-
-        <div className="flex flex-1 items-center gap-2 min-w-0 mx-2 sm:mx-4">
-          <div className="min-w-0 flex-1 max-w-[180px] sm:max-w-xs">
-            <UserSearch />
-          </div>
-          {isJobsPage && <JobsTabBar />}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
+          <div className="w-full min-w-0">
+            <UserSearch />
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90"
+            className="relative rounded-xl p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90 md:p-2.5"
             aria-label="Notifications"
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="h-5 w-5 md:h-6 md:w-6" />
             {notificationBadgeCount > 0 && (
               <Badge
                 variant="destructive"
-                className="absolute top-1.5 right-1.5 h-4 min-w-4 flex items-center justify-center px-1 text-[9px] font-black border-2 border-white dark:border-zinc-900"
+                className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center border-2 border-white px-1 text-[9px] font-black dark:border-zinc-900 md:right-0.5 md:top-0.5 md:h-5 md:min-w-5 md:px-1.5 md:text-[10px]"
               >
                 {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
               </Badge>
@@ -227,7 +228,7 @@ export function BottomNav() {
         style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
       >
         <div className="pointer-events-auto">
-          <JobsTabBar menuAlign="left" />
+          <JobsTabBar menuAlign="left" hideDesktop />
         </div>
       </div>
     ) : null;
@@ -327,13 +328,13 @@ export function BottomNav() {
         {MobileJobsTabLeft}
         {MobileFloatingActions}
         {ProfileMenuModal}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-0 md:pb-0">
           <div
             className={cn(
-              "bottom-nav-mobile-shell w-full md:max-w-xs md:mb-6 md:rounded-full pointer-events-auto"
+              "bottom-nav-mobile-shell mx-auto w-full max-w-[min(21rem,calc(100vw-2.75rem))] overflow-visible rounded-full pointer-events-auto md:mb-6 md:max-w-xs"
             )}
           >
-            <div className="flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
+            <div className="flex items-center justify-center px-6 py-2 md:pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
                 <Home className="w-7 h-7" />
               </div>
@@ -363,13 +364,13 @@ export function BottomNav() {
         {MobileProfileBack}
         {MobileJobsTabLeft}
         {MobileFloatingActions}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible px-5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-0 md:pb-0">
           <div
             className={cn(
-              "bottom-nav-mobile-shell w-full md:max-w-md md:mb-6 md:rounded-full pointer-events-auto overflow-visible"
+              "bottom-nav-mobile-shell mx-auto w-full max-w-[min(21rem,calc(100vw-2.75rem))] overflow-visible rounded-full pointer-events-auto md:mb-6 md:max-w-md"
             )}
           >
-            <div className="flex items-end justify-evenly w-full max-w-2xl mx-auto px-2 pt-2 pb-1.5 overflow-visible sm:px-5 md:items-center md:justify-between md:py-2 md:pb-2">
+            <div className="mx-0 flex w-full max-w-none items-center justify-evenly overflow-visible px-2 py-2 sm:px-3 md:justify-between md:px-6 md:py-2 lg:px-8 xl:px-12">
               {/* First two items */}
               {userNav.slice(0, 2).map((item) => {
                 const Icon = item.icon;
@@ -384,7 +385,7 @@ export function BottomNav() {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "flex flex-col items-center justify-end p-1 transition-all relative md:justify-center",
+                      "flex flex-col items-center justify-center p-1 transition-all relative",
                       isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                     )}
                   >
@@ -398,12 +399,12 @@ export function BottomNav() {
                     >
                       <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110")} />
                     </div>
-                    <span className="mt-0.5 text-[10px] font-semibold leading-none">{item.label}</span>
+                    <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">{item.label}</span>
 
                     {jobsBadgeCount > 0 && (
                       <Badge
                         variant="destructive"
-                        className="absolute top-1 right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[9px] font-bold border-2 border-white dark:border-zinc-900 shadow-sm"
+                        className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center border-2 border-white px-1 text-[10px] font-black leading-none dark:border-zinc-900"
                       >
                         {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
                       </Badge>
@@ -413,7 +414,7 @@ export function BottomNav() {
               })}
 
               {/* Center logo — floats above bar on mobile; no label (overflow clips PNG halo) */}
-              <div className="relative z-10 mx-0.5 flex shrink-0 items-end justify-center md:mx-2 md:items-center">
+              <div className="relative z-10 mx-0.5 flex shrink-0 items-center justify-center md:mx-2">
                 <button
                   type="button"
                   onClick={() => navigate("/client/create")}
@@ -444,7 +445,7 @@ export function BottomNav() {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "flex flex-col items-center justify-end p-1 transition-all relative md:justify-center",
+                      "flex flex-col items-center justify-center p-1 transition-all relative",
                       isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                     )}
                   >
@@ -458,7 +459,7 @@ export function BottomNav() {
                     >
                       <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110")} />
                     </div>
-                    <span className="mt-0.5 text-[10px] font-semibold leading-none">{item.label}</span>
+                    <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">{item.label}</span>
 
                     {showMessageBadge && (
                       <Badge
@@ -481,7 +482,7 @@ export function BottomNav() {
                       type="button"
                       onClick={() => setProfileMenuOpen(true)}
                       className={cn(
-                        "md:hidden flex flex-col items-center justify-end p-1 transition-all relative",
+                        "md:hidden flex flex-col items-center justify-center p-1 transition-all relative",
                         isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                       )}
                       aria-label="Open profile menu"
@@ -501,7 +502,7 @@ export function BottomNav() {
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <span className="mt-0.5 text-[10px] font-semibold leading-none">Profile</span>
+                      <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">Profile</span>
                     </button>
 
                     <Link
@@ -520,8 +521,8 @@ export function BottomNav() {
                 );
               })()}
             </div>
-            {/* Safe area padding */}
-            <div className="h-[env(safe-area-inset-bottom,0px)] w-full" />
+            {/* Safe area padding (desktop bar only; mobile uses nav pb) */}
+            <div className="hidden h-[env(safe-area-inset-bottom,0px)] w-full md:block" />
           </div>
         </nav>
         {ProfileMenuModal}
@@ -538,9 +539,9 @@ export function BottomNav() {
         {MobileProfileBack}
         {MobileJobsTabLeft}
         {MobileFloatingActions}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
-          <div className="bottom-nav-mobile-shell w-full md:max-w-xs md:mb-6 md:rounded-full pointer-events-auto">
-            <div className="max-w-2xl mx-auto flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-0 md:pb-0">
+          <div className="bottom-nav-mobile-shell mx-auto w-full max-w-[min(21rem,calc(100vw-2.75rem))] overflow-visible rounded-full pointer-events-auto md:mb-6 md:max-w-xs">
+            <div className="flex items-center justify-center px-4 py-2 md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
                 <Home className="w-7 h-7" />
               </div>

@@ -622,8 +622,8 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
-      <div className="max-w-2xl mx-auto pt-8">
+    <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
+      <div className="app-desktop-shell pt-8">
         <div className="flex items-center gap-4 mb-8">
           <Button
             variant="ghost"

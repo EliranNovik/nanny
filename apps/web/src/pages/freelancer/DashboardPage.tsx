@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -7,11 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  MapPin, ArrowRight, Loader2, Bell, Briefcase, Sparkles,
-  UtensilsCrossed, Truck, HelpCircle, Baby,
-  MessageCircle, Calendar, ChevronRight, Clock, ClipboardList,
+  MapPin, ArrowRight, Loader2, Bell, Briefcase,
+  MessageCircle, Calendar, ChevronRight, Clock, ClipboardList, Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import JobMap from "@/components/JobMap";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { LiveTimer } from "@/components/LiveTimer";
 import DashboardLiveJobCard from "@/components/DashboardLiveJobCard";
@@ -54,6 +54,15 @@ interface ClientProfile {
   total_ratings?: number;
 }
 
+function serviceHeroImageSrc(job: { service_type?: string }) {
+  if (job.service_type === "cleaning") return "/cleaning-mar22.png";
+  if (job.service_type === "cooking") return "/cooking-mar22.png";
+  if (job.service_type === "pickup_delivery") return "";
+  if (job.service_type === "nanny") return "/nanny-mar22.png";
+  if (job.service_type === "other_help") return "/other-mar22.png";
+  return "/nanny-mar22.png";
+}
+
 export default function FreelancerDashboardPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -68,8 +77,14 @@ export default function FreelancerDashboardPage() {
   const [myRequests, setMyRequests] = useState<JobRequest[]>([]);
   const [confirmedCounts, setConfirmedCounts] = useState<Record<string, number>>({});
   const [requestsTab, setRequestsTab] = useState<"invitations" | "my">("invitations");
-  
-  const [earningsToday, setEarningsToday] = useState(0);
+
+  /** Incoming tab: invitations you still need to accept (excludes pending / declined). */
+  const incomingInvitationsOnly = useMemo(
+    () => invitations.filter((n) => !n.isConfirmed && !n.isDeclined),
+    [invitations]
+  );
+
+  const [incomingKpiCount, setIncomingKpiCount] = useState(0);
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
   const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
 
@@ -88,7 +103,7 @@ export default function FreelancerDashboardPage() {
           setActiveConversationIds(data.activeConversationIds || {});
           setInvitations(data.invitations || []);
           setMyRequests(data.myRequests || []);
-          setEarningsToday(data.earningsToday || 0);
+          setIncomingKpiCount(data.incomingKpiCount ?? 0);
           setRecentMessages(data.recentMessages || []);
           setLoading(false); // Show cached data immediately
         }
@@ -103,7 +118,7 @@ export default function FreelancerDashboardPage() {
       if (!user) return;
       
       try {
-        const [activeJobsRes, latestConvRes, invitationsRes, myPostedRes, earningsTodayRes, recentMessagesRes] = await Promise.all([
+        const [activeJobsRes, latestConvRes, invitationsRes, myPostedRes, recentMessagesRes] = await Promise.all([
           // 1. Active jobs (freelancer is selected)
           supabase
             .from("job_requests")
@@ -132,8 +147,7 @@ export default function FreelancerDashboardPage() {
               )`)
             .eq("freelancer_id", user.id)
             .in("status", ["pending", "opened"])
-            .order("created_at", { ascending: false })
-            .limit(3),
+            .order("created_at", { ascending: false }),
             
           // 4. My Posted Requests
           supabase
@@ -144,14 +158,7 @@ export default function FreelancerDashboardPage() {
             .order("created_at", { ascending: false })
             .limit(3),
 
-          // 5. Earnings Today
-          supabase
-            .from("payments")
-            .select("total_amount")
-            .eq("freelancer_id", user.id)
-            .gte("created_at", new Date().toISOString().split('T')[0]),
-
-          // 6. Recent Messages (last 3 conversations)
+          // 5. Recent Messages (last 3 conversations)
           supabase
             .from("conversations")
             .select(`
@@ -170,9 +177,6 @@ export default function FreelancerDashboardPage() {
             .order("created_at", { ascending: false })
             .limit(3)
         ]);
-
-        const earningsSum = (earningsTodayRes.data || []).reduce((acc: number, curr: any) => acc + Number(curr.total_amount), 0);
-        setEarningsToday(earningsSum);
 
         // Process recent messages with unified identity detection
         const processedMessages = await Promise.all((recentMessagesRes.data || []).map(async (conv: any) => {
@@ -281,6 +285,10 @@ export default function FreelancerDashboardPage() {
             isDeclined: declinedIds.has(n.job_id),
           }));
         setInvitations(mappedInvitations);
+        const incomingKpi = mappedInvitations.filter(
+          (n) => !n.isConfirmed && !n.isDeclined
+        ).length;
+        setIncomingKpiCount(incomingKpi);
 
         // Fetch own rating if not in profile
         const { data: myProf } = await supabase
@@ -299,7 +307,7 @@ export default function FreelancerDashboardPage() {
             activeConversationIds: conversationMap,
             invitations: mappedInvitations,
             myRequests: myRequestsList,
-            earningsToday: earningsSum,
+            incomingKpiCount: incomingKpi,
             recentMessages: processedMessages,
             myRating: myProf
           }
@@ -323,15 +331,27 @@ export default function FreelancerDashboardPage() {
     return "Service Request";
   }
 
-  function getServiceIcon(serviceType?: string) {
-    if (serviceType === "cleaning") return <Sparkles className="w-3.5 h-3.5" />;
-    if (serviceType === "cooking") return <UtensilsCrossed className="w-3.5 h-3.5" />;
-    if (serviceType === "pickup_delivery") return <Truck className="w-3.5 h-3.5" />;
-    if (serviceType === "nanny") return <Baby className="w-3.5 h-3.5" />;
-    if (serviceType === "other_help") return <HelpCircle className="w-3.5 h-3.5" />;
-    return <Briefcase className="w-3.5 h-3.5" />;
+  function renderRequestThumb(job: JobRequest) {
+    return (
+      <div
+        className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none"
+        aria-hidden
+      >
+        {job.service_type === "pickup_delivery" ? (
+          <div className="absolute inset-0 z-0">
+            <JobMap job={job} />
+          </div>
+        ) : (
+          <img
+            src={serviceHeroImageSrc(job)}
+            alt={formatJobTitle(job)}
+            className="h-full w-full object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+      </div>
+    );
   }
-
 
 
   if (loading) {
@@ -343,8 +363,8 @@ export default function FreelancerDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh p-4 pb-64 md:pb-32">
-      <div className="max-w-2xl mx-auto pt-8 space-y-6">
+    <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
+      <div className="app-desktop-shell pt-8 space-y-6">
         {/* Welcome Section */}
         <div className="mb-4 px-1">
           <h1 className="text-[32px] font-bold text-slate-900 dark:text-white leading-tight">
@@ -362,7 +382,10 @@ export default function FreelancerDashboardPage() {
             onClick={() => navigate("/jobs?tab=jobs")}
           >
             <CardContent className="p-4 flex flex-col h-full">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Active Jobs</span>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Active Jobs</span>
+                <Briefcase className="hidden md:block h-5 w-5 shrink-0 text-primary" aria-hidden />
+              </div>
               <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{activeJobs.length}</p>
               <span className="text-[11px] font-medium text-slate-400 mt-auto">Ongoing now</span>
             </CardContent>
@@ -373,7 +396,10 @@ export default function FreelancerDashboardPage() {
             onClick={() => navigate("/jobs?tab=my_requests")}
           >
             <CardContent className="p-4 flex flex-col h-full">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Requests</span>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">My Requests</span>
+                <ClipboardList className="hidden md:block h-5 w-5 shrink-0 text-primary" aria-hidden />
+              </div>
               <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{myRequests.length}</p>
               <span className="text-[11px] font-medium text-slate-400 mt-auto">Pending review</span>
             </CardContent>
@@ -384,16 +410,17 @@ export default function FreelancerDashboardPage() {
             onClick={() => navigate("/jobs?tab=requests")}
           >
             <CardContent className="p-4 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Inbound</span>
-                {invitations.length > 0 && (
-                  <Badge className="bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 border-none text-[9px] font-black h-4 px-1.5 rounded-full">NEW</Badge>
-                )}
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Incoming</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {incomingKpiCount > 0 && (
+                    <Badge className="bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 border-none text-[9px] font-black h-4 px-1.5 rounded-full">NEW</Badge>
+                  )}
+                  <Bell className="hidden md:block h-5 w-5 text-primary" aria-hidden />
+                </div>
               </div>
-              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{invitations.length}</p>
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Earnings</span>
-              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">₪{earningsToday}</p>
-              <span className="text-[11px] font-medium text-slate-400 mt-auto">Total today</span>
+              <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{incomingKpiCount}</p>
+              <span className="text-[11px] font-medium text-slate-400 mt-auto">New invitations</span>
             </CardContent>
           </Card>
 
@@ -402,7 +429,10 @@ export default function FreelancerDashboardPage() {
             onClick={() => navigate("/freelancer/profile")}
           >
             <CardContent className="p-4 flex flex-col h-full">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Avg Rating</span>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Avg Rating</span>
+                <Star className="hidden md:block h-5 w-5 shrink-0 text-primary" aria-hidden />
+              </div>
               <div className="flex items-baseline gap-1.5 mb-2 leading-none">
                 <p className="text-[32px] font-bold text-slate-900 dark:text-white">{profile?.average_rating ? profile.average_rating.toFixed(1) : "0.0"}</p>
                 <span className="text-[14px] font-bold text-slate-400">/ 5.0</span>
@@ -467,14 +497,14 @@ export default function FreelancerDashboardPage() {
           </div>
         )}
 
-        {/* Enhanced Messages List */}
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+        <div className="space-y-4 min-w-0">
           <div className="flex items-center justify-between">
             <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
               <MessageCircle className="w-6 h-6 text-primary" />
               MESSAGES
             </h2>
-            <Button variant="ghost" size="sm" className="text-xs font-bold text-primary">View All</Button>
+            <Button variant="ghost" size="sm" className="text-xs font-bold text-primary" onClick={() => navigate("/messages")}>View All</Button>
           </div>
           
           <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
@@ -523,11 +553,14 @@ export default function FreelancerDashboardPage() {
           </div>
         </div>
 
-        {/* Latest Requests */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <div className="flex items-center justify-between">
-            <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100 uppercase">
-              <Bell className="w-6 h-6 text-orange-500" /> REQUESTS
+            <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
+              <Bell className="w-6 h-6 shrink-0 text-orange-500" aria-hidden />
+              <span className="md:hidden">
+                {requestsTab === "my" ? "My Requests" : "Incoming Requests"}
+              </span>
+              <span className="hidden md:inline uppercase">REQUESTS</span>
             </h2>
             <div className="flex items-center gap-4">
               {/* Segmented control — pill track + floating thumb */}
@@ -541,7 +574,10 @@ export default function FreelancerDashboardPage() {
                   role="tab"
                   aria-selected={requestsTab === "invitations"}
                   aria-label="Incoming requests"
-                  onClick={() => setRequestsTab("invitations")}
+                  onClick={() => {
+                    setRequestsTab("invitations");
+                    navigate("/jobs?tab=requests");
+                  }}
                   className={cn(
                     "flex items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ease-out",
                     "min-h-9 min-w-9 p-2 md:min-h-0 md:min-w-0 md:px-4 md:py-1.5",
@@ -571,7 +607,18 @@ export default function FreelancerDashboardPage() {
                   <span className="hidden md:inline">My Requests</span>
                 </button>
               </div>
-              <Button variant="ghost" size="sm" className="text-xs font-bold text-primary" onClick={() => navigate("/freelancer/active-jobs")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs font-bold text-primary"
+                onClick={() =>
+                  navigate(
+                    requestsTab === "invitations"
+                      ? "/jobs?tab=requests"
+                      : "/jobs?tab=my_requests"
+                  )
+                }
+              >
                 View All
               </Button>
             </div>
@@ -580,18 +627,16 @@ export default function FreelancerDashboardPage() {
             {/* Content - Fragmented Cards */}
             <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
                 {requestsTab === "invitations" ? (
-                  invitations.length > 0 ? invitations.map((notif) => {
+                  incomingInvitationsOnly.length > 0 ? incomingInvitationsOnly.map((notif) => {
                     const job = notif.job_requests;
                     const isDeclined = notif.isDeclined;
                     const isConfirmed = notif.isConfirmed;
                     return (
                       <Card key={notif.id}
                         className={cn("border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer", isDeclined && "opacity-60")}
-                        onClick={() => navigate("/freelancer/active-jobs?tab=requests")}>
+                        onClick={() => navigate("/jobs?tab=requests")}>
                         <CardContent className="px-5 py-4 flex items-center gap-4">
-                          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
-                            {getServiceIcon(job?.service_type)}
-                          </div>
+                          {job ? renderRequestThumb(job) : null}
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-[16px] text-slate-900 dark:text-slate-100">{formatJobTitle(job)}</p>
                             <div className="flex items-center gap-2 mt-0.5 text-[14px] text-slate-600 dark:text-slate-400">
@@ -626,11 +671,9 @@ export default function FreelancerDashboardPage() {
                   myRequests.length > 0 ? myRequests.map((req) => (
                     <Card key={req.id}
                       className="border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
-                      onClick={() => navigate("/client/active-jobs")}>
+                      onClick={() => navigate("/jobs?tab=my_requests")}>
                       <CardContent className="px-5 py-4 flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
-                        {getServiceIcon(req.service_type)}
-                      </div>
+                      {renderRequestThumb(req)}
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-[16px] text-slate-900 dark:text-slate-100">{formatJobTitle(req)}</p>
                           <div className="flex items-center gap-2 mt-0.5 text-[14px] text-slate-600 dark:text-slate-400">
@@ -665,6 +708,7 @@ export default function FreelancerDashboardPage() {
                   )
                 )}
             </div>
+        </div>
         </div>
 
         {/* Welcome empty state */}

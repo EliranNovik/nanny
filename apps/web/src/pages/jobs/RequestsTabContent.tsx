@@ -74,6 +74,10 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
     const [deleting, setDeleting] = useState<string | null>(null);
 
     const [myOpenRequests, setMyOpenRequests] = useState<JobRequest[]>([]);
+    /** Confirmed helpers (available confirmations) per open request — up to 5 for avatar strip. */
+    const [confirmedHelperAvatarsByJobId, setConfirmedHelperAvatarsByJobId] = useState<
+        Record<string, { id: string; photo_url: string | null; full_name: string | null }[]>
+    >({});
     const [inboundNotifications, setInboundNotifications] = useState<InboundNotification[]>([]);
     const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
     const [selectedJobDetails, setSelectedJobDetails] = useState<JobRequest | null>(null);
@@ -94,6 +98,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                 // Use cache if less than 1 hour old
                 if (Date.now() - timestamp < 3600000) {
                     setMyOpenRequests(data.myOpenRequests || []);
+                    setConfirmedHelperAvatarsByJobId(data.confirmedHelperAvatarsByJobId || {});
                     setInboundNotifications(data.inboundNotifications || []);
                     setLoading(false); // Show cached data
                 }
@@ -132,26 +137,54 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
             const openJobs = openJobsRes.data || [];
             const notificationsData = notifsRes.data || [];
 
-            setMyOpenRequests(openJobs);
-
-            // Stage 2: Parallel fetch dependent data (confirmations and conversations)
-            const [confsRes, openJobCountsRes] = await Promise.all([
+            // Stage 2: Parallel fetch — my confirmations (for inbound tab) + open-job confirmations with
+            // embedded profiles (one round trip: counts + avatars; avoids late-loading badge/photos).
+            type ConfRow = {
+                job_id: string;
+                freelancer_id: string;
+                created_at: string;
+                profiles: { id: string; photo_url: string | null; full_name: string | null } | null;
+            };
+            const [confsRes, openJobDetailConfsRes] = await Promise.all([
                 supabase
                     .from("job_confirmations")
                     .select("job_id, status")
                     .eq("freelancer_id", user.id),
-                supabase
-                    .from("job_confirmations")
-                    .select("job_id")
-                    .in("job_id", openJobs.map(j => j.id))
-                    .eq("status", "available")
+                openJobs.length === 0
+                    ? Promise.resolve({ data: [] as ConfRow[] })
+                    : supabase
+                          .from("job_confirmations")
+                          .select(
+                              `
+              job_id,
+              freelancer_id,
+              created_at,
+              profiles!job_confirmations_freelancer_id_fkey ( id, photo_url, full_name )
+            `
+                          )
+                          .in("job_id", openJobs.map((j) => j.id))
+                          .eq("status", "available")
+                          .order("created_at", { ascending: true }),
             ]);
 
-            // Map counts
-            const countsMap = (openJobCountsRes.data || []).reduce((acc: any, curr: any) => {
+            const jobConfsData = (openJobDetailConfsRes.data || []) as ConfRow[];
+            const countsMap = jobConfsData.reduce((acc: Record<string, number>, curr) => {
                 acc[curr.job_id] = (acc[curr.job_id] || 0) + 1;
                 return acc;
             }, {});
+
+            const avatarMap: Record<string, { id: string; photo_url: string | null; full_name: string | null }[]> = {};
+            jobConfsData.forEach((c) => {
+                if (!avatarMap[c.job_id]) avatarMap[c.job_id] = [];
+                if (avatarMap[c.job_id].length >= 5) return;
+                const p = c.profiles;
+                avatarMap[c.job_id].push(
+                    p
+                        ? { id: p.id, photo_url: p.photo_url, full_name: p.full_name }
+                        : { id: c.freelancer_id, photo_url: null, full_name: null }
+                );
+            });
+            setConfirmedHelperAvatarsByJobId(avatarMap);
 
             const processedOpenJobs = openJobs.map((job: any) => ({
                 ...job,
@@ -180,6 +213,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                 timestamp: Date.now(),
                 data: {
                     myOpenRequests: processedOpenJobs,
+                    confirmedHelperAvatarsByJobId: avatarMap,
                     inboundNotifications: validNotifications
                 }
             }));
@@ -306,13 +340,13 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     <Bell className="w-6 h-6 text-orange-500" /> Incoming Requests
                                 </span>
                             </h2>
-                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                            <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
                                 New jobs from clients who want you—accept or decline each one.
                             </p>
                         </div>
                         {incomingItems.length > 0 ? (
                             <>
-                            <div className="mt-3 space-y-8">
+                            <div className="mx-auto mt-3 grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
                                 {incomingItems.map((notif) => {
                                 const job = notif.job_requests;
                                 const isConfirmed = notif.isConfirmed;
@@ -325,7 +359,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
                                                 isDeclined && "opacity-60"
@@ -552,13 +586,13 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     <Hourglass className="w-6 h-6 text-orange-500" /> Pending Jobs
                                 </span>
                             </h2>
-                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                            <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
                                 You said yes—now we wait for the client to confirm the booking.
                             </p>
                         </div>
                         {pendingItems.length > 0 ? (
                             <>
-                            <div className="mt-3 space-y-8">
+                            <div className="mx-auto mt-3 grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
                                 {pendingItems.map((n) => {
                                     const job = n.job_requests;
                                     return (
@@ -568,7 +602,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}
@@ -577,6 +611,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 className={cn(isMinMd && "cursor-pointer")}
                                                 onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                             >
+                                            <div className="md:hidden">
                                             <JobCardLocationBar
                                                 location={job.location_city}
                                                 trailing={
@@ -586,10 +621,11 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 }
                                             />
                                             </div>
+                                            </div>
                                             <div className="relative flex min-h-0 flex-1 flex-col">
                                             {/* Smart Mobile Scroll Overlay */}
                                             <div className={cn(
-                                                "absolute inset-0 bg-zinc-900/20 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none md:hidden z-[100]",
+                                                "absolute inset-0 bg-zinc-900/40 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none z-[100] md:hidden",
                                                 clippedCardIds.has(`card-${n.id}`) ? "opacity-100" : "opacity-0"
                                             )} />
                                             <div className="flex gap-3 p-3 md:hidden">
@@ -635,7 +671,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 </div>
                                             </div>
                                             <div
-                                                className="relative hidden h-36 w-full overflow-hidden group/img sm:h-40 md:block"
+                                                className="relative hidden h-32 w-full overflow-hidden group/img sm:h-36 md:block md:h-36 lg:h-40"
                                             >
                                                 {job.service_type === "pickup_delivery" ? (
                                                     <div className="absolute inset-0 z-0">
@@ -648,8 +684,13 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                         className="h-full w-full object-cover transition-transform duration-700 group-hover/img:scale-110"
                                                     />
                                                 )}
-                                                <div className="absolute inset-0 z-10 bg-black/40" />
-                                                <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                                                <div className="pointer-events-none absolute right-4 top-4 z-[45] [&>*]:md:min-h-[2.25rem] [&>*]:md:px-4 [&>*]:md:text-[11px] [&>*]:md:leading-tight">
+                                                    <Badge className="h-7 shrink-0 rounded-full border-none bg-amber-500 px-2.5 text-[9px] font-black uppercase leading-tight tracking-wide text-white shadow-md shadow-amber-500/20 sm:px-3 sm:text-[10px] md:min-h-[2.25rem] md:px-4 md:text-[11px]">
+                                                        Pending
+                                                    </Badge>
+                                                </div>
+                                                <div className="absolute inset-0 bg-black/40 z-10" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
                                                 <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 pointer-events-none">
                                                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
                                                         <ChevronRight className="h-4 w-4" />
@@ -663,37 +704,40 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                     }}
                                                     aria-hidden
                                                 />
-                                                <div className="pointer-events-none absolute bottom-3 left-6 right-6 z-[40] flex flex-col gap-2">
+                                                <div className="pointer-events-none absolute bottom-2 left-4 right-4 z-[40] flex flex-col gap-1.5 sm:bottom-3 sm:left-5 sm:right-5 md:gap-2">
                                                     <button
                                                         type="button"
-                                                        className="pointer-events-auto flex min-w-0 max-w-full items-center gap-3 rounded-xl text-left outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-100"
+                                                        className="pointer-events-auto flex min-w-0 max-w-full items-start gap-2.5 rounded-xl text-left outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-100 sm:gap-3"
                                                         onClick={(e) => goToPublicProfile(e, job.client_id)}
                                                         disabled={!job.client_id}
                                                     >
-                                                        <Avatar className="h-20 w-20 flex-shrink-0 border-2 border-white/30 shadow-2xl transition-transform duration-500 group-hover:scale-110">
+                                                        <Avatar className="h-14 w-14 flex-shrink-0 border-2 border-white/30 shadow-lg transition-transform duration-500 group-hover:scale-105 md:h-16 md:w-16">
                                                             <AvatarImage src={job.profiles?.photo_url || ""} />
-                                                            <AvatarFallback className="bg-orange-500 text-sm font-black text-white">{job.profiles?.full_name?.charAt(0) || "C"}</AvatarFallback>
+                                                            <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white md:text-sm">{job.profiles?.full_name?.charAt(0) || "C"}</AvatarFallback>
                                                         </Avatar>
-                                                        <h3 className="min-w-0 flex-1 text-[24px] font-black tracking-tight text-white drop-shadow-xl">{job.profiles?.full_name || "Client"}</h3>
+                                                        <div className="min-w-0 flex-1">
+                                                            <h3 className="text-lg font-black leading-tight tracking-tight text-white drop-shadow-xl md:text-xl lg:text-2xl">{job.profiles?.full_name || "Client"}</h3>
+                                                            <p className="mt-0.5 text-[13px] font-semibold text-white/90 drop-shadow-md md:text-sm">
+                                                                {job.location_city?.trim() || "Location not set"}
+                                                            </p>
+                                                        </div>
                                                     </button>
-                                                    <div className="flex flex-col gap-1.5 pointer-events-none">
-                                                        <div className="flex items-center gap-3">
+                                                    <div className="flex flex-col gap-1 pointer-events-none">
+                                                        <div className="flex items-center gap-2 px-0.5">
                                                             {job.profiles?.average_rating ? (
-                                                                <div className="flex items-center gap-2 px-0.5">
-                                                                    <StarRating
-                                                                        rating={job.profiles.average_rating}
-                                                                        size="sm"
-                                                                        showCount={false}
-                                                                        starClassName="text-white"
-                                                                        emptyStarClassName="text-white/30"
-                                                                        numberClassName="text-[14px] text-white drop-shadow-md"
-                                                                    />
-                                                                </div>
+                                                                <StarRating
+                                                                    rating={job.profiles.average_rating}
+                                                                    size="sm"
+                                                                    showCount={false}
+                                                                    starClassName="text-white"
+                                                                    emptyStarClassName="text-white/30"
+                                                                    numberClassName="text-white drop-shadow-md text-[12px] md:text-[13px]"
+                                                                />
                                                             ) : (
-                                                                <span className="text-[14px] font-bold italic text-white/80 drop-shadow-md">New Client</span>
+                                                                <span className="text-[12px] font-bold text-white/80 italic drop-shadow-md md:text-[13px]">New Client</span>
                                                             )}
                                                         </div>
-                                                        <span className="w-full text-center text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
+                                                        <span className="w-full text-center text-[13px] font-black uppercase tracking-[0.12em] text-white/95 drop-shadow-md md:text-[14px] lg:text-[15px]">
                                                             {formatJobTitle(job)}
                                                         </span>
                                                     </div>
@@ -760,13 +804,13 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     <ClipboardList className="w-6 h-6 text-orange-500" /> My Posted Requests
                                 </span>
                             </h2>
-                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                            <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
                                 Requests you posted for helpers—track who responded and what happens next.
                             </p>
                         </div>
                     {myOpenRequests.length > 0 ? (
                         <>
-                        <div className="mt-3 space-y-8">
+                        <div className="mx-auto mt-3 grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
                             {myOpenRequests.map((job) => (
                                 <Card 
                                     key={job.id} 
@@ -774,7 +818,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     data-job-card
                                     onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                     className={cn(
-                                        "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                        "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                         !isMinMd && "cursor-pointer",
                                         isMinMd && "md:cursor-default"
                                     )}
@@ -783,15 +827,17 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         className={cn(isMinMd && "cursor-pointer")}
                                         onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                     >
+                                    <div className="md:hidden">
                                     <JobCardLocationBar
                                         location={job.location_city}
                                         trailing={getJobStatusBadge(job.status)}
                                     />
                                     </div>
+                                    </div>
                                     <div className="relative flex min-h-0 flex-1 flex-col">
                                     {/* Smart Scroll Overlay */}
                                     <div className={cn(
-                                        "absolute inset-0 bg-zinc-900/40 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none z-[100]",
+                                        "absolute inset-0 bg-zinc-900/40 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none z-[100] md:hidden",
                                         clippedCardIds.has(`card-${job.id}`) ? "opacity-100" : "opacity-0"
                                     )} />
                                     <div className="flex gap-3 p-3 md:hidden">
@@ -814,14 +860,14 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             </span>
                                             {job.created_at && (
                                                 <div className="mt-1 flex w-full min-w-0 items-center justify-between gap-2 border-t border-slate-200/80 pt-1.5 dark:border-white/10">
-                                                    <div className="flex min-w-0 items-center gap-2 text-[16px] font-bold text-orange-500 dark:text-orange-400">
+                                                    <div className="flex min-w-0 items-center gap-2 text-[16px] font-bold text-slate-500 dark:text-slate-400">
                                                         <Clock className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
                                                         <span>Active</span>
                                                     </div>
                                                     <LiveTimer
                                                         createdAt={job.created_at}
                                                         render={({ time }) => (
-                                                            <span className="shrink-0 tabular-nums text-[16px] font-bold text-orange-500 dark:text-orange-400">
+                                                            <span className="shrink-0 tabular-nums text-[16px] font-bold text-slate-500 dark:text-slate-400">
                                                                 {time}
                                                             </span>
                                                         )}
@@ -834,7 +880,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         </div>
                                     </div>
                                     <div
-                                        className="relative hidden h-36 w-full overflow-hidden group/img sm:h-40 md:block"
+                                        className="relative hidden h-32 w-full overflow-hidden group/img sm:h-36 md:block md:h-36 lg:h-40"
                                     >
                                         {job.service_type === "pickup_delivery" ? (
                                             <div className="absolute inset-0 z-0">
@@ -847,39 +893,15 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 className="h-full w-full object-cover transition-transform duration-700 group-hover/img:scale-110"
                                             />
                                         )}
+                                        <div className="pointer-events-none absolute right-4 top-4 z-[45] [&>*]:md:min-h-[2.25rem] [&>*]:md:px-4 [&>*]:md:text-[11px] [&>*]:md:leading-tight">
+                                            {getJobStatusBadge(job.status)}
+                                        </div>
                                         <div className="absolute inset-0 z-10 bg-black/40" />
                                         <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                                        <div className="absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-black/40 to-transparent" />
-                                        <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2">
+                                        <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 pointer-events-none">
                                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
                                                 <ChevronRight className="h-4 w-4" />
                                             </span>
-                                        </div>
-                                        <div className="absolute bottom-3 left-6 right-6 z-20 flex flex-col gap-2">
-                                            <div className="flex flex-col items-center gap-1 text-center">
-                                                <span className="text-[14px] font-bold italic text-white/80 drop-shadow-md">
-                                                    Posted {new Date(job.created_at).toLocaleDateString()}
-                                                </span>
-                                                <span className="text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
-                                                    {formatJobTitle(job)}
-                                                </span>
-                                            </div>
-                                            {job.created_at && (
-                                                <div className="flex w-full items-center justify-between gap-2 border-t border-white/20 pt-2 text-[17px] font-bold">
-                                                    <div className="flex min-w-0 items-center gap-2 text-orange-200">
-                                                        <Clock className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
-                                                        <span>Active</span>
-                                                    </div>
-                                                    <LiveTimer
-                                                        createdAt={job.created_at}
-                                                        render={({ time }) => (
-                                                            <span className="shrink-0 tabular-nums text-[17px] font-bold text-orange-200 drop-shadow-md">
-                                                                {time}
-                                                            </span>
-                                                        )}
-                                                    />
-                                                </div>
-                                            )}
                                         </div>
                                         <div
                                             className="absolute inset-0 z-[30] cursor-pointer"
@@ -889,6 +911,35 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             }}
                                             aria-hidden
                                         />
+                                        <div className="pointer-events-none absolute bottom-2 left-4 right-4 z-[40] flex flex-col gap-1.5 sm:bottom-3 sm:left-5 sm:right-5 md:gap-2">
+                                            <div className="min-w-0 text-left">
+                                                <h3 className="text-lg font-black leading-tight tracking-tight text-white drop-shadow-xl md:text-xl lg:text-2xl">
+                                                    {formatJobTitle(job)}
+                                                </h3>
+                                                <p className="mt-0.5 text-[13px] font-semibold text-white/90 drop-shadow-md md:text-sm">
+                                                    {job.location_city?.trim() || "Location not set"}
+                                                </p>
+                                                <p className="mt-1 text-[12px] font-semibold text-white/75 drop-shadow-md md:text-[13px]">
+                                                    Posted {new Date(job.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            {job.created_at && (
+                                                <div className="flex w-full items-center justify-between gap-2 border-t border-white/20 pt-2 text-[14px] font-bold text-white/90 md:text-[15px]">
+                                                    <div className="flex min-w-0 items-center gap-2">
+                                                        <Clock className="h-4 w-4 shrink-0 opacity-95 md:h-[1.125rem] md:w-[1.125rem]" aria-hidden />
+                                                        <span>Active</span>
+                                                    </div>
+                                                    <LiveTimer
+                                                        createdAt={job.created_at}
+                                                        render={({ time }) => (
+                                                            <span className="shrink-0 tabular-nums text-[14px] font-bold text-white/90 drop-shadow-md md:text-[15px]">
+                                                                {time}
+                                                            </span>
+                                                        )}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <JobAttachedPhotosStrip images={jobAttachmentImageUrls(job)} />
@@ -901,26 +952,77 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                     >
                                         <div className="mt-auto flex flex-col gap-4 border-t border-slate-100 pt-6 dark:border-white/5">
-                                            <div className="relative group/btn w-full">
-                                                <Button
-                                                    className="w-full h-12 rounded-[18px] bg-orange-500 hover:bg-orange-600 text-white shadow-[0_8px_20px_rgba(249,115,22,0.2)] transition-all active:scale-[0.96] font-bold text-[17px] flex items-center justify-between px-6"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigate(`/client/jobs/${job.id}/confirmed`);
-                                                    }}
-                                                >
-                                                    <span>Check Status</span>
-                                                    
-                                                    {/* Integrated Acceptance Count */}
-                                                    {typeof (job as any).acceptedCount === 'number' && (
-                                                        <div className={cn(
-                                                            "flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-[13px] font-black bg-card ring-4 ring-orange-500/10",
-                                                            (job as any).acceptedCount > 0 ? "text-orange-600" : "text-slate-400 opacity-50"
-                                                        )}>
-                                                            {(job as any).acceptedCount}
+                                            <div className="relative w-full md:pt-2">
+                                                {(() => {
+                                                    const accepted = (job as { acceptedCount?: number }).acceptedCount ?? 0;
+                                                    const helpers = confirmedHelperAvatarsByJobId[job.id] ?? [];
+                                                    if (accepted <= 0 || helpers.length === 0) return null;
+                                                    const overflow = Math.max(0, accepted - helpers.length);
+                                                    return (
+                                                        <div
+                                                            className="mb-3 hidden flex-row items-center justify-center gap-0 md:flex"
+                                                            aria-label={`${accepted} confirmed helper${accepted === 1 ? "" : "s"}`}
+                                                        >
+                                                            {helpers.map((p, i) => {
+                                                                const initials =
+                                                                    p.full_name
+                                                                        ?.split(" ")
+                                                                        .map((n) => n[0])
+                                                                        .join("")
+                                                                        .toUpperCase()
+                                                                        .slice(0, 2) || "?";
+                                                                return (
+                                                                    <Avatar
+                                                                        key={p.id}
+                                                                        className={cn(
+                                                                            "h-14 w-14 overflow-hidden shadow-md",
+                                                                            i > 0 && "-ml-3"
+                                                                        )}
+                                                                        title={p.full_name || undefined}
+                                                                    >
+                                                                        <AvatarImage
+                                                                            src={p.photo_url || undefined}
+                                                                            alt=""
+                                                                            className="object-cover"
+                                                                        />
+                                                                        <AvatarFallback className="bg-orange-500 text-sm font-black text-white">
+                                                                            {initials}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                );
+                                                            })}
+                                                            {overflow > 0 && (
+                                                                <div
+                                                                    className="-ml-3 flex h-14 min-w-[2.75rem] items-center justify-center rounded-full bg-slate-200 px-2 text-xs font-black tabular-nums text-slate-700 shadow-md dark:bg-zinc-700 dark:text-zinc-100"
+                                                                    title={`${overflow} more`}
+                                                                >
+                                                                    +{overflow}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </Button>
+                                                    );
+                                                })()}
+                                                <div className="relative group/btn w-full">
+                                                    <Button
+                                                        className="w-full h-12 rounded-[18px] bg-orange-500 hover:bg-orange-600 text-white shadow-[0_8px_20px_rgba(249,115,22,0.2)] transition-all active:scale-[0.96] font-bold text-[17px] flex items-center justify-between px-6"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/client/jobs/${job.id}/confirmed`);
+                                                        }}
+                                                    >
+                                                        <span>Check Status</span>
+
+                                                        {/* Integrated Acceptance Count */}
+                                                        {typeof (job as any).acceptedCount === 'number' && (
+                                                            <div className={cn(
+                                                                "flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-[13px] font-black bg-card ring-4 ring-orange-500/10",
+                                                                (job as any).acceptedCount > 0 ? "text-orange-600" : "text-slate-400 opacity-50"
+                                                            )}>
+                                                                {(job as any).acceptedCount}
+                                                            </div>
+                                                        )}
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
                                     </CardContent>

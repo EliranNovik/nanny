@@ -1158,6 +1158,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     return `https://t.me/${username}`;
   };
 
+  const goToOtherPublicProfile = () => {
+    if (otherUser?.id) {
+      navigate(`/profile/${otherUser.id}`);
+    }
+  };
+
   // Check if social messaging buttons should be shown
   const showWhatsApp = otherUser?.share_whatsapp && otherUser?.whatsapp_number_e164;
   const showTelegram = otherUser?.share_telegram && otherUser?.telegram_username;
@@ -1214,12 +1220,20 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 {/* Contact Info - Right side (mobile only) */}
                 {conversation?.job_id !== null && otherUser && (
                   <div className="lg:hidden flex items-center gap-2 flex-shrink-0">
-                    <Avatar className="w-8 h-8 flex-shrink-0">
-                      <AvatarImage src={otherUser.photo_url || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {otherInitials}
-                      </AvatarFallback>
-                    </Avatar>
+                    <button
+                      type="button"
+                      onClick={goToOtherPublicProfile}
+                      disabled={!otherUser.id}
+                      className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
+                      aria-label={otherUser.id ? `View ${otherUser.full_name || "user"} public profile` : undefined}
+                    >
+                      <Avatar className="w-8 h-8 flex-shrink-0">
+                        <AvatarImage src={otherUser.photo_url || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                          {otherInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
                     <span className="text-sm font-medium leading-tight max-w-[100px] line-clamp-2">
                       {otherUser.full_name || "User"}
                     </span>
@@ -1330,37 +1344,53 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               ) : (
                 /* Job Steps Content - Simplified for mobile as per user request */
                 <div className="space-y-8 flex flex-col py-4">
-                  {/* Profile Card */}
-                  <div className="flex flex-col items-center text-center gap-4">
-                    <div className="relative">
-                      <Avatar className="w-24 h-24 border-none shadow-none">
-                        <AvatarImage src={otherUser?.photo_url || undefined} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-2xl font-bold">
-                          {otherInitials}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      {/* Informative Text - Glassy Style, Top Corner */}
-                      <div className="absolute -top-1 -right-12 sm:-left-20 z-10 w-24 sm:w-32 rotate-[5deg] sm:rotate-[-5deg] pointer-events-none">
-                        <div className="bg-primary/10 backdrop-blur-md border border-primary/20 shadow-lg p-1.5 sm:p-2 rounded-xl text-center">
-                          <p className="text-primary font-bold text-[8px] sm:text-[8px] leading-tight uppercase tracking-tighter">
+                  {/* Profile Card — full-width hero image on top of box */}
+                  <div className="w-full overflow-hidden rounded-2xl border border-slate-200/90 bg-card shadow-md dark:border-white/10">
+                    <div className="relative w-full min-h-[260px] h-[44vh] max-h-[520px] bg-muted sm:min-h-[300px] sm:h-[40vh] sm:max-h-[560px]">
+                      {otherUser?.photo_url ? (
+                        <img
+                          src={otherUser.photo_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full min-h-[260px] w-full items-center justify-center bg-gradient-to-br from-primary/25 to-primary/5 sm:min-h-[300px]">
+                          <span className="text-5xl font-bold text-primary sm:text-6xl">{otherInitials}</span>
+                        </div>
+                      )}
+                      {/* Readability overlays — badge sits on darker top band */}
+                      <div
+                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent"
+                        aria-hidden
+                      />
+                      <div
+                        className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 via-black/25 to-transparent sm:h-36"
+                        aria-hidden
+                      />
+                      <div className="pointer-events-none absolute right-3 top-3 z-10 sm:right-4 sm:top-4">
+                        <div className="rounded-xl border border-white/30 bg-black/65 px-3 py-2 text-center shadow-[0_4px_20px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-white sm:text-[11px]">
                             Matched!
                           </p>
                         </div>
                       </div>
                     </div>
+
+                    <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-5 text-center">
                     <div className="space-y-1">
                       <h3 className="text-2xl font-bold italic text-black dark:text-white">{otherUser?.full_name || "User"}</h3>
 
                       {otherUser?.role === "freelancer" && (typeof otherUser.rating_avg === 'number') && (
                         <div className="flex items-center justify-center gap-1 text-sm font-medium">
-                          <div className="flex items-center text-yellow-500">
+                          <div className="flex items-center text-slate-900 dark:text-white">
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
                                 className={cn(
-                                  "w-3.5 h-3.5 fill-current",
-                                  i >= Math.round(otherUser.rating_avg || 0) && "text-muted fill-none"
+                                  "w-3.5 h-3.5",
+                                  i < Math.round(otherUser.rating_avg || 0)
+                                    ? "fill-slate-900 text-slate-900 dark:fill-white dark:text-white"
+                                    : "fill-none text-slate-300 dark:text-slate-600"
                                 )}
                               />
                             ))}
@@ -1373,33 +1403,33 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
                       {/* Social Buttons within the box - Orange with white icons */}
                       {(showWhatsApp || showTelegram) && (
-                        <div className="flex justify-center items-center gap-5 pt-4">
+                        <div className="flex justify-center items-center gap-3 pt-4">
                           {showWhatsApp && (
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-14 w-14 rounded-full border-none bg-[#25D366] hover:bg-[#22c35e] hover:scale-110 transition-all shadow-lg group"
+                              className="h-10 w-10 rounded-full border-none bg-[#25D366] hover:bg-[#22c35e] hover:scale-105 transition-all shadow-md group"
                               onClick={() => {
                                 if (otherUser?.whatsapp_number_e164) {
                                   window.open(getWhatsAppLink(otherUser.whatsapp_number_e164), '_blank');
                                 }
                               }}
                             >
-                              <WhatsAppIcon className="w-8 h-8 fill-white text-white group-hover:scale-110 transition-transform" />
+                              <WhatsAppIcon className="h-5 w-5 fill-white text-white group-hover:scale-105 transition-transform" />
                             </Button>
                           )}
                           {showTelegram && (
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-14 w-14 rounded-full border-none bg-[#0088cc] hover:bg-[#007bbf] hover:scale-110 transition-all shadow-lg group"
+                              className="h-10 w-10 rounded-full border-none bg-[#0088cc] hover:bg-[#007bbf] hover:scale-105 transition-all shadow-md group"
                               onClick={() => {
                                 if (otherUser?.telegram_username) {
                                   window.open(getTelegramLink(otherUser.telegram_username), '_blank');
                                 }
                               }}
                             >
-                              <TelegramIcon className="w-7 h-7 fill-white text-white group-hover:scale-110 transition-transform" />
+                              <TelegramIcon className="h-[18px] w-[18px] fill-white text-white group-hover:scale-105 transition-transform" />
                             </Button>
                           )}
                         </div>
@@ -1424,12 +1454,13 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
                     {/* Bio Section Restored */}
                     {otherUser?.bio && (
-                      <div className="space-y-2 px-2 pt-2 border-t border-dashed border-primary/10 mt-2">
+                      <div className="space-y-2 border-t border-dashed border-primary/10 px-2 pt-4 mt-1 w-full">
                         <p className="text-sm text-muted-foreground leading-relaxed italic">
                           "{otherUser.bio}"
                         </p>
                       </div>
                     )}
+                    </div>
                   </div>
 
 
@@ -1555,12 +1586,23 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               </Button>
             )}
 
-            <Avatar className="w-10 h-10 cursor-pointer" onClick={() => !hideBackButton && setShowContactPanel(!showContactPanel)}>
-              <AvatarImage src={otherUser?.photo_url || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {otherInitials}
-              </AvatarFallback>
-            </Avatar>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToOtherPublicProfile();
+              }}
+              disabled={!otherUser?.id}
+              className="rounded-full shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
+              aria-label={otherUser?.id ? `View ${otherUser.full_name || "user"} public profile` : undefined}
+            >
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={otherUser?.photo_url || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {otherInitials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
 
             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => !hideBackButton && setShowContactPanel(!showContactPanel)}>
               <h2 className="text-[18px] font-bold truncate text-black dark:text-white">
@@ -1570,7 +1612,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               </h2>
               {!hideBackButton && (
                 <p className="text-[13px] font-medium text-black/60 dark:text-white/60">
-                  Tap for contact info
+                  {otherUser?.id ? "Tap name for contact info" : "Tap for contact info"}
                 </p>
               )}
             </div>
@@ -1625,7 +1667,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         <div className="flex-1 overflow-y-auto p-4 pt-20 md:pt-4"
           style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
           <div className="flex-1 overflow-y-auto" ref={scrollRef}>
-            <div className="space-y-4 max-w-4xl mx-auto px-2 md:px-4 pb-40 md:pb-32">
+            <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-40 md:pb-32">
               {messages.map((msg, index) => {
                 const isOwn = msg.sender_id === user?.id;
                 const receiptStatus = getReadReceiptStatus(msg);
@@ -1774,7 +1816,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               </Button>
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2 items-center max-w-4xl mx-auto">
+          <form onSubmit={handleSend} className="flex gap-2 items-center w-full max-w-none">
             <input
               ref={fileInputRef}
               type="file"
@@ -1823,7 +1865,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           )}
         >
           {selectedFile && (
-            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/50 text-foreground max-w-4xl mx-auto w-full">
+            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/50 text-foreground w-full max-w-none w-full">
               {getFileType(selectedFile.name) === "image" ? (
                 <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
               ) : (
@@ -1835,7 +1877,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               </Button>
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2 max-w-4xl mx-auto w-full items-center">
+          <form onSubmit={handleSend} className="flex gap-2 w-full max-w-none w-full items-center">
             <Button
               type="button"
               variant="ghost"

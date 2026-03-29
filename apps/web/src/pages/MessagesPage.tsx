@@ -12,7 +12,7 @@ import { useSearchParams } from "react-router-dom";
 
 interface Conversation {
   id: string;
-  job_id: string;
+  job_id: string | null;
   client_id: string;
   freelancer_id: string;
   created_at: string;
@@ -54,7 +54,7 @@ export default function MessagesPage() {
       const cached = localStorage.getItem(`messages_${user?.id}_${profile?.role}`);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 300000) {
           return parsed.data;
         }
       }
@@ -67,6 +67,11 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(!cachedData);
   const loadConversationsRef = useRef<(() => Promise<void>) | null>(null);
   const [mobileView, setMobileView] = useState<"contacts" | "chat">("contacts");
+  /** When URL has ?conversation= but list has not loaded that row yet (e.g. new direct chat). */
+  const [directChatHeader, setDirectChatHeader] = useState<{
+    otherUserId: string;
+    other_user_profile: { full_name: string | null; photo_url: string | null };
+  } | null>(null);
 
   // Update mobile view when conversationId changes
   useEffect(() => {
@@ -82,20 +87,56 @@ export default function MessagesPage() {
   }, [conversationId]);
 
   useEffect(() => {
+    if (!conversationId || !user) {
+      setDirectChatHeader(null);
+      return;
+    }
+    if (conversations.some((c) => c.id === conversationId)) {
+      setDirectChatHeader(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data: convo } = await supabase
+        .from("conversations")
+        .select("client_id, freelancer_id")
+        .eq("id", conversationId)
+        .single();
+      if (!convo || cancelled) return;
+      const otherId =
+        convo.client_id === user.id ? convo.freelancer_id : convo.client_id;
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("full_name, photo_url")
+        .eq("id", otherId)
+        .single();
+      if (!cancelled) {
+        setDirectChatHeader({
+          otherUserId: otherId,
+          other_user_profile: {
+            full_name: p?.full_name ?? null,
+            photo_url: p?.photo_url ?? null,
+          },
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, user, conversations]);
+
+  useEffect(() => {
     async function loadConversations() {
       if (!user || !profile) return;
 
       try {
-        let convos;
-
-        // Fetch all conversations where user is client or freelancer
-        const { data: allConvos } = await supabase
+        // Fetch conversations (cap rows so initial load stays fast)
+        const { data: convos } = await supabase
           .from("conversations")
           .select("id, job_id, client_id, freelancer_id, created_at")
           .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
-          .order("created_at", { ascending: false });
-        
-        convos = allConvos;
+          .order("created_at", { ascending: false })
+          .limit(500);
 
         if (!convos || convos.length === 0) {
           setConversations([]);
@@ -105,12 +146,10 @@ export default function MessagesPage() {
 
         const conversationsByUser = new Map<string, typeof convos>();
         for (const convo of convos) {
-          // Identify the other user ID correctly regardless of current profile role
           const otherUserId = convo.client_id === user.id
             ? convo.freelancer_id
             : convo.client_id;
 
-          // Skip self-conversations if they exist
           if (otherUserId === user.id) continue;
 
           if (!conversationsByUser.has(otherUserId)) {
@@ -119,66 +158,115 @@ export default function MessagesPage() {
           conversationsByUser.get(otherUserId)!.push(convo);
         }
 
-        // Now process each user group to aggregate messages and unread counts across all their conversations
-        const enriched = await Promise.all(
-          Array.from(conversationsByUser.entries()).map(async ([otherUserId, userConversations]) => {
-            // Fetch profile once per user
-            const { data: otherProfile } = await supabase
-              .from("profiles")
-              .select("full_name, photo_url")
-              .eq("id", otherUserId)
-              .single();
+        if (conversationsByUser.size === 0) {
+          setConversations([]);
+          setLoading(false);
+          return;
+        }
 
-            // Get all conversation IDs for this user
-            const conversationIds = userConversations.map(c => c.id);
+        // One profile query for all contacts (was N round-trips)
+        const uniqueOtherIds = Array.from(conversationsByUser.keys());
+        const { data: profilesRows } = await supabase
+          .from("profiles")
+          .select("id, full_name, photo_url")
+          .in("id", uniqueOtherIds);
 
-            // Find the most recent message across ALL conversations with this user
-            const { data: allMessages } = await supabase
-              .from("messages")
-              .select("body, created_at, sender_id, read_at, read_by, attachment_type, attachment_name, conversation_id")
-              .in("conversation_id", conversationIds)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            // Count unread messages across ALL conversations with this user
-            const { count: totalUnread } = await supabase
-              .from("messages")
-              .select("*", { count: "exact", head: true })
-              .in("conversation_id", conversationIds)
-              .eq("sender_id", otherUserId)
-              .is("read_at", null);
-
-            // Get the conversation ID of the most recent message (or use the first conversation)
-            const mostRecentConversationId = allMessages?.conversation_id || userConversations[0].id;
-            const mostRecentConversation = userConversations.find(c => c.id === mostRecentConversationId) || userConversations[0];
-
-            // Fetch job info for the most recent conversation
-            const { data: job } = await supabase
-              .from("job_requests")
-              .select("id, status, stage, care_type, service_type, children_count, children_age_group, start_at")
-              .eq("id", mostRecentConversation.job_id)
-              .single();
-
-            return {
-              ...mostRecentConversation,
-              other_user_id: otherUserId,
-              other_user_profile: {
-                full_name: otherProfile?.full_name || null,
-                photo_url: otherProfile?.photo_url || null,
-              },
-              job: job || undefined,
-              last_message: allMessages || undefined,
-              unread_count: totalUnread || 0,
-            };
-          })
+        const profileById = new Map(
+          (profilesRows ?? []).map((p) => [p.id, p])
         );
 
-        // Filter to only conversations with jobs (job-related conversations)
-        const jobRelatedConversations = enriched.filter(c => c.job);
+        const entries = Array.from(conversationsByUser.entries());
+        /** Limit parallel Supabase calls per wave (each contact = 2 queries + optional job). */
+        const BATCH = 8;
+        const enriched: Conversation[] = [];
 
-        // Sort by last message time
-        const sortedConversations = jobRelatedConversations.sort((a, b) => {
+        for (let i = 0; i < entries.length; i += BATCH) {
+          const slice = entries.slice(i, i + BATCH);
+          const batch = await Promise.all(
+            slice.map(async ([otherUserId, userConversations]) => {
+              const conversationIds = userConversations.map((c) => c.id);
+              const otherProfile = profileById.get(otherUserId);
+
+              const [messagesRes, unreadRes] = await Promise.all([
+                supabase
+                  .from("messages")
+                  .select(
+                    "body, created_at, sender_id, read_at, read_by, attachment_type, attachment_name, conversation_id"
+                  )
+                  .in("conversation_id", conversationIds)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle(),
+                supabase
+                  .from("messages")
+                  .select("*", { count: "exact", head: true })
+                  .in("conversation_id", conversationIds)
+                  .eq("sender_id", otherUserId)
+                  .is("read_at", null),
+              ]);
+
+              const row = messagesRes.data;
+              const totalUnread = unreadRes.count ?? 0;
+
+              const mostRecentConversationId =
+                row?.conversation_id || userConversations[0].id;
+              const mostRecentConversation =
+                userConversations.find((c) => c.id === mostRecentConversationId) ||
+                userConversations[0];
+
+              let job:
+                | {
+                    id: string;
+                    status: string;
+                    stage: string | null;
+                    care_type: string;
+                    service_type: string;
+                    children_count: number;
+                    children_age_group: string;
+                    start_at: string | null;
+                  }
+                | undefined;
+              if (mostRecentConversation.job_id) {
+                const { data: jobRow } = await supabase
+                  .from("job_requests")
+                  .select(
+                    "id, status, stage, care_type, service_type, children_count, children_age_group, start_at"
+                  )
+                  .eq("id", mostRecentConversation.job_id)
+                  .single();
+                job = jobRow ?? undefined;
+              }
+
+              const last_message = row
+                ? {
+                    body: row.body,
+                    created_at: row.created_at,
+                    sender_id: row.sender_id,
+                    read_at: row.read_at,
+                    read_by: row.read_by,
+                    attachment_type: row.attachment_type,
+                    attachment_name: row.attachment_name,
+                  }
+                : undefined;
+
+              return {
+                ...mostRecentConversation,
+                other_user_id: otherUserId,
+                other_user_profile: {
+                  full_name: otherProfile?.full_name || null,
+                  photo_url: otherProfile?.photo_url || null,
+                },
+                job: job || undefined,
+                last_message,
+                unread_count: totalUnread,
+              } as Conversation;
+            })
+          );
+          enriched.push(...batch);
+        }
+
+        // Include job-linked and direct (no job) chats
+        const sortedConversations = enriched.sort((a, b) => {
           const timeA = a.last_message?.created_at
             ? new Date(a.last_message.created_at).getTime()
             : 0;
@@ -516,7 +604,7 @@ export default function MessagesPage() {
                   return careTypeName ? `${serviceName} – ${careTypeName}` : serviceName;
                 };
 
-                const jobLabel = formatJobLabel(convo.job);
+                const jobLabel = convo.job ? formatJobLabel(convo.job) : "Direct chat";
 
                 return (
                   <div
@@ -609,11 +697,10 @@ export default function MessagesPage() {
         mobileView === "chat" ? "flex" : "hidden md:flex"
       )}>
         {conversationId ? (() => {
-          // Find the conversation to get the otherUserId
           const selectedConvo = conversations.find(c => c.id === conversationId);
-          const otherUserId = selectedConvo?.other_user_id;
-
-          const otherUserProfile = selectedConvo?.other_user_profile;
+          const otherUserId = selectedConvo?.other_user_id ?? directChatHeader?.otherUserId;
+          const otherUserProfile =
+            selectedConvo?.other_user_profile ?? directChatHeader?.other_user_profile;
           const otherInitials = otherUserProfile?.full_name
             ?.split(" ")
             .map((n) => n[0])

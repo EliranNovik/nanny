@@ -11,6 +11,7 @@ interface StarRatingProps {
     onChange?: (rating: number) => void;
     className?: string;
     numberClassName?: string;
+    countClassName?: string;
     starClassName?: string;
     emptyStarClassName?: string;
 }
@@ -24,6 +25,7 @@ export function StarRating({
     onChange,
     className,
     numberClassName,
+    countClassName,
     starClassName,
     emptyStarClassName,
 }: StarRatingProps) {
@@ -110,7 +112,7 @@ export function StarRating({
                     {rating > 0 ? rating.toFixed(1) : "New"}
                 </span>
                 {showCount && totalRatings !== undefined && totalRatings > 0 && (
-                    <span className="text-slate-600 dark:text-slate-400">
+                    <span className={cn("text-slate-600 dark:text-slate-400", countClassName)}>
                         ({totalRatings})
                     </span>
                 )}
