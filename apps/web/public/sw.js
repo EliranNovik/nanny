@@ -9,7 +9,6 @@ self.addEventListener('install', (event) => {
     caches.open(STATIC_CACHE_NAME)
       .then((cache) => {
         console.log('Service Worker: Caching static files');
-        // Cache essential files
         return cache.addAll([
           '/',
           '/index.html',
@@ -19,11 +18,9 @@ self.addEventListener('install', (event) => {
         });
       })
   );
-  // Force the waiting service worker to become the active service worker
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   console.log('Service Worker: Activating...');
   event.waitUntil(
@@ -38,56 +35,75 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  // Take control of all pages immediately
   return self.clients.claim();
 });
 
-// Fetch event - Network first, fallback to cache
+function isStaticAssetPath(pathname) {
+  return (
+    pathname.startsWith('/assets/') ||
+    pathname.endsWith('.js') ||
+    pathname.endsWith('.css') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.jpeg') ||
+    pathname.endsWith('.webp') ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.ico') ||
+    pathname.endsWith('.woff2') ||
+    pathname.endsWith('.woff') ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js'
+  );
+}
+
+// Fetch: never cache HTML navigations — SPA routing must get a fresh shell from the network.
+// Only cache static build assets so the app stays a client-side router.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip cross-origin requests
   if (url.origin !== location.origin) {
     return;
   }
 
-  // Skip non-GET requests
   if (request.method !== 'GET') {
+    return;
+  }
+
+  // Full page loads / soft navigations: always network (no cache for HTML routes).
+  if (request.mode === 'navigate' || request.destination === 'document') {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (!isStaticAssetPath(url.pathname)) {
+    event.respondWith(fetch(request));
     return;
   }
 
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Don't cache non-successful responses
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
 
-        // Clone the response
         const responseToCache = response.clone();
-
-        // Cache successful responses
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            cache.put(request, responseToCache);
-          });
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, responseToCache);
+        });
 
         return response;
       })
       .catch(() => {
-        // Network failed, try cache
-        return caches.match(request)
-          .then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            // If it's a navigation request and cache fails, return index.html
-            if (request.mode === 'navigate') {
-              return caches.match('/index.html');
-            }
-          });
+        return caches.match(request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          if (request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+        });
       })
   );
 });

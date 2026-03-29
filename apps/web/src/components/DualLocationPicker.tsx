@@ -1,9 +1,8 @@
 import { useState, useCallback } from "react";
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete, Polyline } from "@react-google-maps/api";
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_SCRIPT_ID } from "@/lib/googleMapsLoader";
 import { Input } from "./ui/input";
 import { Loader2 } from "lucide-react";
-
-const libraries: ("places")[] = ["places"];
 
 const mapContainerStyle = {
     width: "100%",
@@ -49,7 +48,8 @@ export function DualLocationPicker({
 
     const { isLoaded, loadError } = useJsApiLoader({
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-        libraries,
+        id: GOOGLE_MAPS_SCRIPT_ID,
+        libraries: GOOGLE_MAPS_LIBRARIES,
     });
 
     // Calculate center based on available locations

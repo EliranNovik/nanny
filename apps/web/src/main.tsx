@@ -3,21 +3,28 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-// Register Service Worker for PWA
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+// PWA: only register the service worker in production. In dev it intercepts navigations
+// and fetches, which breaks client-side routing (React Router) and Vite HMR.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
       .then((registration) => {
-        console.log('Service Worker registered successfully:', registration.scope);
-        
-        // Check for updates periodically
+        console.log("Service Worker registered:", registration.scope);
         setInterval(() => {
           registration.update();
-        }, 60000); // Check every minute
+        }, 60000);
       })
       .catch((error) => {
-        console.log('Service Worker registration failed:', error);
+        console.log("Service Worker registration failed:", error);
       });
+  });
+} else if (import.meta.env.DEV && "serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((r) => {
+      r.unregister();
+      console.log("[dev] Service Worker unregistered for SPA routing");
+    });
   });
 }
 

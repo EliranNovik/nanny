@@ -10,6 +10,10 @@ interface Profile {
   city: string | null;
   phone: string | null;
   photo_url: string | null;
+  /** Set from profile / map onboarding (helpers search, jobs). */
+  location_lat?: number | null;
+  location_lng?: number | null;
+  service_radius?: number | null;
   whatsapp_number_e164?: string | null;
   telegram_username?: string | null;
   share_whatsapp?: boolean;

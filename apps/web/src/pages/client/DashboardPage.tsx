@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   MapPin, ArrowRight, Loader2, Bell, Briefcase, Baby,
-  MessageCircle, Calendar, ChevronRight, Clock, ClipboardList, Star,
+  MessageCircle, Calendar, ChevronRight, Clock, ClipboardList, Star, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import JobMap from "@/components/JobMap";
@@ -464,6 +464,26 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card
+          className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl overflow-hidden cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.99]"
+          onClick={() => navigate("/client/helpers")}
+        >
+          <CardContent className="p-4 md:p-5 flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500/15 dark:bg-orange-500/20">
+              <Users className="h-6 w-6 text-orange-600 dark:text-orange-400" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-[16px] font-black tracking-tight text-slate-900 dark:text-white">
+                Find helpers
+              </h3>
+              <p className="text-[13px] font-medium text-muted-foreground mt-0.5">
+                Map, radius search, and helpers near your location
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+          </CardContent>
+        </Card>
 
         {/* Active Jobs Card - styled like Live Jobs tab */}
         {activeJobs.length > 0 && (

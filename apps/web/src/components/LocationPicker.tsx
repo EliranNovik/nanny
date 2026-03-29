@@ -1,10 +1,9 @@
 import { useState, useCallback } from "react";
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from "@react-google-maps/api";
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_SCRIPT_ID } from "@/lib/googleMapsLoader";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { MapPin, Loader2 } from "lucide-react";
-
-const libraries: ("places")[] = ["places"];
 
 const mapContainerStyle = {
     width: "100%",
@@ -36,7 +35,8 @@ export function LocationPicker({ label, value, onChange, placeholder }: Location
 
     const { isLoaded, loadError } = useJsApiLoader({
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-        libraries,
+        id: GOOGLE_MAPS_SCRIPT_ID,
+        libraries: GOOGLE_MAPS_LIBRARIES,
     });
 
     const center = value.lat && value.lng ? { lat: value.lat, lng: value.lng } : defaultCenter;

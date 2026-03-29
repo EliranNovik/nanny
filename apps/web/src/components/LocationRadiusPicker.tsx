@@ -1,10 +1,9 @@
 import { useCallback, useRef, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_SCRIPT_ID } from "@/lib/googleMapsLoader";
 import { Loader2, MapPin, Navigation } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
-
-const libraries: ("places")[] = ["places"];
 
 const mapContainerStyle = {
   width: "100%",
@@ -36,7 +35,8 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-    libraries,
+    id: GOOGLE_MAPS_SCRIPT_ID,
+    libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
   const center =

@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from "@react-google-maps/api";
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_SCRIPT_ID } from "@/lib/googleMapsLoader";
 import { Loader2 } from "lucide-react";
-
-const libraries: ("places")[] = ["places"];
 
 const mapContainerStyle = {
     width: "100%",
@@ -24,7 +23,8 @@ export default function JobMap({ job, onRouteInfo, onClose }: JobMapProps) {
     const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
     const { isLoaded, loadError } = useJsApiLoader({
         googleMapsApiKey: mapsApiKey,
-        libraries,
+        id: GOOGLE_MAPS_SCRIPT_ID,
+        libraries: GOOGLE_MAPS_LIBRARIES,
     });
 
     const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);

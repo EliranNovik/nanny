@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { GoogleMap, useJsApiLoader, DirectionsRenderer } from "@react-google-maps/api";
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_SCRIPT_ID } from "@/lib/googleMapsLoader";
 import { StarRating } from "@/components/StarRating";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -69,8 +70,6 @@ interface Notification {
   isDeclined?: boolean; // Added to track if client declined the confirmation
 }
 
-const libraries: ("places")[] = ["places"];
-
 // RouteMap Component
 interface RouteMapProps {
   fromLat: number;
@@ -86,7 +85,8 @@ function RouteMap({ fromLat, fromLng, toLat, toLng }: RouteMapProps) {
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-    libraries,
+    id: GOOGLE_MAPS_SCRIPT_ID,
+    libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
   useEffect(() => {

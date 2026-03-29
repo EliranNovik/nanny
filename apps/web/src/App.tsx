@@ -17,6 +17,7 @@ import OnboardingPage from "@/pages/OnboardingPage";
 import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
 import DashboardPage from "@/pages/client/DashboardPage";
+import HelpersPage from "@/pages/client/HelpersPage";
 import ClientProfileLayout from "@/pages/client/profile/ClientProfileLayout";
 import ClientProfileHub from "@/pages/client/profile/ClientProfileHub";
 import ClientProfilePersonalPage from "@/pages/client/profile/ClientProfilePersonalPage";
@@ -144,6 +145,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/helpers"
+          element={
+            <ProtectedRoute>
+              <HelpersPage />
             </ProtectedRoute>
           }
         />
@@ -292,7 +301,12 @@ export default function App() {
     <>
       <ConfigCheck />
       <ThemeProvider>
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <ToastProvider>
             <AuthProvider>
               <ReportIssueProvider>
