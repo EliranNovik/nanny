@@ -400,8 +400,8 @@ export default function OnboardingPage() {
 
   console.log("[OnboardingPage] Rendering onboarding form");
   return (
-    <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
-      <div className="w-full max-w-lg animate-fade-in">
+    <div className="min-h-screen gradient-mesh flex items-center justify-center p-4 md:py-12">
+      <div className="app-desktop-centered-narrow animate-fade-in">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {step === 1 

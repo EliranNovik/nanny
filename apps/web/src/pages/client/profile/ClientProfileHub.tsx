@@ -15,6 +15,7 @@ export default function ClientProfileHub() {
   return (
     <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
       <div className="app-desktop-shell pt-6 md:pt-8">
+        <div className="app-desktop-centered-wide">
         <div className="flex justify-end mb-10">
           <Button type="button" variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={openReportModal}>
             <AlertCircle className="w-4 h-4" />
@@ -67,6 +68,7 @@ export default function ClientProfileHub() {
             label="Appearance"
             description="Light and dark theme"
           />
+        </div>
         </div>
       </div>
     </div>

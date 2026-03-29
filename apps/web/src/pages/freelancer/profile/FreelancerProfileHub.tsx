@@ -28,6 +28,7 @@ export default function FreelancerProfileHub() {
   return (
     <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
       <div className="app-desktop-shell pt-6 md:pt-8">
+        <div className="app-desktop-centered-wide">
         <div className="flex items-start justify-end gap-1 mb-10">
           <div className="flex items-center gap-1">
             <Button
@@ -126,6 +127,7 @@ export default function FreelancerProfileHub() {
             label="Appearance"
             description="Light and dark theme"
           />
+        </div>
         </div>
       </div>
     </div>

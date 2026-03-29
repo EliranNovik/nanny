@@ -7,6 +7,16 @@
   .app-desktop-shell {
     @apply w-full max-w-none mx-0 px-4 sm:px-6 lg:px-8 xl:px-12;
   }
+
+  /** Narrow centered column on md+ (onboarding, auth-style flows). */
+  .app-desktop-centered-narrow {
+    @apply w-full mx-auto max-w-lg md:max-w-2xl lg:max-w-3xl;
+  }
+
+  /** Profile / settings: centered content column on md+ only; mobile stays full width of shell. */
+  .app-desktop-centered-wide {
+    @apply w-full md:mx-auto md:max-w-3xl lg:max-w-4xl;
+  }
 }
 
 @layer base {
