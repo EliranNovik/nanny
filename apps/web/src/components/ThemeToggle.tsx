@@ -26,7 +26,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     >
       <span
         className={cn(
-          "flex h-7 w-7 items-center justify-center rounded-full bg-card shadow-md transition-transform duration-200 dark:bg-zinc-950",
+          "flex h-7 w-7 items-center justify-center rounded-full bg-card shadow-md transition-transform duration-200 dark:bg-background",
           isDark ? "text-amber-400" : "text-slate-500"
         )}
       >

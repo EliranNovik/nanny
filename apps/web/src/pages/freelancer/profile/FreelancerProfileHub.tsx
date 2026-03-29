@@ -16,6 +16,7 @@ import {
   DollarSign,
   Palette,
   BellRing,
+  MapPin,
 } from "lucide-react";
 
 export default function FreelancerProfileHub() {
@@ -46,10 +47,10 @@ export default function FreelancerProfileHub() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center text-center mb-10">
-          <Avatar className="h-20 w-20 border border-border/60 mb-4">
+        <div className="flex flex-col items-center text-center mb-12">
+          <Avatar className="h-28 w-28 md:h-32 md:w-32 border-2 border-border/70 mb-5 shadow-md">
             <AvatarImage src={photoUrl ?? undefined} alt="" />
-            <AvatarFallback className="text-lg font-medium bg-muted">
+            <AvatarFallback className="text-2xl font-semibold bg-muted">
               {fullName
                 ?.split(" ")
                 .map((n) => n[0])
@@ -57,22 +58,26 @@ export default function FreelancerProfileHub() {
                 .toUpperCase() || "?"}
             </AvatarFallback>
           </Avatar>
-          <h1 className="text-2xl font-semibold tracking-tight">{fullName || "Your profile"}</h1>
-          <div className="mt-1.5 flex items-center gap-2">
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">{fullName || "Your profile"}</h1>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <StarRating
               rating={profile?.average_rating || 0}
-              size="sm"
+              size="lg"
               showCount={false}
-              numberClassName="text-[13px] font-semibold text-foreground/70"
+              className="gap-2"
+              numberClassName="text-base font-bold text-foreground/80"
             />
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-sm md:text-base text-muted-foreground">
               {profile?.total_ratings ? `${profile.total_ratings} reviews` : "No reviews yet"}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">{profile?.city || "Complete your details"}</p>
+          <p className="mt-2 flex items-center justify-center gap-2 text-base md:text-lg text-muted-foreground">
+            <MapPin className="h-5 w-5 shrink-0 text-muted-foreground/80" aria-hidden />
+            {profile?.city || "Complete your details"}
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-border/50 bg-card/40 divide-y divide-border/50 overflow-hidden">
+        <div className="rounded-3xl border border-border/50 bg-card/60 divide-y divide-border/50 overflow-hidden shadow-sm">
           <ProfileMenuRow
             to="/freelancer/profile/personal"
             icon={User}

@@ -323,7 +323,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card dark:bg-zinc-900/50 backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
                                                 isDeclined && "opacity-60"
@@ -355,7 +355,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         )} />
                                         {/* Mobile: left thumb + compact header */}
                                         <div className="flex gap-3 p-3 md:hidden">
-                                            <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-zinc-600 dark:bg-zinc-800 dark:ring-white/10 pointer-events-none">
+                                            <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
                                                 {job.service_type === "pickup_delivery" ? (
                                                     <div className="absolute inset-0 z-0">
                                                         <JobMap job={job} />
@@ -531,7 +531,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         </div>
                         </>
                     ) : (
-                        <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                        <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">
                                 <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                                 <p className="text-sm">No new incoming requests right now.</p>
@@ -564,7 +564,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card dark:bg-zinc-900/50 backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}
@@ -589,7 +589,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 clippedCardIds.has(`card-${n.id}`) ? "opacity-100" : "opacity-0"
                                             )} />
                                             <div className="flex gap-3 p-3 md:hidden">
-                                                <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-zinc-600 dark:bg-zinc-800 dark:ring-white/10 pointer-events-none">
+                                                <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
                                                     {job.service_type === "pickup_delivery" ? (
                                                         <div className="absolute inset-0 z-0">
                                                             <JobMap job={job} />
@@ -737,7 +737,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                             </div>
                             </>
                         ) : (
-                            <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                            <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                                 <CardContent className="p-6 text-center text-muted-foreground">
                                     <Hourglass className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                                     <p className="text-sm">No pending jobs at the moment.</p>
@@ -768,7 +768,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     data-job-card
                                     onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                     className={cn(
-                                        "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card dark:bg-zinc-900/50 backdrop-blur-sm group relative",
+                                        "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                         !isMinMd && "cursor-pointer",
                                         isMinMd && "md:cursor-default"
                                     )}
@@ -789,7 +789,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         clippedCardIds.has(`card-${job.id}`) ? "opacity-100" : "opacity-0"
                                     )} />
                                     <div className="flex gap-3 p-3 md:hidden">
-                                        <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-zinc-600 dark:bg-zinc-800 dark:ring-white/10 pointer-events-none">
+                                        <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
                                             {job.service_type === "pickup_delivery" ? (
                                                 <div className="absolute inset-0 z-0">
                                                     <JobMap job={job} />
@@ -924,7 +924,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         </div>
                         </>
                     ) : (
-                        <Card className="border-0 shadow-sm border-dashed bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                        <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">
                                 <p className="text-sm mb-3">You haven't posted any requests yet.</p>
                                 <Button variant="outline" size="sm" onClick={() => navigate("/client/create")}>

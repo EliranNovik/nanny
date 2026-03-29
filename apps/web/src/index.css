@@ -27,25 +27,26 @@
     --radius: 0.75rem;
   }
 
+  /* Dark mode: cool slate base — mirrors light mode (white page + light grey cards) with no warm mesh. */
   .dark {
-    --background: 20 15% 10%;
-    --foreground: 30 15% 95%;
-    --card: 20 15% 14%;
-    --card-foreground: 30 15% 95%;
-    --popover: 20 15% 14%;
-    --popover-foreground: 30 15% 95%;
+    --background: 222 16% 7%;
+    --foreground: 210 25% 96%;
+    --card: 222 14% 12%;
+    --card-foreground: 210 25% 96%;
+    --popover: 222 14% 13%;
+    --popover-foreground: 210 25% 96%;
     --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 180 30% 25%;
-    --secondary-foreground: 180 30% 90%;
-    --muted: 20 15% 20%;
-    --muted-foreground: 30 10% 60%;
-    --accent: 240 10% 4%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 0% 0%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 20 15% 22%;
-    --input: 20 15% 22%;
+    --secondary: 215 18% 18%;
+    --secondary-foreground: 210 28% 92%;
+    --muted: 222 12% 17%;
+    --muted-foreground: 215 14% 62%;
+    --accent: 215 16% 20%;
+    --accent-foreground: 210 25% 96%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 10% 26%;
+    --input: 222 11% 22%;
     --ring: 25 95% 53%;
   }
 }
@@ -67,7 +68,7 @@
     isolation: isolate;
   }
 
-  /* Light mode: flat white. Dark mode: warm mesh (see html.dark::before). */
+  /* Full-viewport base; dark mode stays a flat cool tone (no coloured mesh). */
   html::before {
     content: "";
     position: fixed;
@@ -87,16 +88,14 @@
   }
 
   html.dark::before {
-    background-image:
-      radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.15) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.2) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.1) 0px, transparent 50%),
-      radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.1) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.15) 0px, transparent 50%);
+    background-image: none;
+    /* Subtle top highlight for depth (monochrome, not a colour wash). */
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.05);
   }
 
+  /* Do not use border-none here — it overrides border-* on job cards and any surface that uses bg-card + an outline. */
   .bg-card {
-    @apply backdrop-blur-xl transition-all duration-300 border-none shadow-none;
+    @apply backdrop-blur-xl transition-all duration-300 shadow-none;
   }
 
   body {
@@ -334,7 +333,7 @@ input[type="range"].slider::-moz-range-thumb:hover {
 
 .gradient-mesh {
   position: relative;
-  /* Mesh + base color live on html::before (fixed, full viewport) */
+  /* Page fill comes from html::before + --background (light: white; dark: cool flat slate). */
   min-height: 100%;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
@@ -342,19 +341,14 @@ input[type="range"].slider::-moz-range-thumb:hover {
   overscroll-behavior-y: none;
 }
 
-/* Optional header tint — solid in light mode, mesh only in dark */
+/* Header / strip: same flat background as the page in both modes. */
 .bg-gradient-mesh {
   background-color: hsl(var(--background));
   background-image: none;
 }
 
 html.dark .bg-gradient-mesh {
-  background-image:
-    radial-gradient(at 40% 20%, hsl(25 95% 53% / 0.15) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsl(180 45% 85% / 0.2) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(340 75% 55% / 0.1) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsl(25 60% 70% / 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(180 45% 70% / 0.15) 0px, transparent 50%);
+  background-image: none;
 }
 
 /* Hide ChatPage header and job summary on mobile when embedded in MessagesPage */
@@ -368,44 +362,5 @@ html.dark .bg-gradient-mesh {
   /* Hide job summary header that appears below the main header */
   .messages-chat-container>div>div.flex-shrink-0.border-b.bg-muted\/30 {
     display: none !important;
-  }
-}
-
-/* Ensure input field is visible on desktop in ChatPage - same floating style as mobile */
-@media (min-width: 768px) {
-
-  /* Keep fixed positioning on desktop too, just like mobile */
-  div.chat-input-container {
-    position: fixed !important;
-    bottom: 100px !important;
-    left: 0 !important;
-    right: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    z-index: 10 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 0.75rem 1rem !important;
-  }
-
-  /* Ensure the form inside is visible */
-  div.chat-input-container form {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    width: 100% !important;
-    max-width: 64rem !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
-
-  /* Ensure all interactive elements are visible */
-  div.chat-input-container input,
-  div.chat-input-container button {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
   }
 }

@@ -99,7 +99,7 @@ export function FullscreenMapModal({
           {/* UNIFIED VIEW: Expandable Swipe Card (Desktop & Mobile) */}
           <div 
             className={cn(
-              "absolute bottom-0 left-1/2 -translate-x-1/2 w-full md:max-w-xl z-[2000] bg-card dark:bg-zinc-900 border-t border-black/5 dark:border-white/5 md:rounded-t-[2.5rem] rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-all duration-500 ease-in-out",
+              "absolute bottom-0 left-1/2 -translate-x-1/2 w-full md:max-w-xl z-[2000] bg-card border-t border-black/5 dark:border-border/40 md:rounded-t-[2.5rem] rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-all duration-500 ease-in-out",
               isMobileExpanded ? "h-[75dvh]" : "h-24"
             )}
           >

@@ -25,7 +25,7 @@ export function JobAttachedPhotosStrip({ images, className }: JobAttachedPhotosS
     <>
       <div
         className={cn(
-          "hidden w-full shrink-0 border-b border-slate-200/80 bg-slate-50/90 dark:border-white/10 dark:bg-zinc-900/60 md:block",
+          "hidden w-full shrink-0 border-b border-slate-200/80 bg-slate-50/90 dark:border-border/40 dark:bg-card/90 md:block",
           className
         )}
         onClick={(e) => e.stopPropagation()}
@@ -39,7 +39,7 @@ export function JobAttachedPhotosStrip({ images, className }: JobAttachedPhotosS
             <button
               key={`${src}-${idx}`}
               type="button"
-              className="relative h-[4.5rem] w-[6.5rem] shrink-0 snap-start overflow-hidden rounded-xl border border-slate-200/90 bg-card shadow-sm transition hover:ring-2 hover:ring-orange-400/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:border-zinc-700 dark:bg-zinc-800"
+              className="relative h-[4.5rem] w-[6.5rem] shrink-0 snap-start overflow-hidden rounded-xl border border-slate-200/90 bg-card shadow-sm transition hover:ring-2 hover:ring-orange-400/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:border-border/40 dark:bg-muted"
               onClick={(e) => {
                 e.stopPropagation();
                 setLightboxIndex(idx);

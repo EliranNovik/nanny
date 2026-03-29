@@ -192,7 +192,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
             locked: { label: "Confirmed", className: "bg-emerald-500 text-white shadow-emerald-500/20" },
             active: { label: "Confirmed", className: "bg-emerald-500 text-white shadow-emerald-500/20" },
             confirmed: { label: "Confirmed", className: "bg-emerald-500 text-white shadow-emerald-500/20" },
-            completed: { label: "Completed", className: "bg-green-600 text-white shadow-green-500/20" },
+            completed: { label: "Completed", className: "bg-blue-600 text-white shadow-blue-500/25 dark:bg-blue-500" },
             cancelled: { label: "Cancelled", className: "bg-slate-500 text-white shadow-slate-500/20" },
         };
         const config = map[status] || { label: status, className: "bg-slate-400 text-white" };
@@ -263,7 +263,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] hover:-translate-y-2 flex flex-col h-full group bg-card dark:bg-zinc-900/50 backdrop-blur-sm relative",
+                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}
@@ -285,7 +285,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             )} />
                                             {/* Mobile: left square thumb + compact header */}
                                             <div className="flex gap-3 p-3 md:hidden">
-                                                <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-zinc-600 dark:bg-zinc-800 dark:ring-white/10 pointer-events-none">
+                                                <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
                                                     {job.service_type === "pickup_delivery" ? (
                                                         <div className="absolute inset-0 z-0">
                                                             <JobMap job={job} />
@@ -417,7 +417,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                 })}
                             </div>
                         ) : (
-                            <Card className="border-0 shadow-sm border-dashed bg-muted/30">
+                            <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30">
                                 <CardContent className="p-12 text-center text-muted-foreground">
                                     <Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                                     <p className="text-lg font-bold">No active jobs right now.</p>
@@ -452,7 +452,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-black/5 dark:border-white/10 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card dark:bg-zinc-900/50 backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full max-w-3xl mx-auto rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default"
                                             )}
@@ -473,7 +473,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             )} />
                                             {/* Mobile: thumb + profile block + arrow (matches Pending Jobs) */}
                                             <div className="flex gap-3 p-3 md:hidden">
-                                                <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-zinc-600 dark:bg-zinc-800 dark:ring-white/10 pointer-events-none">
+                                                <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
                                                     {job.service_type === "pickup_delivery" ? (
                                                         <div className="absolute inset-0 z-0">
                                                             <JobMap job={job} />
@@ -600,7 +600,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                 })}
                             </div>
                         ) : (
-                            <Card className="border-0 shadow-sm border-dashed bg-muted/30">
+                            <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30">
                                 <CardContent className="p-12 text-center text-muted-foreground">
                                     <CheckCircle2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                                     <p className="text-lg font-bold">No past jobs yet.</p>

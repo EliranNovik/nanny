@@ -77,7 +77,7 @@ export function BottomNav() {
 
   /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
   const DesktopHeader = (
-    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-card/70 dark:bg-zinc-900/70 backdrop-blur-md border-b border-border/40 transition-all">
+    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-card/70 backdrop-blur-md border-b border-border/40 transition-all">
       <div className="max-w-2xl mx-auto px-5 py-2.5 flex items-center justify-between gap-2">
         {showProfileBack ? (
           <button
@@ -159,7 +159,7 @@ export function BottomNav() {
       >
         {mobileSearchOpen && (
           <div className="min-w-0 flex-1 shrink animate-in fade-in slide-in-from-right-2 duration-200">
-            <div className="rounded-2xl border border-slate-200/70 bg-card/95 p-2 shadow-[0_10px_25px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:border-zinc-700/70 dark:bg-zinc-900/95">
+            <div className="rounded-2xl border border-slate-200/70 bg-card/95 p-2 shadow-[0_10px_25px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:border-border/50 dark:bg-card/95">
               <UserSearch
                 autoFocus
                 onResultSelect={() => setMobileSearchOpen(false)}
@@ -172,7 +172,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
-            className="rounded-full bg-card/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:border dark:border-border/60 dark:bg-zinc-900/90 dark:text-slate-300 dark:hover:bg-zinc-800"
+            className="rounded-full bg-card/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:border dark:border-border/60 dark:text-slate-300 dark:hover:bg-muted"
             aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
             aria-expanded={mobileSearchOpen}
           >
@@ -183,7 +183,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative shrink-0 rounded-full border border-border/60 bg-card/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:bg-zinc-900/90 dark:text-slate-300 dark:hover:bg-zinc-800"
+            className="relative shrink-0 rounded-full border border-border/60 bg-card/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:text-slate-300 dark:hover:bg-muted"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -211,7 +211,7 @@ export function BottomNav() {
         <button
           type="button"
           onClick={() => navigate(profileBackTarget!)}
-          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-card/90 dark:bg-zinc-900/90 backdrop-blur-md border border-border/60 shadow-lg text-slate-600 dark:text-slate-300 hover:bg-card dark:hover:bg-zinc-800 transition-all active:scale-95"
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border/60 shadow-lg text-slate-600 dark:text-slate-300 hover:bg-card dark:hover:bg-muted transition-all active:scale-95"
           aria-label="Back"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -328,7 +328,7 @@ export function BottomNav() {
         {MobileFloatingActions}
         {ProfileMenuModal}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
-          <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-card dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
+          <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-card border-t md:border border-slate-200/50 dark:border-border/30 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
             <div className="flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
                 <Home className="w-7 h-7" />
@@ -360,7 +360,7 @@ export function BottomNav() {
         {MobileJobsTabLeft}
         {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible">
-          <div className="w-full md:max-w-md md:mb-6 md:rounded-full bg-card dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto overflow-visible">
+          <div className="w-full md:max-w-md md:mb-6 md:rounded-full bg-card border-t md:border border-slate-200/50 dark:border-border/30 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto overflow-visible">
             <div className="flex items-center justify-between w-full max-w-2xl mx-auto px-6 py-2 overflow-visible">
               {/* First two items */}
               {userNav.slice(0, 2).map((item) => {
@@ -506,7 +506,7 @@ export function BottomNav() {
         {MobileJobsTabLeft}
         {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
-          <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-card dark:bg-zinc-900 border-t md:border border-slate-200/50 dark:border-white/5 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
+          <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-card border-t md:border border-slate-200/50 dark:border-border/30 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
             <div className="max-w-2xl mx-auto flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
                 <Home className="w-7 h-7" />

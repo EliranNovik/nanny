@@ -201,7 +201,7 @@ export default function PastJobDetailsPage() {
 
     const isTransport = job.service_type === 'pickup_delivery';
     const statusLabel = job.status === 'completed' ? 'Completed' : 'Cancelled';
-    const statusColor = job.status === 'completed' ? 'text-emerald-500' : 'text-rose-500';
+    const statusColor = job.status === 'completed' ? 'text-blue-600 dark:text-blue-400' : 'text-rose-500';
     const statusIcon = job.status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />;
 
     return (

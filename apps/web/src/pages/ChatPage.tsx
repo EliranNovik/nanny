@@ -1625,7 +1625,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         <div className="flex-1 overflow-y-auto p-4 pt-20 md:pt-4"
           style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
           <div className="flex-1 overflow-y-auto" ref={scrollRef}>
-            <div className="space-y-4 max-w-4xl mx-auto px-2 md:px-4 pb-32 md:pb-24">
+            <div className="space-y-4 max-w-4xl mx-auto px-2 md:px-4 pb-40 md:pb-32">
               {messages.map((msg, index) => {
                 const isOwn = msg.sender_id === user?.id;
                 const receiptStatus = getReadReceiptStatus(msg);
@@ -1752,79 +1752,114 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           </div>
         </div>
 
-        {/* ── Mobile Input Bar (fixed bottom, hidden on desktop) ── */}
-        <div className={cn(
-          "lg:hidden fixed left-0 right-0 z-10 px-4 py-3",
-          hideBackButton ? "bottom-0" : "bottom-[72px]",
-          "bg-transparent border-t border-white/10",
-          !hideBackButton && mobileView === "steps" && "hidden"
-        )}>
+        {/* Mobile composer — fixed bottom bar (/chat/ has no app bottom nav) */}
+        <div
+          className={cn(
+            "lg:hidden fixed left-0 right-0 z-30 bottom-0",
+            "bg-card/95 backdrop-blur-md border-t border-border shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.35)]",
+            "px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+            !hideBackButton && mobileView === "steps" && "hidden"
+          )}
+        >
           {selectedFile && (
-            <div className="mb-2 flex items-center gap-2 p-2 bg-primary/20 backdrop-blur-md rounded-lg border border-primary/20 text-black">
+            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/50 text-foreground">
               {getFileType(selectedFile.name) === "image" ? (
                 <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
               ) : (
                 <File className="w-5 h-5 text-primary flex-shrink-0" />
               )}
               <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
-              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 text-primary hover:bg-primary/30" onClick={removeSelectedFile}>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={removeSelectedFile}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2 items-center">
-            <input ref={fileInputRef} type="file" tabIndex={-1} aria-hidden="true" onChange={handleFileSelect}
+          <form onSubmit={handleSend} className="flex gap-2 items-center max-w-4xl mx-auto">
+            <input
+              ref={fileInputRef}
+              type="file"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={handleFileSelect}
               accept="image/*,video/*,.pdf,.doc,.docx,.txt"
-              style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} />
-            <Button type="button" variant="ghost" size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 transition-colors text-primary"
-              onClick={() => fileInputRef.current?.click()} disabled={sending || uploading}>
+              style={{ position: "absolute", width: 0, height: 0, opacity: 0, overflow: "hidden", pointerEvents: "none" }}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-full h-12 w-12 flex-shrink-0 bg-muted hover:bg-muted/80 border border-border text-primary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || uploading}
+            >
               <Paperclip className="w-6 h-6" />
             </Button>
-            <Input ref={inputRef} placeholder={selectedFile ? "Add a message..." : "Type a message..."}
-              value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border border-primary/20 focus:border-primary/40 h-12 text-[16px] font-medium bg-primary/20 text-black placeholder:text-black/50 shadow-sm backdrop-blur-md"
-              disabled={sending || uploading} />
-            <Button type="submit" size="icon" className="rounded-full h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 text-primary"
-              disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}>
-              {(sending || uploading) ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            <Input
+              ref={inputRef}
+              placeholder={selectedFile ? "Add a message..." : "Type a message..."}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              className="flex-1 rounded-full border border-border bg-background h-12 text-[16px] font-medium text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-ring/30"
+              disabled={sending || uploading}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              className="rounded-full h-12 w-12 flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm"
+              disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
+            >
+              {sending || uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </form>
         </div>
 
-        {/* ── Desktop Input Bar (fixed bottom, to the right of side panel) ── */}
-        <div className={cn(
-          "hidden lg:block fixed left-[400px] right-0 z-10 px-6 py-2",
-          hideBackButton ? "bottom-0" : "bottom-[80px]",
-          "bg-transparent border-t border-white/10",
-          !hideBackButton && mobileView === "steps" && "lg:block"
-        )}>
+        {/* Desktop composer — bottom of viewport, inset for jobs side panel when present */}
+        <div
+          className={cn(
+            "hidden lg:flex lg:flex-col fixed z-30 bottom-0 right-0",
+            "bg-card/95 backdrop-blur-md border-t border-border shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.35)]",
+            "px-6 pt-3 pb-4",
+            hideBackButton ? "left-0" : "left-[400px]"
+          )}
+        >
           {selectedFile && (
-            <div className="mb-2 flex items-center gap-2 p-2 bg-primary/20 backdrop-blur-md rounded-lg border border-primary/20 text-black max-w-4xl mx-auto">
+            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/50 text-foreground max-w-4xl mx-auto w-full">
               {getFileType(selectedFile.name) === "image" ? (
                 <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
               ) : (
                 <File className="w-5 h-5 text-primary flex-shrink-0" />
               )}
               <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
-              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 text-primary hover:bg-primary/30" onClick={removeSelectedFile}>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={removeSelectedFile}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2 max-w-4xl mx-auto items-center">
-            <Button type="button" variant="ghost" size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 transition-colors text-primary"
-              onClick={() => fileInputRef.current?.click()} disabled={sending || uploading}>
+          <form onSubmit={handleSend} className="flex gap-2 max-w-4xl mx-auto w-full items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-full h-12 w-12 flex-shrink-0 bg-muted hover:bg-muted/80 border border-border text-primary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || uploading}
+            >
               <Paperclip className="w-6 h-6" />
             </Button>
-            <Input ref={inputRef} placeholder={selectedFile ? "Add a message..." : "Type a message..."}
-              value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border border-primary/20 focus:border-primary/40 h-12 text-[16px] font-medium bg-primary/20 text-black placeholder:text-black/50 shadow-sm backdrop-blur-md"
-              disabled={sending || uploading} />
-            <Button type="submit" size="icon" className="rounded-full h-12 w-12 flex-shrink-0 bg-primary/20 hover:bg-primary/30 backdrop-blur-md border border-primary/20 text-primary"
-              disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}>
-              {(sending || uploading) ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            <Input
+              placeholder={selectedFile ? "Add a message..." : "Type a message..."}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              className="flex-1 rounded-full border border-border bg-background h-12 text-[16px] font-medium text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-ring/30"
+              disabled={sending || uploading}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              className="rounded-full h-12 w-12 flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm"
+              disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
+            >
+              {sending || uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </form>
         </div>
