@@ -328,13 +328,13 @@ export function BottomNav() {
         {MobileJobsTabLeft}
         {MobileFloatingActions}
         {ProfileMenuModal}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-0 md:pb-0">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
           <div
             className={cn(
-              "bottom-nav-mobile-shell mx-auto w-full max-w-[min(21rem,calc(100vw-2.75rem))] overflow-visible rounded-full pointer-events-auto md:mb-6 md:max-w-xs"
+              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-6 md:max-w-xs md:rounded-2xl"
             )}
           >
-            <div className="flex items-center justify-center px-6 py-2 md:pb-[env(safe-area-inset-bottom,0px)]">
+            <div className="flex items-center justify-center px-6 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
                 <Home className="w-7 h-7" />
               </div>
@@ -364,13 +364,13 @@ export function BottomNav() {
         {MobileProfileBack}
         {MobileJobsTabLeft}
         {MobileFloatingActions}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible px-5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-0 md:pb-0">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0">
           <div
             className={cn(
-              "bottom-nav-mobile-shell mx-auto w-full max-w-[min(21rem,calc(100vw-2.75rem))] overflow-visible rounded-full pointer-events-auto md:mb-6 md:max-w-md"
+              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-6 md:max-w-md md:rounded-2xl"
             )}
           >
-            <div className="mx-0 flex w-full max-w-none items-center justify-evenly overflow-visible px-2 py-2 sm:px-3 md:justify-between md:px-6 md:py-2 lg:px-8 xl:px-12">
+            <div className="mx-0 flex w-full max-w-none items-center justify-evenly overflow-visible px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12">
               {/* First two items */}
               {userNav.slice(0, 2).map((item) => {
                 const Icon = item.icon;
@@ -398,17 +398,16 @@ export function BottomNav() {
                       )}
                     >
                       <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110")} />
+                      {jobsBadgeCount > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -right-0.5 -top-0.5 z-10 flex h-4 min-w-4 items-center justify-center border-2 border-white px-0.5 text-[9px] font-black leading-none dark:border-zinc-900"
+                        >
+                          {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
+                        </Badge>
+                      )}
                     </div>
                     <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">{item.label}</span>
-
-                    {jobsBadgeCount > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center border-2 border-white px-1 text-[10px] font-black leading-none dark:border-zinc-900"
-                      >
-                        {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
-                      </Badge>
-                    )}
                   </Link>
                 );
               })}
@@ -419,10 +418,10 @@ export function BottomNav() {
                   type="button"
                   onClick={() => navigate("/client/create")}
                   className={cn(
-                    "flex h-[56px] w-[56px] shrink-0 items-center justify-center overflow-hidden rounded-full text-white transition-all active:scale-95 md:h-[52px] md:w-[52px]",
+                    "flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full text-white transition-all active:scale-95 md:h-[52px] md:w-[52px]",
                     "border-0 bg-transparent p-0 shadow-[0_10px_28px_rgba(0,0,0,0.2)] outline-none ring-0 ring-offset-0",
                     "focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
-                    "-mt-7 md:mt-0 md:shadow-lg md:hover:scale-105"
+                    "mt-0 md:shadow-lg md:hover:scale-105"
                   )}
                   aria-label="Post job"
                 >
@@ -539,9 +538,9 @@ export function BottomNav() {
         {MobileProfileBack}
         {MobileJobsTabLeft}
         {MobileFloatingActions}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-0 md:pb-0">
-          <div className="bottom-nav-mobile-shell mx-auto w-full max-w-[min(21rem,calc(100vw-2.75rem))] overflow-visible rounded-full pointer-events-auto md:mb-6 md:max-w-xs">
-            <div className="flex items-center justify-center px-4 py-2 md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
+          <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-6 md:max-w-xs md:rounded-2xl">
+            <div className="flex items-center justify-center px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
                 <Home className="w-7 h-7" />
               </div>

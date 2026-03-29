@@ -469,11 +469,17 @@ export default function DashboardPage() {
           className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl overflow-hidden cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.99]"
           onClick={() => navigate("/client/helpers")}
         >
-          <CardContent className="p-4 md:p-5 flex items-center gap-4">
+          <CardContent className="relative p-4 md:p-5 flex items-center gap-4">
+            <Badge
+              className="absolute right-3 top-3 z-10 bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400 border border-orange-200/80 dark:border-orange-500/25 text-[9px] font-black h-5 px-2 rounded-md pointer-events-none"
+              aria-hidden
+            >
+              NEW
+            </Badge>
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500/15 dark:bg-orange-500/20">
               <Users className="h-6 w-6 text-orange-600 dark:text-orange-400" aria-hidden />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 pr-10 md:pr-12">
               <h3 className="text-[16px] font-black tracking-tight text-slate-900 dark:text-white">
                 Find helpers
               </h3>
