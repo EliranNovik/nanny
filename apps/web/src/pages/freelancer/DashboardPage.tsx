@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   MapPin, ArrowRight, Loader2, Bell, Briefcase, Sparkles,
   UtensilsCrossed, Truck, HelpCircle, Baby,
-  MessageCircle, Calendar, ChevronRight, Clock
+  MessageCircle, Calendar, ChevronRight, Clock, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
@@ -530,25 +530,45 @@ export default function FreelancerDashboardPage() {
               <Bell className="w-6 h-6 text-orange-500" /> REQUESTS
             </h2>
             <div className="flex items-center gap-4">
-              {/* Toggle - Integrated Style */}
-              <div className="flex items-center p-1 bg-slate-100/50 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5 shadow-sm">
+              {/* Segmented control — pill track + floating thumb */}
+              <div
+                className="inline-flex items-center gap-0.5 rounded-full bg-slate-200/70 p-[3px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] dark:bg-zinc-800/90 dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]"
+                role="tablist"
+                aria-label="Requests filter"
+              >
                 <button
+                  type="button"
+                  role="tab"
+                  aria-selected={requestsTab === "invitations"}
+                  aria-label="Incoming requests"
                   onClick={() => setRequestsTab("invitations")}
-                  className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
-                    requestsTab === "invitations" 
-                      ? "bg-card dark:bg-muted text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
-                      : "text-slate-500 hover:text-slate-700")}
+                  className={cn(
+                    "flex items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ease-out",
+                    "min-h-9 min-w-9 p-2 md:min-h-0 md:min-w-0 md:px-4 md:py-1.5",
+                    requestsTab === "invitations"
+                      ? "bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_1px_rgba(0,0,0,0.04)] dark:bg-zinc-600 dark:text-white dark:shadow-[0_2px_6px_rgba(0,0,0,0.35)]"
+                      : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  )}
                 >
-                  Incoming Requests
+                  <Bell className="h-4 w-4 shrink-0 md:hidden" aria-hidden />
+                  <span className="hidden md:inline">Incoming Requests</span>
                 </button>
                 <button
+                  type="button"
+                  role="tab"
+                  aria-selected={requestsTab === "my"}
+                  aria-label="My requests"
                   onClick={() => setRequestsTab("my")}
-                  className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
-                    requestsTab === "my" 
-                      ? "bg-card dark:bg-muted text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5" 
-                      : "text-slate-500 hover:text-slate-700")}
+                  className={cn(
+                    "flex items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ease-out",
+                    "min-h-9 min-w-9 p-2 md:min-h-0 md:min-w-0 md:px-4 md:py-1.5",
+                    requestsTab === "my"
+                      ? "bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_1px_rgba(0,0,0,0.04)] dark:bg-zinc-600 dark:text-white dark:shadow-[0_2px_6px_rgba(0,0,0,0.35)]"
+                      : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  )}
                 >
-                  My Requests
+                  <ClipboardList className="h-4 w-4 shrink-0 md:hidden" aria-hidden />
+                  <span className="hidden md:inline">My Requests</span>
                 </button>
               </div>
               <Button variant="ghost" size="sm" className="text-xs font-bold text-primary" onClick={() => navigate("/freelancer/active-jobs")}>

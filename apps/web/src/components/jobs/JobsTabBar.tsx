@@ -77,17 +77,24 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
             .select("job_id")
             .eq("freelancer_id", user.id)
             .in("status", ["pending", "opened"]),
-          supabase
-            .from("job_confirmations")
-            .select("job_id,status")
-            .eq("freelancer_id", user.id),
+          supabase.from("job_confirmations").select("job_id,status").eq("freelancer_id", user.id),
         ]);
 
-        const lockedActive = (jobsRes.data || []).filter((j: any) => j.status === "locked" || j.status === "active").length;
-        const past = (jobsRes.data || []).filter((j: any) => j.status === "completed" || j.status === "cancelled").length;
+        const lockedActive = (jobsRes.data || []).filter(
+          (j: { status: string }) => j.status === "locked" || j.status === "active"
+        ).length;
+        const past = (jobsRes.data || []).filter(
+          (j: { status: string }) => j.status === "completed" || j.status === "cancelled"
+        ).length;
 
-        const confirmedIds = new Set((confRes.data || []).filter((c: any) => c.status === "available").map((c: any) => c.job_id));
-        const pending = (notifsRes.data || []).filter((n: any) => confirmedIds.has(n.job_id)).length;
+        const confirmedIds = new Set(
+          (confRes.data || [])
+            .filter((c: { status: string }) => c.status === "available")
+            .map((c: { job_id: string }) => c.job_id)
+        );
+        const pending = (notifsRes.data || []).filter((n: { job_id: string }) =>
+          confirmedIds.has(n.job_id)
+        ).length;
         const requests = (notifsRes.data || []).length - pending;
 
         setCounts({
@@ -98,7 +105,7 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
           past,
         });
       } catch {
-        // keep zeros on error
+        // keep zeros
       }
     }
     loadCounts();
@@ -124,16 +131,22 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
           aria-label="Jobs section"
           onChange={(e) => select(e.target.value)}
           className={cn(
-            "h-10 w-full min-w-0 cursor-pointer appearance-none rounded-full border border-slate-200 bg-card py-2 pl-10 pr-10 text-[14px] font-semibold text-slate-900 shadow-sm",
+            "h-10 w-full min-w-0 cursor-pointer appearance-none rounded-full border border-slate-200 bg-card py-2 pl-10 pr-[2.75rem] text-[14px] font-semibold text-slate-900 shadow-sm",
             "dark:border-border dark:bg-card dark:text-white"
           )}
         >
           {JOBS_TABS.map((tab) => (
             <option key={tab.id} value={tab.id}>
-              {tab.label} ({counts[tab.id as JobsTabId] ?? 0})
+              {tab.label}
             </option>
           ))}
         </select>
+        <span
+          className="pointer-events-none absolute right-9 top-1/2 z-[1] inline-flex h-5 min-w-[1.25rem] -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 px-1.5 text-[10px] font-bold leading-none tabular-nums text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
+          aria-hidden
+        >
+          {counts[activeId] ?? 0}
+        </span>
         <ChevronDown
           className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-zinc-400"
           aria-hidden
@@ -147,23 +160,23 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          "hidden h-10 max-w-[17rem] items-center gap-2 rounded-full border px-4 py-1.5 text-left text-[16px] font-bold shadow-sm transition-colors md:flex",
+          "hidden h-10 max-w-[17rem] items-center gap-2 rounded-full border px-4 py-0 text-left text-[16px] font-bold leading-none shadow-sm transition-colors md:inline-flex",
           "border-slate-200 bg-card text-slate-900",
           "hover:bg-slate-50",
           "dark:border-border dark:bg-card dark:text-white dark:hover:bg-muted",
           "md:justify-center md:gap-2.5"
         )}
       >
-        <ActiveIcon className="h-[1.125rem] w-[1.125rem] shrink-0 text-primary" aria-hidden />
-        <span className="min-w-0 flex-none text-center">{active.label}</span>
+        <ActiveIcon className="h-[1.125rem] w-[1.125rem] shrink-0 self-center text-primary" aria-hidden />
+        <span className="min-w-0 flex-none self-center text-center leading-none">{active.label}</span>
         <span
-          className="inline-flex min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
-          aria-label={`${counts[activeId] ?? 0} items`}
+          className="inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center self-center rounded-full bg-slate-100 px-2 text-[11px] font-bold leading-none tabular-nums text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
+          aria-label={`${counts[activeId] ?? 0} items in this section`}
         >
           {counts[activeId] ?? 0}
         </span>
         <ChevronDown
-          className={cn("h-4 w-4 shrink-0 text-slate-500 transition-transform dark:text-zinc-400", open && "rotate-180")}
+          className={cn("h-4 w-4 shrink-0 self-center text-slate-500 transition-transform dark:text-zinc-400", open && "rotate-180")}
         />
       </button>
 
@@ -199,12 +212,12 @@ export function JobsTabBar({ menuAlign = "right" }: JobsTabBarProps) {
                   )}
                   aria-hidden
                 />
-                <span className="truncate">{tab.label}</span>
+                <span className="min-w-0 flex-1 truncate text-left">{tab.label}</span>
                 <span
                   className={cn(
-                    "ml-auto inline-flex min-w-[1.9rem] items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold leading-none",
+                    "ml-auto inline-flex min-w-[1.75rem] shrink-0 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold leading-none tabular-nums",
                     selected
-                      ? "bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-200"
+                      ? "bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-100"
                       : "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
                   )}
                 >

@@ -7,7 +7,6 @@ import { getCityFromLocation } from "@/lib/location";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DualLocationPicker } from "@/components/DualLocationPicker";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Clock,
   MapPin,
@@ -357,17 +356,15 @@ export default function CreateJobPage() {
           </div>
         </div>
 
-        <Card className="border-0 shadow-xl animate-fade-in">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {step === 1 && <><Sparkles className="w-5 h-5 text-primary" /> Type of Help</>}
-              {step === 2 && <><Clock className="w-5 h-5 text-primary" /> Type of Care</>}
-              {step === 3 && <><MapPin className="w-5 h-5 text-primary" /> Location</>}
-              {step === 4 && <><Clock className="w-5 h-5 text-primary" /> Time Duration</>}
-              {step === 5 && <><Heart className="w-5 h-5 text-primary" /> Service Details</>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="animate-fade-in">
+          <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2 mb-6 text-foreground">
+            {step === 1 && <><Sparkles className="w-5 h-5 text-primary shrink-0" /> Type of Help</>}
+            {step === 2 && <><Clock className="w-5 h-5 text-primary shrink-0" /> Type of Care</>}
+            {step === 3 && <><MapPin className="w-5 h-5 text-primary shrink-0" /> Location</>}
+            {step === 4 && <><Clock className="w-5 h-5 text-primary shrink-0" /> Time Duration</>}
+            {step === 5 && <><Heart className="w-5 h-5 text-primary shrink-0" /> Service Details</>}
+          </h2>
+          <div>
             {error && (
               <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
                 {error}
@@ -382,7 +379,7 @@ export default function CreateJobPage() {
                     key={type.id}
                     onClick={() => { updateField("service_type", type.id); setStep(2); }}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group relative overflow-hidden",
+                      "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group relative overflow-hidden bg-card shadow-sm",
                       jobData.service_type === type.id
                         ? "border-primary bg-primary/10 shadow-lg shadow-primary/5 ring-1 ring-primary/20"
                         : "border-border hover:border-primary/50 hover:bg-muted/30"
@@ -412,7 +409,7 @@ export default function CreateJobPage() {
                     key={freq.id}
                     onClick={() => { updateField("care_frequency", freq.id); setStep(3); }}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
+                      "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
                       jobData.care_frequency === freq.id
                         ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
                         : "border-border hover:border-primary/50 hover:bg-muted/30"
@@ -432,7 +429,7 @@ export default function CreateJobPage() {
               <div className="space-y-4">
                 {/* Show saved location option if available */}
                 {profile?.city && !jobData.location_city && (
-                  <div className="p-4 rounded-lg border-2 border-primary/20 bg-primary/5">
+                  <div className="p-4 rounded-2xl border-2 border-primary/20 bg-card shadow-sm">
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
@@ -496,7 +493,7 @@ export default function CreateJobPage() {
                     key={duration.id}
                     onClick={() => { updateField("time_duration", duration.id); setStep(5); }}
                     className={cn(
-                      "p-4 rounded-2xl border-2 transition-all text-center flex flex-col items-center justify-center gap-2 group",
+                      "p-4 rounded-2xl border-2 transition-all text-center flex flex-col items-center justify-center gap-2 group bg-card shadow-sm",
                       jobData.time_duration === duration.id
                         ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
                         : "border-border hover:border-primary/50 hover:bg-muted/30"
@@ -524,7 +521,7 @@ export default function CreateJobPage() {
                           key={type.id}
                           onClick={() => updateServiceDetail("cleaning_type", type.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
                             jobData.service_details.cleaning_type === type.id
                               ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
                               : "border-border hover:border-primary/50 hover:bg-muted/30"
@@ -550,7 +547,7 @@ export default function CreateJobPage() {
                           key={count.id}
                           onClick={() => updateServiceDetail("people_count", count.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
                             jobData.service_details.people_count === count.id
                               ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
                               : "border-border hover:border-primary/50 hover:bg-muted/30"
@@ -608,7 +605,7 @@ export default function CreateJobPage() {
                           key={count.id}
                           onClick={() => updateServiceDetail("kids_count", count.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
                             jobData.service_details.kids_count === count.id
                               ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
                               : "border-border hover:border-primary/50 hover:bg-muted/30"
@@ -634,7 +631,7 @@ export default function CreateJobPage() {
                           key={type.id}
                           onClick={() => updateServiceDetail("other_type", type.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
+                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
                             jobData.service_details.other_type === type.id
                               ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
                               : "border-border hover:border-primary/50 hover:bg-muted/30"
@@ -707,8 +704,8 @@ export default function CreateJobPage() {
                 </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

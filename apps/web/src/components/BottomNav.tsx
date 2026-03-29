@@ -328,7 +328,11 @@ export function BottomNav() {
         {MobileFloatingActions}
         {ProfileMenuModal}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
-          <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-card border-t md:border border-slate-200/50 dark:border-border/30 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
+          <div
+            className={cn(
+              "bottom-nav-mobile-shell w-full md:max-w-xs md:mb-6 md:rounded-full pointer-events-auto"
+            )}
+          >
             <div className="flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
                 <Home className="w-7 h-7" />
@@ -360,8 +364,12 @@ export function BottomNav() {
         {MobileJobsTabLeft}
         {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible">
-          <div className="w-full md:max-w-md md:mb-6 md:rounded-full bg-card border-t md:border border-slate-200/50 dark:border-border/30 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto overflow-visible">
-            <div className="flex items-center justify-between w-full max-w-2xl mx-auto px-6 py-2 overflow-visible">
+          <div
+            className={cn(
+              "bottom-nav-mobile-shell w-full md:max-w-md md:mb-6 md:rounded-full pointer-events-auto overflow-visible"
+            )}
+          >
+            <div className="flex items-end justify-evenly w-full max-w-2xl mx-auto px-2 pt-2 pb-1.5 overflow-visible sm:px-5 md:items-center md:justify-between md:py-2 md:pb-2">
               {/* First two items */}
               {userNav.slice(0, 2).map((item) => {
                 const Icon = item.icon;
@@ -376,12 +384,19 @@ export function BottomNav() {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
-                      isActive ? "text-slate-700 dark:text-slate-200" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      "flex flex-col items-center justify-end p-1 transition-all relative md:justify-center",
+                      isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                     )}
                   >
-                    <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-slate-100 dark:bg-zinc-800/80 text-slate-700 dark:text-slate-200" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
-                      <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
+                    <div
+                      className={cn(
+                        "flex flex-col items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] rounded-2xl transition-all duration-300 relative",
+                        isActive
+                          ? "bg-white/70 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                          : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80"
+                      )}
+                    >
+                      <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110")} />
                     </div>
                     <span className="mt-0.5 text-[10px] font-semibold leading-none">{item.label}</span>
 
@@ -397,21 +412,25 @@ export function BottomNav() {
                 );
               })}
 
-              {/* Center Plus Button */}
-              <div className="mx-2 flex flex-col items-center justify-center">
+              {/* Center logo — floats above bar on mobile; no label (overflow clips PNG halo) */}
+              <div className="relative z-10 mx-0.5 flex shrink-0 items-end justify-center md:mx-2 md:items-center">
                 <button
                   type="button"
                   onClick={() => navigate("/client/create")}
-                  className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-transparent text-white transition-all hover:scale-105 active:scale-95"
-                  aria-label="Post Job"
+                  className={cn(
+                    "flex h-[56px] w-[56px] shrink-0 items-center justify-center overflow-hidden rounded-full text-white transition-all active:scale-95 md:h-[52px] md:w-[52px]",
+                    "border-0 bg-transparent p-0 shadow-[0_10px_28px_rgba(0,0,0,0.2)] outline-none ring-0 ring-offset-0",
+                    "focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                    "-mt-7 md:mt-0 md:shadow-lg md:hover:scale-105"
+                  )}
+                  aria-label="Post job"
                 >
                   <img
                     src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
                     alt=""
-                    className="h-[52px] w-[52px] rounded-full object-cover"
+                    className="pointer-events-none block h-full w-full scale-[1.12] object-cover object-center outline-none ring-0 md:scale-100"
                   />
                 </button>
-                <span className="mt-0.5 text-[10px] font-semibold leading-none text-slate-400 dark:text-slate-500">Post</span>
               </div>
 
               {/* Messages: mobile + desktop */}
@@ -425,12 +444,19 @@ export function BottomNav() {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
-                      isActive ? "text-slate-700 dark:text-slate-200" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      "flex flex-col items-center justify-end p-1 transition-all relative md:justify-center",
+                      isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                     )}
                   >
-                    <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-slate-100 dark:bg-zinc-800/80" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
-                      <Icon className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
+                    <div
+                      className={cn(
+                        "flex flex-col items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] rounded-2xl transition-all duration-300 relative",
+                        isActive
+                          ? "bg-white/70 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                          : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80"
+                      )}
+                    >
+                      <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110")} />
                     </div>
                     <span className="mt-0.5 text-[10px] font-semibold leading-none">{item.label}</span>
 
@@ -455,13 +481,20 @@ export function BottomNav() {
                       type="button"
                       onClick={() => setProfileMenuOpen(true)}
                       className={cn(
-                        "md:hidden flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
-                        isActive ? "text-slate-700 dark:text-slate-200" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                        "md:hidden flex flex-col items-center justify-end p-1 transition-all relative",
+                        isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                       )}
                       aria-label="Open profile menu"
                     >
-                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative overflow-visible", isActive ? "bg-slate-100 dark:bg-zinc-800/80 ring-1 ring-slate-300/70 dark:ring-zinc-700/70" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
-                        <Avatar className="h-9 w-9 border border-black/10">
+                      <div
+                        className={cn(
+                          "flex flex-col items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] rounded-2xl transition-all duration-300 relative overflow-visible",
+                          isActive
+                            ? "bg-white/70 shadow-sm ring-1 ring-slate-300/50 dark:bg-white/15 dark:ring-white/25"
+                            : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80"
+                        )}
+                      >
+                        <Avatar className="h-9 w-9 border border-black/10 dark:border-white/15">
                           <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
                           <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
                             {(profile?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
@@ -506,7 +539,7 @@ export function BottomNav() {
         {MobileJobsTabLeft}
         {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
-          <div className="w-full md:max-w-xs md:mb-6 md:rounded-full bg-card border-t md:border border-slate-200/50 dark:border-border/30 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] pointer-events-auto">
+          <div className="bottom-nav-mobile-shell w-full md:max-w-xs md:mb-6 md:rounded-full pointer-events-auto">
             <div className="max-w-2xl mx-auto flex items-center justify-center py-2 px-6 pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
                 <Home className="w-7 h-7" />

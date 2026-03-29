@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Briefcase, ArrowRight, CheckCircle2, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -403,28 +402,27 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
       <div className="w-full max-w-lg animate-fade-in">
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">
-              {step === 1 
-                ? "What brings you here?" 
-                : step === 2 
-                ? "Tell us about yourself" 
-                : step === 3
-                ? "Create your account"
-                : "Verify your email"}
-            </CardTitle>
-            <CardDescription>
-              {step === 1 
-                ? "Choose how you want to use NannyNow"
-                : step === 2
-                ? "Just a few quick details to get started"
-                : step === 3
-                ? "Create an account to continue"
-                : "We've sent you a verification email"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            {step === 1 
+              ? "What brings you here?" 
+              : step === 2 
+              ? "Tell us about yourself" 
+              : step === 3
+              ? "Create your account"
+              : "Verify your email"}
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {step === 1 
+              ? "Choose how you want to use NannyNow"
+              : step === 2
+              ? "Just a few quick details to get started"
+              : step === 3
+              ? "Create an account to continue"
+              : "We've sent you a verification email"}
+          </p>
+        </div>
+        <div>
             {error && (
               <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
                 {error}
@@ -436,7 +434,7 @@ export default function OnboardingPage() {
                 <button
                   onClick={() => { setRole("client"); setStep(2); }}
                   className={cn(
-                    "flex items-center gap-4 p-6 rounded-xl border-2 transition-all duration-200 text-left",
+                    "flex items-center gap-4 p-6 rounded-xl border-2 transition-all duration-200 text-left bg-card shadow-sm",
                     role === "client" 
                       ? "border-primary bg-primary/5" 
                       : "border-border hover:border-primary/50 hover:bg-muted/50"
@@ -456,7 +454,7 @@ export default function OnboardingPage() {
                 <button
                   onClick={() => { setRole("freelancer"); setStep(2); }}
                   className={cn(
-                    "flex items-center gap-4 p-6 rounded-xl border-2 transition-all duration-200 text-left",
+                    "flex items-center gap-4 p-6 rounded-xl border-2 transition-all duration-200 text-left bg-card shadow-sm",
                     role === "freelancer" 
                       ? "border-primary bg-primary/5" 
                       : "border-border hover:border-primary/50 hover:bg-muted/50"
@@ -614,8 +612,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </div>
       </div>
     </div>
   );

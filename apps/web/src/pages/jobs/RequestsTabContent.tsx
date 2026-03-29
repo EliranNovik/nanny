@@ -300,14 +300,16 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                 {/* SECTION: INCOMING REQUESTS (Requests Tab) */}
                 {activeTab === 'requests' && (
                     <div className="space-y-8">
-                        <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
-                            <span className="flex items-center gap-2.5">
-                                <Bell className="w-6 h-6 text-orange-500" /> Incoming Requests
-                            </span>
-                            <Badge variant="secondary" className="h-7 min-w-[1.75rem] justify-center rounded-full px-2.5 text-[12px] font-bold tabular-nums">
-                                {incomingItems.length}
-                            </Badge>
-                        </h2>
+                        <div>
+                            <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
+                                <span className="flex items-center gap-2.5">
+                                    <Bell className="w-6 h-6 text-orange-500" /> Incoming Requests
+                                </span>
+                            </h2>
+                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                                New jobs from clients who want you—accept or decline each one.
+                            </p>
+                        </div>
                         {incomingItems.length > 0 ? (
                             <>
                             <div className="mt-3 space-y-8">
@@ -544,14 +546,16 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                 {/* SECTION: PENDING JOBS (Pending Tab) */}
                 {activeTab === 'pending' && (
                     <div className="space-y-8">
-                        <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
-                            <span className="flex items-center gap-2.5">
-                                <Hourglass className="w-6 h-6 text-orange-500" /> Pending Jobs
-                            </span>
-                            <Badge variant="secondary" className="h-7 min-w-[1.75rem] justify-center rounded-full px-2.5 text-[12px] font-bold tabular-nums">
-                                {pendingItems.length}
-                            </Badge>
-                        </h2>
+                        <div>
+                            <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
+                                <span className="flex items-center gap-2.5">
+                                    <Hourglass className="w-6 h-6 text-orange-500" /> Pending Jobs
+                                </span>
+                            </h2>
+                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                                You said yes—now we wait for the client to confirm the booking.
+                            </p>
+                        </div>
                         {pendingItems.length > 0 ? (
                             <>
                             <div className="mt-3 space-y-8">
@@ -750,14 +754,16 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                 {/* SECTION: MY OUTBOUND REQUESTS (My Requests Tab) */}
                 {activeTab === 'my_requests' && (
                     <div className="space-y-8">
-                        <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
-                            <span className="flex items-center gap-2.5">
-                                <ClipboardList className="w-6 h-6 text-orange-500" /> My Posted Requests
-                            </span>
-                            <Badge variant="secondary" className="h-7 min-w-[1.75rem] justify-center rounded-full px-2.5 text-[12px] font-bold tabular-nums">
-                                {myOpenRequests.length}
-                            </Badge>
-                        </h2>
+                        <div>
+                            <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
+                                <span className="flex items-center gap-2.5">
+                                    <ClipboardList className="w-6 h-6 text-orange-500" /> My Posted Requests
+                                </span>
+                            </h2>
+                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                                Requests you posted for helpers—track who responded and what happens next.
+                            </p>
+                        </div>
                     {myOpenRequests.length > 0 ? (
                         <>
                         <div className="mt-3 space-y-8">

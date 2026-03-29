@@ -246,9 +246,14 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                 {/* LIVE JOBS SECTION */}
                 {activeTab === 'jobs' && (
                     <div className="space-y-8">
-                        <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
-                            <Briefcase className="w-6 h-6 text-orange-500" /> Active Jobs
-                        </h2>
+                        <div>
+                            <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
+                                <Briefcase className="w-6 h-6 text-orange-500" /> Active Jobs
+                            </h2>
+                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                                Jobs happening now—chat with the other person or finish up when the work is done.
+                            </p>
+                        </div>
                         {activeJobs.length > 0 ? (
                             <div className="space-y-8">
                                 {activeJobs.map(job => {
@@ -431,14 +436,16 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                 {/* PAST JOBS SECTION */}
                 {activeTab === 'past' && (
                     <div className="space-y-8">
-                        <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
-                            <span className="flex items-center gap-2.5">
-                                <CheckCircle2 className="w-6 h-6 text-orange-500" /> Past Jobs
-                            </span>
-                            <Badge variant="secondary" className="h-7 min-w-[1.75rem] justify-center rounded-full px-2.5 text-[12px] font-bold tabular-nums">
-                                {pastJobs.length}
-                            </Badge>
-                        </h2>
+                        <div>
+                            <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
+                                <span className="flex items-center gap-2.5">
+                                    <CheckCircle2 className="w-6 h-6 text-orange-500" /> Past Jobs
+                                </span>
+                            </h2>
+                            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                                Jobs that are finished or cancelled—your history in one place.
+                            </p>
+                        </div>
                         {pastJobs.length > 0 ? (
                             <div className="space-y-8">
                                 {pastJobs.map(job => {
