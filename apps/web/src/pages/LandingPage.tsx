@@ -1,21 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Briefcase, Users, LogIn, Baby, Sparkles, Star, Flag, Menu, X, Home, ClipboardList, UserCheck, MessageCircle, CheckCircle2, Soup, ChevronLeft, ChevronRight, Truck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Briefcase, Users, Baby, Sparkles, Star, Flag, ClipboardList, UserCheck, MessageCircle, CheckCircle2, Soup, ChevronLeft, ChevronRight, Truck } from "lucide-react";
 import Benefits from "@/components/Benefits";
 import React, { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import { LandingDownloadAppPromo } from "@/components/LandingDownloadAppPromo";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const buttonsRef = useRef<HTMLDivElement>(null);
-  const dashboardPath = profile?.role === "freelancer" ? "/freelancer/dashboard" : "/dashboard";
   const recentActivityRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -149,15 +146,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen gradient-mesh flex flex-col">
-      {/* Top-Left Fixed Logo for Desktop */}
-      <Link to="/" className="fixed top-8 left-8 z-[60] hidden md:flex items-center gap-2 group/logo transition-all duration-300">
-        <img 
-          src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" 
-          alt="MamaLama Logo" 
-          className="h-16 w-auto rounded-xl brightness-110 shadow-lg drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3" 
-        />
-        <span className="text-xl font-black text-white drop-shadow-md tracking-tighter hidden lg:block opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">MamaLama</span>
-      </Link>
+      <LandingSiteHeader />
 
       {/* Bottom-Left Fixed CTAs when scrolled past - Desktop Only */}
       <div className={cn(
@@ -184,94 +173,16 @@ export default function LandingPage() {
         </Button>
       </div>
 
-      {/* Header - Floating, Oval, Centered, Orange Gradient */}
-      <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl bg-gradient-to-r from-orange-500 to-red-600 backdrop-blur-md rounded-full border border-white/20 shadow-2xl flex items-center px-4 md:px-8 py-3 transition-all duration-500">
-        <div className="w-full flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-white hover:text-white/80 transition-colors"
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-8 min-w-0 flex-1 justify-center md:justify-start md:pl-2">
-            {user ? (
-              <div className="flex items-center gap-3 min-w-0">
-                <Avatar className="h-9 w-9 border border-white/30 flex-shrink-0">
-                  <AvatarImage src={profile?.photo_url || undefined} alt="" />
-                  <AvatarFallback className="bg-white/20 text-white text-xs font-bold">
-                    {profile?.full_name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-bold text-white truncate">
-                  Hi, {profile?.full_name?.split(" ")[0] || "User"}
-                </span>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center gap-8 text-white">
-                <Link to="/about" className="text-sm font-bold hover:text-white/80 transition-colors">About Us</Link>
-                <Link to="/contact" className="text-sm font-bold hover:text-white/80 transition-colors">Contact</Link>
-                <Link to="/" className="flex items-center gap-1.5 text-sm font-bold hover:text-white/80 transition-colors">
-                  <Home className="w-4 h-4" /> Home
-                </Link>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4">
-            {!user ? (
-              <Button variant="ghost" onClick={() => navigate("/login")} className="text-white hover:bg-white/10 font-bold hidden md:flex rounded-full px-6">
-                Login
-              </Button>
-            ) : (
-              <div className="hidden md:flex items-center gap-6 text-white border-l border-white/20 pl-6">
-                 <Link to={dashboardPath} className="flex items-center gap-1.5 text-sm font-bold hover:text-white/80 transition-colors">
-                   <Home className="w-4 h-4" /> Dashboard
-                </Link>
-              </div>
-            )}
-            {!user ? (
-              <button onClick={() => navigate("/login")} className="md:hidden p-2 text-white"><LogIn className="w-6 h-6" /></button>
-            ) : (
-              <button onClick={() => navigate(dashboardPath)} className="md:hidden p-2 text-white"><Home className="w-6 h-6" /></button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Menu Overlay */}
-      {isMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[92%] bg-white/95 backdrop-blur-xl rounded-[2rem] p-8 shadow-2xl border border-white/40">
-            <div className="flex flex-col gap-6">
-              <Link to="/about" className="text-xl font-black text-slate-900 flex items-center gap-4" onClick={() => setIsMenuOpen(false)}><Users className="w-6 h-6 text-primary" /> About Us</Link>
-              <Link to="/contact" className="text-xl font-black text-slate-900 flex items-center gap-4" onClick={() => setIsMenuOpen(false)}><MessageCircle className="w-6 h-6 text-primary" /> Contact</Link>
-              <Link to="/" className="text-xl font-black text-slate-900 flex items-center gap-4" onClick={() => setIsMenuOpen(false)}><Home className="w-6 h-6 text-primary" /> Home</Link>
-              <div className="h-[1px] bg-slate-100 my-2" />
-              {user ? (
-                <Button onClick={() => { setIsMenuOpen(false); navigate(dashboardPath); }} className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg">Dashboard</Button>
-              ) : (
-                <Button onClick={() => { setIsMenuOpen(false); navigate("/login"); }} className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg">Get Started</Button>
-              )}
-            </div>
-            <button onClick={() => setIsMenuOpen(false)} className="mt-8 w-full py-4 text-slate-400 font-bold">Close</button>
-          </div>
-        </div>
-      )}
-
       {/* Main Content - No top padding to allow Hero to flow behind header */}
       <main className="flex-1 pt-0">
         {/* Full-Screen Hero Section */}
-        <section ref={heroRef} className="relative w-full h-[90vh] md:h-[110vh] overflow-hidden group/hero">
+        <section ref={heroRef} className="relative w-full min-h-[90vh] overflow-hidden group/hero">
           <video
             autoPlay
             loop
             muted
             playsInline
-            className="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-1000 group-hover/hero:scale-105"
+            className="absolute inset-0 z-0 min-h-full w-full object-cover transition-transform duration-1000 group-hover/hero:scale-105"
           >
             <source src="/videos/hero-bg.mp4" type="video/mp4" />
           </video>
@@ -280,9 +191,9 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-black/10 z-[1]"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent z-[2]"></div>
 
-          {/* Left-Aligned Text - Subtler Glass Effect */}
-          <div className="absolute left-6 right-8 md:left-0 md:right-0 md:inset-x-0 top-28 md:top-32 flex flex-col items-start md:pl-32 z-10 w-[85%] md:w-auto">
-            <div className="max-w-xl w-full md:bg-white/5 md:backdrop-blur-sm md:border md:border-white/5 p-5 md:p-8 rounded-[2rem] text-left space-y-4 md:space-y-6 animate-in fade-in slide-in-from-left-10 duration-1000 md:shadow-sm">
+          {/* Left column: hero copy (constrained); download strip is full-bleed below so QR can sit at viewport edge on desktop */}
+          <div className="relative z-10 flex w-full max-w-7xl flex-col items-start px-6 pb-6 pt-28 md:mx-auto md:px-8 md:pb-8 md:pl-32 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
+            <div className="w-[85%] max-w-xl md:w-full md:bg-white/5 md:backdrop-blur-sm md:border md:border-white/5 p-5 md:p-8 rounded-[2rem] text-left space-y-4 md:space-y-6 animate-in fade-in slide-in-from-left-10 duration-1000 md:shadow-sm">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white drop-shadow-lg">
                 Bringing <span className="bg-primary/40 text-orange-200 px-3 py-1 rounded-xl border border-orange-400/20 inline-block rotate-[-1deg]">families</span> and helpers together
               </h1>
@@ -290,6 +201,9 @@ export default function LandingPage() {
                 Find support, share skills, and connect within minutes.
               </p>
             </div>
+          </div>
+          <div className="relative z-10 w-full px-6 pb-10 pt-12 md:px-0 md:pb-16 md:pt-20 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
+            <LandingDownloadAppPromo />
           </div>
 
           {/* Right-Aligned Stacked CTAs - Desktop Only */}
@@ -360,8 +274,8 @@ export default function LandingPage() {
           
           {/* Interactive Job Category Showcase - Carousel Version */}
           <section className="scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 delay-300 py-24 overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4">
-              <div className="text-center mb-16 space-y-4">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4">
+              <div className="text-center mb-16 space-y-4 px-1 sm:px-0">
                 <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
                   Experience the <span className="text-primary italic">MamaLama</span> Ease
                 </h2>
@@ -371,13 +285,13 @@ export default function LandingPage() {
               </div>
 
               {/* Carousel Container */}
-              <div className="relative flex flex-col items-center">
-                <div className="relative w-[92%] max-w-[1400px] mx-auto flex items-center justify-center">
+              <div className="relative flex flex-col items-center w-full">
+                <div className="relative w-full md:w-[92%] max-w-[1400px] mx-auto flex items-center justify-center">
                   {/* Left Arrow */}
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="absolute -left-3 md:-left-12 z-30 h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-slate-100 hover:bg-white text-slate-900 group transition-all active:scale-95"
+                    className="absolute left-1 sm:left-0 md:-left-12 z-30 h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-100 hover:bg-white text-slate-900 group transition-all active:scale-95"
                     onClick={() => {
                       const prevIndex = (activeCategoryIndex - 1 + showcaseCategories.length) % showcaseCategories.length;
                       setActiveCategoryIndex(prevIndex);
@@ -387,7 +301,7 @@ export default function LandingPage() {
                   </Button>
 
                   {/* Showcase Grid - Dynamic Scaling */}
-                  <div className="flex items-end justify-center w-full gap-4 md:gap-8 px-2 md:px-0">
+                  <div className="flex items-end justify-center w-full gap-1 sm:gap-3 md:gap-8 px-0">
                     {showcaseCategories.map((cat, idx) => {
                       const isActive = idx === activeCategoryIndex;
                       const isPrev = idx === (activeCategoryIndex - 1 + showcaseCategories.length) % showcaseCategories.length;
@@ -405,12 +319,14 @@ export default function LandingPage() {
                           className={cn(
                             "relative transition-all duration-700 cursor-pointer flex-shrink-0 group",
                             isActive ? "w-full md:w-[50%] z-20" : "hidden md:block w-[18%] z-10 opacity-40 grayscale hover:opacity-100 hover:grayscale-0",
-                            isActive ? "scale-105" : "scale-90 translate-y-4"
+                            isActive ? "md:scale-105 scale-100" : "scale-90 translate-y-4"
                           )}
                         >
                           <div className={cn(
                             "relative overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] transition-all duration-700",
-                            isActive ? "rounded-[3rem] aspect-video" : "rounded-[2.5rem] aspect-[4/5]"
+                            isActive
+                              ? "rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] aspect-[4/3] min-h-[260px] sm:min-h-[300px] md:min-h-[420px] lg:min-h-[500px]"
+                              : "rounded-[2.5rem] aspect-[4/5]"
                           )}>
                              <div className="relative w-full h-full">
                                {cat.id === 'special_video' ? (
@@ -486,7 +402,7 @@ export default function LandingPage() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="absolute -right-3 md:-right-12 z-30 h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-slate-100 hover:bg-white text-slate-900 group transition-all active:scale-95"
+                    className="absolute right-1 sm:right-0 md:-right-12 z-30 h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-100 hover:bg-white text-slate-900 group transition-all active:scale-95"
                     onClick={() => {
                       const nextIndex = (activeCategoryIndex + 1) % showcaseCategories.length;
                       setActiveCategoryIndex(nextIndex);

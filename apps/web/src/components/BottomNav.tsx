@@ -67,8 +67,15 @@ export function BottomNav() {
     previousPathnameRef.current = location.pathname;
   }, [location.pathname, mobileSearchOpen]);
 
-  // Nothing on landing page, chat pages, or messages page
-  if (location.pathname === "/" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/messages")) {
+  // Nothing on landing, marketing pages, chat, or messages
+  const path = location.pathname;
+  if (
+    path === "/" ||
+    path === "/about" ||
+    path === "/contact" ||
+    path.startsWith("/chat/") ||
+    path.startsWith("/messages")
+  ) {
     return null;
   }
 

@@ -109,8 +109,10 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Landing - no header, no extra padding */}
+      {/* Landing & marketing — landing-style header, no app layout padding */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/contact" element={<ContactPage />} />
 
       <Route
         path="/messages"
@@ -131,8 +133,6 @@ function AppRoutes() {
 
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/contact" element={<ContactPage />} />
         <Route
           path="/login"
           element={user ? <Navigate to="/home" replace /> : <LoginPage />}
