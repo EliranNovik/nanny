@@ -100,11 +100,11 @@ export default function LoginPage() {
         } else if (profile) {
           // User has a profile, redirect to dashboard based on role
           if (profile.role === "client") {
-            console.log("[LoginPage] Redirecting to /dashboard (client)");
-            navigate("/dashboard", { replace: true });
+            console.log("[LoginPage] Redirecting to /client/home (client)");
+            navigate("/client/home", { replace: true });
           } else {
-            console.log("[LoginPage] Redirecting to /freelancer/dashboard");
-            navigate("/freelancer/dashboard", { replace: true });
+            console.log("[LoginPage] Redirecting to /freelancer/home");
+            navigate("/freelancer/home", { replace: true });
           }
         } else {
           // No profile yet, redirect to onboarding

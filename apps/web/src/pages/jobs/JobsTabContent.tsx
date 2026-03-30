@@ -20,6 +20,8 @@ import { useJobCardEdgeOverlay } from "@/hooks/useJobCardEdgeOverlay";
 import { useIsMinMd } from "@/hooks/useIsMinMd";
 import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
 import { JobAttachedPhotosStrip, jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
+import { JobCardsCarousel, jobCardCarouselItemClass } from "@/components/jobs/JobCardsCarousel";
+import type { JobsPerspective } from "@/components/jobs/jobsPerspective";
 
 interface JobRequest {
     id: string;
@@ -48,7 +50,9 @@ interface Profile {
 
 
 interface JobsTabContentProps {
-    activeTab: 'jobs' | 'past';
+    activeTab: "jobs" | "past";
+    /** My Helpers = jobs you posted; Helping others = jobs where you were the assigned helper */
+    perspective: JobsPerspective;
 }
 
 function serviceHeroImageSrc(job: { service_type?: string; children_count?: number }) {
@@ -60,7 +64,7 @@ function serviceHeroImageSrc(job: { service_type?: string; children_count?: numb
     return "/nanny-mar22.png";
 }
 
-export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
+export default function JobsTabContent({ activeTab, perspective }: JobsTabContentProps) {
     const { user } = useAuth();
     const navigate = useNavigate();
     const isMinMd = useIsMinMd();
@@ -79,8 +83,8 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
     const [selectedMapJob, setSelectedMapJob] = useState<JobRequest | null>(null);
     const [selectedJobDetails, setSelectedJobDetails] = useState<JobRequest | null>(null);
     const edgeOverlayKey = useMemo(
-        () => `${activeTab}-${activeJobs.length}-${pastJobs.length}-${loading ? 1 : 0}`,
-        [activeTab, activeJobs.length, pastJobs.length, loading]
+        () => `${perspective}-${activeTab}-${activeJobs.length}-${pastJobs.length}-${loading ? 1 : 0}`,
+        [perspective, activeTab, activeJobs.length, pastJobs.length, loading]
     );
     const clippedCardIds = useJobCardEdgeOverlay(edgeOverlayKey);
 
@@ -88,7 +92,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
     useEffect(() => {
         if (!user) return;
         try {
-            const cacheKey = `jobs_tab_cache_${user.id}`;
+            const cacheKey = `jobs_tab_cache_${user.id}_${perspective}`;
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 const { data, timestamp } = JSON.parse(cached);
@@ -104,7 +108,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
         } catch (e) {
             console.error("Cache load error:", e);
         }
-    }, [user]);
+    }, [user, perspective]);
 
     const loadJobs = async () => {
         if (!user) return;
@@ -116,12 +120,22 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
         }
 
         try {
-            const { data: allJobs, error: jobsError } = await supabase
+            setLoading(true);
+            let jobsQuery = supabase
                 .from("job_requests")
                 .select("*")
-                .or(`client_id.eq.${user.id},selected_freelancer_id.eq.${user.id}`)
-                .in("status", ["locked", "active", "completed", "cancelled"])
-                .order("created_at", { ascending: false });
+                .in("status", ["locked", "active", "completed", "cancelled"]);
+
+            if (perspective === "client") {
+                jobsQuery = jobsQuery.eq("client_id", user.id);
+            } else {
+                jobsQuery = jobsQuery.eq("selected_freelancer_id", user.id);
+            }
+
+            const { data: allJobs, error: jobsError } = await jobsQuery.order(
+                "created_at",
+                { ascending: false }
+            );
 
             if (jobsError) throw jobsError;
 
@@ -164,7 +178,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                 setConversations(convMap);
 
                 // Update cache
-                const cacheKey = `jobs_tab_cache_${user.id}`;
+                const cacheKey = `jobs_tab_cache_${user.id}_${perspective}`;
                 localStorage.setItem(cacheKey, JSON.stringify({
                     timestamp: Date.now(),
                     data: {
@@ -185,7 +199,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
 
     useEffect(() => {
         loadJobs();
-    }, [user]);
+    }, [user, perspective]);
 
     function getJobStatusBadge(status: string) {
         const map: Record<string, { label: string; className: string }> = {
@@ -226,6 +240,16 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
+    const liveSectionSubtitle =
+        perspective === "client"
+            ? "Jobs you posted with an assigned helper—message them or mark the job done when finished."
+            : "Jobs where you’re the assigned helper—stay in touch with the client until the work is finished.";
+
+    const pastSectionSubtitle =
+        perspective === "client"
+            ? "Jobs you posted as a client that finished or were cancelled."
+            : "Jobs where you worked as the helper that finished or were cancelled.";
+
     return (
         <>
             <div className="space-y-8">
@@ -251,11 +275,11 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                 <Briefcase className="w-6 h-6 text-orange-500" /> Active Jobs
                             </h2>
                             <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
-                                Jobs happening now—chat with the other person or finish up when the work is done.
+                                {liveSectionSubtitle}
                             </p>
                         </div>
                         {activeJobs.length > 0 ? (
-                            <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
+                            <JobCardsCarousel>
                                 {activeJobs.map(job => {
                                     const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
                                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;
@@ -270,7 +294,8 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             className={cn(
                                                 "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
-                                                isMinMd && "md:cursor-default"
+                                                isMinMd && "md:cursor-default",
+                                                jobCardCarouselItemClass
                                             )}
                                         >
                                             <div
@@ -430,13 +455,17 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                         </Card>
                                     );
                                 })}
-                            </div>
+                            </JobCardsCarousel>
                         ) : (
                             <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30">
                                 <CardContent className="p-12 text-center text-muted-foreground">
                                     <Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                                     <p className="text-lg font-bold">No active jobs right now.</p>
-                                    <p className="text-sm">When you accept a request, it will appear here.</p>
+                                    <p className="text-sm">
+                                        {perspective === "client"
+                                            ? "When a helper is confirmed on your request, it will show up here."
+                                            : "When you’re assigned to a job, it will appear here."}
+                                    </p>
                                 </CardContent>
                             </Card>
                         )}
@@ -453,11 +482,11 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                 </span>
                             </h2>
                             <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
-                                Jobs that are finished or cancelled—your history in one place.
+                                {pastSectionSubtitle}
                             </p>
                         </div>
                         {pastJobs.length > 0 ? (
-                            <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
+                            <JobCardsCarousel>
                                 {pastJobs.map(job => {
                                     const otherPartyId = job.client_id === user?.id ? job.selected_freelancer_id : job.client_id;
                                     const otherParty = otherPartyId ? profiles[otherPartyId] : null;
@@ -471,7 +500,8 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                             className={cn(
                                                 "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
-                                                isMinMd && "md:cursor-default"
+                                                isMinMd && "md:cursor-default",
+                                                jobCardCarouselItemClass
                                             )}
                                         >
                                             <div
@@ -625,7 +655,7 @@ export default function JobsTabContent({ activeTab }: JobsTabContentProps) {
                                         </Card>
                                     );
                                 })}
-                            </div>
+                            </JobCardsCarousel>
                         ) : (
                             <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30">
                                 <CardContent className="p-12 text-center text-muted-foreground">

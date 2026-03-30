@@ -15,6 +15,7 @@ import JobMap from "@/components/JobMap";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { LiveTimer } from "@/components/LiveTimer";
 import DashboardLiveJobCard from "@/components/DashboardLiveJobCard";
+import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 
 interface JobRequest {
   id: string;
@@ -379,7 +380,7 @@ export default function FreelancerDashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card 
             className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
-            onClick={() => navigate("/jobs?tab=jobs")}
+            onClick={() => navigate(buildJobsUrl("freelancer", "jobs"))}
           >
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-start justify-between gap-2 mb-1">
@@ -393,7 +394,7 @@ export default function FreelancerDashboardPage() {
 
           <Card 
             className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
-            onClick={() => navigate("/jobs?tab=my_requests")}
+            onClick={() => navigate(buildJobsUrl("client", "my_requests"))}
           >
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-start justify-between gap-2 mb-1">
@@ -407,7 +408,7 @@ export default function FreelancerDashboardPage() {
 
           <Card 
             className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
-            onClick={() => navigate("/jobs?tab=requests")}
+            onClick={() => navigate(buildJobsUrl("freelancer", "requests"))}
           >
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between gap-2 mb-1">
@@ -576,7 +577,7 @@ export default function FreelancerDashboardPage() {
                   aria-label="Incoming requests"
                   onClick={() => {
                     setRequestsTab("invitations");
-                    navigate("/jobs?tab=requests");
+                    navigate(buildJobsUrl("freelancer", "requests"));
                   }}
                   className={cn(
                     "flex items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ease-out",
@@ -634,7 +635,7 @@ export default function FreelancerDashboardPage() {
                     return (
                       <Card key={notif.id}
                         className={cn("border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer", isDeclined && "opacity-60")}
-                        onClick={() => navigate("/jobs?tab=requests")}>
+                        onClick={() => navigate(buildJobsUrl("freelancer", "requests"))}>
                         <CardContent className="px-5 py-4 flex items-center gap-4">
                           {job ? renderRequestThumb(job) : null}
                           <div className="flex-1 min-w-0">
@@ -671,7 +672,7 @@ export default function FreelancerDashboardPage() {
                   myRequests.length > 0 ? myRequests.map((req) => (
                     <Card key={req.id}
                       className="border border-black/[0.03] dark:border-white/[0.03] shadow-[0_4px_15px_rgba(0,0,0,0.02)] rounded-2xl overflow-hidden hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
-                      onClick={() => navigate("/jobs?tab=my_requests")}>
+                      onClick={() => navigate(buildJobsUrl("client", "my_requests"))}>
                       <CardContent className="px-5 py-4 flex items-center gap-4">
                       {renderRequestThumb(req)}
                         <div className="flex-1 min-w-0">

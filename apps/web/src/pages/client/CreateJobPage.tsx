@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { apiPost } from "@/lib/api";
@@ -37,15 +37,22 @@ import {
   Soup
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SERVICE_CATEGORIES, isServiceCategoryId } from "@/lib/serviceCategories";
 
-// Step 1: Service Types
-const SERVICE_TYPES = [
-  { id: "cleaning", label: "Cleaning", icon: <Sparkles className="w-8 h-8 text-primary" />, description: "Professional home care" },
-  { id: "cooking", label: "Cooking", icon: <Soup className="w-8 h-8 text-orange-500" />, description: "Delicious meals at home" },
-  { id: "pickup_delivery", label: "Pick up - delivery", icon: <Truck className="w-8 h-8 text-blue-500" />, description: "Quick courier services" },
-  { id: "nanny", label: "Nanny", icon: <Baby className="w-8 h-8 text-pink-500" />, description: "Trusted childcare" },
-  { id: "other_help", label: "Other help", icon: <Wrench className="w-8 h-8 text-slate-500" />, description: "Repairs & heavy lifting" },
-];
+const SERVICE_TYPE_ICONS: Record<string, ReactNode> = {
+  cleaning: <Sparkles className="w-8 h-8 text-primary" />,
+  cooking: <Soup className="w-8 h-8 text-orange-500" />,
+  pickup_delivery: <Truck className="w-8 h-8 text-blue-500" />,
+  nanny: <Baby className="w-8 h-8 text-pink-500" />,
+  other_help: <Wrench className="w-8 h-8 text-slate-500" />,
+};
+
+const SERVICE_TYPES = SERVICE_CATEGORIES.map((c) => ({
+  id: c.id,
+  label: c.label,
+  description: c.description,
+  icon: SERVICE_TYPE_ICONS[c.id],
+}));
 
 // Step 2: Care Frequency
 const CARE_FREQUENCIES = [
@@ -118,7 +125,9 @@ interface JobData {
 
 export default function CreateJobPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useAuth();
+  const appliedServiceFromUrl = useRef(false);
   const { addToast } = useToast();
   // Lazy initializer for step - only runs once
   const [step, setStep] = useState(() => {
@@ -224,6 +233,17 @@ export default function CreateJobPage() {
       setSavedLocationShown(true);
     }
   }, [step, profile?.city, savedLocationShown, jobData.location_city]);
+
+  // Deep link: ?service=cleaning skips to step 2 with type preselected
+  useEffect(() => {
+    if (appliedServiceFromUrl.current) return;
+    const raw = searchParams.get("service");
+    if (!raw || !isServiceCategoryId(raw)) return;
+    appliedServiceFromUrl.current = true;
+    setJobData((prev) => ({ ...prev, service_type: raw }));
+    setStep(2);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const totalSteps = 5;
 

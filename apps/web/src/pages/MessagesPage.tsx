@@ -534,7 +534,7 @@ export default function MessagesPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(profile?.role === "client" ? "/dashboard" : "/freelancer/dashboard")}
+              onClick={() => navigate(profile?.role === "client" ? "/client/home" : "/freelancer/home")}
               className="md:hidden"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -735,7 +735,7 @@ export default function MessagesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(profile?.role === "client" ? "/dashboard" : "/freelancer/dashboard")}
+                      onClick={() => navigate(profile?.role === "client" ? "/client/home" : "/freelancer/home")}
                       className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
                     >
                       <ArrowLeft className="w-4 h-4" />

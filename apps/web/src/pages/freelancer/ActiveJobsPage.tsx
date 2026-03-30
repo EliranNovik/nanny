@@ -220,7 +220,7 @@ export default function FreelancerActiveJobsPage() {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => navigate("/freelancer/dashboard")}
+            onClick={() => navigate("/freelancer/home")}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>

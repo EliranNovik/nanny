@@ -17,6 +17,7 @@ import OnboardingPage from "@/pages/OnboardingPage";
 import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
 import DashboardPage from "@/pages/client/DashboardPage";
+import ClientHomePage from "@/pages/client/ClientHomePage";
 import HelpersPage from "@/pages/client/HelpersPage";
 import ClientProfileLayout from "@/pages/client/profile/ClientProfileLayout";
 import ClientProfileHub from "@/pages/client/profile/ClientProfileHub";
@@ -35,7 +36,11 @@ import FreelancerProfileExperiencePage from "@/pages/freelancer/profile/Freelanc
 import FreelancerProfileRatesPage from "@/pages/freelancer/profile/FreelancerProfileRatesPage";
 import FreelancerProfileAppearancePage from "@/pages/freelancer/profile/FreelancerProfileAppearancePage";
 import FreelancerDashboardPage from "@/pages/freelancer/DashboardPage";
+import FreelancerHomePage from "@/pages/freelancer/FreelancerHomePage";
 import UnifiedJobsPage from "@/pages/jobs/UnifiedJobsPage";
+import CommunityPostsPage from "@/pages/CommunityPostsPage";
+import PublicCommunityPostsPage from "@/pages/PublicCommunityPostsPage";
+import LikedPage from "@/pages/LikedPage";
 import ChatPage from "@/pages/ChatPage";
 import CalendarPage from "@/pages/CalendarPage";
 import AdminPage from "@/pages/admin/AdminPage";
@@ -89,10 +94,10 @@ function RoleRedirect() {
   }
 
   if (profile.role === "client") {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/client/home" replace />;
   }
 
-  return <Navigate to="/freelancer/dashboard" replace />;
+  return <Navigate to="/freelancer/home" replace />;
 }
 
 /** Wraps page content with top padding. Desktop: fixed header (BottomNav). Mobile: spacing below status bar (safe area is on body). */
@@ -138,7 +143,16 @@ function AppRoutes() {
 
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>
+        <Route path="/public/posts" element={<PublicCommunityPostsPage />} />
         {/* Client routes */}
+        <Route
+          path="/client/home"
+          element={
+            <ProtectedRoute>
+              <ClientHomePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/dashboard"
           element={
@@ -160,6 +174,22 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <CreateJobPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/posts"
+          element={
+            <ProtectedRoute>
+              <CommunityPostsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/liked"
+          element={
+            <ProtectedRoute>
+              <LikedPage />
             </ProtectedRoute>
           }
         />
@@ -186,6 +216,14 @@ function AppRoutes() {
         </Route>
 
         {/* Freelancer routes */}
+        <Route
+          path="/freelancer/home"
+          element={
+            <ProtectedRoute>
+              <FreelancerHomePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/freelancer/dashboard"
           element={

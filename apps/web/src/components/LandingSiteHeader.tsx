@@ -27,7 +27,7 @@ export function LandingSiteHeader({
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const dashboardPath = profile?.role === "freelancer" ? "/freelancer/dashboard" : "/dashboard";
+  const dashboardPath = profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
 
   return (
     <>

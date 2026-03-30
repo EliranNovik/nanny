@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
@@ -22,6 +22,8 @@ import { useJobCardEdgeOverlay } from "@/hooks/useJobCardEdgeOverlay";
 import { useIsMinMd } from "@/hooks/useIsMinMd";
 import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
 import { JobAttachedPhotosStrip, jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
+import { JobCardsCarousel, jobCardCarouselItemClass } from "@/components/jobs/JobCardsCarousel";
+import { isServiceCategoryId, serviceCategoryLabel } from "@/lib/serviceCategories";
 
 interface JobRequest {
     id: string;
@@ -66,6 +68,9 @@ function serviceHeroImageSrc(job: { service_type?: string }) {
 export default function RequestsTabContent({ activeTab }: RequestsTabContentProps) {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const serviceFilterRaw = searchParams.get("service");
+    const serviceFilter = isServiceCategoryId(serviceFilterRaw) ? serviceFilterRaw : null;
     const { addToast } = useToast();
     const isMinMd = useIsMinMd();
 
@@ -322,14 +327,49 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
         navigate(`/profile/${userId}`);
     }
 
-    const incomingItems = inboundNotifications.filter((n) => !n.isConfirmed);
-    const pendingItems = inboundNotifications.filter((n) => n.isConfirmed);
+    function jobMatchesServiceFilter(job: { service_type?: string } | null | undefined) {
+        if (!serviceFilter || !job) return true;
+        return job.service_type === serviceFilter;
+    }
+
+    const rawIncoming = inboundNotifications.filter((n) => !n.isConfirmed);
+    const rawPending = inboundNotifications.filter((n) => n.isConfirmed);
+    const incomingItems = rawIncoming.filter((n) => jobMatchesServiceFilter(n.job_requests));
+    const pendingItems = rawPending.filter((n) => jobMatchesServiceFilter(n.job_requests));
+    const filteredMyOpenRequests = myOpenRequests.filter(jobMatchesServiceFilter);
+
+    const clearServiceFilter = () => {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("service");
+            return next;
+        }, { replace: true });
+    };
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+
+    const serviceFilterBanner =
+        serviceFilter ? (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-orange-500/25 bg-orange-500/10 px-4 py-3 text-sm">
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                    Category: {serviceCategoryLabel(serviceFilter)}
+                </span>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-full border-orange-500/40 text-xs font-bold"
+                    onClick={clearServiceFilter}
+                >
+                    Clear
+                </Button>
+            </div>
+        ) : null;
 
     return (
         <>
             <div className="space-y-8">
+                {serviceFilterBanner}
 
                 {/* SECTION: INCOMING REQUESTS (Requests Tab) */}
                 {activeTab === 'requests' && (
@@ -346,7 +386,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         </div>
                         {incomingItems.length > 0 ? (
                             <>
-                            <div className="mx-auto mt-3 grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
+                            <JobCardsCarousel className="mt-3">
                                 {incomingItems.map((notif) => {
                                 const job = notif.job_requests;
                                 const isConfirmed = notif.isConfirmed;
@@ -362,7 +402,8 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
-                                                isDeclined && "opacity-60"
+                                                isDeclined && "opacity-60",
+                                                jobCardCarouselItemClass
                                             )}
                                         >
                                         <div
@@ -564,13 +605,22 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     </Card>
                                 );
                             })}
-                        </div>
+                        </JobCardsCarousel>
                         </>
                     ) : (
                         <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">
                                 <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-                                <p className="text-sm">No new incoming requests right now.</p>
+                                <p className="text-sm">
+                                    {serviceFilter && rawIncoming.length > 0
+                                        ? "No incoming requests in this category."
+                                        : "No new incoming requests right now."}
+                                </p>
+                                {serviceFilter && rawIncoming.length > 0 && (
+                                    <Button variant="outline" size="sm" className="mt-3" onClick={clearServiceFilter}>
+                                        Clear filter
+                                    </Button>
+                                )}
                             </CardContent>
                         </Card>
                     )}
@@ -592,7 +642,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         </div>
                         {pendingItems.length > 0 ? (
                             <>
-                            <div className="mx-auto mt-3 grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
+                            <JobCardsCarousel className="mt-3">
                                 {pendingItems.map((n) => {
                                     const job = n.job_requests;
                                     return (
@@ -604,7 +654,8 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             className={cn(
                                                 "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
-                                                isMinMd && "md:cursor-default"
+                                                isMinMd && "md:cursor-default",
+                                                jobCardCarouselItemClass
                                             )}
                                         >
                                             <div
@@ -782,13 +833,22 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         </Card>
                                     );
                                 })}
-                            </div>
+                            </JobCardsCarousel>
                             </>
                         ) : (
                             <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                                 <CardContent className="p-6 text-center text-muted-foreground">
                                     <Hourglass className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-                                    <p className="text-sm">No pending jobs at the moment.</p>
+                                    <p className="text-sm">
+                                        {serviceFilter && rawPending.length > 0
+                                            ? "No pending jobs in this category."
+                                            : "No pending jobs at the moment."}
+                                    </p>
+                                    {serviceFilter && rawPending.length > 0 && (
+                                        <Button variant="outline" size="sm" className="mt-3" onClick={clearServiceFilter}>
+                                            Clear filter
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
                         )}
@@ -808,10 +868,10 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                 Requests you posted for helpers—track who responded and what happens next.
                             </p>
                         </div>
-                    {myOpenRequests.length > 0 ? (
+                    {filteredMyOpenRequests.length > 0 ? (
                         <>
-                        <div className="mx-auto mt-3 grid w-full max-w-6xl grid-cols-1 gap-6 md:max-w-7xl md:grid-cols-2 md:gap-7 lg:grid-cols-3 lg:gap-8">
-                            {myOpenRequests.map((job) => (
+                        <JobCardsCarousel className="mt-3">
+                            {filteredMyOpenRequests.map((job) => (
                                 <Card 
                                     key={job.id} 
                                     id={`card-${job.id}`}
@@ -820,7 +880,8 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     className={cn(
                                         "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
                                         !isMinMd && "cursor-pointer",
-                                        isMinMd && "md:cursor-default"
+                                        isMinMd && "md:cursor-default",
+                                        jobCardCarouselItemClass
                                     )}
                                 >
                                     <div
@@ -1029,15 +1090,26 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     </div>
                                 </Card>
                             ))}
-                        </div>
+                        </JobCardsCarousel>
                         </>
                     ) : (
                         <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">
-                                <p className="text-sm mb-3">You haven't posted any requests yet.</p>
-                                <Button variant="outline" size="sm" onClick={() => navigate("/client/create")}>
-                                    Post a Request
-                                </Button>
+                                {serviceFilter && myOpenRequests.length > 0 ? (
+                                    <>
+                                        <p className="text-sm mb-3">No posted requests in this category.</p>
+                                        <Button variant="outline" size="sm" onClick={clearServiceFilter}>
+                                            Clear category filter
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-sm mb-3">You haven&apos;t posted any requests yet.</p>
+                                        <Button variant="outline" size="sm" onClick={() => navigate("/client/create")}>
+                                            Post a Request
+                                        </Button>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
                     )}

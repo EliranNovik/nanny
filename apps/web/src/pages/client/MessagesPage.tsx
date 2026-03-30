@@ -166,7 +166,7 @@ export default function MessagesPage() {
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/client/home")}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -215,7 +215,7 @@ export default function MessagesPage() {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/client/home")}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>

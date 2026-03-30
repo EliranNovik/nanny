@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useConfirmationCounts } from "@/hooks/useConfirmationCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
-import { Home, MessageCircle, User, Bell, Briefcase, ChevronDown, LogOut, Pencil, Search, X, ArrowLeft } from "lucide-react";
+import { Home, Heart, MessageCircle, User, Bell, ChevronDown, LogOut, Pencil, Search, X, ArrowLeft, Menu, MapPin, Plus, ClipboardList, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,30 +17,40 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserSearch } from "./UserSearch";
 import { JobsTabBar } from "@/components/jobs/JobsTabBar";
+import { FREELANCER_JOBS_TABS, CLIENT_JOBS_TABS } from "@/components/jobs/jobsTabConfig";
+import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { Separator } from "@/components/ui/separator";
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [jobsSearchParams] = useSearchParams();
   const { unreadNotifications, unreadMessages } = useUnreadCounts();
   const { totalConfirmations } = useConfirmationCounts();
   const { scheduleChanges } = useScheduleChanges();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [desktopAppMenuOpen, setDesktopAppMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchClusterRef = useRef<HTMLDivElement>(null);
+  const fabMenuRef = useRef<HTMLDivElement>(null);
+  const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const previousPathnameRef = useRef(location.pathname);
   const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : profile?.role === "client" ? "/client/profile" : "/dashboard";
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
+  const receiveRequestsOn = profile?.is_available_for_jobs === true;
+  const showFreelancerJobNav =
+    profile?.role === "freelancer" || (profile?.role === "client" && receiveRequestsOn);
   const isProfileHub =
     pathnameNorm === "/client/profile" || pathnameNorm === "/freelancer/profile";
   const isProfileSubpage = /^\/(client|freelancer)\/profile\/.+/.test(pathnameNorm);
   const profileBackTarget =
     isProfileHub
       ? pathnameNorm.startsWith("/freelancer")
-        ? "/freelancer/dashboard"
-        : "/dashboard"
+        ? "/freelancer/home"
+        : "/client/home"
       : isProfileSubpage
         ? pathnameNorm.startsWith("/freelancer")
           ? "/freelancer/profile"
@@ -64,8 +74,22 @@ export function BottomNav() {
     if (previousPathnameRef.current !== location.pathname && mobileSearchOpen) {
       setMobileSearchOpen(false);
     }
+    if (previousPathnameRef.current !== location.pathname && fabMenuOpen) {
+      setFabMenuOpen(false);
+    }
     previousPathnameRef.current = location.pathname;
-  }, [location.pathname, mobileSearchOpen]);
+  }, [location.pathname, mobileSearchOpen, fabMenuOpen]);
+
+  useEffect(() => {
+    if (!fabMenuOpen) return;
+    const close = (e: MouseEvent) => {
+      if (fabMenuRef.current && !fabMenuRef.current.contains(e.target as Node)) {
+        setFabMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [fabMenuOpen]);
 
   // Nothing on landing, marketing pages, chat, or messages
   const path = location.pathname;
@@ -84,41 +108,140 @@ export function BottomNav() {
   const notificationBadgeCount =
     (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications;
 
+  const DesktopAppMenuModal = user ? (
+    <Dialog open={desktopAppMenuOpen} onOpenChange={setDesktopAppMenuOpen}>
+      <DialogContent className="max-w-sm gap-0 p-0 overflow-hidden rounded-xl left-4 right-auto top-16 translate-x-0 translate-y-0 w-[min(22rem,calc(100vw-2rem))] data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2">
+        <DialogTitle className="sr-only">App menu</DialogTitle>
+        <div className="border-b border-border/60 px-4 py-3">
+          <p className="text-sm font-semibold text-foreground">Quick navigation</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Find helpers, jobs tabs, and your public profile</p>
+        </div>
+        <div className="max-h-[min(70vh,28rem)] overflow-y-auto p-2">
+          <Button
+            variant="ghost"
+            className="justify-start gap-2 w-full h-auto py-2.5"
+            onClick={() => {
+              navigate("/client/helpers");
+              setDesktopAppMenuOpen(false);
+            }}
+          >
+            <MapPin className="w-4 h-4 shrink-0" />
+            Find helpers
+          </Button>
+          <Separator className="my-2" />
+          <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Jobs</p>
+          <div className="flex flex-col gap-2">
+            {showFreelancerJobNav && (
+              <>
+                <p className="px-2 text-[10px] font-bold uppercase tracking-wide text-orange-600/90 dark:text-orange-400/90">
+                  Helping others
+                </p>
+                <div className="flex flex-col gap-0.5">
+                  {FREELANCER_JOBS_TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <Button
+                        key={`f-${tab.id}`}
+                        variant="ghost"
+                        className="justify-start gap-2 w-full h-auto py-2.5 font-normal"
+                        onClick={() => {
+                          navigate(buildJobsUrl("freelancer", tab.id));
+                          setDesktopAppMenuOpen(false);
+                        }}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        {tab.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            <p className="px-2 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+              My Helpers
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {CLIENT_JOBS_TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <Button
+                    key={`c-${tab.id}`}
+                    variant="ghost"
+                    className="justify-start gap-2 w-full h-auto py-2.5 font-normal"
+                    onClick={() => {
+                      navigate(buildJobsUrl("client", tab.id));
+                      setDesktopAppMenuOpen(false);
+                    }}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {tab.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          <Separator className="my-2" />
+          <Button
+            variant="ghost"
+            className="justify-start gap-2 w-full h-auto py-2.5"
+            onClick={() => {
+              navigate(`/profile/${user.id}`);
+              setDesktopAppMenuOpen(false);
+            }}
+          >
+            <User className="w-4 h-4 shrink-0" />
+            My public profile
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  ) : null;
+
   /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
   const DesktopHeader = (
     <header className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-card/70 backdrop-blur-md border-b border-border/40 transition-all">
       <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
-        <div className="flex min-w-0 justify-start">
-        {showProfileBack ? (
-          <button
-            type="button"
-            onClick={() => navigate(profileBackTarget!)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setProfileMenuOpen(true)}
-            className="flex items-center gap-3 min-w-0 group"
-            aria-label="Open profile menu"
-          >
-            <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
-              <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
-              <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
-                {(profile?.full_name ?? user?.email ?? "User").slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col text-left min-w-0">
-              <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
-                {profile?.full_name?.split(' ')[0] ?? "User"}
-                <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
-              </span>
-            </div>
-          </button>
-        )}
+        <div className="flex min-w-0 justify-start items-center gap-1.5">
+          {user && (
+            <button
+              type="button"
+              onClick={() => setDesktopAppMenuOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
+              aria-label="Open app menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
+          {showProfileBack ? (
+            <button
+              type="button"
+              onClick={() => navigate(profileBackTarget!)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setProfileMenuOpen(true)}
+              className="flex items-center gap-3 min-w-0 group"
+              aria-label="Open profile menu"
+            >
+              <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
+                <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+                <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
+                  {(profile?.full_name ?? user?.email ?? "User").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col text-left min-w-0">
+                <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
+                  {profile?.full_name?.split(' ')[0] ?? "User"}
+                  <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
+                </span>
+              </div>
+            </button>
+          )}
         </div>
 
         <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
@@ -138,7 +261,7 @@ export function BottomNav() {
             {notificationBadgeCount > 0 && (
               <Badge
                 variant="destructive"
-                className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center border-2 border-white px-1 text-[9px] font-black dark:border-zinc-900 md:right-0.5 md:top-0.5 md:h-5 md:min-w-5 md:px-1.5 md:text-[10px]"
+                className="absolute right-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 md:right-0 md:top-0 md:h-7 md:min-w-7 md:px-1.5 md:text-xs"
               >
                 {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
               </Badge>
@@ -200,7 +323,7 @@ export function BottomNav() {
             {notificationBadgeCount > 0 && (
               <Badge
                 variant="destructive"
-                className="absolute -right-0.5 -top-0.5 h-4 min-w-4 border-2 border-white px-1 text-[9px] font-black dark:border-zinc-900"
+                className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900"
               >
                 {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
               </Badge>
@@ -230,8 +353,9 @@ export function BottomNav() {
     ) : null;
 
   /** Mobile jobs: tab pill top-left (search + bell stay top-right) */
+  const jobsModeInUrl = jobsSearchParams.get("mode");
   const MobileJobsTabLeft =
-    isJobsPage && !showProfileBack && !mobileSearchOpen ? (
+    isJobsPage && jobsModeInUrl && !showProfileBack && !mobileSearchOpen ? (
       <div
         className="md:hidden fixed z-[60] pointer-events-none"
         style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
@@ -292,6 +416,7 @@ export function BottomNav() {
         {MobileProfileBack}
         {MobileJobsTabLeft}
         {ProfileMenuModal}
+        {DesktopAppMenuModal}
         <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       </>
     );
@@ -312,13 +437,18 @@ export function BottomNav() {
   if (user && !profile && location.pathname !== "/onboarding") {
     // Allow nav on freelancer/client pages even without profile
     const allowedPaths = [
+      "/freelancer/home",
       "/freelancer/dashboard",
       "/freelancer/profile",
       "/freelancer/notifications",
       "/freelancer/active-jobs",
+      "/client/home",
       "/client/profile",
       "/client/create",
       "/client/active-jobs",
+      "/posts",
+      "/public/posts",
+      "/liked",
       "/dashboard",
       "/messages",
       "/calendar"
@@ -337,6 +467,7 @@ export function BottomNav() {
         {MobileJobsTabLeft}
         {MobileFloatingActions}
         {ProfileMenuModal}
+        {DesktopAppMenuModal}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
           <div
             className={cn(
@@ -361,10 +492,10 @@ export function BottomNav() {
 
     const profileTabPath = isFreelancer ? "/freelancer/profile" : "/client/profile";
     const userNav = [
-      { path: isFreelancer ? "/freelancer/dashboard" : "/dashboard", icon: Home, label: isFreelancer ? "Home" : "Dashboard" },
-      { path: "/jobs", icon: Briefcase, label: "Jobs" },
+      { path: isFreelancer ? "/freelancer/home" : "/client/home", icon: Home, label: "Home" },
+      { path: "/liked", icon: Heart, label: "Liked" },
+      // { path: "/jobs", icon: Briefcase, label: "Jobs" }, // hidden for now — re-add Briefcase import when restoring
       { path: "/messages", icon: MessageCircle, label: "Messages" },
-      { path: profileTabPath, icon: User, label: "Profile" },
     ];
 
     return (
@@ -380,10 +511,13 @@ export function BottomNav() {
             )}
           >
             <div className="mx-0 flex w-full max-w-none items-center justify-evenly overflow-visible px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12">
-              {/* First two items */}
+              {/* Home + Liked */}
               {userNav.slice(0, 2).map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname.startsWith(item.path);
+                const isActive =
+                  item.path === "/liked"
+                    ? location.pathname.startsWith("/liked")
+                    : location.pathname.startsWith(item.path);
 
                 const jobsBadgeCount = item.path === "/jobs"
                   ? (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications
@@ -406,43 +540,107 @@ export function BottomNav() {
                           : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80"
                       )}
                     >
-                      <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110")} />
+                      <Icon
+                        className={cn(
+                          "transition-all duration-300",
+                          isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110",
+                          isActive && item.path === "/liked" && "text-rose-500 dark:text-rose-400"
+                        )}
+                      />
                       {jobsBadgeCount > 0 && (
                         <Badge
                           variant="destructive"
-                          className="absolute -right-0.5 -top-0.5 z-10 flex h-4 min-w-4 items-center justify-center border-2 border-white px-0.5 text-[9px] font-black leading-none dark:border-zinc-900"
+                          className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 sm:h-7 sm:min-w-7 sm:px-1.5 sm:text-xs"
                         >
                           {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
                         </Badge>
                       )}
                     </div>
-                    <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">{item.label}</span>
+                    <span
+                      className={cn(
+                        "mt-0.5 hidden text-[10px] font-semibold leading-none md:inline",
+                        isActive && item.path === "/liked" && "text-rose-600 dark:text-rose-400"
+                      )}
+                    >
+                      {item.label}
+                    </span>
                   </Link>
                 );
               })}
 
-              {/* Center logo — floats above bar on mobile; no label (overflow clips PNG halo) */}
-              <div className="relative z-10 mx-0.5 flex shrink-0 items-center justify-center md:mx-2">
+              {/* Center FAB — post request vs community offers */}
+              <div
+                ref={fabMenuRef}
+                className="relative z-10 mx-0.5 flex shrink-0 items-center justify-center md:mx-2"
+              >
                 <button
                   type="button"
-                  onClick={() => navigate("/client/create")}
+                  onClick={() => setFabMenuOpen((v) => !v)}
                   className={cn(
-                    "flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full text-white transition-all active:scale-95 md:h-[52px] md:w-[52px]",
-                    "border-0 bg-transparent p-0 shadow-[0_10px_28px_rgba(0,0,0,0.2)] outline-none ring-0 ring-offset-0",
-                    "focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
-                    "mt-0 md:shadow-lg md:hover:scale-105"
+                    "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all active:scale-95",
+                    "shadow-[0_10px_28px_rgba(0,0,0,0.2)] shadow-primary/25 outline-none ring-0 ring-offset-0",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
+                    "mt-0 md:shadow-lg md:hover:scale-105",
+                    fabMenuOpen && "ring-2 ring-primary/40 ring-offset-2"
                   )}
-                  aria-label="Post job"
+                  aria-label="Create post or browse"
+                  aria-expanded={fabMenuOpen}
+                  aria-haspopup="menu"
                 >
-                  <img
-                    src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-                    alt=""
-                    className="pointer-events-none block h-full w-full scale-[1.12] object-cover object-center outline-none ring-0 md:scale-100"
-                  />
+                  <Plus className="h-7 w-7 stroke-[2.5]" aria-hidden />
                 </button>
+                {fabMenuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute bottom-[calc(100%+10px)] left-1/2 z-[130] w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-border/60 bg-card/95 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:bg-card/98 animate-in fade-in zoom-in-95 duration-150"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+                      onClick={() => {
+                        if (isFreelancer) {
+                          navigate(buildJobsUrl("freelancer", "requests"));
+                        } else {
+                          navigate("/client/create");
+                        }
+                        setFabMenuOpen(false);
+                      }}
+                    >
+                      <ClipboardList className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      <span className="min-w-0 flex-1">
+                        <span className="block leading-tight">
+                          {isFreelancer ? "Job requests" : "Post a request"}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground leading-snug">
+                          {isFreelancer
+                            ? "Browse and respond to client requests"
+                            : "Find helpers — describe what you need"}
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+                      onClick={() => {
+                        navigate("/posts");
+                        setFabMenuOpen(false);
+                      }}
+                    >
+                      <UsersRound className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      <span className="min-w-0 flex-1">
+                        <span className="block leading-tight">Offer your services</span>
+                        <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground leading-snug">
+                          Post yourself on the board — others can contact you
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Messages: mobile + desktop */}
+              {/* Messages (Jobs tab commented out in userNav for now) */}
               {userNav.slice(2, 3).map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname.startsWith(item.path);
@@ -472,7 +670,7 @@ export function BottomNav() {
                     {showMessageBadge && (
                       <Badge
                         variant="destructive"
-                        className="absolute top-1 right-1 h-4 min-w-[16px] flex items-center justify-center px-1 text-[9px] font-bold border-2 border-white dark:border-zinc-900 shadow-sm"
+                        className="absolute -right-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 sm:top-1 sm:right-1 sm:h-7 sm:min-w-7 sm:px-1.5 sm:text-xs"
                       >
                         {unreadMessages > 9 ? "9+" : unreadMessages}
                       </Badge>
@@ -534,6 +732,7 @@ export function BottomNav() {
           </div>
         </nav>
         {ProfileMenuModal}
+        {DesktopAppMenuModal}
         <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       </>
     );
@@ -557,6 +756,7 @@ export function BottomNav() {
           </div>
         </nav>
         {ProfileMenuModal}
+        {DesktopAppMenuModal}
         <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       </>
     );

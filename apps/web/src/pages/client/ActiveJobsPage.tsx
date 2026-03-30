@@ -407,7 +407,7 @@ export default function ActiveJobsPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/client/home")}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>

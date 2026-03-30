@@ -77,9 +77,9 @@ export default function OnboardingPage() {
           
           // Navigate immediately without waiting for anything
           if (existingProfile.role === "client") {
-            navigate("/dashboard", { replace: true });
+            navigate("/client/home", { replace: true });
           } else {
-            navigate("/freelancer/dashboard", { replace: true });
+            navigate("/freelancer/home", { replace: true });
           }
           
           // Try to refresh profile in context in background (don't wait)
@@ -336,9 +336,9 @@ export default function OnboardingPage() {
       
       // Navigate based on role immediately
       if (existingProfile.role === "client") {
-        navigate("/dashboard", { replace: true });
+        navigate("/client/home", { replace: true });
       } else {
-        navigate("/freelancer/dashboard", { replace: true });
+        navigate("/freelancer/home", { replace: true });
       }
       return;
     }
@@ -414,7 +414,7 @@ export default function OnboardingPage() {
     console.log("[OnboardingPage] Profile created successfully, navigating NOW...", { role });
     
     // Navigate based on role immediately - use window.location as fallback
-    const targetPath = role === "client" ? "/dashboard" : "/freelancer/dashboard";
+    const targetPath = role === "client" ? "/client/home" : "/freelancer/home";
     console.log("[OnboardingPage] Target path:", targetPath);
     
     // Use window.location immediately for guaranteed navigation

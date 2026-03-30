@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import {
   Dialog,
   DialogContent,
@@ -129,7 +130,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
                 type: "job_request",
                 title: `New ${job.care_type || job.service_type || "Job"} Request`,
                 description: job.location_city ? `Location: ${job.location_city}` : "Check details",
-                link: `/jobs?tab=requests`,
+                link: buildJobsUrl("freelancer", "requests"),
                 created_at: n.created_at,
                 metadata: { table: 'job_candidate_notifications', job_id: job.id }
               });
@@ -153,7 +154,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
                     type: "job_update",
                     title: "Job Confirmed!",
                     description: `Your ${job.care_type || "job"} is ready to start.`,
-                    link: `/jobs?tab=live`,
+                    link: buildJobsUrl("freelancer", "jobs"),
                     created_at: job.updated_at,
                     metadata: { job_id: job.id }
                 });
@@ -187,7 +188,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
                 type: "confirmation",
                 title: "Helper Available",
                 description: `${c.profiles?.full_name || "A helper"} responded to your request.`,
-                link: `/jobs?tab=pending`,
+                link: buildJobsUrl("client", "my_requests"),
                 created_at: c.created_at,
                 sender_name: c.profiles?.full_name,
                 sender_photo: c.profiles?.photo_url,

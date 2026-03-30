@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { StarRating } from "@/components/StarRating";
 import { cn } from "@/lib/utils";
+import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 
 interface PublicProfile {
   id: string;
@@ -445,7 +446,7 @@ export default function PublicProfilePage() {
                     key={job.id}
                     onClick={() => {
                       if (pendingJobs.some((p) => p.id === job.id)) {
-                        navigate("/jobs", { state: { tab: "pending" } });
+                        navigate(buildJobsUrl("freelancer", "pending"));
                       }
                     }}
                     className={cn(

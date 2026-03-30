@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
+import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 
 export function NotificationListener() {
   const { user, profile } = useAuth();
@@ -85,7 +86,7 @@ export function NotificationListener() {
               duration: 6000,
               action: {
                 label: "View",
-                onClick: () => navigate("/jobs?tab=requests"),
+                onClick: () => navigate(buildJobsUrl("freelancer", "requests")),
               },
             });
           }
@@ -131,7 +132,7 @@ export function NotificationListener() {
                 duration: 6000,
                 action: {
                   label: "Review",
-                  onClick: () => navigate("/jobs?tab=pending"),
+                  onClick: () => navigate(buildJobsUrl("client", "my_requests")),
                 },
               });
             }
@@ -160,12 +161,12 @@ export function NotificationListener() {
 
           let title = "Job Update";
           let message = `Job status changed to ${newJob.status}`;
-          let targetTab = "requests";
+          let targetTab: "jobs" | "past" = "jobs";
 
           if (newJob.status === 'locked' || newJob.status === 'active') {
             title = "Job Confirmed! 🎉";
             message = `Your ${newJob.care_type || 'job'} is now confirmed and ready.`;
-            targetTab = "live";
+            targetTab = "jobs";
           } else if (newJob.status === 'completed') {
             title = "Job Completed ✨";
             message = "The job has been marked as finished.";
@@ -174,6 +175,8 @@ export function NotificationListener() {
             return; // Only notify on specific transitions
           }
 
+          const mode = newJob.client_id === user.id ? "client" : "freelancer";
+
           addToast({
             title,
             description: message,
@@ -181,7 +184,7 @@ export function NotificationListener() {
             duration: 6000,
             action: {
                 label: "Go to Job",
-                onClick: () => navigate(`/jobs?tab=${targetTab}`),
+                onClick: () => navigate(buildJobsUrl(mode, targetTab)),
             }
           });
         }

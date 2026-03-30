@@ -15,9 +15,11 @@ import {
   Search,
   Navigation,
   ChevronRight,
+  Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/StarRating";
+import { useToast } from "@/components/ui/toast";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
 const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
@@ -219,6 +221,7 @@ function HelpersMapBlock({
 export default function HelpersPage() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { addToast } = useToast();
   const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: mapsApiKey,
@@ -237,6 +240,9 @@ export default function HelpersPage() {
   const [locating, setLocating] = useState(false);
   /** True when the current debounced query was resolved as a place — map shows radius for everyone there. */
   const [geocodeMatchedPlace, setGeocodeMatchedPlace] = useState(false);
+  const resultsAnchorRef = useRef<HTMLDivElement>(null);
+  const userTriggeredSearchRef = useRef(false);
+  const lastAutoScrollKeyRef = useRef<string>("");
   /** Apply saved profile search radius once when it loads (does not override after user moves slider). */
   const appliedProfileRadiusRef = useRef(false);
   /** First coords from profile — used when clearing search to restore map center. */
@@ -244,8 +250,75 @@ export default function HelpersPage() {
   const searchDebounceBootRef = useRef(false);
   const geocodeRequestIdRef = useRef(0);
 
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
+  const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
+
+  const loadFavorites = useCallback(async () => {
+    if (!user?.id) {
+      setFavoriteIds(new Set());
+      return;
+    }
+    const { data, error } = await supabase
+      .from("profile_favorites")
+      .select("favorite_user_id")
+      .eq("user_id", user.id);
+    if (error) {
+      console.error("HelpersPage loadFavorites:", error);
+      return;
+    }
+    setFavoriteIds(new Set((data ?? []).map((r) => r.favorite_user_id as string)));
+  }, [user?.id]);
+
+  useEffect(() => {
+    void loadFavorites();
+  }, [loadFavorites]);
+
+  const toggleFavorite = useCallback(
+    async (favoriteUserId: string, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!user?.id || favoriteUserId === user.id) return;
+      setFavoriteBusyId(favoriteUserId);
+      try {
+        if (favoriteIds.has(favoriteUserId)) {
+          const { error } = await supabase
+            .from("profile_favorites")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("favorite_user_id", favoriteUserId);
+          if (error) throw error;
+          setFavoriteIds((prev) => {
+            const next = new Set(prev);
+            next.delete(favoriteUserId);
+            return next;
+          });
+          addToast({ title: "Removed from favorites", variant: "success" });
+        } else {
+          const { error } = await supabase.from("profile_favorites").insert({
+            user_id: user.id,
+            favorite_user_id: favoriteUserId,
+          });
+          if (error) throw error;
+          setFavoriteIds((prev) => new Set(prev).add(favoriteUserId));
+          addToast({ title: "Saved to favorites", variant: "success" });
+        }
+      } catch (err) {
+        console.error("toggleFavorite:", err);
+        addToast({
+          title: "Could not update favorite",
+          description: err instanceof Error ? err.message : "Try again.",
+          variant: "error",
+        });
+      } finally {
+        setFavoriteBusyId(null);
+      }
+    },
+    [user?.id, favoriteIds, addToast]
+  );
+
   const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
     if (!e.latLng) return;
+    userTriggeredSearchRef.current = true;
     setCenter({ lat: e.latLng.lat(), lng: e.latLng.lng() });
     setGeocodeMatchedPlace(false);
   }, []);
@@ -352,6 +425,33 @@ export default function HelpersPage() {
     [profileRows, computeResults]
   );
 
+  // Auto-scroll to results after the user interacts (tab open + search / radius / map click),
+  // but avoid scrolling on the initial page load.
+  useEffect(() => {
+    if (!hasFetchedOnce) return;
+    if (!userTriggeredSearchRef.current) return;
+
+    // Use debouncedSearch so typing doesn't spam-scroll.
+    const key = [
+      debouncedSearch.trim().toLowerCase(),
+      Math.round(radiusKm),
+      Math.round(center.lat * 1000) / 1000,
+      Math.round(center.lng * 1000) / 1000,
+      results.length,
+    ].join("|");
+
+    if (lastAutoScrollKeyRef.current === key) return;
+    lastAutoScrollKeyRef.current = key;
+
+    // Wait a frame so the grid (and counts) are laid out.
+    requestAnimationFrame(() => {
+      resultsAnchorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [hasFetchedOnce, debouncedSearch, radiusKm, center.lat, center.lng, results.length]);
+
   const fetchProfiles = useCallback(async () => {
     setLoadingFetch(true);
     try {
@@ -450,6 +550,7 @@ export default function HelpersPage() {
 
   const useMyLocation = () => {
     if (!navigator.geolocation) return;
+    userTriggeredSearchRef.current = true;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -515,7 +616,10 @@ export default function HelpersPage() {
                   max={100}
                   step={5}
                   value={radiusKm}
-                  onChange={(e) => setRadiusKm(Number(e.target.value))}
+                onChange={(e) => {
+                  userTriggeredSearchRef.current = true;
+                  setRadiusKm(Number(e.target.value));
+                }}
                   className="h-2 w-full cursor-pointer accent-orange-500"
                 />
                 <span className="text-sm font-bold tabular-nums text-slate-800 dark:text-slate-100">
@@ -532,7 +636,10 @@ export default function HelpersPage() {
               <Input
                 placeholder="City (moves map) or name…"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  userTriggeredSearchRef.current = true;
+                  setSearchQuery(e.target.value);
+                }}
                 className="h-11 rounded-xl border-slate-200 pl-10 pr-10 dark:border-white/10"
                 aria-busy={loadingFetch}
               />
@@ -540,7 +647,10 @@ export default function HelpersPage() {
           </CardContent>
         </Card>
 
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-1 md:max-w-6xl">
+        <div
+          ref={resultsAnchorRef}
+          className="mx-auto flex w-full max-w-5xl items-center justify-between px-1 md:max-w-6xl"
+        >
           <h2 className="text-lg font-black text-slate-900 dark:text-white">
             {hasFetchedOnce ? (
               <>
@@ -586,6 +696,34 @@ export default function HelpersPage() {
               >
                 <CardContent className="flex flex-1 flex-col gap-0 p-0">
                   <div className="relative aspect-[5/4] w-full min-h-[200px] shrink-0 bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-800 dark:to-slate-900">
+                    {user?.id && (
+                      <button
+                        type="button"
+                        aria-label={
+                          favoriteIds.has(h.id) ? "Remove from favorites" : "Add to favorites"
+                        }
+                        aria-pressed={favoriteIds.has(h.id)}
+                        disabled={favoriteBusyId === h.id}
+                        onClick={(e) => void toggleFavorite(h.id, e)}
+                        className={cn(
+                          "absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/35 text-white shadow-md backdrop-blur-sm transition-colors",
+                          "hover:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400",
+                          "disabled:opacity-60"
+                        )}
+                      >
+                        {favoriteBusyId === h.id ? (
+                          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                        ) : (
+                          <Heart
+                            className={cn(
+                              "h-5 w-5 text-white drop-shadow-sm",
+                              favoriteIds.has(h.id) && "fill-red-500 text-red-500"
+                            )}
+                            strokeWidth={favoriteIds.has(h.id) ? 0 : 2.25}
+                          />
+                        )}
+                      </button>
+                    )}
                     <Avatar className="h-full w-full rounded-none border-0 shadow-none">
                       <AvatarImage
                         src={h.photo_url || undefined}
