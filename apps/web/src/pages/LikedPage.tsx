@@ -231,10 +231,10 @@ export default function LikedPage() {
   const postCount = posts.length;
 
   const tabBarClass =
-    "inline-flex h-12 w-full items-center justify-center gap-1 rounded-2xl border border-rose-200/50 bg-gradient-to-r from-rose-50/90 via-orange-50/80 to-amber-50/70 p-1 shadow-inner dark:border-rose-900/40 dark:from-rose-950/40 dark:via-orange-950/30 dark:to-amber-950/25 md:h-11";
+    "inline-flex h-11 w-full items-center justify-center gap-1 rounded-2xl border border-black/10 bg-transparent p-1 dark:border-white/10 md:h-11";
 
   const triggerClass =
-    "flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all data-[state=active]:bg-white/90 data-[state=active]:text-rose-600 data-[state=active]:shadow-md dark:data-[state=active]:bg-zinc-900/90 dark:data-[state=active]:text-rose-400";
+    "flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all data-[state=active]:bg-black/[0.03] data-[state=active]:text-foreground dark:data-[state=active]:bg-white/[0.06]";
 
   const emptyHint = (
     <p className="text-center text-sm text-muted-foreground">
@@ -255,26 +255,24 @@ export default function LikedPage() {
 
   return (
     <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
-      <div className="app-desktop-shell px-1 pt-6 md:pt-8">
-        <header className="relative mx-auto mb-8 max-w-2xl overflow-hidden rounded-3xl border border-rose-200/40 bg-gradient-to-br from-rose-500/[0.08] via-orange-500/[0.06] to-amber-400/[0.07] px-5 py-6 shadow-[0_20px_50px_-20px_rgba(244,63,94,0.35)] dark:border-rose-900/30 dark:from-rose-950/50 dark:via-orange-950/30 dark:to-amber-950/20 md:px-8 md:py-7">
-          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-rose-400/20 blur-3xl dark:bg-rose-500/10" />
-          <div className="pointer-events-none absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-amber-400/15 blur-2xl dark:bg-amber-500/10" />
-          <div className="relative flex items-start gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-lg shadow-rose-500/25">
-              <Heart className="h-6 w-6 fill-current" aria-hidden />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white md:text-3xl">
-                Saved for you
+      <div className="app-desktop-shell px-1 pt-4 md:pt-6">
+        <div className="mx-auto mb-4 max-w-2xl px-2 md:mb-6 md:px-0">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-foreground md:text-2xl">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300">
+                  <Heart className="h-4.5 w-4.5 fill-current" aria-hidden />
+                </span>
+                Saved
               </h1>
-              <p className="mt-1.5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-                Profiles and community posts you have hearted—one place to come back to.
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your liked profiles and community offers.
               </p>
             </div>
           </div>
-        </header>
+        </div>
 
-        <Tabs value={tab} onValueChange={setTab} className="mx-auto max-w-2xl">
+        <Tabs value={tab} onValueChange={setTab} className="mx-auto max-w-2xl px-2 md:px-0">
           <TabsList className={tabBarClass}>
             <TabsTrigger value="profiles" className={triggerClass}>
               <UserRound className="h-4 w-4 shrink-0 opacity-80" />
@@ -302,7 +300,7 @@ export default function LikedPage() {
                 <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
               </div>
             ) : profiles.length === 0 ? (
-              <Card className="border-dashed border-rose-200/60 bg-card/60 dark:border-rose-900/40">
+              <Card className="rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15">
                 <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
                   <Sparkles className="h-10 w-10 text-rose-400/80" />
                   <p className="text-base font-semibold text-foreground">No saved profiles yet</p>
@@ -310,16 +308,16 @@ export default function LikedPage() {
                 </CardContent>
               </Card>
             ) : (
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col gap-2">
                 {profiles.map((p) => (
                   <li key={p.id}>
                     <Card
                       className={cn(
-                        "overflow-hidden border-rose-200/40 bg-card/80 shadow-sm transition-all duration-300",
-                        "hover:-translate-y-0.5 hover:border-rose-300/50 hover:shadow-md dark:border-white/10 dark:hover:border-rose-900/50"
+                        "overflow-hidden rounded-2xl border border-black/10 bg-transparent transition-all duration-200 dark:border-white/10",
+                        "hover:border-black/15 dark:hover:border-white/15"
                       )}
                     >
-                      <CardContent className="flex items-center gap-3 p-4">
+                      <CardContent className="flex items-center gap-3 p-3 md:p-4">
                         <Link
                           to={`/profile/${p.id}`}
                           className="flex min-w-0 flex-1 items-center gap-3"
@@ -348,7 +346,12 @@ export default function LikedPage() {
                           </div>
                         </Link>
                         <div className="flex shrink-0 flex-col gap-1 sm:flex-row sm:items-center">
-                          <Button variant="ghost" size="icon" className="h-10 w-10 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600" asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600"
+                            asChild
+                          >
                             <Link to={`/profile/${p.id}`} aria-label="Open profile">
                               <ExternalLink className="h-4 w-4" />
                             </Link>
@@ -383,7 +386,7 @@ export default function LikedPage() {
                 <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
               </div>
             ) : posts.length === 0 ? (
-              <Card className="border-dashed border-rose-200/60 bg-card/60 dark:border-rose-900/40">
+              <Card className="rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15">
                 <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
                   <Heart className="h-10 w-10 text-rose-400/80" />
                   <p className="text-base font-semibold text-foreground">No saved posts yet</p>
@@ -391,7 +394,7 @@ export default function LikedPage() {
                 </CardContent>
               </Card>
             ) : (
-              <ul className="flex flex-col gap-4">
+              <ul className="flex flex-col gap-2">
                 {posts.map((post) => {
                   const cat = isServiceCategoryId(post.category)
                     ? serviceCategoryLabel(post.category)
@@ -400,61 +403,72 @@ export default function LikedPage() {
                     <li key={post.id}>
                       <Card
                         className={cn(
-                          "overflow-hidden border-rose-200/40 bg-card/80 shadow-sm transition-all duration-300",
-                          "hover:-translate-y-0.5 hover:border-rose-300/50 hover:shadow-md dark:border-white/10"
+                          "overflow-hidden rounded-2xl border border-black/10 bg-transparent transition-all duration-200 dark:border-white/10",
+                          "hover:border-black/15 dark:hover:border-white/15"
                         )}
                       >
-                        {post.coverImage && (
-                          <div className="relative aspect-[21/9] max-h-40 w-full bg-muted">
-                            <img
-                              src={post.coverImage}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                          </div>
-                        )}
-                        <CardContent className="space-y-3 p-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <Avatar className="h-10 w-10 border border-border/60">
-                                <AvatarImage src={post.author?.photo_url ?? undefined} />
-                                <AvatarFallback className="bg-rose-500/15 text-xs font-bold text-rose-700">
-                                  {(post.author?.full_name || "?").charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-bold">{post.author?.full_name || "Member"}</p>
-                                <Badge variant="secondary" className="mt-0.5 text-[10px] font-bold">
-                                  {cat}
-                                </Badge>
+                        <CardContent className="p-3 md:p-4">
+                          <div className="flex items-start gap-3">
+                            {post.coverImage ? (
+                              <div className="h-20 w-24 shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-transparent dark:border-white/10">
+                                <img src={post.coverImage} alt="" className="h-full w-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="h-20 w-24 shrink-0 rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15" />
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-7 w-7 border border-border/60">
+                                      <AvatarImage src={post.author?.photo_url ?? undefined} />
+                                      <AvatarFallback className="bg-rose-500/15 text-[10px] font-black text-rose-700">
+                                        {(post.author?.full_name || "?").charAt(0).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <p className="truncate text-xs font-bold text-foreground">
+                                      {post.author?.full_name || "Member"}
+                                    </p>
+                                    <Badge variant="secondary" className="text-[10px] font-bold">
+                                      {cat}
+                                    </Badge>
+                                  </div>
+                                  <h2 className="mt-1 truncate text-[15px] font-black leading-snug text-foreground">
+                                    {post.title}
+                                  </h2>
+                                </div>
+
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                  disabled={busyPostId === post.id}
+                                  aria-label="Remove from saved"
+                                  onClick={() => void removePostFavorite(post.id)}
+                                >
+                                  {busyPostId === post.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+
+                              <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                {post.body}
+                              </p>
+
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <Button variant="outline" size="sm" className="rounded-full" asChild>
+                                  <Link to="/public/posts">
+                                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                                    Community feed
+                                  </Link>
+                                </Button>
                               </div>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                              disabled={busyPostId === post.id}
-                              aria-label="Remove from saved"
-                              onClick={() => void removePostFavorite(post.id)}
-                            >
-                              {busyPostId === post.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                          <h2 className="text-lg font-black leading-snug text-foreground">{post.title}</h2>
-                          <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{post.body}</p>
-                          <div className="flex flex-wrap items-center gap-2 pt-1">
-                            <Button variant="outline" size="sm" className="rounded-full border-rose-200/60 text-rose-700 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-300 dark:hover:bg-rose-950/40" asChild>
-                              <Link to="/public/posts">
-                                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                                Community feed
-                              </Link>
-                            </Button>
                           </div>
                         </CardContent>
                       </Card>

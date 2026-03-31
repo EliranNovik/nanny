@@ -130,7 +130,11 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             <div className="grid grid-cols-3 gap-2">
               <Link
                 to={myPostedUrl}
-                className="relative flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/80 px-2 py-3 text-center shadow-sm transition hover:bg-muted/50"
+                className={cn(
+                  "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                  "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04]"
+                )}
               >
                 {myPostedRequestsCount > 0 && (
                   <Badge
@@ -145,7 +149,11 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               </Link>
               <Link
                 to={incomingUrl}
-                className="relative flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/80 px-2 py-3 text-center shadow-sm transition hover:bg-muted/50"
+                className={cn(
+                  "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                  "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04]"
+                )}
               >
                 {incomingRequestsCount > 0 && (
                   <Badge
@@ -160,7 +168,11 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               </Link>
               <Link
                 to={dashboardPath}
-                className="relative flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/80 px-2 py-3 text-center shadow-sm transition hover:bg-muted/50"
+                className={cn(
+                  "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                  "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04]"
+                )}
               >
                 <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />
                 <span className="text-[10px] font-bold leading-tight sm:text-xs">Dashboard</span>

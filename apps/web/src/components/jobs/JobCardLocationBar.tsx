@@ -15,10 +15,10 @@ export function JobCardLocationBar({ location, trailing, className }: JobCardLoc
     return (
         <div
             className={cn(
-                "relative z-[110] flex min-h-0 shrink-0 items-center border-b px-3 py-2.5 sm:px-4 md:py-3.5 md:px-5",
+                "relative z-[110] flex min-h-0 shrink-0 items-center px-3 py-2.5 sm:px-4 md:py-3.5 md:px-5 md:border-b",
                 /* Mobile: soft orange wash — aligned with app mesh / --background */
-                "max-md:border-orange-200/45 max-md:bg-gradient-to-b max-md:from-orange-50/85 max-md:via-[hsl(32_28%_97%)] max-md:to-[hsl(var(--background))] max-md:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.55)]",
-                "max-md:dark:border-orange-900/40 max-md:dark:from-orange-950/25 max-md:dark:via-[hsl(22_14%_14%)] max-md:dark:to-[hsl(var(--background))] max-md:dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]",
+                "max-md:bg-gradient-to-b max-md:from-orange-50/85 max-md:via-[hsl(32_28%_97%)] max-md:to-[hsl(var(--background))]",
+                "max-md:dark:from-orange-950/25 max-md:dark:via-[hsl(22_14%_14%)] max-md:dark:to-[hsl(var(--background))]",
                 /* Desktop: unchanged grey strip */
                 "md:border-slate-200/90 md:bg-slate-100 md:shadow-none dark:md:border-white/10 dark:md:bg-zinc-800/95",
                 className

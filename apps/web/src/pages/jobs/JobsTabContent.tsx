@@ -38,6 +38,16 @@ interface JobRequest {
     service_details?: any;
     time_duration?: string;
     care_frequency?: string;
+    shift_hours?: string | null;
+    languages_pref?: string[] | null;
+    requirements?: string[] | null;
+    budget_min?: number | null;
+    budget_max?: number | null;
+    notes?: string | null;
+    stage?: string | null;
+    offered_hourly_rate?: number | null;
+    price_offer_status?: string | null;
+    schedule_confirmed?: boolean | null;
 }
 
 interface Profile {
@@ -87,6 +97,62 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
         [perspective, activeTab, activeJobs.length, pastJobs.length, loading]
     );
     const clippedCardIds = useJobCardEdgeOverlay(edgeOverlayKey);
+
+    const renderMobileJobDetails = (job: JobRequest) => {
+        const startAt = job.start_at ? new Date(job.start_at) : null;
+        const createdAt = job.created_at ? new Date(job.created_at) : null;
+        const notes = typeof job.notes === "string" ? job.notes.trim() : "";
+        const rows: Array<{ k: string; v: string }> = [];
+
+        if (job.location_city?.trim()) rows.push({ k: "Location", v: job.location_city.trim() });
+        if (startAt) rows.push({ k: "Starts", v: startAt.toLocaleString() });
+        if (job.shift_hours) rows.push({ k: "Shift", v: String(job.shift_hours) });
+        if (job.care_type) rows.push({ k: "Care type", v: String(job.care_type) });
+        if (job.children_count != null) rows.push({ k: "Children", v: String(job.children_count) });
+        if (job.children_age_group) rows.push({ k: "Age group", v: String(job.children_age_group) });
+        if (Array.isArray(job.languages_pref) && job.languages_pref.length > 0) {
+            rows.push({ k: "Languages", v: job.languages_pref.join(", ") });
+        }
+        if (Array.isArray(job.requirements) && job.requirements.length > 0) {
+            rows.push({ k: "Requirements", v: job.requirements.join(", ") });
+        }
+        if (job.budget_min != null || job.budget_max != null) {
+            const min = job.budget_min != null ? String(job.budget_min) : "";
+            const max = job.budget_max != null ? String(job.budget_max) : "";
+            rows.push({ k: "Budget", v: [min, max].filter(Boolean).join(" – ") || "Set" });
+        }
+        if (createdAt) rows.push({ k: "Posted", v: createdAt.toLocaleDateString() });
+        if (job.status) rows.push({ k: "Status", v: String(job.status) });
+
+        if (rows.length === 0 && !notes) return null;
+
+        return (
+            <div className="mt-2 md:hidden">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-2xl bg-black/[0.02] px-3 py-3 dark:bg-white/[0.04]">
+                    {rows.map((r) => (
+                        <div key={r.k} className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                {r.k}
+                            </p>
+                            <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+                                {r.v}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+                {notes && (
+                    <div className="mt-3 rounded-2xl bg-black/[0.02] px-3 py-3 dark:bg-white/[0.04]">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                            Notes
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap text-[13px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100">
+                            {notes}
+                        </p>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     // 1. Fetch cache on mount
     useEffect(() => {
@@ -292,7 +358,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border-0 md:border md:border-slate-300/45 md:dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-transparent md:bg-card md:backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
                                                 jobCardCarouselItemClass
@@ -442,7 +508,8 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                                 )}
                                                 onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                             >
-                                                <div className="flex gap-4 mt-auto border-t border-slate-100 pt-6 dark:border-white/5">
+                                                {renderMobileJobDetails(job)}
+                                                <div className="flex gap-4 mt-auto border-t border-slate-100 pt-6 dark:border-white/5 max-md:border-t-0 max-md:pt-3">
                                                     <Button variant="outline" className="flex-1 h-12 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 rounded-[18px] text-[16px] font-bold transition-all active:scale-[0.96]" onClick={(e) => { e.stopPropagation(); conversations[job.id] ? navigate(`/chat/${conversations[job.id]}`) : navigate(`/client/jobs/${job.id}`); }}><MessageSquare className="w-4 h-4 mr-2" /> Message</Button>
                                                     <Button className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white rounded-[18px] text-[16px] font-bold shadow-[0_8px_20px_rgba(22,163,74,0.25)] transition-all active:scale-[0.96]" onClick={(e) => {
                                                         e.stopPropagation();
@@ -457,7 +524,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                 })}
                             </JobCardsCarousel>
                         ) : (
-                            <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30">
+                            <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30">
                                 <CardContent className="p-12 text-center text-muted-foreground">
                                     <Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                                     <p className="text-lg font-bold">No active jobs right now.</p>
@@ -498,7 +565,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border-0 md:border md:border-slate-300/45 md:dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-transparent md:bg-card md:backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
                                                 jobCardCarouselItemClass
@@ -646,6 +713,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                                 )}
                                                 onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                             >
+                                                {renderMobileJobDetails(job)}
                                                 <div className="flex items-center gap-3 text-[15px] font-semibold text-slate-600 dark:text-slate-300">
                                                     <Calendar className="h-5 w-5 flex-shrink-0 text-slate-400" />
                                                     <span>{new Date(job.created_at).toLocaleDateString()}</span>
@@ -657,7 +725,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                 })}
                             </JobCardsCarousel>
                         ) : (
-                            <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30">
+                            <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30">
                                 <CardContent className="p-12 text-center text-muted-foreground">
                                     <CheckCircle2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                                     <p className="text-lg font-bold">No past jobs yet.</p>

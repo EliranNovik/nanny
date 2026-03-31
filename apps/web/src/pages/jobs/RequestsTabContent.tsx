@@ -37,8 +37,18 @@ interface JobRequest {
     start_at: string | null;
     created_at: string;
     service_details?: any;
-    time_duration?: string;
-    care_frequency?: string;
+    time_duration?: string | null;
+    care_frequency?: string | null;
+    shift_hours?: string | null;
+    languages_pref?: string[] | null;
+    requirements?: string[] | null;
+    budget_min?: number | null;
+    budget_max?: number | null;
+    notes?: string | null;
+    stage?: string | null;
+    offered_hourly_rate?: number | null;
+    price_offer_status?: string | null;
+    schedule_confirmed?: boolean | null;
 }
 
 interface InboundNotification {
@@ -92,6 +102,62 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
     );
     const clippedCardIds = useJobCardEdgeOverlay(edgeOverlayKey);
 
+    const renderMobileJobDetails = (job: JobRequest) => {
+        const startAt = job.start_at ? new Date(job.start_at) : null;
+        const createdAt = job.created_at ? new Date(job.created_at) : null;
+        const notes = typeof (job as any).notes === "string" ? (job as any).notes.trim() : "";
+        const rows: Array<{ k: string; v: string }> = [];
+
+        if (job.location_city?.trim()) rows.push({ k: "Location", v: job.location_city.trim() });
+        if (startAt) rows.push({ k: "Starts", v: startAt.toLocaleString() });
+        if ((job as any).shift_hours) rows.push({ k: "Shift", v: String((job as any).shift_hours) });
+        if (job.care_type) rows.push({ k: "Care type", v: String(job.care_type) });
+        if (job.children_count != null) rows.push({ k: "Children", v: String(job.children_count) });
+        if (job.children_age_group) rows.push({ k: "Age group", v: String(job.children_age_group) });
+        if (Array.isArray((job as any).languages_pref) && (job as any).languages_pref.length > 0) {
+            rows.push({ k: "Languages", v: (job as any).languages_pref.join(", ") });
+        }
+        if (Array.isArray((job as any).requirements) && (job as any).requirements.length > 0) {
+            rows.push({ k: "Requirements", v: (job as any).requirements.join(", ") });
+        }
+        if ((job as any).budget_min != null || (job as any).budget_max != null) {
+            const min = (job as any).budget_min != null ? String((job as any).budget_min) : "";
+            const max = (job as any).budget_max != null ? String((job as any).budget_max) : "";
+            rows.push({ k: "Budget", v: [min, max].filter(Boolean).join(" – ") || "Set" });
+        }
+        if (createdAt) rows.push({ k: "Posted", v: createdAt.toLocaleDateString() });
+        if (job.status) rows.push({ k: "Status", v: String(job.status) });
+
+        if (rows.length === 0 && !notes) return null;
+
+        return (
+            <div className="mt-3 md:hidden">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-2xl bg-black/[0.02] px-3 py-3 dark:bg-white/[0.04]">
+                    {rows.map((r) => (
+                        <div key={r.k} className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                {r.k}
+                            </p>
+                            <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+                                {r.v}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+                {notes && (
+                    <div className="mt-3 rounded-2xl bg-black/[0.02] px-3 py-3 dark:bg-white/[0.04]">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                            Notes
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap text-[13px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100">
+                            {notes}
+                        </p>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     // 1. Fetch cache on mount
     useEffect(() => {
         if (!user) return;
@@ -130,7 +196,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                     .select(`
                         id, job_id, status, created_at,
                         job_requests (
-                          id, client_id, service_type, care_type, children_count, children_age_group, location_city, start_at, service_details, time_duration, care_frequency, created_at,
+                          id, client_id, service_type, care_type, children_count, children_age_group, location_city, start_at, shift_hours, languages_pref, requirements, budget_min, budget_max, notes, stage, offered_hourly_rate, price_offer_status, schedule_confirmed, service_details, created_at,
                           profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
                         )
                     `)
@@ -399,7 +465,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border-0 md:border md:border-slate-300/45 md:dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-transparent md:bg-card md:backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
                                                 isDeclined && "opacity-60",
@@ -574,7 +640,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
 
                                             {/* Buttons Area - Standardized CTA Hierarchy */}
                                             {!isConfirmed && !isDeclined && (
-                                                <div className="flex gap-4 mt-auto pt-6 border-t border-slate-100 dark:border-white/5">
+                                                <div className="flex gap-4 mt-auto pt-6 border-t border-slate-100 dark:border-white/5 max-md:border-t-0 max-md:pt-3">
                                                     <Button
                                                         variant="outline"
                                                         className="flex-1 h-12 rounded-[18px] border-slate-200 dark:border-white/10 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-500/10 transition-all active:scale-[0.96] font-bold"
@@ -608,7 +674,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         </JobCardsCarousel>
                         </>
                     ) : (
-                        <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                        <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">
                                 <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                                 <p className="text-sm">
@@ -652,7 +718,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border-0 md:border md:border-slate-300/45 md:dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-transparent md:bg-card md:backdrop-blur-sm group relative",
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
                                                 jobCardCarouselItemClass
@@ -836,7 +902,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                             </JobCardsCarousel>
                             </>
                         ) : (
-                            <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                            <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                                 <CardContent className="p-6 text-center text-muted-foreground">
                                     <Hourglass className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                                     <p className="text-sm">
@@ -878,7 +944,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     data-job-card
                                     onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                     className={cn(
-                                        "transition-all duration-500 w-full rounded-[32px] overflow-hidden border border-slate-300/45 dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-card backdrop-blur-sm group relative",
+                                        "transition-all duration-500 w-full rounded-[32px] overflow-hidden border-0 md:border md:border-slate-300/45 md:dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-transparent md:bg-card md:backdrop-blur-sm group relative",
                                         !isMinMd && "cursor-pointer",
                                         isMinMd && "md:cursor-default",
                                         jobCardCarouselItemClass
@@ -920,7 +986,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 {formatJobTitle(job)}
                                             </span>
                                             {job.created_at && (
-                                                <div className="mt-1 flex w-full min-w-0 items-center justify-between gap-2 border-t border-slate-200/80 pt-1.5 dark:border-white/10">
+                                                <div className="mt-1 flex w-full min-w-0 items-center justify-between gap-2 border-t border-slate-200/80 pt-1.5 dark:border-white/10 max-md:border-t-0 max-md:pt-0">
                                                     <div className="flex min-w-0 items-center gap-2 text-[16px] font-bold text-slate-500 dark:text-slate-400">
                                                         <Clock className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
                                                         <span>Active</span>
@@ -1012,7 +1078,8 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         )}
                                         onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                     >
-                                        <div className="mt-auto flex flex-col gap-4 border-t border-slate-100 pt-6 dark:border-white/5">
+                                        {renderMobileJobDetails(job)}
+                                        <div className="mt-auto flex flex-col gap-4 border-t border-slate-100 pt-6 dark:border-white/5 max-md:border-t-0 max-md:pt-3">
                                             <div className="relative w-full md:pt-2">
                                                 {(() => {
                                                     const accepted = (job as { acceptedCount?: number }).acceptedCount ?? 0;
@@ -1093,7 +1160,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         </JobCardsCarousel>
                         </>
                     ) : (
-                        <Card className="border border-dashed border-slate-300/50 dark:border-zinc-500/35 shadow-sm bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                        <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
                             <CardContent className="p-6 text-center text-muted-foreground">
                                 {serviceFilter && myOpenRequests.length > 0 ? (
                                     <>

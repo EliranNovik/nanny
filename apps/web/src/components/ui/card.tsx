@@ -8,7 +8,8 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md",
+      // Mobile: open layout (no boxed card look). Desktop: keep classic card styling.
+      "rounded-none border-0 bg-transparent text-card-foreground shadow-none transition-all duration-200 sm:rounded-2xl sm:border sm:bg-card sm:shadow-sm sm:hover:shadow-md",
       className
     )}
     {...props}
