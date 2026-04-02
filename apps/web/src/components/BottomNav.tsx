@@ -199,7 +199,7 @@ export function BottomNav() {
 
   /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
   const DesktopHeader = (
-    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-card/70 backdrop-blur-md border-b border-border/40 transition-all">
+    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md transition-all dark:border-border/40 dark:bg-card/85">
       <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
         <div className="flex min-w-0 justify-start items-center gap-1.5">
           {user && (
@@ -447,6 +447,7 @@ export function BottomNav() {
       "/client/create",
       "/client/active-jobs",
       "/posts",
+      "/availability",
       "/public/posts",
       "/liked",
       "/dashboard",
@@ -599,23 +600,15 @@ export function BottomNav() {
                       role="menuitem"
                       className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
                       onClick={() => {
-                        if (isFreelancer) {
-                          navigate(buildJobsUrl("freelancer", "requests"));
-                        } else {
-                          navigate("/client/create");
-                        }
+                        navigate("/client/create");
                         setFabMenuOpen(false);
                       }}
                     >
                       <ClipboardList className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block leading-tight">
-                          {isFreelancer ? "Job requests" : "Post a request"}
-                        </span>
+                        <span className="block leading-tight">Post a request</span>
                         <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground leading-snug">
-                          {isFreelancer
-                            ? "Browse and respond to client requests"
-                            : "Find helpers — describe what you need"}
+                          Find helpers — describe what you need
                         </span>
                       </span>
                     </button>
@@ -624,15 +617,15 @@ export function BottomNav() {
                       role="menuitem"
                       className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
                       onClick={() => {
-                        navigate("/posts");
+                        navigate("/availability");
                         setFabMenuOpen(false);
                       }}
                     >
                       <UsersRound className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block leading-tight">Offer your services</span>
+                        <span className="block leading-tight">Set availability</span>
                         <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground leading-snug">
-                          Post yourself on the board — others can contact you
+                          Short window — clients see you now and can tap to chat
                         </span>
                       </span>
                     </button>

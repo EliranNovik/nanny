@@ -5,42 +5,19 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Heart, Loader2, MapPin, MessageSquare, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ArrowLeft, Loader2, Plus } from "lucide-react";
+import {
+  CommunityPostCard,
+  type CommunityFeedPost,
+  type CommunityPostImage,
+  type CommunityPostWithMeta,
+} from "@/components/community/CommunityPostCard";
 import {
   isServiceCategoryId,
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import { openCommunityContact } from "@/lib/communityContact";
-import { StarRating } from "@/components/StarRating";
-
-type FeedRow = {
-  id: string;
-  author_id: string;
-  category: string;
-  title: string;
-  body: string;
-  created_at: string;
-  author_full_name: string | null;
-  author_photo_url: string | null;
-  author_city: string | null;
-  author_role: string | null;
-  /** From job_reviews aggregate for the author (profile), not the post */
-  author_average_rating?: number | string | null;
-  author_total_ratings?: number | string | null;
-};
-
-type PostImage = {
-  id: string;
-  image_url: string;
-  sort_order: number;
-};
-
-type PostWithMeta = FeedRow & {
-  images: PostImage[];
-};
+import { apiPost } from "@/lib/api";
 
 export default function PublicCommunityPostsPage() {
   const navigate = useNavigate();
@@ -52,9 +29,12 @@ export default function PublicCommunityPostsPage() {
   const { user, profile } = useAuth();
   const { addToast } = useToast();
 
-  const [posts, setPosts] = useState<PostWithMeta[]>([]);
+  const [posts, setPosts] = useState<CommunityPostWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [favoritedIds, setFavoritedIds] = useState<Set<string>>(() => new Set());
+  const [hiringPostId, setHiringPostId] = useState<string | null>(null);
+  /** Posts where this client already tapped Hire now and is still pending freelancer confirm */
+  const [pendingHirePostIds, setPendingHirePostIds] = useState<Set<string>>(() => new Set());
 
   const postIdsKey = useMemo(
     () =>
@@ -83,7 +63,7 @@ export default function PublicCommunityPostsPage() {
       });
 
       if (error) throw error;
-      const list = (rows || []) as FeedRow[];
+      const list = (rows || []) as CommunityFeedPost[];
       if (list.length === 0) {
         setPosts([]);
         return;
@@ -98,7 +78,7 @@ export default function PublicCommunityPostsPage() {
 
       if (imgErr) throw imgErr;
 
-      const imagesByPost = new Map<string, PostImage[]>();
+      const imagesByPost = new Map<string, CommunityPostImage[]>();
       for (const img of imgs || []) {
         const pid = img.post_id as string;
         if (!imagesByPost.has(pid)) imagesByPost.set(pid, []);
@@ -157,6 +137,50 @@ export default function PublicCommunityPostsPage() {
     };
   }, [user?.id, postIdsKey]);
 
+  const focusPostId = searchParams.get("post");
+  useEffect(() => {
+    if (!focusPostId || loading) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(`community-post-${focusPostId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [focusPostId, loading, postIdsKey]);
+
+  useEffect(() => {
+    if (!user?.id || profile?.role !== "client") {
+      setPendingHirePostIds(new Set());
+      return;
+    }
+    if (posts.length === 0) {
+      setPendingHirePostIds(new Set());
+      return;
+    }
+    const ids = posts.map((p) => p.id);
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("community_post_hire_interests")
+        .select("community_post_id")
+        .eq("client_id", user.id)
+        .eq("status", "pending")
+        .in("community_post_id", ids);
+      if (cancelled) return;
+      if (error) {
+        console.error("[PublicCommunityPostsPage] pending hire interests", error);
+        return;
+      }
+      setPendingHirePostIds(
+        new Set((data || []).map((r) => r.community_post_id as string))
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, profile?.role, postIdsKey]);
+
   const loginRedirect = useMemo(() => {
     const base = "/public/posts";
     const q = validCategory ? `?category=${encodeURIComponent(validCategory)}` : "";
@@ -205,6 +229,34 @@ export default function PublicCommunityPostsPage() {
     }
   };
 
+  const handleHireFromPost = async (postId: string) => {
+    setHiringPostId(postId);
+    try {
+      await apiPost<{ interest_id: string; already_pending?: boolean }>("/api/jobs/from-community-post", {
+        community_post_id: postId,
+      });
+      setPendingHirePostIds((prev) => {
+        const next = new Set(prev);
+        next.add(postId);
+        return next;
+      });
+      addToast({
+        title: "Interest sent",
+        description:
+          "The helper will see you on their availability post. They can confirm to start a live job and chat.",
+        variant: "success",
+      });
+    } catch (e) {
+      addToast({
+        title: "Could not start hire",
+        description: e instanceof Error ? e.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setHiringPostId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen gradient-mesh pb-16 md:pb-24">
       <div className="app-desktop-shell space-y-6 pt-4 md:pt-6">
@@ -234,26 +286,26 @@ export default function PublicCommunityPostsPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-[26px] font-black tracking-tight text-slate-900 dark:text-white md:text-[30px]">
-                {categoryTitle ? `${categoryTitle} offers` : "Service offers"}
+                {categoryTitle ? `${categoryTitle} — available now` : "Available now"}
               </h1>
               <p className="mt-1 max-w-xl text-[15px] font-medium text-muted-foreground">
                 {categoryTitle
-                  ? `People offering help in ${categoryTitle}. Sign in to contact them.`
-                  : "Browse what helpers are offering. Sign in to start a conversation."}
+                  ? `Short-lived availability in ${categoryTitle}. Sign in to chat.`
+                  : "Time-limited availability — tap to message. Posts disappear when time is up."}
               </p>
             </div>
             {user ? (
               <Button type="button" className="gap-2 rounded-full" asChild>
-                <Link to="/posts">
+                <Link to="/availability">
                   <Plus className="h-4 w-4" />
-                  Post your offer
+                  Set availability
                 </Link>
               </Button>
             ) : (
               <Button type="button" className="gap-2 rounded-full" asChild>
-                <Link to={`/login?redirect=${encodeURIComponent(loginRedirect)}`}>
+                <Link to={`/login?redirect=${encodeURIComponent("/availability")}`}>
                   <Plus className="h-4 w-4" />
-                  Post your offer
+                  Set availability
                 </Link>
               </Button>
             )}
@@ -274,11 +326,11 @@ export default function PublicCommunityPostsPage() {
               </p>
               {user ? (
                 <Button type="button" asChild>
-                  <Link to="/posts">Create a post</Link>
+                  <Link to="/availability">Set availability</Link>
                 </Button>
               ) : (
                 <Button type="button" asChild>
-                  <Link to={`/login?redirect=${encodeURIComponent("/posts")}`}>
+                  <Link to={`/login?redirect=${encodeURIComponent("/availability")}`}>
                     Sign in to post
                   </Link>
                 </Button>
@@ -287,177 +339,32 @@ export default function PublicCommunityPostsPage() {
           </Card>
         ) : (
           <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2">
-            {posts.map((post) => {
-              const cat = isServiceCategoryId(post.category)
-                ? serviceCategoryLabel(post.category)
-                : post.category;
-              const isMine = user?.id === post.author_id;
-              return (
-                <Card
-                  key={post.id}
-                  className="overflow-hidden border border-slate-200/70 shadow-sm dark:border-white/10"
-                >
-                  <CardContent className="p-0">
-                    {post.images.length > 0 && (
-                      <div className="grid grid-cols-2 gap-0.5 bg-muted/30">
-                        {post.images.slice(0, 4).map((im) => (
-                          <div
-                            key={im.id}
-                            className={cn(
-                              "relative aspect-[4/3] bg-muted",
-                              post.images.length === 1 && "col-span-2 aspect-[16/9]"
-                            )}
-                          >
-                            <img
-                              src={im.image_url}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="space-y-3 p-4">
-                      <div className="flex items-start gap-2">
-                        <Avatar className="h-11 w-11 shrink-0 border border-border/60">
-                          <AvatarImage src={post.author_photo_url ?? undefined} />
-                          <AvatarFallback className="bg-orange-500/15 text-sm font-bold text-orange-700">
-                            {(post.author_full_name || "?").charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-bold text-foreground">
-                            {post.author_full_name || "Member"}
-                          </p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            {post.author_city && (
-                              <span className="inline-flex items-center gap-0.5">
-                                <MapPin className="h-3 w-3 shrink-0" />
-                                {post.author_city}
-                              </span>
-                            )}
-                            <Badge variant="secondary" className="text-[10px] font-bold">
-                              {cat}
-                            </Badge>
-                          </div>
-                          {(() => {
-                            const total = Number(post.author_total_ratings ?? 0);
-                            const avg = Number(post.author_average_rating ?? 0);
-                            if (total > 0) {
-                              return (
-                                <StarRating
-                                  rating={avg}
-                                  totalRatings={total}
-                                  size="sm"
-                                  className="mt-1.5"
-                                  starClassName="text-amber-500 dark:text-amber-400"
-                                  numberClassName="text-amber-950 dark:text-amber-100"
-                                />
-                              );
-                            }
-                            return (
-                              <p className="mt-1.5 text-[11px] text-muted-foreground">No reviews yet</p>
-                            );
-                          })()}
-                        </div>
-                        {!isMine && (
-                          <div className="shrink-0 pt-0.5">
-                            {user ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className={cn(
-                                  "h-9 w-9 rounded-full text-muted-foreground hover:text-red-500",
-                                  favoritedIds.has(post.id) && "text-red-500 hover:text-red-600"
-                                )}
-                                onClick={() => void toggleFavorite(post.id)}
-                                aria-pressed={favoritedIds.has(post.id)}
-                                aria-label={
-                                  favoritedIds.has(post.id)
-                                    ? "Remove from favorites"
-                                    : "Add to favorites"
-                                }
-                              >
-                                <Heart
-                                  className={cn(
-                                    "h-5 w-5",
-                                    favoritedIds.has(post.id) && "fill-current"
-                                  )}
-                                  aria-hidden
-                                />
-                              </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-9 w-9 rounded-full text-muted-foreground hover:text-red-500"
-                                asChild
-                                aria-label="Sign in to save favorites"
-                              >
-                                <Link to={`/login?redirect=${encodeURIComponent(loginRedirect)}`}>
-                                  <Heart className="h-5 w-5" aria-hidden />
-                                </Link>
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <h2 className="text-lg font-black leading-snug text-slate-900 dark:text-white">
-                        {post.title}
-                      </h2>
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                        {post.body}
-                      </p>
-                      <p className="text-[11px] font-semibold text-muted-foreground">
-                        {new Date(post.created_at).toLocaleString()}
-                      </p>
-                      {!isMine && user && profile && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full gap-2 rounded-xl"
-                          onClick={() =>
-                            void openCommunityContact({
-                              supabase,
-                              user,
-                              myRole: profile.role,
-                              targetUserId: post.author_id,
-                              targetRole: post.author_role,
-                              navigate,
-                              addToast,
-                            })
-                          }
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          Contact
-                        </Button>
-                      )}
-                      {!isMine && !user && (
-                        <Button type="button" variant="outline" size="sm" className="w-full rounded-xl" asChild>
-                          <Link to={`/login?redirect=${encodeURIComponent(loginRedirect)}`}>
-                            Sign in to contact
-                          </Link>
-                        </Button>
-                      )}
-                      {isMine && user && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="w-full"
-                          asChild
-                        >
-                          <Link to={`/profile/${post.author_id}`}>View your public profile</Link>
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {posts.map((post) => (
+              <CommunityPostCard
+                key={post.id}
+                post={post}
+                user={user}
+                profile={profile}
+                loginRedirect={loginRedirect}
+                favoritedIds={favoritedIds}
+                onToggleFavorite={toggleFavorite}
+                hiringPostId={hiringPostId}
+                pendingHirePostIds={pendingHirePostIds}
+                onHireFromPost={handleHireFromPost}
+                onOpenChat={() => {
+                  if (!user || !profile) return;
+                  void openCommunityContact({
+                    supabase,
+                    user,
+                    myRole: profile.role,
+                    targetUserId: post.author_id,
+                    targetRole: post.author_role,
+                    navigate,
+                    addToast,
+                  });
+                }}
+              />
+            ))}
           </div>
         )}
       </div>

@@ -14,7 +14,7 @@ export function useUnreadCounts() {
       return;
     }
 
-    // Fetch unread notifications count (for incoming job requests)
+    // Fetch unread notifications count (freelancer: job requests; client: community hire confirmations)
     async function fetchUnreadNotifications() {
       if (!user || !profile) {
         setUnreadNotifications(0);
@@ -22,13 +22,28 @@ export function useUnreadCounts() {
       }
 
       try {
-        // Fetch notifications with job details to check expiration
+        if (profile.role === "client") {
+          const { count } = await supabase
+            .from("job_requests")
+            .select("id", { count: "exact", head: true })
+            .eq("client_id", user.id)
+            .not("community_post_id", "is", null)
+            .in("status", ["locked", "active"])
+            .gte(
+              "locked_at",
+              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+            );
+          setUnreadNotifications(typeof count === "number" ? Math.min(count, 20) : 0);
+          return;
+        }
+
         const { data: notifications } = await supabase
           .from("job_candidate_notifications")
           .select(`
             id,
             job_requests (
-              confirm_ends_at
+              confirm_ends_at,
+              community_post_id
             )
           `)
           .eq("freelancer_id", user.id)
@@ -39,14 +54,12 @@ export function useUnreadCounts() {
           return;
         }
 
-        // Filter out expired notifications
         const now = new Date();
         const validNotifications = notifications.filter((notif: any) => {
           const job = notif.job_requests;
-          if (!job || !job.confirm_ends_at) return false;
-
-          const endTime = new Date(job.confirm_ends_at).getTime();
-          return endTime > now.getTime(); // Only count if not expired
+          if (!job || job.community_post_id) return false;
+          if (!job.confirm_ends_at) return false;
+          return new Date(job.confirm_ends_at).getTime() > now.getTime();
         });
 
         setUnreadNotifications(validNotifications.length);
@@ -144,6 +157,25 @@ export function useUnreadCounts() {
       )
       .subscribe();
 
+    const clientJobsChannel =
+      profile.role === "client"
+        ? supabase
+            .channel(`unread-client-jobs:${user.id}`)
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "job_requests",
+                filter: `client_id=eq.${user.id}`,
+              },
+              () => {
+                fetchUnreadNotifications();
+              }
+            )
+            .subscribe()
+        : null;
+
     const messagesChannel = supabase
       .channel(`unread-messages:${user.id}`)
       .on(
@@ -162,6 +194,9 @@ export function useUnreadCounts() {
     return () => {
       if (notificationsChannel) {
         supabase.removeChannel(notificationsChannel);
+      }
+      if (clientJobsChannel) {
+        supabase.removeChannel(clientJobsChannel);
       }
       supabase.removeChannel(messagesChannel);
     };

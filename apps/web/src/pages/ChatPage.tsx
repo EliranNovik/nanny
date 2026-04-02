@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,6 +49,8 @@ import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { SimpleCalendar } from "@/components/SimpleCalendar";
 import { ImageModal } from "@/components/ImageModal";
 import { Badge } from "@/components/ui/badge";
+import { ExpiryCountdown } from "@/components/ExpiryCountdown";
+import { isServiceCategoryId, serviceCategoryLabel } from "@/lib/serviceCategories";
 
 interface Message {
   id: string;
@@ -106,7 +108,22 @@ interface Job {
   service_details?: any | null;
   time_duration?: string | null;
   care_frequency?: string | null;
+  community_post_id?: string | null;
+  community_post_expires_at?: string | null;
+  notes?: string | null;
 }
+
+type CommunityPostCardState =
+  | { status: "loading"; postId: string }
+  | {
+      status: "ready";
+      postId: string;
+      title: string;
+      blurb: string;
+      coverUrl: string | null;
+      expiresAt: string | null;
+      categoryLabel: string | null;
+    };
 
 interface ReportConversation {
   id: string;
@@ -147,6 +164,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   // Job details state
   const [job, setJob] = useState<Job | null>(null);
+  const [communityPostCard, setCommunityPostCard] = useState<CommunityPostCardState | null>(null);
   const [priceOffer, setPriceOffer] = useState<number | null>(null);
 
   // Revise schedule state
@@ -227,7 +245,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       if (convo.job_id) {
         const { data } = await supabase
           .from("job_requests")
-          .select("id, status, stage, care_type, children_count, children_age_group, location_city, start_at, created_at, offered_hourly_rate, price_offer_status, schedule_confirmed, service_type, service_details, time_duration, care_frequency")
+          .select(
+            "id, status, stage, care_type, children_count, children_age_group, location_city, start_at, created_at, offered_hourly_rate, price_offer_status, schedule_confirmed, service_type, service_details, time_duration, care_frequency, community_post_id, community_post_expires_at, notes"
+          )
           .eq("id", convo.job_id)
           .single();
 
@@ -238,10 +258,18 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         if (profile?.role === "freelancer") {
           const { data: unavailableDates } = await supabase
             .from("freelancer_unavailable_dates")
-            .select("day")
+            .select("unavailable_date, start_time, end_time")
             .eq("freelancer_id", otherId);
           if (unavailableDates) {
-            setFreelancerUnavailableTimeSlots(unavailableDates.map(d => d.day));
+            // For calendar UI: disable days that have any unavailable slots
+            const days = Array.from(
+              new Set(
+                unavailableDates
+                  .map((d: any) => d.unavailable_date as string | null)
+                  .filter(Boolean)
+              )
+            ) as string[];
+            setFreelancerUnavailableTimeSlots(days);
           }
 
           const { data: jobs } = await supabase
@@ -1123,6 +1151,89 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     return `Nanny – ${Number(job.children_count) || 0} kid${Number(job.children_count) !== 1 ? "s" : ""} (${job.children_age_group && job.children_age_group !== 'null' ? formatAgeGroup(job.children_age_group) : 'N/A'})`;
   }
 
+  // Primitives only — `job` identity changes on every realtime `setJob({ ...job })` (stage, etc.),
+  // which was re-running this effect and toggling loading → endless flicker.
+  const jobId = job?.id;
+  const communityPostId = job?.community_post_id;
+  const communityPostExpiresAt = job?.community_post_expires_at;
+  const jobNotes = job?.notes;
+  const jobServiceType = job?.service_type;
+  const jobLocationCity = job?.location_city;
+
+  useEffect(() => {
+    if (!communityPostId || !jobId || !job) {
+      setCommunityPostCard(null);
+      return;
+    }
+    const postId = communityPostId;
+    const j = job;
+    setCommunityPostCard({ status: "loading", postId });
+    let cancelled = false;
+    void (async () => {
+      const [{ data: post }, { data: imgRows }] = await Promise.all([
+        supabase
+          .from("community_posts")
+          .select("title, note, body, expires_at, category")
+          .eq("id", postId)
+          .maybeSingle(),
+        supabase
+          .from("community_post_images")
+          .select("image_url")
+          .eq("post_id", postId)
+          .order("sort_order", { ascending: true })
+          .limit(1),
+      ]);
+      if (cancelled) return;
+      const coverUrl = imgRows?.[0]?.image_url ?? null;
+      const expiresAt = post?.expires_at ?? j.community_post_expires_at ?? null;
+      const categoryLabel =
+        post?.category && isServiceCategoryId(post.category)
+          ? serviceCategoryLabel(post.category)
+          : j.service_type && isServiceCategoryId(j.service_type)
+            ? serviceCategoryLabel(j.service_type)
+            : null;
+
+      if (!post) {
+        const notes = typeof j.notes === "string" ? j.notes.trim() : "";
+        setCommunityPostCard({
+          status: "ready",
+          postId,
+          title: formatJobTitle(j),
+          blurb: notes || j.location_city || "Availability post",
+          coverUrl: null,
+          expiresAt: j.community_post_expires_at ?? null,
+          categoryLabel,
+        });
+        return;
+      }
+
+      const blurb =
+        (post.note && post.note.trim()) ||
+        (post.body && post.body.trim()) ||
+        "";
+      setCommunityPostCard({
+        status: "ready",
+        postId,
+        title: post.title || formatJobTitle(j),
+        blurb,
+        coverUrl,
+        expiresAt,
+        categoryLabel,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Do not depend on `job` — new object references from realtime/partial updates cause infinite loading flashes.
+  }, [
+    jobId,
+    communityPostId,
+    communityPostExpiresAt,
+    jobNotes,
+    jobServiceType,
+    jobLocationCity,
+  ]);
+
   function ReadReceipt({ status }: { status: "sent" | "delivered" | "read" }) {
     if (status === "sent") {
       return <Check className="w-4 h-4 text-muted-foreground/60" />;
@@ -1475,67 +1586,147 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                       </div>
 
                       <div className="bg-card/60 dark:bg-white/10 backdrop-blur-md rounded-2xl p-5 space-y-4 border border-slate-200 dark:border-white/10 shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            {job.service_type === 'cleaning' && <Sparkles className="w-5 h-5 text-primary" />}
-                            {job.service_type === 'cooking' && <UtensilsCrossed className="w-5 h-5 text-primary" />}
-                            {job.service_type === 'pickup_delivery' && <Truck className="w-5 h-5 text-primary" />}
-                            {job.service_type === 'nanny' && <Baby className="w-5 h-5 text-primary" />}
-                            {(!job.service_type || job.service_type === 'other_help') && <Briefcase className="w-5 h-5 text-primary" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-lg font-bold leading-tight truncate text-slate-900 dark:text-white">{formatJobTitle(job)}</h4>
-                            <div className="flex items-center gap-1.5 mt-0.5 text-slate-600 dark:text-white/70">
-                              <MapPin className="w-3.5 h-3.5 shrink-0" />
-                              <span className="text-sm font-medium">{job.location_city}</span>
+                        {job.community_post_id ? (
+                          !communityPostCard ||
+                          communityPostCard.postId !== job.community_post_id ||
+                          communityPostCard.status === "loading" ? (
+                            <div className="flex gap-3 animate-pulse">
+                              <div className="h-[4.5rem] w-[4.5rem] shrink-0 rounded-xl bg-muted" />
+                              <div className="flex-1 space-y-2 pt-1">
+                                <div className="h-4 w-3/4 rounded bg-muted" />
+                                <div className="h-3 w-full rounded bg-muted" />
+                                <div className="h-3 w-2/3 rounded bg-muted" />
+                              </div>
                             </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 pt-3.5 border-t border-border/30">
-                          {job.start_at && (
-                            <div className="flex items-center gap-2.5">
-                              <Calendar className="w-4 h-4 text-orange-500 shrink-0" />
-                              <span className="text-sm font-medium leading-tight text-black dark:text-white">{formatDateTimeSimple(job.start_at)}</span>
+                          ) : communityPostCard.status === "ready" ? (
+                            <div className="space-y-3">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                From availability post
+                              </p>
+                              <div className="flex gap-3 rounded-xl border border-border/50 bg-background/40 p-3 dark:bg-black/20">
+                                <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted">
+                                  {communityPostCard.coverUrl ? (
+                                    <img
+                                      src={communityPostCard.coverUrl}
+                                      alt=""
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                                      {job.service_type === "cleaning" ? (
+                                        <Sparkles className="h-6 w-6" />
+                                      ) : job.service_type === "cooking" ? (
+                                        <UtensilsCrossed className="h-6 w-6" />
+                                      ) : job.service_type === "pickup_delivery" ? (
+                                        <Truck className="h-6 w-6" />
+                                      ) : job.service_type === "nanny" ? (
+                                        <Baby className="h-6 w-6" />
+                                      ) : (
+                                        <Briefcase className="h-6 w-6" />
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-1.5">
+                                  {communityPostCard.categoryLabel && (
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-primary">
+                                      {communityPostCard.categoryLabel}
+                                    </span>
+                                  )}
+                                  <h4 className="text-[15px] font-bold leading-snug text-slate-900 dark:text-white line-clamp-2">
+                                    {communityPostCard.title}
+                                  </h4>
+                                  {communityPostCard.blurb ? (
+                                    <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">
+                                      {communityPostCard.blurb}
+                                    </p>
+                                  ) : null}
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate font-medium">{job.location_city}</span>
+                                  </div>
+                                  {communityPostCard.expiresAt ? (
+                                    <ExpiryCountdown
+                                      expiresAtIso={communityPostCard.expiresAt}
+                                      endedLabel="Post ended"
+                                      className="text-xs"
+                                    />
+                                  ) : null}
+                                  <Link
+                                    to={`/public/posts?post=${job.community_post_id}`}
+                                    className="inline-block text-xs font-bold text-primary underline-offset-2 hover:underline"
+                                  >
+                                    Open in feed
+                                  </Link>
+                                </div>
+                              </div>
                             </div>
-                          )}
-
-                          {job.time_duration && (
-                            <div className="flex items-center gap-2.5">
-                              <Hourglass className="w-4 h-4 text-orange-500 shrink-0" />
-                              <span className="text-sm font-medium capitalize text-black dark:text-white">{job.time_duration.replace(/_/g, ' ')}</span>
+                          ) : null
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                {job.service_type === 'cleaning' && <Sparkles className="w-5 h-5 text-primary" />}
+                                {job.service_type === 'cooking' && <UtensilsCrossed className="w-5 h-5 text-primary" />}
+                                {job.service_type === 'pickup_delivery' && <Truck className="w-5 h-5 text-primary" />}
+                                {job.service_type === 'nanny' && <Baby className="w-5 h-5 text-primary" />}
+                                {(!job.service_type || job.service_type === 'other_help') && <Briefcase className="w-5 h-5 text-primary" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-lg font-bold leading-tight truncate text-slate-900 dark:text-white">{formatJobTitle(job)}</h4>
+                                <div className="flex items-center gap-1.5 mt-0.5 text-slate-600 dark:text-white/70">
+                                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="text-sm font-medium">{job.location_city}</span>
+                                </div>
+                              </div>
                             </div>
-                          )}
 
-                          {job.care_frequency && (
-                            <div className="flex items-center gap-2.5">
-                              <Repeat className="w-4 h-4 text-orange-500 shrink-0" />
-                              <span className="text-sm font-medium capitalize text-black dark:text-white">{job.care_frequency.replace(/_/g, ' ')}</span>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 pt-3.5 border-t border-border/30">
+                              {job.start_at && (
+                                <div className="flex items-center gap-2.5">
+                                  <Calendar className="w-4 h-4 text-orange-500 shrink-0" />
+                                  <span className="text-sm font-medium leading-tight text-black dark:text-white">{formatDateTimeSimple(job.start_at)}</span>
+                                </div>
+                              )}
+
+                              {job.time_duration && (
+                                <div className="flex items-center gap-2.5">
+                                  <Hourglass className="w-4 h-4 text-orange-500 shrink-0" />
+                                  <span className="text-sm font-medium capitalize text-black dark:text-white">{job.time_duration.replace(/_/g, ' ')}</span>
+                                </div>
+                              )}
+
+                              {job.care_frequency && (
+                                <div className="flex items-center gap-2.5">
+                                  <Repeat className="w-4 h-4 text-orange-500 shrink-0" />
+                                  <span className="text-sm font-medium capitalize text-black dark:text-white">{job.care_frequency.replace(/_/g, ' ')}</span>
+                                </div>
+                              )}
+
+                              {(Number(job.children_count) > 0 || job.service_type === 'nanny') && (
+                                <div className="flex items-center gap-2.5">
+                                  <Baby className="w-4 h-4 text-orange-500 shrink-0" />
+                                  <span className="text-sm font-medium text-black dark:text-white">
+                                    {Number(job.children_count) || 0} {job.children_age_group ? `(${formatAgeGroup(job.children_age_group as string)})` : ''} kids
+                                  </span>
+                                </div>
+                              )}
+
+                              {formatServiceDetails(job.service_details, job.service_type as string)}
                             </div>
-                          )}
 
-                          {(Number(job.children_count) > 0 || job.service_type === 'nanny') && (
-                            <div className="flex items-center gap-2.5">
-                              <Baby className="w-4 h-4 text-orange-500 shrink-0" />
-                              <span className="text-sm font-medium text-black dark:text-white">
-                                {Number(job.children_count) || 0} {job.children_age_group ? `(${formatAgeGroup(job.children_age_group as string)})` : ''} kids
-                              </span>
-                            </div>
-                          )}
-
-                          {formatServiceDetails(job.service_details, job.service_type as string)}
-                        </div>
-
-                        {job.service_details?.custom && (
-                          <div className="flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm">
-                            <span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">
-                              <AlignLeft className="w-3 h-3" />
-                              NOTES
-                            </span>
-                            <p className="text-white text-sm font-medium leading-relaxed">
-                              {job.service_details.custom}
-                            </p>
-                          </div>
+                            {job.service_details?.custom && (
+                              <div className="flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm">
+                                <span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">
+                                  <AlignLeft className="w-3 h-3" />
+                                  NOTES
+                                </span>
+                                <p className="text-white text-sm font-medium leading-relaxed">
+                                  {job.service_details.custom}
+                                </p>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

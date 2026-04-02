@@ -39,6 +39,7 @@ import FreelancerDashboardPage from "@/pages/freelancer/DashboardPage";
 import FreelancerHomePage from "@/pages/freelancer/FreelancerHomePage";
 import UnifiedJobsPage from "@/pages/jobs/UnifiedJobsPage";
 import CommunityPostsPage from "@/pages/CommunityPostsPage";
+import CommunityPostHireInterestsPage from "@/pages/CommunityPostHireInterestsPage";
 import PublicCommunityPostsPage from "@/pages/PublicCommunityPostsPage";
 import LikedPage from "@/pages/LikedPage";
 import ChatPage from "@/pages/ChatPage";
@@ -182,6 +183,22 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <CommunityPostsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/availability"
+          element={
+            <ProtectedRoute>
+              <CommunityPostsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/availability/post/:postId/hires"
+          element={
+            <ProtectedRoute>
+              <CommunityPostHireInterestsPage />
             </ProtectedRoute>
           }
         />

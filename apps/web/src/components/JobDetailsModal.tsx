@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
     Dialog,
     DialogContent,
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { StarRating } from "./StarRating";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ImageLightboxModal } from "./ImageLightboxModal";
+import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 
 interface JobDetailsModalProps {
     isOpen: boolean;
@@ -64,6 +66,10 @@ export function JobDetailsModal({
 }: JobDetailsModalProps) {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     if (!job) return null;
+
+    const isCommunityPostJob = Boolean(job.community_post_id);
+    const hideNannyPlaceholders =
+        isCommunityPostJob && job.service_type !== "nanny";
 
     const getServiceIcon = (serviceType?: string) => {
         if (serviceType === 'cleaning') return <Sparkles className="w-4 h-4" />;
@@ -142,11 +148,27 @@ export function JobDetailsModal({
                         {client && (
                             <div className="rounded-xl border border-white/15 bg-black/30 p-3 backdrop-blur-md sm:p-3.5">
                                 {!isOwnRequest && (
-                                    <div className="mb-2 flex items-center justify-end gap-1.5 border-b border-white/10 pb-2">
-                                        <Clock className="h-3.5 w-3.5 text-white/50" aria-hidden />
-                                        <span className="font-mono text-[10px] tabular-nums text-white/80">
-                                            <LiveTimer createdAt={job.created_at} />
+                                    <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                                        <span className="text-[9px] font-medium uppercase tracking-wider text-white/65">
+                                            {job.community_post_expires_at
+                                                ? "Post expires in"
+                                                : "Invite sent"}
                                         </span>
+                                        <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums text-white/90">
+                                            <Clock className="h-3 w-3 shrink-0 text-white/50" aria-hidden />
+                                            {job.community_post_expires_at ? (
+                                                <ExpiryCountdown
+                                                    compact
+                                                    expiresAtIso={job.community_post_expires_at}
+                                                    endedLabel="Ended"
+                                                    className="text-[10px] font-semibold text-white/95"
+                                                />
+                                            ) : (
+                                                <span className="text-white/80">
+                                                    <LiveTimer createdAt={job.created_at} />
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
@@ -233,7 +255,7 @@ export function JobDetailsModal({
                                     </div>
                                 </div>
                             )}
-                            {job.care_type && (
+                            {job.care_type && !hideNannyPlaceholders && (
                                 <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
                                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
                                         <Briefcase className="h-5 w-5" strokeWidth={2} />
@@ -244,7 +266,7 @@ export function JobDetailsModal({
                                     </div>
                                 </div>
                             )}
-                            {job.children_count > 0 && (
+                            {job.children_count > 0 && !hideNannyPlaceholders && (
                                 <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
                                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
                                         <Baby className="h-5 w-5" strokeWidth={2} />
@@ -269,10 +291,31 @@ export function JobDetailsModal({
                                 </div>
                             )}
 
+                            {isCommunityPostJob && job.community_post_id && (
+                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                                        <AlignLeft className="h-5 w-5" strokeWidth={2} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                            From
+                                        </span>
+                                        <p className="mt-0.5 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
+                                            <Link
+                                                to={`/public/posts?post=${job.community_post_id}`}
+                                                className="text-orange-600 underline-offset-2 hover:underline dark:text-orange-400"
+                                            >
+                                                View availability post
+                                            </Link>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                             {job.service_details && Object.entries(job.service_details).map(([key, value]) => {
                                 if (key === 'custom' || key === 'images') return null;
                                 if (key === 'from_lat' || key === 'from_lng' || key === 'to_lat' || key === 'to_lng') return null;
                                 if (key === 'care_type' || key === 'children_count' || key === 'care_frequency') return null;
+                                if (isCommunityPostJob && (key === 'source' || key === 'community_post_id')) return null;
 
                                 return (
                                     <div key={key} className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">

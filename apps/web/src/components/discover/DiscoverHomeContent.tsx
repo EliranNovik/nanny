@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
+import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeActivitySection";
 
 type DiscoverRole = "client" | "freelancer";
 
@@ -38,7 +39,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               Discover
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pick a category to see who is offering help, or use shortcuts below.
+              Pick a category to see who is offering help, then check availability and shortcuts.
             </p>
           </header>
 
@@ -49,6 +50,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 onClick={() => navigate("/client/helpers")}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 text-left shadow-sm outline-none transition-colors",
+                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/90",
                   "hover:bg-muted/60 active:scale-[0.99]",
                   "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 )}
@@ -70,6 +72,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 onClick={() => navigate(buildJobsUrl("freelancer", "requests"))}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 text-left shadow-sm outline-none transition-colors",
+                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/90",
                   "hover:bg-muted/60 active:scale-[0.99]",
                   "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 )}
@@ -123,7 +126,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </div>
           </section>
 
-          <section className="px-1 pb-8">
+          <DiscoverHomeActivitySection />
+
+          <section className="mt-8 px-1 pb-8" aria-label="Shortcuts">
             <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Shortcuts
             </p>
@@ -132,8 +137,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 to={myPostedUrl}
                 className={cn(
                   "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
                   "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04]"
+                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
                 )}
               >
                 {myPostedRequestsCount > 0 && (
@@ -151,8 +157,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 to={incomingUrl}
                 className={cn(
                   "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
                   "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04]"
+                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
                 )}
               >
                 {incomingRequestsCount > 0 && (
@@ -170,8 +177,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 to={dashboardPath}
                 className={cn(
                   "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
                   "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04]"
+                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
                 )}
               >
                 <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />

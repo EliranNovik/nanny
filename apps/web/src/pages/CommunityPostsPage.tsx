@@ -23,26 +23,37 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Loader2,
-  MapPin,
-  Plus,
-  ImagePlus,
-  X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ExpiryCountdown } from "@/components/ExpiryCountdown";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { BadgeCheck, Loader2, Plus, ImagePlus, X, Users } from "lucide-react";
 import {
   SERVICE_CATEGORIES,
   isServiceCategoryId,
   serviceCategoryLabel,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
+import {
+  AVAILABILITY_STATUS_OPTIONS,
+  QUICK_DETAILS_OPTIONS,
+  PRICE_RANGE_MAX,
+  PRICE_RANGE_MIN,
+  PRICE_RANGE_STEP,
+  buildAvailabilityDisplayTitle,
+  computeExpiresAtIsoFromStatus,
+  getAvailabilityStatusOption,
+  getQuickDetailsOption,
+  type AvailabilityPayload,
+} from "@/lib/availabilityPosts";
+import { cn } from "@/lib/utils";
+
 type ProfileSnippet = {
   id: string;
   full_name: string | null;
   photo_url: string | null;
   city: string | null;
   role: string | null;
+  is_verified?: boolean | null;
 };
 
 type PostImage = {
@@ -57,8 +68,11 @@ type CommunityPostRow = {
   category: string;
   title: string;
   body: string;
+  note: string | null;
   created_at: string;
+  expires_at: string;
   status: string;
+  availability_payload: AvailabilityPayload | null;
 };
 
 type PostWithMeta = CommunityPostRow & {
@@ -68,8 +82,9 @@ type PostWithMeta = CommunityPostRow & {
 
 const BUCKET = "community-posts";
 
-/** Radix Select must stay controlled; never use undefined for value. */
 const CATEGORY_SELECT_EMPTY = "__category_empty__";
+const STATUS_SELECT_EMPTY = "__status_empty__";
+const QUICK_SELECT_EMPTY = "__quick_empty__";
 
 export default function CommunityPostsPage() {
   const navigate = useNavigate();
@@ -82,18 +97,26 @@ export default function CommunityPostsPage() {
   const { addToast } = useToast();
 
   const [posts, setPosts] = useState<PostWithMeta[]>([]);
+  const [hireInterestCountByPost, setHireInterestCountByPost] = useState<Record<string, number>>(
+    {}
+  );
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  const [availabilityStatusId, setAvailabilityStatusId] = useState<string>(STATUS_SELECT_EMPTY);
   const [category, setCategory] = useState<ServiceCategoryId | "">("");
+  const [quickDetailsId, setQuickDetailsId] = useState<string>(QUICK_SELECT_EMPTY);
+  const [showPriceRange, setShowPriceRange] = useState(false);
+  const [priceRange, setPriceRange] = useState<[number, number]>([50, 90]);
+  const [areaTag, setAreaTag] = useState("");
+  const [note, setNote] = useState("");
   const [files, setFiles] = useState<File[]>([]);
 
   const loadPosts = useCallback(async () => {
     if (!user?.id) {
       setPosts([]);
+      setHireInterestCountByPost({});
       setLoading(false);
       return;
     }
@@ -102,7 +125,9 @@ export default function CommunityPostsPage() {
     try {
       let q = supabase
         .from("community_posts")
-        .select("id, author_id, category, title, body, created_at, status")
+        .select(
+          "id, author_id, category, title, body, note, created_at, expires_at, status, availability_payload"
+        )
         .eq("author_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -116,26 +141,41 @@ export default function CommunityPostsPage() {
       const list = (rows || []) as CommunityPostRow[];
       if (list.length === 0) {
         setPosts([]);
+        setHireInterestCountByPost({});
         return;
       }
 
       const authorIds = [...new Set(list.map((p) => p.author_id))];
       const postIds = list.map((p) => p.id);
 
-      const [authorsRes, imagesRes] = await Promise.all([
+      const [authorsRes, imagesRes, hireRes] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, full_name, photo_url, city, role")
+          .select("id, full_name, photo_url, city, role, is_verified")
           .in("id", authorIds),
         supabase
           .from("community_post_images")
           .select("id, post_id, image_url, sort_order")
           .in("post_id", postIds)
           .order("sort_order", { ascending: true }),
+        supabase
+          .from("community_post_hire_interests")
+          .select("community_post_id")
+          .in("community_post_id", postIds)
+          .eq("status", "pending"),
       ]);
 
       if (authorsRes.error) throw authorsRes.error;
       if (imagesRes.error) throw imagesRes.error;
+      if (hireRes.error) {
+        console.warn("[CommunityPostsPage] hire interest counts", hireRes.error);
+      }
+      const hireCounts: Record<string, number> = {};
+      for (const row of hireRes.data || []) {
+        const pid = row.community_post_id as string;
+        hireCounts[pid] = (hireCounts[pid] || 0) + 1;
+      }
+      setHireInterestCountByPost(hireCounts);
 
       const authorMap = new Map(
         (authorsRes.data || []).map((a) => [a.id as string, a as ProfileSnippet])
@@ -154,6 +194,7 @@ export default function CommunityPostsPage() {
       setPosts(
         list.map((p) => ({
           ...p,
+          availability_payload: (p.availability_payload as AvailabilityPayload) ?? null,
           author: authorMap.get(p.author_id) ?? null,
           images: imagesByPost.get(p.id) ?? [],
         }))
@@ -166,6 +207,7 @@ export default function CommunityPostsPage() {
         variant: "error",
       });
       setPosts([]);
+      setHireInterestCountByPost({});
     } finally {
       setLoading(false);
     }
@@ -178,16 +220,55 @@ export default function CommunityPostsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id || !profile) return;
-    const t = title.trim();
-    const b = body.trim();
-    if (!t || !b) {
-      addToast({ title: "Add a title and details", variant: "warning" });
+
+    const statusOpt = getAvailabilityStatusOption(
+      availabilityStatusId === STATUS_SELECT_EMPTY ? "" : availabilityStatusId
+    );
+    if (!statusOpt) {
+      addToast({ title: "Choose when you’re available", variant: "warning" });
       return;
     }
     if (!category || !isServiceCategoryId(category)) {
-      addToast({ title: "Choose a category", variant: "warning" });
+      addToast({ title: "Choose a service type", variant: "warning" });
       return;
     }
+    const quickOpt = getQuickDetailsOption(
+      quickDetailsId === QUICK_SELECT_EMPTY ? "" : quickDetailsId
+    );
+    if (!quickOpt) {
+      addToast({ title: "Choose quick details", variant: "warning" });
+      return;
+    }
+
+    const noteTrim = note.trim();
+    if (noteTrim.length > 120) {
+      addToast({ title: "Note is too long (max 120 characters)", variant: "warning" });
+      return;
+    }
+
+    const area = areaTag.trim().slice(0, 40);
+    const catLabel = serviceCategoryLabel(category);
+    const expiresAt = computeExpiresAtIsoFromStatus(statusOpt.id);
+    if (!expiresAt) {
+      addToast({ title: "Invalid availability status", variant: "error" });
+      return;
+    }
+    const rangePayload =
+      showPriceRange && priceRange[0] <= priceRange[1]
+        ? { min: Math.min(priceRange[0], priceRange[1]), max: Math.max(priceRange[0], priceRange[1]) }
+        : null;
+    const title = buildAvailabilityDisplayTitle({
+      categoryLabel: catLabel,
+      statusLabel: statusOpt.label,
+      quickLabel: quickOpt.label,
+      priceRangePerHour: rangePayload,
+    });
+    const payload: AvailabilityPayload = {
+      availability_status: statusOpt.id,
+      quick_details: quickOpt.id,
+      price_range_per_hour: rangePayload,
+      area_tag: area || null,
+    };
 
     setSubmitting(true);
     try {
@@ -196,8 +277,11 @@ export default function CommunityPostsPage() {
         .insert({
           author_id: user.id,
           category,
-          title: t,
-          body: b,
+          title,
+          body: "",
+          note: noteTrim || null,
+          expires_at: expiresAt,
+          availability_payload: payload,
           status: "active",
         })
         .select("id")
@@ -206,39 +290,46 @@ export default function CommunityPostsPage() {
       if (insErr) throw insErr;
       const postId = post.id as string;
 
-      let sort = 0;
-      for (const file of files.slice(0, 8)) {
-        if (!file.type.startsWith("image/")) continue;
-        const ext = file.name.split(".").pop() || "jpg";
-        const path = `${user.id}/${postId}/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-          upsert: false,
-          contentType: file.type,
-        });
-        if (upErr) {
-          console.error(upErr);
-          const desc =
-            upErr.message?.toLowerCase().includes("bucket") && upErr.message?.toLowerCase().includes("not found")
-              ? "Storage bucket “community-posts” is missing. Run db/sql/041_storage_community_posts_bucket.sql in Supabase SQL Editor (or create the bucket in Storage → New bucket, public)."
-              : upErr.message;
-          addToast({ title: "Image upload failed", description: desc, variant: "error" });
-          continue;
+      const file = files[0];
+      if (file) {
+        if (!file.type.startsWith("image/")) {
+          addToast({ title: "Only image files are allowed", variant: "warning" });
+        } else {
+          const ext = file.name.split(".").pop() || "jpg";
+          const path = `${user.id}/${postId}/${crypto.randomUUID()}.${ext}`;
+          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+            upsert: false,
+            contentType: file.type,
+          });
+          if (upErr) {
+            console.error(upErr);
+            const desc =
+              upErr.message?.toLowerCase().includes("bucket") &&
+              upErr.message?.toLowerCase().includes("not found")
+                ? "Storage bucket “community-posts” is missing. Run db/sql/041_storage_community_posts_bucket.sql in Supabase SQL Editor (or create the bucket in Storage → New bucket, public)."
+                : upErr.message;
+            addToast({ title: "Image upload failed", description: desc, variant: "error" });
+          } else {
+            const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+            const { error: imgErr } = await supabase.from("community_post_images").insert({
+              post_id: postId,
+              image_url: pub.publicUrl,
+              sort_order: 0,
+            });
+            if (imgErr) console.error(imgErr);
+          }
         }
-        const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-        const url = pub.publicUrl;
-        const { error: imgErr } = await supabase.from("community_post_images").insert({
-          post_id: postId,
-          image_url: url,
-          sort_order: sort++,
-        });
-        if (imgErr) console.error(imgErr);
       }
 
-      addToast({ title: "Your offer is live", variant: "success" });
+      addToast({ title: "Your availability is live", variant: "success" });
       setDialogOpen(false);
-      setTitle("");
-      setBody("");
+      setAvailabilityStatusId(STATUS_SELECT_EMPTY);
+      setQuickDetailsId(QUICK_SELECT_EMPTY);
+      setShowPriceRange(false);
+      setPriceRange([50, 90]);
       setCategory("");
+      setAreaTag("");
+      setNote("");
       setFiles([]);
       await loadPosts();
     } catch (err) {
@@ -264,7 +355,7 @@ export default function CommunityPostsPage() {
                 variant="outline"
                 size="sm"
                 className="rounded-full text-xs"
-                onClick={() => navigate("/posts")}
+                onClick={() => navigate("/availability")}
               >
                 All categories
               </Button>
@@ -277,14 +368,16 @@ export default function CommunityPostsPage() {
             <div>
               <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
                 {categoryFilter
-                  ? `Your ${serviceCategoryLabel(categoryFilter)} offers`
-                  : "Your service offers"}
+                  ? `Your ${serviceCategoryLabel(categoryFilter)} availability`
+                  : "Your availability"}
               </h1>
-              
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                Short-lived pulses — they disappear from the public board when time is up.
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" variant="outline" className="rounded-full" asChild>
-                <Link to="/public/posts">Browse community</Link>
+                <Link to="/public/posts">See who’s available</Link>
               </Button>
               <Button
                 type="button"
@@ -292,7 +385,7 @@ export default function CommunityPostsPage() {
                 onClick={() => setDialogOpen(true)}
               >
                 <Plus className="h-4 w-4" />
-                Post your offer
+                Set availability
               </Button>
             </div>
           </div>
@@ -306,95 +399,179 @@ export default function CommunityPostsPage() {
           <Card className="mx-auto w-full max-w-3xl border-dashed md:max-w-4xl">
             <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-sm font-medium text-muted-foreground">
-                You have not posted an offer yet. Create one to appear on the public community board.
+                You have no active availability pulses yet. Create one — it stays up only for the
+                time you choose.
               </p>
               <Button type="button" onClick={() => setDialogOpen(true)}>
-                Create a post
+                Set availability
               </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2">
             {posts.map((post) => {
-              const cat = isServiceCategoryId(post.category)
-                ? serviceCategoryLabel(post.category)
-                : post.category;
               const isArchived = post.status === "archived";
+              const expired = Date.parse(post.expires_at) <= Date.now();
+              const description = post.note?.trim() || post.body?.trim() || null;
+              const coverUrl = post.images[0]?.image_url;
+              const verified = Boolean(post.author?.is_verified);
+              const hireCount = hireInterestCountByPost[post.id] ?? 0;
               return (
                 <Card
                   key={post.id}
-                  className="overflow-hidden border border-slate-200/70 shadow-sm dark:border-white/10"
+                  className={cn(
+                    "relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
+                    expired &&
+                      "border-neutral-300/90 bg-neutral-100 text-neutral-600 shadow-none dark:border-neutral-600 dark:bg-neutral-900/75 dark:text-neutral-400"
+                  )}
+                  aria-label={expired ? "Expired availability post" : undefined}
                 >
-                  <CardContent className="p-0">
-                    {post.images.length > 0 && (
-                      <div className="grid grid-cols-2 gap-0.5 bg-muted/30">
-                        {post.images.slice(0, 4).map((im) => (
-                          <div
-                            key={im.id}
-                            className={cn(
-                              "relative aspect-[4/3] bg-muted",
-                              post.images.length === 1 && "col-span-2 aspect-[16/9]"
-                            )}
-                          >
-                            <img
-                              src={im.image_url}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="space-y-3 p-4">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-11 w-11 border border-border/60">
-                          <AvatarImage src={post.author?.photo_url ?? undefined} />
-                          <AvatarFallback className="bg-orange-500/15 text-sm font-bold text-orange-700">
-                            {(post.author?.full_name || "?").charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-bold text-foreground">
+                  <CardContent className="relative z-[1] p-0">
+                    <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-2">
+                      <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
+                        <AvatarImage
+                          src={post.author?.photo_url ?? undefined}
+                          className="object-cover"
+                          alt=""
+                        />
+                        <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
+                          {(post.author?.full_name || "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="truncate text-base font-semibold leading-tight">
                             {post.author?.full_name || "Member"}
-                          </p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            {post.author?.city && (
-                              <span className="inline-flex items-center gap-0.5">
-                                <MapPin className="h-3 w-3 shrink-0" />
-                                {post.author.city}
-                              </span>
-                            )}
-                            <Badge variant="secondary" className="text-[10px] font-bold">
-                              {cat}
+                          </span>
+                          {verified && (
+                            <BadgeCheck
+                              className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                              aria-label="Verified"
+                            />
+                          )}
+                          {isArchived && (
+                            <Badge variant="outline" className="text-[9px] font-bold">
+                              Archived
                             </Badge>
-                            {isArchived && (
-                              <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground">
-                                Archived
-                              </Badge>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
-                      <h2 className="text-lg font-black leading-snug text-slate-900 dark:text-white">
-                        {post.title}
-                      </h2>
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                        {post.body}
+                    </div>
+
+                    <div className="px-3.5 pb-6">
+                      <p className="text-lg font-semibold leading-snug">{post.title}</p>
+                    </div>
+
+                    <div className="space-y-2 px-3.5 pb-3">
+                      {post.availability_payload?.area_tag && (
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium text-foreground/80">Area</span>{" "}
+                          {post.availability_payload.area_tag}
+                        </p>
+                      )}
+                      {description && (
+                        <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
+                          {description}
+                        </p>
+                      )}
+                      {coverUrl && (
+                        <div className="pt-1">
+                          <div className="w-full max-w-[160px] overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
+                            <img
+                              src={coverUrl}
+                              alt=""
+                              className="aspect-[4/3] w-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      className={cn(
+                        "space-y-2 border-t border-neutral-200 bg-white px-3.5 py-3 dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
+                        expired &&
+                          "border-neutral-300/80 bg-neutral-100/80 dark:border-neutral-600/80 dark:bg-neutral-900/60"
+                      )}
+                    >
+                      <ExpiryCountdown
+                        expiresAtIso={post.expires_at}
+                        className={expired ? "text-neutral-500 dark:text-neutral-500" : undefined}
+                      />
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Posted {new Date(post.created_at).toLocaleString()}
                       </p>
-                      <p className="text-[11px] font-semibold text-muted-foreground">
-                        {new Date(post.created_at).toLocaleString()}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {expired ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="relative gap-2 rounded-xl"
+                            disabled
+                            aria-disabled
+                          >
+                            <Users className="h-4 w-4" />
+                            Hire interest
+                            {hireCount > 0 && (
+                              <Badge className="ml-1 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-black tabular-nums">
+                                {hireCount > 99 ? "99+" : hireCount}
+                              </Badge>
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="relative gap-2 rounded-xl"
+                            asChild
+                          >
+                            <Link to={`/availability/post/${post.id}/hires`}>
+                              <Users className="h-4 w-4" />
+                              Hire interest
+                              {hireCount > 0 && (
+                                <Badge className="ml-1 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-black tabular-nums">
+                                  {hireCount > 99 ? "99+" : hireCount}
+                                </Badge>
+                              )}
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="w-full"
+                        className={cn("w-full rounded-xl", expired && "text-neutral-500")}
                         onClick={() => navigate(`/profile/${post.author_id}`)}
                       >
                         View your public profile
                       </Button>
                     </div>
                   </CardContent>
+                  {expired && (
+                    <>
+                      <div
+                        className="pointer-events-none absolute inset-0 z-[10] rounded-2xl bg-white/45 dark:bg-black/35"
+                        aria-hidden
+                      />
+                      <div
+                        className="pointer-events-none absolute inset-0 z-[11] flex items-center justify-center overflow-hidden rounded-2xl"
+                        aria-hidden
+                      >
+                        <span
+                          className={cn(
+                            "max-w-[95%] select-none text-center font-black uppercase leading-none tracking-[0.12em] text-neutral-400/45 dark:text-neutral-500/40",
+                            "rotate-[-12deg] text-[clamp(1.75rem,11vw,3.5rem)] sm:text-[clamp(2rem,9vw,4rem)]"
+                          )}
+                        >
+                          Expired
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </Card>
               );
             })}
@@ -405,11 +582,41 @@ export default function CommunityPostsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Post your offer</DialogTitle>
+            <DialogTitle>Set availability</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Status sets how long the post stays up (2h / 24h / 48h). Optional note — keep it short.
+            </p>
           </DialogHeader>
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label>Status</Label>
+              <Select
+                value={
+                  AVAILABILITY_STATUS_OPTIONS.some((o) => o.id === availabilityStatusId)
+                    ? availabilityStatusId
+                    : STATUS_SELECT_EMPTY
+                }
+                onValueChange={(v) =>
+                  setAvailabilityStatusId(v === STATUS_SELECT_EMPTY ? STATUS_SELECT_EMPTY : v)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="When are you available?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={STATUS_SELECT_EMPTY} className="text-muted-foreground">
+                    Choose status
+                  </SelectItem>
+                  {AVAILABILITY_STATUS_OPTIONS.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.label} — {o.hours}h on the board
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Service type</Label>
               <Select
                 value={
                   category && isServiceCategoryId(category) ? category : CATEGORY_SELECT_EMPTY
@@ -436,28 +643,96 @@ export default function CommunityPostsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="offer-title">Title</Label>
+              <Label>Quick details</Label>
+              <Select
+                value={
+                  QUICK_DETAILS_OPTIONS.some((o) => o.id === quickDetailsId)
+                    ? quickDetailsId
+                    : QUICK_SELECT_EMPTY
+                }
+                onValueChange={(v) =>
+                  setQuickDetailsId(v === QUICK_SELECT_EMPTY ? QUICK_SELECT_EMPTY : v)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Job shape" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={QUICK_SELECT_EMPTY} className="text-muted-foreground">
+                    Choose quick details
+                  </SelectItem>
+                  {QUICK_DETAILS_OPTIONS.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="price-range-switch">Price hint (per hour)</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Optional range — drag both ends to set min–max ₪/h.
+                  </p>
+                </div>
+                <Switch
+                  id="price-range-switch"
+                  checked={showPriceRange}
+                  onCheckedChange={setShowPriceRange}
+                  aria-label="Show hourly rate range"
+                />
+              </div>
+              {showPriceRange && (
+                <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+                  <div className="flex items-center justify-between text-sm font-bold tabular-nums">
+                    <span className="text-primary">₪{priceRange[0]}/h</span>
+                    <span className="text-muted-foreground text-xs font-semibold">to</span>
+                    <span className="text-primary">₪{priceRange[1]}/h</span>
+                  </div>
+                  <Slider
+                    min={PRICE_RANGE_MIN}
+                    max={PRICE_RANGE_MAX}
+                    step={PRICE_RANGE_STEP}
+                    minStepsBetweenThumbs={1}
+                    value={priceRange}
+                    onValueChange={(v) => {
+                      if (v.length === 2) setPriceRange([v[0], v[1]]);
+                    }}
+                    className="w-full"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Range: ₪{PRICE_RANGE_MIN}–₪{PRICE_RANGE_MAX} (step ₪{PRICE_RANGE_STEP})
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="area-tag">Area (optional)</Label>
               <Input
-                id="offer-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Short headline"
-                maxLength={120}
+                id="area-tag"
+                value={areaTag}
+                onChange={(e) => setAreaTag(e.target.value)}
+                placeholder="e.g. North Tel Aviv"
+                maxLength={40}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="offer-body">Details</Label>
+              <Label htmlFor="offer-note">Short note (optional)</Label>
               <Textarea
-                id="offer-body"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Describe what you offer, availability, area…"
-                rows={6}
+                id="offer-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="One line — max 120 characters"
+                rows={3}
+                maxLength={120}
                 className="resize-none"
               />
+              <p className="text-[11px] text-muted-foreground">{note.length}/120</p>
             </div>
             <div className="space-y-2">
-              <Label>Photos (optional)</Label>
+              <Label>Photo (optional, one image)</Label>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
@@ -467,17 +742,16 @@ export default function CommunityPostsPage() {
                   onClick={() => document.getElementById("community-post-files")?.click()}
                 >
                   <ImagePlus className="h-4 w-4" />
-                  Add images
+                  Add photo
                 </Button>
                 <input
                   id="community-post-files"
                   type="file"
                   accept="image/*"
-                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const next = Array.from(e.target.files || []);
-                    setFiles((prev) => [...prev, ...next].slice(0, 8));
+                    const f = e.target.files?.[0];
+                    setFiles(f ? [f] : []);
                     e.target.value = "";
                   }}
                 />
@@ -493,7 +767,7 @@ export default function CommunityPostsPage() {
                       <button
                         type="button"
                         className="rounded-full p-0.5 hover:bg-background"
-                        onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                        onClick={() => setFiles([])}
                         aria-label="Remove"
                       >
                         <X className="h-3 w-3" />

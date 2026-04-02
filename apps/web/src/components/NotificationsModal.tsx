@@ -113,7 +113,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
           .select(`
             id, created_at, job_id,
             job_requests (
-              id, location_city, service_type, care_type, confirm_ends_at
+              id, location_city, service_type, care_type, confirm_ends_at, community_post_id
             )
           `)
           .eq("freelancer_id", user.id)
@@ -124,6 +124,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
           const now = new Date();
           notifications.forEach((n: any) => {
             const job = n.job_requests;
+            if (job?.community_post_id) return;
             if (job && (!job.confirm_ends_at || new Date(job.confirm_ends_at) > now)) {
               allAlerts.push({
                 id: n.id,
@@ -197,6 +198,33 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
             });
           }
         }
+      }
+
+      // Client: helper confirmed a community “Hire now” → locked job
+      if (profile.role === "client") {
+        const { data: communityHires } = await supabase
+          .from("job_requests")
+          .select("id, service_type, locked_at, community_post_id")
+          .eq("client_id", user.id)
+          .not("community_post_id", "is", null)
+          .in("status", ["locked", "active"])
+          .gte(
+            "locked_at",
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+          )
+          .order("locked_at", { ascending: false });
+
+        (communityHires || []).forEach((job: any) => {
+          allAlerts.push({
+            id: `community-hire-${job.id}`,
+            type: "job_update",
+            title: "Helper confirmed your hire",
+            description: "Your booking from an availability post is live.",
+            link: buildJobsUrl("client", "jobs"),
+            created_at: job.locked_at,
+            metadata: { job_id: job.id },
+          });
+        });
       }
 
       // Sort all by created_at

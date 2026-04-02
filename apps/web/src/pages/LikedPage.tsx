@@ -9,9 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
+  BadgeCheck,
+  CheckCircle2,
   Heart,
+  Hourglass,
   Loader2,
   MapPin,
+  MessageSquare,
   Sparkles,
   UserRound,
   LayoutGrid,
@@ -19,10 +23,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  isServiceCategoryId,
-  serviceCategoryLabel,
-} from "@/lib/serviceCategories";
+import { ExpiryCountdown } from "@/components/ExpiryCountdown";
+import { type AvailabilityPayload } from "@/lib/availabilityPosts";
 
 type ProfileRow = {
   id: string;
@@ -30,6 +32,7 @@ type ProfileRow = {
   photo_url: string | null;
   city: string | null;
   role: string | null;
+  is_verified?: boolean | null;
 };
 
 type PostRow = {
@@ -38,14 +41,23 @@ type PostRow = {
   category: string;
   title: string;
   body: string;
+  note: string | null;
   created_at: string;
+  expires_at: string;
   status: string;
+  availability_payload: AvailabilityPayload | null;
 };
 
 type PostWithExtras = PostRow & {
   author?: ProfileRow | null;
   coverImage: string | null;
 };
+
+/** Newest interest per post for this user (from `community_post_hire_interests`, ordered by created_at desc). */
+type HireInterestState =
+  | { status: "pending" }
+  | { status: "confirmed"; job_request_id: string }
+  | { status: "declined" };
 
 export default function LikedPage() {
   const { user, profile } = useAuth();
@@ -64,11 +76,19 @@ export default function LikedPage() {
   const [posts, setPosts] = useState<PostWithExtras[]>([]);
   const [busyProfileId, setBusyProfileId] = useState<string | null>(null);
   const [busyPostId, setBusyPostId] = useState<string | null>(null);
+  const [hireInterestByPostId, setHireInterestByPostId] = useState<
+    Record<string, HireInterestState>
+  >({});
+  const [conversationIdByJobId, setConversationIdByJobId] = useState<Record<string, string>>(
+    {}
+  );
 
   const load = useCallback(async () => {
     if (!user?.id) {
       setProfiles([]);
       setPosts([]);
+      setHireInterestByPostId({});
+      setConversationIdByJobId({});
       setLoading(false);
       return;
     }
@@ -115,10 +135,14 @@ export default function LikedPage() {
 
       if (favPostIds.length === 0) {
         setPosts([]);
+        setHireInterestByPostId({});
+        setConversationIdByJobId({});
       } else {
         const { data: postRows, error: postErr } = await supabase
           .from("community_posts")
-          .select("id, author_id, category, title, body, created_at, status")
+          .select(
+            "id, author_id, category, title, body, note, created_at, expires_at, status, availability_payload"
+          )
           .in("id", favPostIds);
         if (postErr) throw postErr;
         const list = (postRows ?? []) as PostRow[];
@@ -132,7 +156,7 @@ export default function LikedPage() {
         if (authorIds.length > 0) {
           const { data: ad, error: ae } = await supabase
             .from("profiles")
-            .select("id, full_name, photo_url, city, role")
+            .select("id, full_name, photo_url, city, role, is_verified")
             .in("id", authorIds);
           if (ae) throw ae;
           authorsData = (ad ?? []) as ProfileRow[];
@@ -158,10 +182,59 @@ export default function LikedPage() {
         setPosts(
           list.map((p) => ({
             ...p,
+            availability_payload: (p.availability_payload as AvailabilityPayload) ?? null,
             author: authorMap.get(p.author_id) ?? null,
             coverImage: firstImage.get(p.id) ?? null,
           }))
         );
+
+        const hireMap: Record<string, HireInterestState> = {};
+        const { data: interestRows, error: interestErr } = await supabase
+          .from("community_post_hire_interests")
+          .select("community_post_id, status, job_request_id, created_at")
+          .eq("client_id", user.id)
+          .in("community_post_id", postIds)
+          .order("created_at", { ascending: false });
+
+        if (interestErr) {
+          console.warn("[LikedPage] hire interests", interestErr);
+        } else {
+          for (const row of interestRows ?? []) {
+            const pid = row.community_post_id as string;
+            if (hireMap[pid]) continue;
+            const st = row.status as string;
+            if (st === "pending") hireMap[pid] = { status: "pending" };
+            else if (st === "confirmed" && row.job_request_id) {
+              hireMap[pid] = {
+                status: "confirmed",
+                job_request_id: row.job_request_id as string,
+              };
+            } else if (st === "declined") hireMap[pid] = { status: "declined" };
+          }
+        }
+        setHireInterestByPostId(hireMap);
+
+        const confirmedJobIds = Object.values(hireMap)
+          .filter((h): h is Extract<HireInterestState, { status: "confirmed" }> => h.status === "confirmed")
+          .map((h) => h.job_request_id);
+        if (confirmedJobIds.length > 0) {
+          const { data: convos, error: convErr } = await supabase
+            .from("conversations")
+            .select("id, job_id")
+            .in("job_id", confirmedJobIds);
+          if (convErr) {
+            console.warn("[LikedPage] conversations", convErr);
+            setConversationIdByJobId({});
+          } else {
+            const cMap: Record<string, string> = {};
+            for (const c of convos ?? []) {
+              if (c.job_id && c.id) cMap[c.job_id as string] = c.id as string;
+            }
+            setConversationIdByJobId(cMap);
+          }
+        } else {
+          setConversationIdByJobId({});
+        }
       }
     } catch (e) {
       console.error("[LikedPage]", e);
@@ -172,6 +245,8 @@ export default function LikedPage() {
       });
       setProfiles([]);
       setPosts([]);
+      setHireInterestByPostId({});
+      setConversationIdByJobId({});
     } finally {
       setLoading(false);
     }
@@ -396,9 +471,17 @@ export default function LikedPage() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {posts.map((post) => {
-                  const cat = isServiceCategoryId(post.category)
-                    ? serviceCategoryLabel(post.category)
-                    : post.category;
+                  const hire = hireInterestByPostId[post.id];
+                  const expired =
+                    post.expires_at && !Number.isNaN(Date.parse(post.expires_at))
+                      ? Date.parse(post.expires_at) <= Date.now()
+                      : false;
+                  const blurb =
+                    (post.note && post.note.trim()) || (post.body && post.body.trim()) || "";
+                  const chatId =
+                    hire?.status === "confirmed"
+                      ? conversationIdByJobId[hire.job_request_id]
+                      : undefined;
                   return (
                     <li key={post.id}>
                       <Card
@@ -409,14 +492,6 @@ export default function LikedPage() {
                       >
                         <CardContent className="p-3 md:p-4">
                           <div className="flex items-start gap-3">
-                            {post.coverImage ? (
-                              <div className="h-20 w-24 shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-transparent dark:border-white/10">
-                                <img src={post.coverImage} alt="" className="h-full w-full object-cover" />
-                              </div>
-                            ) : (
-                              <div className="h-20 w-24 shrink-0 rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15" />
-                            )}
-
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
@@ -427,12 +502,23 @@ export default function LikedPage() {
                                         {(post.author?.full_name || "?").charAt(0).toUpperCase()}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <p className="truncate text-xs font-bold text-foreground">
-                                      {post.author?.full_name || "Member"}
+                                    <p className="flex min-w-0 items-center gap-0.5 truncate text-xs font-bold text-foreground">
+                                      <span className="truncate">{post.author?.full_name || "Member"}</span>
+                                      {post.author?.is_verified && (
+                                        <BadgeCheck
+                                          className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                                          aria-label="Verified"
+                                        />
+                                      )}
                                     </p>
-                                    <Badge variant="secondary" className="text-[10px] font-bold">
-                                      {cat}
-                                    </Badge>
+                                    {expired && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] font-bold text-amber-800 dark:text-amber-300"
+                                      >
+                                        Expired
+                                      </Badge>
+                                    )}
                                   </div>
                                   <h2 className="mt-1 truncate text-[15px] font-black leading-snug text-foreground">
                                     {post.title}
@@ -456,17 +542,76 @@ export default function LikedPage() {
                                 </Button>
                               </div>
 
-                              <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                                {post.body}
-                              </p>
+                              {blurb && (
+                                <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                  {blurb}
+                                </p>
+                              )}
+                              {post.coverImage && (
+                                <div className="mt-2">
+                                  <div className="w-full max-w-[160px] overflow-hidden rounded-xl border border-black/10 bg-transparent dark:border-white/10">
+                                    <img
+                                      src={post.coverImage}
+                                      alt=""
+                                      className="aspect-[4/3] w-full object-cover"
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {post.expires_at && (
+                                <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                                  <ExpiryCountdown
+                                    expiresAtIso={post.expires_at}
+                                    className="text-[11px] text-muted-foreground"
+                                  />
+                                </p>
+                              )}
 
-                              <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <Button variant="outline" size="sm" className="rounded-full" asChild>
-                                  <Link to="/public/posts">
-                                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                                    Community feed
-                                  </Link>
-                                </Button>
+                              <div className="mt-3 space-y-2">
+                                {hire?.status === "pending" && (
+                                  <div className="flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/30">
+                                    <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                                    <p className="text-[12px] font-semibold leading-snug text-amber-950 dark:text-amber-100">
+                                      Waiting for confirmation — the helper hasn’t accepted your hire
+                                      request yet.
+                                    </p>
+                                  </div>
+                                )}
+                                {hire?.status === "confirmed" && (
+                                  <div className="flex items-start gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                                    <p className="text-[12px] font-semibold leading-snug text-emerald-950 dark:text-emerald-100">
+                                      Helper confirmed — your booking is live. You can chat and manage
+                                      it from Jobs.
+                                    </p>
+                                  </div>
+                                )}
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {hire?.status === "confirmed" && chatId && (
+                                    <Button size="sm" className="rounded-full gap-1.5" asChild>
+                                      <Link to={`/chat/${chatId}`}>
+                                        <MessageSquare className="h-3.5 w-3.5" />
+                                        Open chat
+                                      </Link>
+                                    </Button>
+                                  )}
+                                  {hire?.status === "confirmed" && profile?.role === "client" && (
+                                    <Button variant="outline" size="sm" className="rounded-full" asChild>
+                                      <Link to="/client/jobs">View jobs</Link>
+                                    </Button>
+                                  )}
+                                  <Button variant="outline" size="sm" className="rounded-full" asChild>
+                                    <Link to={`/public/posts?post=${post.id}`}>
+                                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                                      {hire?.status === "pending"
+                                        ? "View post"
+                                        : hire?.status === "confirmed"
+                                          ? "View on board"
+                                          : "Available now"}
+                                    </Link>
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
@@ -24,11 +24,16 @@ import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
 import { JobAttachedPhotosStrip, jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
 import { JobCardsCarousel, jobCardCarouselItemClass } from "@/components/jobs/JobCardsCarousel";
 import { isServiceCategoryId, serviceCategoryLabel } from "@/lib/serviceCategories";
+import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 
 interface JobRequest {
     id: string;
     client_id: string;
     status: string;
+    /** Set when job was created from a public community “Hire now” action */
+    community_post_id?: string | null;
+    /** Snapshot of community_posts.expires_at at hire time */
+    community_post_expires_at?: string | null;
     service_type?: string;
     care_type?: string;
     children_count?: number;
@@ -111,9 +116,15 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
         if (job.location_city?.trim()) rows.push({ k: "Location", v: job.location_city.trim() });
         if (startAt) rows.push({ k: "Starts", v: startAt.toLocaleString() });
         if ((job as any).shift_hours) rows.push({ k: "Shift", v: String((job as any).shift_hours) });
-        if (job.care_type) rows.push({ k: "Care type", v: String(job.care_type) });
-        if (job.children_count != null) rows.push({ k: "Children", v: String(job.children_count) });
-        if (job.children_age_group) rows.push({ k: "Age group", v: String(job.children_age_group) });
+        const hideNannyPlaceholders =
+            Boolean(job.community_post_id) && job.service_type !== "nanny";
+        if (job.care_type && !hideNannyPlaceholders) rows.push({ k: "Care type", v: String(job.care_type) });
+        if (job.children_count != null && !hideNannyPlaceholders && job.children_count > 0) {
+            rows.push({ k: "Children", v: String(job.children_count) });
+        }
+        if (job.children_age_group && !hideNannyPlaceholders) {
+            rows.push({ k: "Age group", v: String(job.children_age_group) });
+        }
         if (Array.isArray((job as any).languages_pref) && (job as any).languages_pref.length > 0) {
             rows.push({ k: "Languages", v: (job as any).languages_pref.join(", ") });
         }
@@ -196,7 +207,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                     .select(`
                         id, job_id, status, created_at,
                         job_requests (
-                          id, client_id, service_type, care_type, children_count, children_age_group, location_city, start_at, shift_hours, languages_pref, requirements, budget_min, budget_max, notes, stage, offered_hourly_rate, price_offer_status, schedule_confirmed, service_details, created_at,
+                          id, client_id, community_post_id, community_post_expires_at, service_type, care_type, children_count, children_age_group, location_city, start_at, shift_hours, time_duration, languages_pref, requirements, budget_min, budget_max, notes, stage, offered_hourly_rate, price_offer_status, schedule_confirmed, service_details, created_at,
                           profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
                         )
                     `)
@@ -269,7 +280,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
             const declinedJobIds = new Set((confsRes.data || []).filter(c => c.status === "declined").map(c => c.job_id));
 
             const validNotifications = notificationsData
-                .filter((n: any) => n.job_requests)
+                .filter((n: any) => n.job_requests && !n.job_requests.community_post_id)
                 .map((n: any) => ({
                     ...n,
                     isConfirmed: confirmedJobIds.has(n.job_id),
@@ -627,16 +638,37 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                     )}
                                                 </div>
 
-                                                {job.created_at && !isConfirmed && !isDeclined && (
+                                                {!isConfirmed && !isDeclined && job.community_post_id && job.community_post_expires_at && (
+                                                    <div className="flex flex-wrap items-center gap-2 text-[15px] text-orange-500 font-bold tracking-tight">
+                                                        <Clock className="w-5 h-5 flex-shrink-0" />
+                                                        <span className="opacity-80 font-medium">Post expires</span>
+                                                        <ExpiryCountdown
+                                                            expiresAtIso={job.community_post_expires_at}
+                                                            endedLabel="Post ended"
+                                                            className="text-[15px] font-black text-orange-600 dark:text-orange-400"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {!isConfirmed && !isDeclined && !job.community_post_id && job.created_at && (
                                                     <div className="flex items-center gap-3 text-[16px] text-orange-400 font-bold tracking-tight">
                                                         <Clock className="w-5 h-5 flex-shrink-0" />
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="opacity-60 font-medium">Expires in</span>
+                                                            <span className="opacity-60 font-medium">Time since invite</span>
                                                             <LiveTimer createdAt={job.created_at} />
                                                         </div>
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {job.community_post_id && (
+                                                <Link
+                                                    to={`/public/posts?post=${job.community_post_id}`}
+                                                    className="inline-flex text-[13px] font-bold text-orange-600 underline-offset-2 hover:underline"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    View related community post
+                                                </Link>
+                                            )}
 
                                             {/* Buttons Area - Standardized CTA Hierarchy */}
                                             {!isConfirmed && !isDeclined && (
