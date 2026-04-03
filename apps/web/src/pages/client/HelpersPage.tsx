@@ -564,7 +564,7 @@ export default function HelpersPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell space-y-6 pt-6 md:pt-8">
         <div className="mx-auto w-full max-w-5xl px-1 md:max-w-6xl">
           <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">

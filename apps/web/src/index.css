@@ -163,6 +163,22 @@
 
 /* Mobile bottom nav: real glass (Tailwind-only tints read as solid white on white pages) */
 @layer components {
+  /**
+   * Applied to the main app scroll column (see App.tsx PageLayoutWithHeader).
+   * Clears fixed BottomNav (full-width bar + center FAB + safe area) so content
+   * does not end hidden under the bar when scrolled to the end.
+   */
+  /* Nav height only; #root already adds env(safe-area-inset-bottom). */
+  .app-main-scroll-pad {
+    padding-bottom: 7.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .app-main-scroll-pad {
+      padding-bottom: 6.5rem;
+    }
+  }
+
   .bottom-nav-mobile-shell {
     position: relative;
     isolation: isolate;

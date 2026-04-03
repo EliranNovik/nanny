@@ -345,7 +345,7 @@ export default function CommunityPostsPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell space-y-6 pt-6 md:pt-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-1 md:max-w-4xl">
           {categoryFilter && (

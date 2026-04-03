@@ -1,10 +1,33 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import {
+  fetchInboxActivityAlerts,
+  inboxActivityKindLabel,
+  type NotificationAlert,
+} from "@/lib/inboxActivityAlerts";
+import {
+  loadDismissedActivityIds,
+  persistDismissedActivityIds,
+} from "@/lib/inboxDismissedActivity";
+import {
+  loadHiddenChatUserIds,
+  persistHiddenChatUserIds,
+} from "@/lib/inboxHiddenChats";
+import { InboxChatSwipeRow } from "@/components/messages/InboxChatSwipeRow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle, Loader2, ArrowLeft, Check, CheckCheck } from "lucide-react";
+import {
+  MessageCircle,
+  Loader2,
+  ArrowLeft,
+  Check,
+  CheckCheck,
+  Bell,
+  Briefcase,
+  MessageSquare,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
@@ -21,15 +44,6 @@ interface Conversation {
     full_name: string | null;
     photo_url: string | null;
   };
-  job?: {
-    id: string;
-    status: string;
-    stage: string | null;
-    care_type: string;
-    children_count: number;
-    children_age_group: string;
-    start_at: string | null;
-  };
   last_message?: {
     body: string | null;
     created_at: string;
@@ -41,6 +55,10 @@ interface Conversation {
   } | undefined;
   unread_count: number;
 }
+
+type InboxRow =
+  | { kind: "chat"; key: string; sortAt: number; conversation: Conversation }
+  | { kind: "activity"; key: string; sortAt: number; alert: NotificationAlert };
 
 export default function MessagesPage() {
   const { user, profile } = useAuth();
@@ -64,8 +82,48 @@ export default function MessagesPage() {
 
   const cachedData = (user && profile) ? getCachedMessagesData() : null;
   const [conversations, setConversations] = useState<Conversation[]>(cachedData?.conversations || []);
+  const [activityAlerts, setActivityAlerts] = useState<NotificationAlert[]>([]);
+  const [dismissedActivityIds, setDismissedActivityIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [hiddenChatUserIds, setHiddenChatUserIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [loading, setLoading] = useState(!cachedData);
-  const loadConversationsRef = useRef<(() => Promise<void>) | null>(null);
+  const loadConversationsRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setDismissedActivityIds(new Set());
+      setHiddenChatUserIds(new Set());
+      return;
+    }
+    setDismissedActivityIds(loadDismissedActivityIds(user.id));
+    setHiddenChatUserIds(loadHiddenChatUserIds(user.id));
+  }, [user?.id]);
+
+  const visibleActivityAlerts = useMemo(
+    () => activityAlerts.filter((a) => !dismissedActivityIds.has(a.id)),
+    [activityAlerts, dismissedActivityIds]
+  );
+
+  const inboxRows = useMemo((): InboxRow[] => {
+    const rows: InboxRow[] = [];
+    for (const c of conversations) {
+      const oid = c.other_user_id;
+      if (oid && hiddenChatUserIds.has(oid)) continue;
+      const sortAt = c.last_message?.created_at
+        ? new Date(c.last_message.created_at).getTime()
+        : new Date(c.created_at).getTime();
+      rows.push({ kind: "chat", key: `chat-${c.id}`, sortAt, conversation: c });
+    }
+    for (const a of visibleActivityAlerts) {
+      const sortAt = a.created_at ? new Date(a.created_at).getTime() : 0;
+      rows.push({ kind: "activity", key: `act-${a.id}`, sortAt, alert: a });
+    }
+    rows.sort((x, y) => y.sortAt - x.sortAt);
+    return rows;
+  }, [conversations, visibleActivityAlerts, hiddenChatUserIds]);
   const [mobileView, setMobileView] = useState<"contacts" | "chat">("contacts");
   /** When URL has ?conversation= but list has not loaded that row yet (e.g. new direct chat). */
   const [directChatHeader, setDirectChatHeader] = useState<{
@@ -140,7 +198,6 @@ export default function MessagesPage() {
 
         if (!convos || convos.length === 0) {
           setConversations([]);
-          setLoading(false);
           return;
         }
 
@@ -160,7 +217,6 @@ export default function MessagesPage() {
 
         if (conversationsByUser.size === 0) {
           setConversations([]);
-          setLoading(false);
           return;
         }
 
@@ -176,7 +232,7 @@ export default function MessagesPage() {
         );
 
         const entries = Array.from(conversationsByUser.entries());
-        /** Limit parallel Supabase calls per wave (each contact = 2 queries + optional job). */
+        /** Limit parallel Supabase calls per wave (each contact = 2 queries). */
         const BATCH = 8;
         const enriched: Conversation[] = [];
 
@@ -214,29 +270,6 @@ export default function MessagesPage() {
                 userConversations.find((c) => c.id === mostRecentConversationId) ||
                 userConversations[0];
 
-              let job:
-                | {
-                    id: string;
-                    status: string;
-                    stage: string | null;
-                    care_type: string;
-                    service_type: string;
-                    children_count: number;
-                    children_age_group: string;
-                    start_at: string | null;
-                  }
-                | undefined;
-              if (mostRecentConversation.job_id) {
-                const { data: jobRow } = await supabase
-                  .from("job_requests")
-                  .select(
-                    "id, status, stage, care_type, service_type, children_count, children_age_group, start_at"
-                  )
-                  .eq("id", mostRecentConversation.job_id)
-                  .single();
-                job = jobRow ?? undefined;
-              }
-
               const last_message = row
                 ? {
                     body: row.body,
@@ -256,7 +289,6 @@ export default function MessagesPage() {
                   full_name: otherProfile?.full_name || null,
                   photo_url: otherProfile?.photo_url || null,
                 },
-                job: job || undefined,
                 last_message,
                 unread_count: totalUnread,
               } as Conversation;
@@ -265,7 +297,6 @@ export default function MessagesPage() {
           enriched.push(...batch);
         }
 
-        // Include job-linked and direct (no job) chats
         const sortedConversations = enriched.sort((a, b) => {
           const timeA = a.last_message?.created_at
             ? new Date(a.last_message.created_at).getTime()
@@ -293,13 +324,46 @@ export default function MessagesPage() {
         }
       } catch (err) {
         console.error("Error loading conversations:", err);
-      } finally {
-        setLoading(false);
       }
     }
 
-    loadConversationsRef.current = loadConversations;
-    loadConversations();
+    async function loadActivity() {
+      if (!user?.id || !profile) {
+        setActivityAlerts([]);
+        return;
+      }
+      try {
+        const rows = await fetchInboxActivityAlerts(user, profile, {
+          includeUnreadMessageAlerts: false,
+        });
+        setActivityAlerts(rows);
+      } catch (e) {
+        console.error("[MessagesPage] activity", e);
+        setActivityAlerts([]);
+      }
+    }
+
+    async function refreshInbox(showSpinner: boolean) {
+      if (!user || !profile) {
+        setConversations([]);
+        setActivityAlerts([]);
+        setLoading(false);
+        return;
+      }
+      if (showSpinner) setLoading(true);
+      try {
+        await Promise.all([loadConversations(), loadActivity()]);
+      } catch (e) {
+        console.error("[MessagesPage] refresh", e);
+      } finally {
+        if (showSpinner) setLoading(false);
+      }
+    }
+
+    loadConversationsRef.current = () => {
+      void refreshInbox(false);
+    };
+    void refreshInbox(!cachedData);
 
     // Subscribe to new messages and read updates
     if (user && profile) {
@@ -337,6 +401,16 @@ export default function MessagesPage() {
 
             const isFromOtherUser = newMsg.sender_id === otherUserId;
             const newMessageTime = new Date(newMsg.created_at).getTime();
+
+            if (isFromOtherUser && user?.id) {
+              setHiddenChatUserIds((prev) => {
+                if (!prev.has(otherUserId)) return prev;
+                const next = new Set(prev);
+                next.delete(otherUserId);
+                persistHiddenChatUserIds(user.id, next);
+                return next;
+              });
+            }
 
             // Update the conversation's last message and unread count
             setConversations((prev) => {
@@ -412,61 +486,160 @@ export default function MessagesPage() {
             table: "messages",
           },
           async (payload) => {
-            const updatedMsg = payload.new as any;
-            // If a message was marked as read, update unread count
-            if (updatedMsg.read_at) {
-              // Fetch the conversation to determine the other user ID
-              const { data: convoData } = await supabase
-                .from("conversations")
-                .select("client_id, freelancer_id")
-                .eq("id", updatedMsg.conversation_id)
-                .single();
+            const updatedMsg = payload.new as {
+              read_at?: string | null;
+              conversation_id?: string;
+              sender_id?: string;
+              created_at?: string;
+              read_by?: string | null;
+            };
+            if (!updatedMsg.read_at || !user?.id || !updatedMsg.conversation_id) return;
 
-              if (!convoData) return;
+            const { data: convoData } = await supabase
+              .from("conversations")
+              .select("client_id, freelancer_id")
+              .eq("id", updatedMsg.conversation_id)
+              .single();
 
-              // Determine other user ID based on role
-              const otherUserId = profile.role === "client"
+            if (!convoData) return;
+
+            const otherUserId =
+              convoData.client_id === user.id
                 ? convoData.freelancer_id
                 : convoData.client_id;
 
-              setConversations((prev) =>
-                prev.map((convo) => {
-                  // Check if this conversation has the same otherUserId (deduplicated)
-                  const cOtherUserId = profile.role === "client"
+            const pairOr = `and(client_id.eq.${user.id},freelancer_id.eq.${otherUserId}),and(client_id.eq.${otherUserId},freelancer_id.eq.${user.id})`;
+            const { data: pairConvos } = await supabase
+              .from("conversations")
+              .select("id")
+              .or(pairOr);
+
+            const convoIds = (pairConvos ?? []).map((c) => c.id as string);
+            if (convoIds.length === 0) return;
+
+            const { count } = await supabase
+              .from("messages")
+              .select("*", { count: "exact", head: true })
+              .in("conversation_id", convoIds)
+              .eq("sender_id", otherUserId)
+              .is("read_at", null);
+
+            const unread = count ?? 0;
+
+            setConversations((prev) =>
+              prev.map((convo) => {
+                const cOther =
+                  convo.client_id === user.id
                     ? convo.freelancer_id
                     : convo.client_id;
+                if (cOther !== otherUserId) return convo;
 
-                  if (cOtherUserId === otherUserId) {
-                    // Check if this message was from the other user
-                    if (updatedMsg.sender_id === otherUserId && convo.unread_count > 0) {
-                      const updatedLastMessage = convo.last_message?.created_at === updatedMsg.created_at
-                        ? (convo.last_message ? {
+                const updatedLastMessage =
+                  convo.last_message?.created_at === updatedMsg.created_at
+                    ? convo.last_message
+                      ? {
                           ...convo.last_message,
-                          read_at: updatedMsg.read_at || null,
-                          read_by: updatedMsg.read_by || null,
-                        } : undefined)
-                        : convo.last_message;
+                          read_at: updatedMsg.read_at ?? null,
+                          read_by: updatedMsg.read_by ?? null,
+                        }
+                      : undefined
+                    : convo.last_message;
 
-                      return {
-                        ...convo,
-                        unread_count: Math.max(0, convo.unread_count - 1),
-                        last_message: updatedLastMessage,
-                      };
-                    }
-                  }
-                  return convo;
-                })
-              );
-            }
+                return {
+                  ...convo,
+                  unread_count: unread,
+                  last_message: updatedLastMessage,
+                };
+              })
+            );
           }
         )
         .subscribe();
 
+      const onActivityChange = () => {
+        loadConversationsRef.current?.();
+      };
+
+      let activityCh: ReturnType<typeof supabase.channel> | null = null;
+      if (profile.role === "freelancer") {
+        activityCh = supabase
+          .channel(`inbox-activity-${user.id}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "job_candidate_notifications",
+              filter: `freelancer_id=eq.${user.id}`,
+            },
+            onActivityChange
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "job_requests",
+              filter: `selected_freelancer_id=eq.${user.id}`,
+            },
+            onActivityChange
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "job_confirmations",
+              filter: `freelancer_id=eq.${user.id}`,
+            },
+            onActivityChange
+          );
+        activityCh.subscribe();
+      } else if (profile.role === "client") {
+        activityCh = supabase
+          .channel(`inbox-activity-${user.id}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "job_requests",
+              filter: `client_id=eq.${user.id}`,
+            },
+            onActivityChange
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "job_confirmations",
+            },
+            onActivityChange
+          );
+        activityCh.subscribe();
+      }
+
       return () => {
         supabase.removeChannel(channel);
+        if (activityCh) supabase.removeChannel(activityCh);
       };
     }
   }, [user, profile]);
+
+  // Reconcile inbox after time away (e.g. dismissed a job confirmation elsewhere)
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        if (user?.id) {
+          setDismissedActivityIds(loadDismissedActivityIds(user.id));
+        }
+        loadConversationsRef.current?.();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [user?.id]);
 
   // Update cache whenever conversations change (from real-time updates or initial load)
   useEffect(() => {
@@ -511,6 +684,41 @@ export default function MessagesPage() {
     setMobileView("contacts");
   }
 
+  function hideChatForUser(otherUserId: string) {
+    if (!user?.id) return;
+    const active = conversations.find((c) => c.id === conversationId);
+    if (active?.other_user_id === otherUserId) {
+      handleBackToContacts();
+    }
+    setHiddenChatUserIds((prev) => {
+      if (prev.has(otherUserId)) return prev;
+      const next = new Set(prev);
+      next.add(otherUserId);
+      persistHiddenChatUserIds(user.id, next);
+      return next;
+    });
+  }
+
+  function handleActivityClick(alert: NotificationAlert) {
+    setDismissedActivityIds((prev) => {
+      if (prev.has(alert.id)) return prev;
+      const next = new Set(prev);
+      next.add(alert.id);
+      if (user?.id) persistDismissedActivityIds(user.id, next);
+      return next;
+    });
+
+    if (alert.type === "job_request" && user?.id) {
+      void supabase
+        .from("job_candidate_notifications")
+        .update({ status: "closed" })
+        .eq("id", alert.id)
+        .eq("freelancer_id", user.id);
+    }
+
+    navigate(alert.link);
+  }
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
@@ -524,12 +732,12 @@ export default function MessagesPage() {
     <div className="h-screen flex gradient-mesh overflow-hidden">
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div className={cn(
-        "w-full md:w-80 lg:w-96 border-r bg-card flex flex-col flex-shrink-0",
+        "flex w-full flex-shrink-0 flex-col border-r border-border/30 bg-transparent md:w-80 lg:w-96",
         "md:flex",
         mobileView === "contacts" ? "flex" : "hidden md:flex"
       )}>
         {/* Header - Fixed on mobile, integrated on desktop */}
-        <div className="p-4 border-b flex-shrink-0 bg-card/50 backdrop-blur-md">
+        <div className="flex-shrink-0 border-b border-border/30 bg-transparent p-4">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -539,27 +747,103 @@ export default function MessagesPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h2 className="text-lg font-semibold">Messages</h2>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-semibold leading-tight">Inbox</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Chats, job invites, responses, and updates
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Conversations List */}
-        <ScrollArea className="flex-1">
-          {conversations.length === 0 ? (
+        {/* Unified inbox: active chats + job / hire activity */}
+        <ScrollArea className="flex-1 bg-transparent [&_[data-radix-scroll-area-viewport]]:bg-transparent">
+          {inboxRows.length === 0 ? (
             <div className="p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <MessageCircle className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">No Messages</h3>
+              <h3 className="font-semibold text-lg mb-2">Nothing here yet</h3>
               <p className="text-sm text-muted-foreground">
-                {profile?.role === "client"
-                  ? "Start a job request to begin chatting with nannies."
-                  : "You'll see conversations here once clients start chatting."}
+                Your chats and job updates will show here. Start a conversation from a profile or job to
+                see it in this list.
               </p>
             </div>
           ) : (
             <div className="divide-y space-y-0.5">
-              {conversations.map((convo) => {
+              {inboxRows.map((row) => {
+                if (row.kind === "activity") {
+                  const a = row.alert;
+                  const kind = inboxActivityKindLabel(a.type);
+                  const ActivityIcon =
+                    a.type === "message"
+                      ? MessageSquare
+                      : a.type === "job_request"
+                        ? Bell
+                        : Briefcase;
+                  return (
+                    <div
+                      key={row.key}
+                      role="button"
+                      tabIndex={0}
+                      className="p-4 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors text-left w-full"
+                      onClick={() => handleActivityClick(a)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleActivityClick(a);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          {a.sender_photo ? (
+                            <Avatar className="w-12 h-12 flex-shrink-0">
+                              <AvatarImage src={a.sender_photo} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                                {a.title.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div
+                              className={cn(
+                                "w-12 h-12 rounded-full flex items-center justify-center",
+                                a.type === "job_request" && "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+                                a.type === "confirmation" && "bg-sky-500/15 text-sky-700 dark:text-sky-400",
+                                a.type === "job_update" && "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+                                a.type === "message" && "bg-blue-500/15 text-blue-700 dark:text-blue-400"
+                              )}
+                            >
+                              <ActivityIcon className="w-5 h-5" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">
+                              {kind}
+                            </span>
+                            {a.created_at && (
+                              <span className="text-[12px] font-bold text-muted-foreground/60 shrink-0">
+                                {formatTime(a.created_at)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-bold truncate text-[15px] text-slate-900 dark:text-slate-100">
+                            {a.title}
+                          </p>
+                          {a.description && (
+                            <p className="text-[13px] text-muted-foreground truncate mt-0.5">
+                              {a.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                const convo = row.conversation;
                 const initials = convo.other_user_profile?.full_name
                   ?.split(" ")
                   .map((n) => n[0])
@@ -568,53 +852,21 @@ export default function MessagesPage() {
 
                 const isActive = conversationId === convo.id;
 
-                // Format job label
-                const formatJobLabel = (job: any) => {
-                  if (!job) return "";
-                  const serviceTypeMap: Record<string, string> = {
-                    cleaning: "Cleaning",
-                    cooking: "Cooking",
-                    pickup_delivery: "Pickup & Delivery",
-                    nanny: "Nanny",
-                    other_help: "Other Help",
-                  };
-                  const careTypeMap: Record<string, string> = {
-                    occasional: "One-time",
-                    part_time: "Part-time",
-                    full_time: "Full-time",
-                  };
-
-                  const serviceName = serviceTypeMap[job.service_type] || "Job";
-                  const careTypeName = careTypeMap[job.care_type] || job.care_type || "";
-
-                  if (job.status === "completed") {
-                    return `${serviceName} – Completed`;
-                  }
-
-                  if (job.start_at) {
-                    const startDate = new Date(job.start_at);
-                    const today = new Date();
-                    const isToday = startDate.toDateString() === today.toDateString();
-                    if (isToday) {
-                      return `${serviceName} – Today`;
-                    }
-                    return `${serviceName} – ${startDate.toLocaleDateString()}`;
-                  }
-
-                  return careTypeName ? `${serviceName} – ${careTypeName}` : serviceName;
-                };
-
-                const jobLabel = convo.job ? formatJobLabel(convo.job) : "Direct chat";
-
                 return (
-                  <div
-                    key={convo.id}
-                    className={cn(
-                      "p-4 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors relative",
-                      isActive && "bg-orange-100 dark:bg-orange-950/30"
-                    )}
-                    onClick={() => handleConversationClick(convo.id)}
+                  <InboxChatSwipeRow
+                    key={row.key}
+                    onHide={() => {
+                      const oid = convo.other_user_id;
+                      if (oid) hideChatForUser(oid);
+                    }}
                   >
+                    <div
+                      className={cn(
+                        "p-4 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors relative md:bg-transparent",
+                        isActive && "bg-orange-100 dark:bg-orange-950/30"
+                      )}
+                      onClick={() => handleConversationClick(convo.id)}
+                    >
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <Avatar className="w-12 h-12 flex-shrink-0">
@@ -633,24 +885,25 @@ export default function MessagesPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className={cn(
-                            "font-bold truncate text-[16px] text-slate-900 dark:text-slate-100",
-                            convo.unread_count > 0 && "font-black"
-                          )}>
-                            {convo.other_user_profile?.full_name || "User"}
-                          </p>
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">
+                            Chat
+                          </span>
                           {convo.last_message && (
                             <span className="text-[12px] font-bold text-muted-foreground/60 flex-shrink-0">
                               {formatTime(convo.last_message.created_at)}
                             </span>
                           )}
                         </div>
-                        {/* Job Label */}
-                        {jobLabel && (
-                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <span className="text-[13px] font-semibold text-primary/80 truncate">{jobLabel}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p
+                            className={cn(
+                              "font-bold truncate text-[16px] text-slate-900 dark:text-slate-100",
+                              convo.unread_count > 0 && "font-black"
+                            )}
+                          >
+                            {convo.other_user_profile?.full_name || "User"}
+                          </p>
+                        </div>
                         {convo.last_message && (
                           <div className="flex items-center justify-between gap-2 mt-1">
                             <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -665,25 +918,28 @@ export default function MessagesPage() {
                                   )}
                                 </div>
                               )}
-                              <p className={cn(
-                                "text-[14px] truncate leading-tight",
-                                convo.unread_count > 0
-                                  ? "text-foreground font-bold"
-                                  : "text-muted-foreground font-medium"
-                              )}>
+                              <p
+                                className={cn(
+                                  "text-[14px] truncate leading-tight",
+                                  convo.unread_count > 0
+                                    ? "text-foreground font-bold"
+                                    : "text-muted-foreground font-medium"
+                                )}
+                              >
                                 {convo.last_message.sender_id === user?.id && "You: "}
                                 {convo.last_message.attachment_type
-                                  ? (convo.last_message.attachment_type === "image"
+                                  ? convo.last_message.attachment_type === "image"
                                     ? "📷 Image"
-                                    : `📎 ${convo.last_message.attachment_name || "File"}`)
-                                  : (convo.last_message.body || "")}
+                                    : `📎 ${convo.last_message.attachment_name || "File"}`
+                                  : convo.last_message.body || ""}
                               </p>
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
-                  </div>
+                    </div>
+                  </InboxChatSwipeRow>
                 );
               })}
             </div>
@@ -710,7 +966,7 @@ export default function MessagesPage() {
           return (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Mobile Back Button Header - Sticky */}
-              <div className="md:hidden p-4 border-b bg-card/80 backdrop-blur-md sticky top-0 z-20">
+              <div className="sticky top-0 z-20 border-b border-border/30 bg-transparent p-4 md:hidden">
                 <div className="flex items-center gap-3">
                   <Button
                     variant="ghost"
@@ -759,14 +1015,14 @@ export default function MessagesPage() {
             </div>
           );
         })() : (
-          <div className="hidden md:flex flex-1 items-center justify-center bg-gradient-to-b from-muted/20 to-background">
+          <div className="hidden flex-1 items-center justify-center bg-transparent md:flex">
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <MessageCircle className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Select a conversation</h3>
+              <h3 className="font-semibold text-lg mb-2">Select a chat</h3>
               <p className="text-sm text-muted-foreground">
-                Choose a conversation from the list to start chatting
+                Pick a conversation from your inbox, or open a job update from the list.
               </p>
             </div>
           </div>

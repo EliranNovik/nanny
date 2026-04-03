@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     MapPin, Clock, Hourglass, X,
     Sparkles, UtensilsCrossed, Baby, HelpCircle, AlignLeft,
-    Calendar, Briefcase, RefreshCw, Globe, CheckCircle2, Loader2
+    Calendar, Briefcase, RefreshCw, Globe, CheckCircle2, Loader2, XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "./StarRating";
@@ -26,6 +26,9 @@ interface JobDetailsModalProps {
     onConfirm?: () => void;
     isConfirming?: boolean;
     showAcceptButton?: boolean;
+    /** Incoming request: decline notification (shown with Accept when set). */
+    onDecline?: () => void;
+    isDeclining?: boolean;
 }
 
 const LiveTimer = ({ createdAt }: { createdAt: string }) => {
@@ -62,7 +65,7 @@ const LiveTimer = ({ createdAt }: { createdAt: string }) => {
 
 export function JobDetailsModal({ 
     isOpen, onOpenChange, job, formatJobTitle, isOwnRequest, 
-    onConfirm, isConfirming, showAcceptButton 
+    onConfirm, isConfirming, showAcceptButton, onDecline, isDeclining,
 }: JobDetailsModalProps) {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     if (!job) return null;
@@ -203,8 +206,8 @@ export function JobDetailsModal({
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[hsl(var(--background))] px-4 pb-6 pt-4 custom-scrollbar sm:max-h-[60vh] sm:space-y-8 sm:p-8 sm:pb-8 space-y-6">
-                    {/* At-a-glance: single warm surface, split — no separate grey tiles */}
-                    <div className="overflow-hidden rounded-[1.25rem] bg-card/90 shadow-[0_2px_24px_-4px_rgba(249,115,22,0.12)] ring-1 ring-orange-200/40 dark:ring-orange-900/35 sm:rounded-3xl">
+                    {/* At-a-glance: split cells, transparent (no grey fill) */}
+                    <div className="overflow-hidden rounded-[1.25rem] border border-orange-200/45 bg-transparent sm:rounded-3xl dark:border-orange-900/40">
                         <div className="grid grid-cols-2 divide-x divide-orange-100/70 dark:divide-zinc-700/80">
                             <div className="flex flex-col gap-2 p-4 sm:p-5">
                                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/75 dark:text-orange-400/90">
@@ -240,8 +243,8 @@ export function JobDetailsModal({
                         <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
                             Service particulars
                         </h3>
-                        <div className="overflow-hidden rounded-[1.25rem] bg-card/90 ring-1 ring-orange-100/60 dark:ring-border/60 sm:rounded-2xl">
-                            <div className="divide-y divide-orange-50 dark:divide-zinc-800/90">
+                        <div className="overflow-hidden rounded-[1.25rem] border border-orange-100/55 bg-transparent sm:rounded-2xl dark:border-border/50">
+                            <div className="divide-y divide-orange-100/70 dark:divide-zinc-800/80">
                             {job.start_at && (
                                 <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
                                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
@@ -339,7 +342,7 @@ export function JobDetailsModal({
                             <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
                                 About
                             </h3>
-                            <div className="space-y-4 rounded-[1.25rem] bg-gradient-to-br from-orange-50/90 via-card to-card p-5 ring-1 ring-orange-100/70 dark:from-orange-950/20 dark:via-card dark:to-background dark:ring-orange-900/25 sm:rounded-3xl sm:p-6">
+                            <div className="space-y-4 rounded-[1.25rem] border border-orange-100/60 bg-transparent p-5 sm:rounded-3xl sm:p-6 dark:border-orange-900/35">
                                 {client.bio && (
                                     <p className="text-[15px] font-medium leading-relaxed text-zinc-700 dark:text-zinc-200 sm:text-sm">
                                         {client.bio}
@@ -347,13 +350,13 @@ export function JobDetailsModal({
                                 )}
                                 <div className="flex flex-wrap gap-2">
                                     {client.city && (
-                                        <div className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-700 shadow-sm ring-1 ring-orange-200/60 dark:text-orange-300 dark:ring-orange-800/50">
+                                        <div className="inline-flex items-center gap-1.5 rounded-full border border-orange-200/70 bg-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-700 dark:border-orange-800/50 dark:text-orange-300">
                                             <MapPin className="h-3.5 w-3.5 text-orange-500" />
                                             {client.city}
                                         </div>
                                     )}
                                     {client.languages && Array.isArray(client.languages) && client.languages.map((lang: string) => (
-                                        <div key={lang} className="inline-flex items-center gap-1.5 rounded-full bg-card/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-600 ring-1 ring-orange-100/50 dark:bg-muted/80 dark:text-zinc-300 dark:ring-border/50">
+                                        <div key={lang} className="inline-flex items-center gap-1.5 rounded-full border border-orange-100/60 bg-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-600 dark:border-border/50 dark:text-zinc-300">
                                             <Globe className="h-3.5 w-3.5 text-orange-500/90" />
                                             {lang}
                                         </div>
@@ -400,30 +403,67 @@ export function JobDetailsModal({
                                 <AlignLeft className="h-4 w-4 text-orange-500" strokeWidth={2.25} />
                                 Notes & requirements
                             </h3>
-                            <div className="rounded-[1.25rem] border-l-[3px] border-orange-500 bg-orange-50/60 px-4 py-4 text-[15px] font-medium leading-relaxed text-zinc-800 shadow-sm dark:border-orange-500/80 dark:bg-orange-950/30 dark:text-zinc-100 sm:rounded-2xl sm:px-5 sm:py-5 sm:text-base">
+                            <div className="border-l-[3px] border-orange-500 py-1 pl-4 text-[15px] font-medium leading-relaxed text-zinc-800 dark:border-orange-500/80 dark:text-zinc-100 sm:pl-5 sm:text-base">
                                 {job.service_details.custom}
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Fixed Bottom Action Bar for Freelancers */}
+                {/* Fixed bottom: incoming = Decline + Accept; else single Accept when applicable */}
                 {showAcceptButton && onConfirm && (
-                    <div className="flex animate-in items-center justify-center border-t border-orange-100/50 bg-card/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 dark:border-border dark:bg-card/95 sm:p-6">
-                        <Button
-                            className="w-full h-14 rounded-[20px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all active:scale-[0.98] font-black text-lg flex items-center justify-center gap-3"
-                            onClick={onConfirm}
-                            disabled={isConfirming}
-                        >
-                            {isConfirming ? (
-                                <Loader2 className="w-6 h-6 animate-spin" />
-                            ) : (
-                                <>
-                                    <CheckCircle2 className="w-6 h-6" />
-                                    Accept Invitation
-                                </>
-                            )}
-                        </Button>
+                    <div className="flex animate-in flex-row items-stretch gap-3 border-t border-orange-100/50 bg-[hsl(var(--background))]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 dark:border-border sm:gap-4 sm:p-6">
+                        {onDecline ? (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-14 flex-1 rounded-[18px] border-slate-200 font-bold transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.98] dark:border-white/10 dark:hover:bg-red-500/10 sm:text-base"
+                                    onClick={onDecline}
+                                    disabled={isDeclining || isConfirming}
+                                >
+                                    {isDeclining ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <XCircle className="mr-2 h-5 w-5" />
+                                            Decline
+                                        </>
+                                    )}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    className="h-14 flex-1 rounded-[18px] bg-emerald-600 font-bold text-white shadow-[0_8px_20px_rgba(5,150,105,0.2)] transition-all hover:bg-emerald-700 active:scale-[0.98] sm:text-base"
+                                    onClick={onConfirm}
+                                    disabled={isConfirming || isDeclining}
+                                >
+                                    {isConfirming ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="mr-2 h-5 w-5" />
+                                            Accept
+                                        </>
+                                    )}
+                                </Button>
+                            </>
+                        ) : (
+                            <Button
+                                type="button"
+                                className="flex h-14 w-full items-center justify-center gap-3 rounded-[20px] bg-emerald-600 font-black text-lg text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all hover:bg-emerald-700 active:scale-[0.98]"
+                                onClick={onConfirm}
+                                disabled={isConfirming}
+                            >
+                                {isConfirming ? (
+                                    <Loader2 className="h-6 w-6 animate-spin" />
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="h-6 w-6" />
+                                        Accept Invitation
+                                    </>
+                                )}
+                            </Button>
+                        )}
                     </div>
                 )}
             </DialogContent>

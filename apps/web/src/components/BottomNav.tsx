@@ -496,7 +496,7 @@ export function BottomNav() {
       { path: isFreelancer ? "/freelancer/home" : "/client/home", icon: Home, label: "Home" },
       { path: "/liked", icon: Heart, label: "Liked" },
       // { path: "/jobs", icon: Briefcase, label: "Jobs" }, // hidden for now — re-add Briefcase import when restoring
-      { path: "/messages", icon: MessageCircle, label: "Messages" },
+      { path: "/messages", icon: MessageCircle, label: "Inbox" },
     ];
 
     return (
@@ -637,7 +637,8 @@ export function BottomNav() {
               {userNav.slice(2, 3).map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname.startsWith(item.path);
-                const showMessageBadge = item.path === "/messages" && unreadMessages > 0;
+                const inboxBadgeCount = unreadMessages + unreadNotifications;
+                const showMessageBadge = item.path === "/messages" && inboxBadgeCount > 0;
 
                 return (
                   <Link
@@ -665,7 +666,7 @@ export function BottomNav() {
                         variant="destructive"
                         className="absolute -right-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 sm:top-1 sm:right-1 sm:h-7 sm:min-w-7 sm:px-1.5 sm:text-xs"
                       >
-                        {unreadMessages > 9 ? "9+" : unreadMessages}
+                        {inboxBadgeCount > 9 ? "9+" : inboxBadgeCount}
                       </Badge>
                     )}
                   </Link>

@@ -205,7 +205,7 @@ export default function PastJobDetailsPage() {
     const statusIcon = job.status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />;
 
     return (
-        <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+        <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
             <div className="app-desktop-shell pt-6">
                 {/* Header / Back Button: Now transparent and integrated */}
                 <div className="flex items-center gap-4 mb-8">

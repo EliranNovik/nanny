@@ -387,7 +387,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8 space-y-6">
         {/* Welcome Section */}
         <div className="mb-4 px-1">

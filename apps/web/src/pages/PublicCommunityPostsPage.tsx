@@ -258,7 +258,7 @@ export default function PublicCommunityPostsPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-mesh pb-16 md:pb-24">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell space-y-6 pt-4 md:pt-6">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-1 md:max-w-4xl">
           <div className="flex flex-wrap items-center gap-2">

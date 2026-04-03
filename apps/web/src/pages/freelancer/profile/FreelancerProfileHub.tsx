@@ -26,7 +26,7 @@ export default function FreelancerProfileHub() {
   const { profile, fullName, photoUrl } = ctx;
 
   return (
-    <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell pt-6 md:pt-8">
         <div className="app-desktop-centered-wide">
         <div className="flex items-start justify-end gap-1 mb-10">

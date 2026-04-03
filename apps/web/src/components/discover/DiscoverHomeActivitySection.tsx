@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   CommunityPostCard,
   type CommunityFeedPost,
@@ -15,31 +13,18 @@ import {
   type CommunityPostWithMeta,
 } from "@/components/community/CommunityPostCard";
 import { JobCardsCarousel } from "@/components/jobs/JobCardsCarousel";
+import {
+  IncomingJobRequestCard,
+  type IncomingJobRequestCardJob,
+} from "@/components/jobs/IncomingJobRequestCard";
 import { buildJobsUrlFromTabId } from "@/components/jobs/jobsPerspective";
 import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
+import { useIsMinMd } from "@/hooks/useIsMinMd";
+import { useJobCardEdgeOverlay } from "@/hooks/useJobCardEdgeOverlay";
 import { openCommunityContact } from "@/lib/communityContact";
-import { ExpiryCountdown } from "@/components/ExpiryCountdown";
-import { LiveTimer } from "@/components/LiveTimer";
-import { StarRating } from "@/components/StarRating";
-import type { LucideIcon } from "lucide-react";
-import {
-  Baby,
-  Banknote,
-  Bell,
-  CalendarClock,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Languages,
-  ListChecks,
-  Loader2,
-  MapPin,
-  MessageSquare,
-  Sparkles,
-  Timer,
-  Users,
-  XCircle,
-} from "lucide-react";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
+import { Bell, ChevronRight, Loader2, Sparkles } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -62,6 +47,7 @@ type JobRequestRow = {
   budget_min?: number | null;
   budget_max?: number | null;
   acceptedCount?: number;
+  service_details?: { images?: unknown };
 };
 
 type InboundNotification = {
@@ -90,69 +76,9 @@ function formatJobTitle(job: { service_type?: string }) {
   return "Service request";
 }
 
-function serviceHeroImageSrc(job: { service_type?: string }) {
-  if (job.service_type === "cleaning") return "/cleaning-mar22.png";
-  if (job.service_type === "cooking") return "/cooking-mar22.png";
-  if (job.service_type === "pickup_delivery") return "";
-  if (job.service_type === "nanny") return "/nanny-mar22.png";
-  if (job.service_type === "other_help") return "/other-mar22.png";
-  return "/nanny-mar22.png";
-}
+export type DiscoverHomeActivityMode = "hire" | "work";
 
-/** Icon + value only (no labels). Status / posted not included. */
-function buildIncomingJobDetailLines(
-  job: JobRequestRow
-): Array<{ key: string; Icon: LucideIcon; text: string }> {
-  const startAt = job.start_at ? new Date(job.start_at) : null;
-  const hideNannyPlaceholders =
-    Boolean(job.community_post_id) && job.service_type !== "nanny";
-  const out: Array<{ key: string; Icon: LucideIcon; text: string }> = [];
-
-  if (job.location_city?.trim()) {
-    out.push({ key: "loc", Icon: MapPin, text: job.location_city.trim() });
-  }
-  if (startAt) {
-    out.push({ key: "start", Icon: CalendarClock, text: startAt.toLocaleString() });
-  }
-  if (job.shift_hours) {
-    out.push({ key: "shift", Icon: Clock, text: String(job.shift_hours) });
-  }
-  if (job.time_duration) {
-    out.push({
-      key: "dur",
-      Icon: Timer,
-      text: job.time_duration.replace(/_/g, " "),
-    });
-  }
-  if (job.care_type && !hideNannyPlaceholders) {
-    out.push({ key: "care", Icon: Baby, text: String(job.care_type) });
-  }
-  if (job.children_count != null && !hideNannyPlaceholders && job.children_count > 0) {
-    out.push({ key: "children", Icon: Users, text: String(job.children_count) });
-  }
-  if (job.children_age_group && !hideNannyPlaceholders) {
-    out.push({ key: "age", Icon: Users, text: String(job.children_age_group) });
-  }
-  if (Array.isArray(job.languages_pref) && job.languages_pref.length > 0) {
-    out.push({ key: "lang", Icon: Languages, text: job.languages_pref.join(", ") });
-  }
-  if (Array.isArray(job.requirements) && job.requirements.length > 0) {
-    out.push({ key: "req", Icon: ListChecks, text: job.requirements.join(", ") });
-  }
-  if (job.budget_min != null || job.budget_max != null) {
-    const min = job.budget_min != null ? String(job.budget_min) : "";
-    const max = job.budget_max != null ? String(job.budget_max) : "";
-    out.push({
-      key: "budget",
-      Icon: Banknote,
-      text: [min, max].filter(Boolean).join(" – ") || "—",
-    });
-  }
-
-  return out;
-}
-
-export function DiscoverHomeActivitySection() {
+export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivityMode }) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { addToast } = useToast();
@@ -168,6 +94,19 @@ export function DiscoverHomeActivitySection() {
   const [inboundLoading, setInboundLoading] = useState(true);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selectedMapJob, setSelectedMapJob] = useState<JobRequestRow | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<JobRequestRow | null>(null);
+
+  const isMinMd = useIsMinMd();
+  const inboundEdgeKey = useMemo(
+    () =>
+      `discover-inbound-${inbound.length}-${inbound
+        .map((n) => n.id)
+        .sort()
+        .join(",")}-${inboundLoading ? 1 : 0}`,
+    [inbound, inboundLoading]
+  );
+  const clippedCardIds = useJobCardEdgeOverlay(inboundEdgeKey);
 
   const incomingJobsUrl = buildJobsUrlFromTabId("requests");
   const loginRedirect = "/public/posts";
@@ -369,6 +308,7 @@ export function DiscoverHomeActivitySection() {
             job_requests (
               id, client_id, community_post_id, community_post_expires_at, service_type, location_city, start_at, notes, created_at, status,
               care_type, children_count, children_age_group, shift_hours, time_duration, languages_pref, requirements, budget_min, budget_max,
+              service_details,
               profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
             )
           `
@@ -435,286 +375,161 @@ export function DiscoverHomeActivitySection() {
     }
   }
 
-  async function handleDecline(notifId: string) {
+  async function handleDecline(notifId: string): Promise<boolean> {
     setDeleting(notifId);
     try {
       const { error } = await supabase.from("job_candidate_notifications").delete().eq("id", notifId);
       if (error) throw error;
       setInbound((prev) => prev.filter((n) => n.id !== notifId));
       addToast({ title: "Declined", variant: "default" });
+      return true;
     } catch (err: unknown) {
       addToast({
         title: "Failed to decline",
         description: err instanceof Error ? err.message : "Try again.",
         variant: "error",
       });
+      return false;
     } finally {
       setDeleting(null);
     }
   }
 
-  const secondTabLabel = "Incoming requests";
-  const secondTabCount = incomingRequestsCount;
-  /** Matches the carousel in this tab (same feed as loadFeed). */
+  function openJobPreview(job: IncomingJobRequestCardJob) {
+    if (job.service_type === "pickup_delivery") setSelectedMapJob(job as JobRequestRow);
+    else setSelectedJobDetails(job as JobRequestRow);
+  }
+
+  function goToPublicProfile(e: MouseEvent, userId: string | null | undefined) {
+    e.stopPropagation();
+    if (!userId) return;
+    navigate(`/profile/${userId}`);
+  }
+
   const availabilityPostsCount = feedPosts.length;
 
-  return (
-    <section className="mt-8 overflow-visible px-1 pt-1" aria-label="Availability and requests">
+  const hireSection = (
+    <>
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          At a glance
-        </p>
-        <Sparkles className="h-4 w-4 text-orange-500" aria-hidden />
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Available now
+          </p>
+          {!feedLoading && availabilityPostsCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
+            >
+              {availabilityPostsCount > 99 ? "99+" : availabilityPostsCount}
+            </Badge>
+          )}
+        </div>
+        <Sparkles className="h-4 w-4 shrink-0 text-orange-500" aria-hidden />
       </div>
+      <div className="mt-2 space-y-5">
+        {feedLoading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-9 w-9 animate-spin text-orange-500" />
+          </div>
+        ) : feedPosts.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No one is live on the board right now. Check back soon or post a request.
+          </p>
+        ) : (
+          <JobCardsCarousel>
+            {feedPosts.map((post) => (
+              <CommunityPostCard
+                key={post.id}
+                post={post}
+                user={user}
+                profile={profile}
+                loginRedirect={loginRedirect}
+                favoritedIds={favoritedIds}
+                onToggleFavorite={toggleFavorite}
+                hiringPostId={hiringPostId}
+                pendingHirePostIds={pendingHirePostIds}
+                onHireFromPost={handleHireFromPost}
+                compact
+                plain
+                onOpenChat={() => {
+                  if (!user || !profile) return;
+                  void openCommunityContact({
+                    supabase,
+                    user,
+                    myRole: profile.role,
+                    targetUserId: post.author_id,
+                    targetRole: post.author_role,
+                    navigate,
+                    addToast,
+                  });
+                }}
+              />
+            ))}
+          </JobCardsCarousel>
+        )}
+        <div className="flex justify-end pt-1">
+          <Button variant="link" size="sm" className="h-auto gap-1 px-2 text-xs font-bold" asChild>
+            <Link to="/public/posts">
+              See all
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </>
+  );
 
-      <Tabs defaultValue="feed" className="w-full overflow-visible">
-        <TabsList className="mb-2 flex h-12 w-full items-stretch gap-1 overflow-visible rounded-2xl border border-border/60 bg-muted/70 p-1 shadow-inner dark:border-border/50 dark:bg-muted/50">
-          <TabsTrigger
-            value="feed"
-            className="relative min-w-0 flex-1 overflow-visible rounded-xl border-0 bg-transparent px-2 py-1.5 text-[11px] font-semibold leading-tight text-muted-foreground shadow-none ring-offset-0 transition-all duration-200 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-orange-500/20 dark:data-[state=active]:bg-card dark:data-[state=active]:ring-orange-400/25 sm:text-xs sm:font-bold"
-          >
-            <span className="flex h-full min-h-0 w-full items-center justify-center px-1 text-center leading-tight">
-              <span className="line-clamp-2">Availability posts</span>
-            </span>
-            {!feedLoading && availabilityPostsCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -right-1 -top-1 z-[2] flex h-7 min-h-7 min-w-7 items-center justify-center rounded-full border-[3px] border-background px-1.5 text-[11px] font-black leading-none shadow-md dark:border-card"
-              >
-                {availabilityPostsCount > 99 ? "99+" : availabilityPostsCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="action"
-            className="relative min-w-0 flex-1 overflow-visible rounded-xl border-0 bg-transparent px-2 py-1.5 text-[11px] font-semibold leading-tight text-muted-foreground shadow-none ring-offset-0 transition-all duration-200 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-orange-500/20 dark:data-[state=active]:bg-card dark:data-[state=active]:ring-orange-400/25 sm:text-xs sm:font-bold"
-          >
-            <span className="flex h-full min-h-0 w-full items-center justify-center px-1 text-center leading-tight">
-              <span className="line-clamp-2">{secondTabLabel}</span>
-            </span>
-            {secondTabCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -right-1 -top-1 z-[2] flex h-7 min-h-7 min-w-7 items-center justify-center rounded-full border-[3px] border-background px-1.5 text-[11px] font-black leading-none shadow-md dark:border-card"
-              >
-                {secondTabCount > 99 ? "99+" : secondTabCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="feed" className="mt-5 space-y-5">
-          {feedLoading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-9 w-9 animate-spin text-orange-500" />
-            </div>
-          ) : feedPosts.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No availability posts right now.</p>
-          ) : (
-            <JobCardsCarousel>
-              {feedPosts.map((post) => (
-                <CommunityPostCard
-                  key={post.id}
-                  post={post}
-                  user={user}
-                  profile={profile}
-                  loginRedirect={loginRedirect}
-                  favoritedIds={favoritedIds}
-                  onToggleFavorite={toggleFavorite}
-                  hiringPostId={hiringPostId}
-                  pendingHirePostIds={pendingHirePostIds}
-                  onHireFromPost={handleHireFromPost}
-                  compact
-                  plain
-                  onOpenChat={() => {
-                    if (!user || !profile) return;
-                    void openCommunityContact({
-                      supabase,
-                      user,
-                      myRole: profile.role,
-                      targetUserId: post.author_id,
-                      targetRole: post.author_role,
-                      navigate,
-                      addToast,
-                    });
-                  }}
+  const workSection = (
+    <>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Incoming requests
+          </p>
+          {incomingRequestsCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
+            >
+              {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
+            </Badge>
+          )}
+        </div>
+        <Bell className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+      </div>
+      <div className="mt-2 space-y-5">
+        {inboundLoading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-9 w-9 animate-spin text-amber-500" />
+          </div>
+        ) : inbound.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <Bell className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No incoming requests right now.</p>
+            <Button variant="outline" size="sm" className="rounded-full" asChild>
+              <Link to={incomingJobsUrl}>Open incoming requests</Link>
+            </Button>
+          </div>
+        ) : (
+          <>
+            <JobCardsCarousel className="mt-0">
+              {inbound.map((notif) => (
+                <IncomingJobRequestCard
+                  key={notif.id}
+                  notif={notif}
+                  isMinMd={isMinMd}
+                  clippedCardIds={clippedCardIds}
+                  deleting={deleting}
+                  confirming={confirming}
+                  formatJobTitle={formatJobTitle}
+                  onDecline={handleDecline}
+                  onConfirm={handleConfirm}
+                  onOpenPreview={openJobPreview}
+                  onProfileClick={goToPublicProfile}
+                  showUserAttachments={false}
                 />
               ))}
             </JobCardsCarousel>
-          )}
-          <div className="flex justify-end pt-1">
-            <Button variant="link" size="sm" className="h-auto gap-1 px-2 text-xs font-bold" asChild>
-              <Link to="/public/posts">
-                See all
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="action" className="mt-5 space-y-5">
-          {inboundLoading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-9 w-9 animate-spin text-amber-500" />
-            </div>
-          ) : inbound.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <Bell className="h-8 w-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No incoming requests right now.</p>
-              <Button variant="outline" size="sm" className="rounded-full" asChild>
-                <Link to={incomingJobsUrl}>Open incoming requests</Link>
-              </Button>
-            </div>
-          ) : (
-            <>
-              <JobCardsCarousel>
-                {inbound.map((notif) => {
-                  const job = notif.job_requests;
-                  const notes =
-                    typeof job.notes === "string" && job.notes.trim() ? job.notes.trim() : null;
-                  const hero = serviceHeroImageSrc(job);
-                  const detailLines = buildIncomingJobDetailLines(job);
-                  return (
-                    <div
-                      key={notif.id}
-                      data-job-card
-                      className="relative min-w-[min(88vw,320px)] max-w-[320px] shrink-0 snap-start overflow-hidden bg-transparent"
-                    >
-                      <Badge className="absolute right-0 top-1 z-10 h-6 rounded-full border-none bg-amber-500 px-2.5 text-[9px] font-black uppercase leading-none text-white shadow-sm">
-                        Request
-                      </Badge>
-                      <div className="flex flex-col gap-6">
-                        <div className="flex items-start gap-4 px-4 pb-1 pr-20 pt-4">
-                          <button
-                            type="button"
-                            className="flex min-w-0 flex-1 gap-4 rounded-xl text-left outline-none transition hover:bg-muted/50"
-                            onClick={() => navigate(`/profile/${job.client_id}`)}
-                          >
-                            <Avatar className="h-14 w-14 shrink-0 border border-neutral-200 dark:border-neutral-600">
-                              <AvatarImage src={job.profiles?.photo_url || ""} />
-                              <AvatarFallback className="bg-orange-100 text-lg font-bold text-orange-900">
-                                {(job.profiles?.full_name || "?").charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1 pt-0.5">
-                              <span className="block truncate text-base font-semibold text-foreground">
-                                {job.profiles?.full_name || "Client"}
-                              </span>
-                              {job.profiles?.average_rating ? (
-                                <StarRating
-                                  rating={job.profiles.average_rating}
-                                  size="sm"
-                                  showCount={false}
-                                  className="mt-1"
-                                />
-                              ) : (
-                                <p className="mt-1 text-xs text-muted-foreground">New client</p>
-                              )}
-                            </div>
-                          </button>
-                        </div>
-
-                        <div className="flex gap-4 px-4">
-                          <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border/40 bg-muted/20 dark:border-border/50">
-                            {hero ? (
-                              <img
-                                src={hero}
-                                alt=""
-                                className="h-full w-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] font-semibold text-muted-foreground">
-                                Map / details in job
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1 space-y-3">
-                            <p className="text-base font-bold leading-tight tracking-tight text-foreground">
-                              {formatJobTitle(job)}
-                            </p>
-                            {detailLines.length > 0 ? (
-                              <div className="max-h-[11rem] space-y-2.5 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
-                                {detailLines.map(({ key, Icon, text }) => (
-                                  <div
-                                    key={key}
-                                    className="flex items-start gap-2 text-[12px] leading-snug text-foreground/95"
-                                  >
-                                    <Icon
-                                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600/85 dark:text-amber-400/90"
-                                      aria-hidden
-                                    />
-                                    <span className="min-w-0 flex-1">{text}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        {notes ? (
-                          <div className="mx-4 flex items-start gap-3 px-0.5">
-                            <MessageSquare
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                              aria-hidden
-                            />
-                            <p className="min-w-0 flex-1 whitespace-pre-wrap text-[12px] font-medium leading-relaxed text-foreground/95">
-                              {notes}
-                            </p>
-                          </div>
-                        ) : null}
-
-                        <div className="space-y-4 border-t border-border/35 px-4 py-5 dark:border-border/50">
-                          {job.community_post_expires_at ? (
-                            <div className="flex flex-wrap items-center gap-1 text-sm font-semibold text-orange-600">
-                              <ExpiryCountdown
-                                expiresAtIso={job.community_post_expires_at}
-                                endedLabel="Ended"
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                              <span className="text-xs font-bold uppercase tracking-wide">Posted</span>
-                              <LiveTimer createdAt={job.created_at} />
-                            </div>
-                          )}
-                          <div className="flex flex-nowrap gap-3 overflow-x-auto pb-0.5 pt-1 [-webkit-overflow-scrolling:touch]">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="min-w-[6.5rem] shrink-0 gap-1.5 rounded-xl font-bold"
-                              disabled={deleting === notif.id || confirming === notif.id}
-                              onClick={() => void handleDecline(notif.id)}
-                            >
-                              {deleting === notif.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <XCircle className="h-4 w-4" />
-                              )}
-                              Decline
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="min-w-[6.5rem] shrink-0 gap-1.5 rounded-xl bg-emerald-600 font-bold hover:bg-emerald-700"
-                              disabled={deleting === notif.id || confirming === notif.id}
-                              onClick={() => void handleConfirm(job.id, notif.id)}
-                            >
-                              {confirming === notif.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckCircle2 className="h-4 w-4" />
-                              )}
-                              Select
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </JobCardsCarousel>
               <div className="flex justify-end pt-1">
                 <Button variant="link" size="sm" className="h-auto gap-1 px-2 text-xs font-bold" asChild>
                   <Link to={incomingJobsUrl}>
@@ -725,8 +540,76 @@ export function DiscoverHomeActivitySection() {
               </div>
             </>
           )}
-        </TabsContent>
-      </Tabs>
-    </section>
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      <section
+        className="mt-8 overflow-visible px-1 pt-1"
+        aria-label={mode === "hire" ? "Available helpers live now" : "Incoming job requests"}
+      >
+        {mode === "hire" ? hireSection : workSection}
+      </section>
+
+      <FullscreenMapModal
+        job={selectedMapJob}
+        isOpen={!!selectedMapJob}
+        onClose={() => setSelectedMapJob(null)}
+        onConfirm={
+          selectedMapJob
+            ? () => {
+                const notif = inbound.find((n) => n.job_id === selectedMapJob.id);
+                if (notif) void handleConfirm(selectedMapJob.id, notif.id);
+              }
+            : undefined
+        }
+        isConfirming={confirming !== null}
+        showAcceptButton={
+          selectedMapJob
+            ? inbound.some((n) => n.job_id === selectedMapJob.id && !n.isConfirmed && !n.isDeclined)
+            : false
+        }
+      />
+
+      <JobDetailsModal
+        isOpen={!!selectedJobDetails}
+        onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+        job={selectedJobDetails}
+        formatJobTitle={formatJobTitle}
+        isOwnRequest={selectedJobDetails?.client_id === user?.id}
+        onConfirm={
+          selectedJobDetails
+            ? () => {
+                const notif = inbound.find((n) => n.job_id === selectedJobDetails.id);
+                if (notif) void handleConfirm(selectedJobDetails.id, notif.id);
+              }
+            : undefined
+        }
+        isConfirming={confirming !== null}
+        showAcceptButton={
+          selectedJobDetails
+            ? inbound.some(
+                (n) => n.job_id === selectedJobDetails.id && !n.isConfirmed && !n.isDeclined
+              )
+            : false
+        }
+        onDecline={
+          selectedJobDetails
+            ? async () => {
+                const notif = inbound.find((n) => n.job_id === selectedJobDetails.id);
+                if (!notif) return;
+                const ok = await handleDecline(notif.id);
+                if (ok) setSelectedJobDetails(null);
+              }
+            : undefined
+        }
+        isDeclining={
+          selectedJobDetails != null &&
+          deleting === inbound.find((n) => n.job_id === selectedJobDetails.id)?.id
+        }
+      />
+    </>
   );
 }

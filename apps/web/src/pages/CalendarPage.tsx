@@ -432,7 +432,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">

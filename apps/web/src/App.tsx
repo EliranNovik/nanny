@@ -104,7 +104,7 @@ function RoleRedirect() {
 /** Wraps page content with top padding. Desktop: fixed header (BottomNav). Mobile: spacing below status bar (safe area is on body). */
 function PageLayoutWithHeader() {
   return (
-    <div className="min-h-[100dvh] min-h-[-webkit-fill-available] pt-4 md:pt-14">
+    <div className="app-main-scroll-pad min-h-[100dvh] min-h-[-webkit-fill-available] pt-4 md:pt-14">
       <Outlet />
     </div>
   );

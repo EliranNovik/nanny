@@ -296,7 +296,7 @@ export default function PublicProfilePage() {
   const gotHelpedCount = sharedJobs.filter(j => j.client_id === userId).length;
 
   return (
-    <div className="min-h-screen gradient-mesh pb-32">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <button
         type="button"
         onClick={() => navigate(-1)}

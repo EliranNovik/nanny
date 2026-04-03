@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
+  CalendarPlus,
   ChevronRight,
   ClipboardList,
   LayoutDashboard,
@@ -17,9 +19,37 @@ import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeA
 
 type DiscoverRole = "client" | "freelancer";
 
+type DiscoverHomeMode = "hire" | "work";
+
+const HOME_INTENT_STORAGE_KEY = "mamalama_discover_home_intent_v1";
+
+function readStoredHomeMode(): DiscoverHomeMode | null {
+  try {
+    const v = localStorage.getItem(HOME_INTENT_STORAGE_KEY);
+    if (v === "hire" || v === "work") return v;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   const navigate = useNavigate();
   const isClient = role === "client";
+
+  const [homeMode, setHomeMode] = useState<DiscoverHomeMode>(() => {
+    const stored = readStoredHomeMode();
+    if (stored) return stored;
+    return isClient ? "hire" : "work";
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HOME_INTENT_STORAGE_KEY, homeMode);
+    } catch {
+      /* ignore */
+    }
+  }, [homeMode]);
 
   const dashboardPath = isClient ? "/dashboard" : "/freelancer/dashboard";
   const { myPostedRequestsCount, incomingRequestsCount } = useDiscoverShortcutsCounts();
@@ -30,24 +60,66 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
     navigate(`/public/posts?category=${encodeURIComponent(id)}`);
   };
 
+  const hireHelpersPath = isClient ? "/client/helpers" : "/public/posts";
+  const workPrimaryPath = isClient ? "/availability" : buildJobsUrl("freelancer", "requests");
+
   return (
-    <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell pt-[calc(0.5rem+env(safe-area-inset-top,0px))] md:pt-6">
         <div className="app-desktop-centered-wide max-w-lg md:max-w-2xl">
-          <header className="mb-6 px-1">
+          <header className="mb-4 px-1">
             <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white md:text-3xl">
-              Discover
+              {homeMode === "hire" ? "Find help" : "Get hired"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pick a category to see who is offering help, then check availability and shortcuts.
+              {homeMode === "hire"
+                ? "Browse who’s available and post a request when you’re ready."
+                : "See nearby jobs, post short availability, and respond fast."}
             </p>
           </header>
 
-          <section className="mb-5 px-1" aria-label={isClient ? "Find helpers" : "Browse requests"}>
-            {isClient ? (
+          <div
+            className="mb-5 px-1"
+            role="tablist"
+            aria-label="What are you here for?"
+          >
+            <div className="flex h-12 w-full items-stretch gap-1 rounded-2xl border border-border/60 bg-muted/70 p-1 shadow-inner dark:border-border/50 dark:bg-muted/50">
               <button
                 type="button"
-                onClick={() => navigate("/client/helpers")}
+                role="tab"
+                aria-selected={homeMode === "hire"}
+                onClick={() => setHomeMode("hire")}
+                className={cn(
+                  "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
+                  homeMode === "hire"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-orange-500/20 dark:bg-card dark:ring-orange-400/25"
+                    : "text-muted-foreground hover:text-foreground/90"
+                )}
+              >
+                I need a helper
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={homeMode === "work"}
+                onClick={() => setHomeMode("work")}
+                className={cn(
+                  "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
+                  homeMode === "work"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-orange-500/20 dark:bg-card dark:ring-orange-400/25"
+                    : "text-muted-foreground hover:text-foreground/90"
+                )}
+              >
+                I want to help
+              </button>
+            </div>
+          </div>
+
+          <section className="mb-5 px-1" aria-label={homeMode === "hire" ? "Find helpers" : "Get work"}>
+            {homeMode === "hire" ? (
+              <button
+                type="button"
+                onClick={() => navigate(hireHelpersPath)}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 text-left shadow-sm outline-none transition-colors",
                   "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/90",
@@ -60,16 +132,40 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 </div>
                 <div className="min-w-0 flex-1 leading-none">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Find people
+                    {isClient ? "Search" : "Browse"}
                   </p>
-                  <p className="mt-0.5 text-sm font-bold text-foreground">Find helpers</p>
+                  <p className="mt-0.5 text-sm font-bold text-foreground">
+                    {isClient ? "Find helpers" : "See who’s offering help"}
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              </button>
+            ) : isClient ? (
+              <button
+                type="button"
+                onClick={() => navigate(workPrimaryPath)}
+                className={cn(
+                  "flex w-full items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 text-left shadow-sm outline-none transition-colors",
+                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/90",
+                  "hover:bg-muted/60 active:scale-[0.99]",
+                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                )}
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1 leading-none">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Go live
+                  </p>
+                  <p className="mt-0.5 text-sm font-bold text-foreground">Post availability</p>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               </button>
             ) : (
               <button
                 type="button"
-                onClick={() => navigate(buildJobsUrl("freelancer", "requests"))}
+                onClick={() => navigate(workPrimaryPath)}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 text-left shadow-sm outline-none transition-colors",
                   "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/90",
@@ -84,13 +180,14 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                     Open work
                   </p>
-                  <p className="mt-0.5 text-sm font-bold text-foreground">Browse requests</p>
+                  <p className="mt-0.5 text-sm font-bold text-foreground">Browse open requests</p>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               </button>
             )}
           </section>
 
+          {homeMode === "hire" && (
           <section className="mb-8" aria-label="Service categories">
             <div className="mb-3 flex items-center justify-between px-1">
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -125,66 +222,149 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               ))}
             </div>
           </section>
+          )}
 
-          <DiscoverHomeActivitySection />
+          <DiscoverHomeActivitySection mode={homeMode} />
 
           <section className="mt-8 px-1 pb-8" aria-label="Shortcuts">
             <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Shortcuts
             </p>
             <div className="grid grid-cols-3 gap-2">
-              <Link
-                to={myPostedUrl}
-                className={cn(
-                  "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                  "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                )}
-              >
-                {myPostedRequestsCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -right-0.5 -top-0.5 flex h-7 min-w-7 items-center justify-center border-[3px] border-background px-1.5 text-xs font-black leading-none shadow-sm"
+              {homeMode === "hire" ? (
+                <>
+                  <Link
+                    to={myPostedUrl}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
                   >
-                    {myPostedRequestsCount > 99 ? "99+" : myPostedRequestsCount}
-                  </Badge>
-                )}
-                <ClipboardList className="h-6 w-6 text-orange-500" aria-hidden />
-                <span className="text-[10px] font-bold leading-tight sm:text-xs">My posted requests</span>
-              </Link>
-              <Link
-                to={incomingUrl}
-                className={cn(
-                  "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                  "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                )}
-              >
-                {incomingRequestsCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -right-0.5 -top-0.5 flex h-7 min-w-7 items-center justify-center border-[3px] border-background px-1.5 text-xs font-black leading-none shadow-sm"
+                    {myPostedRequestsCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -right-0.5 -top-0.5 flex h-7 min-w-7 items-center justify-center border-[3px] border-background px-1.5 text-xs font-black leading-none shadow-sm"
+                      >
+                        {myPostedRequestsCount > 99 ? "99+" : myPostedRequestsCount}
+                      </Badge>
+                    )}
+                    <ClipboardList className="h-6 w-6 text-orange-500" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">My posted requests</span>
+                  </Link>
+                  <Link
+                    to="/public/posts"
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
                   >
-                    {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
-                  </Badge>
-                )}
-                <Bell className="h-6 w-6 text-amber-500" aria-hidden />
-                <span className="text-[10px] font-bold leading-tight sm:text-xs">Incoming requests</span>
-              </Link>
-              <Link
-                to={dashboardPath}
-                className={cn(
-                  "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                  "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                  "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                )}
-              >
-                <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />
-                <span className="text-[10px] font-bold leading-tight sm:text-xs">Dashboard</span>
-              </Link>
+                    <Sparkles className="h-6 w-6 text-amber-500" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Live availability</span>
+                  </Link>
+                  <Link
+                    to={dashboardPath}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
+                  >
+                    <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Dashboard</span>
+                  </Link>
+                </>
+              ) : isClient ? (
+                <>
+                  <Link
+                    to="/availability"
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
+                  >
+                    <CalendarPlus className="h-6 w-6 text-emerald-600" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">My availability</span>
+                  </Link>
+                  <Link
+                    to="/client/create"
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
+                  >
+                    <ClipboardList className="h-6 w-6 text-orange-500" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Post a request</span>
+                  </Link>
+                  <Link
+                    to={dashboardPath}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
+                  >
+                    <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Dashboard</span>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to={incomingUrl}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
+                  >
+                    {incomingRequestsCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -right-0.5 -top-0.5 flex h-7 min-w-7 items-center justify-center border-[3px] border-background px-1.5 text-xs font-black leading-none shadow-sm"
+                      >
+                        {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
+                      </Badge>
+                    )}
+                    <Bell className="h-6 w-6 text-amber-500" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Incoming requests</span>
+                  </Link>
+                  <Link
+                    to="/availability"
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
+                  >
+                    <CalendarPlus className="h-6 w-6 text-emerald-600" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">My availability</span>
+                  </Link>
+                  <Link
+                    to={dashboardPath}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
+                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
+                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
+                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
+                    )}
+                  >
+                    <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />
+                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Dashboard</span>
+                  </Link>
+                </>
+              )}
             </div>
           </section>
         </div>

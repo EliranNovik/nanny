@@ -7,7 +7,7 @@ interface ProfileSubpageLayoutProps {
 /** Page title block; back navigation is provided by BottomNav on profile hub/sub-routes. */
 export function ProfileSubpageLayout({ title, description, children }: ProfileSubpageLayoutProps) {
   return (
-    <div className="min-h-screen gradient-mesh pb-64 md:pb-32">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell pt-10 md:pt-12">
         <div className="app-desktop-centered-wide">
           <div className="mb-8">

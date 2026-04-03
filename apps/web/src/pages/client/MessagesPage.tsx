@@ -152,7 +152,7 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+      <div className="app-main-scroll-pad flex min-h-[100dvh] min-h-[-webkit-fill-available] items-center justify-center bg-transparent pt-4 gradient-mesh md:pt-14">
         <MessageCircle className="w-8 h-8 animate-pulse text-primary" />
       </div>
     );
@@ -160,7 +160,7 @@ export default function MessagesPage() {
 
   if (conversations.length === 0) {
     return (
-      <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+      <div className="app-main-scroll-pad min-h-[100dvh] min-h-[-webkit-fill-available] bg-transparent pt-4 gradient-mesh pb-6 md:pt-14 md:pb-8">
         <div className="app-desktop-shell pt-8">
           <div className="flex items-center gap-4 mb-8">
             <Button 
@@ -173,7 +173,7 @@ export default function MessagesPage() {
             <h1 className="text-2xl font-bold">Messages</h1>
           </div>
 
-          <Card className="border-0 shadow-lg text-center py-12">
+          <Card className="border border-border/40 bg-transparent py-12 text-center shadow-none sm:bg-transparent sm:shadow-none">
             <CardContent>
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <MessageCircle className="w-8 h-8 text-muted-foreground" />
@@ -209,7 +209,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh pb-24">
+    <div className="app-main-scroll-pad min-h-[100dvh] min-h-[-webkit-fill-available] bg-transparent pt-4 gradient-mesh pb-6 md:pt-14 md:pb-8">
       <div className="app-desktop-shell pt-8">
         <div className="flex items-center gap-4 mb-8">
           <Button 
@@ -233,7 +233,7 @@ export default function MessagesPage() {
             return (
               <Card
                 key={convo.id}
-                className="border-0 shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
+                className="cursor-pointer border border-border/40 bg-transparent shadow-none transition-colors hover:border-border hover:bg-primary/5 sm:bg-transparent sm:shadow-none"
                 onClick={() => navigate(`/chat/${convo.id}`)}
               >
                 <CardContent className="p-4">

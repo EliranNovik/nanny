@@ -81,8 +81,10 @@ export function JobCardsCarousel({
       <div
         ref={scrollerRef}
         className={cn(
-          "flex min-h-0 min-w-0 w-full touch-pan-x gap-3 overflow-x-auto overflow-y-visible pb-2 pt-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "md:grid md:grid-cols-2 md:gap-7 md:overflow-visible md:pb-0 md:pt-0 md:snap-none lg:grid-cols-3 lg:gap-8"
+          /* pan-x alone blocks vertical page scroll when the gesture starts on the strip (mobile). */
+          "flex min-h-0 min-w-0 w-full gap-3 overflow-x-auto overflow-y-visible pb-2 pt-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "[touch-action:pan-x_pan-y] overscroll-x-contain",
+          "md:touch-auto md:overscroll-x-auto md:grid md:grid-cols-2 md:gap-7 md:overflow-visible md:pb-0 md:pt-0 md:snap-none lg:grid-cols-3 lg:gap-8"
         )}
       >
         {children}

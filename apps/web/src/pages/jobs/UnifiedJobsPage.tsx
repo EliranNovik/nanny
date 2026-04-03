@@ -88,7 +88,7 @@ export default function UnifiedJobsPage() {
 
   if (loading || !profile) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-mesh pb-32 md:pb-24">
+      <div className="flex min-h-screen items-center justify-center gradient-mesh pb-6 md:pb-8">
         <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
       </div>
     );
@@ -98,7 +98,7 @@ export default function UnifiedJobsPage() {
 
   if (needsPicker) {
     return (
-      <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+      <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
         <div className="app-desktop-shell flex min-h-[calc(100dvh-6rem)] flex-col justify-center pt-[calc(4.75rem+env(safe-area-inset-top,0px))] md:min-h-[70vh] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
           <JobsRolePicker
             onSelect={(mode) => {
@@ -118,7 +118,7 @@ export default function UnifiedJobsPage() {
 
   if (!resolvedMode || !effectiveTab) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-mesh pb-32 md:pb-24">
+      <div className="flex min-h-screen items-center justify-center gradient-mesh pb-6 md:pb-8">
         <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
       </div>
     );
@@ -127,7 +127,7 @@ export default function UnifiedJobsPage() {
   const isJobsOrPast = effectiveTab === "jobs" || effectiveTab === "past";
 
   return (
-    <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell pt-[calc(4.75rem+env(safe-area-inset-top,0px))] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
         <div className="mb-4 hidden md:sticky md:top-[calc(5.5rem+env(safe-area-inset-top,0px))] md:z-40 md:flex md:justify-center md:py-2">
           <JobsTabBar menuAlign="center" hideMobile />

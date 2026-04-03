@@ -121,7 +121,7 @@ export default function CommunityPostHireInterestsPage() {
   const pending = interests.filter((i) => i.status === "pending");
 
   return (
-    <div className="min-h-screen gradient-mesh pb-24">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell max-w-2xl space-y-6 px-4 py-6">
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 rounded-full" asChild>

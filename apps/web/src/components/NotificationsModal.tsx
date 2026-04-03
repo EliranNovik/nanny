@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import {
+  fetchInboxActivityAlerts,
+  type NotificationAlert,
+} from "@/lib/inboxActivityAlerts";
+import { rememberDismissedActivity } from "@/lib/inboxDismissedActivity";
 import {
   Dialog,
   DialogContent,
@@ -18,17 +22,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
-export interface NotificationAlert {
-  id: string;
-  type: "job_request" | "confirmation" | "message" | "job_update";
-  title: string;
-  description?: string;
-  link: string;
-  created_at?: string;
-  sender_name?: string;
-  sender_photo?: string;
-  metadata?: any;
-}
+export type { NotificationAlert } from "@/lib/inboxActivityAlerts";
 
 interface NotificationsModalProps {
   open: boolean;
@@ -44,196 +38,11 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
   const fetchAlerts = async () => {
     if (!user || !profile) return;
     setLoading(true);
-    
+
     try {
-      const allAlerts: NotificationAlert[] = [];
-
-      // 1. Fetch Unread Messages
-      const { data: convos } = await supabase
-        .from("conversations")
-        .select(`
-          id, 
-          client_id, 
-          freelancer_id,
-          job_id,
-          job_requests (care_type)
-        `)
-        .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`);
-
-      if (convos && convos.length > 0) {
-        const convoIds = convos.map(c => c.id);
-        const { data: unreadMsgs } = await supabase
-          .from("messages")
-          .select("id, conversation_id, sender_id, body, created_at")
-          .in("conversation_id", convoIds)
-          .neq("sender_id", user.id)
-          .is("read_at", null)
-          .order("created_at", { ascending: false });
-
-        if (unreadMsgs && unreadMsgs.length > 0) {
-          // Group by conversation
-          const latestByConvo = new Map();
-          unreadMsgs.forEach(m => {
-            if (!latestByConvo.has(m.conversation_id)) {
-              latestByConvo.set(m.conversation_id, m);
-            }
-          });
-
-          for (const [convoId, msg] of latestByConvo.entries()) {
-            const convo = convos.find(c => c.id === convoId);
-            if (!convo) continue;
-            
-            const otherId = user.id === convo.client_id ? convo.freelancer_id : convo.client_id;
-            
-            const { data: senderProfile } = await supabase
-              .from("profiles")
-              .select("full_name, photo_url")
-              .eq("id", otherId)
-              .single();
-
-            allAlerts.push({
-              id: `msg-${msg.id}`,
-              type: "message",
-              title: senderProfile?.full_name || "New Message",
-              description: msg.body,
-              link: `/chat/${convoId}`,
-              created_at: msg.created_at,
-              sender_name: senderProfile?.full_name || "User",
-              sender_photo: senderProfile?.photo_url || undefined,
-              metadata: { conversation_id: convoId, sender_id: otherId }
-            });
-          }
-        }
-      }
-
-      // 2. Fetch Freelancer Job Requests
-      if (profile.role === "freelancer") {
-        const { data: notifications } = await supabase
-          .from("job_candidate_notifications")
-          .select(`
-            id, created_at, job_id,
-            job_requests (
-              id, location_city, service_type, care_type, confirm_ends_at, community_post_id
-            )
-          `)
-          .eq("freelancer_id", user.id)
-          .in("status", ["pending", "opened"])
-          .order("created_at", { ascending: false });
-
-        if (notifications) {
-          const now = new Date();
-          notifications.forEach((n: any) => {
-            const job = n.job_requests;
-            if (job?.community_post_id) return;
-            if (job && (!job.confirm_ends_at || new Date(job.confirm_ends_at) > now)) {
-              allAlerts.push({
-                id: n.id,
-                type: "job_request",
-                title: `New ${job.care_type || job.service_type || "Job"} Request`,
-                description: job.location_city ? `Location: ${job.location_city}` : "Check details",
-                link: buildJobsUrl("freelancer", "requests"),
-                created_at: n.created_at,
-                metadata: { table: 'job_candidate_notifications', job_id: job.id }
-              });
-            }
-          });
-        }
-
-        // 3. Fetch Live Job Updates for Freelancers (Confirmed)
-        const { data: liveJobs } = await supabase
-            .from("job_requests")
-            .select("id, status, care_type, updated_at")
-            .eq("selected_freelancer_id", user.id)
-            .in("status", ["locked", "active"])
-            .gte("updated_at", new Date(Date.now() - 48 * 60 * 60000).toISOString()) // Last 48h
-            .order("updated_at", { ascending: false });
-
-        if (liveJobs) {
-            liveJobs.forEach((job) => {
-                allAlerts.push({
-                    id: `job-up-${job.id}`,
-                    type: "job_update",
-                    title: "Job Confirmed!",
-                    description: `Your ${job.care_type || "job"} is ready to start.`,
-                    link: buildJobsUrl("freelancer", "jobs"),
-                    created_at: job.updated_at,
-                    metadata: { job_id: job.id }
-                });
-            });
-        }
-      }
-
-      // 4. Fetch Client Confirmations
-      if (profile.role === "client") {
-        const { data: jobs } = await supabase
-          .from("job_requests")
-          .select("id, care_type")
-          .eq("client_id", user.id)
-          .in("status", ["notifying", "confirmations_closed"]);
-
-        if (jobs && jobs.length > 0) {
-          const jobIds = jobs.map(j => j.id);
-          const { data: confirmations } = await supabase
-            .from("job_confirmations")
-            .select(`
-                id, created_at, job_id, freelancer_id,
-                profiles (full_name, photo_url)
-            `)
-            .in("job_id", jobIds)
-            .eq("status", "available");
-
-          if (confirmations) {
-            confirmations.forEach((c: any) => {
-              allAlerts.push({
-                id: c.id,
-                type: "confirmation",
-                title: "Helper Available",
-                description: `${c.profiles?.full_name || "A helper"} responded to your request.`,
-                link: buildJobsUrl("client", "my_requests"),
-                created_at: c.created_at,
-                sender_name: c.profiles?.full_name,
-                sender_photo: c.profiles?.photo_url,
-                metadata: { table: 'job_confirmations', confirmation_id: c.id }
-              });
-            });
-          }
-        }
-      }
-
-      // Client: helper confirmed a community “Hire now” → locked job
-      if (profile.role === "client") {
-        const { data: communityHires } = await supabase
-          .from("job_requests")
-          .select("id, service_type, locked_at, community_post_id")
-          .eq("client_id", user.id)
-          .not("community_post_id", "is", null)
-          .in("status", ["locked", "active"])
-          .gte(
-            "locked_at",
-            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-          )
-          .order("locked_at", { ascending: false });
-
-        (communityHires || []).forEach((job: any) => {
-          allAlerts.push({
-            id: `community-hire-${job.id}`,
-            type: "job_update",
-            title: "Helper confirmed your hire",
-            description: "Your booking from an availability post is live.",
-            link: buildJobsUrl("client", "jobs"),
-            created_at: job.locked_at,
-            metadata: { job_id: job.id },
-          });
-        });
-      }
-
-      // Sort all by created_at
-      allAlerts.sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return dateB - dateA;
+      const allAlerts = await fetchInboxActivityAlerts(user, profile, {
+        includeUnreadMessageAlerts: true,
       });
-
       setAlerts(allAlerts);
     } catch (err) {
       console.error("Error fetching news:", err);
@@ -247,9 +56,12 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
   }, [open, user?.id]);
 
   const handleIgnore = async (alert: NotificationAlert) => {
+    if (user?.id) rememberDismissedActivity(user.id, alert.id);
+
     try {
       if (alert.type === "message") {
-        const { conversation_id } = alert.metadata;
+        const conversation_id = alert.metadata?.conversation_id as string | undefined;
+        if (!conversation_id) return;
         await supabase
           .from("messages")
           .update({ read_at: new Date().toISOString() })
@@ -259,19 +71,14 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
       } else if (alert.type === "job_request") {
         await supabase
           .from("job_candidate_notifications")
-          .update({ status: "ignored" })
-          .eq("id", alert.id);
-      } else if (alert.type === "confirmation") {
-        await supabase
-          .from("job_confirmations")
-          .update({ status: "dismissed" })
+          .update({ status: "closed" })
           .eq("id", alert.id);
       }
-      
-      // Update local state
-      setAlerts(prev => prev.filter(a => a.id !== alert.id));
+      /* confirmation + job_update: no safe status to set; inbox hides via rememberDismissedActivity */
     } catch (err) {
       console.error("Error ignoring notification:", err);
+    } finally {
+      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
     }
   };
 

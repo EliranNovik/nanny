@@ -1296,14 +1296,14 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       {!hideBackButton && (
         <div
           className={cn(
-            "fixed inset-y-0 left-0 w-full lg:w-[400px] bg-card/10 backdrop-blur-xl border-r border-border/20 z-40 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
+            "fixed inset-y-0 left-0 w-full lg:w-[400px] border-r border-border/20 bg-transparent z-40 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
             // On mobile: show when mobileView is 'steps', on desktop: always show
             mobileView === "steps" || showContactPanel ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
           <div className="h-screen lg:h-full flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="p-4 bg-card/80 dark:bg-white/5 backdrop-blur-md border-b border-border/20 flex-shrink-0 rounded-t-2xl">
+            <div className="flex-shrink-0 border-b border-border/20 bg-transparent p-4 rounded-t-2xl">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Button
@@ -1418,8 +1418,8 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                           className={cn(
                             "p-3 rounded-lg cursor-pointer transition-colors border",
                             conversationId === report.id
-                              ? "bg-primary/10 border-primary"
-                              : "bg-card hover:bg-muted border-border"
+                              ? "border-primary bg-primary/10"
+                              : "border-border bg-transparent hover:bg-primary/5"
                           )}
                         >
                           <div className="flex items-center gap-3">
@@ -1456,7 +1456,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 /* Job Steps Content - Simplified for mobile as per user request */
                 <div className="space-y-8 flex flex-col py-4">
                   {/* Profile Card — full-width hero image on top of box */}
-                  <div className="w-full overflow-hidden rounded-2xl border border-slate-200/90 bg-card shadow-md dark:border-white/10">
+                  <div className="w-full overflow-hidden rounded-2xl border border-slate-200/90 bg-transparent shadow-none dark:border-white/10">
                     <div className="relative w-full min-h-[260px] h-[44vh] max-h-[520px] bg-muted sm:min-h-[300px] sm:h-[40vh] sm:max-h-[560px]">
                       {otherUser?.photo_url ? (
                         <img
@@ -1579,13 +1579,13 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                   {job && (
                     <div className="space-y-4 px-2 pt-4 border-t border-dashed">
                       <div className="flex items-center gap-2 font-bold text-base">
-                        <Badge variant="outline" className="bg-slate-100 dark:bg-background/30 backdrop-blur-xl text-slate-900 dark:text-white border-slate-200 dark:border-white/20 px-3 py-1.5 shadow-sm font-bold tracking-tight">
+                        <Badge variant="outline" className="border-slate-200 bg-transparent px-3 py-1.5 font-bold tracking-tight text-slate-900 shadow-none dark:border-white/20 dark:text-white">
                           <FileText className="w-4 h-4 mr-2" />
                           JOB DETAILS
                         </Badge>
                       </div>
 
-                      <div className="bg-card/60 dark:bg-white/10 backdrop-blur-md rounded-2xl p-5 space-y-4 border border-slate-200 dark:border-white/10 shadow-sm">
+                      <div className="space-y-4 rounded-2xl border border-slate-200 bg-transparent p-5 shadow-none dark:border-white/10">
                         {job.community_post_id ? (
                           !communityPostCard ||
                           communityPostCard.postId !== job.community_post_id ||
@@ -1603,7 +1603,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                 From availability post
                               </p>
-                              <div className="flex gap-3 rounded-xl border border-border/50 bg-background/40 p-3 dark:bg-black/20">
+                              <div className="flex gap-3 rounded-xl border border-border/50 bg-transparent p-3">
                                 <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted">
                                   {communityPostCard.coverUrl ? (
                                     <img
@@ -1757,7 +1757,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         !hideBackButton && mobileView === "steps" && "hidden lg:flex"
       )}>
         {/* Header - Fixed */}
-        <header className="flex-shrink-0 border-none bg-card/80 dark:bg-background/80 backdrop-blur-md px-4 py-3 md:relative fixed top-0 left-0 right-0 z-20 md:z-auto md:top-auto shadow-sm">
+        <header className="fixed left-0 right-0 top-0 z-20 flex-shrink-0 border-b border-border/20 bg-transparent px-4 py-3 shadow-none md:relative md:top-auto md:z-auto">
           <div className="flex items-center gap-3">
             {!hideBackButton && (
               <Button

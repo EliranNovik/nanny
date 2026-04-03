@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,13 +16,12 @@ import {
   MapPin,
   MessageSquare,
   Sparkles,
-  UserRound,
-  LayoutGrid,
   ExternalLink,
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
+import { StarRating } from "@/components/StarRating";
 import { type AvailabilityPayload } from "@/lib/availabilityPosts";
 
 type ProfileRow = {
@@ -33,6 +31,8 @@ type ProfileRow = {
   city: string | null;
   role: string | null;
   is_verified?: boolean | null;
+  average_rating?: number | null;
+  total_ratings?: number | null;
 };
 
 type PostRow = {
@@ -53,6 +53,10 @@ type PostWithExtras = PostRow & {
   coverImage: string | null;
 };
 
+type LikedListItem =
+  | { kind: "profile"; favoritedAt: string; profile: ProfileRow }
+  | { kind: "post"; favoritedAt: string; post: PostWithExtras };
+
 /** Newest interest per post for this user (from `community_post_hire_interests`, ordered by created_at desc). */
 type HireInterestState =
   | { status: "pending" }
@@ -62,18 +66,12 @@ type HireInterestState =
 export default function LikedPage() {
   const { user, profile } = useAuth();
   const { addToast } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const tab = searchParams.get("tab") === "posts" ? "posts" : "profiles";
-
-  const setTab = (v: string) => {
-    if (v === "posts") setSearchParams({ tab: "posts" });
-    else setSearchParams({});
-  };
 
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [posts, setPosts] = useState<PostWithExtras[]>([]);
+  const [profileFavoritedAt, setProfileFavoritedAt] = useState<Record<string, string>>({});
+  const [postFavoritedAt, setPostFavoritedAt] = useState<Record<string, string>>({});
   const [busyProfileId, setBusyProfileId] = useState<string | null>(null);
   const [busyPostId, setBusyPostId] = useState<string | null>(null);
   const [hireInterestByPostId, setHireInterestByPostId] = useState<
@@ -87,6 +85,8 @@ export default function LikedPage() {
     if (!user?.id) {
       setProfiles([]);
       setPosts([]);
+      setProfileFavoritedAt({});
+      setPostFavoritedAt({});
       setHireInterestByPostId({});
       setConversationIdByJobId({});
       setLoading(false);
@@ -116,12 +116,24 @@ export default function LikedPage() {
       );
       const favPostIds = (postFavRes.data ?? []).map((r) => r.post_id as string);
 
+      const postAt: Record<string, string> = {};
+      for (const r of postFavRes.data ?? []) {
+        postAt[r.post_id as string] = r.created_at as string;
+      }
+      setPostFavoritedAt(postAt);
+
+      const profileAt: Record<string, string> = {};
+      for (const r of profFavRes.data ?? []) {
+        profileAt[r.favorite_user_id as string] = r.created_at as string;
+      }
+      setProfileFavoritedAt(profileAt);
+
       if (favUserIds.length === 0) {
         setProfiles([]);
       } else {
         const { data: profs, error: pe } = await supabase
           .from("profiles")
-          .select("id, full_name, photo_url, city, role")
+          .select("id, full_name, photo_url, city, average_rating, total_ratings")
           .in("id", favUserIds);
         if (pe) throw pe;
         const byId = new Map((profs ?? []).map((p) => [p.id as string, p as ProfileRow]));
@@ -245,6 +257,8 @@ export default function LikedPage() {
       });
       setProfiles([]);
       setPosts([]);
+      setProfileFavoritedAt({});
+      setPostFavoritedAt({});
       setHireInterestByPostId({});
       setConversationIdByJobId({});
     } finally {
@@ -302,14 +316,22 @@ export default function LikedPage() {
     }
   };
 
-  const profileCount = profiles.length;
-  const postCount = posts.length;
-
-  const tabBarClass =
-    "inline-flex h-11 w-full items-center justify-center gap-1 rounded-2xl border border-black/10 bg-transparent p-1 dark:border-white/10 md:h-11";
-
-  const triggerClass =
-    "flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all data-[state=active]:bg-black/[0.03] data-[state=active]:text-foreground dark:data-[state=active]:bg-white/[0.06]";
+  const mixedItems = useMemo((): LikedListItem[] => {
+    const items: LikedListItem[] = [
+      ...profiles.map((p) => ({
+        kind: "profile" as const,
+        favoritedAt: profileFavoritedAt[p.id] ?? "",
+        profile: p,
+      })),
+      ...posts.map((p) => ({
+        kind: "post" as const,
+        favoritedAt: postFavoritedAt[p.id] ?? "",
+        post: p,
+      })),
+    ];
+    items.sort((a, b) => Date.parse(b.favoritedAt) - Date.parse(a.favoritedAt));
+    return items;
+  }, [profiles, posts, profileFavoritedAt, postFavoritedAt]);
 
   const emptyHint = (
     <p className="text-center text-sm text-muted-foreground">
@@ -329,7 +351,7 @@ export default function LikedPage() {
   );
 
   return (
-    <div className="min-h-screen gradient-mesh pb-32 md:pb-24">
+    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell px-1 pt-4 md:pt-6">
         <div className="mx-auto mb-4 max-w-2xl px-2 md:mb-6 md:px-0">
           <div className="flex items-center justify-between gap-3">
@@ -347,283 +369,261 @@ export default function LikedPage() {
           </div>
         </div>
 
-        <Tabs value={tab} onValueChange={setTab} className="mx-auto max-w-2xl px-2 md:px-0">
-          <TabsList className={tabBarClass}>
-            <TabsTrigger value="profiles" className={triggerClass}>
-              <UserRound className="h-4 w-4 shrink-0 opacity-80" />
-              Profiles
-              {profileCount > 0 && (
-                <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-black text-rose-600 dark:text-rose-400">
-                  {profileCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="posts" className={triggerClass}>
-              <LayoutGrid className="h-4 w-4 shrink-0 opacity-80" />
-              Posts
-              {postCount > 0 && (
-                <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-black text-rose-600 dark:text-rose-400">
-                  {postCount}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="profiles" className="mt-6 focus-visible:outline-none">
-            {loading ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
-              </div>
-            ) : profiles.length === 0 ? (
-              <Card className="rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15">
-                <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-                  <Sparkles className="h-10 w-10 text-rose-400/80" />
-                  <p className="text-base font-semibold text-foreground">No saved profiles yet</p>
-                  {emptyHint}
-                </CardContent>
-              </Card>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {profiles.map((p) => (
-                  <li key={p.id}>
+        <div className="mx-auto mt-6 max-w-2xl px-2 md:px-0">
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
+            </div>
+          ) : mixedItems.length === 0 ? (
+            <Card className="rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15">
+              <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+                <Sparkles className="h-10 w-10 text-rose-400/80" />
+                <p className="text-base font-semibold text-foreground">Nothing saved yet</p>
+                {emptyHint}
+              </CardContent>
+            </Card>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {mixedItems.map((item) =>
+                item.kind === "profile" ? (
+                  <li key={`p-${item.profile.id}`}>
                     <Card
                       className={cn(
                         "overflow-hidden rounded-2xl border border-black/10 bg-transparent transition-all duration-200 dark:border-white/10",
                         "hover:border-black/15 dark:hover:border-white/15"
                       )}
                     >
-                      <CardContent className="flex items-center gap-3 p-3 md:p-4">
-                        <Link
-                          to={`/profile/${p.id}`}
-                          className="flex min-w-0 flex-1 items-center gap-3"
-                        >
-                          <Avatar className="h-14 w-14 shrink-0 border-2 border-white shadow-md dark:border-zinc-800">
-                            <AvatarImage src={p.photo_url ?? undefined} alt="" />
-                            <AvatarFallback className="bg-gradient-to-br from-rose-100 to-orange-100 text-base font-bold text-rose-700 dark:from-rose-950 dark:to-orange-950 dark:text-rose-300">
-                              {(p.full_name || "?").slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1 text-left">
-                            <p className="truncate font-bold text-foreground">{p.full_name || "Member"}</p>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              {p.city && (
-                                <span className="inline-flex items-center gap-0.5">
-                                  <MapPin className="h-3 w-3" />
-                                  {p.city}
-                                </span>
-                              )}
-                              {p.role && (
-                                <Badge variant="secondary" className="text-[10px] font-bold capitalize">
-                                  {p.role}
-                                </Badge>
-                              )}
+                      <Link
+                        to={`/profile/${item.profile.id}`}
+                        className="relative block aspect-[4/3] w-full overflow-hidden border-b border-black/10 bg-gradient-to-br from-rose-100 to-orange-100 dark:border-white/10 dark:from-rose-950 dark:to-orange-950"
+                      >
+                        {item.profile.photo_url ? (
+                          <img
+                            src={item.profile.photo_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="absolute inset-0 flex items-center justify-center text-4xl font-black text-rose-700 dark:text-rose-300">
+                            {(item.profile.full_name || "?").slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                      </Link>
+                      <CardContent className="p-3 md:p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <h2 className="truncate text-[15px] font-black leading-snug text-foreground">
+                              {item.profile.full_name || "Member"}
+                            </h2>
+                            {item.profile.city && (
+                              <p className="mt-1 inline-flex items-center gap-0.5 text-xs font-semibold text-muted-foreground">
+                                <MapPin className="h-3 w-3 shrink-0" />
+                                {item.profile.city}
+                              </p>
+                            )}
+                            <div className="mt-2">
+                              <StarRating
+                                rating={Number(item.profile.average_rating) || 0}
+                                totalRatings={item.profile.total_ratings ?? 0}
+                                size="sm"
+                                emptyStarClassName="text-muted-foreground/30"
+                                starClassName="text-amber-500 dark:text-amber-400"
+                                numberClassName="text-foreground"
+                                countClassName="text-muted-foreground"
+                              />
                             </div>
                           </div>
-                        </Link>
-                        <div className="flex shrink-0 flex-col gap-1 sm:flex-row sm:items-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600"
-                            asChild
-                          >
-                            <Link to={`/profile/${p.id}`} aria-label="Open profile">
-                              <ExternalLink className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            disabled={busyProfileId === p.id}
-                            aria-label="Remove from saved"
-                            onClick={() => void removeProfileFavorite(p.id)}
-                          >
-                            {busyProfileId === p.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
+                          <div className="flex shrink-0 flex-col gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600"
+                              asChild
+                            >
+                              <Link to={`/profile/${item.profile.id}`} aria-label="Open profile">
+                                <ExternalLink className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              disabled={busyProfileId === item.profile.id}
+                              aria-label="Remove from saved"
+                              onClick={() => void removeProfileFavorite(item.profile.id)}
+                            >
+                              {busyProfileId === item.profile.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
                   </li>
-                ))}
-              </ul>
-            )}
-          </TabsContent>
-
-          <TabsContent value="posts" className="mt-6 focus-visible:outline-none">
-            {loading ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
-              </div>
-            ) : posts.length === 0 ? (
-              <Card className="rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15">
-                <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-                  <Heart className="h-10 w-10 text-rose-400/80" />
-                  <p className="text-base font-semibold text-foreground">No saved posts yet</p>
-                  {emptyHint}
-                </CardContent>
-              </Card>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {posts.map((post) => {
-                  const hire = hireInterestByPostId[post.id];
-                  const expired =
-                    post.expires_at && !Number.isNaN(Date.parse(post.expires_at))
-                      ? Date.parse(post.expires_at) <= Date.now()
-                      : false;
-                  const blurb =
-                    (post.note && post.note.trim()) || (post.body && post.body.trim()) || "";
-                  const chatId =
-                    hire?.status === "confirmed"
-                      ? conversationIdByJobId[hire.job_request_id]
-                      : undefined;
-                  return (
-                    <li key={post.id}>
-                      <Card
-                        className={cn(
-                          "overflow-hidden rounded-2xl border border-black/10 bg-transparent transition-all duration-200 dark:border-white/10",
-                          "hover:border-black/15 dark:hover:border-white/15"
-                        )}
-                      >
-                        <CardContent className="p-3 md:p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-7 w-7 border border-border/60">
-                                      <AvatarImage src={post.author?.photo_url ?? undefined} />
-                                      <AvatarFallback className="bg-rose-500/15 text-[10px] font-black text-rose-700">
-                                        {(post.author?.full_name || "?").charAt(0).toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <p className="flex min-w-0 items-center gap-0.5 truncate text-xs font-bold text-foreground">
-                                      <span className="truncate">{post.author?.full_name || "Member"}</span>
-                                      {post.author?.is_verified && (
-                                        <BadgeCheck
-                                          className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white dark:fill-sky-400"
-                                          aria-label="Verified"
-                                        />
+                ) : (
+                  <li key={`post-${item.post.id}`}>
+                    {(() => {
+                      const post = item.post;
+                      const hire = hireInterestByPostId[post.id];
+                      const expired =
+                        post.expires_at && !Number.isNaN(Date.parse(post.expires_at))
+                          ? Date.parse(post.expires_at) <= Date.now()
+                          : false;
+                      const blurb =
+                        (post.note && post.note.trim()) || (post.body && post.body.trim()) || "";
+                      const chatId =
+                        hire?.status === "confirmed"
+                          ? conversationIdByJobId[hire.job_request_id]
+                          : undefined;
+                      return (
+                        <Card
+                          className={cn(
+                            "overflow-hidden rounded-2xl border border-black/10 bg-transparent transition-all duration-200 dark:border-white/10",
+                            "hover:border-black/15 dark:hover:border-white/15"
+                          )}
+                        >
+                          <CardContent className="p-3 md:p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <Avatar className="h-7 w-7 border border-border/60">
+                                        <AvatarImage src={post.author?.photo_url ?? undefined} />
+                                        <AvatarFallback className="bg-rose-500/15 text-[10px] font-black text-rose-700">
+                                          {(post.author?.full_name || "?").charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <p className="flex min-w-0 items-center gap-0.5 truncate text-xs font-bold text-foreground">
+                                        <span className="truncate">
+                                          {post.author?.full_name || "Member"}
+                                        </span>
+                                        {post.author?.is_verified && (
+                                          <BadgeCheck
+                                            className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                                            aria-label="Verified"
+                                          />
+                                        )}
+                                      </p>
+                                      {expired && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] font-bold text-amber-800 dark:text-amber-300"
+                                        >
+                                          Expired
+                                        </Badge>
                                       )}
-                                    </p>
-                                    {expired && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-[10px] font-bold text-amber-800 dark:text-amber-300"
-                                      >
-                                        Expired
-                                      </Badge>
+                                    </div>
+                                    <h2 className="mt-1 truncate text-[15px] font-black leading-snug text-foreground">
+                                      {post.title}
+                                    </h2>
+                                  </div>
+
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                    disabled={busyPostId === post.id}
+                                    aria-label="Remove from saved"
+                                    onClick={() => void removePostFavorite(post.id)}
+                                  >
+                                    {busyPostId === post.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
                                     )}
-                                  </div>
-                                  <h2 className="mt-1 truncate text-[15px] font-black leading-snug text-foreground">
-                                    {post.title}
-                                  </h2>
+                                  </Button>
                                 </div>
 
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                  disabled={busyPostId === post.id}
-                                  aria-label="Remove from saved"
-                                  onClick={() => void removePostFavorite(post.id)}
-                                >
-                                  {busyPostId === post.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
-
-                              {blurb && (
-                                <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                                  {blurb}
-                                </p>
-                              )}
-                              {post.coverImage && (
-                                <div className="mt-2">
-                                  <div className="w-full max-w-[160px] overflow-hidden rounded-xl border border-black/10 bg-transparent dark:border-white/10">
-                                    <img
-                                      src={post.coverImage}
-                                      alt=""
-                                      className="aspect-[4/3] w-full object-cover"
-                                      loading="lazy"
+                                {blurb && (
+                                  <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                    {blurb}
+                                  </p>
+                                )}
+                                {post.coverImage && (
+                                  <div className="mt-2">
+                                    <div className="w-full max-w-[160px] overflow-hidden rounded-xl border border-black/10 bg-transparent dark:border-white/10">
+                                      <img
+                                        src={post.coverImage}
+                                        alt=""
+                                        className="aspect-[4/3] w-full object-cover"
+                                        loading="lazy"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                {post.expires_at && (
+                                  <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                                    <ExpiryCountdown
+                                      expiresAtIso={post.expires_at}
+                                      className="text-[11px] text-muted-foreground"
                                     />
-                                  </div>
-                                </div>
-                              )}
-                              {post.expires_at && (
-                                <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
-                                  <ExpiryCountdown
-                                    expiresAtIso={post.expires_at}
-                                    className="text-[11px] text-muted-foreground"
-                                  />
-                                </p>
-                              )}
+                                  </p>
+                                )}
 
-                              <div className="mt-3 space-y-2">
-                                {hire?.status === "pending" && (
-                                  <div className="flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/30">
-                                    <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
-                                    <p className="text-[12px] font-semibold leading-snug text-amber-950 dark:text-amber-100">
-                                      Waiting for confirmation — the helper hasn’t accepted your hire
-                                      request yet.
-                                    </p>
-                                  </div>
-                                )}
-                                {hire?.status === "confirmed" && (
-                                  <div className="flex items-start gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
-                                    <p className="text-[12px] font-semibold leading-snug text-emerald-950 dark:text-emerald-100">
-                                      Helper confirmed — your booking is live. You can chat and manage
-                                      it from Jobs.
-                                    </p>
-                                  </div>
-                                )}
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {hire?.status === "confirmed" && chatId && (
-                                    <Button size="sm" className="rounded-full gap-1.5" asChild>
-                                      <Link to={`/chat/${chatId}`}>
-                                        <MessageSquare className="h-3.5 w-3.5" />
-                                        Open chat
+                                <div className="mt-3 space-y-2">
+                                  {hire?.status === "pending" && (
+                                    <div className="flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/30">
+                                      <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                                      <p className="text-[12px] font-semibold leading-snug text-amber-950 dark:text-amber-100">
+                                        Waiting for confirmation — the helper hasn’t accepted your hire
+                                        request yet.
+                                      </p>
+                                    </div>
+                                  )}
+                                  {hire?.status === "confirmed" && (
+                                    <div className="flex items-start gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+                                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                                      <p className="text-[12px] font-semibold leading-snug text-emerald-950 dark:text-emerald-100">
+                                        Helper confirmed — your booking is live. You can chat and manage
+                                        it from Jobs.
+                                      </p>
+                                    </div>
+                                  )}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {hire?.status === "confirmed" && chatId && (
+                                      <Button size="sm" className="rounded-full gap-1.5" asChild>
+                                        <Link to={`/chat/${chatId}`}>
+                                          <MessageSquare className="h-3.5 w-3.5" />
+                                          Open chat
+                                        </Link>
+                                      </Button>
+                                    )}
+                                    {hire?.status === "confirmed" && profile?.role === "client" && (
+                                      <Button variant="outline" size="sm" className="rounded-full" asChild>
+                                        <Link to="/client/jobs">View jobs</Link>
+                                      </Button>
+                                    )}
+                                    <Button variant="outline" size="sm" className="rounded-full" asChild>
+                                      <Link to={`/public/posts?post=${post.id}`}>
+                                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                                        {hire?.status === "pending"
+                                          ? "View post"
+                                          : hire?.status === "confirmed"
+                                            ? "View on board"
+                                            : "Available now"}
                                       </Link>
                                     </Button>
-                                  )}
-                                  {hire?.status === "confirmed" && profile?.role === "client" && (
-                                    <Button variant="outline" size="sm" className="rounded-full" asChild>
-                                      <Link to="/client/jobs">View jobs</Link>
-                                    </Button>
-                                  )}
-                                  <Button variant="outline" size="sm" className="rounded-full" asChild>
-                                    <Link to={`/public/posts?post=${post.id}`}>
-                                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                                      {hire?.status === "pending"
-                                        ? "View post"
-                                        : hire?.status === "confirmed"
-                                          ? "View on board"
-                                          : "Available now"}
-                                    </Link>
-                                  </Button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </TabsContent>
-        </Tabs>
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
+                  </li>
+                )
+              )}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
