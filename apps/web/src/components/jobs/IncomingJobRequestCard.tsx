@@ -23,13 +23,28 @@ export type IncomingJobRequestCardJob = {
   location_city: string;
   start_at: string | null;
   created_at: string;
+  notes?: string | null;
+  care_type?: string | null;
+  care_frequency?: string | null;
+  children_count?: number | null;
+  children_age_group?: string | null;
+  shift_hours?: string | null;
   time_duration?: string | null;
+  languages_pref?: string[] | null;
+  requirements?: string[] | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+  stage?: string | null;
+  offered_hourly_rate?: number | null;
+  price_offer_status?: string | null;
+  schedule_confirmed?: boolean | null;
   service_details?: { images?: unknown };
   profiles?: {
     full_name: string;
     photo_url: string | null;
     average_rating?: number;
     total_ratings?: number;
+    city?: string | null;
   };
 };
 

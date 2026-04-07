@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { BadgeCheck, Loader2, Plus, ImagePlus, X, Users } from "lucide-react";
 import {
   SERVICE_CATEGORIES,
+  isAllHelpCategory,
   isServiceCategoryId,
   serviceCategoryLabel,
   type ServiceCategoryId,
@@ -90,8 +91,13 @@ export default function CommunityPostsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get("category");
+  const isAllHelp = isAllHelpCategory(categoryParam);
   const categoryFilter =
-    categoryParam && isServiceCategoryId(categoryParam) ? categoryParam : null;
+    isAllHelp
+      ? null
+      : categoryParam && isServiceCategoryId(categoryParam)
+        ? categoryParam
+        : null;
 
   const { user, profile } = useAuth();
   const { addToast } = useToast();
@@ -348,7 +354,7 @@ export default function CommunityPostsPage() {
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <div className="app-desktop-shell space-y-6 pt-6 md:pt-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-1 md:max-w-4xl">
-          {categoryFilter && (
+          {(categoryFilter || isAllHelp) && (
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -360,16 +366,18 @@ export default function CommunityPostsPage() {
                 All categories
               </Button>
               <Badge variant="secondary" className="text-xs font-bold">
-                {serviceCategoryLabel(categoryFilter)}
+                {isAllHelp ? "All help" : serviceCategoryLabel(categoryFilter as ServiceCategoryId)}
               </Badge>
             </div>
           )}
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
-                {categoryFilter
-                  ? `Your ${serviceCategoryLabel(categoryFilter)} availability`
-                  : "Your availability"}
+                {isAllHelp
+                  ? "Your availability"
+                  : categoryFilter
+                    ? `Your ${serviceCategoryLabel(categoryFilter)} availability`
+                    : "Your availability"}
               </h1>
               <p className="mt-1 max-w-xl text-sm text-muted-foreground">
                 Short-lived pulses — they disappear from the public board when time is up.

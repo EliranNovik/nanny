@@ -1,6 +1,8 @@
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, Briefcase, Heart, Loader2, MessageSquare } from "lucide-react";
+import { BadgeCheck, Briefcase, Heart, Loader2, MessageSquare, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -58,6 +60,8 @@ export type CommunityPostCardProps = {
   compact?: boolean;
   /** No bordered panel — sits on page background (e.g. Discover home). */
   plain?: boolean;
+  /** Icon-only Hire / Chat / Share row (e.g. Discover availability modal). */
+  iconOnlyActions?: boolean;
 };
 
 export function CommunityPostCard({
@@ -74,8 +78,40 @@ export function CommunityPostCard({
   cardClassName,
   compact,
   plain,
+  iconOnlyActions = false,
 }: CommunityPostCardProps) {
+  const { addToast } = useToast();
   const isMine = user?.id === post.author_id;
+
+  const sharePost = useCallback(async () => {
+    const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
+    const title = post.title;
+    const text =
+      [post.note, post.body].find((t) => t && String(t).trim()) || title;
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ title, text, url });
+        return;
+      }
+    } catch (e: unknown) {
+      const name = (e as { name?: string })?.name;
+      if (name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      addToast({
+        title: "Link copied",
+        description: "Paste anywhere to share this post.",
+        variant: "success",
+      });
+    } catch {
+      addToast({
+        title: "Could not share",
+        description: "Try copying the page URL manually.",
+        variant: "error",
+      });
+    }
+  }, [post.id, post.title, post.note, post.body, addToast]);
   const description =
     (post.note && post.note.trim()) || (post.body && post.body.trim()) || null;
   const coverUrl = post.images[0]?.image_url;
@@ -226,58 +262,110 @@ export function CommunityPostCard({
             Posted {new Date(post.created_at).toLocaleString()}
           </p>
           {!isMine && user && profile && (
-            <div
-              className={cn(
-                "flex gap-2",
-                plain && "gap-3",
-                compact
-                  ? "flex-nowrap overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
-                  : "flex-col sm:flex-row sm:flex-wrap"
-              )}
-            >
-              {(profile.role === "client" || profile.role === "freelancer") &&
-                post.author_role === "freelancer" && (
-                <div
-                  className={cn(
-                    "flex flex-col gap-1",
-                    compact ? "min-w-[9.5rem] shrink-0" : "w-full sm:flex-1"
-                  )}
-                >
+            iconOnlyActions ? (
+              <div className="flex flex-col items-start gap-2">
+                <div className="flex w-full items-center justify-start gap-3">
+                  {(profile.role === "client" || profile.role === "freelancer") &&
+                    post.author_role === "freelancer" && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 shrink-0 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:bg-orange-500/15 dark:hover:text-orange-300"
+                        disabled={hiringPostId === post.id || pendingHirePostIds.has(post.id)}
+                        onClick={() => void onHireFromPost(post.id)}
+                        aria-label="Hire now"
+                      >
+                        {hiringPostId === post.id ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Briefcase className="h-5 w-5" />
+                        )}
+                      </Button>
+                    )}
                   <Button
                     type="button"
-                    size="sm"
-                    className="w-full gap-2 rounded-xl"
-                    disabled={hiringPostId === post.id || pendingHirePostIds.has(post.id)}
-                    onClick={() => void onHireFromPost(post.id)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    onClick={onOpenChat}
+                    aria-label="Chat"
                   >
-                    {hiringPostId === post.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Briefcase className="h-4 w-4" />
-                    )}
-                    Hire now
+                    <MessageSquare className="h-5 w-5" />
                   </Button>
-                  {pendingHirePostIds.has(post.id) && (
-                    <p className="text-center text-[11px] font-semibold leading-snug text-muted-foreground sm:text-left">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    onClick={() => void sharePost()}
+                    aria-label="Share"
+                  >
+                    <Share2 className="h-5 w-5" />
+                  </Button>
+                </div>
+                {pendingHirePostIds.has(post.id) &&
+                  (profile.role === "client" || profile.role === "freelancer") &&
+                  post.author_role === "freelancer" && (
+                    <p className="text-center text-[11px] font-semibold leading-snug text-muted-foreground">
                       Waiting for confirmation.
                     </p>
                   )}
-                </div>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
+              </div>
+            ) : (
+              <div
                 className={cn(
-                  "gap-2 rounded-xl",
-                  compact ? "min-w-[7.5rem] shrink-0" : "w-full sm:flex-1"
+                  "flex gap-2",
+                  plain && "gap-3",
+                  compact
+                    ? "flex-nowrap overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
+                    : "flex-col sm:flex-row sm:flex-wrap"
                 )}
-                onClick={onOpenChat}
               >
-                <MessageSquare className="h-4 w-4" />
-                Chat
-              </Button>
-            </div>
+                {(profile.role === "client" || profile.role === "freelancer") &&
+                  post.author_role === "freelancer" && (
+                  <div
+                    className={cn(
+                      "flex flex-col gap-1",
+                      compact ? "min-w-[9.5rem] shrink-0" : "w-full sm:flex-1"
+                    )}
+                  >
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full gap-2 rounded-xl"
+                      disabled={hiringPostId === post.id || pendingHirePostIds.has(post.id)}
+                      onClick={() => void onHireFromPost(post.id)}
+                    >
+                      {hiringPostId === post.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Briefcase className="h-4 w-4" />
+                      )}
+                      Hire now
+                    </Button>
+                    {pendingHirePostIds.has(post.id) && (
+                      <p className="text-center text-[11px] font-semibold leading-snug text-muted-foreground sm:text-left">
+                        Waiting for confirmation.
+                      </p>
+                    )}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "gap-2 rounded-xl",
+                    compact ? "min-w-[7.5rem] shrink-0" : "w-full sm:flex-1"
+                  )}
+                  onClick={onOpenChat}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Chat
+                </Button>
+              </div>
+            )
           )}
           {!isMine && !user && (
             <Button type="button" variant="outline" size="sm" className="w-full rounded-xl" asChild>

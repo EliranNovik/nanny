@@ -12,6 +12,11 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+  discoverSheetDialogContentClassName,
+  discoverSheetInnerCardClassName,
+  DiscoverSheetTopHandle,
+} from "@/lib/discoverSheetDialog";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 
 interface FullscreenMapModalProps {
@@ -21,11 +26,14 @@ interface FullscreenMapModalProps {
   onConfirm?: () => void;
   isConfirming?: boolean;
   showAcceptButton?: boolean;
+  /** Discover home incoming strip: same bottom sheet shell as availability preview. */
+  sheetPresentation?: boolean;
 }
 
 export function FullscreenMapModal({ 
   job, isOpen, onClose, 
-  onConfirm, isConfirming, showAcceptButton 
+  onConfirm, isConfirming, showAcceptButton,
+  sheetPresentation = false,
 }: FullscreenMapModalProps) {
   const { user } = useAuth();
   const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
@@ -80,20 +88,16 @@ export function FullscreenMapModal({
 
   const isPickupDelivery = job.service_type === "pickup_delivery";
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[100vw] w-full h-[100dvh] p-0 border-none bg-background gap-0 overflow-hidden flex flex-col sm:rounded-none">
-        {/* Close Button */}
-        <div className="absolute top-4 right-4 z-[60]">
-          <button 
-            onClick={onClose}
-            className="p-3 bg-card/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-full shadow-2xl hover:bg-card dark:hover:bg-zinc-800 transition-all border border-black/5 dark:border-white/5 group"
-          >
-            <X className="w-6 h-6 text-slate-900 dark:text-white group-hover:scale-110 transition-transform" />
-          </button>
-        </div>
-        
-        <div className="flex-1 w-full h-full relative">
+  const defaultMapShellClass =
+    "max-w-[100vw] w-full h-[100dvh] p-0 border-none bg-background gap-0 overflow-hidden flex flex-col sm:rounded-none";
+
+  const mapBody = (
+        <div
+          className={cn(
+            "relative w-full flex-1",
+            sheetPresentation ? "min-h-[min(52dvh,480px)]" : "h-full"
+          )}
+        >
           <JobMap job={job} onRouteInfo={setRouteInfo} onClose={onClose} />
 
           {/* UNIFIED VIEW: Expandable Swipe Card (Desktop & Mobile) */}
@@ -311,6 +315,36 @@ export function FullscreenMapModal({
             </div>
           </div>
         </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className={cn(
+          sheetPresentation ? discoverSheetDialogContentClassName : defaultMapShellClass
+        )}
+      >
+        {sheetPresentation ? (
+          <div className={cn(discoverSheetInnerCardClassName, "flex flex-col")}>
+            <DiscoverSheetTopHandle />
+            <div className="relative z-[61] flex min-h-0 flex-1 flex-col overflow-hidden">
+              {mapBody}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="absolute right-4 top-4 z-[60]">
+              <button
+                type="button"
+                onClick={onClose}
+                className="group rounded-full border border-black/5 bg-card/90 p-3 shadow-2xl backdrop-blur-sm transition-all hover:bg-card dark:border-white/5 dark:bg-zinc-800/90 dark:hover:bg-zinc-800"
+              >
+                <X className="h-6 w-6 text-slate-900 transition-transform group-hover:scale-110 dark:text-white" />
+              </button>
+            </div>
+            {mapBody}
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

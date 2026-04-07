@@ -48,6 +48,31 @@ export const SERVICE_CATEGORIES: {
   },
 ];
 
+/** Not a DB category — Discover-only tile that loads all posts (RPC with no filter). */
+export const ALL_HELP_CATEGORY_ID = "all_help" as const;
+
+export type DiscoverHomeCategoryId = ServiceCategoryId | typeof ALL_HELP_CATEGORY_ID;
+
+/** Discover home category grid: service types plus “All help”. */
+export const DISCOVER_HOME_CATEGORIES: {
+  id: DiscoverHomeCategoryId;
+  label: string;
+  description: string;
+  imageSrc: string;
+}[] = [
+  ...SERVICE_CATEGORIES,
+  {
+    id: ALL_HELP_CATEGORY_ID,
+    label: "All help",
+    description: "Browse every category",
+    imageSrc: "/pexels-rdne-6646861.jpg",
+  },
+];
+
+export function isAllHelpCategory(value: string | null | undefined): boolean {
+  return value === ALL_HELP_CATEGORY_ID;
+}
+
 export function isServiceCategoryId(value: string | null | undefined): value is ServiceCategoryId {
   return !!value && (SERVICE_CATEGORY_IDS as readonly string[]).includes(value);
 }

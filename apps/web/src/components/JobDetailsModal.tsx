@@ -1,15 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
     Dialog,
     DialogContent,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import {
+  discoverSheetDialogContentClassName,
+  discoverSheetInnerCardClassName,
+  DiscoverSheetTopHandle,
+} from "@/lib/discoverSheetDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     MapPin, Clock, Hourglass, X,
     Sparkles, UtensilsCrossed, Baby, HelpCircle, AlignLeft,
     Calendar, Briefcase, RefreshCw, Globe, CheckCircle2, Loader2, XCircle,
+    CalendarClock, Languages, ListChecks, Banknote, CircleDollarSign, StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "./StarRating";
@@ -29,6 +36,8 @@ interface JobDetailsModalProps {
     /** Incoming request: decline notification (shown with Accept when set). */
     onDecline?: () => void;
     isDeclining?: boolean;
+    /** Discover home incoming strip: same bottom sheet + card shell as availability preview. */
+    sheetPresentation?: boolean;
 }
 
 const LiveTimer = ({ createdAt }: { createdAt: string }) => {
@@ -63,9 +72,76 @@ const LiveTimer = ({ createdAt }: { createdAt: string }) => {
     return <>{formatElapsedTime(elapsed)}</>;
 };
 
+/** Incoming-style modals: text rows, no icon tiles, neutral palette. */
+function JobDetailRow({
+    simple,
+    label,
+    children,
+    icon,
+    multiline,
+}: {
+    simple: boolean;
+    label: string;
+    children: ReactNode;
+    icon?: ReactNode;
+    multiline?: boolean;
+}) {
+    if (simple) {
+        return (
+            <div className="border-b border-border py-3.5 last:border-b-0">
+                <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+                <div
+                    className={cn(
+                        "mt-1 text-sm font-medium leading-snug text-foreground",
+                        multiline && "whitespace-pre-wrap leading-relaxed"
+                    )}
+                >
+                    {children}
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                {icon ?? <AlignLeft className="h-5 w-5" strokeWidth={2} />}
+            </div>
+            <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    {label}
+                </span>
+                <div
+                    className={cn(
+                        "mt-0.5 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100",
+                        multiline && "whitespace-pre-wrap"
+                    )}
+                >
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SectionTitle({ simple, children }: { simple: boolean; children: ReactNode }) {
+    return (
+        <h3
+            className={cn(
+                "px-0.5",
+                simple
+                    ? "text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+                    : "text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85"
+            )}
+        >
+            {children}
+        </h3>
+    );
+}
+
 export function JobDetailsModal({ 
     isOpen, onOpenChange, job, formatJobTitle, isOwnRequest, 
     onConfirm, isConfirming, showAcceptButton, onDecline, isDeclining,
+    sheetPresentation = false,
 }: JobDetailsModalProps) {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     if (!job) return null;
@@ -97,9 +173,25 @@ export function JobDetailsModal({
 
     const client = job.profiles;
 
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-none bg-[hsl(var(--background))] p-0 shadow-2xl focus:outline-none sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[2.5rem]">
+    const jobNotesText =
+        typeof job.notes === "string" && job.notes.trim() ? job.notes.trim() : "";
+    const budgetLabel =
+        job.budget_min != null || job.budget_max != null
+            ? [job.budget_min, job.budget_max]
+                  .filter((v) => v != null && v !== "")
+                  .map(String)
+                  .join(" – ")
+            : "";
+
+    /** Discover sheet + jobs-tab incoming accept/decline: calmer layout. */
+    const incomingSimple =
+        sheetPresentation || Boolean(showAcceptButton && onDecline);
+
+    const defaultShellClass =
+        "flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-none bg-[hsl(var(--background))] p-0 shadow-2xl focus:outline-none sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[2.5rem]";
+
+    const modalBody = (
+        <>
                 <VisuallyHidden>
                     <DialogTitle>{formatJobTitle(job)} Details</DialogTitle>
                 </VisuallyHidden>
@@ -113,6 +205,7 @@ export function JobDetailsModal({
                     />
                     <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-black/75" />
 
+                    {!sheetPresentation && (
                     <button
                         type="button"
                         onClick={() => onOpenChange(false)}
@@ -121,6 +214,7 @@ export function JobDetailsModal({
                     >
                         <X className="h-5 w-5" />
                     </button>
+                    )}
 
                     {/* Service category — subtle chip, top-left */}
                     <div className="absolute left-3 top-3 z-40 max-w-[70%]">
@@ -205,162 +299,285 @@ export function JobDetailsModal({
                     </div>
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[hsl(var(--background))] px-4 pb-6 pt-4 custom-scrollbar sm:max-h-[60vh] sm:space-y-8 sm:p-8 sm:pb-8 space-y-6">
-                    {/* At-a-glance: split cells, transparent (no grey fill) */}
-                    <div className="overflow-hidden rounded-[1.25rem] border border-orange-200/45 bg-transparent sm:rounded-3xl dark:border-orange-900/40">
-                        <div className="grid grid-cols-2 divide-x divide-orange-100/70 dark:divide-zinc-700/80">
-                            <div className="flex flex-col gap-2 p-4 sm:p-5">
-                                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/75 dark:text-orange-400/90">
-                                    Target location
-                                </span>
-                                <div className="flex min-w-0 items-start gap-2">
-                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/12 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
-                                        <MapPin className="h-4 w-4" strokeWidth={2.25} />
-                                    </div>
-                                    <span className="pt-0.5 text-[15px] font-bold leading-snug tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-base">
-                                        {job.location_city}
-                                    </span>
-                                </div>
+                <div className={cn(
+                    "flex min-h-0 flex-1 flex-col overflow-y-auto bg-[hsl(var(--background))] custom-scrollbar",
+                    incomingSimple ? "space-y-5 px-4 pb-6 pt-4" : "space-y-6 px-4 pb-6 pt-4 sm:space-y-8 sm:p-8 sm:pb-8",
+                    sheetPresentation ? "sm:max-h-[min(50vh,420px)]" : "sm:max-h-[60vh]"
+                )}>
+                    {/* Summary: location + duration */}
+                    {incomingSimple ? (
+                        <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/25 p-4">
+                            <div>
+                                <p className="text-[11px] font-medium text-muted-foreground">Location</p>
+                                <p className="mt-0.5 text-sm font-semibold leading-snug text-foreground">
+                                    {job.location_city}
+                                </p>
                             </div>
-                            <div className="flex flex-col gap-2 p-4 sm:p-5">
-                                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/75 dark:text-orange-400/90">
-                                    Time duration
-                                </span>
-                                <div className="flex min-w-0 items-start gap-2">
-                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/12 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
-                                        <Hourglass className="h-4 w-4" strokeWidth={2.25} />
-                                    </div>
-                                    <span className="pt-0.5 text-[15px] font-bold capitalize leading-snug tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-base">
-                                        {clean(job.time_duration) || "Flexible"}
+                            <div>
+                                <p className="text-[11px] font-medium text-muted-foreground">Duration</p>
+                                <p className="mt-0.5 text-sm font-semibold capitalize leading-snug text-foreground">
+                                    {clean(job.time_duration) || "Flexible"}
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="overflow-hidden rounded-[1.25rem] border border-orange-200/45 bg-transparent sm:rounded-3xl dark:border-orange-900/40">
+                            <div className="grid grid-cols-2 divide-x divide-orange-100/70 dark:divide-zinc-700/80">
+                                <div className="flex flex-col gap-2 p-4 sm:p-5">
+                                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/75 dark:text-orange-400/90">
+                                        Target location
                                     </span>
+                                    <div className="flex min-w-0 items-start gap-2">
+                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/12 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
+                                            <MapPin className="h-4 w-4" strokeWidth={2.25} />
+                                        </div>
+                                        <span className="pt-0.5 text-[15px] font-bold leading-snug tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-base">
+                                            {job.location_city}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2 p-4 sm:p-5">
+                                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/75 dark:text-orange-400/90">
+                                        Time duration
+                                    </span>
+                                    <div className="flex min-w-0 items-start gap-2">
+                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/12 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
+                                            <Hourglass className="h-4 w-4" strokeWidth={2.25} />
+                                        </div>
+                                        <span className="pt-0.5 text-[15px] font-bold capitalize leading-snug tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-base">
+                                            {clean(job.time_duration) || "Flexible"}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Service particulars — stacked list, touch-friendly, no grey boxes */}
-                    <div className="space-y-3">
-                        <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
-                            Service particulars
-                        </h3>
-                        <div className="overflow-hidden rounded-[1.25rem] border border-orange-100/55 bg-transparent sm:rounded-2xl dark:border-border/50">
-                            <div className="divide-y divide-orange-100/70 dark:divide-zinc-800/80">
+                    {/* Service particulars */}
+                    <div className="space-y-2.5">
+                        <SectionTitle simple={incomingSimple}>Job details</SectionTitle>
+                        <div
+                            className={cn(
+                                incomingSimple
+                                    ? "rounded-xl border border-border bg-card/50 px-4"
+                                    : "overflow-hidden rounded-[1.25rem] border border-orange-100/55 bg-transparent sm:rounded-2xl dark:border-border/50"
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    !incomingSimple &&
+                                        "divide-y divide-orange-100/70 dark:divide-zinc-800/80"
+                                )}
+                            >
                             {job.start_at && (
-                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-                                        <Calendar className="h-5 w-5" strokeWidth={2} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Scheduled for</span>
-                                        <p className="mt-0.5 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
-                                            {new Date(job.start_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                        </p>
-                                    </div>
-                                </div>
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Scheduled for"
+                                    icon={<Calendar className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {new Date(job.start_at).toLocaleDateString(undefined, {
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    })}
+                                </JobDetailRow>
                             )}
                             {job.care_type && !hideNannyPlaceholders && (
-                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-                                        <Briefcase className="h-5 w-5" strokeWidth={2} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Care type</span>
-                                        <p className="mt-0.5 text-[15px] font-semibold capitalize leading-snug text-zinc-900 dark:text-zinc-100">{clean(job.care_type)}</p>
-                                    </div>
-                                </div>
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Care type"
+                                    icon={<Briefcase className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {clean(job.care_type)}
+                                </JobDetailRow>
                             )}
                             {job.children_count > 0 && !hideNannyPlaceholders && (
-                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-                                        <Baby className="h-5 w-5" strokeWidth={2} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Children</span>
-                                        <p className="mt-0.5 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
-                                            {job.children_count} {job.children_age_group ? `(${clean(job.children_age_group)})` : ''}
-                                        </p>
-                                    </div>
-                                </div>
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Children"
+                                    icon={<Baby className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {job.children_count}{" "}
+                                    {job.children_age_group ? `(${clean(job.children_age_group)})` : ""}
+                                </JobDetailRow>
                             )}
                             {job.care_frequency && (
-                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-                                        <RefreshCw className="h-5 w-5" strokeWidth={2} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Frequency</span>
-                                        <p className="mt-0.5 text-[15px] font-semibold capitalize leading-snug text-zinc-900 dark:text-zinc-100">{clean(job.care_frequency)}</p>
-                                    </div>
-                                </div>
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Frequency"
+                                    icon={<RefreshCw className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {clean(job.care_frequency)}
+                                </JobDetailRow>
+                            )}
+                            {job.shift_hours && String(job.shift_hours).trim() && (
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Shift"
+                                    icon={<CalendarClock className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {clean(String(job.shift_hours))}
+                                </JobDetailRow>
+                            )}
+                            {Array.isArray(job.languages_pref) && job.languages_pref.length > 0 && (
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Language preferences"
+                                    icon={<Languages className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {job.languages_pref.map((lang: string) => clean(lang)).join(", ")}
+                                </JobDetailRow>
+                            )}
+                            {Array.isArray(job.requirements) && job.requirements.length > 0 && (
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Requirements"
+                                    icon={<ListChecks className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {job.requirements.map((r: string) => clean(r)).join(", ")}
+                                </JobDetailRow>
+                            )}
+                            {budgetLabel && (
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Budget"
+                                    icon={<Banknote className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {budgetLabel}
+                                </JobDetailRow>
+                            )}
+                            {job.offered_hourly_rate != null && Number(job.offered_hourly_rate) > 0 && (
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Offered hourly rate"
+                                    icon={<CircleDollarSign className="h-5 w-5" strokeWidth={2} />}
+                                >
+                                    {Number(job.offered_hourly_rate)}
+                                </JobDetailRow>
+                            )}
+                            {jobNotesText && (
+                                <JobDetailRow
+                                    simple={incomingSimple}
+                                    label="Request notes"
+                                    icon={<StickyNote className="h-5 w-5" strokeWidth={2} />}
+                                    multiline
+                                >
+                                    {jobNotesText}
+                                </JobDetailRow>
                             )}
 
                             {isCommunityPostJob && job.community_post_id && (
-                                <div className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-                                        <AlignLeft className="h-5 w-5" strokeWidth={2} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                            From
-                                        </span>
-                                        <p className="mt-0.5 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
-                                            <Link
-                                                to={`/public/posts?post=${job.community_post_id}`}
-                                                className="text-orange-600 underline-offset-2 hover:underline dark:text-orange-400"
-                                            >
-                                                View availability post
-                                            </Link>
-                                        </p>
-                                    </div>
-                                </div>
+                                <JobDetailRow simple={incomingSimple} label="From" icon={<AlignLeft className="h-5 w-5" strokeWidth={2} />}>
+                                    <Link
+                                        to={`/public/posts?post=${job.community_post_id}`}
+                                        className={cn(
+                                            "font-medium underline-offset-2 hover:underline",
+                                            incomingSimple
+                                                ? "text-foreground"
+                                                : "text-orange-600 dark:text-orange-400"
+                                        )}
+                                    >
+                                        View availability post
+                                    </Link>
+                                </JobDetailRow>
                             )}
-                            {job.service_details && Object.entries(job.service_details).map(([key, value]) => {
-                                if (key === 'custom' || key === 'images') return null;
-                                if (key === 'from_lat' || key === 'from_lng' || key === 'to_lat' || key === 'to_lng') return null;
-                                if (key === 'care_type' || key === 'children_count' || key === 'care_frequency') return null;
-                                if (isCommunityPostJob && (key === 'source' || key === 'community_post_id')) return null;
+                            {job.service_details &&
+                                Object.entries(job.service_details).map(([key, value]) => {
+                                    if (key === "custom" || key === "images") return null;
+                                    if (key === "from_lat" || key === "from_lng" || key === "to_lat" || key === "to_lng")
+                                        return null;
+                                    if (key === "care_type" || key === "children_count" || key === "care_frequency")
+                                        return null;
+                                    if (isCommunityPostJob && (key === "source" || key === "community_post_id"))
+                                        return null;
 
-                                return (
-                                    <div key={key} className="flex min-h-[3.5rem] items-center gap-3.5 px-4 py-3.5 sm:px-5">
-                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-                                            <AlignLeft className="h-5 w-5" strokeWidth={2} />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{clean(key)}</span>
-                                            <p className="mt-0.5 text-[15px] font-semibold capitalize leading-snug text-zinc-900 dark:text-zinc-100">{clean(String(value))}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                    return (
+                                        <JobDetailRow
+                                            key={key}
+                                            simple={incomingSimple}
+                                            label={clean(key)}
+                                            icon={<AlignLeft className="h-5 w-5" strokeWidth={2} />}
+                                        >
+                                            {clean(String(value))}
+                                        </JobDetailRow>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
 
                     {/* Bio & languages */}
-                    {client && (client.bio || client.languages) && (
-                        <div className="space-y-3">
-                            <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
-                                About
-                            </h3>
-                            <div className="space-y-4 rounded-[1.25rem] border border-orange-100/60 bg-transparent p-5 sm:rounded-3xl sm:p-6 dark:border-orange-900/35">
+                    {client && (client.bio || client.languages || client.city) && (
+                        <div className="space-y-2.5">
+                            <SectionTitle simple={incomingSimple}>About the client</SectionTitle>
+                            <div
+                                className={cn(
+                                    "space-y-4",
+                                    incomingSimple
+                                        ? "rounded-xl border border-border bg-muted/20 p-4"
+                                        : "rounded-[1.25rem] border border-orange-100/60 bg-transparent p-5 sm:rounded-3xl sm:p-6 dark:border-orange-900/35"
+                                )}
+                            >
                                 {client.bio && (
-                                    <p className="text-[15px] font-medium leading-relaxed text-zinc-700 dark:text-zinc-200 sm:text-sm">
+                                    <p
+                                        className={cn(
+                                            "leading-relaxed",
+                                            incomingSimple
+                                                ? "text-sm text-foreground"
+                                                : "text-[15px] font-medium text-zinc-700 dark:text-zinc-200 sm:text-sm"
+                                        )}
+                                    >
                                         {client.bio}
                                     </p>
                                 )}
-                                <div className="flex flex-wrap gap-2">
+                                <div className={cn("flex flex-wrap gap-2", incomingSimple && "gap-x-3 gap-y-1.5")}>
                                     {client.city && (
-                                        <div className="inline-flex items-center gap-1.5 rounded-full border border-orange-200/70 bg-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-700 dark:border-orange-800/50 dark:text-orange-300">
-                                            <MapPin className="h-3.5 w-3.5 text-orange-500" />
-                                            {client.city}
-                                        </div>
+                                        <span
+                                            className={cn(
+                                                "inline-flex items-center gap-1.5 text-sm",
+                                                incomingSimple
+                                                    ? "font-medium text-foreground"
+                                                    : "rounded-full border border-orange-200/70 bg-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-orange-700 dark:border-orange-800/50 dark:text-orange-300"
+                                            )}
+                                        >
+                                            <MapPin
+                                                className={cn(
+                                                    "shrink-0",
+                                                    incomingSimple ? "h-4 w-4 text-muted-foreground" : "h-3.5 w-3.5 text-orange-500"
+                                                )}
+                                                aria-hidden
+                                            />
+                                            {incomingSimple ? (
+                                                <span>
+                                                    <span className="text-muted-foreground">City </span>
+                                                    {client.city}
+                                                </span>
+                                            ) : (
+                                                client.city
+                                            )}
+                                        </span>
                                     )}
-                                    {client.languages && Array.isArray(client.languages) && client.languages.map((lang: string) => (
-                                        <div key={lang} className="inline-flex items-center gap-1.5 rounded-full border border-orange-100/60 bg-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-600 dark:border-border/50 dark:text-zinc-300">
-                                            <Globe className="h-3.5 w-3.5 text-orange-500/90" />
-                                            {lang}
-                                        </div>
-                                    ))}
+                                    {client.languages &&
+                                        Array.isArray(client.languages) &&
+                                        client.languages.map((lang: string) =>
+                                            incomingSimple ? (
+                                                <span
+                                                    key={lang}
+                                                    className="rounded-md bg-muted/80 px-2 py-0.5 text-xs font-medium text-foreground"
+                                                >
+                                                    {lang}
+                                                </span>
+                                            ) : (
+                                                <div
+                                                    key={lang}
+                                                    className="inline-flex items-center gap-1.5 rounded-full border border-orange-100/60 bg-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-600 dark:border-border/50 dark:text-zinc-300"
+                                                >
+                                                    <Globe className="h-3.5 w-3.5 text-orange-500/90" />
+                                                    {lang}
+                                                </div>
+                                            )
+                                        )}
                                 </div>
                             </div>
                         </div>
@@ -368,16 +585,19 @@ export function JobDetailsModal({
 
                     {/* Job photos */}
                     {job.service_details?.images && job.service_details.images.length > 0 && (
-                        <div className="space-y-3">
-                            <h3 className="px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
-                                Job photos
-                            </h3>
+                        <div className="space-y-2.5">
+                            <SectionTitle simple={incomingSimple}>Photos</SectionTitle>
                             <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                                 {job.service_details.images.map((img: string, idx: number) => (
                                     <button
                                         key={idx}
                                         type="button"
-                                        className="relative aspect-video overflow-hidden rounded-2xl ring-1 ring-orange-100/70 shadow-sm transition hover:ring-2 hover:ring-orange-400/80 dark:ring-zinc-700/80 cursor-zoom-in active:scale-[0.99]"
+                                        className={cn(
+                                            "relative aspect-video overflow-hidden rounded-xl shadow-sm transition cursor-zoom-in active:scale-[0.99]",
+                                            incomingSimple
+                                                ? "ring-1 ring-border hover:ring-foreground/20"
+                                                : "rounded-2xl ring-1 ring-orange-100/70 hover:ring-2 hover:ring-orange-400/80 dark:ring-zinc-700/80"
+                                        )}
                                         onClick={() => setLightboxIndex(idx)}
                                     >
                                         <img src={img} alt={`Job photo ${idx + 1}`} className="h-full w-full object-cover" />
@@ -398,12 +618,16 @@ export function JobDetailsModal({
 
                     {/* Notes */}
                     {job.service_details?.custom && (
-                        <div className="space-y-3">
-                            <h3 className="flex items-center gap-2 px-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700/70 dark:text-orange-400/85">
-                                <AlignLeft className="h-4 w-4 text-orange-500" strokeWidth={2.25} />
-                                Notes & requirements
-                            </h3>
-                            <div className="border-l-[3px] border-orange-500 py-1 pl-4 text-[15px] font-medium leading-relaxed text-zinc-800 dark:border-orange-500/80 dark:text-zinc-100 sm:pl-5 sm:text-base">
+                        <div className="space-y-2.5">
+                            <SectionTitle simple={incomingSimple}>Notes & requirements</SectionTitle>
+                            <div
+                                className={cn(
+                                    "py-1 pl-4 text-[15px] font-medium leading-relaxed sm:pl-5 sm:text-base",
+                                    incomingSimple
+                                        ? "border-l-2 border-border text-foreground"
+                                        : "border-l-[3px] border-orange-500 text-zinc-800 dark:border-orange-500/80 dark:text-zinc-100"
+                                )}
+                            >
                                 {job.service_details.custom}
                             </div>
                         </div>
@@ -412,7 +636,12 @@ export function JobDetailsModal({
 
                 {/* Fixed bottom: incoming = Decline + Accept; else single Accept when applicable */}
                 {showAcceptButton && onConfirm && (
-                    <div className="flex animate-in flex-row items-stretch gap-3 border-t border-orange-100/50 bg-[hsl(var(--background))]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 dark:border-border sm:gap-4 sm:p-6">
+                    <div
+                        className={cn(
+                            "flex animate-in flex-row items-stretch gap-3 border-t bg-[hsl(var(--background))]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 sm:gap-4 sm:p-6",
+                            incomingSimple ? "border-border" : "border-orange-100/50 dark:border-border"
+                        )}
+                    >
                         {onDecline ? (
                             <>
                                 <Button
@@ -465,6 +694,26 @@ export function JobDetailsModal({
                             </Button>
                         )}
                     </div>
+                )}
+        </>
+    );
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent
+                className={cn(
+                    sheetPresentation ? discoverSheetDialogContentClassName : defaultShellClass
+                )}
+            >
+                {sheetPresentation ? (
+                    <div className={discoverSheetInnerCardClassName}>
+                        <DiscoverSheetTopHandle />
+                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                            {modalBody}
+                        </div>
+                    </div>
+                ) : (
+                    modalBody
                 )}
             </DialogContent>
         </Dialog>

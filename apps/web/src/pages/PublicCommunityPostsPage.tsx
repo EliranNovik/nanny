@@ -13,6 +13,7 @@ import {
   type CommunityPostWithMeta,
 } from "@/components/community/CommunityPostCard";
 import {
+  isAllHelpCategory,
   isServiceCategoryId,
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
@@ -23,8 +24,13 @@ export default function PublicCommunityPostsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryFilter = searchParams.get("category");
+  const isAllHelp = isAllHelpCategory(categoryFilter);
   const validCategory =
-    categoryFilter && isServiceCategoryId(categoryFilter) ? categoryFilter : null;
+    isAllHelp
+      ? null
+      : categoryFilter && isServiceCategoryId(categoryFilter)
+        ? categoryFilter
+        : null;
 
   const { user, profile } = useAuth();
   const { addToast } = useToast();
@@ -51,9 +57,11 @@ export default function PublicCommunityPostsPage() {
       : "/client/home"
     : "/";
 
-  const categoryTitle = validCategory
-    ? serviceCategoryLabel(validCategory)
-    : null;
+  const categoryTitle = isAllHelp
+    ? "All help"
+    : validCategory
+      ? serviceCategoryLabel(validCategory)
+      : null;
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -183,9 +191,10 @@ export default function PublicCommunityPostsPage() {
 
   const loginRedirect = useMemo(() => {
     const base = "/public/posts";
+    if (isAllHelp) return `${base}?category=${encodeURIComponent("all_help")}`;
     const q = validCategory ? `?category=${encodeURIComponent(validCategory)}` : "";
     return `${base}${q}`;
-  }, [validCategory]);
+  }, [validCategory, isAllHelp]);
 
   const toggleFavorite = async (postId: string) => {
     if (!user?.id) {
@@ -268,7 +277,7 @@ export default function PublicCommunityPostsPage() {
                 {profile ? "Home" : "Back"}
               </Link>
             </Button>
-            {validCategory && (
+            {(validCategory || isAllHelp) && (
               <Button
                 type="button"
                 variant="outline"

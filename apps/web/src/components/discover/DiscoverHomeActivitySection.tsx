@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -6,25 +6,20 @@ import { apiPost } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  CommunityPostCard,
-  type CommunityFeedPost,
-  type CommunityPostImage,
-  type CommunityPostWithMeta,
+import type {
+  CommunityFeedPost,
+  CommunityPostImage,
+  CommunityPostWithMeta,
 } from "@/components/community/CommunityPostCard";
-import { JobCardsCarousel } from "@/components/jobs/JobCardsCarousel";
-import {
-  IncomingJobRequestCard,
-  type IncomingJobRequestCardJob,
-} from "@/components/jobs/IncomingJobRequestCard";
+import { AvailabilityStoriesStrip } from "@/components/discover/AvailabilityStoriesStrip";
+import { IncomingRequestsStoriesStrip } from "@/components/discover/IncomingRequestsStoriesStrip";
+import type { IncomingJobRequestCardJob } from "@/components/jobs/IncomingJobRequestCard";
 import { buildJobsUrlFromTabId } from "@/components/jobs/jobsPerspective";
 import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
-import { useIsMinMd } from "@/hooks/useIsMinMd";
-import { useJobCardEdgeOverlay } from "@/hooks/useJobCardEdgeOverlay";
 import { openCommunityContact } from "@/lib/communityContact";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
-import { Bell, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { Bell, ChevronRight, Loader2 } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -38,6 +33,7 @@ type JobRequestRow = {
   created_at: string;
   notes?: string | null;
   care_type?: string | null;
+  care_frequency?: string | null;
   children_count?: number | null;
   children_age_group?: string | null;
   shift_hours?: string | null;
@@ -46,6 +42,10 @@ type JobRequestRow = {
   requirements?: string[] | null;
   budget_min?: number | null;
   budget_max?: number | null;
+  stage?: string | null;
+  offered_hourly_rate?: number | null;
+  price_offer_status?: string | null;
+  schedule_confirmed?: boolean | null;
   acceptedCount?: number;
   service_details?: { images?: unknown };
 };
@@ -63,6 +63,7 @@ type InboundNotification = {
       photo_url: string | null;
       average_rating?: number;
       total_ratings?: number;
+      city?: string | null;
     };
   };
 };
@@ -96,17 +97,6 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selectedMapJob, setSelectedMapJob] = useState<JobRequestRow | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<JobRequestRow | null>(null);
-
-  const isMinMd = useIsMinMd();
-  const inboundEdgeKey = useMemo(
-    () =>
-      `discover-inbound-${inbound.length}-${inbound
-        .map((n) => n.id)
-        .sort()
-        .join(",")}-${inboundLoading ? 1 : 0}`,
-    [inbound, inboundLoading]
-  );
-  const clippedCardIds = useJobCardEdgeOverlay(inboundEdgeKey);
 
   const incomingJobsUrl = buildJobsUrlFromTabId("requests");
   const loginRedirect = "/public/posts";
@@ -307,9 +297,10 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
             id, job_id, status, created_at,
             job_requests (
               id, client_id, community_post_id, community_post_expires_at, service_type, location_city, start_at, notes, created_at, status,
-              care_type, children_count, children_age_group, shift_hours, time_duration, languages_pref, requirements, budget_min, budget_max,
+              care_type, care_frequency, children_count, children_age_group, shift_hours, time_duration, languages_pref, requirements, budget_min, budget_max,
+              stage, offered_hourly_rate, price_offer_status, schedule_confirmed,
               service_details,
-              profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
+              profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings, city )
             )
           `
           )
@@ -400,12 +391,6 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
     else setSelectedJobDetails(job as JobRequestRow);
   }
 
-  function goToPublicProfile(e: MouseEvent, userId: string | null | undefined) {
-    e.stopPropagation();
-    if (!userId) return;
-    navigate(`/profile/${userId}`);
-  }
-
   const availabilityPostsCount = feedPosts.length;
 
   const hireSection = (
@@ -424,7 +409,12 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
             </Badge>
           )}
         </div>
-        <Sparkles className="h-4 w-4 shrink-0 text-orange-500" aria-hidden />
+        <Button variant="link" size="sm" className="h-auto shrink-0 gap-1 px-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300" asChild>
+          <Link to="/public/posts">
+            See all
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
       </div>
       <div className="mt-2 space-y-5">
         {feedLoading ? (
@@ -436,66 +426,48 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
             No one is live on the board right now. Check back soon or post a request.
           </p>
         ) : (
-          <JobCardsCarousel>
-            {feedPosts.map((post) => (
-              <CommunityPostCard
-                key={post.id}
-                post={post}
-                user={user}
-                profile={profile}
-                loginRedirect={loginRedirect}
-                favoritedIds={favoritedIds}
-                onToggleFavorite={toggleFavorite}
-                hiringPostId={hiringPostId}
-                pendingHirePostIds={pendingHirePostIds}
-                onHireFromPost={handleHireFromPost}
-                compact
-                plain
-                onOpenChat={() => {
-                  if (!user || !profile) return;
-                  void openCommunityContact({
-                    supabase,
-                    user,
-                    myRole: profile.role,
-                    targetUserId: post.author_id,
-                    targetRole: post.author_role,
-                    navigate,
-                    addToast,
-                  });
-                }}
-              />
-            ))}
-          </JobCardsCarousel>
+          <AvailabilityStoriesStrip
+            posts={feedPosts}
+            user={user}
+            profile={profile}
+            loginRedirect={loginRedirect}
+            favoritedIds={favoritedIds}
+            onToggleFavorite={toggleFavorite}
+            hiringPostId={hiringPostId}
+            pendingHirePostIds={pendingHirePostIds}
+            onHireFromPost={handleHireFromPost}
+            onOpenChat={(post) => {
+              if (!user || !profile) return;
+              void openCommunityContact({
+                supabase,
+                user,
+                myRole: profile.role,
+                targetUserId: post.author_id,
+                targetRole: post.author_role,
+                navigate,
+                addToast,
+              });
+            }}
+          />
         )}
-        <div className="flex justify-end pt-1">
-          <Button variant="link" size="sm" className="h-auto gap-1 px-2 text-xs font-bold" asChild>
-            <Link to="/public/posts">
-              See all
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </div>
       </div>
     </>
   );
 
   const workSection = (
     <>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Incoming requests
-          </p>
-          {incomingRequestsCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
-            >
-              {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
-            </Badge>
-          )}
-        </div>
-        <Bell className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+      <div className="mb-3 flex items-center gap-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Incoming requests
+        </p>
+        {incomingRequestsCount > 0 && (
+          <Badge
+            variant="destructive"
+            className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
+          >
+            {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
+          </Badge>
+        )}
       </div>
       <div className="mt-2 space-y-5">
         {inboundLoading ? (
@@ -512,34 +484,21 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
           </div>
         ) : (
           <>
-            <JobCardsCarousel className="mt-0">
-              {inbound.map((notif) => (
-                <IncomingJobRequestCard
-                  key={notif.id}
-                  notif={notif}
-                  isMinMd={isMinMd}
-                  clippedCardIds={clippedCardIds}
-                  deleting={deleting}
-                  confirming={confirming}
-                  formatJobTitle={formatJobTitle}
-                  onDecline={handleDecline}
-                  onConfirm={handleConfirm}
-                  onOpenPreview={openJobPreview}
-                  onProfileClick={goToPublicProfile}
-                  showUserAttachments={false}
-                />
-              ))}
-            </JobCardsCarousel>
-              <div className="flex justify-end pt-1">
-                <Button variant="link" size="sm" className="h-auto gap-1 px-2 text-xs font-bold" asChild>
-                  <Link to={incomingJobsUrl}>
-                    Open incoming requests
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              </div>
-            </>
-          )}
+            <IncomingRequestsStoriesStrip
+              inbound={inbound}
+              formatJobTitle={formatJobTitle}
+              onOpenPreview={openJobPreview}
+            />
+            <div className="flex justify-end pt-1">
+              <Button variant="link" size="sm" className="h-auto gap-1 px-2 text-xs font-bold" asChild>
+                <Link to={incomingJobsUrl}>
+                  Open incoming requests
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </>
   );
@@ -556,6 +515,7 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
       <FullscreenMapModal
         job={selectedMapJob}
         isOpen={!!selectedMapJob}
+        sheetPresentation
         onClose={() => setSelectedMapJob(null)}
         onConfirm={
           selectedMapJob
@@ -576,6 +536,7 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
       <JobDetailsModal
         isOpen={!!selectedJobDetails}
         onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+        sheetPresentation
         job={selectedJobDetails}
         formatJobTitle={formatJobTitle}
         isOwnRequest={selectedJobDetails?.client_id === user?.id}

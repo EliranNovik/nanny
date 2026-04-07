@@ -206,8 +206,8 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                     .select(`
                         id, job_id, status, created_at,
                         job_requests (
-                          id, client_id, community_post_id, community_post_expires_at, service_type, care_type, children_count, children_age_group, location_city, start_at, shift_hours, time_duration, languages_pref, requirements, budget_min, budget_max, notes, stage, offered_hourly_rate, price_offer_status, schedule_confirmed, service_details, created_at,
-                          profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings )
+                          id, client_id, community_post_id, community_post_expires_at, service_type, care_type, care_frequency, children_count, children_age_group, location_city, start_at, shift_hours, time_duration, languages_pref, requirements, budget_min, budget_max, notes, stage, offered_hourly_rate, price_offer_status, schedule_confirmed, service_details, created_at,
+                          profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings, city )
                         )
                     `)
                     .eq("freelancer_id", user.id)

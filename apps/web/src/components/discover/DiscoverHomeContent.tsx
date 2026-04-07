@@ -2,17 +2,17 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
+  Briefcase,
   CalendarPlus,
   ChevronRight,
   ClipboardList,
   LayoutDashboard,
   Search,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
+import { DISCOVER_HOME_CATEGORIES } from "@/lib/serviceCategories";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeActivitySection";
@@ -54,6 +54,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   const dashboardPath = isClient ? "/dashboard" : "/freelancer/dashboard";
   const { myPostedRequestsCount, incomingRequestsCount } = useDiscoverShortcutsCounts();
   const myPostedUrl = buildJobsUrl("client", "my_requests");
+  const clientLiveJobsUrl = buildJobsUrl("client", "jobs");
   const incomingUrl = buildJobsUrl("freelancer", "requests");
 
   const onCategoryClick = (id: string) => {
@@ -65,7 +66,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
-      <div className="app-desktop-shell pt-[calc(0.5rem+env(safe-area-inset-top,0px))] md:pt-6">
+      <div className="app-desktop-shell pt-[calc(1.25rem+env(safe-area-inset-top,0px))] md:pt-8">
         <div className="app-desktop-centered-wide max-w-lg md:max-w-2xl">
           <header className="mb-4 px-1">
             <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white md:text-3xl">
@@ -92,7 +93,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 className={cn(
                   "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
                   homeMode === "hire"
-                    ? "bg-background text-foreground shadow-sm ring-1 ring-orange-500/20 dark:bg-card dark:ring-orange-400/25"
+                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-600/95 dark:text-zinc-50 dark:shadow-sm"
                     : "text-muted-foreground hover:text-foreground/90"
                 )}
               >
@@ -106,7 +107,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 className={cn(
                   "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
                   homeMode === "work"
-                    ? "bg-background text-foreground shadow-sm ring-1 ring-orange-500/20 dark:bg-card dark:ring-orange-400/25"
+                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-600/95 dark:text-zinc-50 dark:shadow-sm"
                     : "text-muted-foreground hover:text-foreground/90"
                 )}
               >
@@ -121,126 +122,135 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 type="button"
                 onClick={() => navigate(hireHelpersPath)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 text-left shadow-sm outline-none transition-colors",
-                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/90",
-                  "hover:bg-muted/60 active:scale-[0.99]",
-                  "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  "flex w-full items-center gap-3 py-1.5 text-left outline-none transition-opacity",
+                  "hover:opacity-90 active:opacity-75 active:scale-[0.99]",
+                  "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                 )}
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-                  <Search className="h-3.5 w-3.5" aria-hidden />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                  <Search className="h-6 w-6" aria-hidden strokeWidth={2.25} />
                 </div>
                 <div className="min-w-0 flex-1 leading-none">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     {isClient ? "Search" : "Browse"}
                   </p>
-                  <p className="mt-0.5 text-sm font-bold text-foreground">
+                  <p className="mt-0.5 text-base font-bold text-foreground">
                     {isClient ? "Find helpers" : "See who’s offering help"}
                   </p>
                 </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
               </button>
             ) : isClient ? (
               <button
                 type="button"
                 onClick={() => navigate(workPrimaryPath)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 text-left shadow-sm outline-none transition-colors",
-                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/90",
-                  "hover:bg-muted/60 active:scale-[0.99]",
-                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  "flex w-full items-center gap-3 py-1.5 text-left outline-none transition-opacity",
+                  "hover:opacity-90 active:opacity-75 active:scale-[0.99]",
+                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                 )}
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  <CalendarPlus className="h-6 w-6" aria-hidden strokeWidth={2.25} />
                 </div>
                 <div className="min-w-0 flex-1 leading-none">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Go live
                   </p>
-                  <p className="mt-0.5 text-sm font-bold text-foreground">Post availability</p>
+                  <p className="mt-0.5 text-base font-bold text-foreground">Post availability</p>
                 </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => navigate(workPrimaryPath)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 text-left shadow-sm outline-none transition-colors",
-                  "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/90",
-                  "hover:bg-muted/60 active:scale-[0.99]",
-                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  "flex w-full items-center gap-3 py-1.5 text-left outline-none transition-opacity",
+                  "hover:opacity-90 active:opacity-75 active:scale-[0.99]",
+                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                 )}
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  <Users className="h-3.5 w-3.5" aria-hidden />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  <Users className="h-6 w-6" aria-hidden strokeWidth={2.25} />
                 </div>
                 <div className="min-w-0 flex-1 leading-none">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Open work
                   </p>
-                  <p className="mt-0.5 text-sm font-bold text-foreground">Browse open requests</p>
+                  <p className="mt-0.5 text-base font-bold text-foreground">Browse open requests</p>
                 </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
               </button>
             )}
           </section>
 
+          <DiscoverHomeActivitySection mode={homeMode} />
+
           {homeMode === "hire" && (
-          <section className="mb-8" aria-label="Service categories">
-            <div className="mb-3 flex items-center justify-between px-1">
+          <section className="mb-8 mt-6" aria-label="Service categories">
+            <div className="mb-3 px-1 md:px-1">
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Categories
               </span>
-              <Sparkles className="h-4 w-4 text-orange-500" aria-hidden />
             </div>
-            <div className="-mx-1 grid grid-cols-3 gap-x-2 gap-y-3 px-1 md:flex md:gap-4 md:overflow-x-auto md:pb-2 md:pt-1 md:[scrollbar-width:thin]">
-              {SERVICE_CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => onCategoryClick(cat.id)}
-                  className={cn(
-                    "group flex w-full flex-col items-center gap-1.5 rounded-2xl bg-transparent p-0 text-center shadow-none outline-none",
-                    "md:w-[6.75rem] md:shrink-0 md:gap-2",
-                    "transition-transform active:scale-[0.98]",
-                    "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  )}
-                >
-                  <div className="relative aspect-square w-full shrink-0 overflow-hidden rounded-2xl md:aspect-auto md:h-[4.75rem]">
-                    <img
-                      src={cat.imageSrc}
-                      alt=""
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <span className="px-0.5 text-[11px] font-bold leading-snug text-slate-800 dark:text-slate-100">
-                    {cat.label}
-                  </span>
-                </button>
-              ))}
+            {/* Mobile: full-bleed, gapless grid; md+: horizontal strip with spacing */}
+            <div
+              className={cn(
+                "-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]",
+                "md:mx-0 md:w-full"
+              )}
+            >
+              <div
+                className={cn(
+                  "grid grid-cols-3 gap-0",
+                  "md:flex md:gap-4 md:overflow-x-auto md:px-1 md:pb-2 md:pt-1 md:[scrollbar-width:thin]"
+                )}
+              >
+                {DISCOVER_HOME_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => onCategoryClick(cat.id)}
+                    className={cn(
+                      "group relative block w-full shrink-0 overflow-hidden text-left outline-none",
+                      "transition-transform active:scale-[0.98]",
+                      "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-inset",
+                      "max-md:aspect-square max-md:rounded-none",
+                      "md:h-[6.25rem] md:w-[6.75rem] md:rounded-2xl md:shadow-sm"
+                    )}
+                  >
+                    <div className="relative h-full w-full">
+                      <img
+                        src={cat.imageSrc}
+                        alt={cat.label}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-black/80 via-black/35 to-transparent"
+                        aria-hidden
+                      />
+                      <span className="absolute inset-x-0 bottom-0 flex items-end justify-center px-1.5 pb-2.5 pt-10 text-center text-xs font-bold uppercase leading-tight tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:text-sm">
+                        {cat.label}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
           )}
-
-          <DiscoverHomeActivitySection mode={homeMode} />
 
           <section className="mt-8 px-1 pb-8" aria-label="Shortcuts">
             <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Shortcuts
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1 sm:gap-2">
               {homeMode === "hire" ? (
                 <>
                   <Link
                     to={myPostedUrl}
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
                     {myPostedRequestsCount > 0 && (
                       <Badge
@@ -250,83 +260,53 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                         {myPostedRequestsCount > 99 ? "99+" : myPostedRequestsCount}
                       </Badge>
                     )}
-                    <ClipboardList className="h-6 w-6 text-orange-500" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">My posted requests</span>
+                    <ClipboardList className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">My posted requests</span>
                   </Link>
                   <Link
-                    to="/public/posts"
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    to={clientLiveJobsUrl}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
-                    <Sparkles className="h-6 w-6 text-amber-500" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Live availability</span>
+                    <Briefcase className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Live jobs</span>
                   </Link>
                   <Link
                     to={dashboardPath}
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
-                    <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Dashboard</span>
+                    <LayoutDashboard className="h-8 w-8 text-violet-500" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Dashboard</span>
                   </Link>
                 </>
               ) : isClient ? (
                 <>
                   <Link
                     to="/availability"
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
-                    <CalendarPlus className="h-6 w-6 text-emerald-600" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">My availability</span>
+                    <CalendarPlus className="h-8 w-8 text-emerald-600" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">My availability</span>
                   </Link>
                   <Link
-                    to="/client/create"
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    to={clientLiveJobsUrl}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
-                    <ClipboardList className="h-6 w-6 text-orange-500" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Post a request</span>
+                    <Briefcase className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Live jobs</span>
                   </Link>
                   <Link
                     to={dashboardPath}
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
-                    <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Dashboard</span>
+                    <LayoutDashboard className="h-8 w-8 text-violet-500" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Dashboard</span>
                   </Link>
                 </>
               ) : (
                 <>
                   <Link
                     to={incomingUrl}
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
                     {incomingRequestsCount > 0 && (
                       <Badge
@@ -336,32 +316,22 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                         {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
                       </Badge>
                     )}
-                    <Bell className="h-6 w-6 text-amber-500" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Incoming requests</span>
+                    <Bell className="h-8 w-8 text-amber-500" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Incoming requests</span>
                   </Link>
                   <Link
                     to="/availability"
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
-                    <CalendarPlus className="h-6 w-6 text-emerald-600" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">My availability</span>
+                    <CalendarPlus className="h-8 w-8 text-emerald-600" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">My availability</span>
                   </Link>
                   <Link
                     to={dashboardPath}
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl border border-black/10 bg-transparent px-2 py-3 text-center transition",
-                      "md:border-slate-200/90 md:bg-white md:shadow-sm md:hover:bg-slate-50/80",
-                      "hover:border-black/15 hover:bg-black/[0.02] active:scale-[0.99]",
-                      "dark:border-white/10 dark:hover:border-white/15 dark:hover:bg-white/[0.04] dark:md:border-white/10 dark:md:bg-white/[0.04] dark:md:shadow-none"
-                    )}
+                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
-                    <LayoutDashboard className="h-6 w-6 text-violet-500" aria-hidden />
-                    <span className="text-[10px] font-bold leading-tight sm:text-xs">Dashboard</span>
+                    <LayoutDashboard className="h-8 w-8 text-violet-500" aria-hidden strokeWidth={2.25} />
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Dashboard</span>
                   </Link>
                 </>
               )}
