@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -15,14 +15,22 @@ import {
   Send,
   User as UserIcon,
   Loader2,
+  Image as ImageIcon,
+  Video,
+  UserCircle,
+  Plus,
+  Trash2,
+  MapPin,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { StarRating } from "@/components/StarRating";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { PUBLIC_PROFILE_MEDIA_BUCKET, publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 
 interface PublicProfile {
   id: string;
@@ -30,6 +38,7 @@ interface PublicProfile {
   photo_url: string | null;
   bio: string | null;
   role: string | null;
+  city: string | null;
   categories?: string[];
   whatsapp_number?: string | null;
   telegram_username?: string | null;
@@ -57,6 +66,15 @@ interface SharedJob {
   selected_freelancer_id: string | null;
 }
 
+interface PublicProfileMediaRow {
+  id: string;
+  user_id: string;
+  media_type: "image" | "video";
+  storage_path: string;
+  sort_order: number;
+  created_at: string;
+}
+
 export default function PublicProfilePage() {
   const { userId } = useParams();
   const { user: currentUser, profile: currentProfile } = useAuth();
@@ -65,8 +83,12 @@ export default function PublicProfilePage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [sharedJobs, setSharedJobs] = useState<SharedJob[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
+  const [mediaItems, setMediaItems] = useState<PublicProfileMediaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openingChat, setOpeningChat] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   async function handleOpenDirectChat() {
     if (!userId || !currentUser || !profile) return;
@@ -166,7 +188,7 @@ export default function PublicProfilePage() {
         // 1. Fetch Basic Profile
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("id, full_name, photo_url, role, categories, whatsapp_number_e164, telegram_username, average_rating, total_ratings")
+          .select("id, full_name, photo_url, role, city, categories, whatsapp_number_e164, telegram_username, average_rating, total_ratings")
           .eq("id", userId)
           .single();
 
@@ -257,6 +279,20 @@ export default function PublicProfilePage() {
           reviewer: r.reviewer || { full_name: "Anonymous", photo_url: null }
         })));
 
+        const { data: mediaData, error: mediaErr } = await supabase
+          .from("public_profile_media")
+          .select("id, user_id, media_type, storage_path, sort_order, created_at")
+          .eq("user_id", userId)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true });
+
+        if (mediaErr) {
+          console.warn("[PublicProfile] public_profile_media:", mediaErr);
+          setMediaItems([]);
+        } else {
+          setMediaItems((mediaData as PublicProfileMediaRow[]) ?? []);
+        }
+
       } catch (error: any) {
         console.error("Error fetching public profile:", error);
         addToast({
@@ -283,6 +319,87 @@ export default function PublicProfilePage() {
 
   if (!profile) return null;
 
+  const isOwnProfile = Boolean(currentUser && userId && currentUser.id === userId);
+  const imageRows = mediaItems.filter((m) => m.media_type === "image");
+  const videoRows = mediaItems.filter((m) => m.media_type === "video");
+
+  async function handleProfileMediaUpload(file: File, kind: "image" | "video") {
+    if (!userId || !currentUser || currentUser.id !== userId) return;
+    const isImg = file.type.startsWith("image/");
+    const isVid = file.type.startsWith("video/");
+    if (kind === "image" && !isImg) {
+      addToast({ title: "Choose an image file", variant: "warning" });
+      return;
+    }
+    if (kind === "video" && !isVid) {
+      addToast({ title: "Choose a video file", variant: "warning" });
+      return;
+    }
+
+    const ext = file.name.split(".").pop()?.toLowerCase() || (kind === "image" ? "jpg" : "mp4");
+    const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+    const nextSort =
+      mediaItems.length === 0 ? 0 : Math.max(...mediaItems.map((m) => m.sort_order), -1) + 1;
+
+    setUploadingMedia(true);
+    try {
+      const { error: upErr } = await supabase.storage
+        .from(PUBLIC_PROFILE_MEDIA_BUCKET)
+        .upload(path, file, { upsert: false, contentType: file.type || undefined });
+
+      if (upErr) {
+        const msg =
+          upErr.message?.toLowerCase().includes("bucket") &&
+          upErr.message?.toLowerCase().includes("not found")
+            ? `Storage bucket "${PUBLIC_PROFILE_MEDIA_BUCKET}" is missing. Run db/sql/048_public_profile_media.sql in Supabase.`
+            : upErr.message;
+        addToast({ title: "Upload failed", description: msg, variant: "error" });
+        return;
+      }
+
+      const { data: row, error: insErr } = await supabase
+        .from("public_profile_media")
+        .insert({
+          user_id: userId,
+          media_type: kind,
+          storage_path: path,
+          sort_order: nextSort,
+        })
+        .select("id, user_id, media_type, storage_path, sort_order, created_at")
+        .single();
+
+      if (insErr) throw insErr;
+      if (row) setMediaItems((prev) => [...prev, row as PublicProfileMediaRow]);
+      addToast({ title: kind === "image" ? "Photo added" : "Video added", variant: "success" });
+    } catch (e: unknown) {
+      console.error(e);
+      const msg =
+        e && typeof e === "object" && "message" in e ? String((e as { message: string }).message) : "Upload failed.";
+      addToast({ title: "Could not save media", description: msg, variant: "error" });
+    } finally {
+      setUploadingMedia(false);
+    }
+  }
+
+  async function handleDeleteProfileMedia(row: PublicProfileMediaRow) {
+    if (!userId || !currentUser || currentUser.id !== userId) return;
+    setUploadingMedia(true);
+    try {
+      const { error: stErr } = await supabase.storage.from(PUBLIC_PROFILE_MEDIA_BUCKET).remove([row.storage_path]);
+      if (stErr) console.warn(stErr);
+
+      const { error: delErr } = await supabase.from("public_profile_media").delete().eq("id", row.id);
+      if (delErr) throw delErr;
+      setMediaItems((prev) => prev.filter((m) => m.id !== row.id));
+      addToast({ title: "Removed", variant: "success" });
+    } catch (e: unknown) {
+      console.error(e);
+      addToast({ title: "Could not remove", variant: "error" });
+    } finally {
+      setUploadingMedia(false);
+    }
+  }
+
   const activeJobs = sharedJobs.filter(j => j.status === "confirmed" || j.status === "active");
   const pendingJobs = sharedJobs.filter(j =>
     j.status === "pending" ||
@@ -294,6 +411,7 @@ export default function PublicProfilePage() {
   const pastJobs = sharedJobs.filter(j => j.status === "completed" || j.status === "cancelled");
   const helpedOthersCount = sharedJobs.filter(j => j.selected_freelancer_id === userId).length;
   const gotHelpedCount = sharedJobs.filter(j => j.client_id === userId).length;
+  const photoInitials = profile.full_name?.slice(0, 2) || "??";
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
@@ -313,10 +431,79 @@ export default function PublicProfilePage() {
           
           {/* Left Column: User Card */}
           <div className="lg:col-span-1 space-y-6">
-            <Card className="border border-slate-200/70 dark:border-border/50 shadow-[0_12px_35px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.35)] rounded-[28px] overflow-hidden bg-card/90 backdrop-blur-md">
+            <Card
+              className={cn(
+                "border-0 shadow-none rounded-none bg-transparent overflow-visible backdrop-blur-none",
+                "md:border md:border-slate-200/70 md:dark:border-border/50",
+                "md:shadow-[0_12px_35px_rgba(15,23,42,0.08)] md:dark:shadow-[0_12px_35px_rgba(0,0,0,0.35)]",
+                "md:rounded-[28px] md:overflow-hidden md:bg-card/90 md:backdrop-blur-md"
+              )}
+            >
               <CardContent className="p-0 flex flex-col">
-                {/* Full-width hero — replaces circular avatar */}
-                <div className="relative w-full aspect-[3/4] bg-muted sm:aspect-[4/5]">
+                {/* Mobile: avatar + name / rating; categories full-width below image row */}
+                <div className="md:hidden">
+                  <div className="flex gap-6 px-4 pt-2 pb-1 items-start">
+                    <div className="relative h-32 w-32 shrink-0 self-start">
+                      {profile.photo_url ? (
+                        <img
+                          src={profile.photo_url}
+                          alt={profile.full_name ? `${profile.full_name} profile photo` : "Profile photo"}
+                          className="h-full w-full rounded-full object-cover ring-2 ring-slate-200/90 dark:ring-zinc-600"
+                          loading="eager"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-muted to-primary/10 ring-2 ring-slate-200/90 dark:ring-zinc-600">
+                          <span className="text-3xl font-black uppercase tracking-tight text-primary/60">
+                            {photoInitials}
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-md dark:border-zinc-900">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1 flex flex-col items-stretch justify-start gap-0.5 text-left pt-0">
+                      <h1 className="text-[1.65rem] font-black leading-[1.15] tracking-tight text-slate-900 dark:text-white sm:text-[1.75rem]">
+                        {profile.full_name}
+                      </h1>
+                      <div className="mt-1.5 mb-0">
+                        <StarRating
+                          rating={profile.average_rating || 0}
+                          totalRatings={profile.total_ratings || 0}
+                          size="lg"
+                          className="justify-start"
+                        />
+                      </div>
+                      {profile.city?.trim() ? (
+                        <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
+                          <MapPin className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
+                          <span>{profile.city.trim()}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  {profile.categories && profile.categories.length > 0 && (
+                    <div className="mt-5 -mx-4 px-4 pb-2 sm:-mx-6 sm:px-6">
+                      <p className="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold mb-2.5 text-left">
+                        Job With
+                      </p>
+                      <div className="flex w-full flex-wrap gap-2.5 gap-y-2.5">
+                        {profile.categories.map((category, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="secondary"
+                            className="rounded-full border border-slate-200/80 bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.04em] text-slate-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-slate-200"
+                          >
+                            {category.replace(/_/g, " ")}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop / tablet: full-width hero */}
+                <div className="relative hidden w-full aspect-[3/4] bg-muted sm:aspect-[4/5] md:block">
                   {profile.photo_url ? (
                     <img
                       src={profile.photo_url}
@@ -327,7 +514,7 @@ export default function PublicProfilePage() {
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 via-muted to-primary/10">
                       <span className="text-5xl font-black uppercase tracking-tight text-primary/50 sm:text-6xl">
-                        {profile.full_name?.slice(0, 2) || "??"}
+                        {photoInitials}
                       </span>
                     </div>
                   )}
@@ -337,17 +524,23 @@ export default function PublicProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center px-7 pb-8 pt-6 text-center sm:px-8 sm:pt-7">
+                <div className="hidden md:flex flex-col items-center px-7 pb-0 pt-7 text-center sm:px-8">
                 <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-2">
                   {profile.full_name}
                 </h1>
                 
-                <div className="flex flex-col items-center gap-3 mb-6">
+                <div className="flex flex-col items-center gap-2 mb-6">
                   <StarRating 
                     rating={profile.average_rating || 0} 
                     totalRatings={profile.total_ratings || 0}
                     size="md"
                   />
+                  {profile.city?.trim() ? (
+                    <p className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
+                      <MapPin className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
+                      <span>{profile.city.trim()}</span>
+                    </p>
+                  ) : null}
                 </div>
 
                 {profile.categories && profile.categories.length > 0 && (
@@ -368,21 +561,17 @@ export default function PublicProfilePage() {
                     </div>
                   </div>
                 )}
+                </div>
 
-                {profile.bio && (
-                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-8">
-                    "{profile.bio}"
-                  </p>
-                )}
-
-                <div className="w-full pt-6 border-t border-slate-100 dark:border-white/5">
+                <div className="flex flex-col items-stretch px-4 pt-5 pb-4 text-left sm:px-5 md:items-center md:px-7 md:pt-2 md:pb-4 md:text-center sm:px-8">
+                <div className="w-full border-t-0 pt-0 md:border-t md:border-slate-100 md:pt-6 md:dark:border-white/5">
                   {/* Contact Buttons: Round Icons */}
-                  <div className="flex items-center justify-center gap-4 py-2">
+                  <div className="mb-8 flex items-center justify-center gap-5 py-4 md:mb-10 md:gap-4 md:py-3">
                     <button
                       type="button"
                       onClick={() => void handleOpenDirectChat()}
                       disabled={openingChat}
-                      className="w-11 h-11 rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/20 dark:shadow-slate-100/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:pointer-events-none"
+                      className="h-12 w-12 rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/20 dark:shadow-slate-100/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:pointer-events-none md:h-11 md:w-11"
                       title="Open messages"
                     >
                       {openingChat ? (
@@ -411,19 +600,173 @@ export default function PublicProfilePage() {
                     )}
                   </div>
                 </div>
+
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleProfileMediaUpload(f, "image");
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleProfileMediaUpload(f, "video");
+                    e.target.value = "";
+                  }}
+                />
+
+                <Tabs defaultValue="images" className="w-full px-0 pb-4 md:px-0 md:pb-6">
+                  <TabsList
+                    className="grid h-12 w-full grid-cols-3 gap-1 rounded-2xl border border-slate-200/80 bg-slate-100/80 p-1 dark:border-zinc-700 dark:bg-zinc-800/80"
+                    aria-label="Profile sections"
+                  >
+                    <TabsTrigger
+                      value="images"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-900"
+                      aria-label="Photos"
+                      title="Photos"
+                    >
+                      <ImageIcon className="h-5 w-5 text-slate-700 dark:text-slate-200" />
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="videos"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-900"
+                      aria-label="Videos"
+                      title="Videos"
+                    >
+                      <Video className="h-5 w-5 text-slate-700 dark:text-slate-200" />
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="about"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-900"
+                      aria-label="About me"
+                      title="About me"
+                    >
+                      <UserCircle className="h-5 w-5 text-slate-700 dark:text-slate-200" />
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="images" className="mt-4 space-y-3">
+                    {isOwnProfile && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          disabled={uploadingMedia}
+                          onClick={() => imageInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-slate-200 dark:hover:bg-zinc-800"
+                        >
+                          {uploadingMedia ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                          Add photo
+                        </button>
+                      </div>
+                    )}
+                    {imageRows.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No photos yet.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {imageRows.map((row) => (
+                          <div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted">
+                            <img
+                              src={publicProfileMediaPublicUrl(row.storage_path)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                            {isOwnProfile && (
+                              <button
+                                type="button"
+                                disabled={uploadingMedia}
+                                onClick={() => void handleDeleteProfileMedia(row)}
+                                className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100 md:opacity-100"
+                                aria-label="Remove photo"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="videos" className="mt-4 space-y-3">
+                    {isOwnProfile && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          disabled={uploadingMedia}
+                          onClick={() => videoInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-slate-200 dark:hover:bg-zinc-800"
+                        >
+                          {uploadingMedia ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                          Add video
+                        </button>
+                      </div>
+                    )}
+                    {videoRows.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No videos yet.</p>
+                    ) : (
+                      <div className="flex flex-col gap-4">
+                        {videoRows.map((row) => (
+                          <div key={row.id} className="group relative overflow-hidden rounded-xl bg-black">
+                            <video
+                              src={publicProfileMediaPublicUrl(row.storage_path)}
+                              controls
+                              playsInline
+                              className="max-h-[min(70vh,420px)] w-full"
+                            />
+                            {isOwnProfile && (
+                              <button
+                                type="button"
+                                disabled={uploadingMedia}
+                                onClick={() => void handleDeleteProfileMedia(row)}
+                                className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-md transition hover:bg-black/70"
+                                aria-label="Remove video"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="about" className="mt-4">
+                    {profile.bio?.trim() ? (
+                      <p className="text-left text-base leading-relaxed text-slate-700 dark:text-slate-300 md:text-center md:text-sm">
+                        {profile.bio}
+                      </p>
+                    ) : (
+                      <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">No bio yet.</p>
+                    )}
+                  </TabsContent>
+                </Tabs>
                 </div>
               </CardContent>
             </Card>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-card/85 p-6 rounded-[20px] border border-slate-200/70 dark:border-border/50">
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Helped Others</p>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">{helpedOthersCount}</p>
+            <div className="grid grid-cols-2 gap-3 px-1 sm:gap-4 sm:px-0">
+              <div className="rounded-2xl border border-slate-200/70 bg-card/85 p-5 dark:border-border/50 md:rounded-[20px] md:p-6">
+                <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500 md:text-[10px] md:text-slate-400">
+                  Helped Others
+                </p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white md:text-2xl">{helpedOthersCount}</p>
               </div>
-              <div className="bg-card/85 p-6 rounded-[20px] border border-slate-200/70 dark:border-border/50">
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Got Helped</p>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">{gotHelpedCount}</p>
+              <div className="rounded-2xl border border-slate-200/70 bg-card/85 p-5 dark:border-border/50 md:rounded-[20px] md:p-6">
+                <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500 md:text-[10px] md:text-slate-400">
+                  Got Helped
+                </p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white md:text-2xl">{gotHelpedCount}</p>
               </div>
             </div>
           </div>
@@ -563,7 +906,7 @@ export default function PublicProfilePage() {
                   return (
                     <div
                       key={review.id}
-                      className="relative bg-card rounded-3xl border border-gray-100 dark:border-border/40 shadow-xl p-8 pt-14 mt-10 hover:shadow-2xl transition-all duration-500 group"
+                      className="relative rounded-3xl border border-slate-200/90 bg-white p-8 pt-14 mt-10 shadow-md shadow-slate-950/5 transition-all duration-500 hover:shadow-lg dark:border-border/50 dark:bg-zinc-900 dark:shadow-black/20 dark:hover:shadow-lg group"
                     >
                       {/* Floating Avatar */}
                       <div className={cn(

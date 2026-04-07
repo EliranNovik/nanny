@@ -1,4 +1,4 @@
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,13 +17,15 @@ import {
   Palette,
   BellRing,
   MapPin,
+  Image as ImageIcon,
+  ExternalLink,
 } from "lucide-react";
 
 export default function FreelancerProfileHub() {
   const navigate = useNavigate();
   const { openReportModal } = useReportIssue();
   const ctx = useOutletContext<FreelancerProfileFormContext>();
-  const { profile, fullName, photoUrl } = ctx;
+  const { profile, fullName, photoUrl, user } = ctx;
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
@@ -76,9 +78,23 @@ export default function FreelancerProfileHub() {
             <MapPin className="h-5 w-5 shrink-0 text-muted-foreground/80" aria-hidden />
             {profile?.city || "Complete your details"}
           </p>
+          {user?.id && (
+            <Button variant="outline" size="lg" className="mt-8 w-full max-w-md gap-2" asChild>
+              <Link to={`/profile/${user.id}`}>
+                <ExternalLink className="h-4 w-4" />
+                View public profile
+              </Link>
+            </Button>
+          )}
         </div>
 
         <div className="rounded-3xl border border-border/50 bg-card/60 divide-y divide-border/50 overflow-hidden shadow-sm">
+          <ProfileMenuRow
+            to="/freelancer/profile/gallery"
+            icon={ImageIcon}
+            label="Public profile gallery"
+            description="Photos and videos for your public profile"
+          />
           <ProfileMenuRow
             to="/freelancer/profile/personal"
             icon={User}

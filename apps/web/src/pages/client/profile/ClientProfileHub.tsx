@@ -1,16 +1,16 @@
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileMenuRow } from "@/components/profile/ProfileMenuRow";
 import { StarRating } from "@/components/StarRating";
 import type { ClientProfileFormContext } from "@/hooks/useClientProfileForm";
-import { User, Briefcase, Palette, AlertCircle, MapPin } from "lucide-react";
+import { User, Briefcase, Palette, AlertCircle, MapPin, Image as ImageIcon, ExternalLink } from "lucide-react";
 
 export default function ClientProfileHub() {
   const { openReportModal } = useReportIssue();
   const ctx = useOutletContext<ClientProfileFormContext>();
-  const { profile, fullName, photoUrl } = ctx;
+  const { profile, fullName, photoUrl, user } = ctx;
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
@@ -47,9 +47,23 @@ export default function ClientProfileHub() {
             <MapPin className="h-5 w-5 shrink-0 text-muted-foreground/80" aria-hidden />
             {profile?.city || "Add your details"}
           </p>
+          {user?.id && (
+            <Button variant="outline" size="lg" className="mt-8 w-full max-w-md gap-2" asChild>
+              <Link to={`/profile/${user.id}`}>
+                <ExternalLink className="h-4 w-4" />
+                View public profile
+              </Link>
+            </Button>
+          )}
         </div>
 
         <div className="rounded-3xl border border-border/50 bg-card/60 divide-y divide-border/50 overflow-hidden shadow-sm">
+          <ProfileMenuRow
+            to="/client/profile/gallery"
+            icon={ImageIcon}
+            label="Public profile gallery"
+            description="Photos and videos for your public profile"
+          />
           <ProfileMenuRow
             to="/client/profile/personal"
             icon={User}

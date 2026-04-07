@@ -24,6 +24,7 @@ import ClientProfileHub from "@/pages/client/profile/ClientProfileHub";
 import ClientProfilePersonalPage from "@/pages/client/profile/ClientProfilePersonalPage";
 import ClientProfileServicesPage from "@/pages/client/profile/ClientProfileServicesPage";
 import ClientProfileAppearancePage from "@/pages/client/profile/ClientProfileAppearancePage";
+import PublicProfileMediaManagePage from "@/pages/profile/PublicProfileMediaManagePage";
 import MessagesPage from "@/pages/MessagesPage";
 import FreelancerProfileLayout from "@/pages/freelancer/profile/FreelancerProfileLayout";
 import FreelancerProfileHub from "@/pages/freelancer/profile/FreelancerProfileHub";
@@ -227,6 +228,7 @@ function AppRoutes() {
           }
         >
           <Route index element={<ClientProfileHub />} />
+          <Route path="gallery" element={<PublicProfileMediaManagePage />} />
           <Route path="personal" element={<ClientProfilePersonalPage />} />
           <Route path="services" element={<ClientProfileServicesPage />} />
           <Route path="appearance" element={<ClientProfileAppearancePage />} />
@@ -258,6 +260,7 @@ function AppRoutes() {
           }
         >
           <Route index element={<FreelancerProfileHub />} />
+          <Route path="gallery" element={<PublicProfileMediaManagePage />} />
           <Route path="personal" element={<FreelancerProfilePersonalPage />} />
           <Route path="availability" element={<FreelancerProfileAvailabilityPage />} />
           <Route path="about" element={<FreelancerProfileAboutPage />} />
