@@ -1290,7 +1290,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   return (
     <div className={cn(
       "flex bg-background overflow-hidden",
-      hideBackButton ? "relative h-full w-full" : "fixed inset-0"
+      hideBackButton ? "relative h-full min-h-0 w-full flex-col" : "fixed inset-0"
     )}>
       {/* Side Panel - Step-by-Step Process (only show if not embedded) */}
       {!hideBackButton && (
@@ -1752,14 +1752,14 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       )
       }
       <div className={cn(
-        "flex-1 flex flex-col min-w-0 transition-opacity duration-300 relative",
+        "relative flex min-h-0 min-w-0 flex-1 flex-col transition-opacity duration-300",
         // On mobile: hide when 'steps' view is active
         !hideBackButton && mobileView === "steps" && "hidden lg:flex"
       )}>
-        {/* Header - Fixed */}
-        <header className="fixed left-0 right-0 top-0 z-20 flex-shrink-0 border-b border-border/20 bg-transparent px-4 py-3 shadow-none md:relative md:top-auto md:z-auto">
+        {/* Header — viewport-fixed on standalone /chat mobile; hidden when embedded in Messages (parent provides bar) */}
+        {!hideBackButton && (
+        <header className="fixed left-0 right-0 top-0 z-20 flex-shrink-0 border-b border-border/20 bg-background/95 px-4 py-3 shadow-none backdrop-blur-md supports-[backdrop-filter]:bg-background/90 md:relative md:top-auto md:z-auto md:bg-transparent md:backdrop-blur-none">
           <div className="flex items-center gap-3">
-            {!hideBackButton && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -1775,7 +1775,6 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-            )}
 
             <button
               type="button"
@@ -1853,11 +1852,17 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             )}
           </div>
         </header>
+        )}
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 pt-20 md:pt-4"
-          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
-          <div className="flex-1 overflow-y-auto" ref={scrollRef}>
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto p-4",
+            hideBackButton ? "pt-3 md:pt-4" : "pt-20 md:pt-4"
+          )}
+          style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y", overscrollBehavior: "contain" }}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
             <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-40 md:pb-32">
               {messages.map((msg, index) => {
                 const isOwn = msg.sender_id === user?.id;

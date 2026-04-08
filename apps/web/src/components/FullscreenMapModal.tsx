@@ -26,6 +26,10 @@ interface FullscreenMapModalProps {
   onConfirm?: () => void;
   isConfirming?: boolean;
   showAcceptButton?: boolean;
+  onDecline?: () => void;
+  isDeclining?: boolean;
+  /** Replaces action buttons (e.g. already responded). */
+  incomingActionMessage?: string | null;
   /** Discover home incoming strip: same bottom sheet shell as availability preview. */
   sheetPresentation?: boolean;
 }
@@ -33,6 +37,8 @@ interface FullscreenMapModalProps {
 export function FullscreenMapModal({ 
   job, isOpen, onClose, 
   onConfirm, isConfirming, showAcceptButton,
+  onDecline, isDeclining,
+  incomingActionMessage = null,
   sheetPresentation = false,
 }: FullscreenMapModalProps) {
   const { user } = useAuth();
@@ -282,23 +288,59 @@ export function FullscreenMapModal({
                     </div>
                   )}
 
-                  {/* Accept Button for Freelancers */}
-                  {showAcceptButton && onConfirm && (
-                    <div className="mt-6 animate-in slide-in-from-bottom-4 duration-500">
-                      <Button
-                        className="w-full h-14 rounded-[20px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all active:scale-[0.98] font-black text-lg flex items-center justify-center gap-3"
-                        onClick={onConfirm}
-                        disabled={isConfirming}
-                      >
-                        {isConfirming ? (
-                          <Loader2 className="w-6 h-6 animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle2 className="w-6 h-6" />
-                            Accept Invitation
-                          </>
-                        )}
-                      </Button>
+                  {/* Accept / Decline or status (freelancers) */}
+                  {(incomingActionMessage || (showAcceptButton && onConfirm)) && (
+                    <div className="mt-6 animate-in slide-in-from-bottom-4 duration-500 space-y-3">
+                      {incomingActionMessage ? (
+                        <p className="text-center text-sm font-medium leading-relaxed text-muted-foreground px-1">
+                          {incomingActionMessage}
+                        </p>
+                      ) : onDecline ? (
+                        <div className="flex gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-14 flex-1 rounded-[18px] border-slate-200 font-bold dark:border-white/10"
+                            onClick={onDecline}
+                            disabled={isDeclining || isConfirming}
+                          >
+                            {isDeclining ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <>Decline</>
+                            )}
+                          </Button>
+                          <Button
+                            className="h-14 flex-1 rounded-[18px] bg-emerald-600 font-bold text-white shadow-[0_8px_20px_rgba(5,150,105,0.2)]"
+                            onClick={onConfirm}
+                            disabled={isConfirming || isDeclining}
+                          >
+                            {isConfirming ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <>
+                                <CheckCircle2 className="mr-2 h-5 w-5" />
+                                Accept
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          className="w-full h-14 rounded-[20px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all active:scale-[0.98] font-black text-lg flex items-center justify-center gap-3"
+                          onClick={onConfirm}
+                          disabled={isConfirming}
+                        >
+                          {isConfirming ? (
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-6 h-6" />
+                              Accept Invitation
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   )}
 

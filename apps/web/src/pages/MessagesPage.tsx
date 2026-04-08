@@ -729,15 +729,15 @@ export default function MessagesPage() {
 
   // Show contact panel with conversation list and chat inline
   return (
-    <div className="h-screen flex gradient-mesh overflow-hidden">
+    <div className="flex h-screen min-h-0 overflow-hidden gradient-mesh">
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div className={cn(
-        "flex w-full flex-shrink-0 flex-col border-r border-border/30 bg-transparent md:w-80 lg:w-96",
+        "flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96",
         "md:flex",
         mobileView === "contacts" ? "flex" : "hidden md:flex"
       )}>
-        {/* Header - Fixed on mobile, integrated on desktop */}
-        <div className="flex-shrink-0 border-b border-border/30 bg-transparent p-4">
+        {/* Header — stays at top; list scrolls below (mobile + desktop) */}
+        <div className="z-30 flex shrink-0 border-b border-border/30 bg-background/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95 md:bg-transparent md:backdrop-blur-none">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -757,7 +757,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Unified inbox: active chats + job / hire activity */}
-        <ScrollArea className="flex-1 bg-transparent [&_[data-radix-scroll-area-viewport]]:bg-transparent">
+        <ScrollArea className="min-h-0 flex-1 bg-transparent [&_[data-radix-scroll-area-viewport]]:bg-transparent">
           {inboxRows.length === 0 ? (
             <div className="p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
@@ -949,7 +949,7 @@ export default function MessagesPage() {
 
       {/* Chat Area - Right Side */}
       <div className={cn(
-        "flex-1 flex flex-col overflow-hidden",
+        "flex min-h-0 flex-1 flex-col overflow-hidden",
         mobileView === "chat" ? "flex" : "hidden md:flex"
       )}>
         {conversationId ? (() => {
@@ -964,9 +964,9 @@ export default function MessagesPage() {
             .toUpperCase() || "?";
 
           return (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Mobile Back Button Header - Sticky */}
-              <div className="sticky top-0 z-20 border-b border-border/30 bg-transparent p-4 md:hidden">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              {/* Mobile chat bar — pinned to top of panel; messages scroll underneath */}
+              <div className="z-30 flex shrink-0 border-b border-border/30 bg-background/95 p-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95 md:hidden">
                 <div className="flex items-center gap-3">
                   <Button
                     variant="ghost"
@@ -1002,8 +1002,8 @@ export default function MessagesPage() {
               </div>
 
               {/* Chat Page area */}
-              <div className="flex-1 overflow-hidden relative">
-                <div className="messages-chat-container h-full">
+              <div className="relative min-h-0 flex-1 overflow-hidden">
+                <div className="messages-chat-container h-full min-h-0">
                   <ChatPage
                     key={conversationId || "none"}
                     conversationId={conversationId}

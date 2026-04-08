@@ -38,6 +38,10 @@ interface JobDetailsModalProps {
     isDeclining?: boolean;
     /** Discover home incoming strip: same bottom sheet + card shell as availability preview. */
     sheetPresentation?: boolean;
+    /** Public profile / read-only preview: same “incoming” simple layout without accept/decline. */
+    previewLayout?: boolean;
+    /** Replaces accept/decline row (e.g. already responded or not invited). */
+    incomingActionMessage?: string | null;
 }
 
 const LiveTimer = ({ createdAt }: { createdAt: string }) => {
@@ -142,6 +146,8 @@ export function JobDetailsModal({
     isOpen, onOpenChange, job, formatJobTitle, isOwnRequest, 
     onConfirm, isConfirming, showAcceptButton, onDecline, isDeclining,
     sheetPresentation = false,
+    previewLayout = false,
+    incomingActionMessage = null,
 }: JobDetailsModalProps) {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     if (!job) return null;
@@ -185,13 +191,14 @@ export function JobDetailsModal({
 
     /** Discover sheet + jobs-tab incoming accept/decline: calmer layout. */
     const incomingSimple =
-        sheetPresentation || Boolean(showAcceptButton && onDecline);
+        previewLayout || sheetPresentation || Boolean(showAcceptButton && onDecline);
 
+    /** Override DialogContent defaults (grid/gap/p-6) so hero + scroll + footer stay in one column and the action bar stays visible. */
     const defaultShellClass =
-        "flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-none bg-[hsl(var(--background))] p-0 shadow-2xl focus:outline-none sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[2.5rem]";
+        "flex !h-[100dvh] !max-h-[100dvh] w-full max-w-none !flex-col !gap-0 overflow-hidden rounded-none border-none bg-[hsl(var(--background))] !p-0 shadow-2xl focus:outline-none sm:!h-auto sm:!max-h-[90vh] sm:max-w-lg sm:rounded-[2.5rem]";
 
     const modalBody = (
-        <>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <VisuallyHidden>
                     <DialogTitle>{formatJobTitle(job)} Details</DialogTitle>
                 </VisuallyHidden>
@@ -712,15 +719,20 @@ export function JobDetailsModal({
                     )}
                 </div>
 
-                {/* Fixed bottom: incoming = Decline + Accept; else single Accept when applicable */}
-                {showAcceptButton && onConfirm && (
+                {/* Fixed bottom: incoming = Decline + Accept; status message; else single Accept when applicable */}
+                {(incomingActionMessage ||
+                    (showAcceptButton && onConfirm)) && (
                     <div
                         className={cn(
-                            "flex animate-in flex-row items-stretch gap-3 border-t bg-[hsl(var(--background))]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 sm:gap-4 sm:p-6",
+                            "shrink-0 flex animate-in flex-row items-stretch gap-3 border-t bg-[hsl(var(--background))]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md duration-500 slide-in-from-bottom-4 sm:gap-4 sm:p-6",
                             incomingSimple ? "border-border" : "border-orange-100/50 dark:border-border"
                         )}
                     >
-                        {onDecline ? (
+                        {incomingActionMessage ? (
+                            <p className="w-full text-center text-sm font-medium leading-relaxed text-muted-foreground">
+                                {incomingActionMessage}
+                            </p>
+                        ) : onDecline ? (
                             <>
                                 <Button
                                     type="button"
@@ -773,7 +785,7 @@ export function JobDetailsModal({
                         )}
                     </div>
                 )}
-        </>
+        </div>
     );
 
     return (

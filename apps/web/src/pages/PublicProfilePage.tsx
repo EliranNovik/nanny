@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { 
   MessageSquare, 
-  Briefcase, 
   ArrowLeft, 
   ChevronRight,
   CheckCircle2,
@@ -13,7 +12,6 @@ import {
   Star,
   Phone,
   Send,
-  User as UserIcon,
   Loader2,
   Image as ImageIcon,
   Video,
@@ -21,6 +19,9 @@ import {
   Plus,
   Trash2,
   MapPin,
+  Sparkles,
+  HeartHandshake,
+  User as UserIcon,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +32,103 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { PUBLIC_PROFILE_MEDIA_BUCKET, publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
+import { ExpiryCountdown } from "@/components/ExpiryCountdown";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import {
+  formatPriceHintFromPayload,
+  getAvailabilityStatusOption,
+  getQuickDetailsOption,
+  type AvailabilityPayload,
+} from "@/lib/availabilityPosts";
+import { isServiceCategoryId, serviceCategoryLabel, type ServiceCategoryId } from "@/lib/serviceCategories";
+import { apiPost } from "@/lib/api";
+import { readPublicProfileCache, writePublicProfileCache } from "@/lib/publicProfileCache";
+import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
+
+type PostedHelpEngagement = "idle" | "loading" | "can_respond" | "accepted" | "declined" | "not_invited" | "hidden";
+
+function canActAsHelper(profile: { role?: string | null; is_available_for_jobs?: boolean | null } | null): boolean {
+  if (!profile?.role) return false;
+  if (profile.role === "freelancer") return true;
+  if (profile.role === "client" && profile.is_available_for_jobs === true) return true;
+  return false;
+}
+
+function livePostCategoryLabel(category: string): string {
+  return isServiceCategoryId(category) ? serviceCategoryLabel(category as ServiceCategoryId) : category.replace(/_/g, " ");
+}
+
+function livePostSummaryLine(payload: AvailabilityPayload | null, note: string | null): string {
+  const parts: string[] = [];
+  if (payload?.availability_status) {
+    const o = getAvailabilityStatusOption(String(payload.availability_status));
+    if (o) parts.push(o.label);
+  }
+  if (payload?.quick_details) {
+    const o = getQuickDetailsOption(String(payload.quick_details));
+    if (o) parts.push(o.label);
+  }
+  const price = formatPriceHintFromPayload(payload);
+  if (price) parts.push(price);
+  const head = parts.join(" · ");
+  if (head) return head;
+  const n = note?.trim();
+  if (n) return n.length > 72 ? `${n.slice(0, 69)}…` : n;
+  return "Open full post on the public board";
+}
+
+type LiveCommunityPostRow = {
+  id: string;
+  category: string;
+  title: string;
+  note: string | null;
+  expires_at: string;
+  availability_payload: AvailabilityPayload | null;
+  created_at: string;
+};
+
+function jobServiceLabel(serviceType: string | undefined): string {
+  if (!serviceType) return "Job";
+  return isServiceCategoryId(serviceType)
+    ? serviceCategoryLabel(serviceType)
+    : serviceType.replace(/_/g, " ");
+}
+
+function jobRequestStatusBadgeClass(status: string): string {
+  const s = status.toLowerCase();
+  if (s === "completed") return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+  if (s === "cancelled") return "bg-slate-500/10 text-slate-600 dark:text-slate-400";
+  if (s === "confirmed" || s === "active") return "bg-orange-500/10 text-orange-700 dark:text-orange-400";
+  return "bg-amber-500/10 text-amber-800 dark:text-amber-300";
+}
+
+function jobRequestStatusLabel(status: string): string {
+  const s = status.toLowerCase();
+  if (["pending", "opened", "ready", "notifying", "confirmations_closed"].includes(s)) {
+    return "In progress";
+  }
+  if (s === "confirmed" || s === "active" || s === "locked") return "Active";
+  if (s === "completed") return "Completed";
+  return status.replace(/_/g, " ");
+}
+
+function formatJobTitleForModal(job: { service_type?: string }) {
+  if (job.service_type === "cleaning") return "Cleaning";
+  if (job.service_type === "cooking") return "Cooking";
+  if (job.service_type === "pickup_delivery") return "Pickup & Delivery";
+  if (job.service_type === "nanny") return "Nanny";
+  if (job.service_type === "other_help") return "Other Help";
+  return "Service Request";
+}
+
+type ProfilePostedHelpRequest = {
+  id: string;
+  service_type: string;
+  status: string;
+  created_at: string;
+  location_city: string;
+};
 
 interface PublicProfile {
   id: string;
@@ -66,6 +164,20 @@ interface SharedJob {
   selected_freelancer_id: string | null;
 }
 
+/** True when this job is strictly between two users (one client, the other selected helper). */
+function jobIsBetweenUsers(
+  job: SharedJob,
+  userA: string,
+  userB: string
+): boolean {
+  const sf = job.selected_freelancer_id;
+  if (!sf) return false;
+  return (
+    (job.client_id === userA && sf === userB) ||
+    (job.client_id === userB && sf === userA)
+  );
+}
+
 interface PublicProfileMediaRow {
   id: string;
   user_id: string;
@@ -84,6 +196,15 @@ export default function PublicProfilePage() {
   const [sharedJobs, setSharedJobs] = useState<SharedJob[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
   const [mediaItems, setMediaItems] = useState<PublicProfileMediaRow[]>([]);
+  const [liveCommunityPosts, setLiveCommunityPosts] = useState<LiveCommunityPostRow[]>([]);
+  const [postedHelpRequests, setPostedHelpRequests] = useState<ProfilePostedHelpRequest[]>([]);
+  const [postedHelpPreviewJob, setPostedHelpPreviewJob] = useState<Record<string, unknown> | null>(null);
+  const [postedHelpMapJob, setPostedHelpMapJob] = useState<Record<string, unknown> | null>(null);
+  const [postedHelpEngagement, setPostedHelpEngagement] = useState<PostedHelpEngagement>("idle");
+  const [postedHelpNotifId, setPostedHelpNotifId] = useState<string | null>(null);
+  const [postedHelpConfirming, setPostedHelpConfirming] = useState(false);
+  const [postedHelpDeclining, setPostedHelpDeclining] = useState(false);
+  const [loadingPostedHelpPreviewId, setLoadingPostedHelpPreviewId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [openingChat, setOpeningChat] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -179,12 +300,29 @@ export default function PublicProfilePage() {
   }
 
   useEffect(() => {
+    if (!userId || !currentUser?.id) return;
+
+    const viewerId = currentUser.id;
+    const cached = readPublicProfileCache(viewerId, userId);
+    let fromCache = false;
+
+    if (cached) {
+      fromCache = true;
+      setProfile(cached.profile as PublicProfile);
+      setSharedJobs(cached.sharedJobs as SharedJob[]);
+      setReviews(cached.reviews as UserReview[]);
+      setMediaItems(cached.mediaItems as PublicProfileMediaRow[]);
+      setLiveCommunityPosts(cached.liveCommunityPosts as LiveCommunityPostRow[]);
+      setPostedHelpRequests(cached.postedHelpRequests as ProfilePostedHelpRequest[]);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    let cancelled = false;
+
     const fetchProfileAndJobs = async () => {
-      if (!userId || !currentUser) return;
-
       try {
-        setLoading(true);
-
         // 1. Fetch Basic Profile
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
@@ -201,61 +339,130 @@ export default function PublicProfilePage() {
           .eq("user_id", userId)
           .maybeSingle();
 
-        setProfile({
+        const nextProfile: PublicProfile = {
           ...profileData,
           bio: freelancerData?.bio || null,
           whatsapp_number: profileData.whatsapp_number_e164
-        });
+        };
+        setProfile(nextProfile);
 
-        // 3. Fetch Shared Jobs + Pending notifications between these two users
-        const [jobsRes, pendingRes] = await Promise.all([
-          supabase
-            .from("job_requests")
-            .select("id, service_type, status, created_at, client_id, selected_freelancer_id")
-            .or(`and(client_id.eq.${currentUser.id},selected_freelancer_id.eq.${userId}),and(client_id.eq.${userId},selected_freelancer_id.eq.${currentUser.id})`)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("job_candidate_notifications")
-            .select(`
+        // 3. Jobs + pending notifications strictly between viewer (A) and profile (B) only.
+        // Use separate queries — a single `.or(and(...),and(...))` on job_requests can misparse; and
+        // `.in(freelancer_id, [A,B])` pulls rows where freelancer is A but client is a third party.
+        const profileId = userId;
+
+        const jrSelect = "id, service_type, status, created_at, client_id, selected_freelancer_id" as const;
+        const notifSelect = `
               job_id, status, created_at, freelancer_id,
               job_requests (
-                id, service_type, status, created_at, client_id, selected_freelancer_id
+                ${jrSelect}
               )
-            `)
-            .in("status", ["pending", "opened"])
-            .in("freelancer_id", [currentUser.id, userId])
-            .order("created_at", { ascending: false })
-        ]);
+            `;
 
-        if (jobsRes.error) throw jobsRes.error;
-        if (pendingRes.error) throw pendingRes.error;
+        const [jobsViewerClient, jobsProfileClient, notifWhenProfileIsHelper, notifWhenViewerIsHelper] =
+          await Promise.all([
+            supabase
+              .from("job_requests")
+              .select(jrSelect)
+              .eq("client_id", viewerId)
+              .eq("selected_freelancer_id", profileId)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("job_requests")
+              .select(jrSelect)
+              .eq("client_id", profileId)
+              .eq("selected_freelancer_id", viewerId)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("job_candidate_notifications")
+              .select(notifSelect)
+              .in("status", ["pending", "opened"])
+              .eq("freelancer_id", profileId)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("job_candidate_notifications")
+              .select(notifSelect)
+              .in("status", ["pending", "opened"])
+              .eq("freelancer_id", viewerId)
+              .order("created_at", { ascending: false }),
+          ]);
 
-        const shared = jobsRes.data || [];
-        const pendingFromNotifications: SharedJob[] = (pendingRes.data || [])
-          .filter((n: any) => {
-            const jr = n.job_requests;
-            if (!jr) return false;
+        if (jobsViewerClient.error) throw jobsViewerClient.error;
+        if (jobsProfileClient.error) throw jobsProfileClient.error;
+        if (notifWhenProfileIsHelper.error) throw notifWhenProfileIsHelper.error;
+        if (notifWhenViewerIsHelper.error) throw notifWhenViewerIsHelper.error;
 
-            // Keep only pending jobs between current user and viewed user
-            const isCurrentAsClient = jr.client_id === currentUser.id && n.freelancer_id === userId;
-            const isViewedAsClient = jr.client_id === userId && n.freelancer_id === currentUser.id;
-            return isCurrentAsClient || isViewedAsClient;
-          })
-          .map((n: any) => ({
-            id: n.job_requests.id,
-            service_type: n.job_requests.service_type,
-            status: "pending",
-            created_at: n.job_requests.created_at || n.created_at,
-            client_id: n.job_requests.client_id,
-            selected_freelancer_id: n.job_requests.selected_freelancer_id || null,
-          }));
+        const shared: SharedJob[] = [
+          ...((jobsViewerClient.data || []) as SharedJob[]),
+          ...((jobsProfileClient.data || []) as SharedJob[]),
+        ];
 
-        // Merge while avoiding duplicates by job id
+        function embeddedJobRequest(n: { job_requests?: unknown }): SharedJob | null {
+          const raw = n.job_requests;
+          const jr = (Array.isArray(raw) ? raw[0] : raw) as
+            | {
+                id: string;
+                service_type: string;
+                status: string;
+                created_at: string;
+                client_id: string;
+                selected_freelancer_id: string | null;
+              }
+            | undefined
+            | null;
+          if (!jr?.id) return null;
+          return {
+            id: jr.id,
+            service_type: jr.service_type,
+            status: jr.status,
+            created_at: jr.created_at,
+            client_id: jr.client_id,
+            selected_freelancer_id: jr.selected_freelancer_id,
+          };
+        }
+
+        const pendingFromNotifications: SharedJob[] = [];
+
+        type NotifRow = { job_requests?: unknown; freelancer_id?: string };
+        const profileHelperRows = (notifWhenProfileIsHelper.data ?? []) as NotifRow[];
+        const viewerHelperRows = (notifWhenViewerIsHelper.data ?? []) as NotifRow[];
+
+        for (const n of profileHelperRows) {
+          const jr = embeddedJobRequest(n);
+          if (!jr) continue;
+          // Profile is the notified helper → client must be the viewer (not a third party).
+          if (jr.client_id !== viewerId || n.freelancer_id !== profileId) {
+            continue;
+          }
+          pendingFromNotifications.push({
+            ...jr,
+            status: jr.status || "pending",
+            selected_freelancer_id: jr.selected_freelancer_id ?? profileId,
+          });
+        }
+
+        for (const n of viewerHelperRows) {
+          const jr = embeddedJobRequest(n);
+          if (!jr) continue;
+          // Viewer is the notified helper → client must be the profile user.
+          if (jr.client_id !== profileId || n.freelancer_id !== viewerId) {
+            continue;
+          }
+          pendingFromNotifications.push({
+            ...jr,
+            status: jr.status || "pending",
+            selected_freelancer_id: jr.selected_freelancer_id ?? viewerId,
+          });
+        }
+
         const mergedMap = new Map<string, SharedJob>();
         [...shared, ...pendingFromNotifications].forEach((job: SharedJob) => {
           if (!mergedMap.has(job.id)) mergedMap.set(job.id, job);
         });
-        setSharedJobs(Array.from(mergedMap.values()));
+        const merged = Array.from(mergedMap.values()).filter((job) =>
+          jobIsBetweenUsers(job, viewerId, profileId)
+        );
+        setSharedJobs(merged);
 
         // 4. Fetch Reviews
         const { data: reviewsData, error: reviewsError } = await supabase
@@ -274,40 +481,108 @@ export default function PublicProfilePage() {
           .order("created_at", { ascending: false });
 
         if (reviewsError) throw reviewsError;
-        setReviews((reviewsData as any[]).map(r => ({
+        const nextReviews = (reviewsData as any[]).map(r => ({
           ...r,
           reviewer: r.reviewer || { full_name: "Anonymous", photo_url: null }
-        })));
+        }));
+        setReviews(nextReviews);
 
-        const { data: mediaData, error: mediaErr } = await supabase
-          .from("public_profile_media")
-          .select("id, user_id, media_type, storage_path, sort_order, created_at")
-          .eq("user_id", userId)
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: true });
+        const nowIso = new Date().toISOString();
+        const [mediaRes, livePostsRes] = await Promise.all([
+          supabase
+            .from("public_profile_media")
+            .select("id, user_id, media_type, storage_path, sort_order, created_at")
+            .eq("user_id", userId)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("community_posts")
+            .select("id, category, title, note, expires_at, availability_payload, created_at")
+            .eq("author_id", userId)
+            .eq("status", "active")
+            .gt("expires_at", nowIso)
+            .order("created_at", { ascending: false }),
+        ]);
 
-        if (mediaErr) {
-          console.warn("[PublicProfile] public_profile_media:", mediaErr);
+        let nextMedia: PublicProfileMediaRow[] = [];
+        if (mediaRes.error) {
+          console.warn("[PublicProfile] public_profile_media:", mediaRes.error);
           setMediaItems([]);
         } else {
-          setMediaItems((mediaData as PublicProfileMediaRow[]) ?? []);
+          nextMedia = (mediaRes.data as PublicProfileMediaRow[]) ?? [];
+          setMediaItems(nextMedia);
+        }
+
+        let nextLive: LiveCommunityPostRow[] = [];
+        if (livePostsRes.error) {
+          console.warn("[PublicProfile] community_posts:", livePostsRes.error);
+          setLiveCommunityPosts([]);
+        } else {
+          const rows = (livePostsRes.data || []) as Record<string, unknown>[];
+          nextLive = rows.map((r) => ({
+            id: String(r.id),
+            category: String(r.category ?? ""),
+            title: String(r.title ?? ""),
+            note: (r.note as string | null) ?? null,
+            expires_at: String(r.expires_at ?? ""),
+            availability_payload: (r.availability_payload as AvailabilityPayload | null) ?? null,
+            created_at: String(r.created_at ?? ""),
+          }));
+          setLiveCommunityPosts(nextLive);
+        }
+
+        const { data: postedReqData, error: postedReqErr } = await supabase.rpc(
+          "get_public_profile_client_job_requests",
+          { p_client_id: userId }
+        );
+        let nextPosted: ProfilePostedHelpRequest[] = [];
+        if (postedReqErr) {
+          console.warn("[PublicProfile] get_public_profile_client_job_requests:", postedReqErr);
+          setPostedHelpRequests([]);
+        } else {
+          const rows = (postedReqData || []) as Record<string, unknown>[];
+          nextPosted = rows.map((r) => ({
+            id: String(r.id),
+            service_type: String(r.service_type ?? "other_help"),
+            status: String(r.status ?? ""),
+            created_at: String(r.created_at ?? ""),
+            location_city: String(r.location_city ?? "").trim(),
+          }));
+          setPostedHelpRequests(nextPosted);
+        }
+
+        if (!cancelled) {
+          writePublicProfileCache(viewerId, userId, {
+            profile: nextProfile,
+            sharedJobs: merged,
+            reviews: nextReviews,
+            mediaItems: nextMedia,
+            liveCommunityPosts: nextLive,
+            postedHelpRequests: nextPosted,
+          });
         }
 
       } catch (error: any) {
         console.error("Error fetching public profile:", error);
-        addToast({
-          title: "Error",
-          description: "Could not load user profile.",
-          variant: "error",
-        });
-        navigate(-1);
+        if (!fromCache) {
+          addToast({
+            title: "Error",
+            description: "Could not load user profile.",
+            variant: "error",
+          });
+          navigate(-1);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    fetchProfileAndJobs();
-  }, [userId, currentUser, navigate, addToast]);
+    void fetchProfileAndJobs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, currentUser?.id, navigate, addToast]);
 
   if (loading) {
     return (
@@ -412,6 +687,217 @@ export default function PublicProfilePage() {
   const helpedOthersCount = sharedJobs.filter(j => j.selected_freelancer_id === userId).length;
   const gotHelpedCount = sharedJobs.filter(j => j.client_id === userId).length;
   const photoInitials = profile.full_name?.slice(0, 2) || "??";
+  const profileFirstName = profile.full_name?.trim().split(/\s+/)[0] ?? "";
+  const profileDisplayName = profile.full_name?.trim() || profileFirstName || "This user";
+
+  async function loadPostedHelpEngagement(
+    jobId: string,
+    clientId: string
+  ): Promise<{ engagement: PostedHelpEngagement; notifId: string | null }> {
+    if (!currentUser?.id) return { engagement: "hidden", notifId: null };
+    if (currentUser.id === clientId) return { engagement: "hidden", notifId: null };
+    if (!canActAsHelper(currentProfile)) return { engagement: "hidden", notifId: null };
+
+    const [confRes, notifRes] = await Promise.all([
+      supabase
+        .from("job_confirmations")
+        .select("status")
+        .eq("job_id", jobId)
+        .eq("freelancer_id", currentUser.id)
+        .maybeSingle(),
+      supabase
+        .from("job_candidate_notifications")
+        .select("id, status")
+        .eq("job_id", jobId)
+        .eq("freelancer_id", currentUser.id)
+        .maybeSingle(),
+    ]);
+
+    if (confRes.error) console.warn("[PublicProfile] job_confirmations", confRes.error);
+    if (notifRes.error) console.warn("[PublicProfile] job_candidate_notifications", notifRes.error);
+
+    const st = confRes.data?.status;
+    if (st === "available") return { engagement: "accepted", notifId: null };
+    if (st === "declined") return { engagement: "declined", notifId: null };
+
+    const n = notifRes.data;
+    if (n && (n.status === "pending" || n.status === "opened")) {
+      return { engagement: "can_respond", notifId: n.id };
+    }
+    return { engagement: "not_invited", notifId: null };
+  }
+
+  async function openPostedHelpPreview(jobId: string) {
+    setLoadingPostedHelpPreviewId(jobId);
+    setPostedHelpPreviewJob(null);
+    setPostedHelpMapJob(null);
+    setPostedHelpEngagement("loading");
+    setPostedHelpNotifId(null);
+    try {
+      const { data, error } = await supabase.rpc("get_public_job_request_preview", {
+        p_job_id: jobId,
+      });
+      if (error) throw error;
+      const job = data as Record<string, unknown> | null;
+      if (!job || typeof job.id !== "string") {
+        addToast({ title: "Could not load request", description: "Try again later.", variant: "error" });
+        return;
+      }
+      const clientId = String(job.client_id ?? "");
+      const eng = await loadPostedHelpEngagement(jobId, clientId);
+      setPostedHelpEngagement(eng.engagement);
+      setPostedHelpNotifId(eng.notifId);
+
+      if (job.service_type === "pickup_delivery") {
+        setPostedHelpMapJob(job);
+      } else {
+        setPostedHelpPreviewJob(job);
+      }
+    } catch (e: unknown) {
+      console.error(e);
+      addToast({
+        title: "Could not load request",
+        description: e instanceof Error ? e.message : "Try again.",
+        variant: "error",
+      });
+      setPostedHelpEngagement("idle");
+    } finally {
+      setLoadingPostedHelpPreviewId(null);
+    }
+  }
+
+  const activePostedHelpJob = postedHelpPreviewJob ?? postedHelpMapJob;
+
+  async function handlePostedHelpConfirm() {
+    const job = activePostedHelpJob;
+    if (!job || typeof job.id !== "string" || !postedHelpNotifId) return;
+    setPostedHelpConfirming(true);
+    try {
+      await apiPost(`/api/jobs/${job.id}/notifications/${postedHelpNotifId}/open`, {});
+      await apiPost(`/api/jobs/${job.id}/confirm`, {});
+      setPostedHelpEngagement("accepted");
+      setPostedHelpNotifId(null);
+      addToast({
+        title: "Job accepted",
+        description: "It's been moved to Pending Jobs while we wait for the client's final confirmation.",
+        variant: "success",
+      });
+    } catch (err: unknown) {
+      console.error(err);
+      addToast({
+        title: "Could not accept",
+        description: err instanceof Error ? err.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setPostedHelpConfirming(false);
+    }
+  }
+
+  async function handlePostedHelpDecline() {
+    if (!postedHelpNotifId) return;
+    setPostedHelpDeclining(true);
+    try {
+      const { error } = await supabase.from("job_candidate_notifications").delete().eq("id", postedHelpNotifId);
+      if (error) throw error;
+      setPostedHelpEngagement("declined");
+      setPostedHelpNotifId(null);
+      addToast({
+        title: "Request declined",
+        description: "The job request has been removed from your list.",
+        variant: "success",
+      });
+    } catch (err: unknown) {
+      console.error(err);
+      addToast({
+        title: "Could not decline",
+        description: err instanceof Error ? err.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setPostedHelpDeclining(false);
+    }
+  }
+
+  const postedHelpIncomingActionMessage = (() => {
+    if (postedHelpEngagement === "accepted") return "You have already accepted.";
+    if (postedHelpEngagement === "declined") return "You have already declined.";
+    if (postedHelpEngagement === "not_invited") {
+      return "You can respond here once this client sends you a request.";
+    }
+    if (postedHelpEngagement === "hidden") {
+      if (!currentUser?.id) return "Sign in to accept or decline requests.";
+      const openJobClientId =
+        activePostedHelpJob && typeof (activePostedHelpJob as { client_id?: unknown }).client_id === "string"
+          ? (activePostedHelpJob as { client_id: string }).client_id
+          : null;
+      if (openJobClientId && currentUser.id === openJobClientId) {
+        return "This is your posted request.";
+      }
+      return "Switch to a helper account or enable “Receive job requests” in your profile settings to respond.";
+    }
+    return null;
+  })();
+
+  const showPostedHelpRespond =
+    postedHelpEngagement === "can_respond" && postedHelpNotifId != null;
+
+  /** Same grey card shell as “helped you in…” (past jobs). */
+  const profileHistoryCardClass =
+    "group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.35)] rounded-[24px] overflow-hidden bg-card/80 transition-all";
+
+  const historyRowChevronClass =
+    "h-5 w-5 shrink-0 text-slate-400 transition-colors group-hover:text-slate-700 dark:group-hover:text-slate-200";
+
+  const renderPostedHelpRow = (job: ProfilePostedHelpRequest) => (
+    <button
+      key={job.id}
+      type="button"
+      onClick={() => void openPostedHelpPreview(job.id)}
+      disabled={loadingPostedHelpPreviewId === job.id}
+      className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-70"
+    >
+      <Card className={cn(profileHistoryCardClass, "w-full cursor-pointer")}>
+        <CardContent className="flex items-center justify-between p-6">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/10">
+              <HeartHandshake className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="font-bold text-slate-900 dark:text-white">
+                <span className="capitalize">{jobServiceLabel(job.service_type)}</span>
+                {job.location_city ? (
+                  <>
+                    {" "}
+                    <span className="font-semibold text-muted-foreground">in</span>{" "}
+                    <span className="font-bold">{job.location_city}</span>
+                  </>
+                ) : null}
+              </p>
+              <p className="text-xs font-medium text-slate-400">
+                Posted {new Date(job.created_at).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Badge
+              className={cn(
+                "border-none px-3 py-1 text-[10px] font-black uppercase tracking-wider",
+                jobRequestStatusBadgeClass(job.status)
+              )}
+            >
+              {jobRequestStatusLabel(job.status)}
+            </Badge>
+            {loadingPostedHelpPreviewId === job.id ? (
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" aria-hidden />
+            ) : (
+              <ChevronRight className={historyRowChevronClass} aria-hidden />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </button>
+  );
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
@@ -441,7 +927,23 @@ export default function PublicProfilePage() {
             >
               <CardContent className="p-0 flex flex-col">
                 {/* Mobile: avatar + name / rating; categories full-width below image row */}
-                <div className="md:hidden">
+                <div className="relative md:hidden">
+                  {!isOwnProfile &&
+                    currentUser &&
+                    profile.categories &&
+                    profile.categories.length > 0 && (
+                      <div className="absolute right-3 top-2 z-30">
+                        <ProfileKnockMenu
+                          variant="inline"
+                          targetUserId={userId!}
+                          targetRole={profile.role}
+                          categories={profile.categories}
+                          viewerId={currentUser.id}
+                          viewerRole={currentProfile?.role ?? null}
+                          viewerName={currentProfile?.full_name ?? null}
+                        />
+                      </div>
+                    )}
                   <div className="flex gap-6 px-4 pt-2 pb-1 items-start">
                     <div className="relative h-32 w-32 shrink-0 self-start">
                       {profile.photo_url ? (
@@ -519,8 +1021,24 @@ export default function PublicProfilePage() {
                     </div>
                   )}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" aria-hidden />
-                  <div className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white/90 bg-emerald-500 text-white shadow-lg dark:border-zinc-900">
-                    <ShieldCheck className="h-4 w-4" />
+                  <div className="pointer-events-auto absolute right-3 top-3 z-20 flex items-center gap-2">
+                    {!isOwnProfile &&
+                      currentUser &&
+                      profile.categories &&
+                      profile.categories.length > 0 && (
+                        <ProfileKnockMenu
+                          variant="hero"
+                          targetUserId={userId!}
+                          targetRole={profile.role}
+                          categories={profile.categories}
+                          viewerId={currentUser.id}
+                          viewerRole={currentProfile?.role ?? null}
+                          viewerName={currentProfile?.full_name ?? null}
+                        />
+                      )}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white/90 bg-emerald-500 text-white shadow-lg dark:border-zinc-900">
+                      <ShieldCheck className="h-4 w-4" />
+                    </div>
                   </div>
                 </div>
 
@@ -565,37 +1083,45 @@ export default function PublicProfilePage() {
 
                 <div className="flex flex-col items-stretch px-4 pt-5 pb-4 text-left sm:px-5 md:items-center md:px-7 md:pt-2 md:pb-4 md:text-center sm:px-8">
                 <div className="w-full border-t-0 pt-0 md:border-t md:border-slate-100 md:pt-6 md:dark:border-white/5">
-                  {/* Contact Buttons: Round Icons */}
-                  <div className="mb-8 flex items-center justify-center gap-5 py-4 md:mb-10 md:gap-4 md:py-3">
+                  <div className="mb-6 flex items-center justify-center gap-5 py-3 md:mb-8 md:gap-4 md:py-2">
                     <button
                       type="button"
                       onClick={() => void handleOpenDirectChat()}
                       disabled={openingChat}
-                      className="h-12 w-12 rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/20 dark:shadow-slate-100/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:pointer-events-none md:h-11 md:w-11"
-                      title="Open messages"
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition-all hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:shadow-slate-100/20 md:h-11 md:w-11"
+                      title="Messages"
+                      aria-label="Open messages"
                     >
                       {openingChat ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
-                        <MessageSquare className="h-5 w-5" />
+                        <MessageSquare className="h-5 w-5" strokeWidth={2} />
                       )}
                     </button>
                     {profile.whatsapp_number && (
-                      <button 
-                        onClick={() => window.open(`https://wa.me/${profile.whatsapp_number}`, '_blank')}
-                        className="w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg shadow-green-500/20 hover:scale-110 active:scale-95 transition-all"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(`https://wa.me/${profile.whatsapp_number}`, "_blank")
+                        }
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
                         title="WhatsApp"
+                        aria-label="WhatsApp"
                       >
-                        <Phone className="w-5 h-5 fill-current" />
+                        <Phone className="h-5 w-5 fill-current" />
                       </button>
                     )}
                     {profile.telegram_username && (
-                      <button 
-                        onClick={() => window.open(`https://t.me/${profile.telegram_username}`, '_blank')}
-                        className="w-12 h-12 rounded-full bg-[#0088cc] text-white flex items-center justify-center shadow-lg shadow-blue-500/20 hover:scale-110 active:scale-95 transition-all"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(`https://t.me/${profile.telegram_username}`, "_blank")
+                        }
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
                         title="Telegram"
+                        aria-label="Telegram"
                       >
-                        <Send className="w-5 h-5 fill-current translate-x-[-1px] translate-y-[1px]" />
+                        <Send className="h-5 w-5 translate-x-[-1px] translate-y-[1px] fill-current" />
                       </button>
                     )}
                   </div>
@@ -670,7 +1196,10 @@ export default function PublicProfilePage() {
                       </div>
                     )}
                     {imageRows.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No photos yet.</p>
+                      <div className="flex flex-col items-center gap-3 py-6 text-center">
+                        <ImageIcon className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
+                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No photos yet.</p>
+                      </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {imageRows.map((row) => (
@@ -712,7 +1241,10 @@ export default function PublicProfilePage() {
                       </div>
                     )}
                     {videoRows.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No videos yet.</p>
+                      <div className="flex flex-col items-center gap-3 py-6 text-center">
+                        <Video className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
+                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No videos yet.</p>
+                      </div>
                     ) : (
                       <div className="flex flex-col gap-4">
                         {videoRows.map((row) => (
@@ -746,7 +1278,10 @@ export default function PublicProfilePage() {
                         {profile.bio}
                       </p>
                     ) : (
-                      <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">No bio yet.</p>
+                      <div className="flex flex-col items-center gap-3 py-6 text-center">
+                        <UserCircle className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
+                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No bio yet.</p>
+                      </div>
                     )}
                   </TabsContent>
                 </Tabs>
@@ -773,64 +1308,164 @@ export default function PublicProfilePage() {
 
           {/* Right Column: Job History */}
           <div className="lg:col-span-2 space-y-8">
-            
-            {/* Active Jobs */}
+            {/* Live availability pulses (public board) */}
             <div>
-              <div className="flex items-center gap-3 mb-6 px-2">
-                <div className="w-10 h-10 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-orange-500" />
+              <div className="mb-6 flex items-center gap-3 px-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </div>
-                <h2 className="text-xl font-black tracking-tight uppercase">Active Engagements</h2>
+                <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+                  {profileDisplayName} offers help in…
+                </h2>
               </div>
-              
+
               <div className="space-y-4">
-                {[...pendingJobs, ...activeJobs].length > 0 ? [...pendingJobs, ...activeJobs].map(job => (
-                  <Card
-                    key={job.id}
-                    onClick={() => {
-                      if (pendingJobs.some((p) => p.id === job.id)) {
-                        navigate(buildJobsUrl("freelancer", "pending"));
-                      }
-                    }}
-                    className={cn(
-                      "group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] transition-all rounded-[24px] overflow-hidden bg-card/80",
-                      pendingJobs.some((p) => p.id === job.id) && "cursor-pointer"
-                    )}
-                  >
-                    <CardContent className="p-6 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                          <Briefcase className="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors capitalize">
-                            {job.service_type?.replace('_', ' ')}
-                          </p>
-                          <p className="text-xs text-slate-400 font-medium">
-                            {pendingJobs.some((p) => p.id === job.id)
-                              ? `Requested on ${new Date(job.created_at).toLocaleDateString()}`
-                              : `Started ${new Date(job.created_at).toLocaleDateString()}`}
-                          </p>
-                        </div>
+                {liveCommunityPosts.length > 0 ? (
+                  liveCommunityPosts.map((post) => (
+                    <Link
+                      key={post.id}
+                      to={`/public/posts?post=${encodeURIComponent(post.id)}`}
+                      className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
+                      <Card className={cn(profileHistoryCardClass, "cursor-pointer")}>
+                        <CardContent className="flex items-center justify-between p-6">
+                          <div className="flex min-w-0 flex-1 items-center gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                              <Sparkles className="h-6 w-6 text-primary" />
+                            </div>
+                            <div className="min-w-0 text-left">
+                              <p className="line-clamp-1 font-bold text-slate-900 dark:text-white">
+                                {post.title}
+                              </p>
+                              <p className="mt-0.5 line-clamp-2 text-xs font-medium text-slate-400">
+                                {livePostSummaryLine(post.availability_payload, post.note)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Badge
+                              variant="secondary"
+                              className="rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide"
+                            >
+                              {livePostCategoryLabel(post.category)}
+                            </Badge>
+                            <ExpiryCountdown
+                              expiresAtIso={post.expires_at}
+                              compact
+                              className="text-[11px] font-semibold text-orange-600 dark:text-orange-400"
+                            />
+                            <ChevronRight className={historyRowChevronClass} aria-hidden />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
+                    <Sparkles className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
+                    <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                      No live availability on the public board right now.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Job requests this user posted as client (public, via RPC) */}
+            <div>
+              <div className="mb-6 flex items-center gap-3 px-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10">
+                  <HeartHandshake className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                </div>
+                <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+                  {profileDisplayName} needs your help in…
+                </h2>
+              </div>
+
+              <div className="space-y-4">
+                {postedHelpRequests.length > 0 ? (
+                  postedHelpRequests.map((job) => renderPostedHelpRow(job))
+                ) : (
+                  <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
+                    <HeartHandshake className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
+                    <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                      {profileDisplayName} doesn’t have any open help requests right now.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Active Engagements — same grey cards as offers / needs / helped you */}
+            <div>
+              <div className="mb-6 flex items-center gap-3 px-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/10">
+                  <Clock className="h-5 w-5 text-orange-500" />
+                </div>
+                <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase">
+                  Active Engagements
+                </h2>
+              </div>
+
+              <div className="space-y-4">
+                {[...pendingJobs, ...activeJobs].length > 0 ? (
+                  [...pendingJobs, ...activeJobs].map((job) => {
+                    const isPending = pendingJobs.some((p) => p.id === job.id);
+                    const card = (
+                      <Card className={cn(profileHistoryCardClass, isPending && "cursor-pointer")}>
+                        <CardContent className="flex items-center justify-between p-6">
+                          <div className="flex min-w-0 flex-1 items-center gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10">
+                              <Clock className="h-6 w-6 text-orange-500" />
+                            </div>
+                            <div className="min-w-0 text-left">
+                              <p className="font-bold capitalize text-slate-900 dark:text-white">
+                                {String(job.service_type ?? "").replace(/_/g, " ")}
+                              </p>
+                              <p className="text-xs font-medium text-slate-400">
+                                {isPending
+                                  ? `Requested on ${new Date(job.created_at).toLocaleDateString()}`
+                                  : `Started ${new Date(job.created_at).toLocaleDateString()}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            {isPending ? (
+                              <Badge className="border-none bg-amber-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-amber-600 hover:bg-amber-500/20 dark:text-amber-500">
+                                Waiting for confirmation
+                              </Badge>
+                            ) : (
+                              <Badge className="border-none bg-orange-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-orange-600 hover:bg-orange-500/20">
+                                {job.status}
+                              </Badge>
+                            )}
+                            <ChevronRight className={historyRowChevronClass} aria-hidden />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                    if (isPending) {
+                      return (
+                        <button
+                          key={job.id}
+                          type="button"
+                          onClick={() => navigate(buildJobsUrl("freelancer", "pending"))}
+                          className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        >
+                          {card}
+                        </button>
+                      );
+                    }
+                    return (
+                      <div key={job.id} className="w-full">
+                        {card}
                       </div>
-                      {pendingJobs.some((p) => p.id === job.id) ? (
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-none px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
-                            Waiting for confirmation
-                          </Badge>
-                          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
-                        </div>
-                      ) : (
-                        <Badge className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-none px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
-                          {job.status}
-                        </Badge>
-                      )}
-                    </CardContent>
-                  </Card>
-                )) : (
-                  <div className="p-12 text-center rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/5 bg-slate-100/30 dark:bg-white/2">
-                    <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-400 font-medium">No active jobs with this user</p>
+                    );
+                  })
+                ) : (
+                  <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
+                    <Clock className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
+                    <p className="font-medium text-slate-400 dark:text-slate-500">No active jobs with this user</p>
                   </div>
                 )}
               </div>
@@ -852,32 +1487,34 @@ export default function PublicProfilePage() {
                   <Card
                     key={job.id}
                     onClick={() => navigate(`/jobs/${job.id}/details`)}
-                    className="group cursor-pointer border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] rounded-[24px] overflow-hidden bg-card/80"
+                    className={cn(profileHistoryCardClass, "cursor-pointer")}
                   >
-                    <CardContent className="p-6 flex items-center justify-between">
+                    <CardContent className="flex items-center justify-between p-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
-                          <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/10">
+                          <CheckCircle2 className="h-6 w-6 text-emerald-500" />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 dark:text-white capitalize">
+                          <p className="font-bold capitalize text-slate-900 dark:text-white">
                             {job.service_type?.replace('_', ' ')}
                           </p>
-                          <p className="text-xs text-slate-400 font-medium">Completed on {new Date(job.created_at).toLocaleDateString()}</p>
+                          <p className="text-xs font-medium text-slate-400">
+                            Completed on {new Date(job.created_at).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-right flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 border-emerald-200 bg-emerald-50">
+                      <div className="flex items-center gap-2 text-right">
+                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                           {job.status}
                         </Badge>
-                        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
+                        <ChevronRight className={historyRowChevronClass} />
                       </div>
                     </CardContent>
                   </Card>
                 )) : (
-                  <div className="p-12 text-center rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/5 bg-slate-100/30 dark:bg-white/2">
-                    <CheckCircle2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-400 font-medium">No past history with this user</p>
+                  <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
+                    <CheckCircle2 className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
+                    <p className="text-slate-400 font-medium dark:text-slate-500">No past history with this user</p>
                   </div>
                 )}
               </div>
@@ -941,9 +1578,9 @@ export default function PublicProfilePage() {
                     </div>
                   );
                 }) : (
-                  <div className="p-12 text-center rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/5 bg-slate-100/30 dark:bg-white/2">
-                    <UserIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-400 font-medium">No reviews yet for this user</p>
+                  <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
+                    <UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
+                    <p className="text-slate-400 font-medium dark:text-slate-500">No reviews yet for this user</p>
                   </div>
                 )}
               </div>
@@ -952,6 +1589,47 @@ export default function PublicProfilePage() {
           </div>
         </div>
       </div>
+
+      <FullscreenMapModal
+        job={postedHelpMapJob}
+        isOpen={Boolean(postedHelpMapJob)}
+        onClose={() => {
+          setPostedHelpMapJob(null);
+          setPostedHelpEngagement("idle");
+          setPostedHelpNotifId(null);
+        }}
+        incomingActionMessage={postedHelpIncomingActionMessage}
+        showAcceptButton={showPostedHelpRespond}
+        onConfirm={showPostedHelpRespond ? handlePostedHelpConfirm : undefined}
+        onDecline={showPostedHelpRespond ? handlePostedHelpDecline : undefined}
+        isConfirming={postedHelpConfirming}
+        isDeclining={postedHelpDeclining}
+      />
+
+      <JobDetailsModal
+        isOpen={Boolean(postedHelpPreviewJob)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPostedHelpPreviewJob(null);
+            setPostedHelpEngagement("idle");
+            setPostedHelpNotifId(null);
+          }
+        }}
+        job={postedHelpPreviewJob}
+        formatJobTitle={formatJobTitleForModal}
+        isOwnRequest={Boolean(
+          currentUser?.id &&
+            postedHelpPreviewJob &&
+            currentUser.id === (postedHelpPreviewJob as { client_id?: string }).client_id
+        )}
+        previewLayout
+        incomingActionMessage={postedHelpIncomingActionMessage}
+        showAcceptButton={showPostedHelpRespond}
+        onConfirm={showPostedHelpRespond ? handlePostedHelpConfirm : undefined}
+        onDecline={showPostedHelpRespond ? handlePostedHelpDecline : undefined}
+        isConfirming={postedHelpConfirming}
+        isDeclining={postedHelpDeclining}
+      />
     </div>
   );
 }
