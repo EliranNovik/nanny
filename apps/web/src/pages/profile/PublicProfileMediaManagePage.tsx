@@ -149,12 +149,13 @@ export default function PublicProfileMediaManagePage() {
       description="Photos and videos shown on your public profile when others view it."
     >
       <div className="mb-8">
-        <Button variant="outline" size="lg" className="w-full gap-2 sm:w-auto" asChild>
-          <Link to={`/profile/${user.id}`}>
-            <ExternalLink className="h-4 w-4" />
-            View public profile
-          </Link>
-        </Button>
+        <Link
+          to={`/profile/${user.id}`}
+          className="inline-flex items-center gap-2 text-base font-semibold text-foreground/90 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm"
+        >
+          <ExternalLink className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+          View public profile
+        </Link>
       </div>
 
       {loading ? (
@@ -197,7 +198,7 @@ export default function PublicProfileMediaManagePage() {
               <Button
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant="default"
                 disabled={uploading}
                 onClick={() => imageInputRef.current?.click()}
                 className="gap-1.5"
@@ -245,7 +246,7 @@ export default function PublicProfileMediaManagePage() {
               <Button
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant="default"
                 disabled={uploading}
                 onClick={() => videoInputRef.current?.click()}
                 className="gap-1.5"

@@ -203,7 +203,14 @@ export function JobDetailsModal({
                         alt={formatJobTitle(job)}
                         className="h-full w-full object-cover select-none"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-black/75" />
+                    <div
+                        className={cn(
+                            "absolute inset-0",
+                            incomingSimple && !isOwnRequest
+                                ? "bg-gradient-to-b from-black/30 via-black/10 to-black/50"
+                                : "bg-gradient-to-b from-black/45 via-black/20 to-black/75"
+                        )}
+                    />
 
                     {!sheetPresentation && (
                     <button
@@ -229,7 +236,14 @@ export function JobDetailsModal({
                     </div>
 
                     {/* Bottom stack: own-request meta + client (gradient dock) */}
-                    <div className="absolute inset-x-0 bottom-0 z-40 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-3 pb-3 pt-10 sm:px-4 sm:pb-3.5 sm:pt-12">
+                    <div
+                        className={cn(
+                            "absolute inset-x-0 bottom-0 z-40 px-3 pb-3 pt-10 sm:px-4 sm:pb-3.5 sm:pt-12",
+                            incomingSimple && !isOwnRequest
+                                ? "bg-gradient-to-t from-black/65 via-black/25 to-transparent"
+                                : "bg-gradient-to-t from-black/85 via-black/50 to-transparent"
+                        )}
+                    >
                         {isOwnRequest && (
                             <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
                                 <span className="text-[10px] font-medium uppercase tracking-wider text-white/75">
@@ -242,60 +256,124 @@ export function JobDetailsModal({
                             </div>
                         )}
 
-                        {client && (
-                            <div className="rounded-xl border border-white/15 bg-black/30 p-3 backdrop-blur-md sm:p-3.5">
-                                {!isOwnRequest && (
-                                    <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
-                                        <span className="text-[9px] font-medium uppercase tracking-wider text-white/65">
-                                            {job.community_post_expires_at
-                                                ? "Post expires in"
-                                                : "Invite sent"}
-                                        </span>
-                                        <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums text-white/90">
-                                            <Clock className="h-3 w-3 shrink-0 text-white/50" aria-hidden />
-                                            {job.community_post_expires_at ? (
-                                                <ExpiryCountdown
-                                                    compact
-                                                    expiresAtIso={job.community_post_expires_at}
-                                                    endedLabel="Ended"
-                                                    className="text-[10px] font-semibold text-white/95"
-                                                />
-                                            ) : (
-                                                <span className="text-white/80">
-                                                    <LiveTimer createdAt={job.created_at} />
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
+                        {client &&
+                            (incomingSimple && !isOwnRequest ? (
                                 <div className="flex items-center gap-3">
-                                    <Avatar className="h-12 w-12 shrink-0 shadow-lg ring-2 ring-white/10 sm:h-14 sm:w-14">
-                                        <AvatarImage src={client.photo_url || ''} className="object-cover" />
-                                        <AvatarFallback className="bg-zinc-800 text-lg font-bold text-white">
-                                            {client.full_name?.charAt(0)}
-                                        </AvatarFallback>
-                                    </Avatar>
+                                    <Link
+                                        to={job.client_id ? `/profile/${job.client_id}` : "#"}
+                                        onClick={(e) => {
+                                            if (!job.client_id) {
+                                                e.preventDefault();
+                                                return;
+                                            }
+                                            onOpenChange(false);
+                                        }}
+                                        className="shrink-0 rounded-full outline-none shadow-lg transition-transform hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                                        aria-label={`View ${client.full_name || "client"} public profile`}
+                                    >
+                                        <Avatar className="h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20">
+                                            <AvatarImage src={client.photo_url || ""} className="object-cover" />
+                                            <AvatarFallback className="bg-white/20 text-xl font-bold text-white backdrop-blur-sm sm:text-2xl">
+                                                {client.full_name?.charAt(0)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    </Link>
                                     <div className="flex min-w-0 flex-1 flex-col">
-                                        <span className="truncate text-base font-bold leading-tight text-white drop-shadow-sm sm:text-lg">
+                                        <span className="truncate text-lg font-bold leading-tight text-white drop-shadow-md sm:text-xl">
                                             {client.full_name}
                                         </span>
-                                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                                            <StarRating
-                                                rating={client.average_rating || 0}
-                                                size="sm"
-                                                starClassName="text-white"
-                                                emptyStarClassName="text-white/30"
-                                                numberClassName="text-white/70"
-                                            />
-                                            <span className="text-[9px] font-semibold uppercase tracking-wide text-white/45">
-                                                {client.total_ratings || 0} reviews
-                                            </span>
+                                        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                                            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                <StarRating
+                                                    rating={client.average_rating || 0}
+                                                    size="md"
+                                                    starClassName="text-white drop-shadow-sm"
+                                                    emptyStarClassName="text-white/35"
+                                                    numberClassName="text-white/95 drop-shadow-sm"
+                                                />
+                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-white/75 sm:text-[11px]">
+                                                    {client.total_ratings || 0} reviews
+                                                </span>
+                                            </div>
+                                            <div
+                                                className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] tabular-nums text-white/95"
+                                                title={
+                                                    job.community_post_expires_at
+                                                        ? "Time until post expires"
+                                                        : "Time since invite sent"
+                                                }
+                                            >
+                                                <Clock className="h-3 w-3 shrink-0 text-white/60" aria-hidden />
+                                                {job.community_post_expires_at ? (
+                                                    <ExpiryCountdown
+                                                        compact
+                                                        expiresAtIso={job.community_post_expires_at}
+                                                        endedLabel="Ended"
+                                                        className="text-[10px] font-semibold text-white/95"
+                                                    />
+                                                ) : (
+                                                    <span className="text-white/90">
+                                                        <LiveTimer createdAt={job.created_at} />
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="rounded-xl border border-white/15 bg-black/30 p-3 backdrop-blur-md sm:p-3.5">
+                                    {!isOwnRequest && (
+                                        <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                                            <span className="text-[9px] font-medium uppercase tracking-wider text-white/65">
+                                                {job.community_post_expires_at
+                                                    ? "Post expires in"
+                                                    : "Invite sent"}
+                                            </span>
+                                            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums text-white/90">
+                                                <Clock className="h-3 w-3 shrink-0 text-white/50" aria-hidden />
+                                                {job.community_post_expires_at ? (
+                                                    <ExpiryCountdown
+                                                        compact
+                                                        expiresAtIso={job.community_post_expires_at}
+                                                        endedLabel="Ended"
+                                                        className="text-[10px] font-semibold text-white/95"
+                                                    />
+                                                ) : (
+                                                    <span className="text-white/80">
+                                                        <LiveTimer createdAt={job.created_at} />
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-12 w-12 shrink-0 shadow-lg ring-2 ring-white/10 sm:h-14 sm:w-14">
+                                            <AvatarImage src={client.photo_url || ""} className="object-cover" />
+                                            <AvatarFallback className="bg-zinc-800 text-lg font-bold text-white">
+                                                {client.full_name?.charAt(0)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex min-w-0 flex-1 flex-col">
+                                            <span className="truncate text-base font-bold leading-tight text-white drop-shadow-sm sm:text-lg">
+                                                {client.full_name}
+                                            </span>
+                                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                                                <StarRating
+                                                    rating={client.average_rating || 0}
+                                                    size="sm"
+                                                    starClassName="text-white"
+                                                    emptyStarClassName="text-white/30"
+                                                    numberClassName="text-white/70"
+                                                />
+                                                <span className="text-[9px] font-semibold uppercase tracking-wide text-white/45">
+                                                    {client.total_ratings || 0} reviews
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                     </div>
                 </div>
 

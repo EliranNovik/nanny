@@ -79,12 +79,13 @@ export default function FreelancerProfileHub() {
             {profile?.city || "Complete your details"}
           </p>
           {user?.id && (
-            <Button variant="outline" size="lg" className="mt-8 w-full max-w-md gap-2" asChild>
-              <Link to={`/profile/${user.id}`}>
-                <ExternalLink className="h-4 w-4" />
-                View public profile
-              </Link>
-            </Button>
+            <Link
+              to={`/profile/${user.id}`}
+              className="mt-8 inline-flex items-center justify-center gap-2 text-base font-semibold text-foreground/90 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm"
+            >
+              <ExternalLink className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+              View public profile
+            </Link>
           )}
         </div>
 

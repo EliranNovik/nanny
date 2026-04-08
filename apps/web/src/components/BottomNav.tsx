@@ -579,10 +579,7 @@ export function BottomNav() {
                   onClick={() => setFabMenuOpen((v) => !v)}
                   className={cn(
                     "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all active:scale-95",
-                    "shadow-[0_10px_28px_rgba(0,0,0,0.2)] shadow-primary/25 outline-none ring-0 ring-offset-0",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
-                    "mt-0 md:shadow-lg md:hover:scale-105",
-                    fabMenuOpen && "ring-2 ring-primary/40 ring-offset-2"
+                    "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-inset"
                   )}
                   aria-label="Create post or browse"
                   aria-expanded={fabMenuOpen}

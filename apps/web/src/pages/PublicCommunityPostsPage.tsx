@@ -12,6 +12,7 @@ import {
   type CommunityPostImage,
   type CommunityPostWithMeta,
 } from "@/components/community/CommunityPostCard";
+import { CommunityPostsCategoryNativeSelect } from "@/components/community/CommunityPostsCategoryNativeSelect";
 import {
   isAllHelpCategory,
   isServiceCategoryId,
@@ -57,11 +58,12 @@ export default function PublicCommunityPostsPage() {
       : "/client/home"
     : "/";
 
-  const categoryTitle = isAllHelp
-    ? "All help"
-    : validCategory
+  const categoryTitle =
+    validCategory !== null
       ? serviceCategoryLabel(validCategory)
-      : null;
+      : isAllHelp || !categoryFilter
+        ? "All help"
+        : null;
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -282,7 +284,7 @@ export default function PublicCommunityPostsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-full text-xs"
+                className="hidden rounded-full text-xs md:inline-flex"
                 onClick={() => {
                   setSearchParams({});
                 }}
@@ -291,6 +293,12 @@ export default function PublicCommunityPostsPage() {
               </Button>
             )}
           </div>
+
+          <CommunityPostsCategoryNativeSelect
+            className="md:hidden"
+            basePath="/public/posts"
+            categoryParam={categoryFilter}
+          />
 
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -304,14 +312,14 @@ export default function PublicCommunityPostsPage() {
               </p>
             </div>
             {user ? (
-              <Button type="button" className="gap-2 rounded-full" asChild>
+              <Button type="button" className="gap-2 rounded-full shrink-0" asChild>
                 <Link to="/availability">
                   <Plus className="h-4 w-4" />
                   Set availability
                 </Link>
               </Button>
             ) : (
-              <Button type="button" className="gap-2 rounded-full" asChild>
+              <Button type="button" className="gap-2 rounded-full shrink-0" asChild>
                 <Link to={`/login?redirect=${encodeURIComponent("/availability")}`}>
                   <Plus className="h-4 w-4" />
                   Set availability
@@ -327,23 +335,12 @@ export default function PublicCommunityPostsPage() {
           </div>
         ) : posts.length === 0 ? (
           <Card className="mx-auto w-full max-w-3xl border-dashed md:max-w-4xl">
-            <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+            <CardContent className="flex flex-col items-center py-16 text-center">
               <p className="text-sm font-medium text-muted-foreground">
                 {validCategory
                   ? "No offers in this category yet."
                   : "No posts yet—check back soon."}
               </p>
-              {user ? (
-                <Button type="button" asChild>
-                  <Link to="/availability">Set availability</Link>
-                </Button>
-              ) : (
-                <Button type="button" asChild>
-                  <Link to={`/login?redirect=${encodeURIComponent("/availability")}`}>
-                    Sign in to post
-                  </Link>
-                </Button>
-              )}
             </CardContent>
           </Card>
         ) : (

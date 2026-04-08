@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
@@ -47,6 +47,7 @@ import {
   type AvailabilityPayload,
 } from "@/lib/availabilityPosts";
 import { cn } from "@/lib/utils";
+import { CommunityPostsCategoryNativeSelect } from "@/components/community/CommunityPostsCategoryNativeSelect";
 
 type ProfileSnippet = {
   id: string;
@@ -89,6 +90,7 @@ const QUICK_SELECT_EMPTY = "__quick_empty__";
 
 export default function CommunityPostsPage() {
   const navigate = useNavigate();
+  const { pathname: postsBasePath } = useLocation();
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get("category");
   const isAllHelp = isAllHelpCategory(categoryParam);
@@ -360,16 +362,22 @@ export default function CommunityPostsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-full text-xs"
-                onClick={() => navigate("/availability")}
+                className="hidden rounded-full text-xs md:inline-flex"
+                onClick={() => navigate(postsBasePath)}
               >
                 All categories
               </Button>
-              <Badge variant="secondary" className="text-xs font-bold">
+              <Badge variant="secondary" className="hidden text-xs font-bold md:inline-flex">
                 {isAllHelp ? "All help" : serviceCategoryLabel(categoryFilter as ServiceCategoryId)}
               </Badge>
             </div>
           )}
+
+          <CommunityPostsCategoryNativeSelect
+            className="md:hidden"
+            basePath={postsBasePath}
+            categoryParam={categoryParam}
+          />
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
