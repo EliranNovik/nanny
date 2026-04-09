@@ -21,8 +21,8 @@ type ProfileKnockMenuProps = {
   viewerName: string | null;
   disabled?: boolean;
   className?: string;
-  /** Visual variant: floating on image vs compact in header */
-  variant?: "hero" | "inline";
+  /** hero = cover image; inline = compact; contact = same size as public profile chat/WA/TG row */
+  variant?: "hero" | "inline" | "contact";
 };
 
 export function ProfileKnockMenu({
@@ -101,7 +101,9 @@ export function ProfileKnockMenu({
   const btnHero =
     variant === "hero"
       ? "h-14 w-14 rounded-full border-2 border-white/90 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg dark:border-zinc-900"
-      : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
+      : variant === "contact"
+        ? "h-12 w-12 shrink-0 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
+        : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -119,12 +121,16 @@ export function ProfileKnockMenu({
       >
         {sending ? (
           <Loader2
-            className={variant === "hero" ? "h-6 w-6 animate-spin" : "h-5 w-5 animate-spin"}
+            className={
+              variant === "hero" ? "h-6 w-6 animate-spin" : "h-5 w-5 animate-spin"
+            }
             aria-hidden
           />
         ) : (
           <BellRing
-            className={variant === "hero" ? "h-7 w-7" : "h-6 w-6"}
+            className={
+              variant === "hero" ? "h-7 w-7" : variant === "contact" ? "h-5 w-5" : "h-6 w-6"
+            }
             strokeWidth={2}
             aria-hidden
           />

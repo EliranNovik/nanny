@@ -128,24 +128,24 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
 
         return (
             <div className="mt-2 md:hidden">
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-2xl bg-black/[0.02] px-3 py-3 dark:bg-white/[0.04]">
+                <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
                     {rows.map((r) => (
                         <div key={r.k} className="min-w-0">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                            <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
                                 {r.k}
                             </p>
-                            <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+                            <p className="mt-1 truncate text-[15px] font-semibold text-slate-800 dark:text-slate-100">
                                 {r.v}
                             </p>
                         </div>
                     ))}
                 </div>
                 {notes && (
-                    <div className="mt-3 rounded-2xl bg-black/[0.02] px-3 py-3 dark:bg-white/[0.04]">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    <div className="mt-3 rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
+                        <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
                             Notes
                         </p>
-                        <p className="mt-1 whitespace-pre-wrap text-[13px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100">
+                        <p className="mt-1.5 whitespace-pre-wrap text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100">
                             {notes}
                         </p>
                     </div>
@@ -278,7 +278,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
         const config = map[status] || { label: status, className: "bg-slate-400 text-white" };
         return { 
             label: config.label, 
-            className: cn("h-7 px-3 rounded-full text-[10px] uppercase font-black tracking-wide border-none shadow-md transition-transform hover:scale-105", config.className)
+            className: cn("h-7 px-3 rounded-full text-[11px] uppercase font-black tracking-wide border-none shadow-md transition-transform hover:scale-105", config.className)
         };
     }
 
@@ -338,7 +338,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                     <div className="space-y-8">
                         <div>
                             <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
-                                <Briefcase className="w-6 h-6 text-orange-500" /> Active Jobs
+                                <Briefcase className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> Active Jobs
                             </h2>
                             <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
                                 {liveSectionSubtitle}
@@ -383,7 +383,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                             )} />
                                             {/* Mobile: left square thumb + compact header */}
                                             <div className="flex gap-3 p-3 md:hidden">
-                                                <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
+                                                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
                                                     {job.service_type === "pickup_delivery" ? (
                                                         <div className="absolute inset-0 z-0">
                                                             <JobMap job={job} />
@@ -404,11 +404,11 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                                         onClick={(e) => goToPublicProfile(e, otherPartyId)}
                                                         disabled={!otherPartyId}
                                                     >
-                                                        <Avatar className="h-11 w-11 shrink-0 border border-slate-200 dark:border-zinc-600">
+                                                        <Avatar className="h-12 w-12 shrink-0 border border-slate-200 dark:border-zinc-600">
                                                             <AvatarImage src={otherParty?.photo_url || ""} />
                                                             <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white">{otherParty?.full_name?.charAt(0) || "C"}</AvatarFallback>
                                                         </Avatar>
-                                                        <h3 className="truncate text-[15px] font-black leading-tight text-slate-900 dark:text-white">{otherParty?.full_name || "Client"}</h3>
+                                                        <h3 className="truncate text-base font-black leading-tight text-slate-900 dark:text-white">{otherParty?.full_name || "Client"}</h3>
                                                     </button>
                                                     {otherParty?.average_rating ? (
                                                         <StarRating
@@ -420,9 +420,9 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                                             emptyStarClassName="text-slate-900/25 dark:text-neutral-500/35"
                                                         />
                                                     ) : (
-                                                        <span className="text-[12px] font-semibold text-slate-500 dark:text-slate-400">New client</span>
+                                                        <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">New client</span>
                                                     )}
-                                                    <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
+                                                    <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
                                                 </div>
                                                 <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
                                                     <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
@@ -545,7 +545,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                         <div>
                             <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
                                 <span className="flex items-center gap-2.5">
-                                    <CheckCircle2 className="w-6 h-6 text-orange-500" /> Past Jobs
+                                    <CheckCircle2 className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> Past Jobs
                                 </span>
                             </h2>
                             <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
@@ -589,7 +589,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                             )} />
                                             {/* Mobile: thumb + profile block + arrow (matches Pending Jobs) */}
                                             <div className="flex gap-3 p-3 md:hidden">
-                                                <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
+                                                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
                                                     {job.service_type === "pickup_delivery" ? (
                                                         <div className="absolute inset-0 z-0">
                                                             <JobMap job={job} />
@@ -606,11 +606,11 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                                         onClick={(e) => goToPublicProfile(e, otherPartyId)}
                                                         disabled={!otherPartyId}
                                                     >
-                                                        <Avatar className="h-11 w-11 shrink-0 border border-slate-200 dark:border-zinc-600">
+                                                        <Avatar className="h-12 w-12 shrink-0 border border-slate-200 dark:border-zinc-600">
                                                             <AvatarImage src={otherParty?.photo_url || ""} />
                                                             <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white">{otherParty?.full_name?.charAt(0) || "U"}</AvatarFallback>
                                                         </Avatar>
-                                                        <h3 className="truncate text-[15px] font-black leading-tight text-slate-900 dark:text-white">{otherParty?.full_name || "User"}</h3>
+                                                        <h3 className="truncate text-base font-black leading-tight text-slate-900 dark:text-white">{otherParty?.full_name || "User"}</h3>
                                                     </button>
                                                     {otherParty?.average_rating ? (
                                                         <StarRating
@@ -623,9 +623,9 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                                             numberClassName="text-slate-900 dark:text-white font-black text-[14px]"
                                                         />
                                                     ) : (
-                                                        <span className="text-[12px] font-semibold text-slate-500">New client</span>
+                                                        <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">New client</span>
                                                     )}
-                                                    <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
+                                                    <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
                                                 </div>
                                                 <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
                                                     <ChevronRight className="h-7 w-7" strokeWidth={2.25} />

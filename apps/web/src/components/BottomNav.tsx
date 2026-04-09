@@ -20,6 +20,7 @@ import { JobsTabBar } from "@/components/jobs/JobsTabBar";
 import { FREELANCER_JOBS_TABS, CLIENT_JOBS_TABS } from "@/components/jobs/jobsTabConfig";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { Separator } from "@/components/ui/separator";
+import { CommunityPostsCategoryNativeSelect } from "@/components/community/CommunityPostsCategoryNativeSelect";
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
@@ -58,6 +59,25 @@ export function BottomNav() {
         : null;
   const showProfileBack = profileBackTarget !== null;
   const isJobsPage = pathnameNorm === "/jobs";
+  /** Own availability, legacy /posts, and public board — category + back live in header */
+  const isCommunityPostsFilterPage =
+    pathnameNorm === "/availability" ||
+    pathnameNorm === "/posts" ||
+    pathnameNorm === "/public/posts";
+  const communityCategoryParam = jobsSearchParams.get("category");
+  const communityHomeFallback =
+    profile?.role === "freelancer"
+      ? "/freelancer/home"
+      : profile?.role === "client"
+        ? "/client/home"
+        : "/";
+  const handleCommunityBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(communityHomeFallback);
+    }
+  };
 
   useEffect(() => {
     if (!mobileSearchOpen) return;
@@ -202,6 +222,16 @@ export function BottomNav() {
     <header className="hidden md:block fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md transition-all dark:border-border/40 dark:bg-card/85">
       <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
         <div className="flex min-w-0 justify-start items-center gap-1.5">
+          {isCommunityPostsFilterPage && (
+            <button
+              type="button"
+              onClick={handleCommunityBack}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
           {user && (
             <button
               type="button"
@@ -245,8 +275,19 @@ export function BottomNav() {
         </div>
 
         <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
-          <div className="w-full min-w-0">
-            <UserSearch />
+          <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-3">
+            {isCommunityPostsFilterPage && (
+              <div className="hidden min-w-0 shrink-0 md:block md:w-[min(11rem,26vw)] lg:w-48">
+                <CommunityPostsCategoryNativeSelect
+                  variant="header"
+                  basePath={location.pathname}
+                  categoryParam={communityCategoryParam}
+                />
+              </div>
+            )}
+            <div className="min-w-0 flex-1 md:max-w-md lg:max-w-xl">
+              <UserSearch />
+            </div>
           </div>
         </div>
 
@@ -272,12 +313,12 @@ export function BottomNav() {
     </header>
   );
 
-  /** Mobile only: floating row — search + notifications (top-right). When search is open, spans width and hides bell. */
+  /** Mobile only: floating row — community pages: back | centered category | search + bell; else search + bell (top-right). */
   const MobileFloatingActions = (
     <div
       className={cn(
         "md:hidden fixed z-[60] pointer-events-none",
-        mobileSearchOpen
+        mobileSearchOpen || isCommunityPostsFilterPage
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
           : "right-[max(0.75rem,env(safe-area-inset-right))]"
       )}
@@ -286,10 +327,34 @@ export function BottomNav() {
       <div
         ref={mobileSearchClusterRef}
         className={cn(
-          "pointer-events-auto flex flex-row flex-nowrap items-center gap-2",
-          mobileSearchOpen ? "w-full justify-end" : "max-w-[calc(100vw-1rem)] justify-end"
+          "pointer-events-auto flex flex-row flex-nowrap items-center gap-1.5",
+          mobileSearchOpen || isCommunityPostsFilterPage
+            ? "w-full"
+            : "max-w-[calc(100vw-1rem)] justify-end",
+          mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end"
         )}
       >
+        {isCommunityPostsFilterPage && (
+          <button
+            type="button"
+            onClick={handleCommunityBack}
+            className="shrink-0 rounded-full border border-border/60 bg-card/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:text-slate-300 dark:hover:bg-muted"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
+        {isCommunityPostsFilterPage && !mobileSearchOpen && (
+          <div className="flex min-w-0 flex-1 justify-center px-0.5">
+            <div className="w-full max-w-[min(15rem,calc(100vw-8.5rem))]">
+              <CommunityPostsCategoryNativeSelect
+                variant="header"
+                basePath={location.pathname}
+                categoryParam={communityCategoryParam}
+              />
+            </div>
+          </div>
+        )}
         {mobileSearchOpen && (
           <div className="min-w-0 flex-1 shrink animate-in fade-in slide-in-from-right-2 duration-200">
             <div className="rounded-2xl border border-slate-200/70 bg-card/95 p-2 shadow-[0_10px_25px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:border-border/50 dark:bg-card/95">
@@ -301,7 +366,7 @@ export function BottomNav() {
             </div>
           </div>
         )}
-        <div className="relative shrink-0">
+        <div className={cn("relative shrink-0", !isCommunityPostsFilterPage && !mobileSearchOpen && "ml-auto")}>
           <button
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}

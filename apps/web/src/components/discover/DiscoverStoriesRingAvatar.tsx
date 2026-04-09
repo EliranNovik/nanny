@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils";
 
-/** Slow-rotating conic ring — hire tab: cool spectrum; work tab: warm spectrum. */
+/** Slow-rotating conic ring — Available now: 3 orange tones; Incoming requests: 3 green tones. */
 const CONIC_HIRE =
-  "conic-gradient(from 0deg, #0ea5e9, #22d3ee, #6366f1, #a855f7, #ec4899, #0ea5e9)";
+  "conic-gradient(from 0deg, #ea580c 0deg, #f97316 120deg, #fb923c 240deg, #ea580c 360deg)";
 const CONIC_WORK =
-  "conic-gradient(from 0deg, #eab308, #fb923c, #f472b6, #a78bfa, #2dd4bf, #eab308)";
+  "conic-gradient(from 0deg, #15803d 0deg, #16a34a 120deg, #22c55e 240deg, #15803d 360deg)";
 
 type Props = {
   children: React.ReactNode;

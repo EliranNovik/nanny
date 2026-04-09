@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -47,7 +47,8 @@ import {
   type AvailabilityPayload,
 } from "@/lib/availabilityPosts";
 import { cn } from "@/lib/utils";
-import { CommunityPostsCategoryNativeSelect } from "@/components/community/CommunityPostsCategoryNativeSelect";
+import { ImageLightboxModal } from "@/components/ImageLightboxModal";
+import type { NavigateFunction } from "react-router-dom";
 
 type ProfileSnippet = {
   id: string;
@@ -87,6 +88,216 @@ const BUCKET = "community-posts";
 const CATEGORY_SELECT_EMPTY = "__category_empty__";
 const STATUS_SELECT_EMPTY = "__status_empty__";
 const QUICK_SELECT_EMPTY = "__quick_empty__";
+
+function OwnAvailabilityPostCard({
+  post,
+  hireCount,
+  navigate,
+}: {
+  post: PostWithMeta;
+  hireCount: number;
+  navigate: NavigateFunction;
+}) {
+  const [imageLightboxIndex, setImageLightboxIndex] = useState<number | null>(null);
+  const imageUrls = useMemo(
+    () => post.images.map((i) => i.image_url).filter((u): u is string => Boolean(u)),
+    [post.images]
+  );
+  const isArchived = post.status === "archived";
+  const expired = Date.parse(post.expires_at) <= Date.now();
+  const description = post.note?.trim() || post.body?.trim() || null;
+  const verified = Boolean(post.author?.is_verified);
+
+  return (
+    <>
+      <Card
+        className={cn(
+          "relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
+          expired &&
+            "border-neutral-300/90 bg-neutral-100 text-neutral-600 shadow-none dark:border-neutral-600 dark:bg-neutral-900/75 dark:text-neutral-400"
+        )}
+        aria-label={expired ? "Expired availability post" : undefined}
+      >
+        <CardContent className="relative z-[1] p-0">
+          <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-2">
+            <Link
+              to={`/profile/${post.author_id}`}
+              className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
+              aria-label={`View ${post.author?.full_name || "your"} public profile`}
+            >
+              <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
+                <AvatarImage
+                  src={post.author?.photo_url ?? undefined}
+                  className="object-cover"
+                  alt=""
+                />
+                <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
+                  {(post.author?.full_name || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="truncate text-base font-semibold leading-tight">
+                  {post.author?.full_name || "Member"}
+                </span>
+                {verified && (
+                  <BadgeCheck
+                    className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                    aria-label="Verified"
+                  />
+                )}
+                {isArchived && (
+                  <Badge variant="outline" className="text-[9px] font-bold">
+                    Archived
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-3.5 pb-6">
+            <p className="text-lg font-semibold leading-snug">{post.title}</p>
+          </div>
+
+          <div className="space-y-2 px-3.5 pb-3">
+            {post.availability_payload?.area_tag && (
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground/80">Area</span>{" "}
+                {post.availability_payload.area_tag}
+              </p>
+            )}
+            {description && (
+              <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
+                {description}
+              </p>
+            )}
+            {imageUrls.length > 0 && (
+              <div className="pt-1">
+                <div
+                  className={cn(
+                    "flex gap-2",
+                    imageUrls.length > 1 && "max-w-full overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
+                  )}
+                >
+                  {imageUrls.map((url, idx) => (
+                    <button
+                      key={post.images[idx]?.id ?? `${post.id}-img-${idx}`}
+                      type="button"
+                      onClick={() => setImageLightboxIndex(idx)}
+                      className={cn(
+                        "shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 dark:border-neutral-700 dark:bg-neutral-900/40",
+                        "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        imageUrls.length === 1
+                          ? "aspect-[4/3] w-full max-w-[160px]"
+                          : "h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20"
+                      )}
+                      aria-label={`View image ${idx + 1} full screen`}
+                    >
+                      <img
+                        src={url}
+                        alt=""
+                        className={cn(
+                          "h-full w-full object-cover",
+                          imageUrls.length === 1 && "aspect-[4/3]"
+                        )}
+                        loading="lazy"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div
+            className={cn(
+              "space-y-2 border-t border-neutral-200 bg-white px-3.5 py-3 dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
+              expired &&
+                "border-neutral-300/80 bg-neutral-100/80 dark:border-neutral-600/80 dark:bg-neutral-900/60"
+            )}
+          >
+            <ExpiryCountdown
+              expiresAtIso={post.expires_at}
+              className={expired ? "text-neutral-500 dark:text-neutral-500" : undefined}
+            />
+            <p className="text-xs font-medium text-muted-foreground">
+              Posted {new Date(post.created_at).toLocaleString()}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {expired ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="relative gap-2 rounded-xl"
+                  disabled
+                  aria-disabled
+                >
+                  <Users className="h-4 w-4" />
+                  Hire interest
+                  {hireCount > 0 && (
+                    <Badge className="ml-1 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-black tabular-nums">
+                      {hireCount > 99 ? "99+" : hireCount}
+                    </Badge>
+                  )}
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" size="sm" className="relative gap-2 rounded-xl" asChild>
+                  <Link to={`/availability/post/${post.id}/hires`}>
+                    <Users className="h-4 w-4" />
+                    Hire interest
+                    {hireCount > 0 && (
+                      <Badge className="ml-1 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-black tabular-nums">
+                        {hireCount > 99 ? "99+" : hireCount}
+                      </Badge>
+                    )}
+                  </Link>
+                </Button>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn("w-full rounded-xl", expired && "text-neutral-500")}
+              onClick={() => navigate(`/profile/${post.author_id}`)}
+            >
+              View your public profile
+            </Button>
+          </div>
+        </CardContent>
+        {expired && (
+          <>
+            <div
+              className="pointer-events-none absolute inset-0 z-[10] rounded-2xl bg-white/45 dark:bg-black/35"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-0 z-[11] flex items-center justify-center overflow-hidden rounded-2xl"
+              aria-hidden
+            >
+              <span
+                className={cn(
+                  "max-w-[95%] select-none text-center font-black uppercase leading-none tracking-[0.12em] text-neutral-400/45 dark:text-neutral-500/40",
+                  "rotate-[-12deg] text-[clamp(1.75rem,11vw,3.5rem)] sm:text-[clamp(2rem,9vw,4rem)]"
+                )}
+              >
+                Expired
+              </span>
+            </div>
+          </>
+        )}
+      </Card>
+      <ImageLightboxModal
+        images={imageUrls}
+        initialIndex={imageLightboxIndex ?? 0}
+        isOpen={imageLightboxIndex !== null && imageUrls.length > 0}
+        onClose={() => setImageLightboxIndex(null)}
+      />
+    </>
+  );
+}
 
 export default function CommunityPostsPage() {
   const navigate = useNavigate();
@@ -354,7 +565,7 @@ export default function CommunityPostsPage() {
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
-      <div className="app-desktop-shell space-y-6 pt-6 md:pt-8">
+      <div className="app-desktop-shell space-y-6 pt-[3.5rem] md:pt-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-1 md:max-w-4xl">
           {(categoryFilter || isAllHelp) && (
             <div className="flex flex-wrap items-center gap-2">
@@ -373,11 +584,6 @@ export default function CommunityPostsPage() {
             </div>
           )}
 
-          <CommunityPostsCategoryNativeSelect
-            className="md:hidden"
-            basePath={postsBasePath}
-            categoryParam={categoryParam}
-          />
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
@@ -425,172 +631,14 @@ export default function CommunityPostsPage() {
           </Card>
         ) : (
           <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2">
-            {posts.map((post) => {
-              const isArchived = post.status === "archived";
-              const expired = Date.parse(post.expires_at) <= Date.now();
-              const description = post.note?.trim() || post.body?.trim() || null;
-              const coverUrl = post.images[0]?.image_url;
-              const verified = Boolean(post.author?.is_verified);
-              const hireCount = hireInterestCountByPost[post.id] ?? 0;
-              return (
-                <Card
-                  key={post.id}
-                  className={cn(
-                    "relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
-                    expired &&
-                      "border-neutral-300/90 bg-neutral-100 text-neutral-600 shadow-none dark:border-neutral-600 dark:bg-neutral-900/75 dark:text-neutral-400"
-                  )}
-                  aria-label={expired ? "Expired availability post" : undefined}
-                >
-                  <CardContent className="relative z-[1] p-0">
-                    <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-2">
-                      <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
-                        <AvatarImage
-                          src={post.author?.photo_url ?? undefined}
-                          className="object-cover"
-                          alt=""
-                        />
-                        <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
-                          {(post.author?.full_name || "?").charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1 pt-0.5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="truncate text-base font-semibold leading-tight">
-                            {post.author?.full_name || "Member"}
-                          </span>
-                          {verified && (
-                            <BadgeCheck
-                              className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
-                              aria-label="Verified"
-                            />
-                          )}
-                          {isArchived && (
-                            <Badge variant="outline" className="text-[9px] font-bold">
-                              Archived
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="px-3.5 pb-6">
-                      <p className="text-lg font-semibold leading-snug">{post.title}</p>
-                    </div>
-
-                    <div className="space-y-2 px-3.5 pb-3">
-                      {post.availability_payload?.area_tag && (
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground/80">Area</span>{" "}
-                          {post.availability_payload.area_tag}
-                        </p>
-                      )}
-                      {description && (
-                        <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
-                          {description}
-                        </p>
-                      )}
-                      {coverUrl && (
-                        <div className="pt-1">
-                          <div className="w-full max-w-[160px] overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
-                            <img
-                              src={coverUrl}
-                              alt=""
-                              className="aspect-[4/3] w-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      className={cn(
-                        "space-y-2 border-t border-neutral-200 bg-white px-3.5 py-3 dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
-                        expired &&
-                          "border-neutral-300/80 bg-neutral-100/80 dark:border-neutral-600/80 dark:bg-neutral-900/60"
-                      )}
-                    >
-                      <ExpiryCountdown
-                        expiresAtIso={post.expires_at}
-                        className={expired ? "text-neutral-500 dark:text-neutral-500" : undefined}
-                      />
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Posted {new Date(post.created_at).toLocaleString()}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {expired ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="relative gap-2 rounded-xl"
-                            disabled
-                            aria-disabled
-                          >
-                            <Users className="h-4 w-4" />
-                            Hire interest
-                            {hireCount > 0 && (
-                              <Badge className="ml-1 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-black tabular-nums">
-                                {hireCount > 99 ? "99+" : hireCount}
-                              </Badge>
-                            )}
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="relative gap-2 rounded-xl"
-                            asChild
-                          >
-                            <Link to={`/availability/post/${post.id}/hires`}>
-                              <Users className="h-4 w-4" />
-                              Hire interest
-                              {hireCount > 0 && (
-                                <Badge className="ml-1 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-black tabular-nums">
-                                  {hireCount > 99 ? "99+" : hireCount}
-                                </Badge>
-                              )}
-                            </Link>
-                          </Button>
-                        )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className={cn("w-full rounded-xl", expired && "text-neutral-500")}
-                        onClick={() => navigate(`/profile/${post.author_id}`)}
-                      >
-                        View your public profile
-                      </Button>
-                    </div>
-                  </CardContent>
-                  {expired && (
-                    <>
-                      <div
-                        className="pointer-events-none absolute inset-0 z-[10] rounded-2xl bg-white/45 dark:bg-black/35"
-                        aria-hidden
-                      />
-                      <div
-                        className="pointer-events-none absolute inset-0 z-[11] flex items-center justify-center overflow-hidden rounded-2xl"
-                        aria-hidden
-                      >
-                        <span
-                          className={cn(
-                            "max-w-[95%] select-none text-center font-black uppercase leading-none tracking-[0.12em] text-neutral-400/45 dark:text-neutral-500/40",
-                            "rotate-[-12deg] text-[clamp(1.75rem,11vw,3.5rem)] sm:text-[clamp(2rem,9vw,4rem)]"
-                          )}
-                        >
-                          Expired
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </Card>
-              );
-            })}
+            {posts.map((post) => (
+              <OwnAvailabilityPostCard
+                key={post.id}
+                post={post}
+                hireCount={hireInterestCountByPost[post.id] ?? 0}
+                navigate={navigate}
+              />
+            ))}
           </div>
         )}
       </div>

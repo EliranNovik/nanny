@@ -21,6 +21,7 @@ import {
   MapPin,
   Sparkles,
   HeartHandshake,
+  Heart,
   User as UserIcon,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,6 +36,8 @@ import { PUBLIC_PROFILE_MEDIA_BUCKET, publicProfileMediaPublicUrl } from "@/lib/
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { ImageLightboxModal } from "@/components/ImageLightboxModal";
+import { VideoLightboxModal } from "@/components/VideoLightboxModal";
 import {
   formatPriceHintFromPayload,
   getAvailabilityStatusOption,
@@ -207,9 +210,16 @@ export default function PublicProfilePage() {
   const [loadingPostedHelpPreviewId, setLoadingPostedHelpPreviewId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [openingChat, setOpeningChat] = useState(false);
+  const [profileFavorited, setProfileFavorited] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const [profileMediaLightbox, setProfileMediaLightbox] = useState<{
+    urls: string[];
+    initialIndex: number;
+  } | null>(null);
+  const [profileVideoLightboxUrl, setProfileVideoLightboxUrl] = useState<string | null>(null);
 
   async function handleOpenDirectChat() {
     if (!userId || !currentUser || !profile) return;
@@ -298,6 +308,59 @@ export default function PublicProfilePage() {
       setOpeningChat(false);
     }
   }
+
+  async function toggleProfileFavorite() {
+    if (!currentUser || !userId || currentUser.id === userId) return;
+    setFavoriteBusy(true);
+    try {
+      if (profileFavorited) {
+        const { error } = await supabase
+          .from("profile_favorites")
+          .delete()
+          .eq("user_id", currentUser.id)
+          .eq("favorite_user_id", userId);
+        if (error) throw error;
+        setProfileFavorited(false);
+        addToast({ title: "Removed from saved profiles", variant: "success" });
+      } else {
+        const { error } = await supabase.from("profile_favorites").insert({
+          user_id: currentUser.id,
+          favorite_user_id: userId,
+        });
+        if (error) throw error;
+        setProfileFavorited(true);
+        addToast({ title: "Saved — view under Saved", variant: "success" });
+      }
+    } catch (e: unknown) {
+      addToast({
+        title: "Could not update",
+        description: e instanceof Error ? e.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!currentUser?.id || !userId || currentUser.id === userId) {
+      setProfileFavorited(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", currentUser.id)
+        .eq("favorite_user_id", userId)
+        .maybeSingle();
+      if (!cancelled) setProfileFavorited(!!data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, userId]);
 
   useEffect(() => {
     if (!userId || !currentUser?.id) return;
@@ -597,6 +660,7 @@ export default function PublicProfilePage() {
   const isOwnProfile = Boolean(currentUser && userId && currentUser.id === userId);
   const imageRows = mediaItems.filter((m) => m.media_type === "image");
   const videoRows = mediaItems.filter((m) => m.media_type === "video");
+  const galleryImageUrls = imageRows.map((r) => publicProfileMediaPublicUrl(r.storage_path));
 
   async function handleProfileMediaUpload(file: File, kind: "image" | "video") {
     if (!userId || !currentUser || currentUser.id !== userId) return;
@@ -860,8 +924,8 @@ export default function PublicProfilePage() {
       <Card className={cn(profileHistoryCardClass, "w-full cursor-pointer")}>
         <CardContent className="flex items-center justify-between p-6">
           <div className="flex min-w-0 flex-1 items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/10">
-              <HeartHandshake className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/70">
+              <HeartHandshake className="h-6 w-6 text-slate-500 dark:text-slate-400" />
             </div>
             <div className="min-w-0 text-left">
               <p className="font-bold text-slate-900 dark:text-white">
@@ -928,31 +992,55 @@ export default function PublicProfilePage() {
               <CardContent className="p-0 flex flex-col">
                 {/* Mobile: avatar + name / rating; categories full-width below image row */}
                 <div className="relative md:hidden">
-                  {!isOwnProfile &&
-                    currentUser &&
-                    profile.categories &&
-                    profile.categories.length > 0 && (
-                      <div className="absolute right-3 top-2 z-30">
-                        <ProfileKnockMenu
-                          variant="inline"
-                          targetUserId={userId!}
-                          targetRole={profile.role}
-                          categories={profile.categories}
-                          viewerId={currentUser.id}
-                          viewerRole={currentProfile?.role ?? null}
-                          viewerName={currentProfile?.full_name ?? null}
-                        />
-                      </div>
-                    )}
+                  {!isOwnProfile && currentUser && (
+                    <div className="absolute right-3 top-2 z-30">
+                      <button
+                        type="button"
+                        onClick={() => void toggleProfileFavorite()}
+                        disabled={favoriteBusy}
+                        title={profileFavorited ? "Remove from saved" : "Save profile"}
+                        aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
+                        aria-pressed={profileFavorited}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md backdrop-blur-sm transition hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-900/40 dark:bg-zinc-900/95 dark:text-rose-400"
+                      >
+                        {favoriteBusy ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
+                        ) : (
+                          <Heart
+                            className={cn("h-6 w-6", profileFavorited && "fill-rose-500 text-rose-500")}
+                            strokeWidth={profileFavorited ? 0 : 2.25}
+                            aria-hidden
+                          />
+                        )}
+                      </button>
+                    </div>
+                  )}
                   <div className="flex gap-6 px-4 pt-2 pb-1 items-start">
                     <div className="relative h-32 w-32 shrink-0 self-start">
                       {profile.photo_url ? (
-                        <img
-                          src={profile.photo_url}
-                          alt={profile.full_name ? `${profile.full_name} profile photo` : "Profile photo"}
-                          className="h-full w-full rounded-full object-cover ring-2 ring-slate-200/90 dark:ring-zinc-600"
-                          loading="eager"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = profile.photo_url;
+                            if (!url) return;
+                            setProfileMediaLightbox({
+                              urls: [url],
+                              initialIndex: 0,
+                            });
+                          }}
+                          className="relative block h-full w-full rounded-full ring-2 ring-slate-200/90 transition active:scale-[0.98] dark:ring-zinc-600"
+                          aria-label="View profile photo full screen"
+                        >
+                          <img
+                            src={profile.photo_url}
+                            alt={profile.full_name ? `${profile.full_name} profile photo` : "Profile photo"}
+                            className="h-full w-full rounded-full object-cover"
+                            loading="eager"
+                          />
+                          <div className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-md dark:border-zinc-900">
+                            <ShieldCheck className="h-4 w-4" />
+                          </div>
+                        </button>
                       ) : (
                         <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-muted to-primary/10 ring-2 ring-slate-200/90 dark:ring-zinc-600">
                           <span className="text-3xl font-black uppercase tracking-tight text-primary/60">
@@ -960,11 +1048,13 @@ export default function PublicProfilePage() {
                           </span>
                         </div>
                       )}
-                      <div className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-md dark:border-zinc-900">
-                        <ShieldCheck className="h-4 w-4" />
-                      </div>
+                      {!profile.photo_url ? (
+                        <div className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-md dark:border-zinc-900">
+                          <ShieldCheck className="h-4 w-4" />
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="min-w-0 flex-1 flex flex-col items-stretch justify-start gap-0.5 text-left pt-0">
+                    <div className="min-w-0 flex-1 flex flex-col items-stretch justify-start gap-0.5 pr-12 text-left pt-0 md:pr-0">
                       <h1 className="text-[1.65rem] font-black leading-[1.15] tracking-tight text-slate-900 dark:text-white sm:text-[1.75rem]">
                         {profile.full_name}
                       </h1>
@@ -1020,22 +1110,44 @@ export default function PublicProfilePage() {
                       </span>
                     </div>
                   )}
+                  {profile.photo_url ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = profile.photo_url;
+                        if (!url) return;
+                        setProfileMediaLightbox({
+                          urls: [url],
+                          initialIndex: 0,
+                        });
+                      }}
+                      className="absolute inset-0 z-[5] cursor-zoom-in bg-transparent"
+                      aria-label="View profile photo full screen"
+                    />
+                  ) : null}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" aria-hidden />
-                  <div className="pointer-events-auto absolute right-3 top-3 z-20 flex items-center gap-2">
-                    {!isOwnProfile &&
-                      currentUser &&
-                      profile.categories &&
-                      profile.categories.length > 0 && (
-                        <ProfileKnockMenu
-                          variant="hero"
-                          targetUserId={userId!}
-                          targetRole={profile.role}
-                          categories={profile.categories}
-                          viewerId={currentUser.id}
-                          viewerRole={currentProfile?.role ?? null}
-                          viewerName={currentProfile?.full_name ?? null}
-                        />
-                      )}
+                  <div className="pointer-events-auto absolute right-3 top-3 z-20 flex flex-row-reverse items-center gap-2">
+                    {!isOwnProfile && currentUser && (
+                      <button
+                        type="button"
+                        onClick={() => void toggleProfileFavorite()}
+                        disabled={favoriteBusy}
+                        title={profileFavorited ? "Remove from saved" : "Save profile"}
+                        aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
+                        aria-pressed={profileFavorited}
+                        className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/90 bg-white/95 text-rose-500 shadow-lg backdrop-blur-sm transition hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-zinc-900 dark:bg-zinc-900/95 dark:text-rose-400"
+                      >
+                        {favoriteBusy ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
+                        ) : (
+                          <Heart
+                            className={cn("h-[22px] w-[22px]", profileFavorited && "fill-rose-500 text-rose-500")}
+                            strokeWidth={profileFavorited ? 0 : 2.25}
+                            aria-hidden
+                          />
+                        )}
+                      </button>
+                    )}
                     <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white/90 bg-emerald-500 text-white shadow-lg dark:border-zinc-900">
                       <ShieldCheck className="h-4 w-4" />
                     </div>
@@ -1083,7 +1195,7 @@ export default function PublicProfilePage() {
 
                 <div className="flex flex-col items-stretch px-4 pt-5 pb-4 text-left sm:px-5 md:items-center md:px-7 md:pt-2 md:pb-4 md:text-center sm:px-8">
                 <div className="w-full border-t-0 pt-0 md:border-t md:border-slate-100 md:pt-6 md:dark:border-white/5">
-                  <div className="mb-6 flex items-center justify-center gap-5 py-3 md:mb-8 md:gap-4 md:py-2">
+                  <div className="mb-6 flex flex-wrap items-center justify-center gap-4 py-3 sm:gap-5 md:mb-8 md:gap-4 md:py-2">
                     <button
                       type="button"
                       onClick={() => void handleOpenDirectChat()}
@@ -1098,6 +1210,20 @@ export default function PublicProfilePage() {
                         <MessageSquare className="h-5 w-5" strokeWidth={2} />
                       )}
                     </button>
+                    {!isOwnProfile &&
+                      currentUser &&
+                      profile.categories &&
+                      profile.categories.length > 0 && (
+                        <ProfileKnockMenu
+                          variant="contact"
+                          targetUserId={userId!}
+                          targetRole={profile.role}
+                          categories={profile.categories}
+                          viewerId={currentUser.id}
+                          viewerRole={currentProfile?.role ?? null}
+                          viewerName={currentProfile?.full_name ?? null}
+                        />
+                      )}
                     {profile.whatsapp_number && (
                       <button
                         type="button"
@@ -1202,19 +1328,34 @@ export default function PublicProfilePage() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {imageRows.map((row) => (
+                        {imageRows.map((row, idx) => (
                           <div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted">
-                            <img
-                              src={publicProfileMediaPublicUrl(row.storage_path)}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setProfileMediaLightbox({
+                                  urls: galleryImageUrls,
+                                  initialIndex: idx,
+                                })
+                              }
+                              className="absolute inset-0 block h-full w-full"
+                              aria-label="View photo full screen"
+                            >
+                              <img
+                                src={publicProfileMediaPublicUrl(row.storage_path)}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
                             {isOwnProfile && (
                               <button
                                 type="button"
                                 disabled={uploadingMedia}
-                                onClick={() => void handleDeleteProfileMedia(row)}
-                                className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100 md:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleDeleteProfileMedia(row);
+                                }}
+                                className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100 md:opacity-100"
                                 aria-label="Remove photo"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -1247,27 +1388,45 @@ export default function PublicProfilePage() {
                       </div>
                     ) : (
                       <div className="flex flex-col gap-4">
-                        {videoRows.map((row) => (
-                          <div key={row.id} className="group relative overflow-hidden rounded-xl bg-black">
-                            <video
-                              src={publicProfileMediaPublicUrl(row.storage_path)}
-                              controls
-                              playsInline
-                              className="max-h-[min(70vh,420px)] w-full"
-                            />
-                            {isOwnProfile && (
-                              <button
-                                type="button"
-                                disabled={uploadingMedia}
-                                onClick={() => void handleDeleteProfileMedia(row)}
-                                className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-md transition hover:bg-black/70"
-                                aria-label="Remove video"
+                        {videoRows.map((row) => {
+                          const videoSrc = publicProfileMediaPublicUrl(row.storage_path);
+                          return (
+                            <div key={row.id} className="group relative overflow-hidden rounded-xl bg-black">
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setProfileVideoLightboxUrl(videoSrc)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setProfileVideoLightboxUrl(videoSrc);
+                                  }
+                                }}
+                                className="cursor-pointer outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                aria-label="Open video full screen"
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                                <video
+                                  src={videoSrc}
+                                  muted
+                                  playsInline
+                                  preload="metadata"
+                                  className="pointer-events-none max-h-[min(70vh,420px)] w-full object-contain"
+                                />
+                              </div>
+                              {isOwnProfile && (
+                                <button
+                                  type="button"
+                                  disabled={uploadingMedia}
+                                  onClick={() => void handleDeleteProfileMedia(row)}
+                                  className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-md transition hover:bg-black/70"
+                                  aria-label="Remove video"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </TabsContent>
@@ -1330,8 +1489,8 @@ export default function PublicProfilePage() {
                       <Card className={cn(profileHistoryCardClass, "cursor-pointer")}>
                         <CardContent className="flex items-center justify-between p-6">
                           <div className="flex min-w-0 flex-1 items-center gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
-                              <Sparkles className="h-6 w-6 text-primary" />
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/70">
+                              <Sparkles className="h-6 w-6 text-slate-500 dark:text-slate-400" />
                             </div>
                             <div className="min-w-0 text-left">
                               <p className="line-clamp-1 font-bold text-slate-900 dark:text-white">
@@ -1415,8 +1574,8 @@ export default function PublicProfilePage() {
                       <Card className={cn(profileHistoryCardClass, isPending && "cursor-pointer")}>
                         <CardContent className="flex items-center justify-between p-6">
                           <div className="flex min-w-0 flex-1 items-center gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10">
-                              <Clock className="h-6 w-6 text-orange-500" />
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/70">
+                              <Clock className="h-6 w-6 text-slate-500 dark:text-slate-400" />
                             </div>
                             <div className="min-w-0 text-left">
                               <p className="font-bold capitalize text-slate-900 dark:text-white">
@@ -1491,8 +1650,8 @@ export default function PublicProfilePage() {
                   >
                     <CardContent className="flex items-center justify-between p-6">
                       <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/10">
-                          <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/70">
+                          <CheckCircle2 className="h-6 w-6 text-slate-500 dark:text-slate-400" />
                         </div>
                         <div>
                           <p className="font-bold capitalize text-slate-900 dark:text-white">
@@ -1629,6 +1788,18 @@ export default function PublicProfilePage() {
         onDecline={showPostedHelpRespond ? handlePostedHelpDecline : undefined}
         isConfirming={postedHelpConfirming}
         isDeclining={postedHelpDeclining}
+      />
+
+      <ImageLightboxModal
+        images={profileMediaLightbox?.urls ?? []}
+        initialIndex={profileMediaLightbox?.initialIndex ?? 0}
+        isOpen={profileMediaLightbox != null}
+        onClose={() => setProfileMediaLightbox(null)}
+      />
+      <VideoLightboxModal
+        src={profileVideoLightboxUrl}
+        isOpen={profileVideoLightboxUrl != null}
+        onClose={() => setProfileVideoLightboxUrl(null)}
       />
     </div>
   );

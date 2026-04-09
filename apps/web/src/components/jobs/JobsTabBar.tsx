@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -16,6 +16,10 @@ interface JobsTabBarProps {
 
 const TAB_CONTROL_SURFACE =
   "rounded-full border border-border/60 bg-card/90 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:border dark:border-border/60 dark:hover:bg-muted";
+
+/** Mobile: neutral, light frame — no primary/orange chip look */
+const MOBILE_TAB_SURFACE =
+  "rounded-xl border border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-sm transition-colors dark:border-border/50 dark:bg-zinc-900/50";
 
 export function JobsTabBar({
   menuAlign = "right",
@@ -159,20 +163,6 @@ export function JobsTabBar({
     return counts[tabId] ?? 0;
   }
 
-  const tabIds = tabs.map((t) => t.id);
-  const idx = tabIds.indexOf(activeId);
-  const safeIdx = idx >= 0 ? idx : 0;
-  const prevTabId = tabIds[(safeIdx - 1 + tabIds.length) % tabIds.length];
-  const nextTabId = tabIds[(safeIdx + 1) % tabIds.length];
-
-  function goPrev() {
-    select(prevTabId);
-  }
-
-  function goNext() {
-    select(nextTabId);
-  }
-
   const ActiveIcon = active.icon;
 
   const menuPositionClass =
@@ -185,22 +175,11 @@ export function JobsTabBar({
   return (
     <div ref={containerRef} className="relative shrink-0 md:max-w-full">
       {!hideMobile && (
-        <div className="flex w-full max-w-[min(100vw-5rem,22rem)] items-center gap-1.5 md:hidden">
-          <button
-            type="button"
-            onClick={goPrev}
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 dark:text-slate-300",
-              TAB_CONTROL_SURFACE
-            )}
-            aria-label={`Previous tab: ${tabs.find((t) => t.id === prevTabId)?.label ?? ""}`}
-          >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
-          </button>
+        <div className="flex w-full max-w-[min(100vw-2rem,22rem)] items-center md:hidden">
           <div className="relative min-w-0 flex-1">
-            <div className={cn("relative min-w-0", TAB_CONTROL_SURFACE)}>
+            <div className={cn("relative min-w-0", MOBILE_TAB_SURFACE)}>
               <ActiveIcon
-                className="pointer-events-none absolute left-3 top-1/2 z-[3] h-4 w-4 -translate-y-1/2 text-primary"
+                className="pointer-events-none absolute left-3 top-1/2 z-[3] h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
                 aria-hidden
               />
               <select
@@ -229,34 +208,11 @@ export function JobsTabBar({
               />
             </div>
           </div>
-          <button
-            type="button"
-            onClick={goNext}
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 dark:text-slate-300",
-              TAB_CONTROL_SURFACE
-            )}
-            aria-label={`Next tab: ${tabs.find((t) => t.id === nextTabId)?.label ?? ""}`}
-          >
-            <ChevronRight className="h-5 w-5" aria-hidden />
-          </button>
         </div>
       )}
 
       {!hideDesktop && (
-        <div className="hidden w-full min-w-0 items-center justify-center gap-2 md:flex">
-          <button
-            type="button"
-            onClick={goPrev}
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 dark:text-slate-300",
-              TAB_CONTROL_SURFACE
-            )}
-            aria-label={`Previous tab: ${tabs.find((t) => t.id === prevTabId)?.label ?? ""}`}
-          >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
-          </button>
-
+        <div className="hidden w-full min-w-0 items-center justify-center md:flex">
           <div className="relative shrink-0">
             <button
               type="button"
@@ -336,18 +292,6 @@ export function JobsTabBar({
               </div>
             )}
           </div>
-
-          <button
-            type="button"
-            onClick={goNext}
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 dark:text-slate-300",
-              TAB_CONTROL_SURFACE
-            )}
-            aria-label={`Next tab: ${tabs.find((t) => t.id === nextTabId)?.label ?? ""}`}
-          >
-            <ChevronRight className="h-5 w-5" aria-hidden />
-          </button>
         </div>
       )}
     </div>

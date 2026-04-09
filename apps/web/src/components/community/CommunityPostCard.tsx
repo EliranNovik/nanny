@@ -1,5 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import { BadgeCheck, Briefcase, Heart, Loader2, MessageSquare, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -82,6 +83,11 @@ export function CommunityPostCard({
 }: CommunityPostCardProps) {
   const { addToast } = useToast();
   const isMine = user?.id === post.author_id;
+  const [imageLightboxIndex, setImageLightboxIndex] = useState<number | null>(null);
+  const imageUrls = useMemo(
+    () => post.images.map((i) => i.image_url).filter((u): u is string => Boolean(u)),
+    [post.images]
+  );
 
   const sharePost = useCallback(async () => {
     const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
@@ -114,10 +120,19 @@ export function CommunityPostCard({
   }, [post.id, post.title, post.note, post.body, addToast]);
   const description =
     (post.note && post.note.trim()) || (post.body && post.body.trim()) || null;
-  const coverUrl = post.images[0]?.image_url;
   const verified = Boolean(post.author_is_verified);
 
+  const avatarEl = (
+    <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
+      <AvatarImage src={post.author_photo_url ?? undefined} className="object-cover" alt="" />
+      <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
+        {(post.author_full_name || "?").charAt(0).toUpperCase()}
+      </AvatarFallback>
+    </Avatar>
+  );
+
   return (
+    <>
     <Card
       id={compact ? undefined : `community-post-${post.id}`}
       {...(compact ? { "data-job-card": true as const } : {})}
@@ -137,18 +152,17 @@ export function CommunityPostCard({
             plain && "gap-4 px-4 pt-5 pb-3"
           )}
         >
-          <Link
-            to={`/profile/${post.author_id}`}
-            className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
-            aria-label={`View ${post.author_full_name || "member"} profile`}
-          >
-            <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
-              <AvatarImage src={post.author_photo_url ?? undefined} className="object-cover" alt="" />
-              <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
-                {(post.author_full_name || "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </Link>
+          {!isMine ? (
+            <Link
+              to={`/profile/${post.author_id}`}
+              className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
+              aria-label={`View ${post.author_full_name || "member"} profile`}
+            >
+              {avatarEl}
+            </Link>
+          ) : (
+            <div className="relative shrink-0 rounded-full">{avatarEl}</div>
+          )}
           <div className="min-w-0 flex-1 pt-0.5">
             <div className="flex items-center gap-1">
               <span className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
@@ -235,15 +249,39 @@ export function CommunityPostCard({
               {description}
             </p>
           )}
-          {coverUrl && (
+          {imageUrls.length > 0 && (
             <div className="pt-1">
-              <div className="w-full max-w-[160px] overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
-                <img
-                  src={coverUrl}
-                  alt=""
-                  className="aspect-[4/3] w-full object-cover"
-                  loading="lazy"
-                />
+              <div
+                className={cn(
+                  "flex gap-2",
+                  imageUrls.length > 1 && "max-w-full overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
+                )}
+              >
+                {imageUrls.map((url, idx) => (
+                  <button
+                    key={post.images[idx]?.id ?? `${post.id}-img-${idx}`}
+                    type="button"
+                    onClick={() => setImageLightboxIndex(idx)}
+                    className={cn(
+                      "shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 dark:border-neutral-700 dark:bg-neutral-900/40",
+                      "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      imageUrls.length === 1
+                        ? "aspect-[4/3] w-full max-w-[160px]"
+                        : "h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20"
+                    )}
+                    aria-label={`View image ${idx + 1} full screen`}
+                  >
+                    <img
+                      src={url}
+                      alt=""
+                      className={cn(
+                        "h-full w-full object-cover",
+                        imageUrls.length === 1 && "aspect-[4/3]"
+                      )}
+                      loading="lazy"
+                    />
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -380,5 +418,12 @@ export function CommunityPostCard({
         </div>
       </CardContent>
     </Card>
+    <ImageLightboxModal
+      images={imageUrls}
+      initialIndex={imageLightboxIndex ?? 0}
+      isOpen={imageLightboxIndex !== null && imageUrls.length > 0}
+      onClose={() => setImageLightboxIndex(null)}
+    />
+    </>
   );
 }

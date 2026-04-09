@@ -194,7 +194,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 Categories
               </span>
             </div>
-            {/* Mobile: full-bleed, gapless grid; md+: horizontal strip with spacing */}
+            {/* Mobile: full-bleed grid with thin gutters; md+: horizontal strip with spacing */}
             <div
               className={cn(
                 "-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]",
@@ -203,10 +203,16 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             >
               <div
                 className={cn(
-                  "grid grid-cols-3 gap-0",
-                  "md:flex md:gap-4 md:overflow-x-auto md:px-1 md:pb-2 md:pt-1 md:[scrollbar-width:thin]"
+                  "overflow-hidden max-md:rounded-xl max-md:bg-slate-200/55 max-md:p-1 dark:max-md:bg-white/12",
+                  "md:rounded-none md:bg-transparent md:p-0"
                 )}
               >
+                <div
+                  className={cn(
+                    "grid grid-cols-3 max-md:gap-1",
+                    "md:flex md:gap-4 md:overflow-x-auto md:px-1 md:pb-2 md:pt-1 md:[scrollbar-width:thin]"
+                  )}
+                >
                 {DISCOVER_HOME_CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
@@ -236,6 +242,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     </div>
                   </button>
                 ))}
+                </div>
               </div>
             </div>
           </section>

@@ -23,24 +23,34 @@ export function CommunityPostsCategoryNativeSelect({
   basePath,
   categoryParam,
   className,
+  variant = "default",
 }: {
   basePath: string;
   categoryParam: string | null;
   className?: string;
+  /** Compact pill for fixed app header (next to search). */
+  variant?: "default" | "header";
 }) {
   const navigate = useNavigate();
   const value = categorySelectValue(categoryParam);
+  const isHeader = variant === "header";
 
   return (
-    <div className={cn("relative w-full max-w-md", className)}>
+    <div className={cn(isHeader ? "relative w-full min-w-0" : "relative w-full max-w-md", className)}>
       <ListFilter
-        className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        className={cn(
+          "pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 text-muted-foreground",
+          isHeader ? "left-2.5 h-3.5 w-3.5" : "left-3 h-4 w-4"
+        )}
         aria-hidden
       />
       <select
         aria-label="Filter by category"
         className={cn(
-          "h-11 w-full cursor-pointer appearance-none rounded-2xl border border-border bg-card py-2 pl-10 pr-10 text-sm font-semibold text-foreground shadow-sm",
+          "w-full cursor-pointer appearance-none border border-border bg-card font-semibold text-foreground shadow-sm",
+          isHeader
+            ? "h-10 rounded-full py-1.5 pl-9 pr-9 text-xs"
+            : "h-11 rounded-2xl py-2 pl-10 pr-10 text-sm",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         )}
         value={value}
@@ -58,7 +68,10 @@ export function CommunityPostsCategoryNativeSelect({
         ))}
       </select>
       <ChevronDown
-        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        className={cn(
+          "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground",
+          isHeader ? "right-2.5 h-3.5 w-3.5" : "right-3 h-4 w-4"
+        )}
         aria-hidden
       />
     </div>

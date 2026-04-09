@@ -138,7 +138,7 @@ export function IncomingJobRequestCard({
           )}
         />
         <div className="flex gap-3 p-3 md:hidden">
-          <div className="pointer-events-none relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10">
+          <div className="pointer-events-none relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10">
             {job.service_type === "pickup_delivery" ? (
               <div className="absolute inset-0 z-0">
                 <JobMap job={job} />
@@ -159,13 +159,13 @@ export function IncomingJobRequestCard({
               onClick={(e) => onProfileClick(e, job.client_id)}
               disabled={!job.client_id}
             >
-              <Avatar className="h-11 w-11 shrink-0 border border-slate-200 dark:border-zinc-600">
+              <Avatar className="h-12 w-12 shrink-0 border border-slate-200 dark:border-zinc-600">
                 <AvatarImage src={job.profiles?.photo_url || ""} />
                 <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white">
                   {job.profiles?.full_name?.charAt(0) || "C"}
                 </AvatarFallback>
               </Avatar>
-              <h3 className="truncate text-[15px] font-black leading-tight text-slate-900 dark:text-white">
+              <h3 className="truncate text-base font-black leading-tight text-slate-900 dark:text-white">
                 {job.profiles?.full_name || "Client"}
               </h3>
             </button>
@@ -179,9 +179,9 @@ export function IncomingJobRequestCard({
                 emptyStarClassName="text-slate-900/25 dark:text-neutral-500/35"
               />
             ) : (
-              <span className="text-[12px] font-semibold text-slate-500">New client</span>
+              <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">New client</span>
             )}
-            <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
               {formatJobTitle(job)}
             </span>
           </div>

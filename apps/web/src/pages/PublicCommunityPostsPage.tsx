@@ -52,12 +52,6 @@ export default function PublicCommunityPostsPage() {
     [posts]
   );
 
-  const homeHref = profile
-    ? profile.role === "freelancer"
-      ? "/freelancer/home"
-      : "/client/home"
-    : "/";
-
   const categoryTitle =
     validCategory !== null
       ? serviceCategoryLabel(validCategory)
@@ -270,35 +264,67 @@ export default function PublicCommunityPostsPage() {
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
-      <div className="app-desktop-shell space-y-6 pt-4 md:pt-6">
+      <div
+        className={
+          user
+            ? "app-desktop-shell space-y-6 pt-[3.5rem] md:pt-6"
+            : "app-desktop-shell space-y-6 pt-4 md:pt-6"
+        }
+      >
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-1 md:max-w-4xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 rounded-full" asChild>
-              <Link to={homeHref}>
-                <ArrowLeft className="h-4 w-4" />
-                {profile ? "Home" : "Back"}
-              </Link>
-            </Button>
-            {(validCategory || isAllHelp) && (
+          {/* Logged-out: no app header — keep back + category here */}
+          {!user && (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 -ml-2 rounded-full"
+                  onClick={() => {
+                    if (typeof window !== "undefined" && window.history.length > 1) navigate(-1);
+                    else navigate("/");
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                {(validCategory || isAllHelp) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="hidden rounded-full text-xs md:inline-flex"
+                    onClick={() => {
+                      setSearchParams({});
+                    }}
+                  >
+                    All categories
+                  </Button>
+                )}
+              </div>
+              <CommunityPostsCategoryNativeSelect
+                className="md:hidden"
+                basePath="/public/posts"
+                categoryParam={categoryFilter}
+              />
+            </>
+          )}
+          {user && (validCategory || isAllHelp) && (
+            <div className="hidden flex-wrap items-center gap-2 md:flex">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="hidden rounded-full text-xs md:inline-flex"
+                className="rounded-full text-xs"
                 onClick={() => {
                   setSearchParams({});
                 }}
               >
                 All categories
               </Button>
-            )}
-          </div>
-
-          <CommunityPostsCategoryNativeSelect
-            className="md:hidden"
-            basePath="/public/posts"
-            categoryParam={categoryFilter}
-          />
+            </div>
+          )}
 
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
