@@ -98,6 +98,21 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
   const [selectedMapJob, setSelectedMapJob] = useState<JobRequestRow | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<JobRequestRow | null>(null);
 
+  function goToIncomingJob(job: JobRequestRow | null) {
+    if (!job) {
+      setSelectedMapJob(null);
+      setSelectedJobDetails(null);
+      return;
+    }
+    if (job.service_type === "pickup_delivery") {
+      setSelectedMapJob(job);
+      setSelectedJobDetails(null);
+    } else {
+      setSelectedJobDetails(job);
+      setSelectedMapJob(null);
+    }
+  }
+
   const incomingJobsUrl = buildJobsUrlFromTabId("requests");
   const loginRedirect = "/public/posts";
 
@@ -254,7 +269,7 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
     }
   };
 
-  const handleHireFromPost = async (postId: string) => {
+  const handleHireFromPost = async (postId: string): Promise<boolean> => {
     setHiringPostId(postId);
     try {
       await apiPost<{ interest_id: string; already_pending?: boolean }>("/api/jobs/from-community-post", {
@@ -270,12 +285,14 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
         description: "The helper can confirm to start a live job and chat.",
         variant: "success",
       });
+      return true;
     } catch (e) {
       addToast({
         title: "Could not start hire",
         description: e instanceof Error ? e.message : "Try again.",
         variant: "error",
       });
+      return false;
     } finally {
       setHiringPostId(null);
     }
@@ -345,6 +362,10 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
   }, [loadIncomingNotifications]);
 
   async function handleConfirm(jobId: string, notifId: string) {
+    const nextNotif = (() => {
+      const i = inbound.findIndex((n) => n.id === notifId);
+      return i >= 0 ? inbound[i + 1] : null;
+    })();
     setConfirming(notifId);
     try {
       await apiPost(`/api/jobs/${jobId}/notifications/${notifId}/open`, {});
@@ -355,6 +376,7 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
         description: "Moved to Pending while the client confirms.",
         variant: "success",
       });
+      goToIncomingJob((nextNotif?.job_requests as JobRequestRow | undefined) ?? null);
     } catch (err: unknown) {
       addToast({
         title: "Failed to accept",
@@ -367,12 +389,17 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
   }
 
   async function handleDecline(notifId: string): Promise<boolean> {
+    const nextNotif = (() => {
+      const i = inbound.findIndex((n) => n.id === notifId);
+      return i >= 0 ? inbound[i + 1] : null;
+    })();
     setDeleting(notifId);
     try {
       const { error } = await supabase.from("job_candidate_notifications").delete().eq("id", notifId);
       if (error) throw error;
       setInbound((prev) => prev.filter((n) => n.id !== notifId));
       addToast({ title: "Declined", variant: "default" });
+      goToIncomingJob((nextNotif?.job_requests as JobRequestRow | undefined) ?? null);
       return true;
     } catch (err: unknown) {
       addToast({
@@ -531,6 +558,18 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
             ? inbound.some((n) => n.job_id === selectedMapJob.id && !n.isConfirmed && !n.isDeclined)
             : false
         }
+        onDecline={
+          selectedMapJob
+            ? async () => {
+                const notif = inbound.find((n) => n.job_id === selectedMapJob.id);
+                if (notif) await handleDecline(notif.id);
+              }
+            : undefined
+        }
+        isDeclining={
+          selectedMapJob != null &&
+          deleting === inbound.find((n) => n.job_id === selectedMapJob.id)?.id
+        }
       />
 
       <JobDetailsModal
@@ -560,9 +599,7 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
           selectedJobDetails
             ? async () => {
                 const notif = inbound.find((n) => n.job_id === selectedJobDetails.id);
-                if (!notif) return;
-                const ok = await handleDecline(notif.id);
-                if (ok) setSelectedJobDetails(null);
+                if (notif) await handleDecline(notif.id);
               }
             : undefined
         }

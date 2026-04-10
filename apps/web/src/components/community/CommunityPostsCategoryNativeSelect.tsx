@@ -40,7 +40,7 @@ export function CommunityPostsCategoryNativeSelect({
       <ListFilter
         className={cn(
           "pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 text-muted-foreground",
-          isHeader ? "left-2.5 h-3.5 w-3.5" : "left-3 h-4 w-4"
+          isHeader ? "left-2 h-3 w-3" : "left-3 h-4 w-4"
         )}
         aria-hidden
       />
@@ -49,7 +49,7 @@ export function CommunityPostsCategoryNativeSelect({
         className={cn(
           "w-full cursor-pointer appearance-none border border-border bg-card font-semibold text-foreground shadow-sm",
           isHeader
-            ? "h-10 rounded-full py-1.5 pl-9 pr-9 text-xs"
+            ? "h-9 rounded-full py-1 pl-8 pr-8 text-[11px] leading-tight"
             : "h-11 rounded-2xl py-2 pl-10 pr-10 text-sm",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         )}
@@ -70,7 +70,7 @@ export function CommunityPostsCategoryNativeSelect({
       <ChevronDown
         className={cn(
           "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground",
-          isHeader ? "right-2.5 h-3.5 w-3.5" : "right-3 h-4 w-4"
+          isHeader ? "right-2 h-3 w-3" : "right-3 h-4 w-4"
         )}
         aria-hidden
       />

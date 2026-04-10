@@ -739,6 +739,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
             <FullscreenMapModal
                 job={selectedMapJob}
                 isOpen={!!selectedMapJob}
+                sheetPresentation
                 onClose={() => setSelectedMapJob(null)}
             />
 
@@ -747,6 +748,8 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                 isOpen={!!selectedJobDetails}
                 onOpenChange={(open) => !open && setSelectedJobDetails(null)}
                 formatJobTitle={formatJobTitle}
+                sheetPresentation
+                isOwnRequest={selectedJobDetails?.client_id === user?.id}
             />
         </>
     );

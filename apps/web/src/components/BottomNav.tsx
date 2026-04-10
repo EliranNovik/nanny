@@ -277,7 +277,7 @@ export function BottomNav() {
         <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
           <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-3">
             {isCommunityPostsFilterPage && (
-              <div className="hidden min-w-0 shrink-0 md:block md:w-[min(11rem,26vw)] lg:w-48">
+              <div className="hidden min-w-0 shrink-0 md:block md:w-[min(8.75rem,22vw)] lg:w-36">
                 <CommunityPostsCategoryNativeSelect
                   variant="header"
                   basePath={location.pathname}
@@ -346,7 +346,7 @@ export function BottomNav() {
         )}
         {isCommunityPostsFilterPage && !mobileSearchOpen && (
           <div className="flex min-w-0 flex-1 justify-center px-0.5">
-            <div className="w-full max-w-[min(15rem,calc(100vw-8.5rem))]">
+            <div className="w-full max-w-[min(10.5rem,calc(100vw-8rem))]">
               <CommunityPostsCategoryNativeSelect
                 variant="header"
                 basePath={location.pathname}

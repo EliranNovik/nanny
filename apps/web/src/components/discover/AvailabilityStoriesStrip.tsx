@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import {
   type CommunityPostWithMeta,
 } from "@/components/community/CommunityPostCard";
 import { DiscoverStoriesRingAvatar } from "@/components/discover/DiscoverStoriesRingAvatar";
+import { SwipeDecisionLayer } from "@/components/discover/SwipeDecisionLayer";
 import { cn } from "@/lib/utils";
 import {
   isServiceCategoryId,
@@ -40,7 +41,7 @@ type Props = {
   onToggleFavorite: (postId: string) => void;
   hiringPostId: string | null;
   pendingHirePostIds: Set<string>;
-  onHireFromPost: (postId: string) => void;
+  onHireFromPost: (postId: string) => void | Promise<boolean>;
   onOpenChat: (post: CommunityPostWithMeta) => void;
 };
 
@@ -56,7 +57,77 @@ export function AvailabilityStoriesStrip({
   onHireFromPost,
   onOpenChat,
 }: Props) {
-  const [openPost, setOpenPost] = useState<CommunityPostWithMeta | null>(null);
+  const [stackIndex, setStackIndex] = useState<number | null>(null);
+
+  const openPost = stackIndex != null && posts[stackIndex] ? posts[stackIndex] : null;
+
+  useEffect(() => {
+    if (stackIndex !== null && stackIndex >= posts.length) {
+      setStackIndex(null);
+    }
+  }, [posts, stackIndex]);
+
+  function openAtPost(post: CommunityPostWithMeta) {
+    const i = posts.findIndex((p) => p.id === post.id);
+    setStackIndex(i >= 0 ? i : 0);
+  }
+
+  function advanceOrClose() {
+    setStackIndex((i) => {
+      if (i === null) return null;
+      if (i >= posts.length - 1) return null;
+      return i + 1;
+    });
+  }
+
+  const canSwipeHire =
+    Boolean(user && profile && openPost) &&
+    (profile!.role === "client" || profile!.role === "freelancer") &&
+    openPost!.author_role === "freelancer";
+
+  const canSendHireInterest =
+    Boolean(openPost) && canSwipeHire && !pendingHirePostIds.has(openPost!.id);
+
+  const swipeBusy = Boolean(openPost && hiringPostId === openPost.id);
+
+  async function onSwipeHire() {
+    if (!openPost) return;
+    const ok = await Promise.resolve(onHireFromPost(openPost.id));
+    if (ok) advanceOrClose();
+  }
+
+  const sheetBody = openPost ? (
+    <div className={discoverSheetInnerCardClassName}>
+      <DiscoverSheetTopHandle />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <SwipeDecisionLayer
+          variant="availability"
+          disabled={swipeBusy}
+          leftStamp={canSendHireInterest ? "HIRE" : "NEXT"}
+          rightStamp="PASS"
+          onSwipeLeft={advanceOrClose}
+          onSwipeRight={canSendHireInterest ? onSwipeHire : advanceOrClose}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+            <CommunityPostCard
+              post={openPost}
+              user={user}
+              profile={profile}
+              loginRedirect={loginRedirect}
+              favoritedIds={favoritedIds}
+              onToggleFavorite={onToggleFavorite}
+              hiringPostId={hiringPostId}
+              pendingHirePostIds={pendingHirePostIds}
+              onHireFromPost={onHireFromPost}
+              onOpenChat={() => onOpenChat(openPost)}
+              iconOnlyActions
+            />
+          </div>
+        </SwipeDecisionLayer>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -76,7 +147,7 @@ export function AvailabilityStoriesStrip({
               key={post.id}
               type="button"
               role="listitem"
-              onClick={() => setOpenPost(post)}
+              onClick={() => openAtPost(post)}
               className={cn(
                 "group flex w-[4.75rem] shrink-0 snap-start flex-col items-center gap-1.5 rounded-xl pb-0.5 text-center outline-none",
                 "transition-transform active:scale-[0.97]",
@@ -109,33 +180,14 @@ export function AvailabilityStoriesStrip({
         })}
       </div>
 
-      <Dialog open={!!openPost} onOpenChange={(o) => !o && setOpenPost(null)}>
+      <Dialog open={stackIndex !== null} onOpenChange={(o) => !o && setStackIndex(null)}>
         <DialogContent className={discoverSheetDialogContentClassName}>
           <DialogTitle className="sr-only">
             {openPost
               ? `Availability: ${openPost.title || postCategoryLabel(openPost)}`
               : "Availability post"}
           </DialogTitle>
-          {openPost && (
-            <div className={discoverSheetInnerCardClassName}>
-              <DiscoverSheetTopHandle />
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
-                <CommunityPostCard
-                  post={openPost}
-                  user={user}
-                  profile={profile}
-                  loginRedirect={loginRedirect}
-                  favoritedIds={favoritedIds}
-                  onToggleFavorite={onToggleFavorite}
-                  hiringPostId={hiringPostId}
-                  pendingHirePostIds={pendingHirePostIds}
-                  onHireFromPost={onHireFromPost}
-                  onOpenChat={() => onOpenChat(openPost)}
-                  iconOnlyActions
-                />
-              </div>
-            </div>
-          )}
+          {sheetBody}
         </DialogContent>
       </Dialog>
     </>

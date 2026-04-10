@@ -2,7 +2,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import JobMap from "./JobMap";
 import { 
   X, ArrowUpCircle, ArrowDownCircle, 
-  Car, ChevronUp, ChevronDown, Sparkles, Calendar, Star, CheckCircle2, Loader2
+  Car, ChevronUp, ChevronDown, Sparkles, Calendar, Star, CheckCircle2, Loader2, XCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -18,6 +18,7 @@ import {
   DiscoverSheetTopHandle,
 } from "@/lib/discoverSheetDialog";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
+import { SwipeDecisionLayer } from "@/components/discover/SwipeDecisionLayer";
 
 interface FullscreenMapModalProps {
   job: any;
@@ -97,7 +98,7 @@ export function FullscreenMapModal({
   const defaultMapShellClass =
     "max-w-[100vw] w-full h-[100dvh] p-0 border-none bg-background gap-0 overflow-hidden flex flex-col sm:rounded-none";
 
-  const mapBody = (
+  const mapBodyInner = (
         <div
           className={cn(
             "relative w-full flex-1",
@@ -296,50 +297,54 @@ export function FullscreenMapModal({
                           {incomingActionMessage}
                         </p>
                       ) : onDecline ? (
-                        <div className="flex gap-3">
+                        <div className="flex items-center justify-center gap-6 sm:gap-8">
                           <Button
                             type="button"
-                            variant="outline"
-                            className="h-14 flex-1 rounded-[18px] border-slate-200 font-bold dark:border-white/10"
-                            onClick={onDecline}
-                            disabled={isDeclining || isConfirming}
+                            size="icon"
+                            className="h-14 w-14 shrink-0 rounded-full bg-emerald-600 text-white shadow-[0_8px_20px_rgba(5,150,105,0.25)] hover:bg-emerald-700 active:scale-[0.96] disabled:opacity-60"
+                            onClick={onConfirm}
+                            disabled={isConfirming || isDeclining}
+                            aria-label="Accept"
                           >
-                            {isDeclining ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
+                            {isConfirming ? (
+                              <Loader2 className="h-6 w-6 animate-spin" />
                             ) : (
-                              <>Decline</>
+                              <CheckCircle2 className="h-7 w-7" aria-hidden />
                             )}
                           </Button>
                           <Button
-                            className="h-14 flex-1 rounded-[18px] bg-emerald-600 font-bold text-white shadow-[0_8px_20px_rgba(5,150,105,0.2)]"
-                            onClick={onConfirm}
-                            disabled={isConfirming || isDeclining}
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-14 w-14 shrink-0 rounded-full border-slate-200 dark:border-white/15 hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 active:scale-[0.96]"
+                            onClick={onDecline}
+                            disabled={isDeclining || isConfirming}
+                            aria-label="Decline"
                           >
-                            {isConfirming ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
+                            {isDeclining ? (
+                              <Loader2 className="h-6 w-6 animate-spin" />
                             ) : (
-                              <>
-                                <CheckCircle2 className="mr-2 h-5 w-5" />
-                                Accept
-                              </>
+                              <XCircle className="h-7 w-7" aria-hidden />
                             )}
                           </Button>
                         </div>
                       ) : (
-                        <Button
-                          className="w-full h-14 rounded-[20px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] transition-all active:scale-[0.98] font-black text-lg flex items-center justify-center gap-3"
-                          onClick={onConfirm}
-                          disabled={isConfirming}
-                        >
-                          {isConfirming ? (
-                            <Loader2 className="w-6 h-6 animate-spin" />
-                          ) : (
-                            <>
-                              <CheckCircle2 className="w-6 h-6" />
-                              Accept Invitation
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex justify-center">
+                          <Button
+                            type="button"
+                            size="icon"
+                            className="h-14 w-14 rounded-full bg-emerald-600 text-white shadow-[0_10px_30px_rgba(5,150,105,0.3)] hover:bg-emerald-700 active:scale-[0.96] disabled:opacity-60"
+                            onClick={onConfirm}
+                            disabled={isConfirming}
+                            aria-label="Accept invitation"
+                          >
+                            {isConfirming ? (
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-7 w-7" aria-hidden />
+                            )}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -357,6 +362,31 @@ export function FullscreenMapModal({
             </div>
           </div>
         </div>
+  );
+
+  const incomingSwipeSheet =
+    sheetPresentation &&
+    Boolean(showAcceptButton && onConfirm && onDecline && !incomingActionMessage);
+
+  const mapBody = incomingSwipeSheet ? (
+    <SwipeDecisionLayer
+      variant="incoming"
+      disabled={Boolean(isConfirming || isDeclining)}
+      onSwipeLeft={() => {
+        void onDecline?.();
+      }}
+      onSwipeRight={() => {
+        void onConfirm?.();
+      }}
+      className={cn(
+        "relative flex w-full flex-1 flex-col",
+        sheetPresentation ? "min-h-[min(52dvh,480px)]" : "h-full"
+      )}
+    >
+      {mapBodyInner}
+    </SwipeDecisionLayer>
+  ) : (
+    mapBodyInner
   );
 
   return (

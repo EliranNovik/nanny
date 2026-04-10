@@ -189,11 +189,6 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
 
           {homeMode === "hire" && (
           <section className="mb-8 mt-6" aria-label="Service categories">
-            <div className="mb-3 px-1 md:px-1">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Categories
-              </span>
-            </div>
             {/* Mobile: full-bleed grid with thin gutters; md+: horizontal strip with spacing */}
             <div
               className={cn(
@@ -203,7 +198,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             >
               <div
                 className={cn(
-                  "overflow-hidden max-md:rounded-xl max-md:bg-slate-200/55 max-md:p-1 dark:max-md:bg-white/12",
+                  "overflow-hidden max-md:rounded-xl max-md:bg-background max-md:p-1",
                   "md:rounded-none md:bg-transparent md:p-0"
                 )}
               >
@@ -219,27 +214,23 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     type="button"
                     onClick={() => onCategoryClick(cat.id)}
                     className={cn(
-                      "group relative block w-full shrink-0 overflow-hidden text-left outline-none",
+                      "group flex w-full shrink-0 flex-col overflow-hidden text-left outline-none",
                       "transition-transform active:scale-[0.98]",
                       "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-inset",
-                      "max-md:aspect-square max-md:rounded-none",
+                      "max-md:aspect-square max-md:rounded-xl",
                       "md:h-[6.25rem] md:w-[6.75rem] md:rounded-2xl md:shadow-sm"
                     )}
                   >
-                    <div className="relative h-full w-full">
+                    <div className="relative min-h-0 flex-1 overflow-hidden">
                       <img
                         src={cat.imageSrc}
                         alt={cat.label}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
-                      <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-black/80 via-black/35 to-transparent"
-                        aria-hidden
-                      />
-                      <span className="absolute inset-x-0 bottom-0 flex items-end justify-center px-1.5 pb-2.5 pt-10 text-center text-xs font-bold uppercase leading-tight tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:text-sm">
-                        {cat.label}
-                      </span>
                     </div>
+                    <span className="shrink-0 border-t border-border/40 bg-background px-1.5 py-2 text-center text-[11px] font-bold uppercase leading-tight tracking-wide text-foreground sm:text-xs">
+                      {cat.label}
+                    </span>
                   </button>
                 ))}
                 </div>
