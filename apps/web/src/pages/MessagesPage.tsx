@@ -21,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   MessageCircle,
   Loader2,
-  ArrowLeft,
+  ChevronLeft,
   Check,
   CheckCheck,
   Bell,
@@ -667,7 +667,12 @@ export default function MessagesPage() {
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
+    // Compact so inbox timestamps fit on narrow screens (avoid full locale string clipping)
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      ...(date.getFullYear() !== now.getFullYear() ? { year: "2-digit" as const } : {}),
+    });
   }
 
   // Handle selecting a conversation
@@ -727,17 +732,28 @@ export default function MessagesPage() {
     );
   }
 
+  /** Mobile fixed inbox header height below safe-area — keep in sync with header block below */
+  const messagesMobileHeaderInset =
+    "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-0";
+
   // Show contact panel with conversation list and chat inline
   return (
-    <div className="flex h-screen min-h-0 overflow-hidden gradient-mesh">
+    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden gradient-mesh">
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div className={cn(
         "flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96",
         "md:flex",
         mobileView === "contacts" ? "flex" : "hidden md:flex"
       )}>
-        {/* Header — stays at top; list scrolls below (mobile + desktop) */}
-        <div className="z-30 flex shrink-0 border-b border-border/30 bg-background/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95 md:bg-transparent md:backdrop-blur-none">
+        {/* Header — fixed on mobile so list scrolls underneath; static in sidebar on md+ */}
+        <div
+          className={cn(
+            "z-40 flex shrink-0 border-b border-border/30 bg-background/95 px-4 pb-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
+            "fixed left-0 right-0 top-0 md:static md:z-auto",
+            "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
+            "md:bg-transparent md:backdrop-blur-none"
+          )}
+        >
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -745,7 +761,7 @@ export default function MessagesPage() {
               onClick={() => navigate(profile?.role === "client" ? "/client/home" : "/freelancer/home")}
               className="md:hidden"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ChevronLeft className="w-5 h-5" />
             </Button>
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold leading-tight">Inbox</h2>
@@ -756,8 +772,9 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Unified inbox: active chats + job / hire activity */}
-        <ScrollArea className="min-h-0 flex-1 bg-transparent [&_[data-radix-scroll-area-viewport]]:bg-transparent">
+        {/* Unified inbox: active chats + job / hire activity — inset clears fixed header on mobile */}
+        <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", messagesMobileHeaderInset)}>
+          <ScrollArea className="min-h-0 flex-1 bg-transparent [&_[data-radix-scroll-area-viewport]]:min-w-0 [&_[data-radix-scroll-area-viewport]]:max-w-full [&_[data-radix-scroll-area-viewport]]:bg-transparent">
           {inboxRows.length === 0 ? (
             <div className="p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
@@ -770,7 +787,7 @@ export default function MessagesPage() {
               </p>
             </div>
           ) : (
-            <div className="divide-y space-y-0.5">
+            <div className="w-full min-w-0 max-w-full divide-y space-y-0.5 overflow-x-hidden">
               {inboxRows.map((row) => {
                 if (row.kind === "activity") {
                   const a = row.alert;
@@ -786,7 +803,7 @@ export default function MessagesPage() {
                       key={row.key}
                       role="button"
                       tabIndex={0}
-                      className="p-4 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors text-left w-full"
+                      className="cursor-pointer px-4 py-4 pl-4 pr-[max(1rem,env(safe-area-inset-right,0px))] hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors text-left w-full"
                       onClick={() => handleActivityClick(a)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -795,19 +812,19 @@ export default function MessagesPage() {
                         }
                       }}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
                         <div className="relative shrink-0">
                           {a.sender_photo ? (
-                            <Avatar className="w-12 h-12 flex-shrink-0">
+                            <Avatar className="h-10 w-10 flex-shrink-0">
                               <AvatarImage src={a.sender_photo} />
-                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                                 {a.title.charAt(0)}
                               </AvatarFallback>
                             </Avatar>
                           ) : (
                             <div
                               className={cn(
-                                "w-12 h-12 rounded-full flex items-center justify-center",
+                                "h-10 w-10 rounded-full flex items-center justify-center",
                                 a.type === "job_request" && "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
                                 a.type === "confirmation" && "bg-sky-500/15 text-sky-700 dark:text-sky-400",
                                 a.type === "job_update" && "bg-amber-500/15 text-amber-800 dark:text-amber-300",
@@ -818,25 +835,25 @@ export default function MessagesPage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">
-                              {kind}
+                        <div className="relative min-w-0 flex-1">
+                          {a.created_at && (
+                            <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6rem] whitespace-nowrap text-right text-[10px] font-semibold tabular-nums text-muted-foreground/80">
+                              {formatTime(a.created_at)}
                             </span>
-                            {a.created_at && (
-                              <span className="text-[12px] font-bold text-muted-foreground/60 shrink-0">
-                                {formatTime(a.created_at)}
-                              </span>
+                          )}
+                          <div className="min-w-0 max-w-full pr-24">
+                            <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate">
+                              {kind}
+                            </div>
+                            <p className="truncate text-[15px] font-bold text-slate-900 dark:text-slate-100">
+                              {a.title}
+                            </p>
+                            {a.description && (
+                              <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                                {a.description}
+                              </p>
                             )}
                           </div>
-                          <p className="font-bold truncate text-[15px] text-slate-900 dark:text-slate-100">
-                            {a.title}
-                          </p>
-                          {a.description && (
-                            <p className="text-[13px] text-muted-foreground truncate mt-0.5">
-                              {a.description}
-                            </p>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -862,16 +879,16 @@ export default function MessagesPage() {
                   >
                     <div
                       className={cn(
-                        "p-4 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors relative md:bg-transparent",
+                        "cursor-pointer px-4 py-4 pl-4 pr-[max(1rem,env(safe-area-inset-right,0px))] hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors relative md:bg-transparent",
                         isActive && "bg-orange-100 dark:bg-orange-950/30"
                       )}
                       onClick={() => handleConversationClick(convo.id)}
                     >
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <Avatar className="w-12 h-12 flex-shrink-0">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="relative shrink-0">
+                        <Avatar className="h-10 w-10 flex-shrink-0">
                           <AvatarImage src={convo.other_user_profile?.photo_url || undefined} />
-                          <AvatarFallback className="bg-primary/10 text-primary">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
                             {initials}
                           </AvatarFallback>
                         </Avatar>
@@ -883,47 +900,43 @@ export default function MessagesPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">
-                            Chat
+                      <div className="relative min-w-0 flex-1">
+                        {convo.last_message && (
+                          <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6rem] whitespace-nowrap text-right text-[10px] font-semibold tabular-nums text-muted-foreground/80">
+                            {formatTime(convo.last_message.created_at)}
                           </span>
-                          {convo.last_message && (
-                            <span className="text-[12px] font-bold text-muted-foreground/60 flex-shrink-0">
-                              {formatTime(convo.last_message.created_at)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between gap-2 mb-1">
+                        )}
+                        <div className="min-w-0 max-w-full pr-24">
+                          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate">
+                            Chat
+                          </div>
                           <p
                             className={cn(
-                              "font-bold truncate text-[16px] text-slate-900 dark:text-slate-100",
+                              "mb-1 truncate text-[16px] font-bold text-slate-900 dark:text-slate-100",
                               convo.unread_count > 0 && "font-black"
                             )}
                           >
                             {convo.other_user_profile?.full_name || "User"}
                           </p>
-                        </div>
-                        {convo.last_message && (
-                          <div className="flex items-center justify-between gap-2 mt-1">
-                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          {convo.last_message && (
+                            <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
                               {convo.last_message.sender_id === user?.id && (
-                                <div className="flex-shrink-0">
+                                <div className="shrink-0">
                                   {convo.last_message.read_at && convo.last_message.read_by ? (
-                                    <CheckCheck className="w-4 h-4 text-blue-500" />
+                                    <CheckCheck className="h-4 w-4 text-blue-500" />
                                   ) : convo.last_message.read_at ? (
-                                    <CheckCheck className="w-4 h-4 text-muted-foreground/60" />
+                                    <CheckCheck className="h-4 w-4 text-muted-foreground/60" />
                                   ) : (
-                                    <Check className="w-4 h-4 text-muted-foreground/60" />
+                                    <Check className="h-4 w-4 text-muted-foreground/60" />
                                   )}
                                 </div>
                               )}
                               <p
                                 className={cn(
-                                  "text-[14px] truncate leading-tight",
+                                  "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] leading-tight",
                                   convo.unread_count > 0
-                                    ? "text-foreground font-bold"
-                                    : "text-muted-foreground font-medium"
+                                    ? "font-bold text-foreground"
+                                    : "font-medium text-muted-foreground"
                                 )}
                               >
                                 {convo.last_message.sender_id === user?.id && "You: "}
@@ -934,8 +947,8 @@ export default function MessagesPage() {
                                   : convo.last_message.body || ""}
                               </p>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                     </div>
@@ -945,6 +958,7 @@ export default function MessagesPage() {
             </div>
           )}
         </ScrollArea>
+        </div>
       </div>
 
       {/* Chat Area - Right Side */}
@@ -965,23 +979,43 @@ export default function MessagesPage() {
 
           return (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              {/* Mobile chat bar — pinned to top of panel; messages scroll underneath */}
-              <div className="z-30 flex shrink-0 border-b border-border/30 bg-background/95 p-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95 md:hidden">
+              {/* Mobile chat bar — fixed to viewport top; conversation scrolls underneath */}
+              <div
+                className={cn(
+                  "z-40 flex shrink-0 border-b border-border/30 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
+                  "fixed left-0 right-0 top-0 md:hidden",
+                  "px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
+                )}
+              >
                 <div className="flex items-center gap-3">
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={handleBackToContacts}
                   >
-                    <ArrowLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-5 h-5" />
                   </Button>
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <Avatar className="w-10 h-10 flex-shrink-0">
-                      <AvatarImage src={otherUserProfile?.photo_url || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {otherInitials}
-                      </AvatarFallback>
-                    </Avatar>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (otherUserId) navigate(`/profile/${otherUserId}`);
+                      }}
+                      disabled={!otherUserId}
+                      className="rounded-full shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                      aria-label={
+                        otherUserId
+                          ? `View ${otherUserProfile?.full_name || "user"} public profile`
+                          : undefined
+                      }
+                    >
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage src={otherUserProfile?.photo_url || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {otherInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
                     <div className="flex-1 min-w-0">
                       <h2 className="font-semibold truncate">
                         {otherUserProfile?.full_name || "User"}
@@ -994,15 +1028,20 @@ export default function MessagesPage() {
                       onClick={() => navigate(profile?.role === "client" ? "/client/home" : "/freelancer/home")}
                       className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
                     >
-                      <ArrowLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-4 h-4" />
                       <span>Back</span>
                     </Button>
                   </div>
                 </div>
               </div>
 
-              {/* Chat Page area */}
-              <div className="relative min-h-0 flex-1 overflow-hidden">
+              {/* Chat Page area — top inset clears fixed mobile chat header */}
+              <div
+                className={cn(
+                  "relative min-h-0 flex-1 overflow-hidden",
+                  "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+4.25rem)] md:pt-0"
+                )}
+              >
                 <div className="messages-chat-container h-full min-h-0">
                   <ChatPage
                     key={conversationId || "none"}

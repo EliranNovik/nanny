@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { 
   MessageSquare, 
-  ArrowLeft, 
+  ChevronLeft,
   ChevronRight,
   CheckCircle2,
   ShieldCheck,
@@ -972,7 +972,7 @@ export default function PublicProfilePage() {
         style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
         aria-label="Back"
       >
-        <ArrowLeft className="w-5 h-5" />
+        <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
       </button>
 
       <div className="app-desktop-shell pt-[calc(4.75rem+env(safe-area-inset-top))] md:pt-10">

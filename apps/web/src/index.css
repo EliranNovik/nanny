@@ -179,6 +179,21 @@
     }
   }
 
+  /**
+   * Main column under BottomNav fixed header (see App.tsx PageLayoutWithHeader).
+   * #root already pads env(safe-area-inset-top); this adds the bar height only — keep in sync
+   * with BottomNav mobileScrollHeaderLayer (padding + h-10 + padding).
+   */
+  .app-content-below-fixed-header {
+    padding-top: calc(0.5rem + 2.5rem + 0.5rem);
+  }
+
+  @media (min-width: 768px) {
+    .app-content-below-fixed-header {
+      padding-top: 3.5rem;
+    }
+  }
+
   .bottom-nav-mobile-shell {
     position: relative;
     isolation: isolate;

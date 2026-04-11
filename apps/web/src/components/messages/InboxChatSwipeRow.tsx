@@ -46,7 +46,7 @@ export function InboxChatSwipeRow({ children, onHide, className }: Props) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden [touch-action:pan-y]",
+        "relative w-full min-w-0 max-w-full overflow-hidden [touch-action:pan-y]",
         className
       )}
     >
@@ -72,7 +72,7 @@ export function InboxChatSwipeRow({ children, onHide, className }: Props) {
       </div>
       <div
         className={cn(
-          "relative bg-background will-change-transform",
+          "relative w-full min-w-0 max-w-full bg-background will-change-transform",
           !touching && "transition-transform duration-200 ease-out"
         )}
         style={{ transform: `translateX(${px}px)` }}

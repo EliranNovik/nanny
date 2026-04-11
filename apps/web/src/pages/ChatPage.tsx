@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Phone,
   Paperclip,
   Send,
@@ -145,7 +146,31 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const mobileComposerRef = useRef<HTMLTextAreaElement>(null);
+  const desktopComposerRef = useRef<HTMLTextAreaElement>(null);
+
+  function focusComposer() {
+    requestAnimationFrame(() => {
+      const isLg = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+      if (isLg) desktopComposerRef.current?.focus();
+      else mobileComposerRef.current?.focus();
+    });
+  }
+
+  function adjustComposerHeight() {
+    const maxPx =
+      typeof window !== "undefined"
+        ? Math.min(window.innerHeight * 0.4, 280)
+        : 280;
+    const minLine = 48;
+    const isLg =
+      typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+    const el = isLg ? desktopComposerRef.current : mobileComposerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const h = Math.min(Math.max(el.scrollHeight, minLine), maxPx);
+    el.style.height = `${h}px`;
+  }
   const { addToast } = useToast();
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [mobileView, setMobileView] = useState<"steps" | "chat">("steps"); // Default to steps on mobile
@@ -154,6 +179,14 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  useLayoutEffect(() => {
+    adjustComposerHeight();
+  }, [newMessage]);
+  useEffect(() => {
+    const onResize = () => adjustComposerHeight();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [markingRead, setMarkingRead] = useState(false);
@@ -191,14 +224,21 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [reportConversations, setReportConversations] = useState<ReportConversation[]>([]);
 
+  /** Latest job for realtime handlers — do NOT put `job` in the main subscription effect deps (causes refetch loops). */
+  const jobRef = useRef<Job | null>(null);
   useEffect(() => {
-    // Reset initial load flag when conversation changes
+    jobRef.current = job;
+  }, [job]);
+
+  useEffect(() => {
     isInitialLoadRef.current = true;
 
-    async function fetchConversation() {
-      if (!conversationId || !user) return;
+    async function fetchConversation(): Promise<{
+      multiIds?: string[];
+      jobRowId: string | null;
+    } | null> {
+      if (!conversationId || !user) return null;
 
-      // Get conversation details
       const { data: convo } = await supabase
         .from("conversations")
         .select("*")
@@ -207,161 +247,133 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
       if (!convo) {
         navigate("/");
-        return;
+        return null;
       }
 
+      const userId = user.id;
       setConversation(convo);
 
-      // Get other user's profile
-      const otherId = propOtherUserId || (convo.client_id === user.id ? convo.freelancer_id : convo.client_id);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, full_name, photo_url, city, phone, role, whatsapp_number_e164, telegram_username, share_whatsapp, share_telegram, categories")
-        .eq("id", otherId)
-        .single();
+      const otherId = propOtherUserId || (convo.client_id === userId ? convo.freelancer_id : convo.client_id);
 
-      let finalProfile: Profile | null = profile as any;
-      if (profile && profile.role === "freelancer") {
-        const { data: freelancerData } = await supabase
-          .from("freelancer_profiles")
-          .select("bio, rating_avg, rating_count")
-          .eq("user_id", otherId)
-          .single();
-        if (freelancerData) {
-          finalProfile = {
-            ...profile,
-            bio: freelancerData.bio,
-            rating_avg: freelancerData.rating_avg,
-            rating_count: freelancerData.rating_count
-          } as Profile;
-        }
-      }
-
-      setOtherUser(finalProfile);
-
-
-      // Get job details (only if job_id is not null)
-      let jobData = null;
-      if (convo.job_id) {
-        const { data } = await supabase
-          .from("job_requests")
-          .select(
-            "id, status, stage, care_type, children_count, children_age_group, location_city, start_at, created_at, offered_hourly_rate, price_offer_status, schedule_confirmed, service_type, service_details, time_duration, care_frequency, community_post_id, community_post_expires_at, notes"
-          )
-          .eq("id", convo.job_id)
-          .single();
-
-        jobData = data;
-        setJob(jobData);
-
-        // If other user is freelancer, fetch their unavailable dates and scheduled jobs for the calendar
-        if (profile?.role === "freelancer") {
-          const { data: unavailableDates } = await supabase
-            .from("freelancer_unavailable_dates")
-            .select("unavailable_date, start_time, end_time")
-            .eq("freelancer_id", otherId);
-          if (unavailableDates) {
-            // For calendar UI: disable days that have any unavailable slots
-            const days = Array.from(
-              new Set(
-                unavailableDates
-                  .map((d: any) => d.unavailable_date as string | null)
-                  .filter(Boolean)
-              )
-            ) as string[];
-            setFreelancerUnavailableTimeSlots(days);
-          }
-
-          const { data: jobs } = await supabase
-            .from("job_requests")
-            .select("*")
-            .eq("selected_freelancer_id", otherId)
-            .eq("status", "locked");
-          if (jobs) {
-            setScheduledJobs(jobs);
-          }
-        }
-      } else {
-        setJob(null);
-      }
-
-
-      // If admin viewing reports, fetch all report conversations
-      if (currentUserProfile?.is_admin && convo.job_id === null) {
-        await fetchReportConversations();
-      }
-
-      fetchCurrencies();
-
-      // Get messages - if otherUserId is provided, fetch from ALL conversations with this user
-      let msgs;
-      if (propOtherUserId) {
-        // Find all conversations with this user
-        const { data: allConversations } = await supabase
-          .from("conversations")
-          .select("id")
-          .or(`and(client_id.eq.${user.id},freelancer_id.eq.${propOtherUserId}),and(client_id.eq.${propOtherUserId},freelancer_id.eq.${user.id})`);
-
-        if (allConversations && allConversations.length > 0) {
-          const conversationIds = allConversations.map(c => c.id);
+      async function loadMessages(): Promise<{ messages: Message[]; multiIds?: string[] }> {
+        if (propOtherUserId) {
+          const { data: allConversations } = await supabase
+            .from("conversations")
+            .select("id")
+            .or(
+              `and(client_id.eq.${userId},freelancer_id.eq.${propOtherUserId}),and(client_id.eq.${propOtherUserId},freelancer_id.eq.${userId})`
+            );
+          if (!allConversations?.length) return { messages: [], multiIds: [] };
+          const ids = allConversations.map((c) => c.id);
           const { data: allMsgs } = await supabase
             .from("messages")
             .select("*")
-            .in("conversation_id", conversationIds)
+            .in("conversation_id", ids)
             .order("created_at", { ascending: true });
-
-          msgs = allMsgs;
+          return { messages: allMsgs ?? [], multiIds: ids };
         }
-      } else {
-        // Original behavior: fetch messages from single conversation
         const { data: singleMsgs } = await supabase
           .from("messages")
           .select("*")
           .eq("conversation_id", conversationId)
           .order("created_at", { ascending: true });
-
-        msgs = singleMsgs;
+        return { messages: singleMsgs ?? [] };
       }
 
-      setMessages(msgs || []);
+      async function loadProfile(): Promise<Profile | null> {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select(
+            "id, full_name, photo_url, city, phone, role, whatsapp_number_e164, telegram_username, share_whatsapp, share_telegram, categories"
+          )
+          .eq("id", otherId)
+          .single();
+        if (!profile) return null;
+        if (profile.role !== "freelancer") return profile as Profile;
+        const { data: freelancerData } = await supabase
+          .from("freelancer_profiles")
+          .select("bio, rating_avg, rating_count")
+          .eq("user_id", otherId)
+          .single();
+        if (!freelancerData) return profile as Profile;
+        return {
+          ...profile,
+          bio: freelancerData.bio,
+          rating_avg: freelancerData.rating_avg,
+          rating_count: freelancerData.rating_count,
+        } as Profile;
+      }
 
-      // Reset initial load flag when conversation changes
+      const jobSelect =
+        "id, status, stage, care_type, children_count, children_age_group, location_city, start_at, created_at, offered_hourly_rate, price_offer_status, schedule_confirmed, service_type, service_details, time_duration, care_frequency, community_post_id, community_post_expires_at, notes";
+
+      const [msgPack, profile, jobData] = await Promise.all([
+        loadMessages(),
+        loadProfile(),
+        convo.job_id
+          ? supabase.from("job_requests").select(jobSelect).eq("id", convo.job_id).single().then(({ data }) => data)
+          : Promise.resolve(null),
+      ]);
+
+      const msgs = msgPack.messages;
+      const multiIdsForSub = msgPack.multiIds;
+
+      setOtherUser(profile);
+      setJob(jobData ?? null);
+      setMessages(msgs);
       isInitialLoadRef.current = true;
-
-
       setLoading(false);
 
-      // Mark unread messages as read
-      if (msgs && msgs.length > 0) {
-        const unreadMessages = msgs.filter(
-          (msg) => msg.sender_id !== user.id && !msg.read_at
-        );
-        if (unreadMessages.length > 0) {
-          markMessagesAsRead(unreadMessages.map((m) => m.id));
-        }
+      void fetchCurrencies();
+      if (currentUserProfile?.is_admin && convo.job_id === null) {
+        void fetchReportConversations();
       }
+
+      if (convo.job_id && profile?.role === "freelancer") {
+        void (async () => {
+          const [{ data: unavailableDates }, { data: schedJobs }] = await Promise.all([
+            supabase
+              .from("freelancer_unavailable_dates")
+              .select("unavailable_date, start_time, end_time")
+              .eq("freelancer_id", otherId),
+            supabase.from("job_requests").select("*").eq("selected_freelancer_id", otherId).eq("status", "locked"),
+          ]);
+          if (unavailableDates?.length) {
+            const days = Array.from(
+              new Set(
+                unavailableDates.map((d: { unavailable_date: string | null }) => d.unavailable_date).filter(Boolean)
+              )
+            ) as string[];
+            setFreelancerUnavailableTimeSlots(days);
+          }
+          if (schedJobs) setScheduledJobs(schedJobs);
+        })();
+      } else if (!convo.job_id) {
+        setFreelancerUnavailableTimeSlots([]);
+        setScheduledJobs([]);
+      }
+
+      return {
+        multiIds: propOtherUserId ? multiIdsForSub : undefined,
+        jobRowId: convo.job_id,
+      };
     }
 
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
     (async () => {
-      await fetchConversation();
+      const fetched = await fetchConversation();
+      if (cancelled || !fetched) return;
+      const { multiIds: multiIdsFromFetch, jobRowId: jobRowIdForRealtime } = fetched;
 
-      // Subscribe to new messages - if otherUserId is provided, subscribe to all conversations with that user
-      let allConversations: { id: string }[] | null = null;
+      const effectiveMultiIds =
+        propOtherUserId && multiIdsFromFetch && multiIdsFromFetch.length > 0
+          ? multiIdsFromFetch
+          : undefined;
 
-      if (propOtherUserId && user) {
-        // Find all conversation IDs with this user
-        const { data: conversations } = await supabase
-          .from("conversations")
-          .select("id")
-          .or(`and(client_id.eq.${user.id},freelancer_id.eq.${propOtherUserId}),and(client_id.eq.${propOtherUserId},freelancer_id.eq.${user.id})`);
-
-        allConversations = conversations || [];
-      }
-
-      if (propOtherUserId && allConversations && allConversations.length > 0 && user) {
-        const conversationIds = allConversations.map(c => c.id);
+      if (propOtherUserId && effectiveMultiIds && effectiveMultiIds.length > 0 && user) {
+        const conversationIds = effectiveMultiIds;
         // Subscribe to all conversations
         channel = supabase
           .channel(`messages:${propOtherUserId}`)
@@ -392,11 +404,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                   ? conversation?.freelancer_id
                   : conversation?.client_id;
                 if (newMsg.sender_id === otherId && currentUserProfile?.role === "client") {
-                  if (job) {
+                  const j = jobRef.current;
+                  if (j) {
                     supabase
                       .from("job_requests")
                       .update({ schedule_confirmed: true, stage: "Schedule" })
-                      .eq("id", job.id)
+                      .eq("id", j.id)
                       .then(({ error }) => {
                         if (error) console.error("Error updating schedule_confirmed:", error);
                       });
@@ -414,11 +427,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
               // Check if payment request was sent - update payment total
               if (newMsg.body?.includes("💰 Payment Request")) {
-                if (currentUserProfile?.role === "client" && job) {
+                const jPay = jobRef.current;
+                if (currentUserProfile?.role === "client" && jPay) {
                   const { data: paymentData } = await supabase
                     .from("payments")
                     .select("*")
-                    .eq("job_id", job.id)
+                    .eq("job_id", jPay.id)
                     .eq("status", "pending")
                     .order("created_at", { ascending: false })
                     .limit(1)
@@ -436,11 +450,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 newMsg.body?.includes("✓ Payment accepted") ||
                 newMsg.body?.includes("Payment completed") ||
                 newMsg.body?.includes("✓ Payment completed")) {
-                if (job) {
+                const jDone = jobRef.current;
+                if (jDone) {
                   const { data: paymentData } = await supabase
                     .from("payments")
                     .select("*")
-                    .eq("job_id", job.id)
+                    .eq("job_id", jDone.id)
                     .in("status", ["accepted", "paid"])
                     .order("created_at", { ascending: false })
                     .limit(1)
@@ -470,8 +485,8 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
           )
           .subscribe();
       } else {
-        // Fallback to single conversation subscription
-        channel = supabase
+        // Single conversation — subscribe without re-running when `job` updates (use jobRef in handlers).
+        let ch = supabase
           .channel(`messages:${conversationId}`)
           .on(
             "postgres_changes",
@@ -493,21 +508,20 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 markMessagesAsRead([newMsg.id]);
               }
 
-              // Check if this is a schedule confirmation message
               if (newMsg.body?.includes("Schedule confirmed") ||
                 newMsg.body?.includes("✓ Schedule confirmed")) {
-                if (currentUserProfile?.role === "client" && job) {
+                const jSch = jobRef.current;
+                if (currentUserProfile?.role === "client" && jSch) {
                   supabase
                     .from("job_requests")
                     .update({ schedule_confirmed: true, stage: "Schedule" })
-                    .eq("id", job.id)
+                    .eq("id", jSch.id)
                     .then(({ error }) => {
                       if (error) console.error("Error updating schedule_confirmed:", error);
                     });
                 }
               }
 
-              // Check if this is a price offer message
               if (newMsg.body?.includes("💰 Price Offer")) {
                 const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
                 if (priceMatch) {
@@ -515,13 +529,13 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 }
               }
 
-              // Check if payment request was sent
               if (newMsg.body?.includes("💰 Payment Request")) {
-                if (currentUserProfile?.role === "client" && job) {
+                const jReq = jobRef.current;
+                if (currentUserProfile?.role === "client" && jReq) {
                   const { data: paymentData } = await supabase
                     .from("payments")
                     .select("*")
-                    .eq("job_id", job.id)
+                    .eq("job_id", jReq.id)
                     .eq("status", "pending")
                     .order("created_at", { ascending: false })
                     .limit(1)
@@ -534,16 +548,16 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 }
               }
 
-              // Check if payment was accepted or completed
               if (newMsg.body?.includes("Payment accepted") ||
                 newMsg.body?.includes("✓ Payment accepted") ||
                 newMsg.body?.includes("Payment completed") ||
                 newMsg.body?.includes("✓ Payment completed")) {
-                if (job) {
+                const jAcc = jobRef.current;
+                if (jAcc) {
                   const { data: paymentData } = await supabase
                     .from("payments")
                     .select("*")
-                    .eq("job_id", job.id)
+                    .eq("job_id", jAcc.id)
                     .in("status", ["accepted", "paid"])
                     .order("created_at", { ascending: false })
                     .limit(1)
@@ -579,9 +593,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               table: "payments",
             },
             async (payload) => {
-              // Check if this payment is for the current job
               const paymentJobId = payload.new.job_id;
-              if (job && paymentJobId === job.id) {
+              const j = jobRef.current;
+              if (j && paymentJobId === j.id) {
                 const paymentData = payload.new;
                 setPaymentHourlyRate(paymentData.hourly_rate);
                 setPaymentTotal(paymentData.total_amount);
@@ -596,48 +610,51 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               table: "payments",
             },
             async (payload) => {
-              // Check if this payment is for the current job
               const paymentJobId = payload.new.job_id;
-              if (job && paymentJobId === job.id) {
+              const j = jobRef.current;
+              if (j && paymentJobId === j.id) {
                 const paymentData = payload.new;
                 setPaymentHourlyRate(paymentData.hourly_rate);
                 setPaymentTotal(paymentData.total_amount);
 
-                // If payment is marked as paid, update job stage to Completed
-                if (paymentData.status === "paid") {
-                  if (job.stage !== "Completed") {
-                    const { error: jobError } = await supabase
-                      .from("job_requests")
-                      .update({ stage: "Completed" })
-                      .eq("id", job.id);
+                if (paymentData.status === "paid" && j.stage !== "Completed") {
+                  const { error: jobError } = await supabase
+                    .from("job_requests")
+                    .update({ stage: "Completed" })
+                    .eq("id", j.id);
 
-                    if (!jobError) {
-                      setJob({ ...job, stage: "Completed" });
-                    }
+                  if (!jobError) {
+                    setJob((prev) => (prev ? { ...prev, stage: "Completed" } : prev));
                   }
                 }
               }
             }
-          )
-          .on(
+          );
+
+        if (jobRowIdForRealtime) {
+          ch = ch.on(
             "postgres_changes",
             {
               event: "UPDATE",
               schema: "public",
               table: "job_requests",
-              filter: job ? `id=eq.${job.id}` : undefined,
+              filter: `id=eq.${jobRowIdForRealtime}`,
             },
             async (payload) => {
-              // When job stage changes to Payment or Completed, fetch the payment
-              if (job && payload.new.id === job.id && (payload.new.stage === "Payment" || payload.new.stage === "Completed")) {
-                // Update job state
-                setJob({ ...job, stage: payload.new.stage as string });
+              const j = jobRef.current;
+              if (
+                j &&
+                payload.new.id === j.id &&
+                (payload.new.stage === "Payment" || payload.new.stage === "Completed")
+              ) {
+                setJob((prev) =>
+                  prev ? { ...prev, stage: payload.new.stage as string } : prev
+                );
 
-                // Fetch payment if it exists
                 const { data: existingPayment } = await supabase
                   .from("payments")
                   .select("*")
-                  .eq("job_id", job.id)
+                  .eq("job_id", j.id)
                   .order("created_at", { ascending: false })
                   .limit(1)
                   .maybeSingle();
@@ -648,17 +665,20 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 }
               }
             }
-          )
-          .subscribe();
+          );
+        }
+
+        channel = ch.subscribe();
       }
     })();
 
     return () => {
+      cancelled = true;
       if (channel) {
         supabase.removeChannel(channel);
       }
     };
-  }, [conversationId, user, navigate, propOtherUserId, currentUserProfile, job]);
+  }, [conversationId, user?.id, navigate, propOtherUserId, currentUserProfile?.is_admin, currentUserProfile?.role]);
 
   async function fetchCurrencies() {
     const { data, error } = await supabase
@@ -751,24 +771,15 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     setMarkingRead(true);
 
     try {
-      console.log("[ChatPage] Marking messages as read:", messageIds);
-      const results = await Promise.all(
-        messageIds.map((msgId) =>
-          supabase
-            .from("messages")
-            .update({ read_at: new Date().toISOString(), read_by: user.id })
-            .eq("id", msgId)
-            .is("read_at", null)
-            .select()
-        )
-      );
+      const { data, error } = await supabase
+        .from("messages")
+        .update({ read_at: new Date().toISOString(), read_by: user.id })
+        .in("id", messageIds)
+        .is("read_at", null)
+        .select();
 
-      // Check for errors
-      const errors = results.filter(r => r.error);
-      if (errors.length > 0) {
-        console.error("[ChatPage] Error marking messages as read:", errors);
-        console.error("[ChatPage] RLS policy may be missing. Run migration: 010_add_messages_update_policy.sql");
-        // Try to update local state anyway if RLS is blocking
+      if (error) {
+        console.error("[ChatPage] Error marking messages as read:", error);
         setMessages((prev) =>
           prev.map((msg) => {
             if (messageIds.includes(msg.id) && msg.sender_id !== user.id && !msg.read_at) {
@@ -781,17 +792,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
             return msg;
           })
         );
-      } else {
-        console.log("[ChatPage] Successfully marked messages as read");
-        // Update local state with the returned data
-        results.forEach((result) => {
-          if (result.data && result.data[0]) {
-            const updatedMsg = result.data[0];
-            setMessages((prev) =>
-              prev.map((msg) => (msg.id === updatedMsg.id ? updatedMsg : msg))
-            );
-          }
-        });
+      } else if (data?.length) {
+        const byId = new Map(data.map((m) => [m.id, m as Message]));
+        setMessages((prev) => prev.map((msg) => (byId.has(msg.id) ? (byId.get(msg.id) as Message) : msg)));
       }
     } catch (error) {
       console.error("[ChatPage] Error marking messages as read:", error);
@@ -1026,7 +1029,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     }
 
     setSending(false);
-    inputRef.current?.focus();
+    focusComposer();
   }
 
   function formatTime(dateStr: string): string {
@@ -1236,12 +1239,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
   function ReadReceipt({ status }: { status: "sent" | "delivered" | "read" }) {
     if (status === "sent") {
-      return <Check className="w-4 h-4 text-muted-foreground/60" />;
+      return <Check className="h-[1.125rem] w-[1.125rem] shrink-0 text-muted-foreground/60" strokeWidth={2.25} />;
     }
     if (status === "delivered") {
-      return <CheckCheck className="w-4 h-4 text-muted-foreground/60" />;
+      return <CheckCheck className="h-[1.125rem] w-[1.125rem] shrink-0 text-muted-foreground/60" strokeWidth={2.25} />;
     }
-    return <CheckCheck className="w-4 h-4 text-blue-500" />;
+    return <CheckCheck className="h-[1.125rem] w-[1.125rem] shrink-0 text-blue-500" strokeWidth={2.25} />;
   }
 
   // For admin viewing reports: show client initials, otherwise show "S" for Support or user initials
@@ -1321,7 +1324,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                     }}
                     className="text-black dark:text-white"
                   >
-                    <ArrowLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-5 h-5" />
                   </Button>
                   <h2 className="text-lg font-semibold text-black dark:text-white">
                     {conversation?.job_id === null && currentUserProfile?.is_admin ? "Issue Reports" : ""}
@@ -1773,7 +1776,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 }}
                 className="lg:hidden text-black dark:text-white"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ChevronLeft className="w-5 h-5" />
               </Button>
 
             <button
@@ -1858,12 +1861,12 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         <div
           className={cn(
             "min-h-0 flex-1 overflow-y-auto p-4",
-            hideBackButton ? "pt-3 md:pt-4" : "pt-20 md:pt-4"
+            hideBackButton ? "pt-0 md:pt-4" : "pt-20 md:pt-4"
           )}
           style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y", overscrollBehavior: "contain" }}
         >
           <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
-            <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-40 md:pb-32">
+            <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-[max(11rem,min(42vh,18rem))] md:pb-32">
               {messages.map((msg, index) => {
                 const isOwn = msg.sender_id === user?.id;
                 const receiptStatus = getReadReceiptStatus(msg);
@@ -1885,9 +1888,9 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                       )}
                     >
                       {!isOwn && (
-                        <Avatar className="w-10 h-10 flex-shrink-0 mb-1">
+                        <Avatar className="w-8 h-8 flex-shrink-0 mb-1">
                           <AvatarImage src={otherUser?.photo_url || undefined} />
-                          <AvatarFallback className="text-[12px] font-bold bg-primary/10 text-primary">
+                          <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
                             {otherInitials}
                           </AvatarFallback>
                         </Avatar>
@@ -1901,7 +1904,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                       >
                         <div
                           className={cn(
-                            "px-4 py-2.5 rounded-2xl shadow-sm relative group",
+                            "rounded-2xl px-3 py-2 shadow-sm relative group",
                             isOwn
                               ? "bg-primary text-primary-foreground rounded-br-none"
                               : "bg-card border border-border/50 rounded-bl-none"
@@ -1949,27 +1952,50 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                             </div>
                           )}
 
-                          {msg.body && (
-                            <p className="text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap">
+                          {msg.body ? (
+                            <p
+                              className={cn(
+                                "inline-block max-w-full text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap",
+                                isOwn ? "text-primary-foreground" : "text-foreground"
+                              )}
+                            >
                               {msg.body}
+                              <span
+                                className={cn(
+                                  "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom",
+                                  "text-[11px] font-medium tabular-nums leading-none",
+                                  isOwn ? "text-primary-foreground/75" : "text-muted-foreground"
+                                )}
+                              >
+                                {formatTime(msg.created_at)}
+                                {isOwn && receiptStatus && (
+                                  <ReadReceipt status={receiptStatus} />
+                                )}
+                              </span>
                             </p>
+                          ) : (
+                            msg.attachment_url && (
+                              <div
+                                className={cn(
+                                  "mt-1 flex flex-wrap items-center gap-1",
+                                  isOwn ? "justify-end" : "justify-start"
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-0.5",
+                                    "text-[11px] font-medium tabular-nums leading-none",
+                                    isOwn ? "text-primary-foreground/75" : "text-muted-foreground"
+                                  )}
+                                >
+                                  {formatTime(msg.created_at)}
+                                  {isOwn && receiptStatus && (
+                                    <ReadReceipt status={receiptStatus} />
+                                  )}
+                                </span>
+                              </div>
+                            )
                           )}
-
-                          {/* Meta info inside message bubble */}
-                          <div className={cn(
-                            "flex items-center gap-1.5 mt-1",
-                            isOwn ? "justify-end" : "justify-start"
-                          )}>
-                            <span className={cn(
-                              "text-[10px]",
-                              isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
-                            )}>
-                              {formatTime(msg.created_at)}
-                            </span>
-                            {isOwn && receiptStatus && (
-                              <ReadReceipt status={receiptStatus} />
-                            )}
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -2012,7 +2038,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               </Button>
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2 items-center w-full max-w-none">
+          <form onSubmit={handleSend} className="flex gap-2 items-end w-full max-w-none">
             <input
               ref={fileInputRef}
               type="file"
@@ -2026,24 +2052,36 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               type="button"
               variant="ghost"
               size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 bg-muted hover:bg-muted/80 border border-border text-primary"
+              className="rounded-full h-12 w-12 flex-shrink-0 self-end bg-muted hover:bg-muted/80 border border-border text-primary"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
             >
               <Paperclip className="w-6 h-6" />
             </Button>
-            <Input
-              ref={inputRef}
+            <Textarea
+              ref={mobileComposerRef}
+              rows={1}
               placeholder={selectedFile ? "Add a message..." : "Type a message..."}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border border-border bg-background h-12 text-[16px] font-medium text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-ring/30"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
+                }
+              }}
+              className={cn(
+                "flex-1 min-h-[48px] max-h-[min(40vh,280px)] resize-none overflow-y-auto",
+                "rounded-[1.5rem] border border-border bg-background py-3 px-4",
+                "text-[16px] font-medium leading-snug text-foreground placeholder:text-muted-foreground shadow-sm",
+                "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0"
+              )}
               disabled={sending || uploading}
             />
             <Button
               type="submit"
               size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm"
+              className="rounded-full h-12 w-12 flex-shrink-0 self-end bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             >
               {sending || uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
@@ -2073,28 +2111,41 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               </Button>
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2 w-full max-w-none w-full items-center">
+          <form onSubmit={handleSend} className="flex gap-2 w-full max-w-none w-full items-end">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 bg-muted hover:bg-muted/80 border border-border text-primary"
+              className="rounded-full h-12 w-12 flex-shrink-0 self-end bg-muted hover:bg-muted/80 border border-border text-primary"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
             >
               <Paperclip className="w-6 h-6" />
             </Button>
-            <Input
+            <Textarea
+              ref={desktopComposerRef}
+              rows={1}
               placeholder={selectedFile ? "Add a message..." : "Type a message..."}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 rounded-full border border-border bg-background h-12 text-[16px] font-medium text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-ring/30"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
+                }
+              }}
+              className={cn(
+                "flex-1 min-h-[48px] max-h-[min(40vh,280px)] resize-none overflow-y-auto",
+                "rounded-[1.5rem] border border-border bg-background py-3 px-4",
+                "text-[16px] font-medium leading-snug text-foreground placeholder:text-muted-foreground shadow-sm",
+                "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0"
+              )}
               disabled={sending || uploading}
             />
             <Button
               type="submit"
               size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm"
+              className="rounded-full h-12 w-12 flex-shrink-0 self-end bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             >
               {sending || uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}

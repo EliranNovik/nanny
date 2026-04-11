@@ -102,10 +102,14 @@ function RoleRedirect() {
   return <Navigate to="/freelancer/home" replace />;
 }
 
-/** Wraps page content with top padding. Desktop: fixed header (BottomNav). Mobile: spacing below status bar (safe area is on body). */
+/**
+ * Wraps page content with top padding so it clears the fixed BottomNav header.
+ * #root already applies env(safe-area-inset-top); pt-14 (~3.5rem) matches the mobile strip
+ * (safe-area padding inside the strip + h-10 + margins) and the md desktop bar.
+ */
 function PageLayoutWithHeader() {
   return (
-    <div className="app-main-scroll-pad min-h-[100dvh] min-h-[-webkit-fill-available] pt-4 md:pt-14">
+    <div className="app-main-scroll-pad app-content-below-fixed-header min-h-[100dvh] min-h-[-webkit-fill-available]">
       <Outlet />
     </div>
   );

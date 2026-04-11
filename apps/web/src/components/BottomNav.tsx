@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useConfirmationCounts } from "@/hooks/useConfirmationCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
-import { Home, Heart, MessageCircle, User, Bell, ChevronDown, LogOut, Pencil, Search, X, ArrowLeft, Menu, MapPin, Plus, ClipboardList, UsersRound } from "lucide-react";
+import { Home, Heart, MessageCircle, User, Bell, ChevronDown, ChevronLeft, LogOut, Pencil, Search, X, Menu, MapPin, Plus, ClipboardList, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -77,6 +77,30 @@ export function BottomNav() {
     } else {
       navigate(communityHomeFallback);
     }
+  };
+
+  const headerBackHomeFallback =
+    profile?.role === "freelancer"
+      ? "/freelancer/home"
+      : profile?.role === "client"
+        ? "/client/home"
+        : "/";
+
+  /** Back on profile routes uses explicit targets; community uses history + fallback; elsewhere history or home. */
+  const handleHeaderBack = () => {
+    if (showProfileBack && profileBackTarget) {
+      navigate(profileBackTarget);
+      return;
+    }
+    if (isCommunityPostsFilterPage) {
+      handleCommunityBack();
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(headerBackHomeFallback);
   };
 
   useEffect(() => {
@@ -222,16 +246,14 @@ export function BottomNav() {
     <header className="hidden md:block fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md transition-all dark:border-border/40 dark:bg-card/85">
       <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
         <div className="flex min-w-0 justify-start items-center gap-1.5">
-          {isCommunityPostsFilterPage && (
-            <button
-              type="button"
-              onClick={handleCommunityBack}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
-              aria-label="Back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleHeaderBack}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+          </button>
           {user && (
             <button
               type="button"
@@ -242,36 +264,25 @@ export function BottomNav() {
               <Menu className="w-5 h-5" />
             </button>
           )}
-          {showProfileBack ? (
-            <button
-              type="button"
-              onClick={() => navigate(profileBackTarget!)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
-              aria-label="Back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setProfileMenuOpen(true)}
-              className="flex items-center gap-3 min-w-0 group"
-              aria-label="Open profile menu"
-            >
-              <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
-                <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
-                <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
-                  {(profile?.full_name ?? user?.email ?? "User").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col text-left min-w-0">
-                <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
-                  {profile?.full_name?.split(' ')[0] ?? "User"}
-                  <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
-                </span>
-              </div>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setProfileMenuOpen(true)}
+            className="flex items-center gap-3 min-w-0 group"
+            aria-label="Open profile menu"
+          >
+            <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
+              <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+              <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
+                {(profile?.full_name ?? user?.email ?? "User").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col text-left min-w-0">
+              <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
+                {profile?.full_name?.split(' ')[0] ?? "User"}
+                <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
+              </span>
+            </div>
+          </button>
         </div>
 
         <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
@@ -313,6 +324,23 @@ export function BottomNav() {
     </header>
   );
 
+  /** Mobile: fixed top background strip behind back / search / bell. */
+  const mobileScrollHeaderLayer = (
+    <div
+      className={cn(
+        "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] translate-y-0 opacity-100",
+        "border-b border-border/80 bg-background/95 shadow-[0_8px_28px_rgba(15,23,42,0.14)] backdrop-blur-xl dark:border-border/90 dark:bg-background/95 dark:shadow-[0_10px_36px_rgba(0,0,0,0.48)]"
+      )}
+      style={{
+        paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+        paddingBottom: "0.5rem",
+      }}
+      aria-hidden
+    >
+      <div className="h-10 w-full" />
+    </div>
+  );
+
   /** Mobile only: floating row — community pages: back | centered category | search + bell; else search + bell (top-right). */
   const MobileFloatingActions = (
     <div
@@ -331,19 +359,10 @@ export function BottomNav() {
           mobileSearchOpen || isCommunityPostsFilterPage
             ? "w-full"
             : "max-w-[calc(100vw-1rem)] justify-end",
-          mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end"
+          mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end",
+          isCommunityPostsFilterPage && "pl-[3rem]"
         )}
       >
-        {isCommunityPostsFilterPage && (
-          <button
-            type="button"
-            onClick={handleCommunityBack}
-            className="shrink-0 rounded-full border border-border/60 bg-card/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:text-slate-300 dark:hover:bg-muted"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-        )}
         {isCommunityPostsFilterPage && !mobileSearchOpen && (
           <div className="flex min-w-0 flex-1 justify-center px-0.5">
             <div className="w-full max-w-[min(10.5rem,calc(100vw-8rem))]">
@@ -370,7 +389,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
-            className="rounded-full bg-card/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:border dark:border-border/60 dark:text-slate-300 dark:hover:bg-muted"
+            className="p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
             aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
             aria-expanded={mobileSearchOpen}
           >
@@ -381,7 +400,7 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative shrink-0 rounded-full border border-border/60 bg-card/90 p-2.5 text-slate-600 shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 dark:text-slate-300 dark:hover:bg-muted"
+            className="relative shrink-0 p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -399,37 +418,27 @@ export function BottomNav() {
     </div>
   );
 
-  /** Mobile: fixed back (left), same vertical band as search + bell (right) */
-  const MobileProfileBack =
-    showProfileBack && !mobileSearchOpen ? (
-      <div
-        className="md:hidden fixed z-[60] pointer-events-none"
-        style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
-      >
-        <button
-          type="button"
-          onClick={() => navigate(profileBackTarget!)}
-          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border/60 shadow-lg text-slate-600 dark:text-slate-300 hover:bg-card dark:hover:bg-muted transition-all active:scale-95"
-          aria-label="Back"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-      </div>
-    ) : null;
-
-  /** Mobile jobs: tab pill top-left (search + bell stay top-right) */
+  /** Mobile: back top-left on every page; jobs tab sits to the right of back when on /jobs?mode=… */
   const jobsModeInUrl = jobsSearchParams.get("mode");
-  const MobileJobsTabLeft =
-    isJobsPage && jobsModeInUrl && !showProfileBack && !mobileSearchOpen ? (
-      <div
-        className="md:hidden fixed z-[60] pointer-events-none"
-        style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
-      >
-        <div className="pointer-events-auto">
+  /** Back: plain icon on the strip (no pill). */
+  const mobileUniversalBackBtnClass =
+    "pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
+
+  const MobileLeftHeaderCluster = (
+    <div
+      className="md:hidden fixed z-[60] pointer-events-none flex max-w-[calc(100vw-7rem)] flex-row items-center gap-1"
+      style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
+    >
+      <button type="button" onClick={handleHeaderBack} className={mobileUniversalBackBtnClass} aria-label="Back">
+        <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+      </button>
+      {!mobileSearchOpen && isJobsPage && jobsModeInUrl ? (
+        <div className="pointer-events-auto min-w-0 flex-1 overflow-hidden">
           <JobsTabBar menuAlign="left" hideDesktop />
         </div>
-      </div>
-    ) : null;
+      ) : null}
+    </div>
+  );
 
   const ProfileMenuModal = (
     <Dialog open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
@@ -478,8 +487,7 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {MobileProfileBack}
-        {MobileJobsTabLeft}
+        {MobileLeftHeaderCluster}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
@@ -529,8 +537,8 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {MobileProfileBack}
-        {MobileJobsTabLeft}
+        {mobileScrollHeaderLayer}
+        {MobileLeftHeaderCluster}
         {MobileFloatingActions}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
@@ -567,8 +575,8 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {MobileProfileBack}
-        {MobileJobsTabLeft}
+        {mobileScrollHeaderLayer}
+        {MobileLeftHeaderCluster}
         {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0">
           <div
@@ -799,8 +807,8 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {MobileProfileBack}
-        {MobileJobsTabLeft}
+        {mobileScrollHeaderLayer}
+        {MobileLeftHeaderCluster}
         {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
           <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-6 md:max-w-xs md:rounded-2xl">
