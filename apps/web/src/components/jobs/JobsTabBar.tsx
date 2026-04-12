@@ -175,11 +175,11 @@ export function JobsTabBar({
   return (
     <div ref={containerRef} className="relative shrink-0 md:max-w-full">
       {!hideMobile && (
-        <div className="flex w-full max-w-[min(100vw-2rem,22rem)] items-center md:hidden">
+        <div className="flex w-full min-w-0 max-w-[min(13.75rem,calc(100vw-7.5rem))] shrink items-center md:hidden">
           <div className="relative min-w-0 flex-1">
             <div className={cn("relative min-w-0", MOBILE_TAB_SURFACE)}>
               <ActiveIcon
-                className="pointer-events-none absolute left-3 top-1/2 z-[3] h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+                className="pointer-events-none absolute left-2 top-1/2 z-[3] h-3.5 w-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-400"
                 aria-hidden
               />
               <select
@@ -187,7 +187,7 @@ export function JobsTabBar({
                 aria-label="Jobs section"
                 onChange={(e) => select(e.target.value)}
                 className={cn(
-                  "relative z-[2] h-10 w-full min-w-0 cursor-pointer appearance-none border-0 bg-transparent py-2 pl-10 pr-[2.75rem] text-[14px] font-semibold text-slate-900 shadow-none outline-none ring-0 focus:ring-0 dark:text-white"
+                  "relative z-[2] h-9 w-full min-w-0 max-w-full cursor-pointer appearance-none border-0 bg-transparent py-1.5 pl-8 pr-10 text-[12px] font-semibold leading-tight text-slate-900 shadow-none outline-none ring-0 focus:ring-0 dark:text-white"
                 )}
               >
                 {tabs.map((tab) => (
@@ -197,13 +197,13 @@ export function JobsTabBar({
                 ))}
               </select>
               <span
-                className="pointer-events-none absolute right-9 top-1/2 z-[3] inline-flex h-5 min-w-[1.25rem] -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 px-1.5 text-[10px] font-bold leading-none tabular-nums text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
+                className="pointer-events-none absolute right-7 top-1/2 z-[3] inline-flex h-4 min-w-[1.125rem] -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 px-1 text-[9px] font-bold leading-none tabular-nums text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
                 aria-hidden
               >
                 {badgeCountForTab(activeId)}
               </span>
               <ChevronDown
-                className="pointer-events-none absolute right-3 top-1/2 z-[3] h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-zinc-400"
+                className="pointer-events-none absolute right-2 top-1/2 z-[3] h-3.5 w-3.5 -translate-y-1/2 text-slate-500 dark:text-zinc-400"
                 aria-hidden
               />
             </div>

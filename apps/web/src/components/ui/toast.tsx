@@ -27,11 +27,14 @@ export function Toast({ title, description, variant = "default", onClose, action
   const Icon = icons[variant]
   
   const variantStyles = {
-    default: "border-orange-200 bg-card shadow-orange-500/5",
-    success: "border-emerald-200 bg-card/95 backdrop-blur-md shadow-emerald-500/10",
-    error: "border-red-200 bg-card shadow-red-500/5",
-    warning: "border-amber-200 bg-card shadow-amber-500/5",
-    info: "border-blue-200 bg-card shadow-blue-500/5",
+    default:
+      "border-orange-200 bg-card shadow-orange-500/5 dark:border-orange-500/30 dark:bg-card",
+    success:
+      "border-emerald-200 bg-card/95 backdrop-blur-md shadow-emerald-500/10 dark:border-emerald-500/30 dark:bg-card/95",
+    error: "border-red-200 bg-card shadow-red-500/5 dark:border-red-500/30 dark:bg-card",
+    warning:
+      "border-amber-200 bg-card shadow-amber-500/5 dark:border-amber-500/30 dark:bg-card",
+    info: "border-blue-200 bg-card shadow-blue-500/5 dark:border-blue-500/30 dark:bg-card",
   }[variant]
 
   const iconColor = {
@@ -52,12 +55,16 @@ export function Toast({ title, description, variant = "default", onClose, action
       <div className="flex items-start gap-3 flex-1">
         <Icon className={cn("h-5 w-5 shrink-0 mt-0.5", iconColor)} />
         <div className="flex-1 space-y-1">
-          {title && <p className="text-sm font-semibold text-black">{title}</p>}
-          {description && <p className="text-sm text-black/70">{description}</p>}
+          {title && (
+            <p className="text-sm font-semibold text-black dark:text-white">{title}</p>
+          )}
+          {description && (
+            <p className="text-sm text-black/70 dark:text-white/80">{description}</p>
+          )}
           {action && (
             <button
               onClick={action.onClick}
-              className="mt-2 text-xs font-semibold text-orange-500 hover:underline"
+              className="mt-2 text-xs font-semibold text-orange-500 hover:underline dark:text-orange-400"
             >
               {action.label}
             </button>
@@ -66,7 +73,7 @@ export function Toast({ title, description, variant = "default", onClose, action
       </div>
       <button
         onClick={onClose}
-        className="absolute right-2 top-2 rounded-md p-1 text-black/30 opacity-0 transition-opacity hover:text-black focus:opacity-100 focus:outline-none group-hover:opacity-100"
+        className="absolute right-2 top-2 rounded-md p-1 text-black/30 opacity-0 transition-opacity hover:text-black focus:opacity-100 focus:outline-none group-hover:opacity-100 dark:text-white/45 dark:hover:text-white"
       >
         <X className="h-4 w-4" />
       </button>

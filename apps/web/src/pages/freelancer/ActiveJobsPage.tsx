@@ -306,7 +306,7 @@ export default function FreelancerActiveJobsPage() {
           </Card>
         )}
 
-        {/* C. Past Jobs (collapsed by default) */}
+        {/* C. History of help (collapsed by default) */}
         {pastJobs.length > 0 && (
           <Card className="border-0 shadow-lg">
             <CardHeader 
@@ -314,7 +314,7 @@ export default function FreelancerActiveJobsPage() {
               onClick={() => setPastJobsExpanded(!pastJobsExpanded)}
             >
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Past Jobs</CardTitle>
+                <CardTitle className="text-lg">History of help</CardTitle>
                 {pastJobsExpanded ? (
                   <ChevronUp className="w-5 h-5 text-muted-foreground" />
                 ) : (
@@ -362,7 +362,7 @@ export default function FreelancerActiveJobsPage() {
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <Calendar className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">No Active Jobs</h3>
+              <h3 className="font-semibold text-lg mb-2">Nothing in Helping now</h3>
               <p className="text-muted-foreground mb-4">
                 You'll see jobs here once clients select you.
               </p>

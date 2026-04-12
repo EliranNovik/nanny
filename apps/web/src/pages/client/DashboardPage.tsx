@@ -407,7 +407,7 @@ export default function DashboardPage() {
           >
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-start justify-between gap-2 mb-1">
-                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Active Jobs</span>
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Helping me now</span>
                 <Briefcase className="hidden md:block h-5 w-5 shrink-0 text-primary" aria-hidden />
               </div>
               <p className="text-[32px] font-bold text-slate-900 dark:text-white leading-none mb-2">{activeJobs.length}</p>
@@ -435,7 +435,7 @@ export default function DashboardPage() {
           >
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Incoming</span>
+                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Community&apos;s requests</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {incomingKpiCount > 0 && (
                     <Badge className="bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 border-none text-[9px] font-black h-4 px-1.5 rounded-full">NEW</Badge>
@@ -492,7 +492,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Active Jobs Card - styled like Live Jobs tab */}
+        {/* Helping me now card — matches Jobs tab */}
         {activeJobs.length > 0 && (
           <div className="space-y-6">
             <div className="flex items-center gap-3">
@@ -609,7 +609,7 @@ export default function DashboardPage() {
             <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
               <Bell className="w-6 h-6 shrink-0 text-orange-500" aria-hidden />
               <span className="md:hidden">
-                {requestsTab === "my" ? "My Requests" : "Incoming Requests"}
+                {requestsTab === "my" ? "My Requests" : "Community's requests"}
               </span>
               <span className="hidden md:inline uppercase">REQUESTS</span>
             </h2>
@@ -641,7 +641,7 @@ export default function DashboardPage() {
                   type="button"
                   role="tab"
                   aria-selected={requestsTab === "invitations"}
-                  aria-label="Incoming requests"
+                  aria-label="Community's requests"
                   onClick={() => setRequestsTab("invitations")}
                   className={cn(
                     "flex items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ease-out",
@@ -652,7 +652,7 @@ export default function DashboardPage() {
                   )}
                 >
                   <Bell className="h-4 w-4 shrink-0 md:hidden" aria-hidden />
-                  <span className="hidden md:inline">Incoming</span>
+                  <span className="hidden md:inline">Community&apos;s requests</span>
                 </button>
               </div>
               <Button
@@ -804,7 +804,7 @@ export default function DashboardPage() {
                   }) : (
                     <div className="px-5 py-10 text-center text-slate-600/60 dark:text-slate-400/60">
                       <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">No incoming requests right now</p>
+                      <p className="text-sm">No community requests right now</p>
                     </div>
                   )
                 )}
@@ -819,7 +819,7 @@ export default function DashboardPage() {
               <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-zinc-800 mx-auto mb-4 flex items-center justify-center">
                 <Baby className="w-8 h-8 text-slate-600 dark:text-slate-400" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">No Active Jobs</h3>
+              <h3 className="font-semibold text-lg mb-2">Nothing in Helping me now</h3>
               <p className="text-slate-600 dark:text-slate-400 mb-4">Post a request to get matched with a helper.</p>
               <Button onClick={() => navigate("/client/create")}>Create Request</Button>
             </CardContent>

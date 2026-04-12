@@ -603,7 +603,7 @@ export default function ActiveJobsPage() {
           </Card>
         )}
 
-        {/* C. Past Jobs (collapsed by default) */}
+        {/* C. History of help (collapsed by default) */}
         {pastJobs.length > 0 && (
           <Card className="border-0 shadow-lg">
             <CardHeader
@@ -611,7 +611,7 @@ export default function ActiveJobsPage() {
               onClick={() => setPastJobsExpanded(!pastJobsExpanded)}
             >
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Past Jobs</CardTitle>
+                <CardTitle className="text-lg">History of help</CardTitle>
                 {pastJobsExpanded ? (
                   <ChevronUp className="w-5 h-5 text-muted-foreground" />
                 ) : (

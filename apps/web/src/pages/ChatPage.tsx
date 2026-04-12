@@ -234,7 +234,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
     isInitialLoadRef.current = true;
 
     async function fetchConversation(): Promise<{
-      multiIds?: string[];
+      multiIds: string[];
       jobRowId: string | null;
     } | null> {
       if (!conversationId || !user) return null;
@@ -255,29 +255,32 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
 
       const otherId = propOtherUserId || (convo.client_id === userId ? convo.freelancer_id : convo.client_id);
 
-      async function loadMessages(): Promise<{ messages: Message[]; multiIds?: string[] }> {
-        if (propOtherUserId) {
-          const { data: allConversations } = await supabase
-            .from("conversations")
-            .select("id")
-            .or(
-              `and(client_id.eq.${userId},freelancer_id.eq.${propOtherUserId}),and(client_id.eq.${propOtherUserId},freelancer_id.eq.${userId})`
-            );
-          if (!allConversations?.length) return { messages: [], multiIds: [] };
-          const ids = allConversations.map((c) => c.id);
-          const { data: allMsgs } = await supabase
+      /** All conversation rows between this client–freelancer pair (multiple jobs), merged into one timeline. */
+      async function loadMessages(): Promise<{ messages: Message[]; multiIds: string[] }> {
+        const { data: allConversations } = await supabase
+          .from("conversations")
+          .select("id")
+          .or(
+            `and(client_id.eq.${userId},freelancer_id.eq.${otherId}),and(client_id.eq.${otherId},freelancer_id.eq.${userId})`
+          );
+        const ids = (allConversations ?? []).map((c) => c.id);
+        if (ids.length === 0) {
+          const { data: fallbackMsgs } = await supabase
             .from("messages")
             .select("*")
-            .in("conversation_id", ids)
+            .eq("conversation_id", conversationId)
             .order("created_at", { ascending: true });
-          return { messages: allMsgs ?? [], multiIds: ids };
+          return {
+            messages: fallbackMsgs ?? [],
+            multiIds: conversationId ? [conversationId] : [],
+          };
         }
-        const { data: singleMsgs } = await supabase
+        const { data: allMsgs } = await supabase
           .from("messages")
           .select("*")
-          .eq("conversation_id", conversationId)
+          .in("conversation_id", ids)
           .order("created_at", { ascending: true });
-        return { messages: singleMsgs ?? [] };
+        return { messages: allMsgs ?? [], multiIds: ids };
       }
 
       async function loadProfile(): Promise<Profile | null> {
@@ -354,7 +357,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       }
 
       return {
-        multiIds: propOtherUserId ? multiIdsForSub : undefined,
+        multiIds: multiIdsForSub,
         jobRowId: convo.job_id,
       };
     }
@@ -367,309 +370,203 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
       if (cancelled || !fetched) return;
       const { multiIds: multiIdsFromFetch, jobRowId: jobRowIdForRealtime } = fetched;
 
-      const effectiveMultiIds =
-        propOtherUserId && multiIdsFromFetch && multiIdsFromFetch.length > 0
+      const conversationIdsForRealtime =
+        multiIdsFromFetch && multiIdsFromFetch.length > 0
           ? multiIdsFromFetch
-          : undefined;
+          : conversationId
+            ? [conversationId]
+            : [];
 
-      if (propOtherUserId && effectiveMultiIds && effectiveMultiIds.length > 0 && user) {
-        const conversationIds = effectiveMultiIds;
-        // Subscribe to all conversations
-        channel = supabase
-          .channel(`messages:${propOtherUserId}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "messages",
-              filter: `conversation_id=in.(${conversationIds.join(",")})`,
-            },
-            async (payload) => {
-              const newMsg = payload.new as Message;
-              setMessages((prev) => {
-                const exists = prev.some((msg) => msg.id === newMsg.id);
-                if (exists) return prev;
-                return [...prev, newMsg];
-              });
+      if (conversationIdsForRealtime.length === 0 || !user) {
+        return;
+      }
 
-              if (newMsg.sender_id !== user?.id) {
-                markMessagesAsRead([newMsg.id]);
-              }
+      const messageScopeFilter = `conversation_id=in.(${conversationIdsForRealtime.join(",")})`;
 
-              // Check if this is a schedule confirmation message - update job stage if needed
-              if (newMsg.body?.includes("Schedule confirmed") ||
-                newMsg.body?.includes("✓ Schedule confirmed")) {
-                const otherId = conversation?.client_id === user?.id
-                  ? conversation?.freelancer_id
-                  : conversation?.client_id;
-                if (newMsg.sender_id === otherId && currentUserProfile?.role === "client") {
-                  const j = jobRef.current;
-                  if (j) {
-                    supabase
-                      .from("job_requests")
-                      .update({ schedule_confirmed: true, stage: "Schedule" })
-                      .eq("id", j.id)
-                      .then(({ error }) => {
-                        if (error) console.error("Error updating schedule_confirmed:", error);
-                      });
-                  }
-                }
-              }
+      // Unified: merged timeline across all job threads with this contact + payment/job side-effects for the opened job.
+      let ch = supabase
+        .channel(`messages:${conversationId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: messageScopeFilter,
+          },
+          async (payload) => {
+            const newMsg = payload.new as Message;
+            setMessages((prev) => {
+              const exists = prev.some((msg) => msg.id === newMsg.id);
+              if (exists) return prev;
+              return [...prev, newMsg];
+            });
 
-              // Check if this is a price offer message - update local price offer
-              if (newMsg.body?.includes("💰 Price Offer")) {
-                const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
-                if (priceMatch) {
-                  setPriceOffer(parseInt(priceMatch[1]));
-                }
-              }
+            if (newMsg.sender_id !== user?.id) {
+              markMessagesAsRead([newMsg.id]);
+            }
 
-              // Check if payment request was sent - update payment total
-              if (newMsg.body?.includes("💰 Payment Request")) {
-                const jPay = jobRef.current;
-                if (currentUserProfile?.role === "client" && jPay) {
-                  const { data: paymentData } = await supabase
-                    .from("payments")
-                    .select("*")
-                    .eq("job_id", jPay.id)
-                    .eq("status", "pending")
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                  if (paymentData) {
-                    setPaymentHourlyRate(paymentData.hourly_rate);
-                    setPaymentTotal(paymentData.total_amount);
-                  }
-                }
-              }
-
-              // Check if payment was accepted or completed
-              if (newMsg.body?.includes("Payment accepted") ||
-                newMsg.body?.includes("✓ Payment accepted") ||
-                newMsg.body?.includes("Payment completed") ||
-                newMsg.body?.includes("✓ Payment completed")) {
-                const jDone = jobRef.current;
-                if (jDone) {
-                  const { data: paymentData } = await supabase
-                    .from("payments")
-                    .select("*")
-                    .eq("job_id", jDone.id)
-                    .in("status", ["accepted", "paid"])
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                  if (paymentData) {
-                    setPaymentTotal(paymentData.total_amount);
-                  }
-                }
+            if (newMsg.body?.includes("Schedule confirmed") ||
+              newMsg.body?.includes("✓ Schedule confirmed")) {
+              const jSch = jobRef.current;
+              if (currentUserProfile?.role === "client" && jSch) {
+                supabase
+                  .from("job_requests")
+                  .update({ schedule_confirmed: true, stage: "Schedule" })
+                  .eq("id", jSch.id)
+                  .then(({ error }) => {
+                    if (error) console.error("Error updating schedule_confirmed:", error);
+                  });
               }
             }
-          )
-          .on(
-            "postgres_changes",
-            {
-              event: "UPDATE",
-              schema: "public",
-              table: "messages",
-              filter: `conversation_id=in.(${conversationIds.join(",")})`,
-            },
-            (payload) => {
-              const updatedMsg = payload.new as Message;
-              setMessages((prev) =>
-                prev.map((msg) => (msg.id === updatedMsg.id ? updatedMsg : msg))
-              );
-            }
-          )
-          .subscribe();
-      } else {
-        // Single conversation — subscribe without re-running when `job` updates (use jobRef in handlers).
-        let ch = supabase
-          .channel(`messages:${conversationId}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "messages",
-              filter: `conversation_id=eq.${conversationId}`,
-            },
-            async (payload) => {
-              const newMsg = payload.new as Message;
-              setMessages((prev) => {
-                const exists = prev.some((msg) => msg.id === newMsg.id);
-                if (exists) return prev;
-                return [...prev, newMsg];
-              });
 
-              if (newMsg.sender_id !== user?.id) {
-                markMessagesAsRead([newMsg.id]);
-              }
-
-              if (newMsg.body?.includes("Schedule confirmed") ||
-                newMsg.body?.includes("✓ Schedule confirmed")) {
-                const jSch = jobRef.current;
-                if (currentUserProfile?.role === "client" && jSch) {
-                  supabase
-                    .from("job_requests")
-                    .update({ schedule_confirmed: true, stage: "Schedule" })
-                    .eq("id", jSch.id)
-                    .then(({ error }) => {
-                      if (error) console.error("Error updating schedule_confirmed:", error);
-                    });
-                }
-              }
-
-              if (newMsg.body?.includes("💰 Price Offer")) {
-                const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
-                if (priceMatch) {
-                  setPriceOffer(parseInt(priceMatch[1]));
-                }
-              }
-
-              if (newMsg.body?.includes("💰 Payment Request")) {
-                const jReq = jobRef.current;
-                if (currentUserProfile?.role === "client" && jReq) {
-                  const { data: paymentData } = await supabase
-                    .from("payments")
-                    .select("*")
-                    .eq("job_id", jReq.id)
-                    .eq("status", "pending")
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                  if (paymentData) {
-                    setPaymentHourlyRate(paymentData.hourly_rate);
-                    setPaymentTotal(paymentData.total_amount);
-                  }
-                }
-              }
-
-              if (newMsg.body?.includes("Payment accepted") ||
-                newMsg.body?.includes("✓ Payment accepted") ||
-                newMsg.body?.includes("Payment completed") ||
-                newMsg.body?.includes("✓ Payment completed")) {
-                const jAcc = jobRef.current;
-                if (jAcc) {
-                  const { data: paymentData } = await supabase
-                    .from("payments")
-                    .select("*")
-                    .eq("job_id", jAcc.id)
-                    .in("status", ["accepted", "paid"])
-                    .order("created_at", { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                  if (paymentData) {
-                    setPaymentTotal(paymentData.total_amount);
-                  }
-                }
+            if (newMsg.body?.includes("💰 Price Offer")) {
+              const priceMatch = newMsg.body?.match(/Price Offer: \$?(\d+)/);
+              if (priceMatch) {
+                setPriceOffer(parseInt(priceMatch[1]));
               }
             }
-          )
-          .on(
-            "postgres_changes",
-            {
-              event: "UPDATE",
-              schema: "public",
-              table: "messages",
-              filter: `conversation_id=eq.${conversationId}`,
-            },
-            (payload) => {
-              const updatedMsg = payload.new as Message;
-              setMessages((prev) =>
-                prev.map((msg) => (msg.id === updatedMsg.id ? updatedMsg : msg))
-              );
-            }
-          )
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "payments",
-            },
-            async (payload) => {
-              const paymentJobId = payload.new.job_id;
-              const j = jobRef.current;
-              if (j && paymentJobId === j.id) {
-                const paymentData = payload.new;
-                setPaymentHourlyRate(paymentData.hourly_rate);
-                setPaymentTotal(paymentData.total_amount);
-              }
-            }
-          )
-          .on(
-            "postgres_changes",
-            {
-              event: "UPDATE",
-              schema: "public",
-              table: "payments",
-            },
-            async (payload) => {
-              const paymentJobId = payload.new.job_id;
-              const j = jobRef.current;
-              if (j && paymentJobId === j.id) {
-                const paymentData = payload.new;
-                setPaymentHourlyRate(paymentData.hourly_rate);
-                setPaymentTotal(paymentData.total_amount);
 
-                if (paymentData.status === "paid" && j.stage !== "Completed") {
-                  const { error: jobError } = await supabase
-                    .from("job_requests")
-                    .update({ stage: "Completed" })
-                    .eq("id", j.id);
-
-                  if (!jobError) {
-                    setJob((prev) => (prev ? { ...prev, stage: "Completed" } : prev));
-                  }
-                }
-              }
-            }
-          );
-
-        if (jobRowIdForRealtime) {
-          ch = ch.on(
-            "postgres_changes",
-            {
-              event: "UPDATE",
-              schema: "public",
-              table: "job_requests",
-              filter: `id=eq.${jobRowIdForRealtime}`,
-            },
-            async (payload) => {
-              const j = jobRef.current;
-              if (
-                j &&
-                payload.new.id === j.id &&
-                (payload.new.stage === "Payment" || payload.new.stage === "Completed")
-              ) {
-                setJob((prev) =>
-                  prev ? { ...prev, stage: payload.new.stage as string } : prev
-                );
-
-                const { data: existingPayment } = await supabase
+            if (newMsg.body?.includes("💰 Payment Request")) {
+              const jReq = jobRef.current;
+              if (currentUserProfile?.role === "client" && jReq) {
+                const { data: paymentData } = await supabase
                   .from("payments")
                   .select("*")
-                  .eq("job_id", j.id)
+                  .eq("job_id", jReq.id)
+                  .eq("status", "pending")
                   .order("created_at", { ascending: false })
                   .limit(1)
                   .maybeSingle();
 
-                if (existingPayment) {
-                  setPaymentHourlyRate(existingPayment.hourly_rate);
-                  setPaymentTotal(existingPayment.total_amount);
+                if (paymentData) {
+                  setPaymentHourlyRate(paymentData.hourly_rate);
+                  setPaymentTotal(paymentData.total_amount);
                 }
               }
             }
-          );
-        }
 
-        channel = ch.subscribe();
+            if (newMsg.body?.includes("Payment accepted") ||
+              newMsg.body?.includes("✓ Payment accepted") ||
+              newMsg.body?.includes("Payment completed") ||
+              newMsg.body?.includes("✓ Payment completed")) {
+              const jAcc = jobRef.current;
+              if (jAcc) {
+                const { data: paymentData } = await supabase
+                  .from("payments")
+                  .select("*")
+                  .eq("job_id", jAcc.id)
+                  .in("status", ["accepted", "paid"])
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                if (paymentData) {
+                  setPaymentTotal(paymentData.total_amount);
+                }
+              }
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "messages",
+            filter: messageScopeFilter,
+          },
+          (payload) => {
+            const updatedMsg = payload.new as Message;
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === updatedMsg.id ? updatedMsg : msg))
+            );
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "payments",
+          },
+          async (payload) => {
+            const paymentJobId = payload.new.job_id;
+            const j = jobRef.current;
+            if (j && paymentJobId === j.id) {
+              const paymentData = payload.new;
+              setPaymentHourlyRate(paymentData.hourly_rate);
+              setPaymentTotal(paymentData.total_amount);
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "payments",
+          },
+          async (payload) => {
+            const paymentJobId = payload.new.job_id;
+            const j = jobRef.current;
+            if (j && paymentJobId === j.id) {
+              const paymentData = payload.new;
+              setPaymentHourlyRate(paymentData.hourly_rate);
+              setPaymentTotal(paymentData.total_amount);
+
+              if (paymentData.status === "paid" && j.stage !== "Completed") {
+                const { error: jobError } = await supabase
+                  .from("job_requests")
+                  .update({ stage: "Completed" })
+                  .eq("id", j.id);
+
+                if (!jobError) {
+                  setJob((prev) => (prev ? { ...prev, stage: "Completed" } : prev));
+                }
+              }
+            }
+          }
+        );
+
+      if (jobRowIdForRealtime) {
+        ch = ch.on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "job_requests",
+            filter: `id=eq.${jobRowIdForRealtime}`,
+          },
+          async (payload) => {
+            const j = jobRef.current;
+            if (
+              j &&
+              payload.new.id === j.id &&
+              (payload.new.stage === "Payment" || payload.new.stage === "Completed")
+            ) {
+              setJob((prev) =>
+                prev ? { ...prev, stage: payload.new.stage as string } : prev
+              );
+
+              const { data: existingPayment } = await supabase
+                .from("payments")
+                .select("*")
+                .eq("job_id", j.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (existingPayment) {
+                setPaymentHourlyRate(existingPayment.hourly_rate);
+                setPaymentTotal(existingPayment.total_amount);
+              }
+            }
+          }
+        );
       }
+
+      channel = ch.subscribe();
     })();
 
     return () => {

@@ -843,7 +843,7 @@ export default function PublicProfilePage() {
       setPostedHelpNotifId(null);
       addToast({
         title: "Job accepted",
-        description: "It's been moved to Pending Jobs while we wait for the client's final confirmation.",
+        description: "It's been moved to Pending response while we wait for the client's final confirmation.",
         variant: "success",
       });
     } catch (err: unknown) {
@@ -968,11 +968,11 @@ export default function PublicProfilePage() {
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="md:hidden fixed z-[60] pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border/60 shadow-lg text-slate-600 dark:text-slate-300 hover:bg-card dark:hover:bg-muted transition-all active:scale-95"
+        className="md:hidden fixed z-[60] flex h-11 w-11 items-center justify-center text-slate-600 transition hover:opacity-80 active:scale-95 dark:text-slate-300"
         style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
         aria-label="Back"
       >
-        <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+        <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
       </button>
 
       <div className="app-desktop-shell pt-[calc(4.75rem+env(safe-area-inset-top))] md:pt-10">
@@ -1627,7 +1627,7 @@ export default function PublicProfilePage() {
               </div>
             </div>
 
-            {/* Past Jobs */}
+            {/* History of help */}
             <div>
               <div className="flex items-center gap-3 mb-6 px-2">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">

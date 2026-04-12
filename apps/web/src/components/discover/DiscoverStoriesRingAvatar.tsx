@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Slow-rotating conic ring — Available now: 3 orange tones; Incoming requests: 3 green tones. */
+/** Slow-rotating conic ring — Available now: 3 orange tones; Community requests: 3 green tones. */
 const CONIC_HIRE =
   "conic-gradient(from 0deg, #ea580c 0deg, #f97316 120deg, #fb923c 240deg, #ea580c 360deg)";
 const CONIC_WORK =

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { DISCOVER_HOME_CATEGORIES } from "@/lib/serviceCategories";
+import {
+  ALL_HELP_CATEGORY_ID,
+  DISCOVER_HOME_CATEGORIES,
+} from "@/lib/serviceCategories";
+import { supabase } from "@/lib/supabase";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeActivitySection";
@@ -64,58 +68,121 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   const hireHelpersPath = isClient ? "/client/helpers" : "/public/posts";
   const workPrimaryPath = isClient ? "/availability" : buildJobsUrl("freelancer", "requests");
 
-  return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
-      <div className="app-desktop-shell pt-[calc(1.25rem+env(safe-area-inset-top,0px))] md:pt-8">
-        <div className="app-desktop-centered-wide max-w-lg md:max-w-2xl">
-          <header className="mb-4 px-1">
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white md:text-3xl">
-              {homeMode === "hire" ? "Find help" : "Get hired"}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {homeMode === "hire"
-                ? "Browse who’s available and post a request when you’re ready."
-                : "See nearby jobs, post short availability, and respond fast."}
-            </p>
-          </header>
+  const [livePostsByCategory, setLivePostsByCategory] = useState<
+    Record<string, number>
+  >(() =>
+    Object.fromEntries(DISCOVER_HOME_CATEGORIES.map((c) => [c.id, 0]))
+  );
+  const [livePostsCountLoading, setLivePostsCountLoading] = useState(true);
 
-          <div
-            className="mb-5 px-1"
-            role="tablist"
-            aria-label="What are you here for?"
-          >
-            <div className="flex h-12 w-full items-stretch gap-1 rounded-2xl border border-border/60 bg-muted/70 p-1 shadow-inner dark:border-border/50 dark:bg-muted/50">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={homeMode === "hire"}
-                onClick={() => setHomeMode("hire")}
-                className={cn(
-                  "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
-                  homeMode === "hire"
-                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-600/95 dark:text-zinc-50 dark:shadow-sm"
-                    : "text-muted-foreground hover:text-foreground/90"
-                )}
-              >
-                I need a helper
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={homeMode === "work"}
-                onClick={() => setHomeMode("work")}
-                className={cn(
-                  "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
-                  homeMode === "work"
-                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-600/95 dark:text-zinc-50 dark:shadow-sm"
-                    : "text-muted-foreground hover:text-foreground/90"
-                )}
-              >
-                I want to help
-              </button>
+  useEffect(() => {
+    let cancelled = false;
+    setLivePostsCountLoading(true);
+    void (async () => {
+      const { data, error } = await supabase.rpc("get_community_feed_public", {
+        p_category: null,
+      });
+      if (cancelled) return;
+      if (error) {
+        console.error("[DiscoverHomeContent] category counts", error);
+        setLivePostsByCategory(
+          Object.fromEntries(DISCOVER_HOME_CATEGORIES.map((c) => [c.id, 0]))
+        );
+        setLivePostsCountLoading(false);
+        return;
+      }
+      const rows = (data ?? []) as { category: string | null }[];
+      const next: Record<string, number> = Object.fromEntries(
+        DISCOVER_HOME_CATEGORIES.map((c) => [c.id, 0])
+      );
+      for (const row of rows) {
+        const cat = row.category?.trim();
+        if (
+          cat &&
+          cat !== ALL_HELP_CATEGORY_ID &&
+          cat in next
+        ) {
+          next[cat] += 1;
+        }
+      }
+      next[ALL_HELP_CATEGORY_ID] = rows.length;
+      setLivePostsByCategory(next);
+      setLivePostsCountLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const liveCountLabel = useMemo(
+    () => (catId: string) => {
+      if (livePostsCountLoading) return "…";
+      const n = livePostsByCategory[catId];
+      return n === undefined ? "0" : n > 99 ? "99+" : String(n);
+    },
+    [livePostsByCategory, livePostsCountLoading]
+  );
+
+  return (
+    <div className="relative min-h-screen gradient-mesh pb-6 md:pb-8">
+      <div
+        className={cn(
+          "fixed inset-x-0 z-[45] pointer-events-none",
+          /** Directly under fixed BottomNav header — keep in sync with `.app-content-below-fixed-header` in index.css */
+          "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
+          "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
+          "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+        )}
+      >
+        <div className="app-desktop-shell pointer-events-auto">
+          <div className="app-desktop-centered-wide max-w-lg px-1 py-2 md:max-w-2xl">
+            <div
+              role="tablist"
+              aria-label="What are you here for?"
+            >
+              <div className="flex h-12 w-full items-stretch gap-1 rounded-2xl border border-border/60 bg-muted/70 p-1 shadow-inner dark:border-border/50 dark:bg-muted/50">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={homeMode === "hire"}
+                  onClick={() => setHomeMode("hire")}
+                  className={cn(
+                    "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
+                    homeMode === "hire"
+                      ? "bg-orange-50 text-orange-800 shadow-sm ring-1 ring-orange-200/80 dark:bg-zinc-600/95 dark:text-zinc-50 dark:shadow-sm dark:ring-0"
+                      : "text-muted-foreground hover:text-foreground/90"
+                  )}
+                >
+                  I need a helper
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={homeMode === "work"}
+                  onClick={() => setHomeMode("work")}
+                  className={cn(
+                    "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
+                    homeMode === "work"
+                      ? "bg-emerald-50 text-emerald-800 shadow-sm ring-1 ring-emerald-200/80 dark:bg-zinc-600/95 dark:text-zinc-50 dark:shadow-sm dark:ring-0"
+                      : "text-muted-foreground hover:text-foreground/90"
+                  )}
+                >
+                  I want to help
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
 
+      <div
+        className={cn(
+          "app-desktop-shell",
+          /** Match fixed tab strip: py-2 + h-12 + border-b */
+          "pt-[calc(0.5rem+3rem+0.5rem+1px)]"
+        )}
+      >
+        <div className="app-desktop-centered-wide max-w-lg md:max-w-2xl">
           <section className="mb-5 px-1" aria-label={homeMode === "hire" ? "Find helpers" : "Get work"}>
             {homeMode === "hire" ? (
               <button
@@ -212,23 +279,41 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   <button
                     key={cat.id}
                     type="button"
+                    aria-label={
+                      livePostsCountLoading
+                        ? `${cat.label}, loading live post count`
+                        : `${cat.label}, ${livePostsByCategory[cat.id] ?? 0} live posts`
+                    }
                     onClick={() => onCategoryClick(cat.id)}
                     className={cn(
-                      "group flex w-full shrink-0 flex-col overflow-hidden text-left outline-none",
+                      "group relative aspect-square w-full shrink-0 overflow-hidden rounded-xl text-left outline-none",
                       "transition-transform active:scale-[0.98]",
                       "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-inset",
-                      "max-md:aspect-square max-md:rounded-xl",
-                      "md:h-[6.25rem] md:w-[6.75rem] md:rounded-2xl md:shadow-sm"
+                      "md:w-[6.75rem] md:min-w-[6.75rem] md:rounded-2xl md:shadow-sm"
                     )}
                   >
-                    <div className="relative min-h-0 flex-1 overflow-hidden">
-                      <img
-                        src={cat.imageSrc}
-                        alt={cat.label}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </div>
-                    <span className="shrink-0 border-t border-border/40 bg-background px-1.5 py-2 text-center text-[11px] font-bold uppercase leading-tight tracking-wide text-foreground sm:text-xs">
+                    <img
+                      src={cat.imageSrc}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      aria-hidden
+                    />
+                    <span
+                      className={cn(
+                        "absolute left-2 top-2 z-[2] flex min-h-[1.35rem] min-w-[1.35rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums leading-none",
+                        "backdrop-blur-md backdrop-saturate-150",
+                        "bg-white/55 text-slate-900 shadow-[0_1px_10px_rgba(0,0,0,0.08)] ring-1 ring-white/70",
+                        "dark:bg-black/45 dark:text-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.55)] dark:ring-white/12"
+                      )}
+                      aria-hidden
+                    >
+                      {liveCountLabel(cat.id)}
+                    </span>
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-10 pb-2.5 px-1.5"
+                      aria-hidden
+                    />
+                    <span className="absolute inset-x-0 bottom-0 z-[1] px-1.5 pb-2.5 pt-6 text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:text-[11px]">
                       {cat.label}
                     </span>
                   </button>
@@ -266,7 +351,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
                     <Briefcase className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Live jobs</span>
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">
+                      {isClient ? "Helping me now" : "Helping now"}
+                    </span>
                   </Link>
                   <Link
                     to={dashboardPath}
@@ -290,7 +377,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
                   >
                     <Briefcase className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Live jobs</span>
+                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">
+                      Helping me now
+                    </span>
                   </Link>
                   <Link
                     to={dashboardPath}
@@ -315,7 +404,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       </Badge>
                     )}
                     <Bell className="h-8 w-8 text-amber-500" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Incoming requests</span>
+                    <span className="px-0.5 text-[10px] font-bold leading-tight text-foreground sm:text-xs">
+                      Community needs your help in…
+                    </span>
                   </Link>
                   <Link
                     to="/availability"

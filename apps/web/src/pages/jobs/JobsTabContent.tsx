@@ -104,12 +104,20 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
         const notes = typeof job.notes === "string" ? job.notes.trim() : "";
         const rows: Array<{ k: string; v: string }> = [];
 
-        if (job.location_city?.trim()) rows.push({ k: "Location", v: job.location_city.trim() });
+        if (job.location_city?.trim() && activeTab !== "jobs") {
+            rows.push({ k: "Location", v: job.location_city.trim() });
+        }
         if (startAt) rows.push({ k: "Starts", v: startAt.toLocaleString() });
         if (job.shift_hours) rows.push({ k: "Shift", v: String(job.shift_hours) });
-        if (job.care_type) rows.push({ k: "Care type", v: String(job.care_type) });
-        if (job.children_count != null) rows.push({ k: "Children", v: String(job.children_count) });
-        if (job.children_age_group) rows.push({ k: "Age group", v: String(job.children_age_group) });
+        if (job.care_type && activeTab !== "jobs") {
+            rows.push({ k: "Care type", v: String(job.care_type) });
+        }
+        if (job.children_count != null && activeTab !== "jobs") {
+            rows.push({ k: "Children", v: String(job.children_count) });
+        }
+        if (job.children_age_group && activeTab !== "jobs") {
+            rows.push({ k: "Age group", v: String(job.children_age_group) });
+        }
         if (Array.isArray(job.languages_pref) && job.languages_pref.length > 0) {
             rows.push({ k: "Languages", v: job.languages_pref.join(", ") });
         }
@@ -121,27 +129,38 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
             const max = job.budget_max != null ? String(job.budget_max) : "";
             rows.push({ k: "Budget", v: [min, max].filter(Boolean).join(" – ") || "Set" });
         }
-        if (createdAt) rows.push({ k: "Posted", v: createdAt.toLocaleDateString() });
-        if (job.status) rows.push({ k: "Status", v: String(job.status) });
+        if (createdAt && activeTab !== "jobs") {
+            rows.push({ k: "Posted", v: createdAt.toLocaleDateString() });
+        }
+        if (job.status && activeTab !== "jobs") {
+            rows.push({ k: "Status", v: String(job.status) });
+        }
 
         if (rows.length === 0 && !notes) return null;
 
         return (
             <div className="mt-2 md:hidden">
-                <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
-                    {rows.map((r) => (
-                        <div key={r.k} className="min-w-0">
-                            <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
-                                {r.k}
-                            </p>
-                            <p className="mt-1 truncate text-[15px] font-semibold text-slate-800 dark:text-slate-100">
-                                {r.v}
-                            </p>
-                        </div>
-                    ))}
-                </div>
+                {rows.length > 0 && (
+                    <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
+                        {rows.map((r) => (
+                            <div key={r.k} className="min-w-0">
+                                <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
+                                    {r.k}
+                                </p>
+                                <p className="mt-1 truncate text-[15px] font-semibold text-slate-800 dark:text-slate-100">
+                                    {r.v}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                )}
                 {notes && (
-                    <div className="mt-3 rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
+                    <div
+                        className={cn(
+                            "rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]",
+                            rows.length > 0 && "mt-3"
+                        )}
+                    >
                         <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
                             Notes
                         </p>
@@ -333,12 +352,13 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                     />
                 )}
 
-                {/* LIVE JOBS SECTION */}
+                {/* HELPING NOW SECTION */}
                 {activeTab === 'jobs' && (
                     <div className="space-y-8">
                         <div>
                             <h2 className="text-[22px] font-black flex items-center gap-2.5 tracking-tight text-slate-900 dark:text-slate-100">
-                                <Briefcase className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> Active Jobs
+                                <Briefcase className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" />{" "}
+                                {perspective === "client" ? "Helping me now" : "Helping now"}
                             </h2>
                             <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
                                 {liveSectionSubtitle}
@@ -527,7 +547,11 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                             <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30">
                                 <CardContent className="p-12 text-center text-muted-foreground">
                                     <Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                                    <p className="text-lg font-bold">No active jobs right now.</p>
+                                    <p className="text-lg font-bold">
+                                        {perspective === "client"
+                                            ? "Nothing in Helping me now yet."
+                                            : "Nothing in Helping now yet."}
+                                    </p>
                                     <p className="text-sm">
                                         {perspective === "client"
                                             ? "When a helper is confirmed on your request, it will show up here."
@@ -539,13 +563,13 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                     </div>
                 )}
 
-                {/* PAST JOBS SECTION */}
+                {/* HISTORY OF HELP SECTION */}
                 {activeTab === 'past' && (
                     <div className="space-y-8">
                         <div>
                             <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
                                 <span className="flex items-center gap-2.5">
-                                    <CheckCircle2 className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> Past Jobs
+                                    <CheckCircle2 className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> History of help
                                 </span>
                             </h2>
                             <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
@@ -587,7 +611,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                                                 "absolute inset-0 bg-zinc-900/25 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none md:hidden z-[100]",
                                                 clippedCardIds.has(`card-${job.id}`) ? "opacity-100" : "opacity-0"
                                             )} />
-                                            {/* Mobile: thumb + profile block + arrow (matches Pending Jobs) */}
+                                            {/* Mobile: thumb + profile block + arrow (matches Pending response) */}
                                             <div className="flex gap-3 p-3 md:hidden">
                                                 <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
                                                     {job.service_type === "pickup_delivery" ? (
@@ -728,7 +752,7 @@ export default function JobsTabContent({ activeTab, perspective }: JobsTabConten
                             <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30">
                                 <CardContent className="p-12 text-center text-muted-foreground">
                                     <CheckCircle2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                                    <p className="text-lg font-bold">No past jobs yet.</p>
+                                    <p className="text-lg font-bold">No history of help yet.</p>
                                 </CardContent>
                             </Card>
                         )}

@@ -4,7 +4,6 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type {
   CommunityFeedPost,
@@ -19,7 +18,8 @@ import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { openCommunityContact } from "@/lib/communityContact";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
-import { Bell, ChevronRight, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Bell, Loader2, Plus } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -420,9 +420,45 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
 
   const availabilityPostsCount = feedPosts.length;
 
+  const seeMoreLinkClassName = cn(
+    "group flex w-[3.5rem] shrink-0 flex-col items-center gap-1 pb-0.5 text-center outline-none",
+    "transition-transform active:scale-[0.97]",
+    "focus-visible:ring-2 focus-visible:ring-slate-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "dark:focus-visible:ring-slate-500/50"
+  );
+
+  const seeMoreCircleClassName = cn(
+    "flex h-[3.5rem] w-[3.5rem] shrink-0 items-center justify-center rounded-full",
+    "border border-dashed border-slate-300/90 bg-slate-100/80 shadow-[0_1px_8px_-3px_rgba(0,0,0,0.08)]",
+    "transition-transform duration-300 group-hover:scale-[1.03]",
+    "dark:border-slate-600/80 dark:bg-slate-800/60"
+  );
+
+  const hireSeeMoreLink = (
+    <Link to="/public/posts" className={seeMoreLinkClassName}>
+      <div className={seeMoreCircleClassName} aria-hidden>
+        <Plus className="h-5 w-5 text-slate-600 dark:text-slate-400" strokeWidth={2.25} />
+      </div>
+      <span className="max-w-full px-0.5 text-[9px] font-semibold leading-tight text-slate-600 dark:text-slate-400">
+        See more
+      </span>
+    </Link>
+  );
+
+  const workSeeMoreLink = (
+    <Link to={incomingJobsUrl} className={seeMoreLinkClassName}>
+      <div className={seeMoreCircleClassName} aria-hidden>
+        <Plus className="h-5 w-5 text-slate-600 dark:text-slate-400" strokeWidth={2.25} />
+      </div>
+      <span className="max-w-full px-0.5 text-[9px] font-semibold leading-tight text-slate-600 dark:text-slate-400">
+        See more
+      </span>
+    </Link>
+  );
+
   const hireSection = (
     <>
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Available now
@@ -436,12 +472,6 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
             </Badge>
           )}
         </div>
-        <Button variant="link" size="sm" className="h-auto shrink-0 gap-1 px-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300" asChild>
-          <Link to="/public/posts">
-            See all
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        </Button>
       </div>
       <div className="mt-2 space-y-5">
         {feedLoading ? (
@@ -449,33 +479,43 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
             <Loader2 className="h-9 w-9 animate-spin text-orange-500" />
           </div>
         ) : feedPosts.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            No one is live on the board right now. Check back soon or post a request.
-          </p>
+          <div className="flex flex-col items-stretch gap-4">
+            <p className="text-center text-sm text-muted-foreground">
+              No one is live on the board right now. Check back soon or post a request.
+            </p>
+            <div className="flex items-start justify-end gap-2">
+              {hireSeeMoreLink}
+            </div>
+          </div>
         ) : (
-          <AvailabilityStoriesStrip
-            posts={feedPosts}
-            user={user}
-            profile={profile}
-            loginRedirect={loginRedirect}
-            favoritedIds={favoritedIds}
-            onToggleFavorite={toggleFavorite}
-            hiringPostId={hiringPostId}
-            pendingHirePostIds={pendingHirePostIds}
-            onHireFromPost={handleHireFromPost}
-            onOpenChat={(post) => {
-              if (!user || !profile) return;
-              void openCommunityContact({
-                supabase,
-                user,
-                myRole: profile.role,
-                targetUserId: post.author_id,
-                targetRole: post.author_role,
-                navigate,
-                addToast,
-              });
-            }}
-          />
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <AvailabilityStoriesStrip
+                posts={feedPosts}
+                user={user}
+                profile={profile}
+                loginRedirect={loginRedirect}
+                favoritedIds={favoritedIds}
+                onToggleFavorite={toggleFavorite}
+                hiringPostId={hiringPostId}
+                pendingHirePostIds={pendingHirePostIds}
+                onHireFromPost={handleHireFromPost}
+                onOpenChat={(post) => {
+                  if (!user || !profile) return;
+                  void openCommunityContact({
+                    supabase,
+                    user,
+                    myRole: profile.role,
+                    targetUserId: post.author_id,
+                    targetRole: post.author_role,
+                    navigate,
+                    addToast,
+                  });
+                }}
+              />
+            </div>
+            {hireSeeMoreLink}
+          </div>
         )}
       </div>
     </>
@@ -485,7 +525,7 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
     <>
       <div className="mb-3 flex items-center gap-2">
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          Incoming requests
+          Community needs your help in…
         </p>
         {incomingRequestsCount > 0 && (
           <Badge
@@ -502,29 +542,26 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
             <Loader2 className="h-9 w-9 animate-spin text-amber-500" />
           </div>
         ) : inbound.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <Bell className="h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">No incoming requests right now.</p>
-            <Button variant="outline" size="sm" className="rounded-full" asChild>
-              <Link to={incomingJobsUrl}>Open incoming requests</Link>
-            </Button>
+          <div className="flex flex-col items-stretch gap-4 py-6">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Bell className="h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">No community requests right now.</p>
+            </div>
+            <div className="flex items-start justify-end gap-2">
+              {workSeeMoreLink}
+            </div>
           </div>
         ) : (
-          <>
-            <IncomingRequestsStoriesStrip
-              inbound={inbound}
-              formatJobTitle={formatJobTitle}
-              onOpenPreview={openJobPreview}
-            />
-            <div className="flex justify-end pt-1">
-              <Button variant="link" size="sm" className="h-auto gap-1 px-2 text-xs font-bold" asChild>
-                <Link to={incomingJobsUrl}>
-                  Open incoming requests
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <IncomingRequestsStoriesStrip
+                inbound={inbound}
+                formatJobTitle={formatJobTitle}
+                onOpenPreview={openJobPreview}
+              />
             </div>
-          </>
+            {workSeeMoreLink}
+          </div>
         )}
       </div>
     </>
@@ -534,7 +571,7 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
     <>
       <section
         className="mt-8 overflow-visible px-1 pt-1"
-        aria-label={mode === "hire" ? "Available helpers live now" : "Incoming job requests"}
+        aria-label={mode === "hire" ? "Available helpers live now" : "Community needs your help"}
       >
         {mode === "hire" ? hireSection : workSection}
       </section>

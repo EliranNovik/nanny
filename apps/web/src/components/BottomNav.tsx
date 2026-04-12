@@ -40,6 +40,8 @@ export function BottomNav() {
   const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : profile?.role === "client" ? "/client/profile" : "/dashboard";
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
+  /** `/profile/:userId` ships its own fixed back button — hide nav duplicate */
+  const isPublicUserProfilePage = /^\/profile\/[^/]+$/.test(pathnameNorm);
   const receiveRequestsOn = profile?.is_available_for_jobs === true;
   const showFreelancerJobNav =
     profile?.role === "freelancer" || (profile?.role === "client" && receiveRequestsOn);
@@ -237,10 +239,10 @@ export function BottomNav() {
           <button
             type="button"
             onClick={handleHeaderBack}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
+            className="flex h-9 w-9 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
             aria-label="Back"
           >
-            <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+            <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
           </button>
           {user && (
             <button
@@ -345,10 +347,11 @@ export function BottomNav() {
         className={cn(
           "pointer-events-auto flex flex-row flex-nowrap items-center gap-1.5",
           mobileSearchOpen || isCommunityPostsFilterPage
-            ? "w-full"
+            ? !mobileSearchOpen && isCommunityPostsFilterPage
+              ? "ml-14 min-w-0 flex-1"
+              : "w-full"
             : "max-w-[calc(100vw-1rem)] justify-end",
-          mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end",
-          isCommunityPostsFilterPage && "pl-[3rem]"
+          mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end"
         )}
       >
         {isCommunityPostsFilterPage && !mobileSearchOpen && (
@@ -411,9 +414,9 @@ export function BottomNav() {
   const mobileUniversalBackBtnClass =
     "pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
 
-  const MobileLeftHeaderCluster = (
+  const MobileLeftHeaderCluster = isPublicUserProfilePage ? null : (
     <div
-      className="md:hidden fixed z-[60] pointer-events-none flex max-w-[calc(100vw-9rem)] flex-row items-center gap-1"
+      className="md:hidden fixed z-[70] pointer-events-none flex max-w-[calc(100vw-9rem)] flex-row items-center gap-1"
       style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
     >
       <button type="button" onClick={handleHeaderBack} className={mobileUniversalBackBtnClass} aria-label="Back">

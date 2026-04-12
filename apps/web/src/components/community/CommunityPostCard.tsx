@@ -63,6 +63,8 @@ export type CommunityPostCardProps = {
   plain?: boolean;
   /** Icon-only Hire / Chat / Share row (e.g. Discover availability modal). */
   iconOnlyActions?: boolean;
+  /** When using `iconOnlyActions`, omit the Share icon (e.g. public posts grid). */
+  hideShareInIconRow?: boolean;
 };
 
 export function CommunityPostCard({
@@ -80,6 +82,7 @@ export function CommunityPostCard({
   compact,
   plain,
   iconOnlyActions = false,
+  hideShareInIconRow = false,
 }: CommunityPostCardProps) {
   const { addToast } = useToast();
   const isMine = user?.id === post.author_id;
@@ -331,16 +334,18 @@ export function CommunityPostCard({
                   >
                     <MessageSquare className="h-5 w-5" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
-                    onClick={() => void sharePost()}
-                    aria-label="Share"
-                  >
-                    <Share2 className="h-5 w-5" />
-                  </Button>
+                  {!hideShareInIconRow && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                      onClick={() => void sharePost()}
+                      aria-label="Share"
+                    >
+                      <Share2 className="h-5 w-5" />
+                    </Button>
+                  )}
                 </div>
                 {pendingHirePostIds.has(post.id) &&
                   (profile.role === "client" || profile.role === "freelancer") &&

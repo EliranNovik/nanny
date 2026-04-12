@@ -106,64 +106,21 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
     );
     const clippedCardIds = useJobCardEdgeOverlay(edgeOverlayKey);
 
+    /** Mobile-only extras under the hero on My Posted Requests — notes only (summary grid removed). */
     const renderMobileJobDetails = (job: JobRequest) => {
-        const startAt = job.start_at ? new Date(job.start_at) : null;
-        const createdAt = job.created_at ? new Date(job.created_at) : null;
         const notes = typeof (job as any).notes === "string" ? (job as any).notes.trim() : "";
-        const rows: Array<{ k: string; v: string }> = [];
-
-        if (job.location_city?.trim()) rows.push({ k: "Location", v: job.location_city.trim() });
-        if (startAt) rows.push({ k: "Starts", v: startAt.toLocaleString() });
-        if ((job as any).shift_hours) rows.push({ k: "Shift", v: String((job as any).shift_hours) });
-        const hideNannyPlaceholders =
-            Boolean(job.community_post_id) && job.service_type !== "nanny";
-        if (job.care_type && !hideNannyPlaceholders) rows.push({ k: "Care type", v: String(job.care_type) });
-        if (job.children_count != null && !hideNannyPlaceholders && job.children_count > 0) {
-            rows.push({ k: "Children", v: String(job.children_count) });
-        }
-        if (job.children_age_group && !hideNannyPlaceholders) {
-            rows.push({ k: "Age group", v: String(job.children_age_group) });
-        }
-        if (Array.isArray((job as any).languages_pref) && (job as any).languages_pref.length > 0) {
-            rows.push({ k: "Languages", v: (job as any).languages_pref.join(", ") });
-        }
-        if (Array.isArray((job as any).requirements) && (job as any).requirements.length > 0) {
-            rows.push({ k: "Requirements", v: (job as any).requirements.join(", ") });
-        }
-        if ((job as any).budget_min != null || (job as any).budget_max != null) {
-            const min = (job as any).budget_min != null ? String((job as any).budget_min) : "";
-            const max = (job as any).budget_max != null ? String((job as any).budget_max) : "";
-            rows.push({ k: "Budget", v: [min, max].filter(Boolean).join(" – ") || "Set" });
-        }
-        if (createdAt) rows.push({ k: "Posted", v: createdAt.toLocaleDateString() });
-        if (job.status) rows.push({ k: "Status", v: String(job.status) });
-
-        if (rows.length === 0 && !notes) return null;
+        if (!notes) return null;
 
         return (
             <div className="mt-3 md:hidden">
-                <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
-                    {rows.map((r) => (
-                        <div key={r.k} className="min-w-0">
-                            <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
-                                {r.k}
-                            </p>
-                            <p className="mt-1 truncate text-[15px] font-semibold text-slate-800 dark:text-slate-100">
-                                {r.v}
-                            </p>
-                        </div>
-                    ))}
+                <div className="rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
+                        Notes
+                    </p>
+                    <p className="mt-1.5 whitespace-pre-wrap text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100">
+                        {notes}
+                    </p>
                 </div>
-                {notes && (
-                    <div className="mt-3 rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
-                        <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
-                            Notes
-                        </p>
-                        <p className="mt-1.5 whitespace-pre-wrap text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100">
-                            {notes}
-                        </p>
-                    </div>
-                )}
             </div>
         );
     };
@@ -324,7 +281,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
 
             addToast({
                 title: "Job Accepted!",
-                description: "It's been moved to Pending Jobs while we wait for the client's final confirmation.",
+                description: "It's been moved to Pending response while we wait for the client's final confirmation.",
                 variant: "success",
             });
         } catch (err: any) {
@@ -449,13 +406,13 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
             <div className="space-y-8">
                 {serviceFilterBanner}
 
-                {/* SECTION: INCOMING REQUESTS (Requests Tab) */}
+                {/* SECTION: Community's requests (Requests tab) */}
                 {activeTab === 'requests' && (
                     <div className="space-y-8">
                         <div>
                             <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
                                 <span className="flex items-center gap-2.5">
-                                    <Bell className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> Incoming Requests
+                                    <Bell className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> Community&apos;s requests
                                 </span>
                             </h2>
                             <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
@@ -488,8 +445,8 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                 <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                                 <p className="text-sm">
                                     {serviceFilter && rawIncoming.length > 0
-                                        ? "No incoming requests in this category."
-                                        : "No new incoming requests right now."}
+                                        ? "No community requests in this category."
+                                        : "No new community requests right now."}
                                 </p>
                                 {serviceFilter && rawIncoming.length > 0 && (
                                     <Button variant="outline" size="sm" className="mt-3" onClick={clearServiceFilter}>
@@ -508,7 +465,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         <div>
                             <h2 className="text-[22px] font-black flex flex-wrap items-center gap-2 tracking-tight text-slate-900 dark:text-slate-100">
                                 <span className="flex items-center gap-2.5">
-                                    <Hourglass className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> Pending Jobs
+                                    <Hourglass className="w-6 h-6 text-slate-500 dark:text-slate-400 md:text-orange-500" /> Pending response
                                 </span>
                             </h2>
                             <p className="mt-1.5 max-w-none text-sm leading-relaxed text-muted-foreground">
@@ -794,22 +751,6 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                                                 {formatJobTitle(job)}
                                             </span>
-                                            {job.created_at && (
-                                                <div className="mt-1 flex w-full min-w-0 items-center justify-between gap-2 border-t border-slate-200/80 pt-1.5 dark:border-white/10 max-md:border-t-0 max-md:pt-0">
-                                                    <div className="flex min-w-0 items-center gap-2 text-[16px] font-bold text-slate-500 dark:text-slate-400">
-                                                        <Clock className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
-                                                        <span>Active</span>
-                                                    </div>
-                                                    <LiveTimer
-                                                        createdAt={job.created_at}
-                                                        render={({ time }) => (
-                                                            <span className="shrink-0 tabular-nums text-[16px] font-bold text-slate-500 dark:text-slate-400">
-                                                                {time}
-                                                            </span>
-                                                        )}
-                                                    />
-                                                </div>
-                                            )}
                                         </div>
                                         <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
                                             <ChevronRight className="h-7 w-7" strokeWidth={2.25} />

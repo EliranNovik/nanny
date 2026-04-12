@@ -39,7 +39,7 @@ export function JobsRolePicker({
             <span className="min-w-0 flex-1">
               <span className="block text-base font-black text-slate-900 dark:text-white">Helping others</span>
               <span className="mt-1 block text-sm font-medium leading-snug text-muted-foreground">
-                Incoming requests, pending confirmations, live work, and history as a helper.
+                Community requests, pending responses, Helping now, and your history of help as a helper.
               </span>
             </span>
           </button>
@@ -59,7 +59,7 @@ export function JobsRolePicker({
             <span className="min-w-0 flex-1">
               <span className="block text-base font-black text-slate-900 dark:text-white">My Helpers</span>
               <span className="mt-1 block text-sm font-medium leading-snug text-muted-foreground">
-                Your posted requests, live jobs you hired for, and past jobs.
+                Your posted requests, Helping me now, and your history of help.
               </span>
             </span>
           </button>

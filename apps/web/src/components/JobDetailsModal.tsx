@@ -13,7 +13,7 @@ import {
 } from "@/lib/discoverSheetDialog";
 import {
     MapPin, Clock, Hourglass, X,
-    Sparkles, UtensilsCrossed, Baby, HelpCircle, AlignLeft,
+    Sparkles, UtensilsCrossed, Baby, HelpCircle, AlignLeft, Truck,
     Calendar, Briefcase, RefreshCw, CheckCircle2, Loader2, XCircle, Heart,
     CalendarClock, Languages, ListChecks, Banknote, CircleDollarSign, StickyNote,
 } from "lucide-react";
@@ -240,11 +240,12 @@ export function JobDetailsModal({
         isCommunityPostJob && job.service_type !== "nanny";
 
     const getServiceIcon = (serviceType?: string) => {
-        if (serviceType === 'cleaning') return <Sparkles className="w-4 h-4" />;
-        if (serviceType === 'cooking') return <UtensilsCrossed className="w-4 h-4" />;
-        if (serviceType === 'nanny') return <Baby className="w-4 h-4" />;
-        if (serviceType === 'other_help') return <HelpCircle className="w-4 h-4" />;
-        return <HelpCircle className="w-4 h-4" />;
+        if (serviceType === "cleaning") return <Sparkles className="h-4 w-4" strokeWidth={2} />;
+        if (serviceType === "cooking") return <UtensilsCrossed className="h-4 w-4" strokeWidth={2} />;
+        if (serviceType === "pickup_delivery") return <Truck className="h-4 w-4" strokeWidth={2} />;
+        if (serviceType === "nanny") return <Baby className="h-4 w-4" strokeWidth={2} />;
+        if (serviceType === "other_help") return <HelpCircle className="h-4 w-4" strokeWidth={2} />;
+        return <HelpCircle className="h-4 w-4" strokeWidth={2} />;
     };
 
     const getServiceImage = (serviceType?: string) => {
@@ -288,9 +289,10 @@ export function JobDetailsModal({
             ? String(client.photo_url)
             : getServiceImage(job.service_type);
 
-    const incomingSwipeEnabled =
-        sheetPresentation &&
-        Boolean(showAcceptButton && onConfirm && onDecline && !incomingActionMessage);
+    /** Swipe right = accept, left = decline — any full-screen or sheet presentation. */
+    const incomingSwipeEnabled = Boolean(
+        showAcceptButton && onConfirm && onDecline && !incomingActionMessage
+    );
 
     const showFloatingActionBar = Boolean(
         incomingActionMessage || (showAcceptButton && onConfirm)
@@ -339,11 +341,11 @@ export function JobDetailsModal({
                     </button>
                     )}
 
-                    <div className="absolute left-3 top-3 z-40 flex max-w-[calc(100%-5rem)] items-center gap-2 text-white drop-shadow-md">
-                        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md [&>svg]:h-4 [&>svg]:w-4">
+                    <div className="absolute left-3 top-3 z-50 flex max-w-[min(100%-5rem,85%)] items-center gap-2 rounded-full border border-white/20 bg-black/45 py-1.5 pl-1.5 pr-3 text-white shadow-lg backdrop-blur-md">
+                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white [&>svg]:shrink-0">
                             {getServiceIcon(job.service_type)}
                         </span>
-                        <span className="truncate text-[13px] font-semibold tracking-wide">
+                        <span className="truncate text-[13px] font-semibold tracking-wide drop-shadow-sm">
                             {formatJobTitle(job)}
                         </span>
                     </div>
@@ -427,24 +429,23 @@ export function JobDetailsModal({
                         showFloatingActionBar && "pb-32"
                     )}
                 >
-                    {/* Quick facts — two columns */}
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-[15px] leading-snug text-foreground/90">
-                        <div className="flex min-w-0 items-start gap-2">
-                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                            <span className="min-w-0 break-words">{job.location_city}</span>
-                        </div>
-                        <div className="flex min-w-0 items-start gap-2">
-                            <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                            <span className="min-w-0 capitalize">{clean(job.time_duration) || "Flexible"}</span>
-                        </div>
-                    </div>
-
-                    <hr className="my-6 border-border/60" />
-
-                    {/* Service particulars — two-column grid on narrow screens+ */}
-                    <div className="space-y-2.5">
+                    <div className="min-w-0 space-y-0">
                         <SectionTitle simple={incomingSimple}>Job details</SectionTitle>
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-0">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-0 [grid-template-columns:minmax(0,1fr)_minmax(0,1fr)] [&>*:nth-child(2)]:pt-0">
+                            <JobDetailRow
+                                simple={incomingSimple}
+                                label="Location"
+                                icon={<MapPin className="h-4 w-4" strokeWidth={2} />}
+                            >
+                                <span className="break-words">{job.location_city}</span>
+                            </JobDetailRow>
+                            <JobDetailRow
+                                simple={incomingSimple}
+                                label="Duration"
+                                icon={<Hourglass className="h-4 w-4" strokeWidth={2} />}
+                            >
+                                <span className="capitalize">{clean(job.time_duration) || "Flexible"}</span>
+                            </JobDetailRow>
                             {job.start_at && (
                                 <JobDetailRow
                                     simple={incomingSimple}

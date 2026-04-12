@@ -383,6 +383,7 @@ export default function PublicCommunityPostsPage() {
                 hiringPostId={hiringPostId}
                 pendingHirePostIds={pendingHirePostIds}
                 onHireFromPost={handleHireFromPost}
+                iconOnlyActions
                 onOpenChat={() => {
                   if (!user || !profile) return;
                   void openCommunityContact({

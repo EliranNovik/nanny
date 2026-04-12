@@ -16,17 +16,17 @@ export type JobsTabConfigItem = {
 
 /** Helping others — freelancer-side workflow */
 export const FREELANCER_JOBS_TABS: readonly JobsTabConfigItem[] = [
-  { id: "requests", label: "Incoming Requests", icon: Bell },
-  { id: "pending", label: "Pending Jobs", icon: Hourglass },
-  { id: "jobs", label: "Live Jobs", icon: Briefcase },
-  { id: "past", label: "Past Jobs", icon: CheckCircle2 },
+  { id: "requests", label: "Community's requests", icon: Bell },
+  { id: "pending", label: "Pending response", icon: Hourglass },
+  { id: "jobs", label: "Helping now", icon: Briefcase },
+  { id: "past", label: "History of help", icon: CheckCircle2 },
 ];
 
 /** My Helpers — client-side workflow */
 export const CLIENT_JOBS_TABS: readonly JobsTabConfigItem[] = [
   { id: "my_requests", label: "My Posted Requests", icon: ClipboardList },
-  { id: "jobs", label: "Live Jobs", icon: Briefcase },
-  { id: "past", label: "Past Jobs", icon: CheckCircle2 },
+  { id: "jobs", label: "Helping me now", icon: Briefcase },
+  { id: "past", label: "History of help", icon: CheckCircle2 },
 ];
 
 export function tabsForPerspective(mode: JobsPerspective): readonly JobsTabConfigItem[] {

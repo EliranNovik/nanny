@@ -31,7 +31,7 @@ export function IncomingRequestsStoriesStrip({
         "snap-x snap-mandatory [touch-action:pan-x_pan-y] overscroll-x-contain"
       )}
       role="list"
-      aria-label="Incoming requests"
+      aria-label="Community needs your help"
     >
       {inbound.map((notif) => {
         const job = notif.job_requests;

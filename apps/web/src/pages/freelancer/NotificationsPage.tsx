@@ -635,7 +635,7 @@ export default function NotificationsPage() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Bell className="w-6 h-6 text-primary" />
-              Incoming Requests
+              Community&apos;s requests
             </h1>
             <p className="text-muted-foreground">
               {notifications.length === 0
