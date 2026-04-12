@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
-import { useConfirmationCounts } from "@/hooks/useConfirmationCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
 import { Home, Heart, MessageCircle, User, Bell, ChevronDown, ChevronLeft, LogOut, Pencil, Search, X, Menu, MapPin, Plus, ClipboardList, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,8 +27,7 @@ export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const [jobsSearchParams] = useSearchParams();
-  const { unreadNotifications, unreadMessages } = useUnreadCounts();
-  const { totalConfirmations } = useConfirmationCounts();
+  const { activityInboxCount, unreadMessages } = useUnreadCounts();
   const { scheduleChanges } = useScheduleChanges();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -139,8 +137,8 @@ export function BottomNav() {
     return null;
   }
 
-  const notificationBadgeCount =
-    (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications;
+  /** Bell: same pipeline as News & Activity modal + schedule ping counts (not in modal). */
+  const notificationBadgeCount = scheduleChanges + activityInboxCount;
 
   const DesktopAppMenuModal = user ? (
     <Dialog open={desktopAppMenuOpen} onOpenChange={setDesktopAppMenuOpen}>
@@ -327,7 +325,7 @@ export function BottomNav() {
       }}
       aria-hidden
     >
-      <div className="h-10 w-full" />
+      <div className="h-11 w-full" />
     </div>
   );
 
@@ -368,21 +366,21 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
-            className="p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
+            className="p-2 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
             aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
             aria-expanded={mobileSearchOpen}
           >
-            {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+            {mobileSearchOpen ? <X className="h-6 w-6" strokeWidth={2} /> : <Search className="h-6 w-6" strokeWidth={2} />}
           </button>
         </div>
         {!mobileSearchOpen && (
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative shrink-0 p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
+            className="relative shrink-0 p-2 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
             aria-label="Notifications"
           >
-            <Bell className="h-5 w-5" />
+            <Bell className="h-6 w-6" strokeWidth={2} />
             {notificationBadgeCount > 0 && (
               <Badge
                 variant="destructive"
@@ -411,7 +409,7 @@ export function BottomNav() {
   const jobsModeInUrl = jobsSearchParams.get("mode");
   /** Back: plain icon on the strip (no pill). */
   const mobileUniversalBackBtnClass =
-    "pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
+    "pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
 
   const MobileLeftHeaderCluster = (
     <div
@@ -419,7 +417,7 @@ export function BottomNav() {
       style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
     >
       <button type="button" onClick={handleHeaderBack} className={mobileUniversalBackBtnClass} aria-label="Back">
-        <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+        <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
       </button>
       {!mobileSearchOpen && isJobsPage && jobsModeInUrl ? (
         <div className="pointer-events-auto min-w-0 flex-1 overflow-hidden">
@@ -582,9 +580,8 @@ export function BottomNav() {
                     ? location.pathname.startsWith("/liked")
                     : location.pathname.startsWith(item.path);
 
-                const jobsBadgeCount = item.path === "/jobs"
-                  ? (totalConfirmations > 0 ? 1 : 0) + scheduleChanges + unreadNotifications
-                  : 0;
+                const jobsBadgeCount =
+                  item.path === "/jobs" ? scheduleChanges + activityInboxCount : 0;
 
                 return (
                   <Link
@@ -652,21 +649,21 @@ export function BottomNav() {
                 {fabMenuOpen && (
                   <div
                     role="menu"
-                    className="absolute bottom-[calc(100%+10px)] left-1/2 z-[130] w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-border/60 bg-card/95 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:bg-card/98 animate-in fade-in zoom-in-95 duration-150"
+                    className="absolute bottom-[calc(100%+10px)] left-1/2 z-[130] w-[min(22.5rem,calc(100vw-1.25rem))] -translate-x-1/2 rounded-[1.25rem] border border-border/60 bg-card/95 p-2 shadow-[0_16px_48px_rgba(0,0,0,0.2)] backdrop-blur-xl dark:bg-card/98 animate-in fade-in zoom-in-95 duration-150"
                   >
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+                      className="flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left text-base font-semibold text-foreground transition-colors hover:bg-muted/80"
                       onClick={() => {
                         navigate("/client/create");
                         setFabMenuOpen(false);
                       }}
                     >
-                      <ClipboardList className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      <ClipboardList className="h-6 w-6 shrink-0 text-primary" aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block leading-tight">Post a request</span>
-                        <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground leading-snug">
+                        <span className="block leading-snug">Post a request</span>
+                        <span className="mt-1 block text-[13px] font-normal text-muted-foreground leading-snug">
                           Find helpers — describe what you need
                         </span>
                       </span>
@@ -674,16 +671,16 @@ export function BottomNav() {
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+                      className="flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left text-base font-semibold text-foreground transition-colors hover:bg-muted/80"
                       onClick={() => {
                         navigate("/availability");
                         setFabMenuOpen(false);
                       }}
                     >
-                      <UsersRound className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      <UsersRound className="h-6 w-6 shrink-0 text-primary" aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block leading-tight">Set availability</span>
-                        <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground leading-snug">
+                        <span className="block leading-snug">Set availability</span>
+                        <span className="mt-1 block text-[13px] font-normal text-muted-foreground leading-snug">
                           Short window — clients see you now and can tap to chat
                         </span>
                       </span>
@@ -696,7 +693,7 @@ export function BottomNav() {
               {userNav.slice(2, 3).map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname.startsWith(item.path);
-                const inboxBadgeCount = unreadMessages + unreadNotifications;
+                const inboxBadgeCount = unreadMessages;
                 const showMessageBadge = item.path === "/messages" && inboxBadgeCount > 0;
 
                 return (

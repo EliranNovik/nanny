@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ReportIssueProvider } from "@/context/ReportIssueContext";
@@ -368,6 +369,7 @@ export default function App() {
             v7_relativeSplatPath: true,
           }}
         >
+          <DocumentScrollOverflowGate />
           <ToastProvider>
             <AuthProvider>
               <ReportIssueProvider>

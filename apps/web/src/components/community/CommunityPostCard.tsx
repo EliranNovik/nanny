@@ -301,8 +301,8 @@ export function CommunityPostCard({
           </p>
           {!isMine && user && profile && (
             iconOnlyActions ? (
-              <div className="flex flex-col items-start gap-2">
-                <div className="flex w-full items-center justify-start gap-3">
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex w-full items-center justify-center gap-3">
                   {(profile.role === "client" || profile.role === "freelancer") &&
                     post.author_role === "freelancer" && (
                       <Button

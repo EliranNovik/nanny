@@ -1,79 +1,62 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { fetchInboxActivityAlerts } from "@/lib/inboxActivityAlerts";
 
+const ACTIVITY_INBOX_DEBOUNCE_MS = 220;
+
+/**
+ * Message tab: raw unread message rows.
+ * Bell / News & Activity: same list as NotificationsModal (includes dismissed filter via fetchInboxActivityAlerts).
+ */
 export function useUnreadCounts() {
   const { user, profile } = useAuth();
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [activityInboxCount, setActivityInboxCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const activityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleActivityInboxFetch = useCallback(() => {
+    if (activityDebounceRef.current) clearTimeout(activityDebounceRef.current);
+    activityDebounceRef.current = setTimeout(() => {
+      void (async () => {
+        if (!user || !profile) {
+          setActivityInboxCount(0);
+          return;
+        }
+        try {
+          const rows = await fetchInboxActivityAlerts(user, profile, {
+            includeUnreadMessageAlerts: true,
+          });
+          setActivityInboxCount(rows.length);
+        } catch (error) {
+          console.error("Error fetching activity inbox count:", error);
+        }
+      })();
+    }, ACTIVITY_INBOX_DEBOUNCE_MS);
+  }, [user, profile]);
 
   useEffect(() => {
     if (!user || !profile) {
-      setUnreadNotifications(0);
+      setActivityInboxCount(0);
       setUnreadMessages(0);
       return;
     }
 
-    // Fetch unread notifications count (freelancer: job requests; client: community hire confirmations)
-    async function fetchUnreadNotifications() {
-      if (!user || !profile) {
-        setUnreadNotifications(0);
-        return;
+    scheduleActivityInboxFetch();
+
+    const onDismiss = () => scheduleActivityInboxFetch();
+    const onVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        scheduleActivityInboxFetch();
       }
+    };
+    window.addEventListener("activity-inbox-dismiss", onDismiss);
+    document.addEventListener("visibilitychange", onVisible);
 
-      try {
-        if (profile.role === "client") {
-          const { count } = await supabase
-            .from("job_requests")
-            .select("id", { count: "exact", head: true })
-            .eq("client_id", user.id)
-            .not("community_post_id", "is", null)
-            .in("status", ["locked", "active"])
-            .gte(
-              "locked_at",
-              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-            );
-          setUnreadNotifications(typeof count === "number" ? Math.min(count, 20) : 0);
-          return;
-        }
-
-        const { data: notifications } = await supabase
-          .from("job_candidate_notifications")
-          .select(`
-            id,
-            job_requests (
-              confirm_ends_at,
-              community_post_id
-            )
-          `)
-          .eq("freelancer_id", user.id)
-          .in("status", ["pending", "opened"]);
-
-        if (!notifications) {
-          setUnreadNotifications(0);
-          return;
-        }
-
-        const now = new Date();
-        const validNotifications = notifications.filter((notif: any) => {
-          const job = notif.job_requests;
-          if (!job || job.community_post_id) return false;
-          if (!job.confirm_ends_at) return false;
-          return new Date(job.confirm_ends_at).getTime() > now.getTime();
-        });
-
-        setUnreadNotifications(validNotifications.length);
-      } catch (error) {
-        console.error("Error fetching unread notifications:", error);
-      }
-    }
-
-    // Fetch unread messages count
     async function fetchUnreadMessages() {
       if (!user || !profile) return;
 
       try {
-        // Get all conversations for this user
         let conversations;
         if (profile.role === "client") {
           const { data } = await supabase
@@ -94,10 +77,8 @@ export function useUnreadCounts() {
           return;
         }
 
-        // Count unread messages (messages from other users that haven't been read)
         const conversationIds = conversations.map((c) => c.id);
 
-        // Get all messages in these conversations
         const { data: allMessages } = await supabase
           .from("messages")
           .select("sender_id, read_at, conversation_id")
@@ -108,7 +89,6 @@ export function useUnreadCounts() {
           return;
         }
 
-        // Get conversation details to determine other user IDs
         const { data: convos } = await supabase
           .from("conversations")
           .select("id, client_id, freelancer_id")
@@ -119,14 +99,12 @@ export function useUnreadCounts() {
           return;
         }
 
-        // Count unread messages from other users
         const unreadCount = allMessages.filter((msg) => {
           const convo = convos.find((c) => c.id === msg.conversation_id);
           if (!convo) return false;
 
-          const otherUserId = profile.role === "client"
-            ? convo.freelancer_id
-            : convo.client_id;
+          const otherUserId =
+            profile.role === "client" ? convo.freelancer_id : convo.client_id;
 
           return msg.sender_id === otherUserId && !msg.read_at;
         }).length;
@@ -137,10 +115,8 @@ export function useUnreadCounts() {
       }
     }
 
-    fetchUnreadNotifications();
     fetchUnreadMessages();
 
-    // Subscribe to real-time updates
     const notificationsChannel = supabase
       .channel(`unread-notifications:${user.id}`)
       .on(
@@ -152,7 +128,7 @@ export function useUnreadCounts() {
           filter: `freelancer_id=eq.${user.id}`,
         },
         () => {
-          fetchUnreadNotifications();
+          scheduleActivityInboxFetch();
         }
       )
       .subscribe();
@@ -170,7 +146,26 @@ export function useUnreadCounts() {
                 filter: `client_id=eq.${user.id}`,
               },
               () => {
-                fetchUnreadNotifications();
+                scheduleActivityInboxFetch();
+              }
+            )
+            .subscribe()
+        : null;
+
+    const freelancerJobsChannel =
+      profile.role === "freelancer"
+        ? supabase
+            .channel(`activity-inbox-fr-jobs:${user.id}`)
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "job_requests",
+                filter: `selected_freelancer_id=eq.${user.id}`,
+              },
+              () => {
+                scheduleActivityInboxFetch();
               }
             )
             .subscribe()
@@ -187,21 +182,27 @@ export function useUnreadCounts() {
         },
         () => {
           fetchUnreadMessages();
+          scheduleActivityInboxFetch();
         }
       )
       .subscribe();
 
     return () => {
+      window.removeEventListener("activity-inbox-dismiss", onDismiss);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (activityDebounceRef.current) clearTimeout(activityDebounceRef.current);
       if (notificationsChannel) {
         supabase.removeChannel(notificationsChannel);
       }
       if (clientJobsChannel) {
         supabase.removeChannel(clientJobsChannel);
       }
+      if (freelancerJobsChannel) {
+        supabase.removeChannel(freelancerJobsChannel);
+      }
       supabase.removeChannel(messagesChannel);
     };
-  }, [user, profile]);
+  }, [user, profile, scheduleActivityInboxFetch]);
 
-  return { unreadNotifications, unreadMessages };
+  return { activityInboxCount, unreadMessages };
 }
-

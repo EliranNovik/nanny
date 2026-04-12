@@ -2020,13 +2020,13 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         <div
           className={cn(
             "lg:hidden fixed left-0 right-0 z-30 bottom-0",
-            "bg-card/95 backdrop-blur-md border-t border-border shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.35)]",
-            "px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+            "border-t border-border/30 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
+            "px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
             !hideBackButton && mobileView === "steps" && "hidden"
           )}
         >
           {selectedFile && (
-            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/50 text-foreground">
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-border/50 bg-muted/25 p-2 text-foreground dark:bg-muted/10">
               {getFileType(selectedFile.name) === "image" ? (
                 <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
               ) : (
@@ -2038,7 +2038,7 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               </Button>
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2 items-end w-full max-w-none">
+          <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
             <input
               ref={fileInputRef}
               type="file"
@@ -2052,11 +2052,11 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               type="button"
               variant="ghost"
               size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 self-end bg-muted hover:bg-muted/80 border border-border text-primary"
+              className="h-10 w-10 shrink-0 self-end rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
             >
-              <Paperclip className="w-6 h-6" />
+              <Paperclip className="h-[22px] w-[22px]" strokeWidth={1.75} />
             </Button>
             <Textarea
               ref={mobileComposerRef}
@@ -2071,20 +2071,25 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 }
               }}
               className={cn(
-                "flex-1 min-h-[48px] max-h-[min(40vh,280px)] resize-none overflow-y-auto",
-                "rounded-[1.5rem] border border-border bg-background py-3 px-4",
-                "text-[16px] font-medium leading-snug text-foreground placeholder:text-muted-foreground shadow-sm",
-                "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0"
+                "min-h-[44px] max-h-[min(40vh,280px)] flex-1 resize-none overflow-y-auto",
+                "rounded-2xl border border-border/50 bg-muted/20 py-2.5 pl-3 pr-3 dark:bg-muted/10",
+                "text-[16px] font-normal leading-snug text-foreground placeholder:text-muted-foreground/65",
+                "shadow-none focus-visible:border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20"
               )}
               disabled={sending || uploading}
             />
             <Button
               type="submit"
               size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 self-end bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm"
+              variant="ghost"
+              className="h-10 w-10 shrink-0 self-end rounded-full text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground active:scale-95 disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             >
-              {sending || uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              {sending || uploading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" strokeWidth={2} />
+              )}
             </Button>
           </form>
         </div>
@@ -2093,13 +2098,13 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
         <div
           className={cn(
             "hidden lg:flex lg:flex-col fixed z-30 bottom-0 right-0",
-            "bg-card/95 backdrop-blur-md border-t border-border shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.35)]",
-            "px-6 pt-3 pb-4",
+            "border-t border-border/30 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
+            "px-5 pt-2.5 pb-4",
             hideBackButton ? "left-0" : "left-[400px]"
           )}
         >
           {selectedFile && (
-            <div className="mb-2 flex items-center gap-2 p-2.5 rounded-xl border border-border bg-muted/50 text-foreground w-full max-w-none w-full">
+            <div className="mb-2 flex w-full max-w-none items-center gap-2 rounded-xl border border-border/50 bg-muted/25 p-2.5 text-foreground dark:bg-muted/10">
               {getFileType(selectedFile.name) === "image" ? (
                 <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
               ) : (
@@ -2111,16 +2116,16 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
               </Button>
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2 w-full max-w-none w-full items-end">
+          <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 self-end bg-muted hover:bg-muted/80 border border-border text-primary"
+              className="h-10 w-10 shrink-0 self-end rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
             >
-              <Paperclip className="w-6 h-6" />
+              <Paperclip className="h-[22px] w-[22px]" strokeWidth={1.75} />
             </Button>
             <Textarea
               ref={desktopComposerRef}
@@ -2135,20 +2140,21 @@ export default function ChatPage({ conversationId: propConversationId, hideBackB
                 }
               }}
               className={cn(
-                "flex-1 min-h-[48px] max-h-[min(40vh,280px)] resize-none overflow-y-auto",
-                "rounded-[1.5rem] border border-border bg-background py-3 px-4",
-                "text-[16px] font-medium leading-snug text-foreground placeholder:text-muted-foreground shadow-sm",
-                "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0"
+                "min-h-[44px] max-h-[min(40vh,280px)] flex-1 resize-none overflow-y-auto",
+                "rounded-2xl border border-border/50 bg-muted/20 py-2.5 pl-3 pr-3 dark:bg-muted/10",
+                "text-[16px] font-normal leading-snug text-foreground placeholder:text-muted-foreground/65",
+                "shadow-none focus-visible:border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20"
               )}
               disabled={sending || uploading}
             />
             <Button
               type="submit"
               size="icon"
-              className="rounded-full h-12 w-12 flex-shrink-0 self-end bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20 shadow-sm"
+              variant="ghost"
+              className="h-10 w-10 shrink-0 self-end rounded-full text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground active:scale-95 disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary"
               disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             >
-              {sending || uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              {sending || uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" strokeWidth={2} />}
             </Button>
           </form>
         </div>

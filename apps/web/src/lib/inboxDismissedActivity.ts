@@ -31,4 +31,11 @@ export function rememberDismissedActivity(userId: string, activityId: string): v
   const s = loadDismissedActivityIds(userId);
   s.add(activityId);
   persistDismissedActivityIds(userId, s);
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("activity-inbox-dismiss"));
+    }
+  } catch {
+    /* ignore */
+  }
 }

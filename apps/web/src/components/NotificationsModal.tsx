@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -34,6 +34,8 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState<NotificationAlert[]>([]);
   const [loading, setLoading] = useState(false);
+  const alertsRef = useRef<NotificationAlert[]>([]);
+  alertsRef.current = alerts;
 
   const fetchAlerts = async () => {
     if (!user || !profile) return;
@@ -53,7 +55,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
 
   useEffect(() => {
     if (open) fetchAlerts();
-  }, [open, user?.id]);
+  }, [open, user?.id, profile?.role]);
 
   const handleIgnore = async (alert: NotificationAlert) => {
     if (user?.id) rememberDismissedActivity(user.id, alert.id);
@@ -83,12 +85,22 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
   };
 
   const handleView = (alert: NotificationAlert) => {
+    if (user?.id) rememberDismissedActivity(user.id, alert.id);
     onOpenChange(false);
     navigate(alert.link);
   };
 
+  const handleDialogOpenChange = (next: boolean) => {
+    if (!next && user?.id) {
+      for (const a of alertsRef.current) {
+        rememberDismissedActivity(user.id, a.id);
+      }
+    }
+    onOpenChange(next);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 border-none bg-muted dark:bg-background shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden rounded-[32px]">
         <DialogHeader className="p-6 pb-4 bg-card border-b border-black/[0.03] dark:border-white/[0.06]">
           <DialogTitle className="flex items-center justify-between">

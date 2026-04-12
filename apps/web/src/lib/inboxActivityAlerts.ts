@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { loadDismissedActivityIds } from "@/lib/inboxDismissedActivity";
 
 export interface NotificationAlert {
   id: string;
@@ -213,13 +214,16 @@ export async function fetchInboxActivityAlerts(
     }
   }
 
-  allAlerts.sort((a, b) => {
+  const dismissed = loadDismissedActivityIds(user.id);
+  const visible = allAlerts.filter((a) => !dismissed.has(a.id));
+
+  visible.sort((a, b) => {
     const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
     const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
     return dateB - dateA;
   });
 
-  return allAlerts;
+  return visible;
 }
 
 export function inboxActivityKindLabel(type: NotificationAlert["type"]): string {

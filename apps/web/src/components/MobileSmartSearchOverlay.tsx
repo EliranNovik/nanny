@@ -110,7 +110,7 @@ export function MobileSmartSearchOverlay({ open, onClose, onOpenNotifications }:
                 onClose();
               }}
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="h-6 w-6" strokeWidth={2} />
             </Button>
           ) : null}
         </div>
