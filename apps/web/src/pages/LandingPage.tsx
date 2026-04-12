@@ -192,7 +192,7 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent z-[2]"></div>
 
           {/* Left column: hero copy (constrained); download strip is full-bleed below so QR can sit at viewport edge on desktop */}
-          <div className="relative z-10 flex w-full max-w-7xl flex-col items-start px-6 pb-6 pt-28 md:mx-auto md:px-8 md:pb-8 md:pl-32 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
+          <div className="relative z-10 flex w-full max-w-7xl flex-col items-start px-6 pb-6 pt-32 md:mx-0 md:px-8 md:pb-8 md:pt-40 md:pl-8 lg:pl-12 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
             <div className="w-[85%] max-w-xl md:w-full md:bg-white/5 md:backdrop-blur-sm md:border md:border-white/5 p-5 md:p-8 rounded-[2rem] text-left space-y-4 md:space-y-6 animate-in fade-in slide-in-from-left-10 duration-1000 md:shadow-sm">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white drop-shadow-lg">
                 Bringing <span className="bg-primary/40 text-orange-200 px-3 py-1 rounded-xl border border-orange-400/20 inline-block rotate-[-1deg]">families</span> and helpers together
@@ -202,7 +202,7 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
-          <div className="relative z-10 w-full px-6 pb-10 pt-12 md:px-0 md:pb-16 md:pt-20 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
+          <div className="relative z-10 w-full px-6 pb-10 pt-12 md:px-0 md:pb-16 md:pt-20 md:pl-8 lg:pl-12 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
             <LandingDownloadAppPromo />
           </div>
 

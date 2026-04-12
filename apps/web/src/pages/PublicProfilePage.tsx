@@ -981,14 +981,7 @@ export default function PublicProfilePage() {
           
           {/* Left Column: User Card */}
           <div className="lg:col-span-1 space-y-6">
-            <Card
-              className={cn(
-                "border-0 shadow-none rounded-none bg-transparent overflow-visible backdrop-blur-none",
-                "md:border md:border-slate-200/70 md:dark:border-border/50",
-                "md:shadow-[0_12px_35px_rgba(15,23,42,0.08)] md:dark:shadow-[0_12px_35px_rgba(0,0,0,0.35)]",
-                "md:rounded-[28px] md:overflow-hidden md:bg-card/90 md:backdrop-blur-md"
-              )}
-            >
+            <Card className="border-0 shadow-none rounded-none bg-transparent overflow-visible backdrop-blur-none sm:rounded-none sm:border-0 sm:bg-transparent sm:shadow-none sm:hover:shadow-none">
               <CardContent className="p-0 flex flex-col">
                 {/* Mobile: avatar + name / rating; categories full-width below image row */}
                 <div className="relative md:hidden">
@@ -1094,103 +1087,107 @@ export default function PublicProfilePage() {
                   )}
                 </div>
 
-                {/* Desktop / tablet: full-width hero */}
-                <div className="relative hidden w-full aspect-[3/4] bg-muted sm:aspect-[4/5] md:block">
-                  {profile.photo_url ? (
-                    <img
-                      src={profile.photo_url}
-                      alt={profile.full_name ? `${profile.full_name} profile photo` : "Profile photo"}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      loading="eager"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 via-muted to-primary/10">
-                      <span className="text-5xl font-black uppercase tracking-tight text-primary/50 sm:text-6xl">
-                        {photoInitials}
-                      </span>
-                    </div>
-                  )}
-                  {profile.photo_url ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const url = profile.photo_url;
-                        if (!url) return;
-                        setProfileMediaLightbox({
-                          urls: [url],
-                          initialIndex: 0,
-                        });
-                      }}
-                      className="absolute inset-0 z-[5] cursor-zoom-in bg-transparent"
-                      aria-label="View profile photo full screen"
-                    />
-                  ) : null}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" aria-hidden />
-                  <div className="pointer-events-auto absolute right-3 top-3 z-20 flex flex-row-reverse items-center gap-2">
-                    {!isOwnProfile && currentUser && (
+                {/* Desktop / tablet: compact circular photo left, identity + categories right */}
+                <div className="relative hidden md:flex md:flex-row md:items-start md:gap-6 md:px-7 md:pt-7 md:pb-2 lg:gap-8 lg:px-8">
+                  <div className="relative h-28 w-28 shrink-0 self-start lg:h-32 lg:w-32">
+                    {profile.photo_url ? (
                       <button
                         type="button"
-                        onClick={() => void toggleProfileFavorite()}
-                        disabled={favoriteBusy}
-                        title={profileFavorited ? "Remove from saved" : "Save profile"}
-                        aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
-                        aria-pressed={profileFavorited}
-                        className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/90 bg-white/95 text-rose-500 shadow-lg backdrop-blur-sm transition hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-zinc-900 dark:bg-zinc-900/95 dark:text-rose-400"
+                        onClick={() => {
+                          const url = profile.photo_url;
+                          if (!url) return;
+                          setProfileMediaLightbox({
+                            urls: [url],
+                            initialIndex: 0,
+                          });
+                        }}
+                        className="relative block h-full w-full rounded-full ring-2 ring-slate-200/90 transition active:scale-[0.98] dark:ring-zinc-600"
+                        aria-label="View profile photo full screen"
                       >
-                        {favoriteBusy ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
-                        ) : (
-                          <Heart
-                            className={cn("h-[22px] w-[22px]", profileFavorited && "fill-rose-500 text-rose-500")}
-                            strokeWidth={profileFavorited ? 0 : 2.25}
-                            aria-hidden
-                          />
-                        )}
+                        <img
+                          src={profile.photo_url}
+                          alt={profile.full_name ? `${profile.full_name} profile photo` : "Profile photo"}
+                          className="h-full w-full rounded-full object-cover"
+                          loading="eager"
+                        />
+                        <div className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-md dark:border-zinc-900">
+                          <ShieldCheck className="h-4 w-4" />
+                        </div>
                       </button>
+                    ) : (
+                      <>
+                        <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-muted to-primary/10 ring-2 ring-slate-200/90 dark:ring-zinc-600">
+                          <span className="text-3xl font-black uppercase tracking-tight text-primary/60 lg:text-4xl">
+                            {photoInitials}
+                          </span>
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-md dark:border-zinc-900">
+                          <ShieldCheck className="h-4 w-4" />
+                        </div>
+                      </>
                     )}
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white/90 bg-emerald-500 text-white shadow-lg dark:border-zinc-900">
-                      <ShieldCheck className="h-4 w-4" />
-                    </div>
                   </div>
-                </div>
 
-                <div className="hidden md:flex flex-col items-center px-7 pb-0 pt-7 text-center sm:px-8">
-                <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white mb-2">
-                  {profile.full_name}
-                </h1>
-                
-                <div className="flex flex-col items-center gap-2 mb-6">
-                  <StarRating 
-                    rating={profile.average_rating || 0} 
-                    totalRatings={profile.total_ratings || 0}
-                    size="md"
-                  />
-                  {profile.city?.trim() ? (
-                    <p className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
-                      <MapPin className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
-                      <span>{profile.city.trim()}</span>
-                    </p>
-                  ) : null}
-                </div>
-
-                {profile.categories && profile.categories.length > 0 && (
-                  <div className="w-full mb-6">
-                    <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2 text-center">
-                      Job With
-                    </p>
-                    <div className="flex flex-wrap justify-center gap-2.5">
-                      {profile.categories.map((category, idx) => (
-                        <Badge
-                          key={idx}
-                          variant="secondary"
-                          className="rounded-full border border-slate-200/80 bg-card/90 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-[1px] hover:shadow-[0_10px_18px_rgba(15,23,42,0.12)] dark:border-zinc-700 dark:bg-zinc-800/90 dark:text-slate-200"
+                  <div className="min-w-0 flex-1 flex flex-col items-stretch text-left">
+                    <div className="flex items-start justify-between gap-3">
+                      <h1 className="text-2xl font-black leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[1.65rem]">
+                        {profile.full_name}
+                      </h1>
+                      {!isOwnProfile && currentUser && (
+                        <button
+                          type="button"
+                          onClick={() => void toggleProfileFavorite()}
+                          disabled={favoriteBusy}
+                          title={profileFavorited ? "Remove from saved" : "Save profile"}
+                          aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
+                          aria-pressed={profileFavorited}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md backdrop-blur-sm transition hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-900/40 dark:bg-zinc-900/95 dark:text-rose-400"
                         >
-                          {category.replace(/_/g, " ")}
-                        </Badge>
-                      ))}
+                          {favoriteBusy ? (
+                            <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
+                          ) : (
+                            <Heart
+                              className={cn("h-6 w-6", profileFavorited && "fill-rose-500 text-rose-500")}
+                              strokeWidth={profileFavorited ? 0 : 2.25}
+                              aria-hidden
+                            />
+                          )}
+                        </button>
+                      )}
                     </div>
+
+                    <div className="mt-2 flex flex-col items-start gap-2">
+                      <StarRating
+                        rating={profile.average_rating || 0}
+                        totalRatings={profile.total_ratings || 0}
+                        size="md"
+                        className="justify-start"
+                      />
+                      {profile.city?.trim() ? (
+                        <p className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
+                          <MapPin className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
+                          <span>{profile.city.trim()}</span>
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {profile.categories && profile.categories.length > 0 && (
+                      <div className="mt-5 w-full">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Job With</p>
+                        <div className="flex flex-wrap justify-start gap-2.5">
+                          {profile.categories.map((category, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className="rounded-full border border-slate-200/80 bg-card/90 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-[1px] hover:shadow-[0_10px_18px_rgba(15,23,42,0.12)] dark:border-zinc-700 dark:bg-zinc-800/90 dark:text-slate-200"
+                            >
+                              {category.replace(/_/g, " ")}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
                 </div>
 
                 <div className="flex flex-col items-stretch px-4 pt-5 pb-4 text-left sm:px-5 md:items-center md:px-7 md:pt-2 md:pb-4 md:text-center sm:px-8">
@@ -1688,7 +1685,7 @@ export default function PublicProfilePage() {
                 <h2 className="text-xl font-black tracking-tight uppercase">User Reviews</h2>
               </div>
 
-              <div className="space-y-10">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-14 pt-8 md:grid-cols-2 md:gap-y-16 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-14">
                 {reviews.length > 0 ? reviews.map((review, idx) => {
                   const gradients = [
                     "from-blue-400 to-purple-500",
@@ -1702,35 +1699,37 @@ export default function PublicProfilePage() {
                   return (
                     <div
                       key={review.id}
-                      className="relative rounded-3xl border border-slate-200/90 bg-white p-8 pt-14 mt-10 shadow-md shadow-slate-950/5 transition-all duration-500 hover:shadow-lg dark:border-border/50 dark:bg-zinc-900 dark:shadow-black/20 dark:hover:shadow-lg group"
+                      className="relative flex h-full flex-col rounded-3xl border border-slate-200/90 bg-white p-6 pt-12 shadow-md shadow-slate-950/5 transition-all duration-500 hover:shadow-lg dark:border-border/50 dark:bg-zinc-900 dark:shadow-black/20 dark:hover:shadow-lg group lg:p-5 lg:pt-11"
                     >
                       {/* Floating Avatar */}
                       <div className={cn(
-                        "absolute -top-10 left-8 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl group-hover:scale-110 transition-transform duration-500",
+                        "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110 lg:-top-8 lg:left-5 lg:h-16 lg:w-16 lg:p-1",
                         gradient
                       )}>
                         <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
                           <AvatarImage src={review.reviewer.photo_url || undefined} className="object-cover" />
-                          <AvatarFallback className="bg-transparent text-white font-bold text-2xl">
+                          <AvatarFallback className="bg-transparent text-white font-bold text-2xl lg:text-lg">
                             {review.reviewer.full_name?.slice(0, 2).toUpperCase() || "??"}
                           </AvatarFallback>
                         </Avatar>
                       </div>
 
-                      <div className="flex flex-col">
-                        <div className="flex items-center justify-between gap-4 mb-4">
-                          <div>
-                            <h4 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+                      <div className="flex min-h-0 flex-1 flex-col">
+                        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 lg:mb-2">
+                          <div className="min-w-0 pr-2">
+                            <h4 className="truncate text-lg font-bold text-gray-900 group-hover:text-primary transition-colors dark:text-white lg:text-base">
                               {review.reviewer.full_name}
                             </h4>
-                            <p className="text-[11px] text-slate-400 font-medium mt-0.5">{new Date(review.created_at).toLocaleDateString()}</p>
+                            <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                              {new Date(review.created_at).toLocaleDateString()}
+                            </p>
                           </div>
-                          <div className="flex items-center gap-1.5 bg-yellow-400/10 px-3 py-1 rounded-full border border-yellow-400/20">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-[13px] font-black text-yellow-700 dark:text-yellow-500">{review.rating}</span>
+                          <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
+                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                            <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">{review.rating}</span>
                           </div>
                         </div>
-                        <p className="text-gray-700 dark:text-slate-300 leading-relaxed italic text-base md:text-lg">
+                        <p className="line-clamp-6 text-base italic leading-relaxed text-gray-700 dark:text-slate-300 lg:text-sm">
                           "{review.review_text || "No comments provided."}"
                         </p>
                       </div>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigationType } from "react-router-dom";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -104,6 +104,37 @@ function RoleRedirect() {
 }
 
 /**
+ * `/` — marketing for everyone when chosen in-app (PUSH).
+ * Signed-in users are sent to role home only on direct entry (POP) or redirects (REPLACE), e.g. first load at `/` or `/login` → `/`.
+ */
+function RootRoute() {
+  const { user, loading } = useAuth();
+  const navigationType = useNavigationType();
+
+  if (loading && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage />;
+  }
+
+  if (navigationType === "PUSH") {
+    return <LandingPage />;
+  }
+
+  return (
+    <ProtectedRoute>
+      <RoleRedirect />
+    </ProtectedRoute>
+  );
+}
+
+/**
  * Wraps page content with top padding so it clears the fixed BottomNav header.
  * #root already applies env(safe-area-inset-top); pt-14 (~3.5rem) matches the mobile strip
  * (safe-area padding inside the strip + h-10 + margins) and the md desktop bar.
@@ -122,12 +153,12 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Landing & marketing — landing-style header, no app layout padding */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<RootRoute />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route
         path="/login"
-        element={user ? <Navigate to="/home" replace /> : <LoginPage />}
+        element={user ? <Navigate to="/" replace /> : <LoginPage />}
       />
       <Route path="/onboarding" element={<OnboardingPage />} />
 

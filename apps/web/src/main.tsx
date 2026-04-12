@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
+// Clear stale inline overflow from older builds (document-level scroll lock); CSS controls overflow.
+document.documentElement.style.removeProperty("overflow-y");
+document.body.style.removeProperty("overflow-y");
+
 // PWA: only register the service worker in production. In dev it intercepts navigations
 // and fetches, which breaks client-side routing (React Router) and Vite HMR.
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
