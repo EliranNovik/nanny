@@ -2,17 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Search, X, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
-
-interface SearchResult {
-  id: string;
-  full_name: string | null;
-  photo_url: string | null;
-  average_rating: number | null;
-  total_ratings: number | null;
-}
+import { useDebouncedProfileSearch } from "@/hooks/useDebouncedProfileSearch";
+import { filterPageSuggestions, type SmartSearchSuggestion } from "@/lib/smartSearchSuggestions";
+import { useAuth } from "@/context/AuthContext";
 
 interface UserSearchProps {
   className?: string;
@@ -24,12 +18,15 @@ interface UserSearchProps {
 
 export function UserSearch({ className, variant = "default", autoFocus = false, onResultSelect }: UserSearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { profile } = useAuth();
+  const role = profile?.role === "freelancer" ? "freelancer" : "client";
+
+  const { results, loading } = useDebouncedProfileSearch(query, 300, 5);
+  const pageMatches = filterPageSuggestions(query, role);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -47,32 +44,16 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
     return () => clearTimeout(t);
   }, [autoFocus]);
 
-  useEffect(() => {
-    const searchUsers = async () => {
-      if (query.trim().length === 0) {
-        setResults([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, photo_url, average_rating, total_ratings")
-        .ilike("full_name", `%${query}%`)
-        .limit(5);
-
-      if (!error && data) {
-        setResults(data);
-      }
-      setLoading(false);
-    };
-
-    const debounce = setTimeout(searchUsers, 300);
-    return () => clearTimeout(debounce);
-  }, [query]);
-
   const isInline = variant === "inline";
+
+  const goPage = (to: string) => {
+    navigate(to);
+    setIsOpen(false);
+    setQuery("");
+    onResultSelect?.();
+  };
+
+  const showPanel = isOpen && query.length > 0;
 
   return (
     <div ref={searchRef} className={cn("group relative w-full max-w-[200px] sm:max-w-xs", className)}>
@@ -92,7 +73,7 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Search helpers..."
+          placeholder="Search helpers & pages…"
           autoComplete="off"
           className={cn(
             "w-full text-sm transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
@@ -106,7 +87,6 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
             type="button"
             onClick={() => {
               setQuery("");
-              setResults([]);
             }}
             className={cn(
               "absolute top-1/2 -translate-y-1/2 p-0.5 transition-colors",
@@ -118,16 +98,29 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
         )}
       </div>
 
-      {isOpen && query.length > 0 && (
+      {showPanel && (
         <div
           className={cn(
-            "absolute left-0 right-0 top-full z-[100] mt-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
+            "absolute left-0 right-0 top-full z-[100] mt-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 max-h-[min(70vh,24rem)] overflow-y-auto",
             isInline
               ? "rounded-xl border border-slate-200/50 bg-card/90 shadow-md backdrop-blur-md dark:border-border/40 dark:bg-card/90"
               : "rounded-2xl border border-slate-200/50 bg-card/95 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-border/50 dark:bg-card/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)]"
           )}
         >
           <div className="p-2 space-y-1">
+            {pageMatches.length > 0 && (
+              <div className="mb-1 space-y-0.5">
+                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Go to</p>
+                {pageMatches.slice(0, 6).map((s) => (
+                  <DesktopPageRow key={s.id} item={s} onPick={() => goPage(s.to)} />
+                ))}
+              </div>
+            )}
+            {pageMatches.length > 0 && (
+              <div className="mx-1 border-t border-border/40 pt-1">
+                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">People</p>
+              </div>
+            )}
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-5 h-5 text-primary animate-spin" />
@@ -168,14 +161,32 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
                   </div>
                 </button>
               ))
-            ) : (
+            ) : pageMatches.length === 0 ? (
               <div className="py-8 px-4 text-center">
-                <p className="text-sm text-slate-400 font-medium">No results found for "{query}"</p>
+                <p className="text-sm text-slate-400 font-medium">No results for "{query}"</p>
+              </div>
+            ) : (
+              <div className="py-4 px-4 text-center">
+                <p className="text-sm text-slate-400 font-medium">No people match "{query}"</p>
               </div>
             )}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function DesktopPageRow({ item, onPick }: { item: SmartSearchSuggestion; onPick: () => void }) {
+  const Icon = item.icon;
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+    >
+      <Icon className="h-4 w-4 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1 truncate font-medium">{item.title}</span>
+    </button>
   );
 }

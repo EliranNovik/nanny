@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { UserSearch } from "./UserSearch";
+import { MobileSmartSearchOverlay } from "./MobileSmartSearchOverlay";
 import { JobsTabBar } from "@/components/jobs/JobsTabBar";
 import { FREELANCER_JOBS_TABS, CLIENT_JOBS_TABS } from "@/components/jobs/jobsTabConfig";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
@@ -102,17 +103,6 @@ export function BottomNav() {
     }
     navigate(headerBackHomeFallback);
   };
-
-  useEffect(() => {
-    if (!mobileSearchOpen) return;
-    const close = (e: MouseEvent) => {
-      if (mobileSearchClusterRef.current && !mobileSearchClusterRef.current.contains(e.target as Node)) {
-        setMobileSearchOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [mobileSearchOpen]);
 
   useEffect(() => {
     if (previousPathnameRef.current !== location.pathname && mobileSearchOpen) {
@@ -243,7 +233,7 @@ export function BottomNav() {
 
   /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
   const DesktopHeader = (
-    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md transition-all dark:border-border/40 dark:bg-card/85">
+    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background">
       <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
         <div className="flex min-w-0 justify-start items-center gap-1.5">
           <button
@@ -329,7 +319,7 @@ export function BottomNav() {
     <div
       className={cn(
         "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] translate-y-0 opacity-100",
-        "border-b border-border/80 bg-background/95 shadow-[0_8px_28px_rgba(15,23,42,0.14)] backdrop-blur-xl dark:border-border/90 dark:bg-background/95 dark:shadow-[0_10px_36px_rgba(0,0,0,0.48)]"
+        "border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background"
       )}
       style={{
         paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
@@ -374,17 +364,6 @@ export function BottomNav() {
             </div>
           </div>
         )}
-        {mobileSearchOpen && (
-          <div className="min-w-0 flex-1 shrink animate-in fade-in slide-in-from-right-2 duration-200">
-            <div className="rounded-2xl border border-slate-200/70 bg-card/95 p-2 shadow-[0_10px_25px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:border-border/50 dark:bg-card/95">
-              <UserSearch
-                autoFocus
-                onResultSelect={() => setMobileSearchOpen(false)}
-                className="max-w-none w-full"
-              />
-            </div>
-          </div>
-        )}
         <div className={cn("relative shrink-0", !isCommunityPostsFilterPage && !mobileSearchOpen && "ml-auto")}>
           <button
             type="button"
@@ -414,6 +393,16 @@ export function BottomNav() {
             )}
           </button>
         )}
+        {user && (
+          <button
+            type="button"
+            onClick={() => setDesktopAppMenuOpen(true)}
+            className="shrink-0 p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
+            aria-label="Open app menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -426,7 +415,7 @@ export function BottomNav() {
 
   const MobileLeftHeaderCluster = (
     <div
-      className="md:hidden fixed z-[60] pointer-events-none flex max-w-[calc(100vw-7rem)] flex-row items-center gap-1"
+      className="md:hidden fixed z-[60] pointer-events-none flex max-w-[calc(100vw-9rem)] flex-row items-center gap-1"
       style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
     >
       <button type="button" onClick={handleHeaderBack} className={mobileUniversalBackBtnClass} aria-label="Back">
@@ -797,6 +786,11 @@ export function BottomNav() {
         </nav>
         {ProfileMenuModal}
         {DesktopAppMenuModal}
+        <MobileSmartSearchOverlay
+          open={mobileSearchOpen}
+          onClose={() => setMobileSearchOpen(false)}
+          onOpenNotifications={() => setNotificationsOpen(true)}
+        />
         <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       </>
     );
@@ -821,6 +815,11 @@ export function BottomNav() {
         </nav>
         {ProfileMenuModal}
         {DesktopAppMenuModal}
+        <MobileSmartSearchOverlay
+          open={mobileSearchOpen}
+          onClose={() => setMobileSearchOpen(false)}
+          onOpenNotifications={() => setNotificationsOpen(true)}
+        />
         <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       </>
     );

@@ -15,13 +15,13 @@ import {
   Hourglass,
   Loader2,
   MessageSquare,
-  Phone,
   Send,
   Sparkles,
   ExternalLink,
   Trash2,
   UserRound,
 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/BrandIcons";
 import { cn } from "@/lib/utils";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { StarRating } from "@/components/StarRating";
@@ -714,12 +714,12 @@ export default function LikedPage() {
                                   aria-label="Open messages"
                                   disabled={openingChatProfileId === p.id}
                                   onClick={() => void openDirectChatWithProfile(p)}
-                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-md shadow-slate-900/20 transition-all hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:shadow-slate-100/15"
+                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:text-white"
                                 >
                                   {openingChatProfileId === p.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-5 w-5 animate-spin text-black dark:text-white" />
                                   ) : (
-                                    <MessageSquare className="h-4 w-4" strokeWidth={2} />
+                                    <MessageSquare className="h-5 w-5 text-black dark:text-white" strokeWidth={2} />
                                   )}
                                 </button>
                                 {p.whatsapp_number && (
@@ -733,9 +733,9 @@ export default function LikedPage() {
                                         "_blank"
                                       )
                                     }
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-md shadow-green-500/25 transition-all hover:scale-105 active:scale-95"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white"
                                   >
-                                    <Phone className="h-4 w-4 fill-current" />
+                                    <WhatsAppIcon size={20} className="text-black dark:text-white" aria-hidden />
                                   </button>
                                 )}
                                 {p.telegram_username && (
@@ -749,9 +749,9 @@ export default function LikedPage() {
                                         "_blank"
                                       )
                                     }
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-md shadow-blue-500/25 transition-all hover:scale-105 active:scale-95"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white"
                                   >
-                                    <Send className="h-4 w-4 translate-x-[-0.5px] translate-y-[0.5px] fill-current" />
+                                    <Send className="h-5 w-5 translate-x-[-0.5px] translate-y-[0.5px] text-black dark:text-white" />
                                   </button>
                                 )}
                               </div>
