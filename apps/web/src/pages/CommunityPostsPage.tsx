@@ -644,7 +644,12 @@ export default function CommunityPostsPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-lg">
+        <DialogContent
+          className={
+            "inset-0 left-0 top-0 flex h-[100dvh] max-h-[100dvh] w-full max-w-full translate-x-0 translate-y-0 flex-col gap-4 overflow-y-auto overscroll-contain rounded-none border-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] shadow-none " +
+            "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[min(90vh,720px)] sm:w-full sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:border sm:p-6 sm:shadow-lg"
+          }
+        >
           <DialogHeader>
             <DialogTitle>Set availability</DialogTitle>
             <p className="text-sm text-muted-foreground">

@@ -233,7 +233,10 @@ export function BottomNav() {
 
   /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
   const DesktopHeader = (
-    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background">
+    <header
+      data-desktop-header-strip=""
+      className="hidden md:block fixed top-0 left-0 right-0 z-50 border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background"
+    >
       <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
         <div className="flex min-w-0 justify-start items-center gap-1.5">
           <button
@@ -317,6 +320,7 @@ export function BottomNav() {
   /** Mobile: fixed top background strip behind back / search / bell. */
   const mobileScrollHeaderLayer = (
     <div
+      data-mobile-header-strip=""
       className={cn(
         "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] translate-y-0 opacity-100",
         "border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background"
@@ -596,6 +600,7 @@ export function BottomNav() {
                     )}
                   >
                     <div
+                      data-nav-liked-anchor={item.path === "/liked" ? "" : undefined}
                       className={cn(
                         "flex flex-col items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] rounded-2xl transition-all duration-300 relative",
                         isActive

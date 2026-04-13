@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
   Briefcase,
   CalendarPlus,
+  ChevronLeft,
   ChevronRight,
   ClipboardList,
+  HeartHandshake,
+  HelpingHand,
   LayoutDashboard,
   Search,
   Users,
@@ -20,7 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeActivitySection";
-
+ 
 type DiscoverRole = "client" | "freelancer";
 
 type DiscoverHomeMode = "hire" | "work";
@@ -123,6 +126,46 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
     [livePostsByCategory, livePostsCountLoading]
   );
 
+  const hireCategoryScrollRef = useRef<HTMLDivElement>(null);
+  const [hireCategoryScroll, setHireCategoryScroll] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
+
+  const refreshHireCategoryScroll = useCallback(() => {
+    const el = hireCategoryScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const max = scrollWidth - clientWidth;
+    setHireCategoryScroll({
+      canScrollLeft: scrollLeft > 2,
+      canScrollRight: max > 2 && scrollLeft < max - 2,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (homeMode !== "hire") return;
+    const el = hireCategoryScrollRef.current;
+    if (!el) return;
+    refreshHireCategoryScroll();
+    el.addEventListener("scroll", refreshHireCategoryScroll, { passive: true });
+    const ro = new ResizeObserver(() => refreshHireCategoryScroll());
+    ro.observe(el);
+    window.addEventListener("resize", refreshHireCategoryScroll);
+    return () => {
+      el.removeEventListener("scroll", refreshHireCategoryScroll);
+      ro.disconnect();
+      window.removeEventListener("resize", refreshHireCategoryScroll);
+    };
+  }, [homeMode, refreshHireCategoryScroll, livePostsByCategory, livePostsCountLoading]);
+
+  const scrollHireCategories = useCallback((dir: "left" | "right") => {
+    const el = hireCategoryScrollRef.current;
+    if (!el) return;
+    const step = Math.min(Math.round(el.clientWidth * 0.85), 360);
+    el.scrollBy({ left: dir === "left" ? -step : step, behavior: "smooth" });
+  }, []);
+
   return (
     <div className="relative min-h-screen gradient-mesh pb-6 md:pb-8">
       <div
@@ -140,34 +183,84 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               role="tablist"
               aria-label="What are you here for?"
             >
-              <div className="flex h-12 w-full items-stretch gap-1 rounded-2xl border border-border/60 bg-muted/70 p-1 shadow-inner dark:border-border/50 dark:bg-muted/50">
+              <div
+                className={cn(
+                  "relative mx-auto grid h-11 w-full max-w-[15.5rem] grid-cols-2 gap-0.5 rounded-full p-1 sm:max-w-[17rem]",
+                  "bg-muted/50 ring-1 ring-inset ring-black/[0.06] dark:bg-muted/35 dark:ring-white/[0.08]",
+                  "shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]"
+                )}
+              >
+                {/* Sliding thumb — animates between segments */}
+                <div
+                  aria-hidden
+                  className={cn(
+                    "pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-background",
+                    "w-[calc((100%-0.625rem)/2)] will-change-transform",
+                    "shadow-[0_2px_10px_-3px_rgba(15,23,42,0.18),0_1px_0_rgba(255,255,255,0.85)_inset] ring-1",
+                    "transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+                    "dark:bg-zinc-900/95 dark:shadow-[0_4px_16px_-6px_rgba(0,0,0,0.55)]",
+                    homeMode === "hire"
+                      ? "translate-x-0 ring-orange-200/90 dark:shadow-[0_4px_18px_-6px_rgba(249,115,22,0.35)] dark:ring-orange-500/30"
+                      : "translate-x-[calc(100%+0.125rem)] ring-emerald-200/90 dark:shadow-[0_4px_18px_-6px_rgba(52,211,153,0.28)] dark:ring-emerald-500/28"
+                  )}
+                />
                 <button
                   type="button"
                   role="tab"
                   aria-selected={homeMode === "hire"}
+                  aria-label={homeMode === "hire" ? undefined : "I need a helper"}
                   onClick={() => setHomeMode("hire")}
                   className={cn(
-                    "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
+                    "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full px-1.5 py-2 transition-colors duration-300 ease-out",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "hire"
-                      ? "bg-orange-50 text-orange-800 shadow-sm ring-1 ring-orange-200/80 dark:bg-zinc-600/95 dark:text-zinc-50 dark:shadow-sm dark:ring-0"
-                      : "text-muted-foreground hover:text-foreground/90"
+                      ? "gap-1.5 text-orange-600 dark:text-orange-400 sm:gap-2"
+                      : "text-muted-foreground hover:text-foreground/85"
                   )}
                 >
-                  I need a helper
+                  <HeartHandshake
+                    className={cn(
+                      "h-[1.125rem] w-[1.125rem] shrink-0 transition-transform duration-300 sm:h-5 sm:w-5",
+                      homeMode === "hire" && "scale-105"
+                    )}
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                  {homeMode === "hire" && (
+                    <span className="animate-in fade-in slide-in-from-left-1 truncate text-[11px] font-semibold leading-none tracking-tight duration-300 sm:text-xs">
+                      I need a helper
+                    </span>
+                  )}
                 </button>
                 <button
                   type="button"
                   role="tab"
                   aria-selected={homeMode === "work"}
+                  aria-label={homeMode === "work" ? undefined : "I want to help"}
                   onClick={() => setHomeMode("work")}
                   className={cn(
-                    "min-w-0 flex-1 rounded-xl px-2 py-2 text-[11px] font-bold leading-tight transition-all duration-200 sm:text-xs",
+                    "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full px-1.5 py-2 transition-colors duration-300 ease-out",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "work"
-                      ? "bg-emerald-50 text-emerald-800 shadow-sm ring-1 ring-emerald-200/80 dark:bg-zinc-600/95 dark:text-zinc-50 dark:shadow-sm dark:ring-0"
-                      : "text-muted-foreground hover:text-foreground/90"
+                      ? "gap-1.5 text-emerald-700 dark:text-emerald-400 sm:gap-2"
+                      : "text-muted-foreground hover:text-foreground/85"
                   )}
                 >
-                  I want to help
+                  <HelpingHand
+                    className={cn(
+                      "h-[1.125rem] w-[1.125rem] shrink-0 transition-transform duration-300 sm:h-5 sm:w-5",
+                      homeMode === "work" && "scale-105"
+                    )}
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                  {homeMode === "work" && (
+                    <span className="animate-in fade-in slide-in-from-right-1 truncate text-[11px] font-semibold leading-none tracking-tight duration-300 sm:text-xs">
+                      I want to help
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -178,8 +271,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
       <div
         className={cn(
           "app-desktop-shell",
-          /** Match fixed tab strip: py-2 + h-12 + border-b */
-          "pt-[calc(0.5rem+3rem+0.5rem+1px)]"
+          /** Match fixed tab strip: py-2 + h-11 + border-b + extra gap below tabs */
+          "pt-[calc(0.5rem+2.75rem+0.5rem+1px+1rem)]"
         )}
       >
         <div className="app-desktop-centered-wide max-w-lg md:max-w-2xl">
@@ -255,26 +348,23 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           <DiscoverHomeActivitySection mode={homeMode} />
 
           {homeMode === "hire" && (
-          <section className="mb-8 mt-6" aria-label="Service categories">
-            {/* Mobile: full-bleed grid with thin gutters; md+: horizontal strip with spacing */}
-            <div
-              className={cn(
-                "-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]",
-                "md:mx-0 md:w-full"
-              )}
-            >
+          <section
+            className={cn(
+              "mb-8 mt-6",
+              "-mx-4 w-[calc(100%+2rem)] px-2 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-3",
+              "md:mx-0 md:w-full md:px-0"
+            )}
+            aria-label="Service categories"
+          >
+            <div className="relative">
               <div
+                ref={hireCategoryScrollRef}
                 className={cn(
-                  "overflow-hidden max-md:rounded-xl max-md:bg-background max-md:p-1",
-                  "md:rounded-none md:bg-transparent md:p-0"
+                  "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
+                  "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                  "touch-pan-x"
                 )}
               >
-                <div
-                  className={cn(
-                    "grid grid-cols-3 max-md:gap-1",
-                    "md:flex md:gap-4 md:overflow-x-auto md:px-1 md:pb-2 md:pt-1 md:[scrollbar-width:thin]"
-                  )}
-                >
                 {DISCOVER_HOME_CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
@@ -286,10 +376,11 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     }
                     onClick={() => onCategoryClick(cat.id)}
                     className={cn(
-                      "group relative aspect-square w-full shrink-0 overflow-hidden rounded-xl text-left outline-none",
+                      "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-xl text-left outline-none",
+                      /** Three tiles per viewport; 2× gap-2 (0.5rem) between three columns */
+                      "basis-[calc((100%-1rem)/3)] md:rounded-2xl",
                       "transition-transform active:scale-[0.98]",
                       "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-inset",
-                      "md:w-[6.75rem] md:min-w-[6.75rem] md:rounded-2xl md:shadow-sm"
                     )}
                   >
                     <img
@@ -300,7 +391,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     />
                     <span
                       className={cn(
-                        "absolute left-2 top-2 z-[2] flex min-h-[1.35rem] min-w-[1.35rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums leading-none",
+                        "absolute left-1.5 top-1.5 z-[2] flex min-h-[1.35rem] min-w-[1.35rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums leading-none sm:left-2 sm:top-2 sm:min-h-[1.5rem] sm:min-w-[1.5rem] sm:px-2 sm:text-[11px]",
                         "backdrop-blur-md backdrop-saturate-150",
                         "bg-white/55 text-slate-900 shadow-[0_1px_10px_rgba(0,0,0,0.08)] ring-1 ring-white/70",
                         "dark:bg-black/45 dark:text-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.55)] dark:ring-white/12"
@@ -310,24 +401,52 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       {liveCountLabel(cat.id)}
                     </span>
                     <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-10 pb-2.5 px-1.5"
+                      className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-10 pb-2 px-1.5 sm:pt-12 sm:pb-2.5 sm:px-2"
                       aria-hidden
                     />
-                    <span className="absolute inset-x-0 bottom-0 z-[1] px-1.5 pb-2.5 pt-6 text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:text-[11px]">
+                    <span className="absolute inset-x-0 bottom-0 z-[1] px-1.5 pb-2 pt-5 text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:px-2 sm:pb-2.5 sm:pt-6 sm:text-xs md:text-sm">
                       {cat.label}
                     </span>
                   </button>
                 ))}
-                </div>
               </div>
+              <button
+                type="button"
+                aria-label="Scroll categories left"
+                disabled={!hireCategoryScroll.canScrollLeft}
+                onClick={() => scrollHireCategories("left")}
+                className={cn(
+                  "absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:left-3 sm:h-11 sm:w-11",
+                  "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
+                  "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                  "dark:border-white/15 dark:bg-black/30 dark:text-white dark:hover:bg-black/45",
+                  "disabled:pointer-events-none disabled:opacity-30"
+                )}
+              >
+                <ChevronLeft className="h-6 w-6 drop-shadow-sm" strokeWidth={2.5} aria-hidden />
+              </button>
+              <button
+                type="button"
+                aria-label="Scroll categories right"
+                disabled={!hireCategoryScroll.canScrollRight}
+                onClick={() => scrollHireCategories("right")}
+                className={cn(
+                  "absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:right-3 sm:h-11 sm:w-11",
+                  "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
+                  "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                  "dark:border-white/15 dark:bg-black/30 dark:text-white dark:hover:bg-black/45",
+                  "disabled:pointer-events-none disabled:opacity-30"
+                )}
+              >
+                <ChevronRight className="h-6 w-6 drop-shadow-sm" strokeWidth={2.5} aria-hidden />
+              </button>
             </div>
           </section>
           )}
 
           <section className="mt-8 px-1 pb-8" aria-label="Shortcuts">
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Shortcuts
-            </p>
             <div className="grid grid-cols-3 gap-1 sm:gap-2">
               {homeMode === "hire" ? (
                 <>
@@ -378,7 +497,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   >
                     <Briefcase className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
                     <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">
-                      Helping me now
+                      Helping now
                     </span>
                   </Link>
                   <Link

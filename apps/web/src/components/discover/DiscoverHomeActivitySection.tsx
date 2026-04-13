@@ -19,7 +19,7 @@ import { openCommunityContact } from "@/lib/communityContact";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { cn } from "@/lib/utils";
-import { Bell, Loader2, Plus } from "lucide-react";
+import { Bell, Loader2, Plus, Radio } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -420,6 +420,10 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
 
   const availabilityPostsCount = feedPosts.length;
 
+  /** Hide section titles when the empty state is shown (no live posts / no requests). */
+  const showHireActivityTitle = feedLoading || feedPosts.length > 0;
+  const showWorkActivityTitle = inboundLoading || inbound.length > 0;
+
   const seeMoreLinkClassName = cn(
     "group flex w-[3.5rem] shrink-0 flex-col items-center gap-1 pb-0.5 text-center outline-none",
     "transition-transform active:scale-[0.97]",
@@ -458,34 +462,34 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
 
   const hireSection = (
     <>
-      <div className="mb-3 flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Available now
-          </p>
-          {!feedLoading && availabilityPostsCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
-            >
-              {availabilityPostsCount > 99 ? "99+" : availabilityPostsCount}
-            </Badge>
-          )}
+      {showHireActivityTitle && (
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              Available now
+            </p>
+            {!feedLoading && availabilityPostsCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
+              >
+                {availabilityPostsCount > 99 ? "99+" : availabilityPostsCount}
+              </Badge>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="mt-2 space-y-5">
+      )}
+      <div className={cn("space-y-5", showHireActivityTitle && "mt-2")}>
         {feedLoading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-9 w-9 animate-spin text-orange-500" />
           </div>
         ) : feedPosts.length === 0 ? (
-          <div className="flex flex-col items-stretch gap-4">
-            <p className="text-center text-sm text-muted-foreground">
-              No one is live on the board right now. Check back soon or post a request.
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <Radio className="h-8 w-8 text-orange-500/40 dark:text-orange-400/35" aria-hidden />
+            <p className="text-sm text-muted-foreground">
+              No one is live on the board right now.
             </p>
-            <div className="flex items-start justify-end gap-2">
-              {hireSeeMoreLink}
-            </div>
           </div>
         ) : (
           <div className="flex items-start gap-2">
@@ -523,33 +527,30 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
 
   const workSection = (
     <>
-      <div className="mb-3 flex items-center gap-2">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          Community needs your help in…
-        </p>
-        {incomingRequestsCount > 0 && (
-          <Badge
-            variant="destructive"
-            className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
-          >
-            {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
-          </Badge>
-        )}
-      </div>
-      <div className="mt-2 space-y-5">
+      {showWorkActivityTitle && (
+        <div className="mb-3 flex items-center gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Community needs your help in…
+          </p>
+          {incomingRequestsCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
+            >
+              {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
+            </Badge>
+          )}
+        </div>
+      )}
+      <div className={cn("space-y-5", showWorkActivityTitle && "mt-2")}>
         {inboundLoading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-9 w-9 animate-spin text-amber-500" />
           </div>
         ) : inbound.length === 0 ? (
-          <div className="flex flex-col items-stretch gap-4 py-6">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <Bell className="h-8 w-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No community requests right now.</p>
-            </div>
-            <div className="flex items-start justify-end gap-2">
-              {workSeeMoreLink}
-            </div>
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <Bell className="h-8 w-8 text-muted-foreground/50" aria-hidden />
+            <p className="text-sm text-muted-foreground">No community requests right now.</p>
           </div>
         ) : (
           <div className="flex items-start gap-2">
@@ -571,7 +572,15 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
     <>
       <section
         className="mt-8 overflow-visible px-1 pt-1"
-        aria-label={mode === "hire" ? "Available helpers live now" : "Community needs your help"}
+        aria-label={
+          mode === "hire"
+            ? showHireActivityTitle
+              ? "Available helpers live now"
+              : "No helpers live on the board"
+            : showWorkActivityTitle
+              ? "Community needs your help"
+              : "No community requests right now"
+        }
       >
         {mode === "hire" ? hireSection : workSection}
       </section>

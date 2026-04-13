@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   BadgeCheck,
   CheckCircle2,
-  Heart,
   Hourglass,
   Loader2,
   MessageSquare,
@@ -442,26 +441,151 @@ export default function LikedPage() {
     </p>
   );
 
+  /** Show pinned tabs while loading (immediate) or when there is anything saved; hide only after load if empty. */
+  const showSavedTabs =
+    loading || profiles.length > 0 || posts.length > 0;
+
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
-      <div className="app-desktop-shell px-1 pt-4 md:pt-6">
-        <div className="mx-auto mb-4 max-w-2xl px-2 md:mb-6 md:px-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-foreground md:text-2xl">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300">
-                  <Heart className="h-4.5 w-4.5 fill-current" aria-hidden />
-                </span>
-                Saved
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Saved posts and profiles — switch tabs below.
-              </p>
+    <div className="relative min-h-screen gradient-mesh pb-6 md:pb-8">
+      {showSavedTabs && (
+        <div
+          className={cn(
+            "fixed inset-x-0 z-[45] pointer-events-none",
+            "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
+            "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
+            "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+          )}
+        >
+          <div className="app-desktop-shell pointer-events-auto">
+            <div className="mx-auto flex max-w-2xl justify-center px-2 py-2 md:px-0">
+              <div
+                role="tablist"
+                aria-label="Saved content type"
+                className="flex w-full justify-center"
+              >
+                <div
+                  className={cn(
+                    "relative mx-auto grid h-11 w-full max-w-[15.5rem] grid-cols-2 gap-0.5 rounded-full p-1 sm:max-w-[17rem]",
+                    "bg-muted/50 ring-1 ring-inset ring-black/[0.06] dark:bg-muted/35 dark:ring-white/[0.08]",
+                    "shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]"
+                  )}
+                >
+                  <div
+                    aria-hidden
+                    className={cn(
+                      "pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-background",
+                      "w-[calc((100%-0.625rem)/2)] will-change-transform",
+                      "shadow-[0_2px_10px_-3px_rgba(15,23,42,0.18),0_1px_0_rgba(255,255,255,0.85)_inset] ring-1",
+                      "transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+                      "dark:bg-zinc-900/95 dark:shadow-[0_4px_16px_-6px_rgba(0,0,0,0.55)]",
+                      "ring-rose-200/90 dark:shadow-[0_4px_18px_-6px_rgba(244,63,94,0.28)] dark:ring-rose-500/30",
+                      savedTab === "posts"
+                        ? "translate-x-0"
+                        : "translate-x-[calc(100%+0.125rem)]"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={savedTab === "posts"}
+                    aria-label={
+                      savedTab === "posts"
+                        ? undefined
+                        : loading
+                          ? "Posts"
+                          : `Posts, ${posts.length} saved`
+                    }
+                    onClick={() => setSavedTab("posts")}
+                    className={cn(
+                      "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full px-1.5 py-2 transition-colors duration-300 ease-out",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "active:scale-[0.98] motion-reduce:transition-none",
+                      savedTab === "posts"
+                        ? "gap-1 text-rose-600 dark:text-rose-400 sm:gap-1.5"
+                        : "text-muted-foreground hover:text-foreground/85"
+                    )}
+                  >
+                    <Sparkles
+                      className={cn(
+                        "h-[1.125rem] w-[1.125rem] shrink-0 transition-transform duration-300 sm:h-5 sm:w-5",
+                        savedTab === "posts" && "scale-105"
+                      )}
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                    {savedTab === "posts" && (
+                      <>
+                        <span className="animate-in fade-in slide-in-from-left-1 truncate text-[11px] font-semibold leading-none tracking-tight duration-300 sm:text-xs">
+                          Posts
+                        </span>
+                        <span className="shrink-0 tabular-nums text-[10px] font-black text-rose-600/90 dark:text-rose-400/90">
+                          ({loading ? "…" : posts.length})
+                        </span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={savedTab === "profiles"}
+                    aria-label={
+                      savedTab === "profiles"
+                        ? undefined
+                        : loading
+                          ? "Profiles"
+                          : `Profiles, ${profiles.length} saved`
+                    }
+                    onClick={() => setSavedTab("profiles")}
+                    className={cn(
+                      "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full px-1.5 py-2 transition-colors duration-300 ease-out",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "active:scale-[0.98] motion-reduce:transition-none",
+                      savedTab === "profiles"
+                        ? "gap-1 text-rose-600 dark:text-rose-400 sm:gap-1.5"
+                        : "text-muted-foreground hover:text-foreground/85"
+                    )}
+                  >
+                    <UserRound
+                      className={cn(
+                        "h-[1.125rem] w-[1.125rem] shrink-0 transition-transform duration-300 sm:h-5 sm:w-5",
+                        savedTab === "profiles" && "scale-105"
+                      )}
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                    {savedTab === "profiles" && (
+                      <>
+                        <span className="animate-in fade-in slide-in-from-right-1 truncate text-[11px] font-semibold leading-none tracking-tight duration-300 sm:text-xs">
+                          Profiles
+                        </span>
+                        <span className="shrink-0 tabular-nums text-[10px] font-black text-rose-600/90 dark:text-rose-400/90">
+                          ({loading ? "…" : profiles.length})
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="mx-auto mt-6 max-w-2xl px-2 md:px-0">
+      <div
+        className={cn(
+          "app-desktop-shell px-1",
+          showSavedTabs
+            ? "pt-[calc(0.5rem+2.75rem+0.5rem+1px+1rem)]"
+            : "pt-4 md:pt-6"
+        )}
+      >
+        <h1 className="sr-only">Saved</h1>
+        <div
+          className={cn(
+            "mx-auto max-w-2xl px-2 md:px-0",
+            !showSavedTabs && "mt-6"
+          )}
+        >
           {loading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
@@ -480,29 +604,6 @@ export default function LikedPage() {
               onValueChange={(v) => setSavedTab(v as "posts" | "profiles")}
               className="w-full"
             >
-              <TabsList className="mb-4 grid h-11 w-full max-w-md grid-cols-2 rounded-2xl border border-slate-200/80 bg-slate-100/80 p-1 dark:border-zinc-700 dark:bg-zinc-800/80">
-                <TabsTrigger
-                  value="posts"
-                  className="rounded-xl gap-1.5 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-900"
-                >
-                  <Sparkles className="h-4 w-4" aria-hidden />
-                  Posts
-                  <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/90">
-                    ({posts.length})
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="profiles"
-                  className="rounded-xl gap-1.5 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-900"
-                >
-                  <UserRound className="h-4 w-4" aria-hidden />
-                  Profiles
-                  <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/90">
-                    ({profiles.length})
-                  </span>
-                </TabsTrigger>
-              </TabsList>
-
               <TabsContent value="posts" className="mt-0 outline-none">
                 {posts.length === 0 ? (
                   <Card className="rounded-2xl border border-dashed border-border/60 bg-transparent">
@@ -703,60 +804,7 @@ export default function LikedPage() {
                             }}
                           >
                             <div className="relative">
-                              <div
-                                className="absolute right-0 top-1/2 z-20 flex -translate-y-1/2 items-center gap-2 md:right-0.5"
-                                data-skip-profile-card-toggle
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  type="button"
-                                  title="Messages"
-                                  aria-label="Open messages"
-                                  disabled={openingChatProfileId === p.id}
-                                  onClick={() => void openDirectChatWithProfile(p)}
-                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:text-white"
-                                >
-                                  {openingChatProfileId === p.id ? (
-                                    <Loader2 className="h-5 w-5 animate-spin text-black dark:text-white" />
-                                  ) : (
-                                    <MessageSquare className="h-5 w-5 text-black dark:text-white" strokeWidth={2} />
-                                  )}
-                                </button>
-                                {p.whatsapp_number && (
-                                  <button
-                                    type="button"
-                                    title="WhatsApp"
-                                    aria-label="WhatsApp"
-                                    onClick={() =>
-                                      window.open(
-                                        `https://wa.me/${p.whatsapp_number}`,
-                                        "_blank"
-                                      )
-                                    }
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white"
-                                  >
-                                    <WhatsAppIcon size={20} className="text-black dark:text-white" aria-hidden />
-                                  </button>
-                                )}
-                                {p.telegram_username && (
-                                  <button
-                                    type="button"
-                                    title="Telegram"
-                                    aria-label="Telegram"
-                                    onClick={() =>
-                                      window.open(
-                                        `https://t.me/${p.telegram_username}`,
-                                        "_blank"
-                                      )
-                                    }
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white"
-                                  >
-                                    <Send className="h-5 w-5 translate-x-[-0.5px] translate-y-[0.5px] text-black dark:text-white" />
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="flex gap-4 pr-[9rem]">
+                              <div className="flex gap-4">
                               <Link
                                 to={`/profile/${p.id}`}
                                 className="relative z-10 shrink-0 self-start rounded-full overflow-hidden"
@@ -797,6 +845,58 @@ export default function LikedPage() {
                                     numberClassName="text-foreground"
                                     countClassName="text-muted-foreground"
                                   />
+                                </div>
+                                <div
+                                  className="mt-2.5 flex w-full flex-wrap items-center justify-center gap-2"
+                                  data-skip-profile-card-toggle
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    title="Messages"
+                                    aria-label="Open messages"
+                                    disabled={openingChatProfileId === p.id}
+                                    onClick={() => void openDirectChatWithProfile(p)}
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:text-white"
+                                  >
+                                    {openingChatProfileId === p.id ? (
+                                      <Loader2 className="h-5 w-5 animate-spin text-black dark:text-white" />
+                                    ) : (
+                                      <MessageSquare className="h-5 w-5 text-black dark:text-white" strokeWidth={2} />
+                                    )}
+                                  </button>
+                                  {p.whatsapp_number && (
+                                    <button
+                                      type="button"
+                                      title="WhatsApp"
+                                      aria-label="WhatsApp"
+                                      onClick={() =>
+                                        window.open(
+                                          `https://wa.me/${p.whatsapp_number}`,
+                                          "_blank"
+                                        )
+                                      }
+                                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white"
+                                    >
+                                      <WhatsAppIcon size={20} className="text-black dark:text-white" aria-hidden />
+                                    </button>
+                                  )}
+                                  {p.telegram_username && (
+                                    <button
+                                      type="button"
+                                      title="Telegram"
+                                      aria-label="Telegram"
+                                      onClick={() =>
+                                        window.open(
+                                          `https://t.me/${p.telegram_username}`,
+                                          "_blank"
+                                        )
+                                      }
+                                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white"
+                                    >
+                                      <Send className="h-5 w-5 translate-x-[-0.5px] translate-y-[0.5px] text-black dark:text-white" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                               </div>

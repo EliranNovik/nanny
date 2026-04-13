@@ -29,7 +29,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { StarRating } from "@/components/StarRating";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { PUBLIC_PROFILE_MEDIA_BUCKET, publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
@@ -47,6 +47,10 @@ import {
 import { isServiceCategoryId, serviceCategoryLabel, type ServiceCategoryId } from "@/lib/serviceCategories";
 import { apiPost } from "@/lib/api";
 import { readPublicProfileCache, writePublicProfileCache } from "@/lib/publicProfileCache";
+import {
+  playFavoriteAddedToLikedTabFlight,
+  playFavoriteRemovedFromLikedTabFlight,
+} from "@/lib/favoriteToLikedTabFlight";
 import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
 
 type PostedHelpEngagement = "idle" | "loading" | "can_respond" | "accepted" | "declined" | "not_invited" | "hidden";
@@ -190,6 +194,8 @@ interface PublicProfileMediaRow {
   created_at: string;
 }
 
+type ProfileMediaSectionTab = "images" | "videos" | "about";
+
 export default function PublicProfilePage() {
   const { userId } = useParams();
   const { user: currentUser, profile: currentProfile } = useAuth();
@@ -220,6 +226,8 @@ export default function PublicProfilePage() {
     initialIndex: number;
   } | null>(null);
   const [profileVideoLightboxUrl, setProfileVideoLightboxUrl] = useState<string | null>(null);
+  const [profileMediaTab, setProfileMediaTab] = useState<ProfileMediaSectionTab>("images");
+  const profileFavoriteButtonRef = useRef<HTMLButtonElement>(null);
 
   async function handleOpenDirectChat() {
     if (!userId || !currentUser || !profile) return;
@@ -322,6 +330,9 @@ export default function PublicProfilePage() {
         if (error) throw error;
         setProfileFavorited(false);
         addToast({ title: "Removed from saved profiles", variant: "success" });
+        requestAnimationFrame(() => {
+          playFavoriteRemovedFromLikedTabFlight(profileFavoriteButtonRef.current);
+        });
       } else {
         const { error } = await supabase.from("profile_favorites").insert({
           user_id: currentUser.id,
@@ -330,6 +341,9 @@ export default function PublicProfilePage() {
         if (error) throw error;
         setProfileFavorited(true);
         addToast({ title: "Saved — view under Saved", variant: "success" });
+        requestAnimationFrame(() => {
+          playFavoriteAddedToLikedTabFlight(profileFavoriteButtonRef.current);
+        });
       }
     } catch (e: unknown) {
       addToast({
@@ -985,29 +999,6 @@ export default function PublicProfilePage() {
               <CardContent className="p-0 flex flex-col">
                 {/* Mobile: avatar + name / rating; categories full-width below image row */}
                 <div className="relative md:hidden">
-                  {!isOwnProfile && currentUser && (
-                    <div className="absolute right-3 top-2 z-30">
-                      <button
-                        type="button"
-                        onClick={() => void toggleProfileFavorite()}
-                        disabled={favoriteBusy}
-                        title={profileFavorited ? "Remove from saved" : "Save profile"}
-                        aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
-                        aria-pressed={profileFavorited}
-                        className="flex h-11 w-11 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md backdrop-blur-sm transition hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-900/40 dark:bg-zinc-900/95 dark:text-rose-400"
-                      >
-                        {favoriteBusy ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
-                        ) : (
-                          <Heart
-                            className={cn("h-6 w-6", profileFavorited && "fill-rose-500 text-rose-500")}
-                            strokeWidth={profileFavorited ? 0 : 2.25}
-                            aria-hidden
-                          />
-                        )}
-                      </button>
-                    </div>
-                  )}
                   <div className="flex gap-6 px-4 pt-2 pb-1 items-start">
                     <div className="relative h-32 w-32 shrink-0 self-start">
                       {profile.photo_url ? (
@@ -1047,7 +1038,7 @@ export default function PublicProfilePage() {
                         </div>
                       ) : null}
                     </div>
-                    <div className="min-w-0 flex-1 flex flex-col items-stretch justify-start gap-0.5 pr-12 text-left pt-0 md:pr-0">
+                    <div className="min-w-0 flex-1 flex flex-col items-stretch justify-start gap-0.5 text-left pt-0">
                       <h1 className="text-[1.65rem] font-black leading-[1.15] tracking-tight text-slate-900 dark:text-white sm:text-[1.75rem]">
                         {profile.full_name}
                       </h1>
@@ -1129,32 +1120,9 @@ export default function PublicProfilePage() {
                   </div>
 
                   <div className="min-w-0 flex-1 flex flex-col items-stretch text-left">
-                    <div className="flex items-start justify-between gap-3">
-                      <h1 className="text-2xl font-black leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[1.65rem]">
-                        {profile.full_name}
-                      </h1>
-                      {!isOwnProfile && currentUser && (
-                        <button
-                          type="button"
-                          onClick={() => void toggleProfileFavorite()}
-                          disabled={favoriteBusy}
-                          title={profileFavorited ? "Remove from saved" : "Save profile"}
-                          aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
-                          aria-pressed={profileFavorited}
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md backdrop-blur-sm transition hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-900/40 dark:bg-zinc-900/95 dark:text-rose-400"
-                        >
-                          {favoriteBusy ? (
-                            <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
-                          ) : (
-                            <Heart
-                              className={cn("h-6 w-6", profileFavorited && "fill-rose-500 text-rose-500")}
-                              strokeWidth={profileFavorited ? 0 : 2.25}
-                              aria-hidden
-                            />
-                          )}
-                        </button>
-                      )}
-                    </div>
+                    <h1 className="text-2xl font-black leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[1.65rem]">
+                      {profile.full_name}
+                    </h1>
 
                     <div className="mt-2 flex flex-col items-start gap-2">
                       <StarRating
@@ -1193,6 +1161,35 @@ export default function PublicProfilePage() {
                 <div className="flex flex-col items-stretch px-4 pt-5 pb-4 text-left sm:px-5 md:items-center md:px-7 md:pt-2 md:pb-4 md:text-center sm:px-8">
                 <div className="w-full border-t-0 pt-0 md:border-t md:border-slate-100 md:pt-6 md:dark:border-white/5">
                   <div className="mb-6 flex flex-wrap items-center justify-center gap-4 py-3 sm:gap-5 md:mb-8 md:gap-4 md:py-2">
+                    {!isOwnProfile && currentUser && (
+                      <button
+                        ref={profileFavoriteButtonRef}
+                        type="button"
+                        onClick={() => void toggleProfileFavorite()}
+                        disabled={favoriteBusy}
+                        title={profileFavorited ? "Remove from saved" : "Save profile"}
+                        aria-label={
+                          profileFavorited
+                            ? "Remove from saved profiles"
+                            : "Save profile to Saved"
+                        }
+                        aria-pressed={profileFavorited}
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md backdrop-blur-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-900/40 dark:bg-zinc-900/95 dark:text-rose-400 md:h-11 md:w-11"
+                      >
+                        {favoriteBusy ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
+                        ) : (
+                          <Heart
+                            className={cn(
+                              "h-6 w-6",
+                              profileFavorited && "fill-rose-500 text-rose-500"
+                            )}
+                            strokeWidth={profileFavorited ? 0 : 2.25}
+                            aria-hidden
+                          />
+                        )}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => void handleOpenDirectChat()}
@@ -1273,36 +1270,115 @@ export default function PublicProfilePage() {
                   }}
                 />
 
-                <Tabs defaultValue="images" className="w-full px-0 pb-4 md:px-0 md:pb-6">
-                  <TabsList
-                    className="grid h-12 w-full grid-cols-3 gap-1 rounded-2xl border border-slate-200/80 bg-slate-100/80 p-1 dark:border-zinc-700 dark:bg-zinc-800/80"
+                <Tabs
+                  value={profileMediaTab}
+                  onValueChange={(v) =>
+                    setProfileMediaTab(v as ProfileMediaSectionTab)
+                  }
+                  className="w-full px-0 pb-4 md:px-0 md:pb-6"
+                >
+                  <div
+                    role="tablist"
                     aria-label="Profile sections"
+                    className="mb-4 flex justify-center"
                   >
-                    <TabsTrigger
-                      value="images"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-900"
-                      aria-label="Photos"
-                      title="Photos"
+                    <div
+                      className={cn(
+                        "relative mx-auto grid h-11 w-full max-w-[19rem] grid-cols-3 gap-0.5 rounded-full p-1 sm:max-w-[21rem]",
+                        "bg-muted/50 ring-1 ring-inset ring-black/[0.06] dark:bg-muted/35 dark:ring-white/[0.08]",
+                        "shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]"
+                      )}
                     >
-                      <ImageIcon className="h-5 w-5 text-slate-700 dark:text-slate-200" />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="videos"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-900"
-                      aria-label="Videos"
-                      title="Videos"
-                    >
-                      <Video className="h-5 w-5 text-slate-700 dark:text-slate-200" />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="about"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-900"
-                      aria-label="About me"
-                      title="About me"
-                    >
-                      <UserCircle className="h-5 w-5 text-slate-700 dark:text-slate-200" />
-                    </TabsTrigger>
-                  </TabsList>
+                      <div
+                        aria-hidden
+                        className={cn(
+                          "pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-background",
+                          "w-[calc((100%-0.75rem)/3)] will-change-transform",
+                          "shadow-[0_2px_10px_-3px_rgba(15,23,42,0.18),0_1px_0_rgba(255,255,255,0.85)_inset] ring-1",
+                          "transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+                          "dark:bg-zinc-900/95 dark:shadow-[0_4px_16px_-6px_rgba(0,0,0,0.55)]",
+                          "ring-rose-200/90 dark:shadow-[0_4px_18px_-6px_rgba(244,63,94,0.28)] dark:ring-rose-500/30",
+                          profileMediaTab === "images" && "translate-x-0",
+                          profileMediaTab === "videos" &&
+                            "translate-x-[calc(100%+0.125rem)]",
+                          profileMediaTab === "about" &&
+                            "translate-x-[calc(200%+0.25rem)]"
+                        )}
+                      />
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={profileMediaTab === "images"}
+                        aria-label="Photos"
+                        onClick={() => setProfileMediaTab("images")}
+                        className={cn(
+                          "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          "active:scale-[0.98] motion-reduce:transition-none",
+                          profileMediaTab === "images"
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-muted-foreground hover:text-foreground/85"
+                        )}
+                      >
+                        <ImageIcon
+                          className={cn(
+                            "h-5 w-5 shrink-0 transition-transform duration-300",
+                            profileMediaTab === "images" && "scale-105"
+                          )}
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={profileMediaTab === "videos"}
+                        aria-label="Videos"
+                        onClick={() => setProfileMediaTab("videos")}
+                        className={cn(
+                          "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          "active:scale-[0.98] motion-reduce:transition-none",
+                          profileMediaTab === "videos"
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-muted-foreground hover:text-foreground/85"
+                        )}
+                      >
+                        <Video
+                          className={cn(
+                            "h-5 w-5 shrink-0 transition-transform duration-300",
+                            profileMediaTab === "videos" && "scale-105"
+                          )}
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={profileMediaTab === "about"}
+                        aria-label="About me"
+                        onClick={() => setProfileMediaTab("about")}
+                        className={cn(
+                          "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          "active:scale-[0.98] motion-reduce:transition-none",
+                          profileMediaTab === "about"
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-muted-foreground hover:text-foreground/85"
+                        )}
+                      >
+                        <UserCircle
+                          className={cn(
+                            "h-5 w-5 shrink-0 transition-transform duration-300",
+                            profileMediaTab === "about" && "scale-105"
+                          )}
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                      </button>
+                    </div>
+                  </div>
 
                   <TabsContent value="images" className="mt-4 space-y-3">
                     {isOwnProfile && (
