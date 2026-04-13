@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -18,8 +19,9 @@ import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { openCommunityContact } from "@/lib/communityContact";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Bell, Loader2, Plus, Radio } from "lucide-react";
+import { Activity, Bell, Loader2, Plus, Radio, Zap } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -79,7 +81,15 @@ function formatJobTitle(job: { service_type?: string }) {
 
 export type DiscoverHomeActivityMode = "hire" | "work";
 
-export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivityMode }) {
+export type DiscoverHomeViewerRole = "client" | "freelancer";
+
+export function DiscoverHomeActivitySection({
+  mode,
+  viewerRole,
+}: {
+  mode: DiscoverHomeActivityMode;
+  viewerRole: DiscoverHomeViewerRole;
+}) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { addToast } = useToast();
@@ -420,41 +430,37 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
 
   const availabilityPostsCount = feedPosts.length;
 
-  /** Hide section titles when the empty state is shown (no live posts / no requests). */
-  const showHireActivityTitle = feedLoading || feedPosts.length > 0;
-  const showWorkActivityTitle = inboundLoading || inbound.length > 0;
-
   const seeMoreLinkClassName = cn(
-    "group flex w-[3.5rem] shrink-0 flex-col items-center gap-1 pb-0.5 text-center outline-none",
+    "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center gap-2 pb-0.5 text-center outline-none",
     "transition-transform active:scale-[0.97]",
     "focus-visible:ring-2 focus-visible:ring-slate-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     "dark:focus-visible:ring-slate-500/50"
   );
 
   const seeMoreCircleClassName = cn(
-    "flex h-[3.5rem] w-[3.5rem] shrink-0 items-center justify-center rounded-full",
+    "flex h-[5.5rem] w-[5.5rem] shrink-0 items-center justify-center rounded-full",
     "border border-dashed border-slate-300/90 bg-slate-100/80 shadow-[0_1px_8px_-3px_rgba(0,0,0,0.08)]",
     "transition-transform duration-300 group-hover:scale-[1.03]",
     "dark:border-slate-600/80 dark:bg-slate-800/60"
   );
 
   const hireSeeMoreLink = (
-    <Link to="/public/posts" className={seeMoreLinkClassName}>
+    <Link to="/public/posts" className={seeMoreLinkClassName} role="listitem" aria-label="See more availability posts">
       <div className={seeMoreCircleClassName} aria-hidden>
-        <Plus className="h-5 w-5 text-slate-600 dark:text-slate-400" strokeWidth={2.25} />
+        <Plus className="h-8 w-8 text-slate-600 dark:text-slate-400" strokeWidth={2.25} />
       </div>
-      <span className="max-w-full px-0.5 text-[9px] font-semibold leading-tight text-slate-600 dark:text-slate-400">
+      <span className="max-w-full px-0.5 text-xs font-semibold leading-tight text-slate-600 dark:text-slate-400">
         See more
       </span>
     </Link>
   );
 
   const workSeeMoreLink = (
-    <Link to={incomingJobsUrl} className={seeMoreLinkClassName}>
+    <Link to={incomingJobsUrl} className={seeMoreLinkClassName} role="listitem" aria-label="See more open requests">
       <div className={seeMoreCircleClassName} aria-hidden>
-        <Plus className="h-5 w-5 text-slate-600 dark:text-slate-400" strokeWidth={2.25} />
+        <Plus className="h-8 w-8 text-slate-600 dark:text-slate-400" strokeWidth={2.25} />
       </div>
-      <span className="max-w-full px-0.5 text-[9px] font-semibold leading-tight text-slate-600 dark:text-slate-400">
+      <span className="max-w-full px-0.5 text-xs font-semibold leading-tight text-slate-600 dark:text-slate-400">
         See more
       </span>
     </Link>
@@ -462,64 +468,79 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
 
   const hireSection = (
     <>
-      {showHireActivityTitle && (
-        <div className="mb-3 flex items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Available now
-            </p>
-            {!feedLoading && availabilityPostsCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
-              >
-                {availabilityPostsCount > 99 ? "99+" : availabilityPostsCount}
-              </Badge>
-            )}
-          </div>
+      <div className="mb-2 flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Available now
+          </p>
+          {!feedLoading && availabilityPostsCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
+            >
+              {availabilityPostsCount > 99 ? "99+" : availabilityPostsCount}
+            </Badge>
+          )}
         </div>
-      )}
-      <div className={cn("space-y-5", showHireActivityTitle && "mt-2")}>
+      </div>
+      <div className="mt-1 space-y-4">
         {feedLoading ? (
-          <div className="flex justify-center py-10">
+          <div className="flex justify-center py-7">
             <Loader2 className="h-9 w-9 animate-spin text-orange-500" />
           </div>
         ) : feedPosts.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <Radio className="h-8 w-8 text-orange-500/40 dark:text-orange-400/35" aria-hidden />
-            <p className="text-sm text-muted-foreground">
-              No one is live on the board right now.
-            </p>
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-orange-500/15 bg-orange-500/[0.04] px-4 py-6 text-center dark:border-orange-500/20 dark:bg-orange-500/[0.06]">
+            <div className="relative">
+              <Radio className="h-9 w-9 text-orange-500/70 dark:text-orange-400/60" aria-hidden />
+              <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5 rounded-full bg-orange-500 opacity-75 motion-safe:animate-pulse" aria-hidden />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[15px] font-semibold leading-snug text-foreground">
+                No helpers live on the board right now
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Post a request and we&apos;ll notify matching helpers the moment someone fits.
+              </p>
+            </div>
+            {viewerRole === "client" ? (
+              <Button
+                type="button"
+                className="h-11 rounded-xl bg-orange-500 px-6 font-semibold text-white shadow-md hover:bg-orange-600"
+                asChild
+              >
+                <Link to="/client/create">Post a request</Link>
+              </Button>
+            ) : (
+              <Button type="button" variant="secondary" className="h-11 rounded-xl font-semibold shadow-sm" asChild>
+                <Link to="/public/posts">Browse live board</Link>
+              </Button>
+            )}
           </div>
         ) : (
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <AvailabilityStoriesStrip
-                posts={feedPosts}
-                user={user}
-                profile={profile}
-                loginRedirect={loginRedirect}
-                favoritedIds={favoritedIds}
-                onToggleFavorite={toggleFavorite}
-                hiringPostId={hiringPostId}
-                pendingHirePostIds={pendingHirePostIds}
-                onHireFromPost={handleHireFromPost}
-                onOpenChat={(post) => {
-                  if (!user || !profile) return;
-                  void openCommunityContact({
-                    supabase,
-                    user,
-                    myRole: profile.role,
-                    targetUserId: post.author_id,
-                    targetRole: post.author_role,
-                    navigate,
-                    addToast,
-                  });
-                }}
-              />
-            </div>
-            {hireSeeMoreLink}
-          </div>
+          <AvailabilityStoriesStrip
+            posts={feedPosts}
+            user={user}
+            profile={profile}
+            loginRedirect={loginRedirect}
+            favoritedIds={favoritedIds}
+            onToggleFavorite={toggleFavorite}
+            hiringPostId={hiringPostId}
+            pendingHirePostIds={pendingHirePostIds}
+            onHireFromPost={handleHireFromPost}
+            onOpenChat={(post) => {
+              if (!user || !profile) return;
+              void openCommunityContact({
+                supabase,
+                user,
+                myRole: profile.role,
+                targetUserId: post.author_id,
+                targetRole: post.author_role,
+                navigate,
+                addToast,
+              });
+            }}
+            trailingSlot={hireSeeMoreLink}
+          />
         )}
       </div>
     </>
@@ -527,42 +548,142 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
 
   const workSection = (
     <>
-      {showWorkActivityTitle && (
-        <div className="mb-3 flex items-center gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Community needs your help in…
+      <div
+        className={cn(
+          "mb-3 flex items-center gap-2.5 rounded-2xl border px-3 py-2.5",
+          "border-emerald-500/25 bg-emerald-500/[0.06] dark:border-emerald-500/30 dark:bg-emerald-500/[0.07]"
+        )}
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+          <Zap className="h-5 w-5 motion-safe:animate-pulse" strokeWidth={2.25} aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/90 dark:text-emerald-200/90">
+            Fast matching
           </p>
-          {incomingRequestsCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
-            >
-              {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
-            </Badge>
-          )}
+          <p className="text-sm font-semibold leading-snug text-foreground">
+            {viewerRole === "client"
+              ? inboundLoading
+                ? "Loading…"
+                : "Go live with availability — nearby clients can book you in minutes"
+              : inboundLoading
+                ? "Checking open requests…"
+                : inbound.length > 0
+                  ? `${inbound.length} open ${inbound.length === 1 ? "request" : "requests"} nearby — tap to respond`
+                  : "We notify you the instant a nearby request fits you"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Community needs your help in…
+        </p>
+        {!inboundLoading && incomingRequestsCount > 0 && (
+          <Badge
+            variant="destructive"
+            className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
+          >
+            {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
+          </Badge>
+        )}
+      </div>
+
+      {!inboundLoading && inbound.length > 0 && viewerRole === "freelancer" && (
+        <div
+          className="mb-3 space-y-2 rounded-2xl border border-border/50 bg-background/60 px-3 py-2.5 dark:bg-background/40"
+          aria-label="Live activity"
+        >
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <Activity className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            Live activity
+          </div>
+          <ul className="space-y-2">
+            {inbound.slice(0, 2).map((n) => {
+              const job = n.job_requests;
+              const prof = job.profiles as
+                | { full_name?: string | null }
+                | { full_name?: string | null }[]
+                | undefined;
+              const profileRow = Array.isArray(prof) ? prof[0] : prof;
+              const name = profileRow?.full_name?.trim() || "Someone";
+              const city = job.location_city?.trim();
+              const when = formatDistanceToNow(new Date(n.created_at), { addSuffix: true });
+              return (
+                <li key={n.id} className="flex gap-2 text-sm leading-snug">
+                  <span
+                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500 motion-safe:animate-pulse"
+                    aria-hidden
+                  />
+                  <span className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">{name}</span>{" "}
+                    <span className="text-foreground/90">needs {formatJobTitle(job)}</span>
+                    {city ? ` · ${city}` : ""}{" "}
+                    <span className="text-xs text-muted-foreground">· {when}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
-      <div className={cn("space-y-5", showWorkActivityTitle && "mt-2")}>
+
+      {!inboundLoading && inbound.length === 0 && viewerRole === "freelancer" && (
+        <div
+          className="mb-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground"
+          aria-hidden
+        >
+          <span className="rounded-full bg-muted/60 px-2.5 py-1 dark:bg-muted/30">Real-time alerts</span>
+          <span className="rounded-full bg-muted/60 px-2.5 py-1 dark:bg-muted/30">Nearby first</span>
+        </div>
+      )}
+
+      <div className="mt-1 space-y-4">
         {inboundLoading ? (
-          <div className="flex justify-center py-10">
+          <div className="flex justify-center py-7">
             <Loader2 className="h-9 w-9 animate-spin text-amber-500" />
           </div>
         ) : inbound.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <Bell className="h-8 w-8 text-muted-foreground/50" aria-hidden />
-            <p className="text-sm text-muted-foreground">No community requests right now.</p>
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-6 text-center dark:border-emerald-500/20 dark:bg-emerald-500/[0.06]">
+            <div className="relative">
+              <Bell className="h-9 w-9 text-emerald-600/70 dark:text-emerald-400/60" aria-hidden />
+              <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5 rounded-full bg-emerald-500 opacity-80 motion-safe:animate-pulse" aria-hidden />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[15px] font-semibold leading-snug text-foreground">
+                No live requests right now
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {viewerRole === "freelancer"
+                  ? "We ping nearby helpers the second something opens. Turn on notifications—or open the full list anytime."
+                  : "Show when you’re available so clients can book you fast—or browse the board for open gigs."}
+              </p>
+            </div>
+            {viewerRole === "freelancer" ? (
+              <Button
+                type="button"
+                className="h-11 rounded-xl bg-emerald-600 px-6 font-semibold text-white shadow-md hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                asChild
+              >
+                <Link to={incomingJobsUrl}>See open requests</Link>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="h-11 rounded-xl bg-emerald-600 px-6 font-semibold text-white shadow-md hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                asChild
+              >
+                <Link to="/availability">Post availability</Link>
+              </Button>
+            )}
           </div>
         ) : (
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <IncomingRequestsStoriesStrip
-                inbound={inbound}
-                formatJobTitle={formatJobTitle}
-                onOpenPreview={openJobPreview}
-              />
-            </div>
-            {workSeeMoreLink}
-          </div>
+          <IncomingRequestsStoriesStrip
+            inbound={inbound}
+            formatJobTitle={formatJobTitle}
+            onOpenPreview={openJobPreview}
+            trailingSlot={workSeeMoreLink}
+          />
         )}
       </div>
     </>
@@ -571,16 +692,8 @@ export function DiscoverHomeActivitySection({ mode }: { mode: DiscoverHomeActivi
   return (
     <>
       <section
-        className="mt-8 overflow-visible px-1 pt-1"
-        aria-label={
-          mode === "hire"
-            ? showHireActivityTitle
-              ? "Available helpers live now"
-              : "No helpers live on the board"
-            : showWorkActivityTitle
-              ? "Community needs your help"
-              : "No community requests right now"
-        }
+        className="mt-5 overflow-visible px-1 pt-0.5"
+        aria-label={mode === "hire" ? "Available helpers live now" : "Community requests and matching"}
       >
         {mode === "hire" ? hireSection : workSection}
       </section>

@@ -23,12 +23,23 @@ import { supabase } from "@/lib/supabase";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeActivitySection";
+import { DiscoverHomeLiveTrackerBoard } from "@/components/discover/DiscoverHomeLiveTrackerBoard";
  
 type DiscoverRole = "client" | "freelancer";
 
 type DiscoverHomeMode = "hire" | "work";
 
 const HOME_INTENT_STORAGE_KEY = "mamalama_discover_home_intent_v1";
+
+/** Action-oriented lines on category tiles (hire tab) — real-time / urgent tone */
+const DISCOVER_CATEGORY_ACTION_LINE: Record<string, string> = {
+  cleaning: "Need cleaning now?",
+  cooking: "Find a cook today",
+  pickup_delivery: "Quick delivery",
+  nanny: "Need childcare?",
+  other_help: "Odd jobs & more",
+  all_help: "Browse everything",
+};
 
 function readStoredHomeMode(): DiscoverHomeMode | null {
   try {
@@ -178,58 +189,77 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
         )}
       >
         <div className="app-desktop-shell pointer-events-auto">
-          <div className="app-desktop-centered-wide max-w-lg px-1 py-2 md:max-w-2xl">
+          <div className="app-desktop-centered-wide max-w-lg px-2 py-2 md:max-w-2xl">
             <div
               role="tablist"
               aria-label="What are you here for?"
             >
+              {/** Full pill switches theme: hire = orange→red; work = emerald→teal (landing-style); frosted thumb */}
               <div
                 className={cn(
-                  "relative mx-auto grid h-11 w-full max-w-[15.5rem] grid-cols-2 gap-0.5 rounded-full p-1 sm:max-w-[17rem]",
-                  "bg-muted/50 ring-1 ring-inset ring-black/[0.06] dark:bg-muted/35 dark:ring-white/[0.08]",
-                  "shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]"
+                  "relative mx-auto grid min-h-[62px] w-full max-w-[22rem] grid-cols-2 gap-0.5 overflow-hidden rounded-full p-1 sm:max-w-[24rem] sm:min-h-[70px]",
+                  "border border-white/20 shadow-2xl backdrop-blur-md",
+                  "transition-shadow duration-300",
+                  homeMode === "hire"
+                    ? "shadow-orange-900/30"
+                    : "shadow-emerald-900/35"
                 )}
               >
-                {/* Sliding thumb — animates between segments */}
+                <div
+                  className={cn(
+                    "pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-gradient-to-r from-orange-500 to-red-600",
+                    "transition-opacity duration-300 ease-out",
+                    homeMode === "hire" ? "opacity-100" : "opacity-0"
+                  )}
+                  aria-hidden
+                />
+                <div
+                  className={cn(
+                    "pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700",
+                    "transition-opacity duration-300 ease-out",
+                    homeMode === "work" ? "opacity-100" : "opacity-0"
+                  )}
+                  aria-hidden
+                />
                 <div
                   aria-hidden
                   className={cn(
-                    "pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-background",
+                    "pointer-events-none absolute top-1 bottom-1 left-1 z-[5] rounded-full",
                     "w-[calc((100%-0.625rem)/2)] will-change-transform",
-                    "shadow-[0_2px_10px_-3px_rgba(15,23,42,0.18),0_1px_0_rgba(255,255,255,0.85)_inset] ring-1",
-                    "transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
-                    "dark:bg-zinc-900/95 dark:shadow-[0_4px_16px_-6px_rgba(0,0,0,0.55)]",
+                    "bg-white/20 shadow-inner backdrop-blur-sm ring-1 ring-white/35",
+                    "transition-[transform] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
                     homeMode === "hire"
-                      ? "translate-x-0 ring-orange-200/90 dark:shadow-[0_4px_18px_-6px_rgba(249,115,22,0.35)] dark:ring-orange-500/30"
-                      : "translate-x-[calc(100%+0.125rem)] ring-emerald-200/90 dark:shadow-[0_4px_18px_-6px_rgba(52,211,153,0.28)] dark:ring-emerald-500/28"
+                      ? "translate-x-0"
+                      : "translate-x-[calc(100%+0.125rem)]"
                   )}
                 />
                 <button
                   type="button"
                   role="tab"
                   aria-selected={homeMode === "hire"}
-                  aria-label={homeMode === "hire" ? undefined : "I need a helper"}
+                  aria-label={homeMode === "hire" ? undefined : "I need help"}
                   onClick={() => setHomeMode("hire")}
                   className={cn(
-                    "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full px-1.5 py-2 transition-colors duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-3 py-2.5 sm:min-h-[62px] sm:px-3.5",
+                    "transition-[color,transform] duration-300 ease-out",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "hire"
-                      ? "gap-1.5 text-orange-600 dark:text-orange-400 sm:gap-2"
-                      : "text-muted-foreground hover:text-foreground/85"
+                      ? "gap-2.5 text-white sm:gap-3"
+                      : "gap-2.5 text-white/65 hover:text-white/85 sm:gap-3"
                   )}
                 >
                   <HeartHandshake
                     className={cn(
-                      "h-[1.125rem] w-[1.125rem] shrink-0 transition-transform duration-300 sm:h-5 sm:w-5",
-                      homeMode === "hire" && "scale-105"
+                      "h-6 w-6 shrink-0 text-white transition-transform duration-300 sm:h-7 sm:w-7",
+                      homeMode === "hire" && "scale-105 drop-shadow-sm"
                     )}
                     strokeWidth={2.25}
                     aria-hidden
                   />
                   {homeMode === "hire" && (
-                    <span className="animate-in fade-in slide-in-from-left-1 truncate text-[11px] font-semibold leading-none tracking-tight duration-300 sm:text-xs">
-                      I need a helper
+                    <span className="max-w-[min(100%,11rem)] truncate text-left text-sm font-bold leading-tight tracking-tight sm:max-w-[12rem] sm:text-base">
+                      I need help
                     </span>
                   )}
                 </button>
@@ -237,28 +267,29 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   type="button"
                   role="tab"
                   aria-selected={homeMode === "work"}
-                  aria-label={homeMode === "work" ? undefined : "I want to help"}
+                  aria-label={homeMode === "work" ? undefined : "I want to work"}
                   onClick={() => setHomeMode("work")}
                   className={cn(
-                    "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full px-1.5 py-2 transition-colors duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-3 py-2.5 sm:min-h-[62px] sm:px-3.5",
+                    "transition-[color,transform] duration-300 ease-out",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "work"
-                      ? "gap-1.5 text-emerald-700 dark:text-emerald-400 sm:gap-2"
-                      : "text-muted-foreground hover:text-foreground/85"
+                      ? "gap-2.5 text-white sm:gap-3"
+                      : "gap-2.5 text-white/65 hover:text-white/85 sm:gap-3"
                   )}
                 >
                   <HelpingHand
                     className={cn(
-                      "h-[1.125rem] w-[1.125rem] shrink-0 transition-transform duration-300 sm:h-5 sm:w-5",
-                      homeMode === "work" && "scale-105"
+                      "h-6 w-6 shrink-0 text-white transition-transform duration-300 sm:h-7 sm:w-7",
+                      homeMode === "work" && "scale-105 drop-shadow-sm"
                     )}
                     strokeWidth={2.25}
                     aria-hidden
                   />
                   {homeMode === "work" && (
-                    <span className="animate-in fade-in slide-in-from-right-1 truncate text-[11px] font-semibold leading-none tracking-tight duration-300 sm:text-xs">
-                      I want to help
+                    <span className="max-w-[min(100%,11rem)] truncate text-left text-sm font-bold leading-tight tracking-tight sm:max-w-[12rem] sm:text-base">
+                      I want to work
                     </span>
                   )}
                 </button>
@@ -271,12 +302,12 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
       <div
         className={cn(
           "app-desktop-shell",
-          /** Match fixed tab strip: py-2 + h-11 + border-b + extra gap below tabs */
-          "pt-[calc(0.5rem+2.75rem+0.5rem+1px+1rem)]"
+          /** Tab strip: py + full-width themed pill toggle (~62–70px) + border + gap */
+          "pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]"
         )}
       >
         <div className="app-desktop-centered-wide max-w-lg md:max-w-2xl">
-          <section className="mb-5 px-1" aria-label={homeMode === "hire" ? "Find helpers" : "Get work"}>
+          <section className="mb-3 px-1" aria-label={homeMode === "hire" ? "Find helpers" : "Get work"}>
             {homeMode === "hire" ? (
               <button
                 type="button"
@@ -345,12 +376,13 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             )}
           </section>
 
-          <DiscoverHomeActivitySection mode={homeMode} />
+          <DiscoverHomeActivitySection mode={homeMode} viewerRole={role} />
 
           {homeMode === "hire" && (
+          <>
           <section
             className={cn(
-              "mb-8 mt-6",
+              "mb-6 mt-4",
               "-mx-4 w-[calc(100%+2rem)] px-2 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-3",
               "md:mx-0 md:w-full md:px-0"
             )}
@@ -376,10 +408,10 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     }
                     onClick={() => onCategoryClick(cat.id)}
                     className={cn(
-                      "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-xl text-left outline-none",
-                      /** Three tiles per viewport; 2× gap-2 (0.5rem) between three columns */
-                      "basis-[calc((100%-1rem)/3)] md:rounded-2xl",
-                      "transition-transform active:scale-[0.98]",
+                      "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-2xl text-left outline-none",
+                      /** Mobile: two larger tiles per viewport (one gap-2). md+: three per viewport. */
+                      "basis-[calc((100%-0.5rem)/2)] md:basis-[calc((100%-1rem)/3)]",
+                      "shadow-md transition-[transform,box-shadow] duration-300 hover:shadow-lg active:scale-[0.98]",
                       "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-inset",
                     )}
                   >
@@ -389,23 +421,27 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       aria-hidden
                     />
+                    <div
+                      className="pointer-events-none absolute inset-0 z-[1] bg-black/35"
+                      aria-hidden
+                    />
                     <span
                       className={cn(
-                        "absolute left-1.5 top-1.5 z-[2] flex min-h-[1.35rem] min-w-[1.35rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums leading-none sm:left-2 sm:top-2 sm:min-h-[1.5rem] sm:min-w-[1.5rem] sm:px-2 sm:text-[11px]",
+                        "absolute left-1.5 top-1.5 z-[2] flex min-h-[1.5rem] min-w-[1.5rem] items-center justify-center rounded-full px-2 text-[11px] font-black tabular-nums leading-none sm:left-2 sm:top-2 sm:min-h-[1.65rem] sm:min-w-[1.65rem] sm:px-2 sm:text-xs md:text-sm",
                         "backdrop-blur-md backdrop-saturate-150",
-                        "bg-white/55 text-slate-900 shadow-[0_1px_10px_rgba(0,0,0,0.08)] ring-1 ring-white/70",
-                        "dark:bg-black/45 dark:text-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.55)] dark:ring-white/12"
+                        "bg-white/70 text-slate-900 shadow-[0_1px_10px_rgba(0,0,0,0.12)] ring-1 ring-white/80",
+                        "dark:bg-black/55 dark:text-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.55)] dark:ring-white/15"
                       )}
                       aria-hidden
                     >
                       {liveCountLabel(cat.id)}
                     </span>
                     <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-10 pb-2 px-1.5 sm:pt-12 sm:pb-2.5 sm:px-2"
+                      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/90 via-black/55 to-transparent pt-14 pb-2 px-1.5 sm:pt-16 sm:pb-2.5 sm:px-2"
                       aria-hidden
                     />
-                    <span className="absolute inset-x-0 bottom-0 z-[1] px-1.5 pb-2 pt-5 text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:px-2 sm:pb-2.5 sm:pt-6 sm:text-xs md:text-sm">
-                      {cat.label}
+                    <span className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-2 pt-5 text-center text-lg font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:pt-7 md:px-1.5 md:pt-5 md:text-base lg:text-lg md:pb-2.5">
+                      {DISCOVER_CATEGORY_ACTION_LINE[cat.id] ?? cat.label}
                     </span>
                   </button>
                 ))}
@@ -444,9 +480,14 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               </button>
             </div>
           </section>
+
+          <div className="mb-4">
+            <DiscoverHomeLiveTrackerBoard />
+          </div>
+          </>
           )}
 
-          <section className="mt-8 px-1 pb-8" aria-label="Shortcuts">
+          <section className="mt-6 px-1 pb-8" aria-label="Shortcuts">
             <div className="grid grid-cols-3 gap-1 sm:gap-2">
               {homeMode === "hire" ? (
                 <>

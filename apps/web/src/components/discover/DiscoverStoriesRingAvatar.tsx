@@ -21,7 +21,7 @@ export function DiscoverStoriesRingAvatar({
   return (
     <div
       className={cn(
-        "relative flex h-[4.75rem] w-[4.75rem] shrink-0 items-center justify-center",
+        "relative flex h-[5.5rem] w-[5.5rem] shrink-0 items-center justify-center",
         className
       )}
     >

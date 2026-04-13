@@ -37,14 +37,60 @@ import {
   Soup
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SERVICE_CATEGORIES, isServiceCategoryId } from "@/lib/serviceCategories";
+import {
+  SERVICE_CATEGORIES,
+  isServiceCategoryId,
+  type ServiceCategoryId,
+} from "@/lib/serviceCategories";
 
-const SERVICE_TYPE_ICONS: Record<string, ReactNode> = {
-  cleaning: <Sparkles className="w-8 h-8 text-primary" />,
-  cooking: <Soup className="w-8 h-8 text-orange-500" />,
-  pickup_delivery: <Truck className="w-8 h-8 text-blue-500" />,
-  nanny: <Baby className="w-8 h-8 text-pink-500" />,
-  other_help: <Wrench className="w-8 h-8 text-slate-500" />,
+const SERVICE_TYPE_ICONS: Record<ServiceCategoryId, ReactNode> = {
+  cleaning: <Sparkles className="h-8 w-8 text-orange-600 dark:text-orange-400" />,
+  cooking: <Soup className="h-8 w-8 text-amber-700 dark:text-amber-400" />,
+  pickup_delivery: <Truck className="h-8 w-8 text-sky-600 dark:text-sky-400" />,
+  nanny: <Baby className="h-8 w-8 text-pink-600 dark:text-pink-400" />,
+  other_help: <Wrench className="h-8 w-8 text-violet-700 dark:text-violet-400" />,
+};
+
+/** Distinct surfaces for Step 1 — each category reads as its own tile */
+const SERVICE_TYPE_STEP1_STYLE: Record<
+  ServiceCategoryId,
+  { idle: string; selected: string; subtitle: string; arrow: string }
+> = {
+  cleaning: {
+    idle: "border-orange-200/90 bg-gradient-to-br from-orange-50 via-orange-50/80 to-amber-100/50 shadow-sm dark:border-orange-500/35 dark:from-orange-950/50 dark:via-orange-950/35 dark:to-amber-950/25",
+    selected:
+      "border-orange-500 bg-orange-50/95 shadow-lg shadow-orange-500/15 ring-2 ring-orange-500/25 dark:border-orange-400 dark:bg-orange-950/55 dark:ring-orange-400/30",
+    subtitle: "text-orange-900/70 dark:text-orange-100/65",
+    arrow: "text-orange-600 dark:text-orange-400",
+  },
+  cooking: {
+    idle: "border-amber-200/90 bg-gradient-to-br from-amber-50 via-yellow-50/70 to-orange-50/40 shadow-sm dark:border-amber-500/30 dark:from-amber-950/45 dark:via-yellow-950/20 dark:to-orange-950/20",
+    selected:
+      "border-amber-500 bg-amber-50/95 shadow-lg shadow-amber-500/15 ring-2 ring-amber-500/25 dark:border-amber-400 dark:bg-amber-950/50 dark:ring-amber-400/30",
+    subtitle: "text-amber-900/70 dark:text-amber-100/65",
+    arrow: "text-amber-700 dark:text-amber-400",
+  },
+  pickup_delivery: {
+    idle: "border-sky-200/90 bg-gradient-to-br from-sky-50 via-blue-50/80 to-indigo-50/40 shadow-sm dark:border-sky-500/35 dark:from-sky-950/45 dark:via-blue-950/30 dark:to-indigo-950/20",
+    selected:
+      "border-sky-500 bg-sky-50/95 shadow-lg shadow-sky-500/15 ring-2 ring-sky-500/25 dark:border-sky-400 dark:bg-sky-950/50 dark:ring-sky-400/30",
+    subtitle: "text-sky-900/70 dark:text-sky-100/65",
+    arrow: "text-sky-600 dark:text-sky-400",
+  },
+  nanny: {
+    idle: "border-pink-200/90 bg-gradient-to-br from-pink-50 via-rose-50/80 to-fuchsia-50/40 shadow-sm dark:border-pink-500/35 dark:from-pink-950/45 dark:via-rose-950/30 dark:to-fuchsia-950/20",
+    selected:
+      "border-pink-500 bg-pink-50/95 shadow-lg shadow-pink-500/15 ring-2 ring-pink-500/25 dark:border-pink-400 dark:bg-pink-950/50 dark:ring-pink-400/30",
+    subtitle: "text-pink-900/70 dark:text-pink-100/65",
+    arrow: "text-pink-600 dark:text-pink-400",
+  },
+  other_help: {
+    idle: "border-violet-200/90 bg-gradient-to-br from-slate-100 via-violet-50/90 to-purple-50/50 shadow-sm dark:border-violet-500/30 dark:from-slate-900/60 dark:via-violet-950/40 dark:to-purple-950/25",
+    selected:
+      "border-violet-500 bg-violet-50/95 shadow-lg shadow-violet-500/15 ring-2 ring-violet-500/25 dark:border-violet-400 dark:bg-violet-950/55 dark:ring-violet-400/30",
+    subtitle: "text-violet-900/70 dark:text-violet-100/65",
+    arrow: "text-violet-700 dark:text-violet-400",
+  },
 };
 
 const SERVICE_TYPES = SERVICE_CATEGORIES.map((c) => ({
@@ -395,30 +441,49 @@ export default function CreateJobPage() {
             {/* Step 1: Service Type */}
             {step === 1 && (
               <div className="grid gap-3">
-                {SERVICE_TYPES.map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => { updateField("service_type", type.id); setStep(2); }}
-                    className={cn(
-                      "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group relative overflow-hidden bg-card shadow-sm",
-                      jobData.service_type === type.id
-                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/5 ring-1 ring-primary/20"
-                        : "border-border hover:border-primary/50 hover:bg-muted/30"
-                    )}
-                  >
-                    <div className="flex-shrink-0">
-                      {type.icon}
-                    </div>
-                    <div className="flex-1">
-                      <span className="font-bold text-base block leading-none">{type.label}</span>
-                      {type.description && <span className="text-xs text-muted-foreground mt-1 block">{type.description}</span>}
-                    </div>
-                    <ArrowRight className={cn(
-                      "w-4 h-4 transition-all duration-300 opacity-0 -translate-x-2",
-                      jobData.service_type === type.id ? "opacity-100 translate-x-0 text-primary" : "group-hover:opacity-100 group-hover:translate-x-0"
-                    )} />
-                  </button>
-                ))}
+                {SERVICE_TYPES.map((type) => {
+                  const st = SERVICE_TYPE_STEP1_STYLE[type.id];
+                  return (
+                    <button
+                      key={type.id}
+                      type="button"
+                      onClick={() => {
+                        updateField("service_type", type.id);
+                        setStep(2);
+                      }}
+                      className={cn(
+                        "flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all",
+                        "group relative overflow-hidden",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        st.idle,
+                        jobData.service_type === type.id
+                          ? st.selected
+                          : "hover:shadow-md active:scale-[0.99] motion-reduce:active:scale-100"
+                      )}
+                    >
+                      <div className="flex-shrink-0 rounded-xl bg-white/50 p-1 shadow-inner dark:bg-black/20">
+                        {type.icon}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="block text-base font-bold leading-none text-foreground">
+                          {type.label}
+                        </span>
+                        {type.description && (
+                          <span className={cn("mt-1 block text-xs", st.subtitle)}>{type.description}</span>
+                        )}
+                      </div>
+                      <ArrowRight
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-all duration-300",
+                          st.arrow,
+                          jobData.service_type === type.id
+                            ? "translate-x-0 opacity-100"
+                            : "-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
+                        )}
+                      />
+                    </button>
+                  );
+                })}
               </div>
             )}
 

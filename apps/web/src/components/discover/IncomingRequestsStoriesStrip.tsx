@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { DiscoverStoriesRingAvatar } from "@/components/discover/DiscoverStoriesRingAvatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,8 @@ type Props = {
   inbound: InboundRow[];
   formatJobTitle: (job: { service_type?: string }) => string;
   onOpenPreview: (job: IncomingJobRequestCardJob) => void;
+  /** Renders at end of row (e.g. See more) */
+  trailingSlot?: ReactNode;
 };
 
 /**
@@ -22,6 +25,7 @@ export function IncomingRequestsStoriesStrip({
   inbound,
   formatJobTitle,
   onOpenPreview,
+  trailingSlot,
 }: Props) {
   return (
     <div
@@ -43,7 +47,7 @@ export function IncomingRequestsStoriesStrip({
             role="listitem"
             onClick={() => onOpenPreview(job)}
             className={cn(
-              "group flex w-[4.75rem] shrink-0 snap-start flex-col items-center gap-1.5 rounded-xl pb-0.5 text-center outline-none",
+              "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center gap-2 rounded-xl pb-0.5 text-center outline-none",
               "transition-transform active:scale-[0.97]",
               "focus-visible:ring-2 focus-visible:ring-amber-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             )}
@@ -58,13 +62,13 @@ export function IncomingRequestsStoriesStrip({
                   alt=""
                   className="object-cover"
                 />
-                <AvatarFallback className="bg-gradient-to-br from-amber-100 to-orange-100 text-lg font-bold text-amber-900 dark:from-amber-950 dark:to-orange-950 dark:text-amber-100">
+                <AvatarFallback className="bg-gradient-to-br from-amber-100 to-orange-100 text-xl font-bold text-amber-900 dark:from-amber-950 dark:to-orange-950 dark:text-amber-100">
                   {(job.profiles?.full_name || "C").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </DiscoverStoriesRingAvatar>
             <span
-              className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-foreground"
+              className="max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground"
               title={label}
             >
               {label}
@@ -72,6 +76,7 @@ export function IncomingRequestsStoriesStrip({
           </button>
         );
       })}
+      {trailingSlot}
     </div>
   );
 }

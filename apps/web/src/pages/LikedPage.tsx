@@ -465,20 +465,35 @@ export default function LikedPage() {
               >
                 <div
                   className={cn(
-                    "relative mx-auto grid h-11 w-full max-w-[15.5rem] grid-cols-2 gap-0.5 rounded-full p-1 sm:max-w-[17rem]",
-                    "bg-muted/50 ring-1 ring-inset ring-black/[0.06] dark:bg-muted/35 dark:ring-white/[0.08]",
-                    "shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]"
+                    "relative mx-auto grid min-h-[62px] w-full max-w-[22rem] grid-cols-2 gap-0.5 overflow-hidden rounded-full p-1 sm:max-w-[24rem] sm:min-h-[70px]",
+                    "border border-white/20 shadow-2xl backdrop-blur-md",
+                    "transition-shadow duration-300",
+                    savedTab === "posts" ? "shadow-rose-900/30" : "shadow-rose-900/28"
                   )}
                 >
                   <div
+                    className={cn(
+                      "pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-gradient-to-r from-rose-500 to-red-600",
+                      "transition-opacity duration-300 ease-out",
+                      savedTab === "posts" ? "opacity-100" : "opacity-0"
+                    )}
+                    aria-hidden
+                  />
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-gradient-to-r from-rose-600 via-red-600 to-rose-900",
+                      "transition-opacity duration-300 ease-out",
+                      savedTab === "profiles" ? "opacity-100" : "opacity-0"
+                    )}
+                    aria-hidden
+                  />
+                  <div
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-background",
+                      "pointer-events-none absolute top-1 bottom-1 left-1 z-[5] rounded-full",
                       "w-[calc((100%-0.625rem)/2)] will-change-transform",
-                      "shadow-[0_2px_10px_-3px_rgba(15,23,42,0.18),0_1px_0_rgba(255,255,255,0.85)_inset] ring-1",
-                      "transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
-                      "dark:bg-zinc-900/95 dark:shadow-[0_4px_16px_-6px_rgba(0,0,0,0.55)]",
-                      "ring-rose-200/90 dark:shadow-[0_4px_18px_-6px_rgba(244,63,94,0.28)] dark:ring-rose-500/30",
+                      "bg-white/20 shadow-inner backdrop-blur-sm ring-1 ring-white/35",
+                      "transition-[transform] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
                       savedTab === "posts"
                         ? "translate-x-0"
                         : "translate-x-[calc(100%+0.125rem)]"
@@ -497,28 +512,29 @@ export default function LikedPage() {
                     }
                     onClick={() => setSavedTab("posts")}
                     className={cn(
-                      "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full px-1.5 py-2 transition-colors duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
+                      "transition-[color,transform] duration-300 ease-out",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                       "active:scale-[0.98] motion-reduce:transition-none",
                       savedTab === "posts"
-                        ? "gap-1 text-rose-600 dark:text-rose-400 sm:gap-1.5"
-                        : "text-muted-foreground hover:text-foreground/85"
+                        ? "gap-1.5 text-white sm:gap-2"
+                        : "gap-1.5 text-white/65 hover:text-white/85 sm:gap-2"
                     )}
                   >
                     <Sparkles
                       className={cn(
-                        "h-[1.125rem] w-[1.125rem] shrink-0 transition-transform duration-300 sm:h-5 sm:w-5",
-                        savedTab === "posts" && "scale-105"
+                        "h-6 w-6 shrink-0 text-white transition-transform duration-300 sm:h-7 sm:w-7",
+                        savedTab === "posts" && "scale-105 drop-shadow-sm"
                       )}
                       strokeWidth={2.25}
                       aria-hidden
                     />
                     {savedTab === "posts" && (
                       <>
-                        <span className="animate-in fade-in slide-in-from-left-1 truncate text-[11px] font-semibold leading-none tracking-tight duration-300 sm:text-xs">
+                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-base">
                           Posts
                         </span>
-                        <span className="shrink-0 tabular-nums text-[10px] font-black text-rose-600/90 dark:text-rose-400/90">
+                        <span className="shrink-0 tabular-nums text-xs font-black text-white/95 sm:text-sm">
                           ({loading ? "…" : posts.length})
                         </span>
                       </>
@@ -537,28 +553,29 @@ export default function LikedPage() {
                     }
                     onClick={() => setSavedTab("profiles")}
                     className={cn(
-                      "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full px-1.5 py-2 transition-colors duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
+                      "transition-[color,transform] duration-300 ease-out",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                       "active:scale-[0.98] motion-reduce:transition-none",
                       savedTab === "profiles"
-                        ? "gap-1 text-rose-600 dark:text-rose-400 sm:gap-1.5"
-                        : "text-muted-foreground hover:text-foreground/85"
+                        ? "gap-1.5 text-white sm:gap-2"
+                        : "gap-1.5 text-white/65 hover:text-white/85 sm:gap-2"
                     )}
                   >
                     <UserRound
                       className={cn(
-                        "h-[1.125rem] w-[1.125rem] shrink-0 transition-transform duration-300 sm:h-5 sm:w-5",
-                        savedTab === "profiles" && "scale-105"
+                        "h-6 w-6 shrink-0 text-white transition-transform duration-300 sm:h-7 sm:w-7",
+                        savedTab === "profiles" && "scale-105 drop-shadow-sm"
                       )}
                       strokeWidth={2.25}
                       aria-hidden
                     />
                     {savedTab === "profiles" && (
                       <>
-                        <span className="animate-in fade-in slide-in-from-right-1 truncate text-[11px] font-semibold leading-none tracking-tight duration-300 sm:text-xs">
+                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-base">
                           Profiles
                         </span>
-                        <span className="shrink-0 tabular-nums text-[10px] font-black text-rose-600/90 dark:text-rose-400/90">
+                        <span className="shrink-0 tabular-nums text-xs font-black text-white/95 sm:text-sm">
                           ({loading ? "…" : profiles.length})
                         </span>
                       </>
@@ -575,7 +592,7 @@ export default function LikedPage() {
         className={cn(
           "app-desktop-shell px-1",
           showSavedTabs
-            ? "pt-[calc(0.5rem+2.75rem+0.5rem+1px+1rem)]"
+            ? "pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]"
             : "pt-4 md:pt-6"
         )}
       >
