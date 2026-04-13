@@ -63,6 +63,7 @@ export function BottomNav() {
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
     pathnameNorm === "/availability" ||
+    pathnameNorm === "/availability/post-now" ||
     pathnameNorm === "/posts" ||
     pathnameNorm === "/public/posts";
   const communityCategoryParam = jobsSearchParams.get("category");

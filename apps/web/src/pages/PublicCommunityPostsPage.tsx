@@ -20,6 +20,7 @@ import {
 } from "@/lib/serviceCategories";
 import { openCommunityContact } from "@/lib/communityContact";
 import { apiPost } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export default function PublicCommunityPostsPage() {
   const navigate = useNavigate();
@@ -192,10 +193,10 @@ export default function PublicCommunityPostsPage() {
     return `${base}${q}`;
   }, [validCategory, isAllHelp]);
 
-  const toggleFavorite = async (postId: string) => {
+  const toggleFavorite = async (postId: string): Promise<boolean> => {
     if (!user?.id) {
       navigate(`/login?redirect=${encodeURIComponent(loginRedirect)}`);
-      return;
+      return false;
     }
     const wasFav = favoritedIds.has(postId);
     setFavoritedIds((prev: Set<string>) => {
@@ -219,6 +220,7 @@ export default function PublicCommunityPostsPage() {
         });
         if (error) throw error;
       }
+      return true;
     } catch (e) {
       setFavoritedIds((prev: Set<string>) => {
         const next = new Set(prev);
@@ -231,6 +233,7 @@ export default function PublicCommunityPostsPage() {
         description: e instanceof Error ? e.message : "Try again.",
         variant: "error",
       });
+      return false;
     }
   };
 
@@ -267,10 +270,28 @@ export default function PublicCommunityPostsPage() {
       <div
         className={
           user
-            ? "app-desktop-shell space-y-6 pt-[3.5rem] md:pt-6"
+            ? "app-desktop-shell space-y-6 pt-0 md:pt-0"
             : "app-desktop-shell space-y-6 pt-4 md:pt-6"
         }
       >
+        {/* Fixed bottom-right, flush above bottom nav (matches BottomNav row: py-2 + h-52 FAB row + bottom pad) */}
+        <Button
+          type="button"
+          className={cn(
+            "fixed z-[125] gap-2 rounded-full shadow-lg",
+            "right-[max(1rem,env(safe-area-inset-right,0px))]",
+            user
+              ? "bottom-[calc(0.5rem+3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] md:bottom-[calc(1.5rem+4.5rem+env(safe-area-inset-bottom,0px))]"
+              : "bottom-6"
+          )}
+          asChild
+        >
+          <Link to={user ? "/availability" : `/login?redirect=${encodeURIComponent("/availability")}`}>
+            <Plus className="h-4 w-4" />
+            Set availability
+          </Link>
+        </Button>
+
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-1 md:max-w-4xl">
           {/* Logged-out: no app header — keep back + category here */}
           {!user && (
@@ -326,32 +347,15 @@ export default function PublicCommunityPostsPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-[26px] font-black tracking-tight text-slate-900 dark:text-white md:text-[30px]">
-                {categoryTitle ? `${categoryTitle} — available now` : "Available now"}
-              </h1>
-              <p className="mt-1 max-w-xl text-[15px] font-medium text-muted-foreground">
-                {categoryTitle
-                  ? `Short-lived availability in ${categoryTitle}. Sign in to chat.`
-                  : "Time-limited availability — tap to message. Posts disappear when time is up."}
-              </p>
-            </div>
-            {user ? (
-              <Button type="button" className="gap-2 rounded-full shrink-0" asChild>
-                <Link to="/availability">
-                  <Plus className="h-4 w-4" />
-                  Set availability
-                </Link>
-              </Button>
-            ) : (
-              <Button type="button" className="gap-2 rounded-full shrink-0" asChild>
-                <Link to={`/login?redirect=${encodeURIComponent("/availability")}`}>
-                  <Plus className="h-4 w-4" />
-                  Set availability
-                </Link>
-              </Button>
-            )}
+          <div>
+            <h1 className="text-[26px] font-black tracking-tight text-slate-900 dark:text-white md:text-[30px]">
+              {categoryTitle ? `${categoryTitle} — available now` : "Available now"}
+            </h1>
+            <p className="mt-1 max-w-xl text-[15px] font-medium text-muted-foreground">
+              {categoryTitle
+                ? `Short-lived availability in ${categoryTitle}. Sign in to chat.`
+                : "Time-limited availability — tap to message. Posts disappear when time is up."}
+            </p>
           </div>
         </div>
 
@@ -370,7 +374,7 @@ export default function PublicCommunityPostsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2">
+          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2 lg:items-stretch">
             {posts.map((post) => (
               <CommunityPostCard
                 key={post.id}
@@ -383,6 +387,8 @@ export default function PublicCommunityPostsPage() {
                 hiringPostId={hiringPostId}
                 pendingHirePostIds={pendingHirePostIds}
                 onHireFromPost={handleHireFromPost}
+                plain
+                cardClassName="h-full overflow-hidden rounded-2xl border-0 bg-white/95 shadow-sm ring-0 md:bg-transparent md:shadow-none dark:bg-card dark:shadow-md dark:md:bg-transparent dark:md:shadow-none"
                 iconOnlyActions
                 onOpenChat={() => {
                   if (!user || !profile) return;

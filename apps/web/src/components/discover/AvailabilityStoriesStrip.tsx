@@ -38,7 +38,7 @@ type Props = {
   profile: PostViewerProfile;
   loginRedirect: string;
   favoritedIds: Set<string>;
-  onToggleFavorite: (postId: string) => void;
+  onToggleFavorite: (postId: string) => void | Promise<boolean>;
   hiringPostId: string | null;
   pendingHirePostIds: Set<string>;
   onHireFromPost: (postId: string) => void | Promise<boolean>;

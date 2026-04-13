@@ -26,7 +26,10 @@ import { Badge } from "@/components/ui/badge";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { BadgeCheck, Loader2, Plus, ImagePlus, X, Users } from "lucide-react";
+import { BadgeCheck, Loader2, Plus, ImagePlus, Share2, Users, X } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import { CommunityPostCommentsControl } from "@/components/community/CommunityPostCommentsControl";
+import { formatPostedAgo, PostTimeLeftBadge } from "@/components/community/CommunityPostCard";
 import {
   SERVICE_CATEGORIES,
   isAllHelpCategory,
@@ -93,11 +96,16 @@ function OwnAvailabilityPostCard({
   post,
   hireCount,
   navigate,
+  user,
+  loginRedirect,
 }: {
   post: PostWithMeta;
   hireCount: number;
   navigate: NavigateFunction;
+  user: User | null;
+  loginRedirect: string;
 }) {
+  const { addToast } = useToast();
   const [imageLightboxIndex, setImageLightboxIndex] = useState<number | null>(null);
   const imageUrls = useMemo(
     () => post.images.map((i) => i.image_url).filter((u): u is string => Boolean(u)),
@@ -107,77 +115,118 @@ function OwnAvailabilityPostCard({
   const expired = Date.parse(post.expires_at) <= Date.now();
   const description = post.note?.trim() || post.body?.trim() || null;
   const verified = Boolean(post.author?.is_verified);
+  const postedAgoLabel = useMemo(() => formatPostedAgo(post.created_at), [post.created_at]);
+
+  const sharePost = useCallback(async () => {
+    const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
+    const title = post.title;
+    const text = [post.note, post.body].find((t) => t && String(t).trim()) || title;
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ title, text, url });
+        return;
+      }
+    } catch (e: unknown) {
+      const name = (e as { name?: string })?.name;
+      if (name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      addToast({
+        title: "Link copied",
+        description: "Paste anywhere to share this post.",
+        variant: "success",
+      });
+    } catch {
+      addToast({
+        title: "Could not share",
+        description: "Try copying the page URL manually.",
+        variant: "error",
+      });
+    }
+  }, [post.id, post.title, post.note, post.body, addToast]);
+
+  const showTimeUnderNotes = !expired && imageUrls.length === 0;
 
   return (
     <>
       <Card
         className={cn(
-          "relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
+          "relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white/95 shadow-sm dark:bg-card dark:shadow-md",
+          "md:bg-transparent md:shadow-none dark:md:bg-transparent dark:md:shadow-none",
           expired &&
             "border-neutral-300/90 bg-neutral-100 text-neutral-600 shadow-none dark:border-neutral-600 dark:bg-neutral-900/75 dark:text-neutral-400"
         )}
         aria-label={expired ? "Expired availability post" : undefined}
       >
-        <CardContent className="relative z-[1] p-0">
-          <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-2">
-            <Link
-              to={`/profile/${post.author_id}`}
-              className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
-              aria-label={`View ${post.author?.full_name || "your"} public profile`}
-            >
-              <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
-                <AvatarImage
-                  src={post.author?.photo_url ?? undefined}
-                  className="object-cover"
-                  alt=""
-                />
-                <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
-                  {(post.author?.full_name || "?").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="truncate text-base font-semibold leading-tight">
-                  {post.author?.full_name || "Member"}
-                </span>
-                {verified && (
-                  <BadgeCheck
-                    className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
-                    aria-label="Verified"
+        <CardContent className="relative z-[1] flex min-h-0 flex-1 flex-col p-0">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="flex items-start gap-3 px-4 pb-0.5 pt-5">
+              <Link
+                to={`/profile/${post.author_id}`}
+                className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
+                aria-label={`View ${post.author?.full_name || "your"} public profile`}
+              >
+                <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
+                  <AvatarImage
+                    src={post.author?.photo_url ?? undefined}
+                    className="object-cover"
+                    alt=""
                   />
-                )}
-                {isArchived && (
-                  <Badge variant="outline" className="text-[9px] font-bold">
-                    Archived
-                  </Badge>
+                  <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
+                    {(post.author?.full_name || "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
+                    {post.author?.full_name || "Member"}
+                  </span>
+                  {verified && (
+                    <BadgeCheck
+                      className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                      aria-label="Verified"
+                    />
+                  )}
+                  {isArchived && (
+                    <Badge variant="outline" className="text-[9px] font-bold">
+                      Archived
+                    </Badge>
+                  )}
+                </div>
+                {postedAgoLabel && (
+                  <time
+                    dateTime={post.created_at}
+                    title={new Date(post.created_at).toISOString()}
+                    className="mt-1.5 block text-xs font-medium tabular-nums tracking-tight text-muted-foreground"
+                  >
+                    Posted {postedAgoLabel}
+                  </time>
                 )}
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-9 w-9 shrink-0 rounded-full text-muted-foreground",
+                  "hover:bg-transparent hover:text-foreground active:bg-transparent",
+                  "focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-orange-500/35 focus-visible:ring-offset-2"
+                )}
+                onClick={() => void sharePost()}
+                aria-label="Share"
+              >
+                <Share2 className="h-5 w-5" aria-hidden />
+              </Button>
             </div>
-          </div>
 
-          <div className="px-3.5 pb-6">
-            <p className="text-lg font-semibold leading-snug">{post.title}</p>
-          </div>
-
-          <div className="space-y-2 px-3.5 pb-3">
-            {post.availability_payload?.area_tag && (
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground/80">Area</span>{" "}
-                {post.availability_payload.area_tag}
-              </p>
-            )}
-            {description && (
-              <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
-                {description}
-              </p>
-            )}
-            {imageUrls.length > 0 && (
-              <div className="pt-1">
+            {imageUrls.length > 1 && (
+              <div className="px-4">
                 <div
                   className={cn(
                     "flex gap-2",
-                    imageUrls.length > 1 && "max-w-full overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
+                    "max-w-full overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
                   )}
                 >
                   {imageUrls.map((url, idx) => (
@@ -186,45 +235,86 @@ function OwnAvailabilityPostCard({
                       type="button"
                       onClick={() => setImageLightboxIndex(idx)}
                       className={cn(
-                        "shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 dark:border-neutral-700 dark:bg-neutral-900/40",
-                        "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                        imageUrls.length === 1
-                          ? "aspect-[4/3] w-full max-w-[160px]"
-                          : "h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20"
+                        "h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 dark:border-neutral-700 dark:bg-neutral-900/40",
+                        "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       )}
                       aria-label={`View image ${idx + 1} full screen`}
                     >
-                      <img
-                        src={url}
-                        alt=""
-                        className={cn(
-                          "h-full w-full object-cover",
-                          imageUrls.length === 1 && "aspect-[4/3]"
-                        )}
-                        loading="lazy"
-                      />
+                      <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
                     </button>
                   ))}
                 </div>
+                {!expired && (
+                  <div className="mt-2 flex justify-start">
+                    <PostTimeLeftBadge expiresAtIso={post.expires_at} />
+                  </div>
+                )}
               </div>
             )}
+
+            {imageUrls.length === 1 && (
+              <div className="mt-0.5 w-full px-4">
+                <div className="relative w-full overflow-hidden rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setImageLightboxIndex(0)}
+                    className="relative block aspect-[4/3] w-full overflow-hidden bg-muted/40 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-neutral-900/50"
+                    aria-label="View image full screen"
+                  >
+                    <img
+                      src={imageUrls[0]}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  </button>
+                  {!expired && (
+                    <div className="pointer-events-none absolute bottom-2 left-2 z-[2]">
+                      <PostTimeLeftBadge expiresAtIso={post.expires_at} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="px-4 pb-6 pt-0.5">
+              <p className="text-lg font-semibold leading-snug text-foreground">{post.title}</p>
+            </div>
+
+            <div className="space-y-2 px-4 pb-4">
+              {post.availability_payload?.area_tag && (
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground/80">Area</span>{" "}
+                  {post.availability_payload.area_tag}
+                </p>
+              )}
+              {description && (
+                <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
+                  {description}
+                </p>
+              )}
+              {showTimeUnderNotes && (
+                <div className="flex justify-start pt-1">
+                  <PostTimeLeftBadge expiresAtIso={post.expires_at} />
+                </div>
+              )}
+            </div>
           </div>
 
           <div
             className={cn(
-              "space-y-2 border-t border-neutral-200 bg-white px-3.5 py-3 dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
+              "mt-auto space-y-3 border-t border-transparent bg-transparent px-4 pb-4 pt-3",
               expired &&
                 "border-neutral-300/80 bg-neutral-100/80 dark:border-neutral-600/80 dark:bg-neutral-900/60"
             )}
           >
-            <ExpiryCountdown
-              expiresAtIso={post.expires_at}
-              className={expired ? "text-neutral-500 dark:text-neutral-500" : undefined}
-            />
-            <p className="text-xs font-medium text-muted-foreground">
-              Posted {new Date(post.created_at).toLocaleString()}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
+            {expired && (
+              <ExpiryCountdown
+                expiresAtIso={post.expires_at}
+                className="text-neutral-500 dark:text-neutral-500"
+              />
+            )}
+            <div className="flex flex-wrap items-center justify-center gap-3">
               {expired ? (
                 <Button
                   type="button"
@@ -255,6 +345,11 @@ function OwnAvailabilityPostCard({
                   </Link>
                 </Button>
               )}
+              <CommunityPostCommentsControl
+                postId={post.id}
+                loginRedirect={loginRedirect}
+                user={user}
+              />
             </div>
             <Button
               type="button"
@@ -311,6 +406,12 @@ export default function CommunityPostsPage() {
       : categoryParam && isServiceCategoryId(categoryParam)
         ? categoryParam
         : null;
+
+  const loginRedirect = useMemo(
+    () =>
+      searchParams.toString() ? `${postsBasePath}?${searchParams.toString()}` : postsBasePath,
+    [postsBasePath, searchParams]
+  );
 
   const { user, profile } = useAuth();
   const { addToast } = useToast();
@@ -630,13 +731,15 @@ export default function CommunityPostsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2">
+          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2 lg:items-stretch">
             {posts.map((post) => (
               <OwnAvailabilityPostCard
                 key={post.id}
                 post={post}
                 hireCount={hireInterestCountByPost[post.id] ?? 0}
                 navigate={navigate}
+                user={user}
+                loginRedirect={loginRedirect}
               />
             ))}
           </div>

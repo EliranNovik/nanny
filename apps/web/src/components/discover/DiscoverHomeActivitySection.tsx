@@ -21,7 +21,7 @@ import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Activity, Bell, Loader2, Plus, Radio, Zap } from "lucide-react";
+import { Activity, Bell, Loader2, Plus, Radio } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -237,10 +237,10 @@ export function DiscoverHomeActivitySection({
     };
   }, [user?.id, profile?.role, postIdsKey]);
 
-  const toggleFavorite = async (postId: string) => {
+  const toggleFavorite = async (postId: string): Promise<boolean> => {
     if (!user?.id) {
       navigate(`/login?redirect=${encodeURIComponent(loginRedirect)}`);
-      return;
+      return false;
     }
     const wasFav = favoritedIds.has(postId);
     setFavoritedIds((prev: Set<string>) => {
@@ -264,6 +264,7 @@ export function DiscoverHomeActivitySection({
         });
         if (error) throw error;
       }
+      return true;
     } catch (e) {
       setFavoritedIds((prev: Set<string>) => {
         const next = new Set(prev);
@@ -276,6 +277,7 @@ export function DiscoverHomeActivitySection({
         description: e instanceof Error ? e.message : "Try again.",
         variant: "error",
       });
+      return false;
     }
   };
 
@@ -548,33 +550,6 @@ export function DiscoverHomeActivitySection({
 
   const workSection = (
     <>
-      <div
-        className={cn(
-          "mb-3 flex items-center gap-2.5 rounded-2xl border px-3 py-2.5",
-          "border-emerald-500/25 bg-emerald-500/[0.06] dark:border-emerald-500/30 dark:bg-emerald-500/[0.07]"
-        )}
-      >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
-          <Zap className="h-5 w-5 motion-safe:animate-pulse" strokeWidth={2.25} aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/90 dark:text-emerald-200/90">
-            Fast matching
-          </p>
-          <p className="text-sm font-semibold leading-snug text-foreground">
-            {viewerRole === "client"
-              ? inboundLoading
-                ? "Loading…"
-                : "Go live with availability — nearby clients can book you in minutes"
-              : inboundLoading
-                ? "Checking open requests…"
-                : inbound.length > 0
-                  ? `${inbound.length} open ${inbound.length === 1 ? "request" : "requests"} nearby — tap to respond`
-                  : "We notify you the instant a nearby request fits you"}
-          </p>
-        </div>
-      </div>
-
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
           Community needs your help in…

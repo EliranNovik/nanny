@@ -41,6 +41,7 @@ import FreelancerDashboardPage from "@/pages/freelancer/DashboardPage";
 import FreelancerHomePage from "@/pages/freelancer/FreelancerHomePage";
 import UnifiedJobsPage from "@/pages/jobs/UnifiedJobsPage";
 import CommunityPostsPage from "@/pages/CommunityPostsPage";
+import PostAvailabilityNowPage from "@/pages/PostAvailabilityNowPage";
 import CommunityPostHireInterestsPage from "@/pages/CommunityPostHireInterestsPage";
 import PublicCommunityPostsPage from "@/pages/PublicCommunityPostsPage";
 import LikedPage from "@/pages/LikedPage";
@@ -220,6 +221,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <CommunityPostsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/availability/post-now"
+          element={
+            <ProtectedRoute>
+              <PostAvailabilityNowPage />
             </ProtectedRoute>
           }
         />

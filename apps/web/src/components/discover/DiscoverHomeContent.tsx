@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ALL_HELP_CATEGORY_ID,
   DISCOVER_HOME_CATEGORIES,
+  SERVICE_CATEGORIES,
 } from "@/lib/serviceCategories";
 import { supabase } from "@/lib/supabase";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
@@ -39,6 +40,15 @@ const DISCOVER_CATEGORY_ACTION_LINE: Record<string, string> = {
   nanny: "Need childcare?",
   other_help: "Odd jobs & more",
   all_help: "Browse everything",
+};
+
+/** Work tab — CTA to post availability per service */
+const DISCOVER_CATEGORY_WORK_LINE: Record<string, string> = {
+  cleaning: "Post cleaning availability",
+  cooking: "Post cooking availability",
+  pickup_delivery: "Post delivery & errands availability",
+  nanny: "Post childcare availability",
+  other_help: "Post availability for odd jobs",
 };
 
 function readStoredHomeMode(): DiscoverHomeMode | null {
@@ -77,6 +87,10 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
 
   const onCategoryClick = (id: string) => {
     navigate(`/public/posts?category=${encodeURIComponent(id)}`);
+  };
+
+  const onWorkCategoryPostAvailability = (id: string) => {
+    navigate(`/availability/post-now?category=${encodeURIComponent(id)}`);
   };
 
   const hireHelpersPath = isClient ? "/client/helpers" : "/public/posts";
@@ -137,41 +151,41 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
     [livePostsByCategory, livePostsCountLoading]
   );
 
-  const hireCategoryScrollRef = useRef<HTMLDivElement>(null);
-  const [hireCategoryScroll, setHireCategoryScroll] = useState({
+  const discoverCategoryScrollRef = useRef<HTMLDivElement>(null);
+  const [discoverCategoryScroll, setDiscoverCategoryScroll] = useState({
     canScrollLeft: false,
     canScrollRight: false,
   });
 
-  const refreshHireCategoryScroll = useCallback(() => {
-    const el = hireCategoryScrollRef.current;
+  const refreshDiscoverCategoryScroll = useCallback(() => {
+    const el = discoverCategoryScrollRef.current;
     if (!el) return;
     const { scrollLeft, scrollWidth, clientWidth } = el;
     const max = scrollWidth - clientWidth;
-    setHireCategoryScroll({
+    setDiscoverCategoryScroll({
       canScrollLeft: scrollLeft > 2,
       canScrollRight: max > 2 && scrollLeft < max - 2,
     });
   }, []);
 
   useLayoutEffect(() => {
-    if (homeMode !== "hire") return;
-    const el = hireCategoryScrollRef.current;
+    if (homeMode !== "hire" && homeMode !== "work") return;
+    const el = discoverCategoryScrollRef.current;
     if (!el) return;
-    refreshHireCategoryScroll();
-    el.addEventListener("scroll", refreshHireCategoryScroll, { passive: true });
-    const ro = new ResizeObserver(() => refreshHireCategoryScroll());
+    refreshDiscoverCategoryScroll();
+    el.addEventListener("scroll", refreshDiscoverCategoryScroll, { passive: true });
+    const ro = new ResizeObserver(() => refreshDiscoverCategoryScroll());
     ro.observe(el);
-    window.addEventListener("resize", refreshHireCategoryScroll);
+    window.addEventListener("resize", refreshDiscoverCategoryScroll);
     return () => {
-      el.removeEventListener("scroll", refreshHireCategoryScroll);
+      el.removeEventListener("scroll", refreshDiscoverCategoryScroll);
       ro.disconnect();
-      window.removeEventListener("resize", refreshHireCategoryScroll);
+      window.removeEventListener("resize", refreshDiscoverCategoryScroll);
     };
-  }, [homeMode, refreshHireCategoryScroll, livePostsByCategory, livePostsCountLoading]);
+  }, [homeMode, refreshDiscoverCategoryScroll, livePostsByCategory, livePostsCountLoading]);
 
-  const scrollHireCategories = useCallback((dir: "left" | "right") => {
-    const el = hireCategoryScrollRef.current;
+  const scrollDiscoverCategories = useCallback((dir: "left" | "right") => {
+    const el = discoverCategoryScrollRef.current;
     if (!el) return;
     const step = Math.min(Math.round(el.clientWidth * 0.85), 360);
     el.scrollBy({ left: dir === "left" ? -step : step, behavior: "smooth" });
@@ -378,6 +392,105 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
 
           <DiscoverHomeActivitySection mode={homeMode} viewerRole={role} />
 
+          {homeMode === "work" && (
+            <section
+              className={cn(
+                "mb-6 mt-4",
+                "-mx-4 w-[calc(100%+2rem)] px-2 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-3",
+                "md:mx-0 md:w-full md:px-0"
+              )}
+              aria-label="Post availability by category"
+            >
+              <div className="relative">
+                <div
+                  ref={discoverCategoryScrollRef}
+                  className={cn(
+                    "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
+                    "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                    "touch-pan-x"
+                  )}
+                >
+                  {SERVICE_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      aria-label={
+                        livePostsCountLoading
+                          ? `${cat.label}, loading live post count`
+                          : `${DISCOVER_CATEGORY_WORK_LINE[cat.id] ?? cat.label}, ${livePostsByCategory[cat.id] ?? 0} live posts in category`
+                      }
+                      onClick={() => onWorkCategoryPostAvailability(cat.id)}
+                      className={cn(
+                        "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-2xl text-left outline-none",
+                        "basis-[calc((100%-0.5rem)/2)] md:basis-[calc((100%-1rem)/3)]",
+                        "shadow-md transition-[transform,box-shadow] duration-300 hover:shadow-lg active:scale-[0.98]",
+                        "focus-visible:ring-2 focus-visible:ring-emerald-500/65 focus-visible:ring-inset"
+                      )}
+                    >
+                      <img
+                        src={cat.imageSrc}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        aria-hidden
+                      />
+                      <div className="pointer-events-none absolute inset-0 z-[1] bg-black/35" aria-hidden />
+                      <span
+                        className={cn(
+                          "absolute left-1.5 top-1.5 z-[2] flex min-h-[1.5rem] min-w-[1.5rem] items-center justify-center rounded-full px-2 text-[11px] font-black tabular-nums leading-none sm:left-2 sm:top-2 sm:min-h-[1.65rem] sm:min-w-[1.65rem] sm:px-2 sm:text-xs md:text-sm",
+                          "backdrop-blur-md backdrop-saturate-150",
+                          "bg-white/70 text-slate-900 shadow-[0_1px_10px_rgba(0,0,0,0.12)] ring-1 ring-white/80",
+                          "dark:bg-black/55 dark:text-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.55)] dark:ring-white/15"
+                        )}
+                        aria-hidden
+                      >
+                        {liveCountLabel(cat.id)}
+                      </span>
+                      <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/90 via-black/55 to-transparent pt-14 pb-2 px-1.5 sm:pt-16 sm:pb-2.5 sm:px-2"
+                        aria-hidden
+                      />
+                      <span className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-2 pt-5 text-center text-base font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:pt-7 md:px-1.5 md:pt-5 md:text-base lg:text-lg md:pb-2.5">
+                        {DISCOVER_CATEGORY_WORK_LINE[cat.id] ?? cat.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  aria-label="Scroll categories left"
+                  disabled={!discoverCategoryScroll.canScrollLeft}
+                  onClick={() => scrollDiscoverCategories("left")}
+                  className={cn(
+                    "absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:left-3 sm:h-11 sm:w-11",
+                    "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
+                    "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                    "dark:border-white/15 dark:bg-black/30 dark:text-white dark:hover:bg-black/45",
+                    "disabled:pointer-events-none disabled:opacity-30"
+                  )}
+                >
+                  <ChevronLeft className="h-6 w-6 drop-shadow-sm" strokeWidth={2.5} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Scroll categories right"
+                  disabled={!discoverCategoryScroll.canScrollRight}
+                  onClick={() => scrollDiscoverCategories("right")}
+                  className={cn(
+                    "absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:right-3 sm:h-11 sm:w-11",
+                    "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
+                    "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                    "dark:border-white/15 dark:bg-black/30 dark:text-white dark:hover:bg-black/45",
+                    "disabled:pointer-events-none disabled:opacity-30"
+                  )}
+                >
+                  <ChevronRight className="h-6 w-6 drop-shadow-sm" strokeWidth={2.5} aria-hidden />
+                </button>
+              </div>
+            </section>
+          )}
+
           {homeMode === "hire" && (
           <>
           <section
@@ -390,7 +503,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           >
             <div className="relative">
               <div
-                ref={hireCategoryScrollRef}
+                ref={discoverCategoryScrollRef}
                 className={cn(
                   "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
                   "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
@@ -449,8 +562,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               <button
                 type="button"
                 aria-label="Scroll categories left"
-                disabled={!hireCategoryScroll.canScrollLeft}
-                onClick={() => scrollHireCategories("left")}
+                disabled={!discoverCategoryScroll.canScrollLeft}
+                onClick={() => scrollDiscoverCategories("left")}
                 className={cn(
                   "absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:left-3 sm:h-11 sm:w-11",
                   "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
@@ -465,8 +578,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               <button
                 type="button"
                 aria-label="Scroll categories right"
-                disabled={!hireCategoryScroll.canScrollRight}
-                onClick={() => scrollHireCategories("right")}
+                disabled={!discoverCategoryScroll.canScrollRight}
+                onClick={() => scrollDiscoverCategories("right")}
                 className={cn(
                   "absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:right-3 sm:h-11 sm:w-11",
                   "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
@@ -481,7 +594,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </div>
           </section>
 
-          <div className="mb-4">
+          <div className="mb-4 mt-10">
             <DiscoverHomeLiveTrackerBoard />
           </div>
           </>

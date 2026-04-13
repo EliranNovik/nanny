@@ -89,8 +89,8 @@ export function DiscoverHomeLiveTrackerBoard() {
           <article
             key={`${row.helper}-${idx}`}
             className={cn(
-              "w-[min(92vw,21rem)] shrink-0 snap-start rounded-2xl border border-orange-200/55 px-4 py-4",
-              "backdrop-blur-[2px] dark:border-orange-500/30"
+              "w-[min(92vw,21rem)] shrink-0 snap-start rounded-2xl border border-border/60 bg-background/80 px-4 py-4",
+              "shadow-sm backdrop-blur-[2px] dark:border-border/50 dark:bg-background/60"
             )}
           >
             <div className="flex items-start gap-3">

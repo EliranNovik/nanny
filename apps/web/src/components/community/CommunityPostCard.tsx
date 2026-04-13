@@ -1,7 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
-import { BadgeCheck, Briefcase, Heart, Loader2, MessageSquare, Share2 } from "lucide-react";
+import {
+  BadgeCheck,
+  Briefcase,
+  Clock,
+  Heart,
+  Loader2,
+  MessageSquare,
+  Share2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +18,52 @@ import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/StarRating";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { type AvailabilityPayload } from "@/lib/availabilityPosts";
+import {
+  playFavoriteAddedToLikedTabFlight,
+  playFavoriteRemovedFromLikedTabFlight,
+} from "@/lib/favoriteToLikedTabFlight";
+import { CommunityPostCommentsControl } from "@/components/community/CommunityPostCommentsControl";
 import type { User } from "@supabase/supabase-js";
+
+/** e.g. `2d 5h 14m ago` — days / hours / minutes only, no seconds */
+export function formatPostedAgo(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  let ms = Math.max(0, Date.now() - t);
+  const days = Math.floor(ms / 86_400_000);
+  ms -= days * 86_400_000;
+  const hours = Math.floor(ms / 3_600_000);
+  ms -= hours * 3_600_000;
+  const minutes = Math.floor(ms / 60_000);
+  if (days === 0 && hours === 0 && minutes === 0) return "just now";
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || (days === 0 && hours === 0)) parts.push(`${minutes}m`);
+  return `${parts.join(" ")} ago`;
+}
+
+export function PostTimeLeftBadge({ expiresAtIso }: { expiresAtIso: string }) {
+  return (
+    <div
+      className={cn(
+        "inline-flex max-w-[min(100%,18rem)] items-center gap-1.5 rounded-lg border border-white/20",
+        "bg-black/55 px-2.5 py-1.5 text-white shadow-lg backdrop-blur-md",
+        "dark:border-white/15 dark:bg-black/60"
+      )}
+      role="status"
+      aria-live="polite"
+    >
+      <Clock className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+      <span className="text-[11px] font-semibold leading-none">Time left</span>
+      <ExpiryCountdown
+        expiresAtIso={expiresAtIso}
+        compact
+        className="!font-mono text-sm font-bold !text-white"
+      />
+    </div>
+  );
+}
 
 type PostViewerProfile = {
   role: "client" | "freelancer" | "admin";
@@ -51,7 +104,8 @@ export type CommunityPostCardProps = {
   profile: PostViewerProfile;
   loginRedirect: string;
   favoritedIds: Set<string>;
-  onToggleFavorite: (postId: string) => void;
+  /** Return `true` after a successful save/unsave so the heart flight animation can run. */
+  onToggleFavorite: (postId: string) => void | Promise<boolean>;
   hiringPostId: string | null;
   pendingHirePostIds: Set<string>;
   onHireFromPost: (postId: string) => void;
@@ -61,9 +115,9 @@ export type CommunityPostCardProps = {
   compact?: boolean;
   /** No bordered panel — sits on page background (e.g. Discover home). */
   plain?: boolean;
-  /** Icon-only Hire / Chat / Share row (e.g. Discover availability modal). */
+  /** Icon-only Hire / Chat / Comments row (e.g. Discover availability modal). Share is by the heart in the header. */
   iconOnlyActions?: boolean;
-  /** When using `iconOnlyActions`, omit the Share icon (e.g. public posts grid). */
+  /** Omit the Share control next to the heart (e.g. public posts grid). */
   hideShareInIconRow?: boolean;
 };
 
@@ -86,11 +140,20 @@ export function CommunityPostCard({
 }: CommunityPostCardProps) {
   const { addToast } = useToast();
   const isMine = user?.id === post.author_id;
+  const postFavoriteButtonRef = useRef<HTMLButtonElement>(null);
   const [imageLightboxIndex, setImageLightboxIndex] = useState<number | null>(null);
   const imageUrls = useMemo(
     () => post.images.map((i) => i.image_url).filter((u): u is string => Boolean(u)),
     [post.images]
   );
+
+  /** Public grid: pull Hire / Chat / Comments up against the post image */
+  const tightenIconRowToImage = Boolean(plain && iconOnlyActions && imageUrls.length > 0);
+  /** Public icon-only row: always use larger tap targets (with or without image) */
+  const largePublicIconRow = Boolean(plain && iconOnlyActions);
+  /** Public posts grid: plain + icon row — used for desktop stretch + footer pin */
+  const publicFeedCard = Boolean(plain && iconOnlyActions);
+  const pinFooterToBottom = publicFeedCard && imageUrls.length === 0;
 
   const sharePost = useCallback(async () => {
     const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
@@ -124,6 +187,18 @@ export function CommunityPostCard({
   const description =
     (post.note && post.note.trim()) || (post.body && post.body.trim()) || null;
   const verified = Boolean(post.author_is_verified);
+  const postedAgoLabel = useMemo(() => formatPostedAgo(post.created_at), [post.created_at]);
+
+  const handleTogglePostFavorite = useCallback(async () => {
+    const wasFav = favoritedIds.has(post.id);
+    const res = onToggleFavorite(post.id);
+    const ok = await Promise.resolve(res);
+    if (ok === false) return;
+    const el = postFavoriteButtonRef.current;
+    if (!el) return;
+    if (!wasFav) playFavoriteAddedToLikedTabFlight(el);
+    else playFavoriteRemovedFromLikedTabFlight(el);
+  }, [favoritedIds, onToggleFavorite, post.id]);
 
   const avatarEl = (
     <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
@@ -145,14 +220,27 @@ export function CommunityPostCard({
           : "overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
         compact && "min-w-[min(88vw,320px)] max-w-[320px] shrink-0 snap-start",
         plain && compact && "rounded-none",
+        publicFeedCard && "flex min-h-0 flex-col md:h-full",
         cardClassName
       )}
     >
-      <CardContent className={cn("p-0", plain && "flex flex-col gap-5")}>
+      <CardContent
+        className={cn(
+          "p-0",
+          plain && !publicFeedCard && "flex flex-col gap-3",
+          publicFeedCard && "flex min-h-0 flex-1 flex-col"
+        )}
+      >
         <div
           className={cn(
-            "flex items-start gap-3 px-3.5 pt-3.5 pb-2",
-            plain && "gap-4 px-4 pt-5 pb-3"
+            publicFeedCard && "flex min-h-0 flex-1 flex-col gap-3",
+            plain && !publicFeedCard && "contents"
+          )}
+        >
+        <div
+          className={cn(
+            "flex items-start gap-3 px-3.5 pt-3.5 pb-0",
+            plain && "gap-4 px-4 pt-5 pb-0.5"
           )}
         >
           {!isMine ? (
@@ -195,65 +283,93 @@ export function CommunityPostCard({
               }
               return <p className="mt-1 text-xs text-muted-foreground">No reviews yet</p>;
             })()}
+            {postedAgoLabel && (
+              <time
+                dateTime={post.created_at}
+                title={new Date(post.created_at).toISOString()}
+                className="mt-1.5 block text-xs font-medium tabular-nums tracking-tight text-muted-foreground"
+              >
+                Posted {postedAgoLabel}
+              </time>
+            )}
           </div>
-          {!isMine && (
-            <div className="shrink-0">
-              {user ? (
+          {(!isMine || !hideShareInIconRow) && (
+            <div className="flex shrink-0 items-start gap-0.5">
+              {!isMine &&
+                (user ? (
+                  <Button
+                    ref={postFavoriteButtonRef}
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "group h-9 w-9 rounded-full text-muted-foreground",
+                      "hover:bg-transparent active:bg-transparent",
+                      "focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-red-500/35 focus-visible:ring-offset-2",
+                      favoritedIds.has(post.id)
+                        ? "text-red-500 hover:bg-transparent hover:text-red-600"
+                        : "hover:text-red-500"
+                    )}
+                    onClick={() => void handleTogglePostFavorite()}
+                    aria-pressed={favoritedIds.has(post.id)}
+                    aria-label={
+                      favoritedIds.has(post.id) ? "Remove from favorites" : "Add to favorites"
+                    }
+                  >
+                    <Heart
+                      className={cn(
+                        "h-5 w-5 transition-colors",
+                        favoritedIds.has(post.id)
+                          ? "fill-current"
+                          : "fill-transparent text-muted-foreground group-hover:fill-red-500 group-hover:text-red-500"
+                      )}
+                      aria-hidden
+                    />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "group h-9 w-9 rounded-full text-muted-foreground",
+                      "hover:bg-transparent hover:text-red-500 active:bg-transparent",
+                      "focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-red-500/35 focus-visible:ring-offset-2"
+                    )}
+                    asChild
+                    aria-label="Sign in to save favorites"
+                  >
+                    <Link to={`/login?redirect=${encodeURIComponent(loginRedirect)}`}>
+                      <Heart
+                        className="h-5 w-5 fill-transparent text-muted-foreground transition-colors group-hover:fill-red-500 group-hover:text-red-500"
+                        aria-hidden
+                      />
+                    </Link>
+                  </Button>
+                ))}
+              {!hideShareInIconRow && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-9 w-9 rounded-full text-muted-foreground hover:text-red-500",
-                    favoritedIds.has(post.id) && "text-red-500 hover:text-red-600"
+                    "h-9 w-9 shrink-0 rounded-full text-muted-foreground",
+                    "hover:bg-transparent hover:text-foreground active:bg-transparent",
+                    "focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-orange-500/35 focus-visible:ring-offset-2"
                   )}
-                  onClick={() => void onToggleFavorite(post.id)}
-                  aria-pressed={favoritedIds.has(post.id)}
-                  aria-label={
-                    favoritedIds.has(post.id) ? "Remove from favorites" : "Add to favorites"
-                  }
+                  onClick={() => void sharePost()}
+                  aria-label="Share"
                 >
-                  <Heart
-                    className={cn("h-5 w-5", favoritedIds.has(post.id) && "fill-current")}
-                    aria-hidden
-                  />
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full text-muted-foreground hover:text-red-500"
-                  asChild
-                  aria-label="Sign in to save favorites"
-                >
-                  <Link to={`/login?redirect=${encodeURIComponent(loginRedirect)}`}>
-                    <Heart className="h-5 w-5" aria-hidden />
-                  </Link>
+                  <Share2 className="h-5 w-5" aria-hidden />
                 </Button>
               )}
             </div>
           )}
         </div>
 
-        <div className={cn("px-3.5 pb-6", plain && "px-4 pb-7")}>
-          <p className="text-lg font-semibold leading-snug text-foreground">{post.title}</p>
-        </div>
-
-        <div className={cn("space-y-2 px-3.5 pb-3", plain && "space-y-3 px-4 pb-4")}>
-          {post.availability_payload?.area_tag && (
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground/80">Area</span>{" "}
-              {post.availability_payload.area_tag}
-            </p>
-          )}
-          {description && (
-            <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
-              {description}
-            </p>
-          )}
-          {imageUrls.length > 0 && (
-            <div className="pt-1">
+        {imageUrls.length > 0 && !(plain && imageUrls.length === 1) && (
+          <div className={cn("px-3.5", plain && "px-4")}>
+            <div>
               <div
                 className={cn(
                   "flex gap-2",
@@ -286,66 +402,145 @@ export function CommunityPostCard({
                   </button>
                 ))}
               </div>
+              {plain && imageUrls.length > 1 && (
+                <div className="mt-2 flex justify-start">
+                  <PostTimeLeftBadge expiresAtIso={post.expires_at} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {plain && imageUrls.length === 1 && (
+          <div
+            className={cn(
+              "w-full px-4",
+              tightenIconRowToImage ? "mt-0 sm:mt-0.5" : "mt-0.5 sm:mt-1"
+            )}
+          >
+            <div className="relative w-full overflow-hidden rounded-xl">
+              <button
+                type="button"
+                onClick={() => setImageLightboxIndex(0)}
+                className="relative block aspect-[4/3] w-full overflow-hidden bg-muted/40 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-neutral-900/50"
+                aria-label="View image full screen"
+              >
+                <img
+                  src={imageUrls[0]}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </button>
+              <div className="pointer-events-none absolute bottom-2 left-2 z-[2]">
+                <PostTimeLeftBadge expiresAtIso={post.expires_at} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={cn("px-3.5 pb-6 pt-0.5", plain && "px-4 pb-7 pt-1")}>
+          <p className="text-lg font-semibold leading-snug text-foreground">{post.title}</p>
+        </div>
+
+        <div className={cn("space-y-2 px-3.5 pb-3", plain && "space-y-3 px-4 pb-4")}>
+          {post.availability_payload?.area_tag && (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground/80">Area</span>{" "}
+              {post.availability_payload.area_tag}
+            </p>
+          )}
+          {description && (
+            <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
+              {description}
+            </p>
+          )}
+          {plain && imageUrls.length === 0 && (
+            <div className="flex justify-start pt-1">
+              <PostTimeLeftBadge expiresAtIso={post.expires_at} />
             </div>
           )}
+        </div>
         </div>
 
         <div
           className={cn(
             "space-y-2 px-3.5 py-3",
             plain
-              ? "space-y-4 border-t border-border/35 bg-transparent px-4 py-5 dark:border-border/50"
-              : "border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card"
+              ? tightenIconRowToImage
+                ? "space-y-3 bg-transparent px-4 pb-4 pt-2"
+                : largePublicIconRow
+                  ? "space-y-3 bg-transparent px-4 pb-4 pt-3"
+                  : "space-y-4 bg-transparent px-4 py-5"
+              : "border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
+            pinFooterToBottom && "mt-auto"
           )}
         >
-          <ExpiryCountdown expiresAtIso={post.expires_at} />
-          <p className="text-xs font-medium text-muted-foreground">
-            Posted {new Date(post.created_at).toLocaleString()}
-          </p>
+          {!plain && <ExpiryCountdown expiresAtIso={post.expires_at} />}
           {!isMine && user && profile && (
             iconOnlyActions ? (
               <div className="flex flex-col items-center gap-2">
-                <div className="flex w-full items-center justify-center gap-3">
+                <div
+                  className={cn(
+                    "flex w-full flex-wrap items-center justify-center",
+                    largePublicIconRow ? "gap-3 sm:gap-5" : "gap-3"
+                  )}
+                >
                   {(profile.role === "client" || profile.role === "freelancer") &&
                     post.author_role === "freelancer" && (
                       <Button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 shrink-0 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:bg-orange-500/15 dark:hover:text-orange-300"
+                        className={cn(
+                          "shrink-0 gap-2 rounded-full border-0 font-semibold text-white shadow-md",
+                          "bg-orange-500 hover:bg-orange-600",
+                          "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-offset-2",
+                          "disabled:opacity-60 dark:bg-orange-500 dark:hover:bg-orange-600",
+                          largePublicIconRow ? "h-11 px-4 text-sm sm:h-12 sm:px-5 sm:text-base" : "h-9 px-3 text-xs"
+                        )}
                         disabled={hiringPostId === post.id || pendingHirePostIds.has(post.id)}
                         onClick={() => void onHireFromPost(post.id)}
-                        aria-label="Hire now"
                       >
                         {hiringPostId === post.id ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <Loader2
+                            className={cn(
+                              "animate-spin",
+                              largePublicIconRow ? "h-5 w-5" : "h-4 w-4"
+                            )}
+                            aria-hidden
+                          />
                         ) : (
-                          <Briefcase className="h-5 w-5" />
+                          <Briefcase
+                            className={cn(
+                              "shrink-0",
+                              largePublicIconRow ? "h-5 w-5" : "h-4 w-4"
+                            )}
+                            aria-hidden
+                          />
                         )}
+                        Hire now
                       </Button>
                     )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    className={cn(
+                      "shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground",
+                      largePublicIconRow ? "h-12 w-12" : "h-10 w-10"
+                    )}
                     onClick={onOpenChat}
                     aria-label="Chat"
                   >
-                    <MessageSquare className="h-5 w-5" />
+                    <MessageSquare
+                      className={largePublicIconRow ? "h-6 w-6" : "h-5 w-5"}
+                    />
                   </Button>
-                  {!hideShareInIconRow && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
-                      onClick={() => void sharePost()}
-                      aria-label="Share"
-                    >
-                      <Share2 className="h-5 w-5" />
-                    </Button>
-                  )}
+                  <CommunityPostCommentsControl
+                    postId={post.id}
+                    loginRedirect={loginRedirect}
+                    user={user}
+                    largeIcon={largePublicIconRow}
+                  />
                 </div>
                 {pendingHirePostIds.has(post.id) &&
                   (profile.role === "client" || profile.role === "freelancer") &&
@@ -358,7 +553,7 @@ export function CommunityPostCard({
             ) : (
               <div
                 className={cn(
-                  "flex gap-2",
+                  "flex flex-wrap gap-2",
                   plain && "gap-3",
                   compact
                     ? "flex-nowrap overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
@@ -407,8 +602,23 @@ export function CommunityPostCard({
                   <MessageSquare className="h-4 w-4" />
                   Chat
                 </Button>
+                <CommunityPostCommentsControl
+                  postId={post.id}
+                  loginRedirect={loginRedirect}
+                  user={user}
+                />
               </div>
             )
+          )}
+          {((!isMine && !user) || (isMine && user)) && (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <CommunityPostCommentsControl
+                postId={post.id}
+                loginRedirect={loginRedirect}
+                user={user}
+                largeIcon={largePublicIconRow}
+              />
+            </div>
           )}
           {!isMine && !user && (
             <Button type="button" variant="outline" size="sm" className="w-full rounded-xl" asChild>
