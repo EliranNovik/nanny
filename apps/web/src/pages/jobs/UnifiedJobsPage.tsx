@@ -131,10 +131,14 @@ export default function UnifiedJobsPage() {
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
       <JobsMobileTabStepper />
       {/** Mobile: strip only — PageLayoutWithHeader already clears the nav (`app-content-below-fixed-header`). */}
-      <div className="app-desktop-shell pt-[calc(5rem)] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
-        <div className="mb-4 hidden md:sticky md:top-[calc(5.5rem+env(safe-area-inset-top,0px))] md:z-40 md:flex md:justify-center md:py-2">
+      {/** Desktop: fixed directly under the app header (same offset as mobile strip). */}
+      <div className="pointer-events-none hidden md:fixed md:inset-x-0 md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:z-[60] md:flex md:justify-center md:py-2">
+        <div className="pointer-events-auto w-full">
           <JobsTabBar menuAlign="center" hideMobile />
         </div>
+      </div>
+
+      <div className="app-desktop-shell pt-[calc(5rem)] md:pt-[calc(env(safe-area-inset-top,0px)+3.5rem+7.25rem)]">
         {showRolePicker && (
           <JobsPerspectiveSwitch current={resolvedMode} className="mb-4 flex" />
         )}

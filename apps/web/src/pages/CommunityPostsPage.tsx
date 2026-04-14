@@ -152,7 +152,7 @@ function OwnAvailabilityPostCard({
     <>
       <Card
         className={cn(
-          "relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white/95 shadow-sm dark:bg-card dark:shadow-md",
+          "relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 max-md:border max-md:border-neutral-200 bg-white/95 shadow-sm dark:bg-card dark:shadow-md dark:max-md:border-neutral-700",
           "md:bg-transparent md:shadow-none dark:md:bg-transparent dark:md:shadow-none",
           expired &&
             "border-neutral-300/90 bg-neutral-100 text-neutral-600 shadow-none dark:border-neutral-600 dark:bg-neutral-900/75 dark:text-neutral-400"
@@ -666,8 +666,13 @@ export default function CommunityPostsPage() {
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
-      <div className="app-desktop-shell space-y-6 pt-[3.5rem] md:pt-8">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-1 md:max-w-4xl">
+      <div
+        className={cn(
+          "app-desktop-shell space-y-6 md:pt-8",
+          postsBasePath === "/availability" ? "pt-[2.625rem]" : "pt-[3.5rem]"
+        )}
+      >
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-1 md:max-w-4xl xl:mx-0 xl:max-w-none">
           {(categoryFilter || isAllHelp) && (
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -731,7 +736,7 @@ export default function CommunityPostsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2 lg:items-stretch">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-1 md:max-w-4xl">
             {posts.map((post) => (
               <OwnAvailabilityPostCard
                 key={post.id}

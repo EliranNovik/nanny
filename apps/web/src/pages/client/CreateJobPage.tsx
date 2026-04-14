@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
@@ -13,7 +13,9 @@ import {
   Heart,
   ArrowLeft,
   ArrowRight,
+  ChevronLeft,
   Loader2,
+  Lightbulb,
   Sparkles,
   Navigation,
   Check,
@@ -40,6 +42,7 @@ import { cn } from "@/lib/utils";
 import {
   SERVICE_CATEGORIES,
   isServiceCategoryId,
+  serviceCategoryLabel,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 
@@ -51,45 +54,47 @@ const SERVICE_TYPE_ICONS: Record<ServiceCategoryId, ReactNode> = {
   other_help: <Wrench className="h-8 w-8 text-violet-700 dark:text-violet-400" />,
 };
 
-/** Distinct surfaces for Step 1 — each category reads as its own tile */
+/** Step 1 + list tiles — white surfaces, emerald selection (matches availability wizard) */
+const JOB_CHOICE_IDLE =
+  "border-2 border-slate-200/90 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/[0.12] dark:bg-white/[0.04] dark:shadow-none";
+const JOB_CHOICE_HOVER =
+  "hover:border-emerald-400/50 hover:shadow-[0_8px_24px_-12px_rgba(16,185,129,0.2)] dark:hover:border-emerald-400/35";
+const JOB_CHOICE_SELECTED =
+  "border-2 border-emerald-500/80 bg-white shadow-[0_12px_40px_-16px_rgba(16,185,129,0.35)] ring-1 ring-emerald-500/25 dark:border-emerald-400/60 dark:bg-white/[0.04] dark:ring-emerald-400/20";
+
 const SERVICE_TYPE_STEP1_STYLE: Record<
   ServiceCategoryId,
   { idle: string; selected: string; subtitle: string; arrow: string }
 > = {
   cleaning: {
-    idle: "border-orange-200/90 bg-gradient-to-br from-orange-50 via-orange-50/80 to-amber-100/50 shadow-sm dark:border-orange-500/35 dark:from-orange-950/50 dark:via-orange-950/35 dark:to-amber-950/25",
-    selected:
-      "border-orange-500 bg-orange-50/95 shadow-lg shadow-orange-500/15 ring-2 ring-orange-500/25 dark:border-orange-400 dark:bg-orange-950/55 dark:ring-orange-400/30",
-    subtitle: "text-orange-900/70 dark:text-orange-100/65",
-    arrow: "text-orange-600 dark:text-orange-400",
+    idle: JOB_CHOICE_IDLE,
+    selected: JOB_CHOICE_SELECTED,
+    subtitle: "text-slate-500 dark:text-slate-400",
+    arrow: "text-emerald-600 dark:text-emerald-400",
   },
   cooking: {
-    idle: "border-amber-200/90 bg-gradient-to-br from-amber-50 via-yellow-50/70 to-orange-50/40 shadow-sm dark:border-amber-500/30 dark:from-amber-950/45 dark:via-yellow-950/20 dark:to-orange-950/20",
-    selected:
-      "border-amber-500 bg-amber-50/95 shadow-lg shadow-amber-500/15 ring-2 ring-amber-500/25 dark:border-amber-400 dark:bg-amber-950/50 dark:ring-amber-400/30",
-    subtitle: "text-amber-900/70 dark:text-amber-100/65",
-    arrow: "text-amber-700 dark:text-amber-400",
+    idle: JOB_CHOICE_IDLE,
+    selected: JOB_CHOICE_SELECTED,
+    subtitle: "text-slate-500 dark:text-slate-400",
+    arrow: "text-emerald-600 dark:text-emerald-400",
   },
   pickup_delivery: {
-    idle: "border-sky-200/90 bg-gradient-to-br from-sky-50 via-blue-50/80 to-indigo-50/40 shadow-sm dark:border-sky-500/35 dark:from-sky-950/45 dark:via-blue-950/30 dark:to-indigo-950/20",
-    selected:
-      "border-sky-500 bg-sky-50/95 shadow-lg shadow-sky-500/15 ring-2 ring-sky-500/25 dark:border-sky-400 dark:bg-sky-950/50 dark:ring-sky-400/30",
-    subtitle: "text-sky-900/70 dark:text-sky-100/65",
-    arrow: "text-sky-600 dark:text-sky-400",
+    idle: JOB_CHOICE_IDLE,
+    selected: JOB_CHOICE_SELECTED,
+    subtitle: "text-slate-500 dark:text-slate-400",
+    arrow: "text-emerald-600 dark:text-emerald-400",
   },
   nanny: {
-    idle: "border-pink-200/90 bg-gradient-to-br from-pink-50 via-rose-50/80 to-fuchsia-50/40 shadow-sm dark:border-pink-500/35 dark:from-pink-950/45 dark:via-rose-950/30 dark:to-fuchsia-950/20",
-    selected:
-      "border-pink-500 bg-pink-50/95 shadow-lg shadow-pink-500/15 ring-2 ring-pink-500/25 dark:border-pink-400 dark:bg-pink-950/50 dark:ring-pink-400/30",
-    subtitle: "text-pink-900/70 dark:text-pink-100/65",
-    arrow: "text-pink-600 dark:text-pink-400",
+    idle: JOB_CHOICE_IDLE,
+    selected: JOB_CHOICE_SELECTED,
+    subtitle: "text-slate-500 dark:text-slate-400",
+    arrow: "text-emerald-600 dark:text-emerald-400",
   },
   other_help: {
-    idle: "border-violet-200/90 bg-gradient-to-br from-slate-100 via-violet-50/90 to-purple-50/50 shadow-sm dark:border-violet-500/30 dark:from-slate-900/60 dark:via-violet-950/40 dark:to-purple-950/25",
-    selected:
-      "border-violet-500 bg-violet-50/95 shadow-lg shadow-violet-500/15 ring-2 ring-violet-500/25 dark:border-violet-400 dark:bg-violet-950/55 dark:ring-violet-400/30",
-    subtitle: "text-violet-900/70 dark:text-violet-100/65",
-    arrow: "text-violet-700 dark:text-violet-400",
+    idle: JOB_CHOICE_IDLE,
+    selected: JOB_CHOICE_SELECTED,
+    subtitle: "text-slate-500 dark:text-slate-400",
+    arrow: "text-emerald-600 dark:text-emerald-400",
   },
 };
 
@@ -143,6 +148,17 @@ const OTHER_HELP_TYPES = [
 ];
 
 const STORAGE_KEY = "create_job_form_data";
+
+const TOTAL_STEPS = 5;
+
+/** Mobile hero + desktop tip card — aligned with post-availability wizard copy style */
+const CREATE_JOB_STEP_TIPS: readonly string[] = [
+  "Pick the category that best matches what you need — you can post another request anytime.",
+  "One-time is for a single visit; part-time and regular suit ongoing or repeating help.",
+  "Helpers match by city — use GPS or type yours so the right people see the job.",
+  "Choose a duration that fits the visit; helpers use it to decide if they can commit.",
+  "Specific details get faster, better matches — add anything that clarifies the task.",
+];
 
 interface JobData {
   service_type: string;
@@ -291,7 +307,22 @@ export default function CreateJobPage() {
     setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const totalSteps = 5;
+  const categoryId: ServiceCategoryId | null =
+    jobData.service_type && isServiceCategoryId(jobData.service_type) ? jobData.service_type : null;
+
+  const categoryImageSrc = useMemo(
+    () => (categoryId ? SERVICE_CATEGORIES.find((c) => c.id === categoryId)?.imageSrc : undefined),
+    [categoryId]
+  );
+
+  const categoryLabel = categoryId ? serviceCategoryLabel(categoryId) : "";
+
+  const stepTip = step >= 1 && step <= TOTAL_STEPS ? CREATE_JOB_STEP_TIPS[step - 1] ?? "" : "";
+
+  const handleHeaderBack = useCallback(() => {
+    if (step > 1) setStep((s: number) => s - 1);
+    else navigate("/client/home");
+  }, [navigate, step]);
 
   function canProceed(): boolean {
     switch (step) {
@@ -401,30 +432,179 @@ export default function CreateJobPage() {
     }
   }
 
+  const shellTitle = categoryLabel || "Type of help";
+
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
-      <div className="app-desktop-shell pt-8">
-        <div className="app-desktop-centered-wide">
-        {/* Progress */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              Step {step} of {totalSteps}
-            </span>
-            <span className="text-sm font-medium text-primary">
-              {Math.round((step / totalSteps) * 100)}%
-            </span>
+    <div className="min-h-screen gradient-mesh pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 md:pt-7">
+      {/* Mobile: full-bleed hero when a service category is selected */}
+      <div className="md:hidden">
+        {categoryImageSrc ? (
+          <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
+            <div className="relative aspect-[5/4] min-h-[12rem] w-full overflow-hidden">
+              <img
+                src={categoryImageSrc}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div
+                className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/35 to-black/60"
+                aria-hidden
+              />
+              <div
+                className="absolute inset-x-0 top-0 flex items-start gap-3 px-4 pb-6"
+                style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="mt-0.5 shrink-0 rounded-full border border-white/25 bg-black/35 text-white backdrop-blur-md hover:bg-black/45 hover:text-white"
+                  onClick={handleHeaderBack}
+                  aria-label={step > 1 ? "Back" : "Back to home"}
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">
+                    Post your request
+                  </p>
+                  <h1 className="text-xl font-black leading-snug tracking-tight text-white drop-shadow-md">
+                    {shellTitle}
+                  </h1>
+                </div>
+              </div>
+              {stepTip ? (
+                <div
+                  className="absolute inset-x-0 z-10 px-4 md:hidden"
+                  style={{ bottom: "clamp(5.75rem, 24vw, 7.75rem)" }}
+                >
+                  <div
+                    className="flex gap-2.5 rounded-2xl border border-white/20 bg-black/50 px-3.5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.4)] ring-1 ring-emerald-500/25 backdrop-blur-md"
+                    role="note"
+                  >
+                    <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden />
+                    <p className="text-[13px] leading-snug text-white/95 [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
+                      {stepTip}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[min(68%,17.5rem)] bg-gradient-to-t from-black/95 via-black/60 to-transparent md:hidden"
+                aria-hidden
+              />
+              <div
+                className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-[0.2em] text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+                  Step {step} of {TOTAL_STEPS}
+                </p>
+                <div className="flex gap-1.5" aria-hidden>
+                  {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "h-1 flex-1 rounded-full transition-colors",
+                        i < step ? "bg-emerald-500" : "bg-white/25"
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
+        ) : (
+          <div
+            className="flex items-start gap-3 px-4"
+            style={{ paddingTop: "max(2.625rem, env(safe-area-inset-top))" }}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mt-0.5 shrink-0 rounded-full"
+              onClick={handleHeaderBack}
+              aria-label="Back to home"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Post your request
+              </p>
+              <h1 className="text-xl font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
+                {shellTitle}
+              </h1>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pb-8 pt-5 md:pt-0">
+        <div className="hidden items-start gap-3 md:flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="mt-0.5 shrink-0 rounded-full"
+            onClick={handleHeaderBack}
+            aria-label={step > 1 ? "Back" : "Back to home"}
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+              Post your request
+            </p>
+            <h1 className="text-xl font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
+              {shellTitle}
+            </h1>
+          </div>
+          {categoryImageSrc ? (
             <div
-              className="h-full gradient-primary transition-all duration-300"
-              style={{ width: `${(step / totalSteps) * 100}%` }}
-            />
-          </div>
+              className={cn(
+                "relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md sm:h-28 sm:w-28",
+                "dark:border-white/15 dark:bg-white/[0.06]"
+              )}
+              aria-hidden
+            >
+              <img src={categoryImageSrc} alt="" className="h-full w-full object-cover" />
+            </div>
+          ) : null}
         </div>
 
+        <div
+          className={cn("flex gap-1.5", categoryImageSrc ? "hidden md:flex" : "flex")}
+          aria-hidden
+        >
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-colors",
+                i < step ? "bg-emerald-500" : "bg-emerald-500/15 dark:bg-emerald-400/10"
+              )}
+            />
+          ))}
+        </div>
+
+        {stepTip ? (
+          <div
+            className={cn(
+              "gap-3 rounded-2xl border border-slate-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/[0.12] dark:bg-white/[0.04] dark:shadow-none",
+              categoryImageSrc ? "hidden md:flex" : "flex"
+            )}
+            role="note"
+          >
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <p className="text-sm leading-snug text-slate-700 dark:text-slate-200">{stepTip}</p>
+          </div>
+        ) : null}
+
         <div className="animate-fade-in">
-          <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2 mb-6 text-foreground">
+          <h2 className="mb-6 flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
             {step === 1 && <><Sparkles className="w-5 h-5 text-primary shrink-0" /> Type of Help</>}
             {step === 2 && <><Clock className="w-5 h-5 text-primary shrink-0" /> Type of Care</>}
             {step === 3 && <><MapPin className="w-5 h-5 text-primary shrink-0" /> Location</>}
@@ -452,16 +632,16 @@ export default function CreateJobPage() {
                         setStep(2);
                       }}
                       className={cn(
-                        "flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all",
+                        "flex items-center gap-4 rounded-2xl p-4 text-left transition-all",
                         "group relative overflow-hidden",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                         st.idle,
                         jobData.service_type === type.id
                           ? st.selected
-                          : "hover:shadow-md active:scale-[0.99] motion-reduce:active:scale-100"
+                          : cn(JOB_CHOICE_HOVER, "active:scale-[0.99] motion-reduce:active:scale-100")
                       )}
                     >
-                      <div className="flex-shrink-0 rounded-xl bg-white/50 p-1 shadow-inner dark:bg-black/20">
+                      <div className="flex-shrink-0 rounded-xl bg-slate-50 p-1 shadow-inner dark:bg-white/10">
                         {type.icon}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -495,10 +675,9 @@ export default function CreateJobPage() {
                     key={freq.id}
                     onClick={() => { updateField("care_frequency", freq.id); setStep(3); }}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
-                      jobData.care_frequency === freq.id
-                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
-                        : "border-border hover:border-primary/50 hover:bg-muted/30"
+                      "flex items-center gap-4 rounded-2xl p-4 text-left transition-all group shadow-sm",
+                      JOB_CHOICE_IDLE,
+                      jobData.care_frequency === freq.id ? JOB_CHOICE_SELECTED : JOB_CHOICE_HOVER
                     )}
                   >
                     <div className="flex-shrink-0">
@@ -515,12 +694,12 @@ export default function CreateJobPage() {
               <div className="space-y-4">
                 {/* Show saved location option if available */}
                 {profile?.city && !jobData.location_city && (
-                  <div className="p-4 rounded-2xl border-2 border-primary/20 bg-card shadow-sm">
+                  <div className="rounded-2xl border-2 border-slate-200/90 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/[0.12] dark:bg-white/[0.04]">
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="font-medium text-sm mb-1">Use your saved location?</p>
-                        <p className="text-sm text-muted-foreground mb-3">
+                        <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
                           We found a saved location: <span className="font-medium">{profile.city}</span>
                         </p>
                         <Button
@@ -543,7 +722,7 @@ export default function CreateJobPage() {
                       placeholder="Enter your city"
                       value={jobData.location_city}
                       onChange={(e) => updateField("location_city", e.target.value)}
-                      className="text-lg h-14 flex-1"
+                      className="h-14 flex-1 border-slate-200/90 bg-white text-lg dark:border-white/[0.12] dark:bg-white/[0.04]"
                       autoFocus={!profile?.city || !!jobData.location_city}
                     />
                     <Button
@@ -562,7 +741,7 @@ export default function CreateJobPage() {
                       )}
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     {profile?.city && jobData.location_city !== profile.city
                       ? "We'll match you with helpers in your area"
                       : "Click the GPS icon to automatically detect your location"}
@@ -579,10 +758,9 @@ export default function CreateJobPage() {
                     key={duration.id}
                     onClick={() => { updateField("time_duration", duration.id); setStep(5); }}
                     className={cn(
-                      "p-4 rounded-2xl border-2 transition-all text-center flex flex-col items-center justify-center gap-2 group bg-card shadow-sm",
-                      jobData.time_duration === duration.id
-                        ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
-                        : "border-border hover:border-primary/50 hover:bg-muted/30"
+                      "group flex flex-col items-center justify-center gap-2 rounded-2xl p-4 text-center shadow-sm transition-all",
+                      JOB_CHOICE_IDLE,
+                      jobData.time_duration === duration.id ? JOB_CHOICE_SELECTED : JOB_CHOICE_HOVER
                     )}
                   >
                     <div className="flex-shrink-0 mb-1">
@@ -601,16 +779,17 @@ export default function CreateJobPage() {
                 {jobData.service_type === "cleaning" && (
                   <div className="space-y-4">
                     <div className="grid gap-3">
-                      <label className="text-sm font-medium text-muted-foreground ml-1">Type of cleaning</label>
+                      <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">Type of cleaning</label>
                       {CLEANING_TYPES.map((type) => (
                         <button
                           key={type.id}
                           onClick={() => updateServiceDetail("cleaning_type", type.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
+                            "group flex items-center gap-4 rounded-2xl p-4 text-left shadow-sm transition-all",
+                            JOB_CHOICE_IDLE,
                             jobData.service_details.cleaning_type === type.id
-                              ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
-                              : "border-border hover:border-primary/50 hover:bg-muted/30"
+                              ? JOB_CHOICE_SELECTED
+                              : JOB_CHOICE_HOVER
                           )}
                         >
                           <div className="flex-shrink-0">
@@ -627,16 +806,17 @@ export default function CreateJobPage() {
                 {jobData.service_type === "cooking" && (
                   <div className="space-y-4">
                     <div className="grid gap-3">
-                      <label className="text-sm font-medium text-muted-foreground ml-1">How many people?</label>
+                      <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">How many people?</label>
                       {COOKING_PEOPLE_COUNTS.map((count) => (
                         <button
                           key={count.id}
                           onClick={() => updateServiceDetail("people_count", count.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
+                            "group flex items-center gap-4 rounded-2xl p-4 text-left shadow-sm transition-all",
+                            JOB_CHOICE_IDLE,
                             jobData.service_details.people_count === count.id
-                              ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
-                              : "border-border hover:border-primary/50 hover:bg-muted/30"
+                              ? JOB_CHOICE_SELECTED
+                              : JOB_CHOICE_HOVER
                           )}
                         >
                           <div className="flex-shrink-0">
@@ -685,16 +865,17 @@ export default function CreateJobPage() {
                 {jobData.service_type === "nanny" && (
                   <div className="space-y-4">
                     <div className="grid gap-3">
-                      <label className="text-sm font-medium text-muted-foreground ml-1">How many kids?</label>
+                      <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">How many kids?</label>
                       {NANNY_KIDS_COUNTS.map((count) => (
                         <button
                           key={count.id}
                           onClick={() => updateServiceDetail("kids_count", count.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
+                            "group flex items-center gap-4 rounded-2xl p-4 text-left shadow-sm transition-all",
+                            JOB_CHOICE_IDLE,
                             jobData.service_details.kids_count === count.id
-                              ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
-                              : "border-border hover:border-primary/50 hover:bg-muted/30"
+                              ? JOB_CHOICE_SELECTED
+                              : JOB_CHOICE_HOVER
                           )}
                         >
                           <div className="flex-shrink-0">
@@ -711,16 +892,17 @@ export default function CreateJobPage() {
                 {jobData.service_type === "other_help" && (
                   <div className="space-y-4">
                     <div className="grid gap-3">
-                      <label className="text-sm font-medium text-muted-foreground ml-1">Type of help</label>
+                      <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">Type of help</label>
                       {OTHER_HELP_TYPES.map((type) => (
                         <button
                           key={type.id}
                           onClick={() => updateServiceDetail("other_type", type.id)}
                           className={cn(
-                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group bg-card shadow-sm",
+                            "group flex items-center gap-4 rounded-2xl p-4 text-left shadow-sm transition-all",
+                            JOB_CHOICE_IDLE,
                             jobData.service_details.other_type === type.id
-                              ? "border-primary bg-primary/10 shadow-lg shadow-primary/5"
-                              : "border-border hover:border-primary/50 hover:bg-muted/30"
+                              ? JOB_CHOICE_SELECTED
+                              : JOB_CHOICE_HOVER
                           )}
                         >
                           <div className="flex-shrink-0">
@@ -732,12 +914,14 @@ export default function CreateJobPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Additional details (optional)</label>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        Additional details (optional)
+                      </label>
                       <Input
                         placeholder="Describe what you need help with..."
                         value={jobData.service_details.description || ""}
                         onChange={(e) => updateServiceDetail("description", e.target.value)}
-                        className="text-lg h-14"
+                        className="h-14 border-slate-200/90 bg-white text-lg dark:border-white/[0.12] dark:bg-white/[0.04]"
                       />
                     </div>
                   </div>
@@ -791,7 +975,6 @@ export default function CreateJobPage() {
               )}
             </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

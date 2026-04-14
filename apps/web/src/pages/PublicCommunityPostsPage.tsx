@@ -1,26 +1,41 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   CommunityPostCard,
   type CommunityFeedPost,
   type CommunityPostImage,
   type CommunityPostWithMeta,
 } from "@/components/community/CommunityPostCard";
-import { CommunityPostsCategoryNativeSelect } from "@/components/community/CommunityPostsCategoryNativeSelect";
+import { PublicPostsCategoryStepper } from "@/components/community/PublicPostsCategoryStepper";
 import {
+  ALL_HELP_CATEGORY_ID,
   isAllHelpCategory,
   isServiceCategoryId,
   serviceCategoryLabel,
+  type DiscoverHomeCategoryId,
 } from "@/lib/serviceCategories";
 import { openCommunityContact } from "@/lib/communityContact";
 import { apiPost } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+/** Mobile snap: directly under fixed category bar (~3.5rem header + ~3.25rem tabs) + small gap */
+const MOBILE_SNAP_TOP_LOGGED_IN =
+  "top-[calc(env(safe-area-inset-top,0px)+7.25rem)]";
+/** Guest: app header + back/title block (approx) */
+const MOBILE_SNAP_TOP_GUEST =
+  "top-[calc(env(safe-area-inset-top,0px)+3.5rem+5.75rem)]";
+/**
+ * Clears fixed BottomNav row: py-2 top (0.5rem) + tallest tap target (52px FAB) +
+ * pb max(0.5rem, safe-area). Do not add safe-area twice — it is already in max(...).
+ */
+const MOBILE_SNAP_BOTTOM =
+  "bottom-[calc(3.75rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]";
 
 export default function PublicCommunityPostsPage() {
   const navigate = useNavigate();
@@ -33,6 +48,28 @@ export default function PublicCommunityPostsPage() {
       : categoryFilter && isServiceCategoryId(categoryFilter)
         ? categoryFilter
         : null;
+
+  const activeCategoryId: DiscoverHomeCategoryId = useMemo(() => {
+    if (!categoryFilter) return ALL_HELP_CATEGORY_ID;
+    if (isAllHelpCategory(categoryFilter)) return ALL_HELP_CATEGORY_ID;
+    if (isServiceCategoryId(categoryFilter)) return categoryFilter;
+    return ALL_HELP_CATEGORY_ID;
+  }, [categoryFilter]);
+
+  const selectCategory = useCallback((id: DiscoverHomeCategoryId) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (id === ALL_HELP_CATEGORY_ID) {
+          next.delete("category");
+        } else {
+          next.set("category", id);
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
 
   const { user, profile } = useAuth();
   const { addToast } = useToast();
@@ -54,11 +91,9 @@ export default function PublicCommunityPostsPage() {
   );
 
   const categoryTitle =
-    validCategory !== null
-      ? serviceCategoryLabel(validCategory)
-      : isAllHelp || !categoryFilter
-        ? "All help"
-        : null;
+    activeCategoryId === ALL_HELP_CATEGORY_ID
+      ? "All help"
+      : serviceCategoryLabel(activeCategoryId);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -266,95 +301,73 @@ export default function PublicCommunityPostsPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div
+      className={cn(
+        "min-h-screen gradient-mesh pb-6 md:pb-8",
+        posts.length > 0 && "max-md:overflow-hidden max-md:pb-0"
+      )}
+      {...(posts.length > 0 ? { "data-public-snap-feed-mobile": "" } : {})}
+    >
       <div
-        className={
+        className={cn(
+          "app-desktop-shell space-y-6",
           user
-            ? "app-desktop-shell space-y-6 pt-0 md:pt-0"
-            : "app-desktop-shell space-y-6 pt-4 md:pt-6"
-        }
+            ? "pt-[calc(0.5rem+5.25rem+0.75rem)] md:pt-[calc(0.5rem+5.5rem+0.75rem)]"
+            : "pt-4 md:pt-6",
+          /* Mobile snap feed is position:fixed — in-flow pt would only add an empty band (reads as white under tabs) */
+          posts.length > 0 && "max-md:!pt-0"
+        )}
       >
-        {/* Fixed bottom-right, flush above bottom nav (matches BottomNav row: py-2 + h-52 FAB row + bottom pad) */}
-        <Button
-          type="button"
-          className={cn(
-            "fixed z-[125] gap-2 rounded-full shadow-lg",
-            "right-[max(1rem,env(safe-area-inset-right,0px))]",
-            user
-              ? "bottom-[calc(0.5rem+3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] md:bottom-[calc(1.5rem+4.5rem+env(safe-area-inset-bottom,0px))]"
-              : "bottom-6"
-          )}
-          asChild
-        >
-          <Link to={user ? "/availability" : `/login?redirect=${encodeURIComponent("/availability")}`}>
-            <Plus className="h-4 w-4" />
-            Set availability
-          </Link>
-        </Button>
-
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-1 md:max-w-4xl">
-          {/* Logged-out: no app header — keep back + category here */}
-          {!user && (
-            <>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5 -ml-2 rounded-full"
-                  onClick={() => {
-                    if (typeof window !== "undefined" && window.history.length > 1) navigate(-1);
-                    else navigate("/");
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
-                {(validCategory || isAllHelp) && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="hidden rounded-full text-xs md:inline-flex"
-                    onClick={() => {
-                      setSearchParams({});
-                    }}
-                  >
-                    All categories
-                  </Button>
-                )}
+        {/* Fixed category stepper under header (Jobs-style) */}
+        {user && (
+          <div
+            className={cn(
+              "fixed inset-x-0 z-[45] pointer-events-none",
+              "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
+              "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
+              "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+            )}
+          >
+            <div className="app-desktop-shell pointer-events-auto">
+              <div className="mx-auto w-full px-0 py-2">
+                <PublicPostsCategoryStepper activeId={activeCategoryId} onSelect={selectCategory} />
               </div>
-              <CommunityPostsCategoryNativeSelect
-                className="md:hidden"
-                basePath="/public/posts"
-                categoryParam={categoryFilter}
-              />
-            </>
-          )}
-          {user && (validCategory || isAllHelp) && (
-            <div className="hidden flex-wrap items-center gap-2 md:flex">
+            </div>
+          </div>
+        )}
+
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-1 md:max-w-4xl xl:mx-0 xl:max-w-none">
+          {!user && (
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="rounded-full text-xs"
+                className="gap-1.5 -ml-2 rounded-full"
                 onClick={() => {
-                  setSearchParams({});
+                  if (typeof window !== "undefined" && window.history.length > 1) navigate(-1);
+                  else navigate("/");
                 }}
               >
-                All categories
+                <ArrowLeft className="h-4 w-4" />
+                Back
               </Button>
             </div>
           )}
 
-          <div>
+          <div
+            className={cn(
+              posts.length > 0 && user && "max-md:hidden",
+              posts.length > 0 && !user && "max-md:pb-1"
+            )}
+          >
             <h1 className="text-[26px] font-black tracking-tight text-slate-900 dark:text-white md:text-[30px]">
-              {categoryTitle ? `${categoryTitle} — available now` : "Available now"}
+              {`${categoryTitle} — available now`}
             </h1>
-            <p className="mt-1 max-w-xl text-[15px] font-medium text-muted-foreground">
-              {categoryTitle
-                ? `Short-lived availability in ${categoryTitle}. Sign in to chat.`
-                : "Time-limited availability — tap to message. Posts disappear when time is up."}
+            <p className="mt-1 max-w-xl text-[15px] font-medium text-muted-foreground max-md:line-clamp-2 md:line-clamp-none">
+              {activeCategoryId === ALL_HELP_CATEGORY_ID
+                ? "Time-limited availability — tap to message. Posts disappear when time is up."
+                : `Short-lived availability in ${categoryTitle}. Sign in to chat.`}
             </p>
           </div>
         </div>
@@ -374,37 +387,87 @@ export default function PublicCommunityPostsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-5 px-1 md:max-w-4xl lg:grid-cols-2 lg:items-stretch">
-            {posts.map((post) => (
-              <CommunityPostCard
-                key={post.id}
-                post={post}
-                user={user}
-                profile={profile}
-                loginRedirect={loginRedirect}
-                favoritedIds={favoritedIds}
-                onToggleFavorite={toggleFavorite}
-                hiringPostId={hiringPostId}
-                pendingHirePostIds={pendingHirePostIds}
-                onHireFromPost={handleHireFromPost}
-                plain
-                cardClassName="h-full overflow-hidden rounded-2xl border-0 bg-white/95 shadow-sm ring-0 md:bg-transparent md:shadow-none dark:bg-card dark:shadow-md dark:md:bg-transparent dark:md:shadow-none"
-                iconOnlyActions
-                onOpenChat={() => {
-                  if (!user || !profile) return;
-                  void openCommunityContact({
-                    supabase,
-                    user,
-                    myRole: profile.role,
-                    targetUserId: post.author_id,
-                    targetRole: post.author_role,
-                    navigate,
-                    addToast,
-                  });
-                }}
-              />
-            ))}
-          </div>
+          <>
+            {/* Desktop & tablet: stacked list */}
+            <div className="mx-auto hidden w-full max-w-3xl flex-col gap-5 px-1 md:max-w-4xl md:flex">
+              {posts.map((post) => (
+                <CommunityPostCard
+                  key={post.id}
+                  post={post}
+                  user={user}
+                  profile={profile}
+                  loginRedirect={loginRedirect}
+                  favoritedIds={favoritedIds}
+                  onToggleFavorite={toggleFavorite}
+                  hiringPostId={hiringPostId}
+                  pendingHirePostIds={pendingHirePostIds}
+                  onHireFromPost={handleHireFromPost}
+                  plain
+                  cardClassName="h-full overflow-hidden rounded-2xl border-0 max-md:border max-md:border-neutral-200 bg-white/95 shadow-sm ring-0 md:bg-transparent md:shadow-none dark:bg-card dark:shadow-md dark:max-md:border-neutral-700 dark:md:bg-transparent dark:md:shadow-none"
+                  iconOnlyActions
+                  onOpenChat={() => {
+                    if (!user || !profile) return;
+                    void openCommunityContact({
+                      supabase,
+                      user,
+                      myRole: profile.role,
+                      targetUserId: post.author_id,
+                      targetRole: post.author_role,
+                      navigate,
+                      addToast,
+                    });
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Mobile: one post per viewport, snap-scroll centered between chrome */}
+            <div
+              className={cn(
+                "fixed inset-x-0 z-[20] overflow-y-auto overscroll-y-contain md:hidden",
+                "snap-y snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+                user ? MOBILE_SNAP_TOP_LOGGED_IN : MOBILE_SNAP_TOP_GUEST,
+                MOBILE_SNAP_BOTTOM
+              )}
+              aria-label="Availability posts"
+            >
+              {posts.map((post) => (
+                <div
+                  key={post.id}
+                  className="box-border flex min-h-full w-full snap-center snap-always flex-col justify-center px-3 py-2"
+                >
+                  <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-1 flex-col overflow-y-auto [-webkit-overflow-scrolling:touch]">
+                    <CommunityPostCard
+                      post={post}
+                      user={user}
+                      profile={profile}
+                      loginRedirect={loginRedirect}
+                      favoritedIds={favoritedIds}
+                      onToggleFavorite={toggleFavorite}
+                      hiringPostId={hiringPostId}
+                      pendingHirePostIds={pendingHirePostIds}
+                      onHireFromPost={handleHireFromPost}
+                      plain
+                      cardClassName="h-full overflow-hidden rounded-2xl border-0 max-md:border max-md:border-neutral-200 bg-white/95 shadow-sm ring-0 md:bg-transparent md:shadow-none dark:bg-card dark:shadow-md dark:max-md:border-neutral-700 dark:md:bg-transparent dark:md:shadow-none"
+                      iconOnlyActions
+                      onOpenChat={() => {
+                        if (!user || !profile) return;
+                        void openCommunityContact({
+                          supabase,
+                          user,
+                          myRole: profile.role,
+                          targetUserId: post.author_id,
+                          targetRole: post.author_role,
+                          navigate,
+                          addToast,
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

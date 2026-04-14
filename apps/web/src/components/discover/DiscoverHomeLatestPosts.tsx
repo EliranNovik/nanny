@@ -162,11 +162,11 @@ export function DiscoverHomeLatestPosts() {
 
   if (loading && !preview) {
     return (
-      <section className="w-full" aria-label="Latest posts">
+      <section className="w-full" aria-label="Live activity on the board">
         <div className="flex items-center justify-between gap-3 pb-3 pt-1">
           <div className="min-w-0">
-            <h2 className="text-lg font-black tracking-tight text-stone-900 sm:text-xl dark:text-white">Latest posts</h2>
-            <p className="text-sm font-medium text-muted-foreground">Loading…</p>
+            <h2 className="text-xl font-black tracking-tight text-stone-900 sm:text-2xl dark:text-white">Live activity</h2>
+            <p className="text-xs font-medium text-muted-foreground">Loading…</p>
           </div>
         </div>
       </section>
@@ -233,23 +233,28 @@ export function DiscoverHomeLatestPosts() {
   };
 
   return (
-    <section className="w-full" aria-label="Latest posts">
+    <section className="w-full" aria-label="Live activity on the board">
       <div className="flex items-center justify-between gap-3 pb-4 pt-1">
         <button
           type="button"
           onClick={() => setIsOpen(true)}
           className="group flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl px-1.5 py-1 text-left transition-colors hover:bg-orange-500/5 active:bg-orange-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label="Open latest posts"
+          aria-label="Open live activity posts"
         >
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
               <Radio className="h-6 w-6 motion-safe:animate-pulse" strokeWidth={2.25} aria-hidden />
+              <span className="absolute right-1 top-1 flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg font-black tracking-tight text-stone-900 sm:text-xl dark:text-white">Latest posts</h2>
-              <p className="text-sm font-medium text-orange-800 dark:text-orange-200/95">Public board</p>
+              <h2 className="text-xl font-black tracking-tight text-stone-900 sm:text-2xl dark:text-white">Happening now</h2>
+              <p className="text-xs font-medium text-muted-foreground">Public posts · updating often</p>
             </div>
           </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground opacity-70 transition-opacity group-hover:opacity-100" aria-hidden />
         </button>
       </div>
 
@@ -281,10 +286,10 @@ export function DiscoverHomeLatestPosts() {
             <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-black/5 bg-background/90 px-5 py-4 backdrop-blur-md dark:border-white/5">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-600/90 dark:text-orange-400/90">
-                  Latest
+                  Live
                 </p>
                 <h3 className="truncate text-lg font-black tracking-tight text-stone-900 dark:text-white">
-                  Posts
+                  Happening now
                 </h3>
               </div>
               <button

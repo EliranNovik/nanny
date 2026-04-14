@@ -49,12 +49,12 @@ export function DiscoverHomeLatestReviews({ limit = 6 }: { limit?: number }) {
 
   const gradients = useMemo(
     () => [
-      "from-blue-400 to-purple-500",
-      "from-green-400 to-teal-500",
-      "from-orange-400 to-pink-500",
-      "from-red-400 to-indigo-500",
-      "from-purple-400 to-blue-500",
-      "from-emerald-400 to-cyan-500",
+      "from-emerald-500 to-teal-600",
+      "from-orange-500 to-orange-700",
+      "from-slate-500 to-slate-700",
+      "from-emerald-400 to-emerald-700",
+      "from-orange-400 to-rose-600",
+      "from-teal-500 to-emerald-700",
     ],
     []
   );

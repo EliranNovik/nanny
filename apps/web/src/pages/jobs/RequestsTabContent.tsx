@@ -21,6 +21,13 @@ import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
 import { JobAttachedPhotosStrip, jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
 import { JobCardsCarousel, jobCardCarouselItemClass } from "@/components/jobs/JobCardsCarousel";
 import {
+    JOB_CARD_COMPACT_ROW,
+    JOB_CARD_EMPTY_PANEL,
+    JOB_CARD_SHELL,
+    JOB_CARD_THUMB,
+    JOB_CARD_THUMB_BUTTON,
+} from "@/components/jobs/jobCardSharedClasses";
+import {
   IncomingJobRequestCard,
   type IncomingJobRequestCardJob,
 } from "@/components/jobs/IncomingJobRequestCard";
@@ -112,12 +119,12 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
         if (!notes) return null;
 
         return (
-            <div className="mt-3 md:hidden">
-                <div className="rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04]">
-                    <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
+            <div className="mt-3 md:mt-4">
+                <div className="rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04] md:px-5 md:py-4">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground md:text-xs">
                         Notes
                     </p>
-                    <p className="mt-1.5 whitespace-pre-wrap text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100">
+                    <p className="mt-1.5 whitespace-pre-wrap text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100 md:text-base">
                         {notes}
                     </p>
                 </div>
@@ -440,7 +447,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         </JobCardsCarousel>
                         </>
                     ) : (
-                        <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                        <Card className={cn(JOB_CARD_EMPTY_PANEL, "mr-4 min-w-[85vw] md:mr-0 md:min-w-0")}>
                             <CardContent className="p-6 text-center text-muted-foreground">
                                 <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                                 <p className="text-sm">
@@ -484,7 +491,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                             data-job-card
                                             onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                             className={cn(
-                                                "transition-all duration-500 w-full rounded-[32px] overflow-hidden border-0 md:border md:border-slate-300/45 md:dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-transparent md:bg-card md:backdrop-blur-sm group relative",
+                                                JOB_CARD_SHELL,
                                                 !isMinMd && "cursor-pointer",
                                                 isMinMd && "md:cursor-default",
                                                 jobCardCarouselItemClass
@@ -494,7 +501,6 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 className={cn(isMinMd && "cursor-pointer")}
                                                 onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                             >
-                                            <div className="md:hidden">
                                             <JobCardLocationBar
                                                 location={job.location_city}
                                                 trailing={
@@ -504,24 +510,35 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 }
                                             />
                                             </div>
-                                            </div>
                                             <div className="relative flex min-h-0 flex-1 flex-col">
                                             {/* Smart Mobile Scroll Overlay */}
                                             <div className={cn(
-                                                "absolute inset-0 bg-zinc-900/40 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none z-[100] md:hidden",
+                                                "pointer-events-none absolute inset-0 z-[100] bg-zinc-900/40 backdrop-blur-[0.5px] transition-opacity duration-500 md:hidden",
                                                 clippedCardIds.has(`card-${n.id}`) ? "opacity-100" : "opacity-0"
                                             )} />
-                                            <div className="flex gap-3 p-3 md:hidden">
-                                                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
+                                            <div className={JOB_CARD_COMPACT_ROW}>
+                                                <button
+                                                    type="button"
+                                                    className={cn(JOB_CARD_THUMB, JOB_CARD_THUMB_BUTTON)}
+                                                    aria-label={`Open job preview: ${formatJobTitle(job)}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openJobPreview(job);
+                                                    }}
+                                                >
                                                     {job.service_type === "pickup_delivery" ? (
-                                                        <div className="absolute inset-0 z-0">
+                                                        <div className="pointer-events-none absolute inset-0 z-0">
                                                             <JobMap job={job} />
                                                         </div>
                                                     ) : (
-                                                        <img src={serviceHeroImageSrc(job)} alt={formatJobTitle(job)} className="h-full w-full object-cover" />
+                                                        <img
+                                                            src={serviceHeroImageSrc(job)}
+                                                            alt=""
+                                                            className="pointer-events-none h-full w-full object-cover"
+                                                        />
                                                     )}
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-                                                </div>
+                                                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+                                                </button>
                                                 <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
                                                     <button
                                                         type="button"
@@ -529,107 +546,34 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                         onClick={(e) => goToPublicProfile(e, job.client_id)}
                                                         disabled={!job.client_id}
                                                     >
-                                                        <Avatar className="h-12 w-12 shrink-0 border border-slate-200 dark:border-zinc-600">
+                                                        <Avatar className="h-12 w-12 shrink-0 border border-slate-200 dark:border-zinc-600 md:h-14 md:w-14">
                                                             <AvatarImage src={job.profiles?.photo_url || ""} />
-                                                            <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white">{job.profiles?.full_name?.charAt(0) || "C"}</AvatarFallback>
+                                                            <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white md:text-sm">{job.profiles?.full_name?.charAt(0) || "C"}</AvatarFallback>
                                                         </Avatar>
-                                                        <h3 className="truncate text-base font-black leading-tight text-slate-900 dark:text-white">{job.profiles?.full_name || "Client"}</h3>
+                                                        <h3 className="truncate text-base font-black leading-tight text-slate-900 dark:text-white md:text-lg">{job.profiles?.full_name || "Client"}</h3>
                                                     </button>
                                                     {job.profiles?.average_rating ? (
                                                         <StarRating
                                                             rating={job.profiles.average_rating}
                                                             size="sm"
                                                             showCount={false}
-                                                            className="origin-left scale-90"
+                                                            className="origin-left scale-90 md:scale-100"
                                                             starClassName="text-slate-900 dark:text-neutral-200"
                                                             emptyStarClassName="text-slate-900/25 dark:text-neutral-500/35"
                                                         />
                                                     ) : (
-                                                        <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">New client</span>
+                                                        <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400 md:text-sm">New client</span>
                                                     )}
-                                                    <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{formatJobTitle(job)}</span>
+                                                    <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400 md:text-sm">{formatJobTitle(job)}</span>
                                                 </div>
                                                 <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
-                                                    <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
-                                                </div>
-                                            </div>
-                                            <div
-                                                className="relative hidden h-32 w-full overflow-hidden group/img sm:h-36 md:block md:h-36 lg:h-40"
-                                            >
-                                                {job.service_type === "pickup_delivery" ? (
-                                                    <div className="absolute inset-0 z-0">
-                                                        <JobMap job={job} />
-                                                    </div>
-                                                ) : (
-                                                    <img
-                                                        src={serviceHeroImageSrc(job)}
-                                                        alt={formatJobTitle(job)}
-                                                        className="h-full w-full object-cover transition-transform duration-700 group-hover/img:scale-110"
-                                                    />
-                                                )}
-                                                <div className="pointer-events-none absolute right-4 top-4 z-[45] [&>*]:md:min-h-[2.25rem] [&>*]:md:px-4 [&>*]:md:text-[11px] [&>*]:md:leading-tight">
-                                                    <Badge className="h-7 shrink-0 rounded-full border-none bg-amber-500 px-2.5 text-[10px] font-black uppercase leading-tight tracking-wide text-white shadow-md shadow-amber-500/20 sm:px-3 sm:text-[10px] md:min-h-[2.25rem] md:px-4 md:text-[11px]">
-                                                        Pending
-                                                    </Badge>
-                                                </div>
-                                                <div className="absolute inset-0 bg-black/40 z-10" />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-20" />
-                                                <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 pointer-events-none">
-                                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
-                                                        <ChevronRight className="h-4 w-4" />
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    className="absolute inset-0 z-[30] cursor-pointer"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openJobPreview(job);
-                                                    }}
-                                                    aria-hidden
-                                                />
-                                                <div className="pointer-events-none absolute bottom-2 left-4 right-4 z-[40] flex flex-col gap-1.5 sm:bottom-3 sm:left-5 sm:right-5 md:gap-2">
-                                                    <button
-                                                        type="button"
-                                                        className="pointer-events-auto flex min-w-0 max-w-full items-start gap-2.5 rounded-xl text-left outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-100 sm:gap-3"
-                                                        onClick={(e) => goToPublicProfile(e, job.client_id)}
-                                                        disabled={!job.client_id}
-                                                    >
-                                                        <Avatar className="h-14 w-14 flex-shrink-0 border-2 border-white/30 shadow-lg transition-transform duration-500 group-hover:scale-105 md:h-16 md:w-16">
-                                                            <AvatarImage src={job.profiles?.photo_url || ""} />
-                                                            <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white md:text-sm">{job.profiles?.full_name?.charAt(0) || "C"}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="min-w-0 flex-1">
-                                                            <h3 className="text-lg font-black leading-tight tracking-tight text-white drop-shadow-xl md:text-xl lg:text-2xl">{job.profiles?.full_name || "Client"}</h3>
-                                                            <p className="mt-0.5 text-[13px] font-semibold text-white/90 drop-shadow-md md:text-sm">
-                                                                {job.location_city?.trim() || "Location not set"}
-                                                            </p>
-                                                        </div>
-                                                    </button>
-                                                    <div className="flex flex-col gap-1 pointer-events-none">
-                                                        <div className="flex items-center gap-2 px-0.5">
-                                                            {job.profiles?.average_rating ? (
-                                                                <StarRating
-                                                                    rating={job.profiles.average_rating}
-                                                                    size="sm"
-                                                                    showCount={false}
-                                                                    starClassName="text-white"
-                                                                    emptyStarClassName="text-white/30"
-                                                                    numberClassName="text-white drop-shadow-md text-[12px] md:text-[13px]"
-                                                                />
-                                                            ) : (
-                                                                <span className="text-[12px] font-bold text-white/80 italic drop-shadow-md md:text-[13px]">New Client</span>
-                                                            )}
-                                                        </div>
-                                                        <span className="w-full text-center text-[13px] font-black uppercase tracking-[0.12em] text-white/95 drop-shadow-md md:text-[14px] lg:text-[15px]">
-                                                            {formatJobTitle(job)}
-                                                        </span>
-                                                    </div>
+                                                    <ChevronRight className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2.25} />
                                                 </div>
                                             </div>
                                             <JobAttachedPhotosStrip images={jobAttachmentImageUrls(job)} />
                                             <CardContent
                                                 className={cn(
-                                                    "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-7 md:p-7 md:pt-7",
+                                                    "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-4",
                                                     isMinMd && "md:cursor-pointer"
                                                 )}
                                                 onClick={isMinMd ? () => openJobPreview(job) : undefined}
@@ -668,7 +612,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                             </JobCardsCarousel>
                             </>
                         ) : (
-                            <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                            <Card className={cn(JOB_CARD_EMPTY_PANEL, "mr-4 min-w-[85vw] md:mr-0 md:min-w-0")}>
                                 <CardContent className="p-6 text-center text-muted-foreground">
                                     <Hourglass className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                                     <p className="text-sm">
@@ -710,7 +654,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                     data-job-card
                                     onClick={isMinMd ? undefined : () => openJobPreview(job)}
                                     className={cn(
-                                        "transition-all duration-500 w-full rounded-[32px] overflow-hidden border-0 md:border md:border-slate-300/45 md:dark:border-zinc-500/35 shadow-none md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)] md:hover:-translate-y-2 flex flex-col h-full bg-transparent md:bg-card md:backdrop-blur-sm group relative",
+                                        JOB_CARD_SHELL,
                                         !isMinMd && "cursor-pointer",
                                         isMinMd && "md:cursor-default",
                                         jobCardCarouselItemClass
@@ -720,102 +664,50 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                         className={cn(isMinMd && "cursor-pointer")}
                                         onClick={isMinMd ? () => openJobPreview(job) : undefined}
                                     >
-                                    <div className="md:hidden">
                                     <JobCardLocationBar
                                         location={job.location_city}
                                         trailing={getJobStatusBadge(job.status)}
                                     />
                                     </div>
-                                    </div>
                                     <div className="relative flex min-h-0 flex-1 flex-col">
                                     {/* Smart Scroll Overlay */}
                                     <div className={cn(
-                                        "absolute inset-0 bg-zinc-900/40 backdrop-blur-[0.5px] transition-opacity duration-500 pointer-events-none z-[100] md:hidden",
+                                        "pointer-events-none absolute inset-0 z-[100] bg-zinc-900/40 backdrop-blur-[0.5px] transition-opacity duration-500 md:hidden",
                                         clippedCardIds.has(`card-${job.id}`) ? "opacity-100" : "opacity-0"
                                     )} />
-                                    <div className="flex gap-3 p-3 md:hidden">
-                                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10 pointer-events-none">
-                                            {job.service_type === "pickup_delivery" ? (
-                                                <div className="absolute inset-0 z-0">
-                                                    <JobMap job={job} />
-                                                </div>
-                                            ) : (
-                                                <img src={serviceHeroImageSrc(job)} alt={formatJobTitle(job)} className="h-full w-full object-cover" />
-                                            )}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-                                        </div>
-                                        <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
-                                            <span className="text-base font-bold leading-snug text-slate-800 dark:text-slate-100">
-                                                Posted {new Date(job.created_at).toLocaleDateString()}
-                                            </span>
-                                            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-                                                {formatJobTitle(job)}
-                                            </span>
-                                        </div>
-                                        <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
-                                            <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="relative hidden h-32 w-full overflow-hidden group/img sm:h-36 md:block md:h-36 lg:h-40"
-                                    >
-                                        {job.service_type === "pickup_delivery" ? (
-                                            <div className="absolute inset-0 z-0">
-                                                <JobMap job={job} />
-                                            </div>
-                                        ) : (
-                                            <img
-                                                src={serviceHeroImageSrc(job)}
-                                                alt={formatJobTitle(job)}
-                                                className="h-full w-full object-cover transition-transform duration-700 group-hover/img:scale-110"
-                                            />
-                                        )}
-                                        <div className="pointer-events-none absolute right-4 top-4 z-[45] [&>*]:md:min-h-[2.25rem] [&>*]:md:px-4 [&>*]:md:text-[11px] [&>*]:md:leading-tight">
-                                            {getJobStatusBadge(job.status)}
-                                        </div>
-                                        <div className="absolute inset-0 z-10 bg-black/40" />
-                                        <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                                        <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2 pointer-events-none">
-                                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
-                                                <ChevronRight className="h-4 w-4" />
-                                            </span>
-                                        </div>
-                                        <div
-                                            className="absolute inset-0 z-[30] cursor-pointer"
+                                    <div className={JOB_CARD_COMPACT_ROW}>
+                                        <button
+                                            type="button"
+                                            className={cn(JOB_CARD_THUMB, JOB_CARD_THUMB_BUTTON)}
+                                            aria-label={`Open job preview: ${formatJobTitle(job)}`}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 openJobPreview(job);
                                             }}
-                                            aria-hidden
-                                        />
-                                        <div className="pointer-events-none absolute bottom-2 left-4 right-4 z-[40] flex flex-col gap-1.5 sm:bottom-3 sm:left-5 sm:right-5 md:gap-2">
-                                            <div className="min-w-0 text-left">
-                                                <h3 className="text-lg font-black leading-tight tracking-tight text-white drop-shadow-xl md:text-xl lg:text-2xl">
-                                                    {formatJobTitle(job)}
-                                                </h3>
-                                                <p className="mt-0.5 text-[13px] font-semibold text-white/90 drop-shadow-md md:text-sm">
-                                                    {job.location_city?.trim() || "Location not set"}
-                                                </p>
-                                                <p className="mt-1 text-[12px] font-semibold text-white/75 drop-shadow-md md:text-[13px]">
-                                                    Posted {new Date(job.created_at).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                            {job.created_at && (
-                                                <div className="flex w-full items-center justify-between gap-2 border-t border-white/20 pt-2 text-[14px] font-bold text-white/90 md:text-[15px]">
-                                                    <div className="flex min-w-0 items-center gap-2">
-                                                        <Clock className="h-4 w-4 shrink-0 opacity-95 md:h-[1.125rem] md:w-[1.125rem]" aria-hidden />
-                                                        <span>Active</span>
-                                                    </div>
-                                                    <LiveTimer
-                                                        createdAt={job.created_at}
-                                                        render={({ time }) => (
-                                                            <span className="shrink-0 tabular-nums text-[14px] font-bold text-white/90 drop-shadow-md md:text-[15px]">
-                                                                {time}
-                                                            </span>
-                                                        )}
-                                                    />
+                                        >
+                                            {job.service_type === "pickup_delivery" ? (
+                                                <div className="pointer-events-none absolute inset-0 z-0">
+                                                    <JobMap job={job} />
                                                 </div>
+                                            ) : (
+                                                <img
+                                                    src={serviceHeroImageSrc(job)}
+                                                    alt=""
+                                                    className="pointer-events-none h-full w-full object-cover"
+                                                />
                                             )}
+                                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+                                        </button>
+                                        <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
+                                            <span className="text-base font-bold leading-snug text-slate-800 dark:text-slate-100 md:text-lg">
+                                                Posted {new Date(job.created_at).toLocaleDateString()}
+                                            </span>
+                                            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400 md:text-sm">
+                                                {formatJobTitle(job)}
+                                            </span>
+                                        </div>
+                                        <div className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden>
+                                            <ChevronRight className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2.25} />
                                         </div>
                                     </div>
 
@@ -823,7 +715,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
 
                                     <CardContent
                                         className={cn(
-                                            "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-6",
+                                            "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-4",
                                             isMinMd && "md:cursor-pointer"
                                         )}
                                         onClick={isMinMd ? () => openJobPreview(job) : undefined}
@@ -853,7 +745,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                                     <Avatar
                                                                         key={p.id}
                                                                         className={cn(
-                                                                            "h-14 w-14 overflow-hidden shadow-md",
+                                                                            "h-14 w-14 overflow-hidden shadow-md md:h-16 md:w-16",
                                                                             i > 0 && "-ml-3"
                                                                         )}
                                                                         title={p.full_name || undefined}
@@ -871,7 +763,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                             })}
                                                             {overflow > 0 && (
                                                                 <div
-                                                                    className="-ml-3 flex h-14 min-w-[2.75rem] items-center justify-center rounded-full bg-slate-200 px-2 text-xs font-black tabular-nums text-slate-700 shadow-md dark:bg-zinc-700 dark:text-zinc-100"
+                                                                    className="-ml-3 flex h-14 min-w-[2.75rem] items-center justify-center rounded-full bg-slate-200 px-2 text-xs font-black tabular-nums text-slate-700 shadow-md dark:bg-zinc-700 dark:text-zinc-100 md:h-16"
                                                                     title={`${overflow} more`}
                                                                 >
                                                                     +{overflow}
@@ -882,7 +774,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                                                 })()}
                                                 <div className="relative group/btn w-full">
                                                     <Button
-                                                        className="w-full h-12 rounded-[18px] bg-orange-500 hover:bg-orange-600 text-white shadow-[0_8px_20px_rgba(249,115,22,0.2)] transition-all active:scale-[0.96] font-bold text-[17px] flex items-center justify-between px-6"
+                                                        className="flex h-12 w-full items-center justify-between rounded-[18px] bg-orange-500 px-6 text-[17px] font-bold text-white shadow-[0_8px_20px_rgba(249,115,22,0.2)] transition-all hover:bg-orange-600 active:scale-[0.96] md:h-14 md:text-[18px]"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             navigate(`/client/jobs/${job.id}/confirmed`);
@@ -910,7 +802,7 @@ export default function RequestsTabContent({ activeTab }: RequestsTabContentProp
                         </JobCardsCarousel>
                         </>
                     ) : (
-                        <Card className="border-0 md:border md:border-dashed md:border-slate-300/50 md:dark:border-zinc-500/35 shadow-sm bg-transparent md:bg-muted/30 mr-4 md:mr-0 min-w-[85vw] md:min-w-0">
+                        <Card className={cn(JOB_CARD_EMPTY_PANEL, "mr-4 min-w-[85vw] md:mr-0 md:min-w-0")}>
                             <CardContent className="p-6 text-center text-muted-foreground">
                                 {serviceFilter && myOpenRequests.length > 0 ? (
                                     <>

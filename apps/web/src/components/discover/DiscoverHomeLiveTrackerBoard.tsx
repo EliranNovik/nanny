@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ChevronDown, ChevronRight, ChevronUp, Loader2, Plus, Radio, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Loader2, Plus, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { isServiceCategoryId, serviceCategoryLabel } from "@/lib/serviceCategories";
@@ -156,7 +156,7 @@ export function DiscoverHomeLiveTrackerBoard() {
         >
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-              <Radio className="h-6 w-6 motion-safe:animate-pulse" strokeWidth={2.25} aria-hidden />
+              <Users className="h-6 w-6" strokeWidth={2.25} aria-hidden />
             </div>
             <div className="min-w-0">
               <h2 className="text-lg font-black tracking-tight text-stone-900 sm:text-xl dark:text-white">Latest matches</h2>

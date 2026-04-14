@@ -5,7 +5,6 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { Badge } from "@/components/ui/badge";
 import type {
   CommunityFeedPost,
   CommunityPostImage,
@@ -15,13 +14,12 @@ import { AvailabilityStoriesStrip } from "@/components/discover/AvailabilityStor
 import { IncomingRequestsStoriesStrip } from "@/components/discover/IncomingRequestsStoriesStrip";
 import type { IncomingJobRequestCardJob } from "@/components/jobs/IncomingJobRequestCard";
 import { buildJobsUrlFromTabId } from "@/components/jobs/jobsPerspective";
-import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { openCommunityContact } from "@/lib/communityContact";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Activity, Bell, Loader2, Plus, Radio } from "lucide-react";
+import { Activity, Bell, ChevronRight, Loader2, Radio } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -93,8 +91,6 @@ export function DiscoverHomeActivitySection({
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { addToast } = useToast();
-  const { incomingRequestsCount } = useDiscoverShortcutsCounts();
-
   const [feedPosts, setFeedPosts] = useState<CommunityPostWithMeta[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [favoritedIds, setFavoritedIds] = useState<Set<string>>(() => new Set());
@@ -430,34 +426,33 @@ export function DiscoverHomeActivitySection({
     else setSelectedJobDetails(job as JobRequestRow);
   }
 
-  const availabilityPostsCount = feedPosts.length;
-
   const seeMoreLinkClassName = cn(
-    "group flex shrink-0 snap-start flex-col items-center justify-center text-center outline-none",
+    "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 text-center outline-none",
     "transition-transform active:scale-[0.97]",
-    "focus-visible:ring-2 focus-visible:ring-slate-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-full",
+    "focus-visible:ring-2 focus-visible:ring-slate-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl",
     "dark:focus-visible:ring-slate-500/50"
   );
 
   const seeMoreCircleClassName = cn(
-    "flex h-14 w-14 shrink-0 items-center justify-center rounded-full",
-    "bg-transparent",
-    "transition-colors duration-200 group-hover:bg-slate-100/60 dark:group-hover:bg-slate-800/35"
+    "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/40 shadow-sm",
+    "transition-colors duration-200 group-hover:bg-muted/70 dark:group-hover:bg-muted/30"
   );
 
   const hireSeeMoreLink = (
-    <Link to="/public/posts" className={seeMoreLinkClassName} role="listitem" aria-label="See more availability posts">
+    <Link to="/public/posts" className={seeMoreLinkClassName} role="listitem" aria-label="View all availability posts">
       <div className={seeMoreCircleClassName} aria-hidden>
-        <Plus className="h-8 w-8 text-slate-700 dark:text-slate-300" strokeWidth={2.5} />
+        <ChevronRight className="h-6 w-6 text-muted-foreground" strokeWidth={2.5} />
       </div>
+      <span className="text-[10px] font-bold leading-tight text-muted-foreground">View all</span>
     </Link>
   );
 
   const workSeeMoreLink = (
-    <Link to={incomingJobsUrl} className={seeMoreLinkClassName} role="listitem" aria-label="See more open requests">
+    <Link to={incomingJobsUrl} className={seeMoreLinkClassName} role="listitem" aria-label="View all open requests">
       <div className={seeMoreCircleClassName} aria-hidden>
-        <Plus className="h-8 w-8 text-slate-700 dark:text-slate-300" strokeWidth={2.5} />
+        <ChevronRight className="h-6 w-6 text-muted-foreground" strokeWidth={2.5} />
       </div>
+      <span className="text-[10px] font-bold leading-tight text-muted-foreground">View all</span>
     </Link>
   );
 
@@ -465,17 +460,11 @@ export function DiscoverHomeActivitySection({
     <>
       <div className="mb-2 flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Available now
-          </p>
-          {!feedLoading && availabilityPostsCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
-            >
-              {availabilityPostsCount > 99 ? "99+" : availabilityPostsCount}
-            </Badge>
-          )}
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400/70 opacity-75 motion-safe:animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+          </span>
+          <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">Happening now</p>
         </div>
       </div>
       <div className="mt-1 space-y-4">
@@ -544,17 +533,11 @@ export function DiscoverHomeActivitySection({
   const workSection = (
     <>
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          Community needs your help in…
-        </p>
-        {!inboundLoading && incomingRequestsCount > 0 && (
-          <Badge
-            variant="destructive"
-            className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black leading-none"
-          >
-            {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
-          </Badge>
-        )}
+        <span className="relative flex h-2 w-2 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70 opacity-75 motion-safe:animate-ping" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+        </span>
+        <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">We need your help in…</p>
       </div>
 
       {!inboundLoading && inbound.length > 0 && viewerRole === "freelancer" && (
@@ -609,7 +592,7 @@ export function DiscoverHomeActivitySection({
       <div className="mt-1 space-y-4">
         {inboundLoading ? (
           <div className="flex justify-center py-7">
-            <Loader2 className="h-9 w-9 animate-spin text-amber-500" />
+            <Loader2 className="h-9 w-9 animate-spin text-emerald-600 dark:text-emerald-400" />
           </div>
         ) : inbound.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-6 text-center dark:border-emerald-500/20 dark:bg-emerald-500/[0.06]">
@@ -660,8 +643,8 @@ export function DiscoverHomeActivitySection({
   return (
     <>
       <section
-        className="mt-5 overflow-visible px-1 pt-0.5 md:mt-0"
-        aria-label={mode === "hire" ? "Available helpers live now" : "Community requests and matching"}
+        className="mt-0 overflow-visible px-1 pt-0.5"
+        aria-label={mode === "hire" ? "Live helper availability" : "Open requests and matching"}
       >
         {mode === "hire" ? hireSection : workSection}
       </section>

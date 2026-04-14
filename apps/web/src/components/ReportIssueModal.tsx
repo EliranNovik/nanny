@@ -3,7 +3,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import { useToast } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -361,20 +367,55 @@ export function ReportIssueModal() {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={closeReportModal}>
-      <DialogContent className="max-w-2xl h-[80vh] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Support Chat</DialogTitle>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) closeReportModal();
+      }}
+    >
+      <DialogContent
+        className={cn(
+          "flex max-h-[100dvh] w-full max-w-2xl flex-col gap-0 overflow-hidden p-0",
+          "h-[80vh]",
+          "left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]",
+          /* Full-screen below md breakpoint */
+          "max-md:inset-0 max-md:left-0 max-md:right-0 max-md:top-0 max-md:bottom-0",
+          "max-md:h-[100dvh] max-md:min-h-[100dvh] max-md:max-h-[100dvh] max-md:w-screen max-md:max-w-none",
+          "max-md:translate-x-0 max-md:translate-y-0",
+          "max-md:rounded-none max-md:border-0 max-md:shadow-none",
+          "max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100"
+        )}
+      >
+        <DialogHeader
+          className={cn(
+            "flex shrink-0 flex-row items-center justify-between gap-3 space-y-0 border-b px-4 py-3 text-left sm:text-left",
+            "max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
+          )}
+        >
+          <DialogTitle className="text-lg font-semibold">Support Chat</DialogTitle>
+          <DialogClose asChild>
+            <button
+              type="button"
+              className={cn(
+                "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors",
+                "hover:bg-muted hover:text-foreground active:bg-muted/80",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              )}
+              aria-label="Close support chat"
+            >
+              <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            </button>
+          </DialogClose>
         </DialogHeader>
 
         {loading ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex min-h-0 flex-1 items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
           <>
             {/* Messages */}
-            <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
+            <ScrollArea className="min-h-0 flex-1 px-4 py-4" ref={scrollRef}>
               <div className="space-y-4">
                 {messages.map((msg) => {
                   const isOwn = msg.sender_id === user?.id;
@@ -487,7 +528,12 @@ export function ReportIssueModal() {
             </ScrollArea>
 
             {/* Input */}
-            <div className="flex-shrink-0 border-t bg-card px-4 py-3">
+            <div
+              className={cn(
+                "flex-shrink-0 border-t bg-card px-4 py-3",
+                "max-md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              )}
+            >
               {/* Selected File Preview */}
               {selectedFile && (
                 <div className="mb-2 flex items-center gap-2 p-2 bg-muted rounded-lg">

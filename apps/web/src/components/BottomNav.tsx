@@ -22,6 +22,8 @@ import {
   Plus,
   ClipboardList,
   UsersRound,
+  Radio,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +31,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationsModal } from "@/components/NotificationsModal";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -38,6 +41,8 @@ import { MobileSmartSearchOverlay } from "./MobileSmartSearchOverlay";
 import { FREELANCER_JOBS_TABS, CLIENT_JOBS_TABS } from "@/components/jobs/jobsTabConfig";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { CommunityPostsCategoryNativeSelect } from "@/components/community/CommunityPostsCategoryNativeSelect";
+import { ALL_HELP_CATEGORY_ID } from "@/lib/serviceCategories";
+import { useReportIssue } from "@/context/ReportIssueContext";
 
 /** App menu — job tab counts: dark frosted glass (light) / light frosted glass (dark). */
 const appMenuJobsCountBadgeClassName = cn(
@@ -61,6 +66,9 @@ export function BottomNav() {
   const mobileSearchClusterRef = useRef<HTMLDivElement>(null);
   const fabMenuRef = useRef<HTMLDivElement>(null);
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
+  const [appMenuHelpOthersOpen, setAppMenuHelpOthersOpen] = useState(false);
+  const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
+  const { openReportModal } = useReportIssue();
   const previousPathnameRef = useRef(location.pathname);
   const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : profile?.role === "client" ? "/client/profile" : "/dashboard";
 
@@ -90,6 +98,13 @@ export function BottomNav() {
     pathnameNorm === "/availability/post-now" ||
     pathnameNorm === "/posts" ||
     pathnameNorm === "/public/posts";
+  /** Public board uses on-page category tabs — hide header dropdown */
+  const isPublicPostsPage = pathnameNorm === "/public/posts";
+  /** Availability + post-now: no category pill in header (category is chosen on-page). */
+  const isAvailabilityHeaderPage =
+    pathnameNorm === "/availability" || pathnameNorm === "/availability/post-now";
+  const showCommunityHeaderCategoryDropdown =
+    isCommunityPostsFilterPage && !isPublicPostsPage && !isAvailabilityHeaderPage;
   const communityCategoryParam = jobsSearchParams.get("category");
   const communityHomeFallback =
     profile?.role === "freelancer"
@@ -167,97 +182,294 @@ export function BottomNav() {
   /** Bell: same pipeline as News & Activity modal + schedule ping counts (not in modal). */
   const notificationBadgeCount = scheduleChanges + activityInboxCount;
 
+  const searchHelpersPath = profile?.role === "client" ? "/client/helpers" : "/public/posts";
+  const appMenuUserLabel =
+    profile?.full_name?.trim() || user?.email?.trim() || "Signed in";
+
   const DesktopAppMenuModal = user ? (
     <Dialog open={desktopAppMenuOpen} onOpenChange={setDesktopAppMenuOpen}>
       <DialogContent
         className={cn(
-          "gap-0 overflow-hidden rounded-xl p-0",
+          "flex flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-xl md:border md:border-border/40",
           "data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2",
-          /** Desktop: compact panel under header */
-          "left-4 right-auto top-16 w-[min(22rem,calc(100vw-2rem))] max-w-sm translate-x-0 translate-y-0",
-          /** Mobile: wider, taller sheet (override default centered dialog transform) */
-          "max-md:inset-x-3 max-md:left-3 max-md:right-3 max-md:top-[max(3.25rem,env(safe-area-inset-top,0px))] max-md:w-auto max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-2xl max-md:shadow-2xl"
+          /** Desktop: compact panel under header, aligned with hamburger (top-right) */
+          "left-auto right-4 top-16 w-[min(22rem,calc(100vw-2rem))] max-w-sm translate-x-0 translate-y-0",
+          "md:max-h-[min(88vh,32rem)]",
+          /** Mobile: full-screen sheet */
+          "max-md:inset-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none",
+          "max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-none max-md:border-0 max-md:shadow-none",
+          "max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100"
         )}
       >
         <DialogTitle className="sr-only">App menu</DialogTitle>
-        <div className="border-b border-border/60 px-4 py-4">
-          <p className="text-base font-semibold text-foreground">Quick navigation</p>
+        <div
+          className={cn(
+            "shrink-0 border-b border-border/30 bg-background px-4 pb-3",
+            "pt-4 max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="pt-0.5 text-lg font-semibold tracking-tight text-foreground md:text-[15px]">
+              Quick navigation
+            </p>
+            <DialogClose asChild>
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground md:h-9 md:w-9",
+                  "transition-colors hover:bg-muted/50 hover:text-foreground active:bg-muted/60",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                )}
+                aria-label="Close menu"
+              >
+                <X className="h-6 w-6 md:h-5 md:w-5" strokeWidth={2.25} aria-hidden />
+              </button>
+            </DialogClose>
+          </div>
         </div>
-        <div className="max-h-[min(85dvh,40rem)] overflow-y-auto p-3 md:max-h-[min(70vh,28rem)]">
-          <p className="px-1 pb-2 text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto px-4 py-2"
+          )}
+        >
+          <div className="flex flex-col">
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3.5 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3 md:text-sm"
+              onClick={() => {
+                navigate(searchHelpersPath);
+                setDesktopAppMenuOpen(false);
+              }}
+            >
+              <Search
+                className="h-6 w-6 shrink-0 text-orange-600 dark:text-orange-400 md:h-5 md:w-5"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <span>Search for helpers</span>
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3.5 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3 md:text-sm"
+              onClick={() => {
+                navigate("/availability/post-now");
+                setDesktopAppMenuOpen(false);
+              }}
+            >
+              <UsersRound
+                className="h-6 w-6 shrink-0 text-emerald-600 dark:text-emerald-400 md:h-5 md:w-5"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <span>Post live availability</span>
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3.5 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3 md:text-sm"
+              onClick={() => {
+                navigate("/client/create");
+                setDesktopAppMenuOpen(false);
+              }}
+            >
+              <ClipboardList
+                className="h-6 w-6 shrink-0 text-orange-600 dark:text-orange-400 md:h-5 md:w-5"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <span>Post a request for help</span>
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 py-3.5 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3 md:text-sm"
+              onClick={() => {
+                navigate(
+                  `/public/posts?category=${encodeURIComponent(ALL_HELP_CATEGORY_ID)}`
+                );
+                setDesktopAppMenuOpen(false);
+              }}
+            >
+              <Radio
+                className="h-6 w-6 shrink-0 text-orange-600 dark:text-orange-400 md:h-5 md:w-5"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <span>Check out live posts</span>
+            </button>
+          </div>
+
+          <p className="mb-1 mt-3 border-t border-border/30 pt-4 text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground md:text-[11px]">
             Live activities
           </p>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             {showFreelancerJobNav && (
-              <>
-                <div
-                  className="flex items-center gap-3 px-2 pb-1 pt-1"
-                  role="presentation"
+              <div className="flex flex-col border-b border-border/30 pb-1">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 py-3.5 text-left transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3"
+                  aria-expanded={appMenuHelpOthersOpen}
+                  onClick={() => setAppMenuHelpOthersOpen((v) => !v)}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-                    <HelpingHand className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+                  <span className="flex min-w-0 items-center gap-3">
+                    <HelpingHand
+                      className="h-6 w-6 shrink-0 text-emerald-600 dark:text-emerald-400 md:h-5 md:w-5"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span className="text-base font-medium text-foreground md:text-sm">Help others</span>
                   </span>
-                  <span className="text-sm font-bold tracking-tight text-foreground">Help others</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  {FREELANCER_JOBS_TABS.map((tab) => {
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 md:h-4 md:w-4",
+                      appMenuHelpOthersOpen && "rotate-180"
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                {appMenuHelpOthersOpen ? (
+                  <div className="flex flex-col border-t border-border/25 pl-2">
+                    {FREELANCER_JOBS_TABS.map((tab) => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={`f-${tab.id}`}
+                          type="button"
+                          className="flex w-full items-center justify-between gap-2 py-3 pl-6 pr-1 text-left text-base font-normal text-foreground transition-colors hover:bg-muted/35 md:py-2.5 md:text-sm"
+                          onClick={() => {
+                            navigate(buildJobsUrl("freelancer", tab.id));
+                            setDesktopAppMenuOpen(false);
+                          }}
+                        >
+                          <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                            <Icon className="h-5 w-5 shrink-0 text-muted-foreground md:h-[1.125rem] md:w-[1.125rem]" aria-hidden />
+                            <span className="truncate">{tab.label}</span>
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className={cn(appMenuJobsCountBadgeClassName, "text-sm md:text-xs")}
+                          >
+                            {badgeCountForJobsTab(tab.id, "freelancer", jobsTabCounts)}
+                          </Badge>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            <div className="flex flex-col pt-1">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-2 py-3.5 text-left transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3"
+                aria-expanded={appMenuNeedHelpOpen}
+                onClick={() => setAppMenuNeedHelpOpen((v) => !v)}
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <HeartHandshake
+                    className="h-6 w-6 shrink-0 text-orange-600 dark:text-orange-400 md:h-5 md:w-5"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <span className="text-base font-medium text-foreground md:text-sm">I need help</span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 md:h-4 md:w-4",
+                    appMenuNeedHelpOpen && "rotate-180"
+                  )}
+                  aria-hidden
+                />
+              </button>
+              {appMenuNeedHelpOpen ? (
+                <div className="flex flex-col border-t border-border/25 pl-2">
+                  {CLIENT_JOBS_TABS.map((tab) => {
                     const Icon = tab.icon;
                     return (
-                      <Button
-                        key={`f-${tab.id}`}
-                        variant="ghost"
-                        className="h-auto w-full flex-row items-center justify-between gap-2 rounded-xl px-3 py-3 text-base font-semibold leading-snug"
+                      <button
+                        key={`c-${tab.id}`}
+                        type="button"
+                        className="flex w-full items-center justify-between gap-2 py-3 pl-6 pr-1 text-left text-base font-normal text-foreground transition-colors hover:bg-muted/35 md:py-2.5 md:text-sm"
                         onClick={() => {
-                          navigate(buildJobsUrl("freelancer", tab.id));
+                          navigate(buildJobsUrl("client", tab.id));
                           setDesktopAppMenuOpen(false);
                         }}
                       >
-                        <span className="flex min-w-0 flex-1 items-center gap-3">
-                          <Icon className="h-6 w-6 shrink-0 opacity-90" aria-hidden />
-                          <span className="truncate text-left">{tab.label}</span>
+                        <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                          <Icon className="h-5 w-5 shrink-0 text-muted-foreground md:h-[1.125rem] md:w-[1.125rem]" aria-hidden />
+                          <span className="truncate">{tab.label}</span>
                         </span>
-                        <Badge variant="secondary" className={appMenuJobsCountBadgeClassName}>
-                          {badgeCountForJobsTab(tab.id, "freelancer", jobsTabCounts)}
+                        <Badge
+                          variant="secondary"
+                          className={cn(appMenuJobsCountBadgeClassName, "text-sm md:text-xs")}
+                        >
+                          {badgeCountForJobsTab(tab.id, "client", jobsTabCounts)}
                         </Badge>
-                      </Button>
+                      </button>
                     );
                   })}
                 </div>
-              </>
-            )}
-            <div
-              className="flex items-center gap-3 px-2 pb-1 pt-1"
-              role="presentation"
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "flex shrink-0 items-end justify-between gap-3 border-t border-border/30 bg-background px-4 pt-3",
+            "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              navigate(profilePath);
+              setDesktopAppMenuOpen(false);
+            }}
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left transition-colors hover:bg-muted/40 active:bg-muted/55"
+            aria-label="Open profile"
+          >
+            <Avatar className="h-11 w-11 shrink-0 border border-black/5 shadow-sm dark:border-white/10 md:h-10 md:w-10">
+              <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+              <AvatarFallback className="text-sm font-bold bg-slate-100 dark:bg-zinc-800 md:text-xs">
+                {(profile?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="min-w-0 truncate text-base font-semibold text-foreground md:text-sm">{appMenuUserLabel}</span>
+          </button>
+          <div className="flex shrink-0 flex-col items-end gap-0.5">
+            <Button
+              type="button"
+              className={cn(
+                "h-auto gap-2 rounded-xl border-0 px-4 py-2.5 text-base font-semibold text-white shadow-md",
+                "bg-gradient-to-r from-orange-500 to-red-600",
+                "hover:from-orange-600 hover:to-red-700 active:scale-[0.98]",
+                "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "md:text-sm md:py-2"
+              )}
+              onClick={() => {
+                openReportModal();
+                setDesktopAppMenuOpen(false);
+              }}
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-                <HeartHandshake className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-              </span>
-              <span className="text-sm font-bold tracking-tight text-foreground">I need help</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              {CLIENT_JOBS_TABS.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <Button
-                    key={`c-${tab.id}`}
-                    variant="ghost"
-                    className="h-auto w-full flex-row items-center justify-between gap-2 rounded-xl px-3 py-3 text-base font-semibold leading-snug"
-                    onClick={() => {
-                      navigate(buildJobsUrl("client", tab.id));
-                      setDesktopAppMenuOpen(false);
-                    }}
-                  >
-                    <span className="flex min-w-0 flex-1 items-center gap-3">
-                      <Icon className="h-6 w-6 shrink-0 opacity-90" aria-hidden />
-                      <span className="truncate text-left">{tab.label}</span>
-                    </span>
-                    <Badge variant="secondary" className={appMenuJobsCountBadgeClassName}>
-                      {badgeCountForJobsTab(tab.id, "client", jobsTabCounts)}
-                    </Badge>
-                  </Button>
-                );
-              })}
-            </div>
+              <AlertCircle className="h-5 w-5 shrink-0 text-white md:h-4 md:w-4" aria-hidden />
+              Report
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                void signOut();
+                setDesktopAppMenuOpen(false);
+              }}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-2 py-2 text-destructive transition-colors",
+                "hover:bg-destructive/10 active:bg-destructive/15",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              )}
+              aria-label="Log out"
+            >
+              <LogOut className="h-6 w-6 shrink-0 md:h-5 md:w-5" strokeWidth={2} aria-hidden />
+              <span className="text-base font-semibold md:text-sm">Log out</span>
+            </button>
           </div>
         </div>
       </DialogContent>
@@ -280,16 +492,6 @@ export function BottomNav() {
           >
             <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
           </button>
-          {user && (
-            <button
-              type="button"
-              onClick={() => setDesktopAppMenuOpen(true)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
-              aria-label="Open app menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
           <button
             type="button"
             onClick={() => setProfileMenuOpen(true)}
@@ -313,7 +515,7 @@ export function BottomNav() {
 
         <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
           <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-3">
-            {isCommunityPostsFilterPage && (
+            {showCommunityHeaderCategoryDropdown && (
               <div className="hidden min-w-0 shrink-0 md:block md:w-[min(8.75rem,22vw)] lg:w-36">
                 <CommunityPostsCategoryNativeSelect
                   variant="header"
@@ -328,7 +530,7 @@ export function BottomNav() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
+        <div className="flex shrink-0 items-center justify-end gap-1 min-w-0">
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
@@ -345,6 +547,16 @@ export function BottomNav() {
               </Badge>
             )}
           </button>
+          {user && (
+            <button
+              type="button"
+              onClick={() => setDesktopAppMenuOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors md:h-10 md:w-10"
+              aria-label="Open app menu"
+            >
+              <Menu className="h-5 w-5 md:h-6 md:w-6" />
+            </button>
+          )}
         </div>
       </div>
     </header>
@@ -373,7 +585,7 @@ export function BottomNav() {
     <div
       className={cn(
         "md:hidden fixed z-[60] pointer-events-none",
-        mobileSearchOpen || isCommunityPostsFilterPage
+        mobileSearchOpen || showCommunityHeaderCategoryDropdown
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
           : "right-[max(0.75rem,env(safe-area-inset-right))]"
       )}
@@ -383,15 +595,16 @@ export function BottomNav() {
         ref={mobileSearchClusterRef}
         className={cn(
           "pointer-events-auto flex flex-row flex-nowrap items-center gap-1.5",
-          mobileSearchOpen || isCommunityPostsFilterPage
-            ? !mobileSearchOpen && isCommunityPostsFilterPage
+          mobileSearchOpen || showCommunityHeaderCategoryDropdown
+            ? !mobileSearchOpen && showCommunityHeaderCategoryDropdown
               ? "ml-14 min-w-0 flex-1"
               : "w-full"
             : "max-w-[calc(100vw-1rem)] justify-end",
-          mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end"
+          mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end",
+          isPublicPostsPage && !mobileSearchOpen && "justify-end"
         )}
       >
-        {isCommunityPostsFilterPage && !mobileSearchOpen && (
+        {showCommunityHeaderCategoryDropdown && !mobileSearchOpen && (
           <div className="flex min-w-0 flex-1 justify-center px-0.5">
             <div className="w-full max-w-[min(10.5rem,calc(100vw-8rem))]">
               <CommunityPostsCategoryNativeSelect
@@ -402,7 +615,12 @@ export function BottomNav() {
             </div>
           </div>
         )}
-        <div className={cn("relative shrink-0", !isCommunityPostsFilterPage && !mobileSearchOpen && "ml-auto")}>
+        <div
+          className={cn(
+            "relative shrink-0",
+            (!isCommunityPostsFilterPage || isPublicPostsPage) && !mobileSearchOpen && "ml-auto"
+          )}
+        >
           <button
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
@@ -565,7 +783,8 @@ export function BottomNav() {
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
           <div
             className={cn(
-              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-6 md:max-w-xs md:rounded-2xl"
+              // Desktop: keep it pinned to the viewport bottom (no floating gap).
+              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl"
             )}
           >
             <div className="flex items-center justify-center px-6 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-[env(safe-area-inset-bottom,0px)]">
@@ -601,7 +820,8 @@ export function BottomNav() {
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0">
           <div
             className={cn(
-              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-6 md:max-w-md md:rounded-2xl"
+              // Desktop: keep it pinned to the viewport bottom (no floating gap).
+              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-md md:rounded-2xl"
             )}
           >
             <div className="mx-0 flex w-full max-w-none items-center justify-evenly overflow-visible px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12">
@@ -840,7 +1060,7 @@ export function BottomNav() {
         {MobileLeftHeaderCluster}
         {MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
-          <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-6 md:max-w-xs md:rounded-2xl">
+          <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl">
             <div className="flex items-center justify-center px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">
               <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
                 <Home className="w-7 h-7" />

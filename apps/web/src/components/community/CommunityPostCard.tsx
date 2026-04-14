@@ -158,6 +158,8 @@ export function CommunityPostCard({
   const publicFeedCard = Boolean(plain && iconOnlyActions);
   const sheetComfort = Boolean(availabilitySheetComfort && publicFeedCard);
   const pinFooterToBottom = publicFeedCard && imageUrls.length === 0;
+  const splitDesktopImageCard = publicFeedCard && imageUrls.length > 0;
+  const noImagePublicFeed = publicFeedCard && imageUrls.length === 0;
 
   const sharePost = useCallback(async () => {
     const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
@@ -238,7 +240,11 @@ export function CommunityPostCard({
           (availabilitySheetComfort
             ? "flex h-full min-h-0 flex-1 flex-col"
             : "flex min-h-0 flex-col md:h-full"),
-        cardClassName
+        noImagePublicFeed &&
+          "max-md:min-h-[min(90dvh,36rem)] max-md:flex-1 max-md:flex-col",
+        cardClassName,
+        /* cardClassName often sets h-full; without a tall parent that blocks grid/flex stretch for split image column */
+        splitDesktopImageCard && "md:!h-auto md:min-h-0"
       )}
     >
       <CardContent
@@ -251,66 +257,177 @@ export function CommunityPostCard({
         <div
           className={cn(
             publicFeedCard && "flex min-h-0 flex-1 flex-col gap-3",
+            noImagePublicFeed && "max-md:gap-5",
             sheetComfort && "max-md:gap-5",
-            plain && !publicFeedCard && "contents"
+            plain && !publicFeedCard && "contents",
+            /* Grid gives the image column a real row height so flex-1 + object-contain can fill next to text */
+            splitDesktopImageCard &&
+              "md:grid md:min-h-0 md:grid-cols-[minmax(0,11.5rem)_minmax(0,1fr)] md:items-start md:gap-x-4 md:gap-y-0"
           )}
         >
+          {splitDesktopImageCard && (
+            <div className="hidden min-h-0 md:flex md:w-full md:max-w-none md:shrink-0 md:flex-col md:pl-4 md:pt-5 md:pb-2">
+              <div className="flex shrink-0 items-start gap-3 pb-3">
+                {!isMine ? (
+                  <Link
+                    to={`/profile/${post.author_id}`}
+                    className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
+                    aria-label={`View ${post.author_full_name || "member"} profile`}
+                  >
+                    <Avatar className="h-12 w-12 shadow-none ring-0 ring-offset-0">
+                      <AvatarImage
+                        src={post.author_photo_url ?? undefined}
+                        className="object-cover"
+                        alt=""
+                      />
+                      <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-base font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
+                        {(post.author_full_name || "?").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
+                ) : (
+                  <div className="relative shrink-0 rounded-full">
+                    <Avatar className="h-12 w-12 shadow-none ring-0 ring-offset-0">
+                      <AvatarImage
+                        src={post.author_photo_url ?? undefined}
+                        className="object-cover"
+                        alt=""
+                      />
+                      <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-base font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
+                        {(post.author_full_name || "?").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <div className="flex items-center gap-1">
+                    <span className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">
+                      {post.author_full_name || "Member"}
+                    </span>
+                    {verified && (
+                      <BadgeCheck
+                        className="h-4 w-4 shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                        aria-label="Verified"
+                      />
+                    )}
+                  </div>
+                  {(() => {
+                    const total = Number(post.author_total_ratings ?? 0);
+                    const avg = Number(post.author_average_rating ?? 0);
+                    if (total > 0) {
+                      return (
+                        <StarRating
+                          rating={avg}
+                          totalRatings={total}
+                          size="sm"
+                          className="mt-1"
+                          starClassName="text-amber-500 dark:text-amber-400"
+                          numberClassName="text-amber-950 dark:text-amber-100"
+                        />
+                      );
+                    }
+                    return <p className="mt-1 text-xs text-muted-foreground">No reviews yet</p>;
+                  })()}
+                  {postedAgoLabel && (
+                    <time
+                      dateTime={post.created_at}
+                      title={new Date(post.created_at).toISOString()}
+                      className="mt-1 block text-xs font-medium tabular-nums tracking-tight text-muted-foreground"
+                    >
+                      Posted {postedAgoLabel}
+                    </time>
+                  )}
+                </div>
+              </div>
+
+              {/* Row height comes from grid; flex-1 fills cell — object-contain shows full image (portrait uses height). */}
+              <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl bg-muted/40 dark:bg-neutral-900/50">
+                <button
+                  type="button"
+                  onClick={() => setImageLightboxIndex(0)}
+                  className="relative z-0 flex h-full min-h-[10rem] w-full flex-1 items-center justify-center p-0 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  aria-label="View image full screen"
+                >
+                  <img
+                    src={imageUrls[0]}
+                    alt=""
+                    className="max-h-full max-w-full object-contain"
+                    loading="lazy"
+                  />
+                </button>
+                <div className="pointer-events-none absolute bottom-2 left-2 z-[2]">
+                  <PostTimeLeftBadge expiresAtIso={post.expires_at} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={cn(splitDesktopImageCard && "flex min-h-0 flex-col md:flex-none")}>
         <div
           className={cn(
             "flex items-start gap-3 px-3.5 pt-3.5 pb-0",
             plain && "gap-4 px-4 pt-5 pb-0.5",
-            sheetComfort && "max-md:gap-4 max-md:px-5 max-md:pt-6 max-md:pb-1"
+            sheetComfort && "max-md:gap-4 max-md:px-5 max-md:pt-6 max-md:pb-1",
+            noImagePublicFeed && "max-md:gap-4 max-md:pb-3",
+            splitDesktopImageCard && "md:justify-end md:px-4 md:pt-4 md:pb-0"
           )}
         >
-          {!isMine ? (
-            <Link
-              to={`/profile/${post.author_id}`}
-              className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
-              aria-label={`View ${post.author_full_name || "member"} profile`}
-            >
-              {avatarEl}
-            </Link>
-          ) : (
-            <div className="relative shrink-0 rounded-full">{avatarEl}</div>
-          )}
-          <div className="min-w-0 flex-1 pt-0.5">
-            <div className="flex items-center gap-1">
-              <span className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
-                {post.author_full_name || "Member"}
-              </span>
-              {verified && (
-                <BadgeCheck
-                  className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
-                  aria-label="Verified"
-                />
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 items-start gap-3",
+              splitDesktopImageCard && "md:hidden"
+            )}
+          >
+            {!isMine ? (
+              <Link
+                to={`/profile/${post.author_id}`}
+                className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
+                aria-label={`View ${post.author_full_name || "member"} profile`}
+              >
+                {avatarEl}
+              </Link>
+            ) : (
+              <div className="relative shrink-0 rounded-full">{avatarEl}</div>
+            )}
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="flex items-center gap-1">
+                <span className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
+                  {post.author_full_name || "Member"}
+                </span>
+                {verified && (
+                  <BadgeCheck
+                    className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                    aria-label="Verified"
+                  />
+                )}
+              </div>
+              {(() => {
+                const total = Number(post.author_total_ratings ?? 0);
+                const avg = Number(post.author_average_rating ?? 0);
+                if (total > 0) {
+                  return (
+                    <StarRating
+                      rating={avg}
+                      totalRatings={total}
+                      size="md"
+                      className="mt-1.5"
+                      starClassName="text-amber-500 dark:text-amber-400"
+                      numberClassName="text-amber-950 dark:text-amber-100"
+                    />
+                  );
+                }
+                return <p className="mt-1 text-xs text-muted-foreground">No reviews yet</p>;
+              })()}
+              {postedAgoLabel && (
+                <time
+                  dateTime={post.created_at}
+                  title={new Date(post.created_at).toISOString()}
+                  className="mt-1.5 block text-xs font-medium tabular-nums tracking-tight text-muted-foreground"
+                >
+                  Posted {postedAgoLabel}
+                </time>
               )}
             </div>
-            {(() => {
-              const total = Number(post.author_total_ratings ?? 0);
-              const avg = Number(post.author_average_rating ?? 0);
-              if (total > 0) {
-                return (
-                  <StarRating
-                    rating={avg}
-                    totalRatings={total}
-                    size="md"
-                    className="mt-1.5"
-                    starClassName="text-amber-500 dark:text-amber-400"
-                    numberClassName="text-amber-950 dark:text-amber-100"
-                  />
-                );
-              }
-              return <p className="mt-1 text-xs text-muted-foreground">No reviews yet</p>;
-            })()}
-            {postedAgoLabel && (
-              <time
-                dateTime={post.created_at}
-                title={new Date(post.created_at).toISOString()}
-                className="mt-1.5 block text-xs font-medium tabular-nums tracking-tight text-muted-foreground"
-              >
-                Posted {postedAgoLabel}
-              </time>
-            )}
           </div>
           {(!isMine || !hideShareInIconRow) && (
             <div className="flex shrink-0 items-start gap-0.5">
@@ -387,7 +504,7 @@ export function CommunityPostCard({
         </div>
 
         {imageUrls.length > 0 && !(plain && imageUrls.length === 1) && (
-          <div className={cn("px-3.5", plain && "px-4")}>
+          <div className={cn("px-3.5", plain && "px-4", splitDesktopImageCard && "md:hidden")}>
             <div>
               <div
                 className={cn(
@@ -405,7 +522,7 @@ export function CommunityPostCard({
                       "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       imageUrls.length === 1
                         ? "aspect-[4/3] w-full max-w-[160px]"
-                        : "h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20"
+                        : "h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20 lg:h-[4.5rem] lg:w-[4.5rem]"
                     )}
                     aria-label={`View image ${idx + 1} full screen`}
                   >
@@ -434,14 +551,15 @@ export function CommunityPostCard({
           <div
             className={cn(
               "w-full px-4",
-              tightenIconRowToImage ? "mt-0 sm:mt-0.5" : "mt-0.5 sm:mt-1"
+              tightenIconRowToImage ? "mt-0 sm:mt-0.5" : "mt-0.5 sm:mt-1",
+              splitDesktopImageCard && "md:hidden"
             )}
           >
             <div className="relative w-full overflow-hidden rounded-xl">
               <button
                 type="button"
                 onClick={() => setImageLightboxIndex(0)}
-                className="relative block aspect-[4/3] w-full overflow-hidden bg-muted/40 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-neutral-900/50"
+                className="relative block aspect-[4/3] w-full overflow-hidden bg-muted/40 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-neutral-900/50 lg:aspect-[16/10]"
                 aria-label="View image full screen"
               >
                 <img
@@ -462,7 +580,10 @@ export function CommunityPostCard({
           className={cn(
             "px-3.5 pb-6 pt-0.5",
             plain && "px-4 pb-7 pt-1",
-            sheetComfort && "max-md:px-5 max-md:pb-8 max-md:pt-2"
+            sheetComfort && "max-md:px-5 max-md:pb-8 max-md:pt-2",
+            noImagePublicFeed && "max-md:pb-8 max-md:pt-2",
+            splitDesktopImageCard && "md:px-4 md:pb-3 md:pt-0.5",
+            splitDesktopImageCard && plain && "md:pb-3 md:pt-1"
           )}
         >
           <p
@@ -479,7 +600,10 @@ export function CommunityPostCard({
           className={cn(
             "space-y-2 px-3.5 pb-3",
             plain && "space-y-3 px-4 pb-4",
-            sheetComfort && "max-md:space-y-4 max-md:px-5 max-md:pb-6"
+            sheetComfort && "max-md:space-y-4 max-md:px-5 max-md:pb-6",
+            noImagePublicFeed && "max-md:space-y-5 max-md:px-4 max-md:pb-6",
+            splitDesktopImageCard && "md:space-y-1.5 md:px-4 md:pb-2",
+            splitDesktopImageCard && plain && "md:pb-2"
           )}
         >
           {post.availability_payload?.area_tag && (
@@ -504,6 +628,7 @@ export function CommunityPostCard({
             </div>
           )}
         </div>
+          </div>
         </div>
 
         <div
@@ -513,13 +638,17 @@ export function CommunityPostCard({
               ? tightenIconRowToImage
                 ? cn(
                     "space-y-3 bg-transparent px-4 pb-4 pt-2",
-                    sheetComfort && "max-md:space-y-4 max-md:px-5 max-md:pb-6 max-md:pt-4"
+                    sheetComfort && "max-md:space-y-4 max-md:px-5 max-md:pb-6 max-md:pt-4",
+                    splitDesktopImageCard && "md:space-y-2 md:px-4 md:pb-2 md:pt-2"
                   )
                 : largePublicIconRow
                   ? cn(
                       "space-y-3 bg-transparent px-4 pb-4 pt-3",
+                      noImagePublicFeed &&
+                        "max-md:space-y-5 max-md:border-t max-md:border-border/50 max-md:px-4 max-md:pb-6 max-md:pt-6",
                       sheetComfort &&
-                        "max-md:space-y-5 max-md:border-t max-md:border-border/60 max-md:px-5 max-md:pb-6 max-md:pt-6"
+                        "max-md:space-y-5 max-md:border-t max-md:border-border/60 max-md:px-5 max-md:pb-6 max-md:pt-6",
+                      splitDesktopImageCard && "md:space-y-2 md:px-4 md:pb-2 md:pt-2"
                     )
                   : "space-y-4 bg-transparent px-4 py-5"
               : "border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
@@ -674,11 +803,6 @@ export function CommunityPostCard({
           {!isMine && !user && (
             <Button type="button" variant="outline" size="sm" className="w-full rounded-xl" asChild>
               <Link to={`/login?redirect=${encodeURIComponent(loginRedirect)}`}>Sign in to contact</Link>
-            </Button>
-          )}
-          {isMine && user && (
-            <Button type="button" variant="ghost" size="sm" className="w-full" asChild>
-              <Link to={`/profile/${post.author_id}`}>View your public profile</Link>
             </Button>
           )}
         </div>

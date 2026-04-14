@@ -11,6 +11,12 @@ import { LiveTimer } from "@/components/LiveTimer";
 import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
 import { JobAttachedPhotosStrip, jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
 import { jobCardCarouselItemClass } from "@/components/jobs/JobCardsCarousel";
+import {
+  JOB_CARD_COMPACT_ROW,
+  JOB_CARD_SHELL,
+  JOB_CARD_THUMB,
+  JOB_CARD_THUMB_BUTTON,
+} from "@/components/jobs/jobCardSharedClasses";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 
 /** Job shape required by incoming-request cards (matches Requests tab + Discover fetch). */
@@ -29,7 +35,6 @@ export type IncomingJobRequestCardJob = {
   children_count?: number | null;
   children_age_group?: string | null;
   shift_hours?: string | null;
-  time_duration?: string | null;
   languages_pref?: string[] | null;
   requirements?: string[] | null;
   budget_min?: number | null;
@@ -101,7 +106,7 @@ export function IncomingJobRequestCard({
       data-job-card
       onClick={isMinMd ? undefined : () => onOpenPreview(job)}
       className={cn(
-        "group relative flex h-full w-full flex-col overflow-hidden rounded-[32px] border-0 bg-transparent shadow-none transition-all duration-500 md:border md:border-slate-300/45 md:bg-card md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:backdrop-blur-sm md:dark:border-zinc-500/35 md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] md:hover:-translate-y-2 md:hover:shadow-[0_40px_80px_rgba(0,0,0,0.18)]",
+        JOB_CARD_SHELL,
         !isMinMd && "cursor-pointer",
         isMinMd && "md:cursor-default",
         isDeclined && "opacity-60",
@@ -137,21 +142,29 @@ export function IncomingJobRequestCard({
             clippedCardIds.has(`card-${notif.id}`) ? "opacity-100" : "opacity-0"
           )}
         />
-        <div className="flex gap-3 p-3 md:hidden">
-          <div className="pointer-events-none relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm ring-1 ring-black/5 dark:border-border/40 dark:bg-muted dark:ring-white/10">
+        <div className={JOB_CARD_COMPACT_ROW}>
+          <button
+            type="button"
+            className={cn(JOB_CARD_THUMB, JOB_CARD_THUMB_BUTTON)}
+            aria-label={`Open job preview: ${formatJobTitle(job)}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenPreview(job);
+            }}
+          >
             {job.service_type === "pickup_delivery" ? (
-              <div className="absolute inset-0 z-0">
+              <div className="pointer-events-none absolute inset-0 z-0">
                 <JobMap job={job} />
               </div>
             ) : (
               <img
                 src={serviceHeroImageSrc(job)}
-                alt={formatJobTitle(job)}
-                className="h-full w-full object-cover"
+                alt=""
+                className="pointer-events-none h-full w-full object-cover"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-          </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+          </button>
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
             <button
               type="button"
@@ -159,13 +172,13 @@ export function IncomingJobRequestCard({
               onClick={(e) => onProfileClick(e, job.client_id)}
               disabled={!job.client_id}
             >
-              <Avatar className="h-12 w-12 shrink-0 border border-slate-200 dark:border-zinc-600">
+              <Avatar className="h-12 w-12 shrink-0 border border-slate-200 dark:border-zinc-600 md:h-14 md:w-14">
                 <AvatarImage src={job.profiles?.photo_url || ""} />
-                <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white">
+                <AvatarFallback className="bg-orange-500 text-[11px] font-black text-white md:text-sm">
                   {job.profiles?.full_name?.charAt(0) || "C"}
                 </AvatarFallback>
               </Avatar>
-              <h3 className="truncate text-base font-black leading-tight text-slate-900 dark:text-white">
+              <h3 className="truncate text-base font-black leading-tight text-slate-900 dark:text-white md:text-lg">
                 {job.profiles?.full_name || "Client"}
               </h3>
             </button>
@@ -174,14 +187,14 @@ export function IncomingJobRequestCard({
                 rating={job.profiles.average_rating}
                 size="sm"
                 showCount={false}
-                className="origin-left scale-90"
+                className="origin-left scale-90 md:scale-100"
                 starClassName="text-slate-900 dark:text-neutral-200"
                 emptyStarClassName="text-slate-900/25 dark:text-neutral-500/35"
               />
             ) : (
-              <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">New client</span>
+              <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400 md:text-sm">New client</span>
             )}
-            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400 md:text-sm">
               {formatJobTitle(job)}
             </span>
           </div>
@@ -189,73 +202,7 @@ export function IncomingJobRequestCard({
             className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none"
             aria-hidden
           >
-            <ChevronRight className="h-7 w-7" strokeWidth={2.25} />
-          </div>
-        </div>
-        <div className="relative hidden h-36 w-full overflow-hidden group/img sm:h-40 md:block">
-          {job.service_type === "pickup_delivery" ? (
-            <div className="absolute inset-0 z-0">
-              <JobMap job={job} />
-            </div>
-          ) : (
-            <img
-              src={serviceHeroImageSrc(job)}
-              alt={formatJobTitle(job)}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover/img:scale-110"
-            />
-          )}
-          <div className="absolute inset-0 z-10 bg-black/40" />
-          <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-          <div className="absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-black/40 to-transparent" />
-          <div className="pointer-events-none absolute right-4 top-1/2 z-20 -translate-y-1/2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white backdrop-blur-md">
-              <ChevronRight className="h-4 w-4" />
-            </span>
-          </div>
-          <div
-            className="absolute inset-0 z-[30] cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenPreview(job);
-            }}
-            aria-hidden
-          />
-          <div className="pointer-events-none absolute bottom-3 left-6 right-6 z-[40] flex flex-col gap-2">
-            <button
-              type="button"
-              className="pointer-events-auto flex max-w-full min-w-0 items-center gap-3 rounded-xl text-left outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-100"
-              onClick={(e) => onProfileClick(e, job.client_id)}
-              disabled={!job.client_id}
-            >
-              <Avatar className="h-20 w-20 flex-shrink-0 border-2 border-white/30 shadow-2xl transition-transform duration-500 group-hover:scale-110">
-                <AvatarImage src={job.profiles?.photo_url || ""} />
-                <AvatarFallback className="bg-orange-500 text-sm font-black text-white">
-                  {job.profiles?.full_name?.charAt(0) || "C"}
-                </AvatarFallback>
-              </Avatar>
-              <h3 className="min-w-0 flex-1 text-[24px] font-black tracking-tight text-white drop-shadow-xl">
-                {job.profiles?.full_name || "Client"}
-              </h3>
-            </button>
-            <div className="pointer-events-none flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 px-0.5">
-                {job.profiles?.average_rating ? (
-                  <StarRating
-                    rating={job.profiles.average_rating}
-                    size="sm"
-                    showCount={false}
-                    starClassName="text-white"
-                    emptyStarClassName="text-white/30"
-                    numberClassName="text-[14px] text-white drop-shadow-md"
-                  />
-                ) : (
-                  <span className="text-[14px] font-bold italic text-white/80 drop-shadow-md">New Client</span>
-                )}
-              </div>
-              <span className="w-full text-center text-[16px] font-black uppercase tracking-[0.14em] text-white/95 drop-shadow-md sm:text-[17px]">
-                {formatJobTitle(job)}
-              </span>
-            </div>
+            <ChevronRight className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2.25} />
           </div>
         </div>
 
@@ -265,39 +212,40 @@ export function IncomingJobRequestCard({
 
         <CardContent
           className={cn(
-            "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-6",
+            "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-4",
             isMinMd && "md:cursor-pointer"
           )}
           onClick={isMinMd ? () => onOpenPreview(job) : undefined}
         >
           <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-2 gap-x-6">
-              {job.time_duration && (
-                <div className="flex items-center gap-3 text-[17px] font-semibold tracking-tight text-slate-700 dark:text-slate-300">
-                  <Clock className="h-6 w-6 flex-shrink-0 text-slate-400" />
-                  <span className="truncate">{job.time_duration.replace(/_/g, "-")}</span>
-                </div>
-              )}
-            </div>
-
             {!isConfirmed && !isDeclined && job.community_post_id && job.community_post_expires_at && (
-              <div className="flex flex-wrap items-center gap-2 text-[15px] font-bold tracking-tight text-orange-500">
-                <Clock className="h-5 w-5 flex-shrink-0" />
-                <span className="font-medium opacity-80">Post expires</span>
+              <div className="flex w-full items-center justify-between gap-2 text-[14px] font-bold leading-snug tracking-tight text-orange-500 dark:text-orange-400">
+                <div className="flex min-w-0 flex-1 items-start gap-2">
+                  <Clock className="mt-0.5 h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden />
+                  <span className="min-w-0 font-medium opacity-90">Post expires</span>
+                </div>
                 <ExpiryCountdown
                   expiresAtIso={job.community_post_expires_at}
                   endedLabel="Post ended"
-                  className="text-[15px] font-black text-orange-600 dark:text-orange-400"
+                  compact
+                  className="shrink-0 tabular-nums text-[13px] font-bold text-orange-600 dark:text-orange-300"
                 />
               </div>
             )}
             {!isConfirmed && !isDeclined && !job.community_post_id && job.created_at && (
-              <div className="flex items-center gap-3 text-[16px] font-bold tracking-tight text-orange-400">
-                <Clock className="h-5 w-5 flex-shrink-0" />
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium opacity-60">Time since invite</span>
-                  <LiveTimer createdAt={job.created_at} />
+              <div className="flex w-full items-center justify-between gap-2 text-[14px] font-bold leading-snug tracking-tight text-orange-500 dark:text-orange-400">
+                <div className="flex min-w-0 flex-1 items-start gap-2">
+                  <Clock className="mt-0.5 h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden />
+                  <span className="min-w-0 font-medium opacity-90">Time since invite</span>
                 </div>
+                <LiveTimer
+                  createdAt={job.created_at}
+                  render={({ time }) => (
+                    <span className="shrink-0 tabular-nums text-[13px] font-bold text-orange-600 dark:text-orange-300">
+                      {time}
+                    </span>
+                  )}
+                />
               </div>
             )}
           </div>

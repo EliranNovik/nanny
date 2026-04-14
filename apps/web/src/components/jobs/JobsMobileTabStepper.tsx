@@ -5,11 +5,10 @@ import { badgeCountForJobsTab, useJobsTabCounts } from "@/hooks/useJobsTabCounts
 import type { JobsPerspective } from "./jobsPerspective";
 import { tabsForPerspective } from "./jobsTabConfig";
 import { defaultTabForPerspective, isTabValidForPerspective } from "./jobsPerspective";
-import { jobsMobileStepperThemeForTab } from "./jobsMobileStepperTheme";
+import { JOBS_STEPPER_STRIP_BASE, jobsMobileStepperThemeForTab } from "./jobsMobileStepperTheme";
 
 /** Base strip; theme adds tinted gradient (`jobsMobileStepperTheme.strip`) */
-const STRIP_BASE =
-  "border-b border-border/30 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md supports-[backdrop-filter]:bg-background/70 dark:border-border/40 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)] dark:supports-[backdrop-filter]:bg-background/75";
+const STRIP_BASE = JOBS_STEPPER_STRIP_BASE;
 
 const HEADER_OFFSET = "calc(env(safe-area-inset-top, 0px) + 3.5rem)";
 
@@ -79,9 +78,9 @@ export function JobsMobileTabStepper() {
           {/** Full-width gradient pill + frosted sliding thumb */}
           <div
             className={cn(
-              "relative min-h-[54px] w-full min-w-0 overflow-hidden rounded-full p-1.5 sm:min-h-[58px]",
-              "border border-white/20 shadow-2xl backdrop-blur-md transition-[box-shadow] duration-300",
-              theme.pillShadow
+              "relative isolate min-h-[54px] w-full min-w-0 overflow-hidden rounded-full p-1.5 sm:min-h-[58px]",
+              "border border-white/20 shadow-lg shadow-black/12 transition-[box-shadow] duration-300",
+              "dark:shadow-black/35"
             )}
             role="tablist"
             aria-label="Jobs sections"
@@ -97,7 +96,8 @@ export function JobsMobileTabStepper() {
               aria-hidden
               className={cn(
                 "pointer-events-none absolute top-1.5 bottom-1.5 z-[5] rounded-full",
-                "bg-white/20 shadow-inner backdrop-blur-sm ring-1 ring-white/35",
+                /** Solid overlay only — backdrop-blur + ring bled past bounds and looked like extra halos on neighbouring tabs */
+                "bg-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]",
                 "transition-[left,width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
               )}
               style={thumbStyle}
@@ -117,8 +117,9 @@ export function JobsMobileTabStepper() {
                     onClick={() => selectTab(tab.id)}
                     className={cn(
                       "relative flex min-w-0 items-center justify-center rounded-full px-0.5 py-1",
+                      "bg-transparent [-webkit-tap-highlight-color:transparent]",
                       "transition-[color,transform] duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/55",
                       "active:scale-[0.98] motion-reduce:transition-none",
                       selected ? "text-white" : "text-white/65 hover:text-white/85"
                     )}
@@ -127,7 +128,7 @@ export function JobsMobileTabStepper() {
                       <Icon
                         className={cn(
                           "h-6 w-6 shrink-0 transition-transform duration-300 sm:h-7 sm:w-7",
-                          selected && "scale-105 drop-shadow-sm"
+                          selected && "scale-105"
                         )}
                         strokeWidth={2.25}
                         aria-hidden
@@ -135,7 +136,7 @@ export function JobsMobileTabStepper() {
                       {count > 0 && (
                         <span
                           className={cn(
-                            "absolute -right-0.5 -top-2.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-0.5 text-[10px] font-bold leading-none tabular-nums ring-2 transition-colors duration-300 sm:-top-3",
+                            "absolute -right-0.5 -top-2.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-0.5 text-[10px] font-bold leading-none tabular-nums transition-colors duration-300 sm:-top-3",
                             selected ? theme.countBadgeSelected : theme.countBadgeIdle
                           )}
                           aria-hidden

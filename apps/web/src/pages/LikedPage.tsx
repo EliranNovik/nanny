@@ -101,7 +101,7 @@ export default function LikedPage() {
   const [conversationIdByJobId, setConversationIdByJobId] = useState<Record<string, string>>(
     {}
   );
-  const [savedTab, setSavedTab] = useState<"posts" | "profiles">("posts");
+  const [savedTab, setSavedTab] = useState<"posts" | "profiles">("profiles");
 
   const load = useCallback(async () => {
     if (!user?.id) {
@@ -283,10 +283,13 @@ export default function LikedPage() {
     void load();
   }, [load]);
 
+  /** After load: if the user only has saved posts (no profiles), show Posts so the list is not hidden. */
   useEffect(() => {
-    if (posts.length > 0 && profiles.length === 0) setSavedTab("posts");
-    else if (profiles.length > 0 && posts.length === 0) setSavedTab("profiles");
-  }, [posts.length, profiles.length]);
+    if (loading) return;
+    if (profiles.length === 0 && posts.length > 0) {
+      setSavedTab("posts");
+    }
+  }, [loading, profiles.length, posts.length]);
 
   const removeProfileFavorite = async (favoriteUserId: string) => {
     if (!user?.id) return;
@@ -844,76 +847,75 @@ export default function LikedPage() {
                                   to={`/profile/${p.id}`}
                                   className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 rounded-sm"
                                 >
-                                  <h2 className="truncate text-[15px] font-black leading-snug text-slate-900 dark:text-white">
+                                  <h2 className="truncate text-[15px] font-black leading-snug text-slate-900 dark:text-white md:text-[18px] md:leading-snug">
                                     {p.full_name || "Member"}
                                   </h2>
                                 </Link>
                                 <div
-                                  className="mt-1.5"
+                                  className="mt-1.5 flex items-center justify-between gap-2"
                                   data-skip-profile-card-toggle
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <StarRating
-                                    rating={Number(p.average_rating) || 0}
-                                    totalRatings={p.total_ratings ?? 0}
-                                    size="sm"
-                                    emptyStarClassName="text-muted-foreground/30"
-                                    starClassName="text-amber-500 dark:text-amber-400"
-                                    numberClassName="text-foreground"
-                                    countClassName="text-muted-foreground"
-                                  />
-                                </div>
-                                <div
-                                  className="mt-2.5 flex w-full flex-wrap items-center justify-center gap-2"
-                                  data-skip-profile-card-toggle
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <button
-                                    type="button"
-                                    title="Messages"
-                                    aria-label="Open messages"
-                                    disabled={openingChatProfileId === p.id}
-                                    onClick={() => void openDirectChatWithProfile(p)}
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:text-white"
-                                  >
-                                    {openingChatProfileId === p.id ? (
-                                      <Loader2 className="h-5 w-5 animate-spin text-black dark:text-white" />
-                                    ) : (
-                                      <MessageSquare className="h-5 w-5 text-black dark:text-white" strokeWidth={2} />
+                                  <div className="min-w-0 flex-1">
+                                    <StarRating
+                                      rating={Number(p.average_rating) || 0}
+                                      totalRatings={p.total_ratings ?? 0}
+                                      size="sm"
+                                      emptyStarClassName="text-muted-foreground/30"
+                                      starClassName="text-amber-500 dark:text-amber-400"
+                                      numberClassName="text-foreground md:text-sm"
+                                      countClassName="text-muted-foreground md:text-sm"
+                                    />
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+                                    <button
+                                      type="button"
+                                      title="Messages"
+                                      aria-label="Open messages"
+                                      disabled={openingChatProfileId === p.id}
+                                      onClick={() => void openDirectChatWithProfile(p)}
+                                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:text-white md:h-11 md:w-11"
+                                    >
+                                      {openingChatProfileId === p.id ? (
+                                        <Loader2 className="h-[1.125rem] w-[1.125rem] animate-spin text-black dark:text-white md:h-5 md:w-5" />
+                                      ) : (
+                                        <MessageSquare className="h-[1.125rem] w-[1.125rem] text-black dark:text-white md:h-5 md:w-5" strokeWidth={2} />
+                                      )}
+                                    </button>
+                                    {p.whatsapp_number && (
+                                      <button
+                                        type="button"
+                                        title="WhatsApp"
+                                        aria-label="WhatsApp"
+                                        onClick={() =>
+                                          window.open(
+                                            `https://wa.me/${p.whatsapp_number}`,
+                                            "_blank"
+                                          )
+                                        }
+                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white md:h-11 md:w-11"
+                                      >
+                                        <WhatsAppIcon size={18} className="text-black dark:text-white md:hidden" aria-hidden />
+                                        <WhatsAppIcon size={22} className="hidden text-black dark:text-white md:block" aria-hidden />
+                                      </button>
                                     )}
-                                  </button>
-                                  {p.whatsapp_number && (
-                                    <button
-                                      type="button"
-                                      title="WhatsApp"
-                                      aria-label="WhatsApp"
-                                      onClick={() =>
-                                        window.open(
-                                          `https://wa.me/${p.whatsapp_number}`,
-                                          "_blank"
-                                        )
-                                      }
-                                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white"
-                                    >
-                                      <WhatsAppIcon size={20} className="text-black dark:text-white" aria-hidden />
-                                    </button>
-                                  )}
-                                  {p.telegram_username && (
-                                    <button
-                                      type="button"
-                                      title="Telegram"
-                                      aria-label="Telegram"
-                                      onClick={() =>
-                                        window.open(
-                                          `https://t.me/${p.telegram_username}`,
-                                          "_blank"
-                                        )
-                                      }
-                                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white"
-                                    >
-                                      <Send className="h-5 w-5 translate-x-[-0.5px] translate-y-[0.5px] text-black dark:text-white" />
-                                    </button>
-                                  )}
+                                    {p.telegram_username && (
+                                      <button
+                                        type="button"
+                                        title="Telegram"
+                                        aria-label="Telegram"
+                                        onClick={() =>
+                                          window.open(
+                                            `https://t.me/${p.telegram_username}`,
+                                            "_blank"
+                                          )
+                                        }
+                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white md:h-11 md:w-11"
+                                      >
+                                        <Send className="h-[1.125rem] w-[1.125rem] translate-x-[-0.5px] translate-y-[0.5px] text-black dark:text-white md:h-5 md:w-5" />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                               </div>

@@ -179,6 +179,13 @@
     }
   }
 
+  /* Public posts mobile: fixed snap feed already clears BottomNav — drop duplicate scroll-pad */
+  @media (max-width: 767.98px) {
+    .app-main-scroll-pad:has([data-public-snap-feed-mobile]) {
+      padding-bottom: 0;
+    }
+  }
+
   /**
    * Main column under BottomNav fixed header (see App.tsx PageLayoutWithHeader).
    * #root already pads env(safe-area-inset-top); this adds the bar height only — keep in sync

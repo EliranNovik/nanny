@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-    ArrowLeft,
     MessageCircle,
     Loader2,
     MapPin,
@@ -64,6 +63,8 @@ export default function PastJobDetailsPage() {
 
     const [loading, setLoading] = useState(true);
     const [job, setJob] = useState<JobRequest | null>(null);
+    /** Always set when the job has a counterparty id (so UI can link even if profile fetch fails). */
+    const [otherUserId, setOtherUserId] = useState<string | null>(null);
     const [otherParty, setOtherParty] = useState<Profile | null>(null);
     const [conversationId, setConversationId] = useState<string | null>(null);
 
@@ -84,14 +85,41 @@ export default function PastJobDetailsPage() {
 
                 // 2. Fetch Other Party Profile
                 const otherPartyId = jobData.client_id === user.id ? jobData.selected_freelancer_id : jobData.client_id;
-                if (otherPartyId) {
-                    const { data: profileData } = await supabase
+                if (otherPartyId && typeof otherPartyId === "string") {
+                    setOtherUserId(otherPartyId);
+                    const { data: profileData, error: profileError } = await supabase
                         .from("profiles")
-                        .select("id, full_name, photo_url, bio, average_rating, total_ratings")
+                        // Note: `bio` is stored in `freelancer_profiles`, not `profiles`.
+                        .select("id, full_name, photo_url, average_rating, total_ratings")
                         .eq("id", otherPartyId)
                         .single();
-                    
-                    if (profileData) setOtherParty(profileData);
+
+                    if (profileError) console.warn("[PastJobDetailsPage] profile fetch:", profileError);
+
+                    // Optional bio (helpers) lives on freelancer_profiles.
+                    const { data: freelancerData } = await supabase
+                        .from("freelancer_profiles")
+                        .select("bio")
+                        .eq("user_id", otherPartyId)
+                        .maybeSingle();
+
+                    if (profileData)
+                        setOtherParty({
+                            ...(profileData as Profile),
+                            bio: freelancerData?.bio ?? null,
+                        });
+                    else
+                        setOtherParty({
+                            id: otherPartyId,
+                            full_name: null,
+                            photo_url: null,
+                            bio: freelancerData?.bio ?? null,
+                            average_rating: undefined,
+                            total_ratings: undefined,
+                        });
+                } else {
+                    setOtherUserId(null);
+                    setOtherParty(null);
                 }
 
                 // 3. Fetch Conversation ID
@@ -207,19 +235,7 @@ export default function PastJobDetailsPage() {
     return (
         <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
             <div className="app-desktop-shell pt-6">
-                {/* Header / Back Button: Now transparent and integrated */}
-                <div className="flex items-center gap-4 mb-8">
-                    <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="rounded-full bg-card/90 shadow-sm border border-black/5 hover:bg-card transition-all"
-                        onClick={() => navigate(-1)}
-                    >
-                        <ArrowLeft className="w-5 h-5 text-slate-600" />
-                    </Button>
-                    <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Past Job Details</h1>
-                </div>
-
+                <div className="mx-auto w-full max-w-4xl lg:max-w-5xl 2xl:max-w-6xl">
                 <div className="space-y-8">
                     {/* Hero Section: Compact Card with Header & Image Overlay */}
                     <Card className="rounded-3xl border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden bg-card/95">
@@ -240,6 +256,37 @@ export default function PastJobDetailsPage() {
                                 <span className="capitalize">{job.service_type?.replace('_', ' ')}</span>
                             </Badge>
                         </div>
+
+                        {/* Above the image/map: maps/iframes often cover absolute siblings — keep profile here */}
+                        {otherUserId && otherParty && (
+                            <button
+                                type="button"
+                                className="flex w-full items-center gap-3 border-b border-black/5 bg-card/95 px-4 py-3 text-left transition hover:bg-slate-50/80 dark:hover:bg-zinc-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-inset sm:px-6"
+                                onClick={() => navigate(`/profile/${encodeURIComponent(otherUserId)}`)}
+                            >
+                                <Avatar className="h-11 w-11 shrink-0 border border-black/10">
+                                    <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
+                                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                        {otherParty.full_name?.charAt(0) || "?"}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate font-extrabold text-slate-900 dark:text-slate-100">
+                                        {otherParty.full_name?.trim() || "View profile"}
+                                    </p>
+                                    <div className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+                                        <Star className="h-4 w-4 shrink-0 text-orange-400 fill-orange-400" />
+                                        <span className="font-semibold">{otherParty.average_rating ?? 0}</span>
+                                        <span className="text-slate-400">
+                                            ({otherParty.total_ratings ?? 0} reviews)
+                                        </span>
+                                    </div>
+                                </div>
+                                <span className="hidden shrink-0 text-xs font-bold text-orange-600 sm:inline">
+                                    View →
+                                </span>
+                            </button>
+                        )}
 
                         <CardContent className="p-0">
                             {/* Tall Image/Map with Light Overlay */}
@@ -302,40 +349,6 @@ export default function PastJobDetailsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* COLLABORATOR INFO: Separated from hero card */}
-                    {otherParty && (
-                        <div className="bg-card/95 rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-black/5">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                <div className="flex items-center gap-6">
-                                    <Avatar className="w-20 h-20 border-4 border-slate-50 shadow-xl">
-                                        <AvatarImage src={otherParty.photo_url || undefined} className="object-cover" />
-                                        <AvatarFallback className="bg-primary/5 text-primary font-bold text-2xl">
-                                            {otherParty.full_name?.charAt(0) || 'U'}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="min-w-0">
-                                        <p className="font-extrabold text-2xl text-slate-900 truncate tracking-tight">{otherParty.full_name}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <Star className="w-5 h-5 text-orange-400 fill-orange-400" />
-                                            <span className="font-bold text-lg text-slate-700">{otherParty.average_rating || 0}</span>
-                                            <span className="text-sm font-bold text-slate-400">({otherParty.total_ratings || 0})</span>
-                                        </div>
-                                        <Badge className="mt-3 bg-slate-100 text-slate-500 font-bold border-none px-4 py-1.5 rounded-xl">
-                                            {job.client_id === user?.id ? 'Your Helper' : 'Your Client'}
-                                        </Badge>
-                                    </div>
-                                </div>
-                                {otherParty.bio && (
-                                    <div className="flex-1 max-w-xl md:ml-12 border-l-4 border-orange-500/20 pl-6 py-2">
-                                        <p className="text-base text-slate-500 italic leading-relaxed">
-                                            "{otherParty.bio}"
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
                     {/* Job Details Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="space-y-6">
@@ -375,6 +388,7 @@ export default function PastJobDetailsPage() {
                             </div>
                         )}
                     </div>
+                </div>
                 </div>
             </div>
         </div>
