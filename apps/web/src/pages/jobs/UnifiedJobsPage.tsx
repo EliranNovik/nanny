@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { JobsMobileTabStepper } from "@/components/jobs/JobsMobileTabStepper";
 import { JobsTabBar } from "@/components/jobs/JobsTabBar";
 import { JobsRolePicker } from "@/components/jobs/JobsRolePicker";
 import { JobsPerspectiveSwitch } from "@/components/jobs/JobsPerspectiveSwitch";
@@ -128,7 +129,9 @@ export default function UnifiedJobsPage() {
 
   return (
     <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
-      <div className="app-desktop-shell pt-[calc(4.75rem+env(safe-area-inset-top,0px))] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
+      <JobsMobileTabStepper />
+      {/** Mobile: strip only — PageLayoutWithHeader already clears the nav (`app-content-below-fixed-header`). */}
+      <div className="app-desktop-shell pt-[calc(5rem)] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
         <div className="mb-4 hidden md:sticky md:top-[calc(5.5rem+env(safe-area-inset-top,0px))] md:z-40 md:flex md:justify-center md:py-2">
           <JobsTabBar menuAlign="center" hideMobile />
         </div>

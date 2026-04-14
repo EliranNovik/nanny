@@ -117,6 +117,8 @@ export type CommunityPostCardProps = {
   plain?: boolean;
   /** Icon-only Hire / Chat / Comments row (e.g. Discover availability modal). Share is by the heart in the header. */
   iconOnlyActions?: boolean;
+  /** Extra vertical padding + gaps on small screens (Discover “Available now” bottom sheet). */
+  availabilitySheetComfort?: boolean;
   /** Omit the Share control next to the heart (e.g. public posts grid). */
   hideShareInIconRow?: boolean;
 };
@@ -136,6 +138,7 @@ export function CommunityPostCard({
   compact,
   plain,
   iconOnlyActions = false,
+  availabilitySheetComfort = false,
   hideShareInIconRow = false,
 }: CommunityPostCardProps) {
   const { addToast } = useToast();
@@ -153,6 +156,7 @@ export function CommunityPostCard({
   const largePublicIconRow = Boolean(plain && iconOnlyActions);
   /** Public posts grid: plain + icon row — used for desktop stretch + footer pin */
   const publicFeedCard = Boolean(plain && iconOnlyActions);
+  const sheetComfort = Boolean(availabilitySheetComfort && publicFeedCard);
   const pinFooterToBottom = publicFeedCard && imageUrls.length === 0;
 
   const sharePost = useCallback(async () => {
@@ -201,9 +205,19 @@ export function CommunityPostCard({
   }, [favoritedIds, onToggleFavorite, post.id]);
 
   const avatarEl = (
-    <Avatar className="h-14 w-14 shadow-none ring-0 ring-offset-0">
+    <Avatar
+      className={cn(
+        "h-14 w-14 shadow-none ring-0 ring-offset-0",
+        sheetComfort && "max-md:h-[4.25rem] max-md:w-[4.25rem]"
+      )}
+    >
       <AvatarImage src={post.author_photo_url ?? undefined} className="object-cover" alt="" />
-      <AvatarFallback className="bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200">
+      <AvatarFallback
+        className={cn(
+          "bg-gradient-to-br from-orange-100 to-amber-100 text-lg font-bold text-orange-800 dark:from-orange-950 dark:to-amber-950 dark:text-orange-200",
+          sheetComfort && "max-md:text-xl"
+        )}
+      >
         {(post.author_full_name || "?").charAt(0).toUpperCase()}
       </AvatarFallback>
     </Avatar>
@@ -220,7 +234,10 @@ export function CommunityPostCard({
           : "overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
         compact && "min-w-[min(88vw,320px)] max-w-[320px] shrink-0 snap-start",
         plain && compact && "rounded-none",
-        publicFeedCard && "flex min-h-0 flex-col md:h-full",
+        publicFeedCard &&
+          (availabilitySheetComfort
+            ? "flex h-full min-h-0 flex-1 flex-col"
+            : "flex min-h-0 flex-col md:h-full"),
         cardClassName
       )}
     >
@@ -234,13 +251,15 @@ export function CommunityPostCard({
         <div
           className={cn(
             publicFeedCard && "flex min-h-0 flex-1 flex-col gap-3",
+            sheetComfort && "max-md:gap-5",
             plain && !publicFeedCard && "contents"
           )}
         >
         <div
           className={cn(
             "flex items-start gap-3 px-3.5 pt-3.5 pb-0",
-            plain && "gap-4 px-4 pt-5 pb-0.5"
+            plain && "gap-4 px-4 pt-5 pb-0.5",
+            sheetComfort && "max-md:gap-4 max-md:px-5 max-md:pt-6 max-md:pb-1"
           )}
         >
           {!isMine ? (
@@ -439,11 +458,30 @@ export function CommunityPostCard({
           </div>
         )}
 
-        <div className={cn("px-3.5 pb-6 pt-0.5", plain && "px-4 pb-7 pt-1")}>
-          <p className="text-lg font-semibold leading-snug text-foreground">{post.title}</p>
+        <div
+          className={cn(
+            "px-3.5 pb-6 pt-0.5",
+            plain && "px-4 pb-7 pt-1",
+            sheetComfort && "max-md:px-5 max-md:pb-8 max-md:pt-2"
+          )}
+        >
+          <p
+            className={cn(
+              "text-lg font-semibold leading-snug text-foreground",
+              sheetComfort && "max-md:text-xl max-md:leading-snug"
+            )}
+          >
+            {post.title}
+          </p>
         </div>
 
-        <div className={cn("space-y-2 px-3.5 pb-3", plain && "space-y-3 px-4 pb-4")}>
+        <div
+          className={cn(
+            "space-y-2 px-3.5 pb-3",
+            plain && "space-y-3 px-4 pb-4",
+            sheetComfort && "max-md:space-y-4 max-md:px-5 max-md:pb-6"
+          )}
+        >
           {post.availability_payload?.area_tag && (
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground/80">Area</span>{" "}
@@ -451,12 +489,17 @@ export function CommunityPostCard({
             </p>
           )}
           {description && (
-            <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
+            <p
+              className={cn(
+                "whitespace-pre-wrap text-base leading-relaxed text-foreground/90",
+                sheetComfort && "max-md:text-[17px] max-md:leading-relaxed"
+              )}
+            >
               {description}
             </p>
           )}
           {plain && imageUrls.length === 0 && (
-            <div className="flex justify-start pt-1">
+            <div className={cn("flex justify-start pt-1", sheetComfort && "max-md:pt-2")}>
               <PostTimeLeftBadge expiresAtIso={post.expires_at} />
             </div>
           )}
@@ -468,9 +511,16 @@ export function CommunityPostCard({
             "space-y-2 px-3.5 py-3",
             plain
               ? tightenIconRowToImage
-                ? "space-y-3 bg-transparent px-4 pb-4 pt-2"
+                ? cn(
+                    "space-y-3 bg-transparent px-4 pb-4 pt-2",
+                    sheetComfort && "max-md:space-y-4 max-md:px-5 max-md:pb-6 max-md:pt-4"
+                  )
                 : largePublicIconRow
-                  ? "space-y-3 bg-transparent px-4 pb-4 pt-3"
+                  ? cn(
+                      "space-y-3 bg-transparent px-4 pb-4 pt-3",
+                      sheetComfort &&
+                        "max-md:space-y-5 max-md:border-t max-md:border-border/60 max-md:px-5 max-md:pb-6 max-md:pt-6"
+                    )
                   : "space-y-4 bg-transparent px-4 py-5"
               : "border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-card sm:bg-white dark:sm:bg-card",
             pinFooterToBottom && "mt-auto"
@@ -483,7 +533,8 @@ export function CommunityPostCard({
                 <div
                   className={cn(
                     "flex w-full flex-wrap items-center justify-center",
-                    largePublicIconRow ? "gap-3 sm:gap-5" : "gap-3"
+                    largePublicIconRow ? "gap-3 sm:gap-5" : "gap-3",
+                    sheetComfort && "max-md:gap-4"
                   )}
                 >
                   {(profile.role === "client" || profile.role === "freelancer") &&

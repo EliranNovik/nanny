@@ -433,38 +433,31 @@ export function DiscoverHomeActivitySection({
   const availabilityPostsCount = feedPosts.length;
 
   const seeMoreLinkClassName = cn(
-    "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center gap-2 pb-0.5 text-center outline-none",
+    "group flex shrink-0 snap-start flex-col items-center justify-center text-center outline-none",
     "transition-transform active:scale-[0.97]",
-    "focus-visible:ring-2 focus-visible:ring-slate-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "focus-visible:ring-2 focus-visible:ring-slate-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-full",
     "dark:focus-visible:ring-slate-500/50"
   );
 
   const seeMoreCircleClassName = cn(
-    "flex h-[5.5rem] w-[5.5rem] shrink-0 items-center justify-center rounded-full",
-    "border border-dashed border-slate-300/90 bg-slate-100/80 shadow-[0_1px_8px_-3px_rgba(0,0,0,0.08)]",
-    "transition-transform duration-300 group-hover:scale-[1.03]",
-    "dark:border-slate-600/80 dark:bg-slate-800/60"
+    "flex h-14 w-14 shrink-0 items-center justify-center rounded-full",
+    "bg-transparent",
+    "transition-colors duration-200 group-hover:bg-slate-100/60 dark:group-hover:bg-slate-800/35"
   );
 
   const hireSeeMoreLink = (
     <Link to="/public/posts" className={seeMoreLinkClassName} role="listitem" aria-label="See more availability posts">
       <div className={seeMoreCircleClassName} aria-hidden>
-        <Plus className="h-8 w-8 text-slate-600 dark:text-slate-400" strokeWidth={2.25} />
+        <Plus className="h-8 w-8 text-slate-700 dark:text-slate-300" strokeWidth={2.5} />
       </div>
-      <span className="max-w-full px-0.5 text-xs font-semibold leading-tight text-slate-600 dark:text-slate-400">
-        See more
-      </span>
     </Link>
   );
 
   const workSeeMoreLink = (
     <Link to={incomingJobsUrl} className={seeMoreLinkClassName} role="listitem" aria-label="See more open requests">
       <div className={seeMoreCircleClassName} aria-hidden>
-        <Plus className="h-8 w-8 text-slate-600 dark:text-slate-400" strokeWidth={2.25} />
+        <Plus className="h-8 w-8 text-slate-700 dark:text-slate-300" strokeWidth={2.5} />
       </div>
-      <span className="max-w-full px-0.5 text-xs font-semibold leading-tight text-slate-600 dark:text-slate-400">
-        See more
-      </span>
     </Link>
   );
 
@@ -667,7 +660,7 @@ export function DiscoverHomeActivitySection({
   return (
     <>
       <section
-        className="mt-5 overflow-visible px-1 pt-0.5"
+        className="mt-5 overflow-visible px-1 pt-0.5 md:mt-0"
         aria-label={mode === "hire" ? "Available helpers live now" : "Community requests and matching"}
       >
         {mode === "hire" ? hireSection : workSection}

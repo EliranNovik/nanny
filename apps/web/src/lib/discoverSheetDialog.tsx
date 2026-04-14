@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 
 /** Outer Radix content: bottom sheet on all breakpoints (slides up from bottom, not from the side). */
 export const discoverSheetDialogContentClassName = cn(
-  "flex max-h-[min(92dvh,860px)] w-full max-w-[min(100vw-1rem,26rem)] flex-col gap-0 overflow-hidden border-0 bg-transparent p-0 shadow-none",
+  /** Mobile: min height so short posts still feel like a proper sheet (not a stub). */
+  "flex max-h-[min(92dvh,860px)] max-md:min-h-[68dvh] w-full max-w-[min(100vw-1rem,26rem)] flex-col gap-0 overflow-hidden border-0 bg-transparent p-0 shadow-none",
   "duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
   "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
   "fixed bottom-0 left-1/2 top-auto z-50 -translate-x-1/2 translate-y-0",
@@ -16,7 +17,7 @@ export const discoverSheetDialogContentClassName = cn(
 
 /** Single white/card surface from the top (handle closes sheet). */
 export const discoverSheetInnerCardClassName = cn(
-  "relative flex h-full min-h-0 w-full max-h-[min(92dvh,860px)] flex-1 flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-card shadow-sm sm:rounded-t-2xl"
+  "relative flex h-full min-h-0 w-full max-h-[min(92dvh,860px)] max-md:min-h-[68dvh] flex-1 flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-card shadow-sm sm:rounded-t-2xl"
 );
 
 /** Pill “stick” at top of sheet — tap to close (DialogClose). */

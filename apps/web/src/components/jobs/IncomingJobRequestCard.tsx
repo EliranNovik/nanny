@@ -117,15 +117,15 @@ export function IncomingJobRequestCard({
           trailing={
             <Badge
               className={cn(
-                "h-7 shrink-0 rounded-full border-none px-2.5 text-[9px] font-black uppercase leading-tight tracking-wide shadow-md sm:px-3 sm:text-[10px]",
+                "h-7 min-h-7 shrink-0 rounded-full border-none px-2.5 shadow-md sm:px-3",
                 isDeclined
-                  ? "bg-slate-200 text-slate-600"
+                  ? "text-[9px] font-black uppercase leading-tight tracking-wide bg-slate-200 text-slate-600"
                   : isConfirmed
-                    ? "bg-emerald-500 text-white"
-                    : "bg-amber-500 text-white"
+                    ? "text-[9px] font-black uppercase leading-tight tracking-wide bg-emerald-500 text-white shadow-emerald-500/20 sm:text-[10px]"
+                    : "bg-red-600 px-2.5 text-[10px] font-bold leading-tight tracking-tight text-white shadow-red-500/25 dark:bg-red-500 sm:px-3 sm:text-[11px]"
               )}
             >
-              {isDeclined ? "Declined" : isConfirmed ? "Confirmed" : "Waiting"}
+              {isDeclined ? "Declined" : isConfirmed ? "Confirmed" : "Action required"}
             </Badge>
           }
         />

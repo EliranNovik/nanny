@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ALL_HELP_CATEGORY_ID,
   DISCOVER_HOME_CATEGORIES,
@@ -25,6 +26,8 @@ import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeActivitySection";
 import { DiscoverHomeLiveTrackerBoard } from "@/components/discover/DiscoverHomeLiveTrackerBoard";
+import { DiscoverHomeLatestReviews } from "@/components/discover/DiscoverHomeLatestReviews";
+import { DiscoverHomeLatestPosts } from "@/components/discover/DiscoverHomeLatestPosts";
  
 type DiscoverRole = "client" | "freelancer";
 
@@ -50,6 +53,16 @@ const DISCOVER_CATEGORY_WORK_LINE: Record<string, string> = {
   nanny: "Post childcare availability",
   other_help: "Post availability for odd jobs",
 };
+
+function initials(name: string | null | undefined): string {
+  const t = String(name ?? "").trim();
+  if (!t) return "??";
+  const parts = t.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : (parts[0]?.[1] ?? "");
+  const s = (first + last).toUpperCase();
+  return s || "??";
+}
 
 function readStoredHomeMode(): DiscoverHomeMode | null {
   try {
@@ -101,6 +114,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   >(() =>
     Object.fromEntries(DISCOVER_HOME_CATEGORIES.map((c) => [c.id, 0]))
   );
+  const [categoryAuthorAvatars, setCategoryAuthorAvatars] = useState<
+    Record<string, { id: string; full_name: string | null; photo_url: string | null }[]>
+  >(() => Object.fromEntries(DISCOVER_HOME_CATEGORIES.map((c) => [c.id, []])));
   const [livePostsCountLoading, setLivePostsCountLoading] = useState(true);
 
   useEffect(() => {
@@ -137,6 +153,81 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
       setLivePostsByCategory(next);
       setLivePostsCountLoading(false);
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const nowIso = new Date().toISOString();
+      const categoryIds = Array.from(
+        new Set([
+          ...DISCOVER_HOME_CATEGORIES.map((c) => c.id),
+          ...SERVICE_CATEGORIES.map((c) => c.id),
+        ])
+      ).filter((id) => id && id !== ALL_HELP_CATEGORY_ID);
+
+      const { data, error } = await supabase
+        .from("community_posts")
+        .select(
+          `
+            id,
+            category,
+            author_id,
+            created_at,
+            author:profiles!author_id (
+              id,
+              full_name,
+              photo_url
+            )
+          `
+        )
+        .eq("status", "active")
+        .gt("expires_at", nowIso)
+        .in("category", categoryIds)
+        .order("created_at", { ascending: false })
+        .limit(220);
+
+      if (cancelled) return;
+      if (error) {
+        console.warn("[DiscoverHomeContent] category avatars:", error);
+        setCategoryAuthorAvatars(Object.fromEntries(DISCOVER_HOME_CATEGORIES.map((c) => [c.id, []])));
+        return;
+      }
+
+      const next: Record<string, { id: string; full_name: string | null; photo_url: string | null }[]> = {};
+      for (const id of categoryIds) next[id] = [];
+
+      const seen = new Map<string, Set<string>>();
+      for (const row of (data ?? []) as any[]) {
+        const cat = String(row?.category ?? "").trim();
+        if (!cat || !(cat in next)) continue;
+        const author = row?.author;
+        const authorId = String(author?.id ?? row?.author_id ?? "").trim();
+        if (!authorId) continue;
+        if (!seen.has(cat)) seen.set(cat, new Set());
+        const set = seen.get(cat)!;
+        if (set.has(authorId)) continue;
+        if (next[cat].length >= 3) continue;
+        set.add(authorId);
+        next[cat].push({
+          id: authorId,
+          full_name: (author?.full_name as string | null) ?? null,
+          photo_url: (author?.photo_url as string | null) ?? null,
+        });
+      }
+
+      // Ensure keys exist for tiles even if empty.
+      const allTileIds = Array.from(new Set([...DISCOVER_HOME_CATEGORIES.map((c) => c.id), ...SERVICE_CATEGORIES.map((c) => c.id)]));
+      for (const id of allTileIds) {
+        if (!next[id]) next[id] = [];
+      }
+
+      setCategoryAuthorAvatars(next);
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -192,7 +283,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   }, []);
 
   return (
-    <div className="relative min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="relative min-h-screen gradient-mesh pb-6 md:pb-12">
       <div
         className={cn(
           "fixed inset-x-0 z-[45] pointer-events-none",
@@ -203,7 +294,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
         )}
       >
         <div className="app-desktop-shell pointer-events-auto">
-          <div className="app-desktop-centered-wide max-w-lg px-2 py-2 md:max-w-2xl">
+          <div className="w-full px-2 py-2">
             <div
               role="tablist"
               aria-label="What are you here for?"
@@ -281,7 +372,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   type="button"
                   role="tab"
                   aria-selected={homeMode === "work"}
-                  aria-label={homeMode === "work" ? undefined : "I want to work"}
+                  aria-label={homeMode === "work" ? undefined : "Help others"}
                   onClick={() => setHomeMode("work")}
                   className={cn(
                     "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-3 py-2.5 sm:min-h-[62px] sm:px-3.5",
@@ -303,7 +394,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   />
                   {homeMode === "work" && (
                     <span className="max-w-[min(100%,11rem)] truncate text-left text-sm font-bold leading-tight tracking-tight sm:max-w-[12rem] sm:text-base">
-                      I want to work
+                      Help others
                     </span>
                   )}
                 </button>
@@ -320,8 +411,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           "pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]"
         )}
       >
-        <div className="app-desktop-centered-wide max-w-lg md:max-w-2xl">
-          <section className="mb-3 px-1" aria-label={homeMode === "hire" ? "Find helpers" : "Get work"}>
+        <div className="flex w-full flex-col md:gap-10 lg:gap-12">
+          <section className="mb-3 px-1 md:mb-0" aria-label={homeMode === "hire" ? "Find helpers" : "Get work"}>
             {homeMode === "hire" ? (
               <button
                 type="button"
@@ -343,7 +434,11 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     {isClient ? "Find helpers" : "See who’s offering help"}
                   </p>
                 </div>
-                <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+                <ChevronRight
+                  className="h-5 w-5 shrink-0 self-center text-muted-foreground"
+                  aria-hidden
+                  strokeWidth={2}
+                />
               </button>
             ) : isClient ? (
               <button
@@ -364,7 +459,11 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   </p>
                   <p className="mt-0.5 text-base font-bold text-foreground">Post availability</p>
                 </div>
-                <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+                <ChevronRight
+                  className="h-5 w-5 shrink-0 self-center text-muted-foreground"
+                  aria-hidden
+                  strokeWidth={2}
+                />
               </button>
             ) : (
               <button
@@ -395,7 +494,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           {homeMode === "work" && (
             <section
               className={cn(
-                "mb-6 mt-4",
+                "mb-6 mt-4 md:mb-0 md:mt-0",
                 "-mx-4 w-[calc(100%+2rem)] px-2 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-3",
                 "md:mx-0 md:w-full md:px-0"
               )}
@@ -407,7 +506,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   className={cn(
                     "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
                     "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                    "touch-pan-x"
+                    "touch-pan-y sm:touch-pan-x",
+                    "md:grid md:grid-cols-6 md:gap-3 md:overflow-visible md:snap-none md:touch-auto md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:auto"
                   )}
                 >
                   {SERVICE_CATEGORIES.map((cat) => (
@@ -422,7 +522,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       onClick={() => onWorkCategoryPostAvailability(cat.id)}
                       className={cn(
                         "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-2xl text-left outline-none",
-                        "basis-[calc((100%-0.5rem)/2)] md:basis-[calc((100%-1rem)/3)]",
+                        "basis-[calc((100%-0.5rem)/2)] md:basis-auto md:w-full md:snap-none",
                         "shadow-md transition-[transform,box-shadow] duration-300 hover:shadow-lg active:scale-[0.98]",
                         "focus-visible:ring-2 focus-visible:ring-emerald-500/65 focus-visible:ring-inset"
                       )}
@@ -434,22 +534,42 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                         aria-hidden
                       />
                       <div className="pointer-events-none absolute inset-0 z-[1] bg-black/35" aria-hidden />
+                      {categoryAuthorAvatars[cat.id]?.length ? (
+                        <div
+                          className="pointer-events-none absolute right-1.5 top-1.5 z-[2] flex -space-x-2 sm:right-2 sm:top-2"
+                          aria-hidden
+                        >
+                          {categoryAuthorAvatars[cat.id].slice(0, 3).map((p) => (
+                            <Avatar key={p.id} className="h-7 w-7 shadow-sm sm:h-8 sm:w-8">
+                              <AvatarImage src={p.photo_url || undefined} className="object-cover" />
+                              <AvatarFallback className="bg-white/85 text-[10px] font-black text-slate-800 dark:bg-zinc-800 dark:text-slate-100">
+                                {initials(p.full_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                        </div>
+                      ) : null}
                       <span
                         className={cn(
-                          "absolute left-1.5 top-1.5 z-[2] flex min-h-[1.5rem] min-w-[1.5rem] items-center justify-center rounded-full px-2 text-[11px] font-black tabular-nums leading-none sm:left-2 sm:top-2 sm:min-h-[1.65rem] sm:min-w-[1.65rem] sm:px-2 sm:text-xs md:text-sm",
+                          "absolute left-1.5 top-1.5 z-[2] flex min-h-[1.75rem] min-w-[1.75rem] items-center justify-center rounded-full px-2.5 text-xs font-black tabular-nums leading-none sm:left-2 sm:top-2 sm:min-h-[1.9rem] sm:min-w-[1.9rem] sm:px-3 sm:text-sm",
                           "backdrop-blur-md backdrop-saturate-150",
-                          "bg-white/70 text-slate-900 shadow-[0_1px_10px_rgba(0,0,0,0.12)] ring-1 ring-white/80",
+                          "bg-black/55 text-white shadow-[0_1px_10px_rgba(0,0,0,0.16)] ring-1 ring-white/15",
                           "dark:bg-black/55 dark:text-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.55)] dark:ring-white/15"
                         )}
                         aria-hidden
                       >
-                        {liveCountLabel(cat.id)}
+                        <span className="flex items-center gap-1">
+                          <span>{liveCountLabel(cat.id)}</span>
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-white/95 sm:text-[11px]">
+                            posts
+                          </span>
+                        </span>
                       </span>
                       <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/90 via-black/55 to-transparent pt-14 pb-2 px-1.5 sm:pt-16 sm:pb-2.5 sm:px-2"
+                        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/95 via-black/75 to-transparent pt-28 pb-2 px-1.5 sm:pt-32 sm:pb-2.5 sm:px-2"
                         aria-hidden
                       />
-                      <span className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-2 pt-5 text-center text-base font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:pt-7 md:px-1.5 md:pt-5 md:text-base lg:text-lg md:pb-2.5">
+                      <span className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-8 pt-2 text-center text-base font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:pt-4 md:px-1.5 md:pt-3 md:text-base lg:text-lg md:pb-9">
                         {DISCOVER_CATEGORY_WORK_LINE[cat.id] ?? cat.label}
                       </span>
                     </button>
@@ -461,6 +581,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   disabled={!discoverCategoryScroll.canScrollLeft}
                   onClick={() => scrollDiscoverCategories("left")}
                   className={cn(
+                    "md:hidden",
                     "absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:left-3 sm:h-11 sm:w-11",
                     "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
                     "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
@@ -477,6 +598,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   disabled={!discoverCategoryScroll.canScrollRight}
                   onClick={() => scrollDiscoverCategories("right")}
                   className={cn(
+                    "md:hidden",
                     "absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:right-3 sm:h-11 sm:w-11",
                     "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
                     "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
@@ -491,11 +613,17 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </section>
           )}
 
+          {homeMode === "work" && (
+            <div className="mb-6 mt-2 md:mb-0 md:mt-0">
+              <DiscoverHomeLatestReviews />
+            </div>
+          )}
+
           {homeMode === "hire" && (
           <>
           <section
             className={cn(
-              "mb-6 mt-4",
+              "mb-6 mt-4 md:mb-0 md:mt-0",
               "-mx-4 w-[calc(100%+2rem)] px-2 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-3",
               "md:mx-0 md:w-full md:px-0"
             )}
@@ -507,7 +635,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 className={cn(
                   "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
                   "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                  "touch-pan-x"
+                  "touch-pan-y sm:touch-pan-x",
+                  "md:grid md:grid-cols-6 md:gap-3 md:overflow-visible md:snap-none md:touch-auto md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:auto"
                 )}
               >
                 {DISCOVER_HOME_CATEGORIES.map((cat) => (
@@ -523,7 +652,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     className={cn(
                       "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-2xl text-left outline-none",
                       /** Mobile: two larger tiles per viewport (one gap-2). md+: three per viewport. */
-                      "basis-[calc((100%-0.5rem)/2)] md:basis-[calc((100%-1rem)/3)]",
+                      "basis-[calc((100%-0.5rem)/2)] md:basis-auto md:w-full md:snap-none",
                       "shadow-md transition-[transform,box-shadow] duration-300 hover:shadow-lg active:scale-[0.98]",
                       "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-inset",
                     )}
@@ -538,22 +667,42 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       className="pointer-events-none absolute inset-0 z-[1] bg-black/35"
                       aria-hidden
                     />
+                    {categoryAuthorAvatars[cat.id]?.length ? (
+                      <div
+                        className="pointer-events-none absolute right-1.5 top-1.5 z-[2] flex -space-x-2 sm:right-2 sm:top-2"
+                        aria-hidden
+                      >
+                        {categoryAuthorAvatars[cat.id].slice(0, 3).map((p) => (
+                          <Avatar key={p.id} className="h-7 w-7 shadow-sm sm:h-8 sm:w-8">
+                            <AvatarImage src={p.photo_url || undefined} className="object-cover" />
+                            <AvatarFallback className="bg-white/85 text-[10px] font-black text-slate-800 dark:bg-zinc-800 dark:text-slate-100">
+                              {initials(p.full_name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        ))}
+                      </div>
+                    ) : null}
                     <span
                       className={cn(
-                        "absolute left-1.5 top-1.5 z-[2] flex min-h-[1.5rem] min-w-[1.5rem] items-center justify-center rounded-full px-2 text-[11px] font-black tabular-nums leading-none sm:left-2 sm:top-2 sm:min-h-[1.65rem] sm:min-w-[1.65rem] sm:px-2 sm:text-xs md:text-sm",
+                        "absolute left-1.5 top-1.5 z-[2] flex min-h-[1.75rem] min-w-[1.75rem] items-center justify-center rounded-full px-2.5 text-xs font-black tabular-nums leading-none sm:left-2 sm:top-2 sm:min-h-[1.9rem] sm:min-w-[1.9rem] sm:px-3 sm:text-sm",
                         "backdrop-blur-md backdrop-saturate-150",
-                        "bg-white/70 text-slate-900 shadow-[0_1px_10px_rgba(0,0,0,0.12)] ring-1 ring-white/80",
+                        "bg-black/55 text-white shadow-[0_1px_10px_rgba(0,0,0,0.16)] ring-1 ring-white/15",
                         "dark:bg-black/55 dark:text-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.55)] dark:ring-white/15"
                       )}
                       aria-hidden
                     >
-                      {liveCountLabel(cat.id)}
+                      <span className="flex items-center gap-1">
+                        <span>{liveCountLabel(cat.id)}</span>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-white/95 sm:text-[11px]">
+                          posts
+                        </span>
+                      </span>
                     </span>
                     <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/90 via-black/55 to-transparent pt-14 pb-2 px-1.5 sm:pt-16 sm:pb-2.5 sm:px-2"
+                      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/95 via-black/75 to-transparent pt-28 pb-2 px-1.5 sm:pt-32 sm:pb-2.5 sm:px-2"
                       aria-hidden
                     />
-                    <span className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-2 pt-5 text-center text-lg font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:pt-7 md:px-1.5 md:pt-5 md:text-base lg:text-lg md:pb-2.5">
+                    <span className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-8 pt-2 text-center text-lg font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:pt-4 md:px-1.5 md:pt-3 md:text-base lg:text-lg md:pb-9">
                       {DISCOVER_CATEGORY_ACTION_LINE[cat.id] ?? cat.label}
                     </span>
                   </button>
@@ -565,6 +714,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 disabled={!discoverCategoryScroll.canScrollLeft}
                 onClick={() => scrollDiscoverCategories("left")}
                 className={cn(
+                  "md:hidden",
                   "absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:left-3 sm:h-11 sm:w-11",
                   "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
                   "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
@@ -581,6 +731,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 disabled={!discoverCategoryScroll.canScrollRight}
                 onClick={() => scrollDiscoverCategories("right")}
                 className={cn(
+                  "md:hidden",
                   "absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:right-3 sm:h-11 sm:w-11",
                   "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
                   "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
@@ -594,13 +745,16 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </div>
           </section>
 
-          <div className="mb-4 mt-10">
+          <div className="mb-4 mt-10 md:mb-0 md:mt-0">
             <DiscoverHomeLiveTrackerBoard />
+          </div>
+          <div className="mb-4 md:mb-0">
+            <DiscoverHomeLatestPosts />
           </div>
           </>
           )}
 
-          <section className="mt-6 px-1 pb-8" aria-label="Shortcuts">
+          <section className="mt-6 px-1 pb-8 md:mt-0 md:pb-12" aria-label="Shortcuts">
             <div className="grid grid-cols-3 gap-1 sm:gap-2">
               {homeMode === "hire" ? (
                 <>

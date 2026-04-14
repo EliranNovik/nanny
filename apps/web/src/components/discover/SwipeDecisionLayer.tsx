@@ -168,7 +168,9 @@ export function SwipeDecisionLayer({
       {/* Left = accept (green); right = decline (red) — matches swipe direction feedback */}
       <div
         className="pointer-events-none absolute inset-y-3 left-2 z-[5] flex w-[min(28%,7rem)] items-center justify-center rounded-2xl border-2 border-emerald-500/55 bg-gradient-to-br from-emerald-500/25 to-teal-600/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[2px] dark:from-emerald-500/20 dark:to-emerald-950/30"
-        style={{ opacity: 0.12 + acceptEdgeOpacity * 0.88 }}
+        style={{
+          opacity: acceptEdgeOpacity > 0 ? 0.12 + acceptEdgeOpacity * 0.88 : 0,
+        }}
         aria-hidden
       >
         <div className="flex flex-col items-center gap-1 px-2 text-center">
@@ -178,7 +180,9 @@ export function SwipeDecisionLayer({
       </div>
       <div
         className="pointer-events-none absolute inset-y-3 right-2 z-[5] flex w-[min(28%,7rem)] items-center justify-center rounded-2xl border-2 border-red-500/55 bg-gradient-to-br from-red-500/25 to-rose-600/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[2px] dark:from-red-500/20 dark:to-rose-950/30"
-        style={{ opacity: 0.12 + declineEdgeOpacity * 0.88 }}
+        style={{
+          opacity: declineEdgeOpacity > 0 ? 0.12 + declineEdgeOpacity * 0.88 : 0,
+        }}
         aria-hidden
       >
         <div className="flex flex-col items-center gap-1 px-2 text-center">
@@ -189,7 +193,8 @@ export function SwipeDecisionLayer({
 
       <div
         className={cn(
-          "relative z-[6] flex min-h-0 flex-1 flex-col overflow-hidden will-change-transform",
+          /** Opaque surface so idle edge hints (z-[5]) never show through plain/transparent cards */
+          "relative z-[6] flex min-h-0 flex-1 flex-col overflow-hidden bg-card will-change-transform",
           fling && "transition-[transform] duration-300 ease-out"
         )}
         style={{

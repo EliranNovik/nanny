@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { badgeCountForJobsTab, useJobsTabCounts } from "@/hooks/useJobsTabCounts";
 import type { JobsPerspective } from "./jobsPerspective";
 import { tabsForPerspective } from "./jobsTabConfig";
 import { defaultTabForPerspective, isTabValidForPerspective } from "./jobsPerspective";
@@ -29,15 +29,7 @@ export function JobsTabBar({
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
-  const [counts, setCounts] = useState<Record<string, number>>({
-    my_requests: 0,
-    requests: 0,
-    pending: 0,
-    jobs_client: 0,
-    past_client: 0,
-    jobs_freelancer: 0,
-    past_freelancer: 0,
-  });
+  const counts = useJobsTabCounts(user);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const mode = searchParams.get("mode") as JobsPerspective | null;
@@ -74,69 +66,6 @@ export function JobsTabBar({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  useEffect(() => {
-    async function loadCounts() {
-      if (!user) return;
-      try {
-        const [myReqRes, jobsRes, notifsRes, confRes] = await Promise.all([
-          supabase
-            .from("job_requests")
-            .select("id", { count: "exact", head: true })
-            .eq("client_id", user.id)
-            .in("status", ["ready", "notifying", "confirmations_closed"]),
-          supabase
-            .from("job_requests")
-            .select("id,status,client_id,selected_freelancer_id")
-            .or(`client_id.eq.${user.id},selected_freelancer_id.eq.${user.id}`)
-            .in("status", ["locked", "active", "completed", "cancelled"]),
-          supabase
-            .from("job_candidate_notifications")
-            .select("job_id")
-            .eq("freelancer_id", user.id)
-            .in("status", ["pending", "opened"]),
-          supabase.from("job_confirmations").select("job_id,status").eq("freelancer_id", user.id),
-        ]);
-
-        const rows = (jobsRes.data || []) as {
-          status: string;
-          client_id: string;
-          selected_freelancer_id: string | null;
-        }[];
-        const asClient = rows.filter((j) => j.client_id === user.id);
-        const asFreelancer = rows.filter((j) => j.selected_freelancer_id === user.id);
-        const countLivePast = (arr: typeof rows) => ({
-          live: arr.filter((j) => j.status === "locked" || j.status === "active").length,
-          past: arr.filter((j) => j.status === "completed" || j.status === "cancelled").length,
-        });
-        const clientLP = countLivePast(asClient);
-        const freelancerLP = countLivePast(asFreelancer);
-
-        const confirmedIds = new Set(
-          (confRes.data || [])
-            .filter((c: { status: string }) => c.status === "available")
-            .map((c: { job_id: string }) => c.job_id)
-        );
-        const pending = (notifsRes.data || []).filter((n: { job_id: string }) =>
-          confirmedIds.has(n.job_id)
-        ).length;
-        const requests = (notifsRes.data || []).length - pending;
-
-        setCounts({
-          my_requests: myReqRes.count || 0,
-          requests: Math.max(0, requests),
-          pending: Math.max(0, pending),
-          jobs_client: clientLP.live,
-          past_client: clientLP.past,
-          jobs_freelancer: freelancerLP.live,
-          past_freelancer: freelancerLP.past,
-        });
-      } catch {
-        // keep zeros
-      }
-    }
-    loadCounts();
-  }, [user?.id]);
-
   function select(nextTabId: string) {
     if (!mode) return;
     setSearchParams({ mode, tab: nextTabId }, { replace: true });
@@ -154,13 +83,8 @@ export function JobsTabBar({
   }
 
   function badgeCountForTab(tabId: string): number {
-    if (tabId === "jobs") {
-      return mode === "client" ? counts.jobs_client ?? 0 : counts.jobs_freelancer ?? 0;
-    }
-    if (tabId === "past") {
-      return mode === "client" ? counts.past_client ?? 0 : counts.past_freelancer ?? 0;
-    }
-    return counts[tabId] ?? 0;
+    if (!mode) return 0;
+    return badgeCountForJobsTab(tabId, mode, counts);
   }
 
   const ActiveIcon = active.icon;

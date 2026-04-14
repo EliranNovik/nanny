@@ -3,7 +3,26 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
-import { Home, Heart, MessageCircle, User, Bell, ChevronDown, ChevronLeft, LogOut, Pencil, Search, X, Menu, MapPin, Plus, ClipboardList, UsersRound } from "lucide-react";
+import { badgeCountForJobsTab, useJobsTabCounts } from "@/hooks/useJobsTabCounts";
+import {
+  HeartHandshake,
+  HelpingHand,
+  Home,
+  Heart,
+  MessageCircle,
+  User,
+  Bell,
+  ChevronDown,
+  ChevronLeft,
+  LogOut,
+  Pencil,
+  Search,
+  X,
+  Menu,
+  Plus,
+  ClipboardList,
+  UsersRound,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,11 +35,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserSearch } from "./UserSearch";
 import { MobileSmartSearchOverlay } from "./MobileSmartSearchOverlay";
-import { JobsTabBar } from "@/components/jobs/JobsTabBar";
 import { FREELANCER_JOBS_TABS, CLIENT_JOBS_TABS } from "@/components/jobs/jobsTabConfig";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
-import { Separator } from "@/components/ui/separator";
 import { CommunityPostsCategoryNativeSelect } from "@/components/community/CommunityPostsCategoryNativeSelect";
+
+/** App menu — job tab counts: dark frosted glass (light) / light frosted glass (dark). */
+const appMenuJobsCountBadgeClassName = cn(
+  "shrink-0 min-w-[1.75rem] justify-center rounded-full border px-2 py-0.5 text-xs font-bold tabular-nums",
+  "border-white/20 bg-black/50 text-white shadow-sm backdrop-blur-md ring-1 ring-inset ring-white/10",
+  "dark:border-white/35 dark:bg-white/35 dark:text-zinc-950 dark:shadow-md dark:backdrop-blur-md dark:ring-white/25"
+);
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
@@ -29,6 +53,7 @@ export function BottomNav() {
   const [jobsSearchParams] = useSearchParams();
   const { activityInboxCount, unreadMessages } = useUnreadCounts();
   const { scheduleChanges } = useScheduleChanges();
+  const jobsTabCounts = useJobsTabCounts(user);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [desktopAppMenuOpen, setDesktopAppMenuOpen] = useState(false);
@@ -59,7 +84,6 @@ export function BottomNav() {
           : "/client/profile"
         : null;
   const showProfileBack = profileBackTarget !== null;
-  const isJobsPage = pathnameNorm === "/jobs";
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
     pathnameNorm === "/availability" ||
@@ -145,88 +169,96 @@ export function BottomNav() {
 
   const DesktopAppMenuModal = user ? (
     <Dialog open={desktopAppMenuOpen} onOpenChange={setDesktopAppMenuOpen}>
-      <DialogContent className="max-w-sm gap-0 p-0 overflow-hidden rounded-xl left-4 right-auto top-16 translate-x-0 translate-y-0 w-[min(22rem,calc(100vw-2rem))] data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2">
+      <DialogContent
+        className={cn(
+          "gap-0 overflow-hidden rounded-xl p-0",
+          "data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2",
+          /** Desktop: compact panel under header */
+          "left-4 right-auto top-16 w-[min(22rem,calc(100vw-2rem))] max-w-sm translate-x-0 translate-y-0",
+          /** Mobile: wider, taller sheet (override default centered dialog transform) */
+          "max-md:inset-x-3 max-md:left-3 max-md:right-3 max-md:top-[max(3.25rem,env(safe-area-inset-top,0px))] max-md:w-auto max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-2xl max-md:shadow-2xl"
+        )}
+      >
         <DialogTitle className="sr-only">App menu</DialogTitle>
-        <div className="border-b border-border/60 px-4 py-3">
-          <p className="text-sm font-semibold text-foreground">Quick navigation</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Find helpers, jobs tabs, and your public profile</p>
+        <div className="border-b border-border/60 px-4 py-4">
+          <p className="text-base font-semibold text-foreground">Quick navigation</p>
         </div>
-        <div className="max-h-[min(70vh,28rem)] overflow-y-auto p-2">
-          <Button
-            variant="ghost"
-            className="justify-start gap-2 w-full h-auto py-2.5"
-            onClick={() => {
-              navigate("/client/helpers");
-              setDesktopAppMenuOpen(false);
-            }}
-          >
-            <MapPin className="w-4 h-4 shrink-0" />
-            Find helpers
-          </Button>
-          <Separator className="my-2" />
-          <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Jobs</p>
+        <div className="max-h-[min(85dvh,40rem)] overflow-y-auto p-3 md:max-h-[min(70vh,28rem)]">
+          <p className="px-1 pb-2 text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
+            Live activities
+          </p>
           <div className="flex flex-col gap-2">
             {showFreelancerJobNav && (
               <>
-                <p className="px-2 text-[10px] font-bold uppercase tracking-wide text-orange-600/90 dark:text-orange-400/90">
-                  Helping others
-                </p>
-                <div className="flex flex-col gap-0.5">
+                <div
+                  className="flex items-center gap-3 px-2 pb-1 pt-1"
+                  role="presentation"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                    <HelpingHand className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+                  </span>
+                  <span className="text-sm font-bold tracking-tight text-foreground">Help others</span>
+                </div>
+                <div className="flex flex-col gap-1">
                   {FREELANCER_JOBS_TABS.map((tab) => {
                     const Icon = tab.icon;
                     return (
                       <Button
                         key={`f-${tab.id}`}
                         variant="ghost"
-                        className="justify-start gap-2 w-full h-auto py-2.5 font-normal"
+                        className="h-auto w-full flex-row items-center justify-between gap-2 rounded-xl px-3 py-3 text-base font-semibold leading-snug"
                         onClick={() => {
                           navigate(buildJobsUrl("freelancer", tab.id));
                           setDesktopAppMenuOpen(false);
                         }}
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
-                        {tab.label}
+                        <span className="flex min-w-0 flex-1 items-center gap-3">
+                          <Icon className="h-6 w-6 shrink-0 opacity-90" aria-hidden />
+                          <span className="truncate text-left">{tab.label}</span>
+                        </span>
+                        <Badge variant="secondary" className={appMenuJobsCountBadgeClassName}>
+                          {badgeCountForJobsTab(tab.id, "freelancer", jobsTabCounts)}
+                        </Badge>
                       </Button>
                     );
                   })}
                 </div>
               </>
             )}
-            <p className="px-2 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-              My Helpers
-            </p>
-            <div className="flex flex-col gap-0.5">
+            <div
+              className="flex items-center gap-3 px-2 pb-1 pt-1"
+              role="presentation"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                <HeartHandshake className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="text-sm font-bold tracking-tight text-foreground">I need help</span>
+            </div>
+            <div className="flex flex-col gap-1">
               {CLIENT_JOBS_TABS.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <Button
                     key={`c-${tab.id}`}
                     variant="ghost"
-                    className="justify-start gap-2 w-full h-auto py-2.5 font-normal"
+                    className="h-auto w-full flex-row items-center justify-between gap-2 rounded-xl px-3 py-3 text-base font-semibold leading-snug"
                     onClick={() => {
                       navigate(buildJobsUrl("client", tab.id));
                       setDesktopAppMenuOpen(false);
                     }}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    {tab.label}
+                    <span className="flex min-w-0 flex-1 items-center gap-3">
+                      <Icon className="h-6 w-6 shrink-0 opacity-90" aria-hidden />
+                      <span className="truncate text-left">{tab.label}</span>
+                    </span>
+                    <Badge variant="secondary" className={appMenuJobsCountBadgeClassName}>
+                      {badgeCountForJobsTab(tab.id, "client", jobsTabCounts)}
+                    </Badge>
                   </Button>
                 );
               })}
             </div>
           </div>
-          <Separator className="my-2" />
-          <Button
-            variant="ghost"
-            className="justify-start gap-2 w-full h-auto py-2.5"
-            onClick={() => {
-              navigate(`/profile/${user.id}`);
-              setDesktopAppMenuOpen(false);
-            }}
-          >
-            <User className="w-4 h-4 shrink-0" />
-            My public profile
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -413,25 +445,18 @@ export function BottomNav() {
     </div>
   );
 
-  /** Mobile: back top-left on every page; jobs tab sits to the right of back when on /jobs?mode=… */
-  const jobsModeInUrl = jobsSearchParams.get("mode");
-  /** Back: plain icon on the strip (no pill). */
+  /** Mobile: back top-left on every page (plain icon on the strip, no pill). */
   const mobileUniversalBackBtnClass =
     "pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
 
   const MobileLeftHeaderCluster = isPublicUserProfilePage ? null : (
     <div
-      className="md:hidden fixed z-[70] pointer-events-none flex max-w-[calc(100vw-9rem)] flex-row items-center gap-1"
+      className="md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1"
       style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
     >
       <button type="button" onClick={handleHeaderBack} className={mobileUniversalBackBtnClass} aria-label="Back">
         <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
       </button>
-      {!mobileSearchOpen && isJobsPage && jobsModeInUrl ? (
-        <div className="pointer-events-auto min-w-0 flex-1 overflow-hidden">
-          <JobsTabBar menuAlign="left" hideDesktop />
-        </div>
-      ) : null}
     </div>
   );
 
@@ -646,14 +671,18 @@ export function BottomNav() {
                   type="button"
                   onClick={() => setFabMenuOpen((v) => !v)}
                   className={cn(
-                    "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all active:scale-95",
-                    "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-inset"
+                    /** Match Discover home “I need help” pill: orange → red gradient */
+                    "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full",
+                    "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-900/30",
+                    "dark:shadow-orange-950/40",
+                    "transition-all active:scale-95",
+                    "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   )}
                   aria-label="Create post or browse"
                   aria-expanded={fabMenuOpen}
                   aria-haspopup="menu"
                 >
-                  <Plus className="h-7 w-7 stroke-[2.5]" aria-hidden />
+                  <Plus className="h-7 w-7 stroke-[2.5] text-white" aria-hidden />
                 </button>
                 {fabMenuOpen && (
                   <div

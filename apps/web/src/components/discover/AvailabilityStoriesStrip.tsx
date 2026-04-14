@@ -112,7 +112,7 @@ export function AvailabilityStoriesStrip({
           onSwipeRight={canSendHireInterest ? onSwipeHire : advanceOrClose}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
             <CommunityPostCard
               post={openPost}
               user={user}
@@ -124,7 +124,9 @@ export function AvailabilityStoriesStrip({
               pendingHirePostIds={pendingHirePostIds}
               onHireFromPost={onHireFromPost}
               onOpenChat={() => onOpenChat(openPost)}
+              plain
               iconOnlyActions
+              availabilitySheetComfort
             />
           </div>
         </SwipeDecisionLayer>
