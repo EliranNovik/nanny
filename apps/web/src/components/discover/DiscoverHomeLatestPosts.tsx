@@ -30,6 +30,37 @@ type PostImage = {
 
 type PostCardRow = FeedPost & { coverUrl: string | null };
 
+/** Row shape from `community_posts` select before normalizing embedded `author` */
+type RawLatestPostRow = {
+  id: string;
+  title: string;
+  category: string | null;
+  note: string | null;
+  created_at: string;
+  expires_at: string | null;
+  author_id: string;
+  author: unknown;
+};
+
+/** Supabase may return embedded `profiles` as one object or a one-element array */
+function normalizeFeedPostRow(row: RawLatestPostRow): FeedPost {
+  const a = row.author;
+  let author: FeedPost["author"] = null;
+  if (a != null) {
+    author = Array.isArray(a) ? ((a[0] as FeedPost["author"]) ?? null) : (a as FeedPost["author"]);
+  }
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    note: row.note,
+    created_at: row.created_at,
+    expires_at: row.expires_at,
+    author_id: row.author_id,
+    author,
+  };
+}
+
 function initials(name: string | null | undefined): string {
   const t = String(name ?? "").trim();
   if (!t) return "??";
@@ -88,7 +119,7 @@ export function DiscoverHomeLatestPosts() {
         return;
       }
 
-      const posts = (data ?? []) as FeedPost[];
+      const posts: FeedPost[] = (data ?? []).map((row) => normalizeFeedPostRow(row as RawLatestPostRow));
       if (posts.length === 0) {
         setRows([]);
         setLoading(false);
