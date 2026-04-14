@@ -291,46 +291,36 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           "fixed inset-x-0 z-[45] pointer-events-none",
           /** Directly under fixed BottomNav header — keep in sync with `.app-content-below-fixed-header` in index.css */
           "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
-          "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
-          "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+          "bg-white dark:bg-zinc-950"
         )}
       >
         <div className="app-desktop-shell pointer-events-auto">
           <div className="w-full px-2 py-2">
             <div role="tablist" aria-label="What are you here for?">
-              {/** Full pill: hire = orange→red; work = emerald→teal; frosted thumb */}
+              {/** Track: neutral glass; colored gradient only on the active thumb */}
               <div
                 className={cn(
                   "relative mx-auto grid min-h-[62px] w-full max-w-[22rem] grid-cols-2 gap-0.5 overflow-hidden rounded-full p-1 sm:max-w-[24rem] sm:min-h-[70px]",
-                  "border border-white/20 shadow-2xl backdrop-blur-md",
-                  "transition-shadow duration-300",
-                  homeMode === "hire" ? "shadow-orange-900/30" : "shadow-emerald-900/35"
+                  "border border-zinc-200/90 bg-white",
+                  "dark:border-zinc-700 dark:bg-zinc-900",
+                  /** Recessed “well” — depth without floating drop shadow */
+                  "shadow-[inset_0_3px_14px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.35)]",
+                  "dark:shadow-[inset_0_4px_18px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]",
+                  "transition-shadow duration-300"
                 )}
               >
-                <div
-                  className={cn(
-                    "pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-gradient-to-r from-orange-500 to-red-600",
-                    "transition-opacity duration-300 ease-out",
-                    homeMode === "hire" ? "opacity-100" : "opacity-0"
-                  )}
-                  aria-hidden
-                />
-                <div
-                  className={cn(
-                    "pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700",
-                    "transition-opacity duration-300 ease-out",
-                    homeMode === "work" ? "opacity-100" : "opacity-0"
-                  )}
-                  aria-hidden
-                />
                 <div
                   aria-hidden
                   className={cn(
                     "pointer-events-none absolute top-1 bottom-1 left-1 z-[5] rounded-full",
                     "w-[calc((100%-0.625rem)/2)] will-change-transform",
-                    "bg-white/20 shadow-inner backdrop-blur-sm ring-1 ring-white/35",
-                    "transition-[transform] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
-                    homeMode === "hire" ? "translate-x-0" : "translate-x-[calc(100%+0.125rem)]"
+                    /** Inset depth on the active segment — reads pressed into the track, not lifted */
+                    "shadow-[inset_0_2px_0_rgba(255,255,255,0.28),inset_0_-6px_14px_rgba(0,0,0,0.38),inset_0_0_0_1px_rgba(0,0,0,0.12)]",
+                    "dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-8px_18px_rgba(0,0,0,0.55),inset_0_0_0_1px_rgba(0,0,0,0.35)]",
+                    "transition-[transform,background-image] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+                    homeMode === "hire"
+                      ? "translate-x-0 bg-gradient-to-r from-orange-500 to-red-600"
+                      : "translate-x-[calc(100%+0.125rem)] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700"
                   )}
                 />
                 <button
@@ -342,17 +332,19 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   className={cn(
                     "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-3 py-2.5 sm:min-h-[62px] sm:px-3.5",
                     "transition-[color,transform] duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "hire"
                       ? "gap-2.5 text-white sm:gap-3"
-                      : "gap-2.5 text-white/65 hover:text-white/85 sm:gap-3"
+                      : "gap-2.5 text-foreground/70 hover:text-foreground/85 sm:gap-3 dark:text-foreground/65"
                   )}
                 >
                   <HeartHandshake
                     className={cn(
-                      "h-6 w-6 shrink-0 text-white transition-transform duration-300 sm:h-7 sm:w-7",
-                      homeMode === "hire" && "scale-105 drop-shadow-sm"
+                      "h-6 w-6 shrink-0 transition-transform duration-300 sm:h-7 sm:w-7",
+                      homeMode === "hire"
+                        ? "scale-105 text-white"
+                        : "text-foreground/65 dark:text-foreground/55"
                     )}
                     strokeWidth={2.25}
                     aria-hidden
@@ -372,17 +364,19 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   className={cn(
                     "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-3 py-2.5 sm:min-h-[62px] sm:px-3.5",
                     "transition-[color,transform] duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "work"
                       ? "gap-2.5 text-white sm:gap-3"
-                      : "gap-2.5 text-white/65 hover:text-white/85 sm:gap-3"
+                      : "gap-2.5 text-foreground/70 hover:text-foreground/85 sm:gap-3 dark:text-foreground/65"
                   )}
                 >
                   <HelpingHand
                     className={cn(
-                      "h-6 w-6 shrink-0 text-white transition-transform duration-300 sm:h-7 sm:w-7",
-                      homeMode === "work" && "scale-105 drop-shadow-sm"
+                      "h-6 w-6 shrink-0 transition-transform duration-300 sm:h-7 sm:w-7",
+                      homeMode === "work"
+                        ? "scale-105 text-white"
+                        : "text-foreground/65 dark:text-foreground/55"
                     )}
                     strokeWidth={2.25}
                     aria-hidden
@@ -397,6 +391,11 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </div>
           </div>
         </div>
+        {/** Soft blend into page background — no bottom border/hairline */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-white to-transparent dark:from-zinc-950 dark:to-transparent"
+        />
       </div>
 
       <div
@@ -408,35 +407,113 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
       >
         <div className="flex w-full flex-col gap-6 md:gap-8 lg:gap-10">
           {homeMode === "hire" && isClient && (
-            <div className="px-1">
+            <div className="w-full">
               <button
                 type="button"
                 onClick={() => navigate("/client/create")}
                 className={cn(
-                  "flex w-full items-center gap-4 rounded-2xl border-2 border-orange-500/35 bg-orange-500/[0.07] p-4 text-left outline-none transition-all",
-                  "shadow-sm hover:bg-orange-500/[0.11] active:scale-[0.98]",
-                  "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:border-orange-500/25 dark:bg-orange-500/10"
+                  "group flex w-full items-center gap-2.5 rounded-xl py-1.5 text-left outline-none transition-colors sm:gap-3",
+                  "focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  "dark:gap-3 dark:py-2.5 dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]"
                 )}
                 aria-label="Post a request for help"
               >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-md dark:bg-orange-600">
+                <div
+                  className={cn(
+                    "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
+                    "bg-orange-500 shadow-orange-500/20",
+                    "dark:bg-orange-500/15 dark:text-orange-400 dark:shadow-none"
+                  )}
+                >
                   <Megaphone className="h-7 w-7" aria-hidden strokeWidth={2.25} />
                 </div>
-                <div className="min-w-0 flex-1 leading-tight">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-orange-800/90 dark:text-orange-200/90">
-                    Get help
-                  </p>
-                  <p className="mt-1 text-xl font-bold tracking-tight text-foreground">Post a request for help</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Tell us what you need.</p>
+                <div
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5 transition-colors sm:gap-3",
+                    "bg-muted group-hover:bg-muted/90"
+                  )}
+                >
+                  <div className="min-w-0 flex-1 leading-snug">
+                    <p className="text-xs font-medium text-orange-600 dark:text-orange-400">Get help</p>
+                    <p className="text-base font-semibold text-foreground">Post a request for help</p>
+                    <p className="text-sm text-muted-foreground">Tell us what you need.</p>
+                  </div>
+                  <ChevronRight
+                    className="h-5 w-5 shrink-0 self-center text-muted-foreground transition group-hover:translate-x-0.5"
+                    aria-hidden
+                    strokeWidth={2}
+                  />
                 </div>
-                <ChevronRight
-                  className="h-6 w-6 shrink-0 self-center text-orange-700 dark:text-orange-400"
-                  aria-hidden
-                  strokeWidth={2.25}
-                />
               </button>
             </div>
           )}
+
+          {homeMode === "work" && isClient && (
+            <div className="w-full">
+              <button
+                type="button"
+                onClick={() => navigate(workPrimaryPath)}
+                className={cn(
+                  "group flex w-full items-center gap-2.5 rounded-xl py-1.5 text-left outline-none transition-colors sm:gap-3",
+                  "focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  "dark:gap-3 dark:py-2.5 dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]"
+                )}
+                aria-label="Post availability"
+              >
+                <div
+                  className={cn(
+                    "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
+                    "bg-emerald-600 shadow-emerald-600/20",
+                    "dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-none"
+                  )}
+                >
+                  <CalendarPlus className="h-7 w-7" aria-hidden strokeWidth={2.25} />
+                </div>
+                <div
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5 transition-colors sm:gap-3",
+                    "bg-muted group-hover:bg-muted/90"
+                  )}
+                >
+                  <div className="min-w-0 flex-1 leading-snug">
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Go live</p>
+                    <p className="text-base font-semibold text-foreground">Post availability</p>
+                    <p className="text-sm text-muted-foreground">Go live so people can find you.</p>
+                  </div>
+                  <ChevronRight
+                    className="h-5 w-5 shrink-0 self-center text-muted-foreground transition group-hover:translate-x-0.5"
+                    aria-hidden
+                    strokeWidth={2}
+                  />
+                </div>
+              </button>
+            </div>
+          )}
+
+          {homeMode === "work" && !isClient && (
+            <div className="mb-1 px-1 md:mb-0">
+              <button
+                type="button"
+                onClick={() => navigate(workPrimaryPath)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-3 text-left outline-none transition-all",
+                  "hover:bg-muted/45 active:scale-[0.99]",
+                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                )}
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  <Users className="h-6 w-6" aria-hidden strokeWidth={2.25} />
+                </div>
+                <div className="min-w-0 flex-1 leading-none">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Open work</p>
+                  <p className="mt-0.5 text-base font-bold text-foreground">Browse open requests</p>
+                </div>
+                <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+              </button>
+            </div>
+          )}
+
+          <DiscoverHomeActivitySection mode={homeMode} viewerRole={role} />
 
           {homeMode === "hire" && (
             <section
@@ -567,8 +644,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </section>
           )}
 
-          <section className="mb-1 px-1 md:mb-0" aria-label={homeMode === "hire" ? "Find helpers" : "Get work"}>
-            {homeMode === "hire" ? (
+          {homeMode === "hire" && (
+            <section className="mb-1 px-1 md:mb-0" aria-label="Find helpers">
               <button
                 type="button"
                 onClick={() => navigate(hireHelpersPath)}
@@ -598,60 +675,13 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   strokeWidth={2}
                 />
               </button>
-            ) : isClient ? (
-              <button
-                type="button"
-                onClick={() => navigate(workPrimaryPath)}
-                className={cn(
-                  "flex w-full items-center gap-4 rounded-2xl border-2 border-emerald-500/35 bg-emerald-500/[0.07] p-4 text-left outline-none transition-all",
-                  "shadow-sm hover:bg-emerald-500/[0.11] active:scale-[0.98]",
-                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:border-emerald-500/25 dark:bg-emerald-500/10"
-                )}
-              >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md dark:bg-emerald-600">
-                  <CalendarPlus className="h-7 w-7" aria-hidden strokeWidth={2.25} />
-                </div>
-                <div className="min-w-0 flex-1 leading-tight">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800/90 dark:text-emerald-200/90">
-                    Go live
-                  </p>
-                  <p className="mt-1 text-xl font-bold tracking-tight text-foreground">Post availability</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Go live so people can find you.</p>
-                </div>
-                <ChevronRight
-                  className="h-6 w-6 shrink-0 self-center text-emerald-700 dark:text-emerald-400"
-                  aria-hidden
-                  strokeWidth={2.25}
-                />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => navigate(workPrimaryPath)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-3 text-left outline-none transition-all",
-                  "hover:bg-muted/45 active:scale-[0.99]",
-                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                )}
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  <Users className="h-6 w-6" aria-hidden strokeWidth={2.25} />
-                </div>
-                <div className="min-w-0 flex-1 leading-none">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Open work
-                  </p>
-                  <p className="mt-0.5 text-base font-bold text-foreground">Browse open requests</p>
-                </div>
-                <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
-              </button>
-            )}
-          </section>
+            </section>
+          )}
 
           {homeMode === "work" && (
             <section
               className={cn(
-                "mb-6 mt-4 md:mb-0 md:mt-0",
+                "mb-6 mt-0 md:mb-0",
                 "-mx-4 w-[calc(100%+2rem)] px-2 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-3",
                 "md:mx-0 md:w-full md:px-0"
               )}
@@ -776,8 +806,6 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               </div>
             </section>
           )}
-
-          <DiscoverHomeActivitySection mode={homeMode} viewerRole={role} />
 
           {homeMode === "work" && <DiscoverHomeRecentActivity viewerRole={role} />}
 

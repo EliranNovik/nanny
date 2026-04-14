@@ -460,11 +460,7 @@ export function DiscoverHomeActivitySection({
     <>
       <div className="mb-2 flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400/70 opacity-75 motion-safe:animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
-          </span>
-          <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">Happening now</p>
+          <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">Available now</p>
         </div>
       </div>
       <div className="mt-1 space-y-4">
@@ -533,11 +529,7 @@ export function DiscoverHomeActivitySection({
   const workSection = (
     <>
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="relative flex h-2 w-2 shrink-0">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70 opacity-75 motion-safe:animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-        </span>
-        <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">We need your help in…</p>
+        <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">Searching for you...</p>
       </div>
 
       {!inboundLoading && inbound.length > 0 && viewerRole === "freelancer" && (
