@@ -1,4 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigationType } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+  useNavigationType,
+} from "react-router-dom";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -8,6 +15,16 @@ import { BottomNav } from "@/components/BottomNav";
 import { ToastProvider } from "@/components/ui/toast";
 import { NotificationListener } from "@/components/NotificationListener";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Pages
 import LoginPage from "@/pages/LoginPage";
@@ -307,15 +324,30 @@ function AppRoutes() {
           <Route index element={<FreelancerProfileHub />} />
           <Route path="gallery" element={<PublicProfileMediaManagePage />} />
           <Route path="personal" element={<FreelancerProfilePersonalPage />} />
-          <Route path="availability" element={<FreelancerProfileAvailabilityPage />} />
+          <Route
+            path="availability"
+            element={<FreelancerProfileAvailabilityPage />}
+          />
           <Route path="about" element={<FreelancerProfileAboutPage />} />
           <Route path="services" element={<FreelancerProfileServicesPage />} />
-          <Route path="languages" element={<FreelancerProfileLanguagesPage />} />
-          <Route path="experience" element={<FreelancerProfileExperiencePage />} />
+          <Route
+            path="languages"
+            element={<FreelancerProfileLanguagesPage />}
+          />
+          <Route
+            path="experience"
+            element={<FreelancerProfileExperiencePage />}
+          />
           <Route path="rates" element={<FreelancerProfileRatesPage />} />
-          <Route path="appearance" element={<FreelancerProfileAppearancePage />} />
+          <Route
+            path="appearance"
+            element={<FreelancerProfileAppearancePage />}
+          />
         </Route>
-        <Route path="/freelancer/profile/edit" element={<Navigate to="/freelancer/profile" replace />} />
+        <Route
+          path="/freelancer/profile/edit"
+          element={<Navigate to="/freelancer/profile" replace />}
+        />
 
         <Route
           path="/profile/:userId"
@@ -343,9 +375,18 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/client/active-jobs" element={<Navigate to="/jobs" replace />} />
-        <Route path="/freelancer/active-jobs" element={<Navigate to="/jobs" replace />} />
-        <Route path="/freelancer/notifications" element={<Navigate to="/jobs" replace />} />
+        <Route
+          path="/client/active-jobs"
+          element={<Navigate to="/jobs" replace />}
+        />
+        <Route
+          path="/freelancer/active-jobs"
+          element={<Navigate to="/jobs" replace />}
+        />
+        <Route
+          path="/freelancer/notifications"
+          element={<Navigate to="/jobs" replace />}
+        />
         <Route
           path="/calendar"
           element={
@@ -403,26 +444,27 @@ export default function App() {
     <>
       <ConfigCheck />
       <ThemeProvider>
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-          <DocumentScrollOverflowGate />
-          <ToastProvider>
-            <AuthProvider>
-              <ReportIssueProvider>
-                <NotificationListener />
-                <AppRoutes />
-                <BottomNav />
-                <ReportIssueModal />
-              </ReportIssueProvider>
-            </AuthProvider>
-          </ToastProvider>
-        </BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            <DocumentScrollOverflowGate />
+            <ToastProvider>
+              <AuthProvider>
+                <ReportIssueProvider>
+                  <NotificationListener />
+                  <AppRoutes />
+                  <BottomNav />
+                  <ReportIssueModal />
+                </ReportIssueProvider>
+              </AuthProvider>
+            </ToastProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
       </ThemeProvider>
     </>
   );
 }
-

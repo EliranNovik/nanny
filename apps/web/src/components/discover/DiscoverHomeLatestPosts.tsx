@@ -47,7 +47,9 @@ function normalizeFeedPostRow(row: RawLatestPostRow): FeedPost {
   const a = row.author;
   let author: FeedPost["author"] = null;
   if (a != null) {
-    author = Array.isArray(a) ? ((a[0] as FeedPost["author"]) ?? null) : (a as FeedPost["author"]);
+    author = Array.isArray(a)
+      ? ((a[0] as FeedPost["author"]) ?? null)
+      : (a as FeedPost["author"]);
   }
   return {
     id: row.id,
@@ -66,7 +68,10 @@ function initials(name: string | null | undefined): string {
   if (!t) return "??";
   const parts = t.split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : (parts[0]?.[1] ?? "");
+  const last =
+    parts.length > 1
+      ? (parts[parts.length - 1]?.[0] ?? "")
+      : (parts[0]?.[1] ?? "");
   const s = (first + last).toUpperCase();
   return s || "??";
 }
@@ -104,7 +109,7 @@ export function DiscoverHomeLatestPosts() {
               full_name,
               photo_url
             )
-          `
+          `,
         )
         .eq("status", "active")
         .gt("expires_at", nowIso)
@@ -119,7 +124,9 @@ export function DiscoverHomeLatestPosts() {
         return;
       }
 
-      const posts: FeedPost[] = (data ?? []).map((row) => normalizeFeedPostRow(row as RawLatestPostRow));
+      const posts: FeedPost[] = (data ?? []).map((row) =>
+        normalizeFeedPostRow(row as RawLatestPostRow),
+      );
       if (posts.length === 0) {
         setRows([]);
         setLoading(false);
@@ -135,7 +142,10 @@ export function DiscoverHomeLatestPosts() {
 
       if (cancelled) return;
       if (imgErr) {
-        console.warn("[DiscoverHomeLatestPosts] community_post_images:", imgErr);
+        console.warn(
+          "[DiscoverHomeLatestPosts] community_post_images:",
+          imgErr,
+        );
       }
 
       const coverByPost = new Map<string, string>();
@@ -165,8 +175,12 @@ export function DiscoverHomeLatestPosts() {
       <section className="w-full" aria-label="Live activity on the board">
         <div className="flex items-center justify-between gap-3 pb-3 pt-1">
           <div className="min-w-0">
-            <h2 className="text-xl font-black tracking-tight text-stone-900 sm:text-2xl dark:text-white">Live activity</h2>
-            <p className="text-xs font-medium text-muted-foreground">Loading…</p>
+            <h2 className="text-xl font-black tracking-tight text-stone-900 sm:text-2xl dark:text-white">
+              Live activity
+            </h2>
+            <p className="text-xs font-medium text-muted-foreground">
+              Loading…
+            </p>
           </div>
         </div>
       </section>
@@ -180,7 +194,13 @@ export function DiscoverHomeLatestPosts() {
     navigate(`/public/posts?post=${encodeURIComponent(postId)}`);
   };
 
-  const PostCard = ({ post, showChevron }: { post: PostCardRow; showChevron?: boolean }) => {
+  const PostCard = ({
+    post,
+    showChevron,
+  }: {
+    post: PostCardRow;
+    showChevron?: boolean;
+  }) => {
     const title = post.title?.trim() || "Post";
     const note = (post.note || "").trim();
     const when = safeWhen(post.created_at);
@@ -190,20 +210,31 @@ export function DiscoverHomeLatestPosts() {
         type="button"
         onClick={() => openPost(post.id)}
         className={cn(
-          "group w-full rounded-2xl bg-background/80 px-4 py-4 text-left",
-          "shadow-sm backdrop-blur-[2px] dark:bg-background/60",
-          "transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          "group w-full rounded-2xl bg-white dark:bg-zinc-900 px-4 py-4 text-left",
+          "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
+          "transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+          "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+          "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         )}
         aria-label="Open post"
       >
         <div className="flex items-start gap-3">
           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-black/5 bg-muted dark:border-white/5">
             {post.coverUrl ? (
-              <img src={post.coverUrl} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+              <img
+                src={post.coverUrl}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-background">
                 <Avatar className="h-14 w-14 border-2 border-background shadow-sm">
-                  <AvatarImage src={post.author?.photo_url || undefined} className="object-cover" />
+                  <AvatarImage
+                    src={post.author?.photo_url || undefined}
+                    className="object-cover"
+                  />
                   <AvatarFallback className="bg-orange-500/10 text-orange-600 text-xs font-black dark:bg-orange-500/15 dark:text-orange-400">
                     {initials(authorName)}
                   </AvatarFallback>
@@ -216,10 +247,19 @@ export function DiscoverHomeLatestPosts() {
               <p className="line-clamp-2 text-base font-black leading-snug text-stone-900 dark:text-white">
                 {title}
               </p>
-              {showChevron ? <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden /> : null}
+              {showChevron ? (
+                <ChevronRight
+                  className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+              ) : null}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {when ? <span className="text-xs font-semibold text-muted-foreground">{when}</span> : null}
+              {when ? (
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {when}
+                </span>
+              ) : null}
             </div>
             {note ? (
               <p className="mt-2 line-clamp-2 text-sm font-semibold leading-relaxed text-slate-700 dark:text-slate-200">
@@ -243,18 +283,29 @@ export function DiscoverHomeLatestPosts() {
         >
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
-              <Radio className="h-6 w-6 motion-safe:animate-pulse" strokeWidth={2.25} aria-hidden />
+              <Radio
+                className="h-6 w-6 motion-safe:animate-pulse"
+                strokeWidth={2.25}
+                aria-hidden
+              />
               <span className="absolute right-1 top-1 flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-black tracking-tight text-stone-900 sm:text-2xl dark:text-white">Happening now</h2>
-              <p className="text-xs font-medium text-muted-foreground">Public posts · updating often</p>
+              <h2 className="text-xl font-black tracking-tight text-stone-900 sm:text-2xl dark:text-white">
+                Happening now
+              </h2>
+              <p className="text-xs font-medium text-muted-foreground">
+                Public posts · updating often
+              </p>
             </div>
           </div>
-          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground opacity-70 transition-opacity group-hover:opacity-100" aria-hidden />
+          <ChevronRight
+            className="h-5 w-5 shrink-0 text-muted-foreground opacity-70 transition-opacity group-hover:opacity-100"
+            aria-hidden
+          />
         </button>
       </div>
 
@@ -264,7 +315,7 @@ export function DiscoverHomeLatestPosts() {
           "flex gap-4 overflow-hidden pb-1",
           "sm:overflow-x-auto sm:overscroll-x-contain sm:[-webkit-overflow-scrolling:touch]",
           "sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden",
-          "sm:snap-x sm:snap-mandatory sm:touch-pan-x"
+          "sm:snap-x sm:snap-mandatory sm:touch-pan-x",
         )}
       >
         {visible.map((p, idx) => (
@@ -272,7 +323,7 @@ export function DiscoverHomeLatestPosts() {
             key={p.id}
             className={cn(
               idx > 0 && "hidden sm:block",
-              "w-full sm:w-[min(92vw,24rem)] sm:shrink-0 sm:snap-start"
+              "w-full sm:w-[min(92vw,24rem)] sm:shrink-0 sm:snap-start",
             )}
           >
             <PostCard post={p} showChevron />
@@ -315,4 +366,3 @@ export function DiscoverHomeLatestPosts() {
     </section>
   );
 }
-

@@ -29,13 +29,18 @@ function clampNote(s: string, n: number): string {
 function StarRow({ rating }: { rating: number }) {
   const r = Math.round(Math.min(5, Math.max(1, rating)));
   return (
-    <span className="flex items-center gap-0.5" aria-label={`${r} out of 5 stars`}>
+    <span
+      className="flex items-center gap-0.5"
+      aria-label={`${r} out of 5 stars`}
+    >
       {Array.from({ length: 5 }, (_, i) => (
         <Star
           key={i}
           className={cn(
             "h-3.5 w-3.5",
-            i < r ? "fill-amber-400 text-amber-400" : "fill-muted/30 text-muted-foreground/40"
+            i < r
+              ? "fill-amber-400 text-amber-400"
+              : "fill-muted/30 text-muted-foreground/40",
           )}
           strokeWidth={1.5}
           aria-hidden
@@ -52,7 +57,11 @@ const iconForKind: Record<ActivityKind, typeof Star> = {
   hire_sent: Sparkles,
 };
 
-export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: DiscoverHomeRecentActivityViewer }) {
+export function DiscoverHomeRecentActivity({
+  viewerRole,
+}: {
+  viewerRole: DiscoverHomeRecentActivityViewer;
+}) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ActivityRow[]>([]);
@@ -78,12 +87,15 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
             review_text,
             created_at,
             reviewer:profiles!reviewer_id ( id, full_name, photo_url )
-          `
+          `,
           )
           .eq("reviewee_id", uid)
           .order("created_at", { ascending: false })
           .limit(12),
-        supabase.from("community_posts").select("id, title").eq("author_id", uid),
+        supabase
+          .from("community_posts")
+          .select("id, title")
+          .eq("author_id", uid),
       ]);
 
       if (reviewsRes.error) {
@@ -95,7 +107,12 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
       }
       const myPosts = myPostsRes.data ?? [];
       const myPostIds = myPosts.map((p) => p.id as string);
-      const titleByPostId = new Map(myPosts.map((p) => [p.id as string, String(p.title ?? "").trim() || "Your post"]));
+      const titleByPostId = new Map(
+        myPosts.map((p) => [
+          p.id as string,
+          String(p.title ?? "").trim() || "Your post",
+        ]),
+      );
 
       let commentsRaw: {
         id: string;
@@ -135,9 +152,14 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
             .order("created_at", { ascending: false })
             .limit(12),
         ]);
-        if (cRes.error) console.warn("[DiscoverHomeRecentActivity] comments", cRes.error);
+        if (cRes.error)
+          console.warn("[DiscoverHomeRecentActivity] comments", cRes.error);
         else commentsRaw = (cRes.data ?? []) as typeof commentsRaw;
-        if (hRes.error) console.warn("[DiscoverHomeRecentActivity] hire received", hRes.error);
+        if (hRes.error)
+          console.warn(
+            "[DiscoverHomeRecentActivity] hire received",
+            hRes.error,
+          );
         else hireReceivedRaw = (hRes.data ?? []) as typeof hireReceivedRaw;
       }
 
@@ -148,7 +170,8 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
           .eq("client_id", uid)
           .order("created_at", { ascending: false })
           .limit(12);
-        if (sRes.error) console.warn("[DiscoverHomeRecentActivity] hire sent", sRes.error);
+        if (sRes.error)
+          console.warn("[DiscoverHomeRecentActivity] hire sent", sRes.error);
         else hireSentRaw = (sRes.data ?? []) as typeof hireSentRaw;
       }
 
@@ -156,7 +179,10 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
       for (const c of commentsRaw) profileIds.add(c.author_id);
       for (const h of hireReceivedRaw) profileIds.add(h.client_id);
 
-      const profilesMap = new Map<string, { full_name: string | null; photo_url: string | null }>();
+      const profilesMap = new Map<
+        string,
+        { full_name: string | null; photo_url: string | null }
+      >();
       if (profileIds.size > 0) {
         const { data: profs, error: pErr } = await supabase
           .from("profiles")
@@ -172,12 +198,20 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
         }
       }
 
-      const sentPostIds = [...new Set(hireSentRaw.map((h) => h.community_post_id))];
+      const sentPostIds = [
+        ...new Set(hireSentRaw.map((h) => h.community_post_id)),
+      ];
       const extraTitles = new Map<string, string>();
       if (sentPostIds.length > 0) {
-        const { data: posts } = await supabase.from("community_posts").select("id, title").in("id", sentPostIds);
+        const { data: posts } = await supabase
+          .from("community_posts")
+          .select("id, title")
+          .in("id", sentPostIds);
         for (const p of posts ?? []) {
-          extraTitles.set(p.id as string, String(p.title ?? "").trim() || "Post");
+          extraTitles.set(
+            p.id as string,
+            String(p.title ?? "").trim() || "Post",
+          );
         }
       }
 
@@ -189,9 +223,14 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
           rating: number;
           review_text: string | null;
           created_at: string;
-          reviewer: { full_name: string | null; photo_url: string | null } | { full_name: string | null; photo_url: string | null }[] | null;
+          reviewer:
+            | { full_name: string | null; photo_url: string | null }
+            | { full_name: string | null; photo_url: string | null }[]
+            | null;
         };
-        const rev = Array.isArray(row.reviewer) ? row.reviewer[0] : row.reviewer;
+        const rev = Array.isArray(row.reviewer)
+          ? row.reviewer[0]
+          : row.reviewer;
         const name = rev?.full_name?.trim() || "Someone";
         merged.push({
           kind: "review",
@@ -199,8 +238,11 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
           at: row.created_at,
           rating: Number(row.rating) || 5,
           title: `${name} left you a review`,
-          subtitle: row.review_text ? clampNote(row.review_text, 100) : undefined,
-          href: viewerRole === "client" ? "/dashboard" : "/freelancer/dashboard",
+          subtitle: row.review_text
+            ? clampNote(row.review_text, 100)
+            : undefined,
+          href:
+            viewerRole === "client" ? "/dashboard" : "/freelancer/dashboard",
         });
       }
 
@@ -246,7 +288,9 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
         });
       }
 
-      merged.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+      merged.sort(
+        (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+      );
       setItems(merged.slice(0, 14));
     } catch (e) {
       console.error("[DiscoverHomeRecentActivity]", e);
@@ -266,28 +310,42 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
 
   function ActivityIcon({ kind }: { kind: ActivityKind }) {
     const I = iconForKind[kind];
-    return <I className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />;
+    return (
+      <I
+        className="h-4 w-4 shrink-0 text-muted-foreground"
+        strokeWidth={2}
+        aria-hidden
+      />
+    );
   }
 
   return (
     <section className="mb-6 px-1" aria-label="Your recent activity">
-      <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Recent activity</p>
+      <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+        Recent activity
+      </p>
 
       {showLoginPrompt ? (
         <p className="mt-4 text-sm text-muted-foreground">
-          <Link to="/login" className="font-semibold text-foreground underline-offset-4 hover:underline">
+          <Link
+            to="/login"
+            className="font-semibold text-foreground underline-offset-4 hover:underline"
+          >
             Sign in
           </Link>{" "}
           to see your reviews, comments, and hire activity.
         </p>
       ) : loading ? (
         <div className="mt-6 flex justify-center py-6">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
+          <Loader2
+            className="h-8 w-8 animate-spin text-muted-foreground"
+            aria-hidden
+          />
         </div>
       ) : emptyLoggedIn ? (
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-          Nothing here yet. When someone comments on your post, sends hire interest, or leaves a review, it will show up
-          here.
+          Nothing here yet. When someone comments on your post, sends hire
+          interest, or leaves a review, it will show up here.
         </p>
       ) : (
         <ul className="mt-4 flex flex-col gap-0 divide-y divide-border/60 rounded-xl border border-border/50 bg-card/30 dark:bg-card/10">
@@ -298,7 +356,7 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
                 className={cn(
                   "flex gap-3 px-3 py-3 text-left transition-colors",
                   "hover:bg-muted/50 active:bg-muted/70",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
               >
                 <div className="mt-0.5">
@@ -306,11 +364,17 @@ export function DiscoverHomeRecentActivity({ viewerRole }: { viewerRole: Discove
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-sm font-semibold text-foreground">{row.title}</span>
-                    {row.kind === "review" && row.rating != null ? <StarRow rating={row.rating} /> : null}
+                    <span className="text-sm font-semibold text-foreground">
+                      {row.title}
+                    </span>
+                    {row.kind === "review" && row.rating != null ? (
+                      <StarRow rating={row.rating} />
+                    ) : null}
                   </div>
                   {row.subtitle ? (
-                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{row.subtitle}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                      {row.subtitle}
+                    </p>
                   ) : null}
                   <p className="mt-1.5 text-[11px] font-medium text-muted-foreground">
                     {formatDistanceToNow(new Date(row.at), { addSuffix: true })}

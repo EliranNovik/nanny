@@ -14,9 +14,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-    Bell, Briefcase, Loader2, MessageSquare, X, 
-    Sparkles
+import {
+  Bell,
+  Briefcase,
+  Loader2,
+  MessageSquare,
+  X,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,7 +33,10 @@ interface NotificationsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function NotificationsModal({ open, onOpenChange }: NotificationsModalProps) {
+export function NotificationsModal({
+  open,
+  onOpenChange,
+}: NotificationsModalProps) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState<NotificationAlert[]>([]);
@@ -62,7 +69,9 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
 
     try {
       if (alert.type === "message") {
-        const conversation_id = alert.metadata?.conversation_id as string | undefined;
+        const conversation_id = alert.metadata?.conversation_id as
+          | string
+          | undefined;
         if (!conversation_id) return;
         await supabase
           .from("messages")
@@ -105,15 +114,17 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
         <DialogHeader className="p-6 pb-4 bg-card border-b border-black/[0.03] dark:border-white/[0.06]">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-orange-600" />
-                </div>
-                <span className="text-xl font-black tracking-tight">News & Activity</span>
+              <div className="w-10 h-10 rounded-2xl bg-orange-500/10 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-orange-600" />
+              </div>
+              <span className="text-xl font-black tracking-tight">
+                News & Activity
+              </span>
             </div>
             {alerts.length > 0 && (
-                <span className="px-3 py-1 bg-orange-500 text-white text-[10px] font-black rounded-full uppercase tracking-tighter">
-                    {alerts.length} NEW
-                </span>
+              <span className="px-3 py-1 bg-orange-500 text-white text-[10px] font-black rounded-full uppercase tracking-tighter">
+                {alerts.length} NEW
+              </span>
             )}
           </DialogTitle>
         </DialogHeader>
@@ -122,7 +133,9 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Checking for updates...</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Checking for updates...
+              </p>
             </div>
           ) : alerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-8">
@@ -130,46 +143,68 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
                 <Sparkles className="w-8 h-8 text-slate-300 dark:text-zinc-700" />
               </div>
               <h3 className="font-bold text-lg mb-1">Stay Tuned!</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Everything is up to date. We'll notify you here when something new happens.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Everything is up to date. We'll notify you here when something
+                new happens.
+              </p>
             </div>
           ) : (
             <div className="space-y-3 pb-6">
               {alerts.map((alert) => (
-                <div 
+                <div
                   key={alert.id}
                   className="group relative flex items-center gap-4 p-4 rounded-3xl bg-card border border-black/[0.03] dark:border-white/[0.06] shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300"
                 >
                   <div className="relative flex-shrink-0">
                     {alert.sender_photo ? (
                       <Avatar className="w-12 h-12 rounded-2xl border-2 border-white dark:border-zinc-800 shadow-md">
-                        <AvatarImage src={alert.sender_photo} className="object-cover" />
+                        <AvatarImage
+                          src={alert.sender_photo}
+                          className="object-cover"
+                        />
                         <AvatarFallback className="bg-orange-50 text-orange-600 font-bold">
                           {alert.title.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                     ) : (
-                      <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
-                        alert.type === 'message' ? "bg-blue-500/10 text-blue-600" :
-                        alert.type === 'job_request' ? "bg-emerald-500/10 text-emerald-600" :
-                        alert.type === 'hire_interest' ? "bg-orange-500/10 text-orange-600" : "bg-orange-500/10 text-orange-600"
-                      )}>
-                        {alert.type === 'message' ? <MessageSquare className="w-6 h-6" /> :
-                         alert.type === 'job_request' ? <Bell className="w-6 h-6" /> :
-                         alert.type === 'hire_interest' ? <Sparkles className="w-6 h-6" /> :
-                         <Briefcase className="w-6 h-6" />}
+                      <div
+                        className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
+                          alert.type === "message"
+                            ? "bg-blue-500/10 text-blue-600"
+                            : alert.type === "job_request"
+                              ? "bg-emerald-500/10 text-emerald-600"
+                              : alert.type === "hire_interest"
+                                ? "bg-orange-500/10 text-orange-600"
+                                : "bg-orange-500/10 text-orange-600",
+                        )}
+                      >
+                        {alert.type === "message" ? (
+                          <MessageSquare className="w-6 h-6" />
+                        ) : alert.type === "job_request" ? (
+                          <Bell className="w-6 h-6" />
+                        ) : alert.type === "hire_interest" ? (
+                          <Sparkles className="w-6 h-6" />
+                        ) : (
+                          <Briefcase className="w-6 h-6" />
+                        )}
                       </div>
                     )}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                            {alert.title}
-                        </h4>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                            {alert.created_at ? new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                        </span>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {alert.title}
+                      </h4>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                        {alert.created_at
+                          ? new Date(alert.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
+                      </span>
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
                       {alert.description}
@@ -177,7 +212,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
                   </div>
 
                   <div className="flex items-center gap-2 ml-2">
-                    <Button 
+                    <Button
                       onClick={() => handleView(alert)}
                       size="sm"
                       className="h-9 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
@@ -198,11 +233,13 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
             </div>
           )}
         </ScrollArea>
-        
+
         {alerts.length > 0 && (
-            <div className="p-4 bg-card border-t border-black/[0.03] dark:border-white/[0.06] text-center">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">End of news feed</p>
-            </div>
+          <div className="p-4 bg-card border-t border-black/[0.03] dark:border-white/[0.06] text-center">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+              End of news feed
+            </p>
+          </div>
         )}
       </DialogContent>
     </Dialog>

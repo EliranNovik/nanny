@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
@@ -26,10 +31,21 @@ import { Badge } from "@/components/ui/badge";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { BadgeCheck, Loader2, Plus, ImagePlus, Share2, Users, X } from "lucide-react";
+import {
+  BadgeCheck,
+  Loader2,
+  Plus,
+  ImagePlus,
+  Share2,
+  Users,
+  X,
+} from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { CommunityPostCommentsControl } from "@/components/community/CommunityPostCommentsControl";
-import { formatPostedAgo, PostTimeLeftBadge } from "@/components/community/CommunityPostCard";
+import {
+  formatPostedAgo,
+  PostTimeLeftBadge,
+} from "@/components/community/CommunityPostCard";
 import {
   SERVICE_CATEGORIES,
   isAllHelpCategory,
@@ -106,23 +122,35 @@ function OwnAvailabilityPostCard({
   loginRedirect: string;
 }) {
   const { addToast } = useToast();
-  const [imageLightboxIndex, setImageLightboxIndex] = useState<number | null>(null);
+  const [imageLightboxIndex, setImageLightboxIndex] = useState<number | null>(
+    null,
+  );
   const imageUrls = useMemo(
-    () => post.images.map((i) => i.image_url).filter((u): u is string => Boolean(u)),
-    [post.images]
+    () =>
+      post.images
+        .map((i) => i.image_url)
+        .filter((u): u is string => Boolean(u)),
+    [post.images],
   );
   const isArchived = post.status === "archived";
   const expired = Date.parse(post.expires_at) <= Date.now();
   const description = post.note?.trim() || post.body?.trim() || null;
   const verified = Boolean(post.author?.is_verified);
-  const postedAgoLabel = useMemo(() => formatPostedAgo(post.created_at), [post.created_at]);
+  const postedAgoLabel = useMemo(
+    () => formatPostedAgo(post.created_at),
+    [post.created_at],
+  );
 
   const sharePost = useCallback(async () => {
     const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
     const title = post.title;
-    const text = [post.note, post.body].find((t) => t && String(t).trim()) || title;
+    const text =
+      [post.note, post.body].find((t) => t && String(t).trim()) || title;
     try {
-      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      if (
+        typeof navigator !== "undefined" &&
+        typeof navigator.share === "function"
+      ) {
         await navigator.share({ title, text, url });
         return;
       }
@@ -152,10 +180,9 @@ function OwnAvailabilityPostCard({
     <>
       <Card
         className={cn(
-          "relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 max-md:border max-md:border-neutral-200 bg-white/95 shadow-sm dark:bg-card dark:shadow-md dark:max-md:border-neutral-700",
-          "md:bg-transparent md:shadow-none dark:md:bg-transparent dark:md:shadow-none",
+          "relative flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/5 dark:bg-zinc-900",
           expired &&
-            "border-neutral-300/90 bg-neutral-100 text-neutral-600 shadow-none dark:border-neutral-600 dark:bg-neutral-900/75 dark:text-neutral-400"
+            "border-neutral-300/90 bg-neutral-100/80 text-neutral-600 shadow-none dark:border-neutral-600 dark:bg-neutral-900/75 dark:text-neutral-400",
         )}
         aria-label={expired ? "Expired availability post" : undefined}
       >
@@ -212,7 +239,7 @@ function OwnAvailabilityPostCard({
                 className={cn(
                   "h-9 w-9 shrink-0 rounded-full text-muted-foreground",
                   "hover:bg-transparent hover:text-foreground active:bg-transparent",
-                  "focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-orange-500/35 focus-visible:ring-offset-2"
+                  "focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-orange-500/35 focus-visible:ring-offset-2",
                 )}
                 onClick={() => void sharePost()}
                 aria-label="Share"
@@ -226,7 +253,7 @@ function OwnAvailabilityPostCard({
                 <div
                   className={cn(
                     "flex gap-2",
-                    "max-w-full overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
+                    "max-w-full overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]",
                   )}
                 >
                   {imageUrls.map((url, idx) => (
@@ -236,11 +263,16 @@ function OwnAvailabilityPostCard({
                       onClick={() => setImageLightboxIndex(idx)}
                       className={cn(
                         "h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 text-left outline-none transition-opacity hover:opacity-95 active:opacity-90 dark:border-neutral-700 dark:bg-neutral-900/40",
-                        "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       )}
                       aria-label={`View image ${idx + 1} full screen`}
                     >
-                      <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      <img
+                        src={url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
                     </button>
                   ))}
                 </div>
@@ -278,7 +310,9 @@ function OwnAvailabilityPostCard({
             )}
 
             <div className="px-4 pb-6 pt-0.5">
-              <p className="text-lg font-semibold leading-snug text-foreground">{post.title}</p>
+              <p className="text-lg font-semibold leading-snug text-foreground">
+                {post.title}
+              </p>
             </div>
 
             <div className="space-y-2 px-4 pb-4">
@@ -305,7 +339,7 @@ function OwnAvailabilityPostCard({
             className={cn(
               "mt-auto space-y-3 border-t border-transparent bg-transparent px-4 pb-4 pt-3",
               expired &&
-                "border-neutral-300/80 bg-neutral-100/80 dark:border-neutral-600/80 dark:bg-neutral-900/60"
+                "border-neutral-300/80 bg-neutral-100/80 dark:border-neutral-600/80 dark:bg-neutral-900/60",
             )}
           >
             {expired && (
@@ -333,7 +367,13 @@ function OwnAvailabilityPostCard({
                   )}
                 </Button>
               ) : (
-                <Button type="button" variant="outline" size="sm" className="relative gap-2 rounded-xl" asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="relative gap-2 rounded-xl"
+                  asChild
+                >
                   <Link to={`/availability/post/${post.id}/hires`}>
                     <Users className="h-4 w-4" />
                     Hire interest
@@ -375,7 +415,7 @@ function OwnAvailabilityPostCard({
               <span
                 className={cn(
                   "max-w-[95%] select-none text-center font-black uppercase leading-none tracking-[0.12em] text-neutral-400/45 dark:text-neutral-500/40",
-                  "rotate-[-12deg] text-[clamp(1.75rem,11vw,3.5rem)] sm:text-[clamp(2rem,9vw,4rem)]"
+                  "rotate-[-12deg] text-[clamp(1.75rem,11vw,3.5rem)] sm:text-[clamp(2rem,9vw,4rem)]",
                 )}
               >
                 Expired
@@ -400,33 +440,36 @@ export default function CommunityPostsPage() {
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get("category");
   const isAllHelp = isAllHelpCategory(categoryParam);
-  const categoryFilter =
-    isAllHelp
-      ? null
-      : categoryParam && isServiceCategoryId(categoryParam)
-        ? categoryParam
-        : null;
+  const categoryFilter = isAllHelp
+    ? null
+    : categoryParam && isServiceCategoryId(categoryParam)
+      ? categoryParam
+      : null;
 
   const loginRedirect = useMemo(
     () =>
-      searchParams.toString() ? `${postsBasePath}?${searchParams.toString()}` : postsBasePath,
-    [postsBasePath, searchParams]
+      searchParams.toString()
+        ? `${postsBasePath}?${searchParams.toString()}`
+        : postsBasePath,
+    [postsBasePath, searchParams],
   );
 
   const { user, profile } = useAuth();
   const { addToast } = useToast();
 
   const [posts, setPosts] = useState<PostWithMeta[]>([]);
-  const [hireInterestCountByPost, setHireInterestCountByPost] = useState<Record<string, number>>(
-    {}
-  );
+  const [hireInterestCountByPost, setHireInterestCountByPost] = useState<
+    Record<string, number>
+  >({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [availabilityStatusId, setAvailabilityStatusId] = useState<string>(STATUS_SELECT_EMPTY);
+  const [availabilityStatusId, setAvailabilityStatusId] =
+    useState<string>(STATUS_SELECT_EMPTY);
   const [category, setCategory] = useState<ServiceCategoryId | "">("");
-  const [quickDetailsId, setQuickDetailsId] = useState<string>(QUICK_SELECT_EMPTY);
+  const [quickDetailsId, setQuickDetailsId] =
+    useState<string>(QUICK_SELECT_EMPTY);
   const [showPriceRange, setShowPriceRange] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([50, 90]);
   const [areaTag, setAreaTag] = useState("");
@@ -446,7 +489,7 @@ export default function CommunityPostsPage() {
       let q = supabase
         .from("community_posts")
         .select(
-          "id, author_id, category, title, body, note, created_at, expires_at, status, availability_payload"
+          "id, author_id, category, title, body, note, created_at, expires_at, status, availability_payload",
         )
         .eq("author_id", user.id)
         .order("created_at", { ascending: false });
@@ -488,7 +531,10 @@ export default function CommunityPostsPage() {
       if (authorsRes.error) throw authorsRes.error;
       if (imagesRes.error) throw imagesRes.error;
       if (hireRes.error) {
-        console.warn("[CommunityPostsPage] hire interest counts", hireRes.error);
+        console.warn(
+          "[CommunityPostsPage] hire interest counts",
+          hireRes.error,
+        );
       }
       const hireCounts: Record<string, number> = {};
       for (const row of hireRes.data || []) {
@@ -498,7 +544,10 @@ export default function CommunityPostsPage() {
       setHireInterestCountByPost(hireCounts);
 
       const authorMap = new Map(
-        (authorsRes.data || []).map((a) => [a.id as string, a as ProfileSnippet])
+        (authorsRes.data || []).map((a) => [
+          a.id as string,
+          a as ProfileSnippet,
+        ]),
       );
       const imagesByPost = new Map<string, PostImage[]>();
       for (const img of imagesRes.data || []) {
@@ -514,10 +563,11 @@ export default function CommunityPostsPage() {
       setPosts(
         list.map((p) => ({
           ...p,
-          availability_payload: (p.availability_payload as AvailabilityPayload) ?? null,
+          availability_payload:
+            (p.availability_payload as AvailabilityPayload) ?? null,
           author: authorMap.get(p.author_id) ?? null,
           images: imagesByPost.get(p.id) ?? [],
-        }))
+        })),
       );
     } catch (e) {
       console.error("[CommunityPostsPage]", e);
@@ -542,7 +592,7 @@ export default function CommunityPostsPage() {
     if (!user?.id || !profile) return;
 
     const statusOpt = getAvailabilityStatusOption(
-      availabilityStatusId === STATUS_SELECT_EMPTY ? "" : availabilityStatusId
+      availabilityStatusId === STATUS_SELECT_EMPTY ? "" : availabilityStatusId,
     );
     if (!statusOpt) {
       addToast({ title: "Choose when you’re available", variant: "warning" });
@@ -553,7 +603,7 @@ export default function CommunityPostsPage() {
       return;
     }
     const quickOpt = getQuickDetailsOption(
-      quickDetailsId === QUICK_SELECT_EMPTY ? "" : quickDetailsId
+      quickDetailsId === QUICK_SELECT_EMPTY ? "" : quickDetailsId,
     );
     if (!quickOpt) {
       addToast({ title: "Choose quick details", variant: "warning" });
@@ -562,7 +612,10 @@ export default function CommunityPostsPage() {
 
     const noteTrim = note.trim();
     if (noteTrim.length > 120) {
-      addToast({ title: "Note is too long (max 120 characters)", variant: "warning" });
+      addToast({
+        title: "Note is too long (max 120 characters)",
+        variant: "warning",
+      });
       return;
     }
 
@@ -575,7 +628,10 @@ export default function CommunityPostsPage() {
     }
     const rangePayload =
       showPriceRange && priceRange[0] <= priceRange[1]
-        ? { min: Math.min(priceRange[0], priceRange[1]), max: Math.max(priceRange[0], priceRange[1]) }
+        ? {
+            min: Math.min(priceRange[0], priceRange[1]),
+            max: Math.max(priceRange[0], priceRange[1]),
+          }
         : null;
     const title = buildAvailabilityDisplayTitle({
       categoryLabel: catLabel,
@@ -613,14 +669,19 @@ export default function CommunityPostsPage() {
       const file = files[0];
       if (file) {
         if (!file.type.startsWith("image/")) {
-          addToast({ title: "Only image files are allowed", variant: "warning" });
+          addToast({
+            title: "Only image files are allowed",
+            variant: "warning",
+          });
         } else {
           const ext = file.name.split(".").pop() || "jpg";
           const path = `${user.id}/${postId}/${crypto.randomUUID()}.${ext}`;
-          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-            upsert: false,
-            contentType: file.type,
-          });
+          const { error: upErr } = await supabase.storage
+            .from(BUCKET)
+            .upload(path, file, {
+              upsert: false,
+              contentType: file.type,
+            });
           if (upErr) {
             console.error(upErr);
             const desc =
@@ -628,14 +689,22 @@ export default function CommunityPostsPage() {
               upErr.message?.toLowerCase().includes("not found")
                 ? "Storage bucket “community-posts” is missing. Run db/sql/041_storage_community_posts_bucket.sql in Supabase SQL Editor (or create the bucket in Storage → New bucket, public)."
                 : upErr.message;
-            addToast({ title: "Image upload failed", description: desc, variant: "error" });
-          } else {
-            const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-            const { error: imgErr } = await supabase.from("community_post_images").insert({
-              post_id: postId,
-              image_url: pub.publicUrl,
-              sort_order: 0,
+            addToast({
+              title: "Image upload failed",
+              description: desc,
+              variant: "error",
             });
+          } else {
+            const { data: pub } = supabase.storage
+              .from(BUCKET)
+              .getPublicUrl(path);
+            const { error: imgErr } = await supabase
+              .from("community_post_images")
+              .insert({
+                post_id: postId,
+                image_url: pub.publicUrl,
+                sort_order: 0,
+              });
             if (imgErr) console.error(imgErr);
           }
         }
@@ -665,11 +734,11 @@ export default function CommunityPostsPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div
         className={cn(
           "app-desktop-shell space-y-6 md:pt-8",
-          postsBasePath === "/availability" ? "pt-[2.625rem]" : "pt-[3.5rem]"
+          postsBasePath === "/availability" ? "pt-[2.625rem]" : "pt-[3.5rem]",
         )}
       >
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-1 md:max-w-4xl xl:mx-0 xl:max-w-none">
@@ -684,8 +753,13 @@ export default function CommunityPostsPage() {
               >
                 All categories
               </Button>
-              <Badge variant="secondary" className="hidden text-xs font-bold md:inline-flex">
-                {isAllHelp ? "All help" : serviceCategoryLabel(categoryFilter as ServiceCategoryId)}
+              <Badge
+                variant="secondary"
+                className="hidden text-xs font-bold md:inline-flex"
+              >
+                {isAllHelp
+                  ? "All help"
+                  : serviceCategoryLabel(categoryFilter as ServiceCategoryId)}
               </Badge>
             </div>
           )}
@@ -700,11 +774,17 @@ export default function CommunityPostsPage() {
                     : "Your availability"}
               </h1>
               <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                Short-lived pulses — they disappear from the public board when time is up.
+                Short-lived pulses — they disappear from the public board when
+                time is up.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" className="rounded-full" asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                asChild
+              >
                 <Link to="/public/posts">See who’s available</Link>
               </Button>
               <Button
@@ -727,8 +807,8 @@ export default function CommunityPostsPage() {
           <Card className="mx-auto w-full max-w-3xl border-dashed md:max-w-4xl">
             <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-sm font-medium text-muted-foreground">
-                You have no active availability pulses yet. Create one — it stays up only for the
-                time you choose.
+                You have no active availability pulses yet. Create one — it
+                stays up only for the time you choose.
               </p>
               <Button type="button" onClick={() => setDialogOpen(true)}>
                 Set availability
@@ -761,7 +841,8 @@ export default function CommunityPostsPage() {
           <DialogHeader>
             <DialogTitle>Set availability</DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Status sets how long the post stays up (2h / 24h / 48h). Optional note — keep it short.
+              Status sets how long the post stays up (2h / 24h / 48h). Optional
+              note — keep it short.
             </p>
           </DialogHeader>
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -769,19 +850,26 @@ export default function CommunityPostsPage() {
               <Label>Status</Label>
               <Select
                 value={
-                  AVAILABILITY_STATUS_OPTIONS.some((o) => o.id === availabilityStatusId)
+                  AVAILABILITY_STATUS_OPTIONS.some(
+                    (o) => o.id === availabilityStatusId,
+                  )
                     ? availabilityStatusId
                     : STATUS_SELECT_EMPTY
                 }
                 onValueChange={(v) =>
-                  setAvailabilityStatusId(v === STATUS_SELECT_EMPTY ? STATUS_SELECT_EMPTY : v)
+                  setAvailabilityStatusId(
+                    v === STATUS_SELECT_EMPTY ? STATUS_SELECT_EMPTY : v,
+                  )
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="When are you available?" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={STATUS_SELECT_EMPTY} className="text-muted-foreground">
+                  <SelectItem
+                    value={STATUS_SELECT_EMPTY}
+                    className="text-muted-foreground"
+                  >
                     Choose status
                   </SelectItem>
                   {AVAILABILITY_STATUS_OPTIONS.map((o) => (
@@ -796,11 +884,17 @@ export default function CommunityPostsPage() {
               <Label>Service type</Label>
               <Select
                 value={
-                  category && isServiceCategoryId(category) ? category : CATEGORY_SELECT_EMPTY
+                  category && isServiceCategoryId(category)
+                    ? category
+                    : CATEGORY_SELECT_EMPTY
                 }
                 onValueChange={(v) =>
                   setCategory(
-                    v === CATEGORY_SELECT_EMPTY ? "" : isServiceCategoryId(v) ? v : ""
+                    v === CATEGORY_SELECT_EMPTY
+                      ? ""
+                      : isServiceCategoryId(v)
+                        ? v
+                        : "",
                   )
                 }
               >
@@ -808,7 +902,10 @@ export default function CommunityPostsPage() {
                   <SelectValue placeholder="Choose category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={CATEGORY_SELECT_EMPTY} className="text-muted-foreground">
+                  <SelectItem
+                    value={CATEGORY_SELECT_EMPTY}
+                    className="text-muted-foreground"
+                  >
                     Choose category
                   </SelectItem>
                   {SERVICE_CATEGORIES.map((c) => (
@@ -828,14 +925,19 @@ export default function CommunityPostsPage() {
                     : QUICK_SELECT_EMPTY
                 }
                 onValueChange={(v) =>
-                  setQuickDetailsId(v === QUICK_SELECT_EMPTY ? QUICK_SELECT_EMPTY : v)
+                  setQuickDetailsId(
+                    v === QUICK_SELECT_EMPTY ? QUICK_SELECT_EMPTY : v,
+                  )
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Job shape" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={QUICK_SELECT_EMPTY} className="text-muted-foreground">
+                  <SelectItem
+                    value={QUICK_SELECT_EMPTY}
+                    className="text-muted-foreground"
+                  >
                     Choose quick details
                   </SelectItem>
                   {QUICK_DETAILS_OPTIONS.map((o) => (
@@ -849,7 +951,9 @@ export default function CommunityPostsPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
-                  <Label htmlFor="price-range-switch">Price hint (per hour)</Label>
+                  <Label htmlFor="price-range-switch">
+                    Price hint (per hour)
+                  </Label>
                   <p className="text-[11px] text-muted-foreground">
                     Optional range — drag both ends to set min–max ₪/h.
                   </p>
@@ -865,7 +969,9 @@ export default function CommunityPostsPage() {
                 <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
                   <div className="flex items-center justify-between text-sm font-bold tabular-nums">
                     <span className="text-primary">₪{priceRange[0]}/h</span>
-                    <span className="text-muted-foreground text-xs font-semibold">to</span>
+                    <span className="text-muted-foreground text-xs font-semibold">
+                      to
+                    </span>
                     <span className="text-primary">₪{priceRange[1]}/h</span>
                   </div>
                   <Slider
@@ -880,7 +986,8 @@ export default function CommunityPostsPage() {
                     className="w-full"
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Range: ₪{PRICE_RANGE_MIN}–₪{PRICE_RANGE_MAX} (step ₪{PRICE_RANGE_STEP})
+                    Range: ₪{PRICE_RANGE_MIN}–₪{PRICE_RANGE_MAX} (step ₪
+                    {PRICE_RANGE_STEP})
                   </p>
                 </div>
               )}
@@ -906,7 +1013,9 @@ export default function CommunityPostsPage() {
                 maxLength={120}
                 className="resize-none"
               />
-              <p className="text-[11px] text-muted-foreground">{note.length}/120</p>
+              <p className="text-[11px] text-muted-foreground">
+                {note.length}/120
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Photo (optional, one image)</Label>
@@ -916,7 +1025,9 @@ export default function CommunityPostsPage() {
                   variant="outline"
                   size="sm"
                   className="gap-2"
-                  onClick={() => document.getElementById("community-post-files")?.click()}
+                  onClick={() =>
+                    document.getElementById("community-post-files")?.click()
+                  }
                 >
                   <ImagePlus className="h-4 w-4" />
                   Add photo

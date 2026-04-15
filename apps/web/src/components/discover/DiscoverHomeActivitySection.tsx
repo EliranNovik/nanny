@@ -93,16 +93,23 @@ export function DiscoverHomeActivitySection({
   const { addToast } = useToast();
   const [feedPosts, setFeedPosts] = useState<CommunityPostWithMeta[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
-  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(() => new Set());
+  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [hiringPostId, setHiringPostId] = useState<string | null>(null);
-  const [pendingHirePostIds, setPendingHirePostIds] = useState<Set<string>>(() => new Set());
+  const [pendingHirePostIds, setPendingHirePostIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const [inbound, setInbound] = useState<InboundNotification[]>([]);
   const [inboundLoading, setInboundLoading] = useState(true);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [selectedMapJob, setSelectedMapJob] = useState<JobRequestRow | null>(null);
-  const [selectedJobDetails, setSelectedJobDetails] = useState<JobRequestRow | null>(null);
+  const [selectedMapJob, setSelectedMapJob] = useState<JobRequestRow | null>(
+    null,
+  );
+  const [selectedJobDetails, setSelectedJobDetails] =
+    useState<JobRequestRow | null>(null);
 
   function goToIncomingJob(job: JobRequestRow | null) {
     if (!job) {
@@ -128,15 +135,18 @@ export function DiscoverHomeActivitySection({
         .map((p) => p.id)
         .sort()
         .join(","),
-    [feedPosts]
+    [feedPosts],
   );
 
   const loadFeed = useCallback(async () => {
     setFeedLoading(true);
     try {
-      const { data: rows, error } = await supabase.rpc("get_community_feed_public", {
-        p_category: null,
-      });
+      const { data: rows, error } = await supabase.rpc(
+        "get_community_feed_public",
+        {
+          p_category: null,
+        },
+      );
       if (error) throw error;
       const list = (rows || []) as CommunityFeedPost[];
       if (list.length === 0) {
@@ -165,7 +175,9 @@ export function DiscoverHomeActivitySection({
         images: imagesByPost.get(p.id) ?? [],
       }));
       const uid = user?.id;
-      setFeedPosts(uid ? withImages.filter((p) => p.author_id !== uid) : withImages);
+      setFeedPosts(
+        uid ? withImages.filter((p) => p.author_id !== uid) : withImages,
+      );
     } catch (e) {
       console.error("[DiscoverHomeActivitySection] feed", e);
       setFeedPosts([]);
@@ -226,7 +238,9 @@ export function DiscoverHomeActivitySection({
         console.error("[DiscoverHomeActivitySection] pending hire", error);
         return;
       }
-      setPendingHirePostIds(new Set((data || []).map((r) => r.community_post_id as string)));
+      setPendingHirePostIds(
+        new Set((data || []).map((r) => r.community_post_id as string)),
+      );
     })();
     return () => {
       cancelled = true;
@@ -254,10 +268,12 @@ export function DiscoverHomeActivitySection({
           .eq("post_id", postId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("community_post_favorites").insert({
-          user_id: user.id,
-          post_id: postId,
-        });
+        const { error } = await supabase
+          .from("community_post_favorites")
+          .insert({
+            user_id: user.id,
+            post_id: postId,
+          });
         if (error) throw error;
       }
       return true;
@@ -280,9 +296,12 @@ export function DiscoverHomeActivitySection({
   const handleHireFromPost = async (postId: string): Promise<boolean> => {
     setHiringPostId(postId);
     try {
-      await apiPost<{ interest_id: string; already_pending?: boolean }>("/api/jobs/from-community-post", {
-        community_post_id: postId,
-      });
+      await apiPost<{ interest_id: string; already_pending?: boolean }>(
+        "/api/jobs/from-community-post",
+        {
+          community_post_id: postId,
+        },
+      );
       setPendingHirePostIds((prev) => {
         const next = new Set(prev);
         next.add(postId);
@@ -327,20 +346,27 @@ export function DiscoverHomeActivitySection({
               service_details,
               profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings, city )
             )
-          `
+          `,
           )
           .eq("freelancer_id", user.id)
           .in("status", ["pending", "opened"])
           .order("created_at", { ascending: false }),
-        supabase.from("job_confirmations").select("job_id, status").eq("freelancer_id", user.id),
+        supabase
+          .from("job_confirmations")
+          .select("job_id, status")
+          .eq("freelancer_id", user.id),
       ]);
 
       const notificationsData = notifsRes.data || [];
       const confirmedJobIds = new Set(
-        (confsRes.data || []).filter((c) => c.status === "available").map((c) => c.job_id)
+        (confsRes.data || [])
+          .filter((c) => c.status === "available")
+          .map((c) => c.job_id),
       );
       const declinedJobIds = new Set(
-        (confsRes.data || []).filter((c) => c.status === "declined").map((c) => c.job_id)
+        (confsRes.data || [])
+          .filter((c) => c.status === "declined")
+          .map((c) => c.job_id),
       );
 
       const valid = notificationsData
@@ -348,7 +374,7 @@ export function DiscoverHomeActivitySection({
           (n: any) =>
             n.job_requests &&
             !n.job_requests.community_post_id &&
-            n.job_requests.client_id !== user.id
+            n.job_requests.client_id !== user.id,
         )
         .map((n: any) => ({
           ...n,
@@ -384,7 +410,9 @@ export function DiscoverHomeActivitySection({
         description: "Moved to Pending while the client confirms.",
         variant: "success",
       });
-      goToIncomingJob((nextNotif?.job_requests as JobRequestRow | undefined) ?? null);
+      goToIncomingJob(
+        (nextNotif?.job_requests as JobRequestRow | undefined) ?? null,
+      );
     } catch (err: unknown) {
       addToast({
         title: "Failed to accept",
@@ -403,11 +431,16 @@ export function DiscoverHomeActivitySection({
     })();
     setDeleting(notifId);
     try {
-      const { error } = await supabase.from("job_candidate_notifications").delete().eq("id", notifId);
+      const { error } = await supabase
+        .from("job_candidate_notifications")
+        .delete()
+        .eq("id", notifId);
       if (error) throw error;
       setInbound((prev) => prev.filter((n) => n.id !== notifId));
       addToast({ title: "Declined", variant: "default" });
-      goToIncomingJob((nextNotif?.job_requests as JobRequestRow | undefined) ?? null);
+      goToIncomingJob(
+        (nextNotif?.job_requests as JobRequestRow | undefined) ?? null,
+      );
       return true;
     } catch (err: unknown) {
       addToast({
@@ -422,7 +455,8 @@ export function DiscoverHomeActivitySection({
   }
 
   function openJobPreview(job: IncomingJobRequestCardJob) {
-    if (job.service_type === "pickup_delivery") setSelectedMapJob(job as JobRequestRow);
+    if (job.service_type === "pickup_delivery")
+      setSelectedMapJob(job as JobRequestRow);
     else setSelectedJobDetails(job as JobRequestRow);
   }
 
@@ -430,29 +464,49 @@ export function DiscoverHomeActivitySection({
     "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 text-center outline-none",
     "transition-transform active:scale-[0.97]",
     "focus-visible:ring-2 focus-visible:ring-slate-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl",
-    "dark:focus-visible:ring-slate-500/50"
+    "dark:focus-visible:ring-slate-500/50",
   );
 
   const seeMoreCircleClassName = cn(
     "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/40 shadow-sm",
-    "transition-colors duration-200 group-hover:bg-muted/70 dark:group-hover:bg-muted/30"
+    "transition-colors duration-200 group-hover:bg-muted/70 dark:group-hover:bg-muted/30",
   );
 
   const hireSeeMoreLink = (
-    <Link to="/public/posts" className={seeMoreLinkClassName} role="listitem" aria-label="View all availability posts">
+    <Link
+      to="/public/posts"
+      className={seeMoreLinkClassName}
+      role="listitem"
+      aria-label="View all availability posts"
+    >
       <div className={seeMoreCircleClassName} aria-hidden>
-        <ChevronRight className="h-6 w-6 text-muted-foreground" strokeWidth={2.5} />
+        <ChevronRight
+          className="h-6 w-6 text-muted-foreground"
+          strokeWidth={2.5}
+        />
       </div>
-      <span className="text-[10px] font-bold leading-tight text-muted-foreground">View all</span>
+      <span className="text-[10px] font-bold leading-tight text-muted-foreground">
+        View all
+      </span>
     </Link>
   );
 
   const workSeeMoreLink = (
-    <Link to={incomingJobsUrl} className={seeMoreLinkClassName} role="listitem" aria-label="View all open requests">
+    <Link
+      to={incomingJobsUrl}
+      className={seeMoreLinkClassName}
+      role="listitem"
+      aria-label="View all open requests"
+    >
       <div className={seeMoreCircleClassName} aria-hidden>
-        <ChevronRight className="h-6 w-6 text-muted-foreground" strokeWidth={2.5} />
+        <ChevronRight
+          className="h-6 w-6 text-muted-foreground"
+          strokeWidth={2.5}
+        />
       </div>
-      <span className="text-[10px] font-bold leading-tight text-muted-foreground">View all</span>
+      <span className="text-[10px] font-bold leading-tight text-muted-foreground">
+        View all
+      </span>
     </Link>
   );
 
@@ -460,7 +514,9 @@ export function DiscoverHomeActivitySection({
     <>
       <div className="mb-2 flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">Available now</p>
+          <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">
+            Available now
+          </p>
         </div>
       </div>
       <div className="mt-1 space-y-4">
@@ -471,15 +527,22 @@ export function DiscoverHomeActivitySection({
         ) : feedPosts.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-orange-500/15 bg-orange-500/[0.04] px-4 py-6 text-center dark:border-orange-500/20 dark:bg-orange-500/[0.06]">
             <div className="relative">
-              <Radio className="h-9 w-9 text-orange-500/70 dark:text-orange-400/60" aria-hidden />
-              <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5 rounded-full bg-orange-500 opacity-75 motion-safe:animate-pulse" aria-hidden />
+              <Radio
+                className="h-9 w-9 text-orange-500/70 dark:text-orange-400/60"
+                aria-hidden
+              />
+              <span
+                className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5 rounded-full bg-orange-500 opacity-75 motion-safe:animate-pulse"
+                aria-hidden
+              />
             </div>
             <div className="space-y-1.5">
               <p className="text-[15px] font-semibold leading-snug text-foreground">
                 No helpers live on the board right now
               </p>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Post a request and we&apos;ll notify matching helpers the moment someone fits.
+                Post a request and we&apos;ll notify matching helpers the moment
+                someone fits.
               </p>
             </div>
             {viewerRole === "client" ? (
@@ -491,7 +554,12 @@ export function DiscoverHomeActivitySection({
                 <Link to="/client/create">Post a request</Link>
               </Button>
             ) : (
-              <Button type="button" variant="secondary" className="h-11 rounded-xl font-semibold shadow-sm" asChild>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 rounded-xl font-semibold shadow-sm"
+                asChild
+              >
                 <Link to="/public/posts">Browse live board</Link>
               </Button>
             )}
@@ -529,7 +597,9 @@ export function DiscoverHomeActivitySection({
   const workSection = (
     <>
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">Searching for you...</p>
+        <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">
+          Searching for you...
+        </p>
       </div>
 
       {!inboundLoading && inbound.length > 0 && viewerRole === "freelancer" && (
@@ -538,7 +608,10 @@ export function DiscoverHomeActivitySection({
           aria-label="Live activity"
         >
           <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <Activity className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <Activity
+              className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+              aria-hidden
+            />
             Live activity
           </div>
           <ul className="space-y-2">
@@ -551,7 +624,9 @@ export function DiscoverHomeActivitySection({
               const profileRow = Array.isArray(prof) ? prof[0] : prof;
               const name = profileRow?.full_name?.trim() || "Someone";
               const city = job.location_city?.trim();
-              const when = formatDistanceToNow(new Date(n.created_at), { addSuffix: true });
+              const when = formatDistanceToNow(new Date(n.created_at), {
+                addSuffix: true,
+              });
               return (
                 <li key={n.id} className="flex gap-2 text-sm leading-snug">
                   <span
@@ -559,10 +634,16 @@ export function DiscoverHomeActivitySection({
                     aria-hidden
                   />
                   <span className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">{name}</span>{" "}
-                    <span className="text-foreground/90">needs {formatJobTitle(job)}</span>
+                    <span className="font-semibold text-foreground">
+                      {name}
+                    </span>{" "}
+                    <span className="text-foreground/90">
+                      needs {formatJobTitle(job)}
+                    </span>
                     {city ? ` · ${city}` : ""}{" "}
-                    <span className="text-xs text-muted-foreground">· {when}</span>
+                    <span className="text-xs text-muted-foreground">
+                      · {when}
+                    </span>
                   </span>
                 </li>
               );
@@ -571,15 +652,21 @@ export function DiscoverHomeActivitySection({
         </div>
       )}
 
-      {!inboundLoading && inbound.length === 0 && viewerRole === "freelancer" && (
-        <div
-          className="mb-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground"
-          aria-hidden
-        >
-          <span className="rounded-full bg-muted/60 px-2.5 py-1 dark:bg-muted/30">Real-time alerts</span>
-          <span className="rounded-full bg-muted/60 px-2.5 py-1 dark:bg-muted/30">Nearby first</span>
-        </div>
-      )}
+      {!inboundLoading &&
+        inbound.length === 0 &&
+        viewerRole === "freelancer" && (
+          <div
+            className="mb-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground"
+            aria-hidden
+          >
+            <span className="rounded-full bg-muted/60 px-2.5 py-1 dark:bg-muted/30">
+              Real-time alerts
+            </span>
+            <span className="rounded-full bg-muted/60 px-2.5 py-1 dark:bg-muted/30">
+              Nearby first
+            </span>
+          </div>
+        )}
 
       <div className="mt-1 space-y-4">
         {inboundLoading ? (
@@ -589,8 +676,14 @@ export function DiscoverHomeActivitySection({
         ) : inbound.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-6 text-center dark:border-emerald-500/20 dark:bg-emerald-500/[0.06]">
             <div className="relative">
-              <Bell className="h-9 w-9 text-emerald-600/70 dark:text-emerald-400/60" aria-hidden />
-              <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5 rounded-full bg-emerald-500 opacity-80 motion-safe:animate-pulse" aria-hidden />
+              <Bell
+                className="h-9 w-9 text-emerald-600/70 dark:text-emerald-400/60"
+                aria-hidden
+              />
+              <span
+                className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5 rounded-full bg-emerald-500 opacity-80 motion-safe:animate-pulse"
+                aria-hidden
+              />
             </div>
             <div className="space-y-1.5">
               <p className="text-[15px] font-semibold leading-snug text-foreground">
@@ -636,7 +729,11 @@ export function DiscoverHomeActivitySection({
     <>
       <section
         className="mt-0 overflow-visible px-1 pt-0.5"
-        aria-label={mode === "hire" ? "Live helper availability" : "Open requests and matching"}
+        aria-label={
+          mode === "hire"
+            ? "Live helper availability"
+            : "Open requests and matching"
+        }
       >
         {mode === "hire" ? hireSection : workSection}
       </section>
@@ -649,7 +746,9 @@ export function DiscoverHomeActivitySection({
         onConfirm={
           selectedMapJob
             ? () => {
-                const notif = inbound.find((n) => n.job_id === selectedMapJob.id);
+                const notif = inbound.find(
+                  (n) => n.job_id === selectedMapJob.id,
+                );
                 if (notif) void handleConfirm(selectedMapJob.id, notif.id);
               }
             : undefined
@@ -657,13 +756,20 @@ export function DiscoverHomeActivitySection({
         isConfirming={confirming !== null}
         showAcceptButton={
           selectedMapJob
-            ? inbound.some((n) => n.job_id === selectedMapJob.id && !n.isConfirmed && !n.isDeclined)
+            ? inbound.some(
+                (n) =>
+                  n.job_id === selectedMapJob.id &&
+                  !n.isConfirmed &&
+                  !n.isDeclined,
+              )
             : false
         }
         onDecline={
           selectedMapJob
             ? async () => {
-                const notif = inbound.find((n) => n.job_id === selectedMapJob.id);
+                const notif = inbound.find(
+                  (n) => n.job_id === selectedMapJob.id,
+                );
                 if (notif) await handleDecline(notif.id);
               }
             : undefined
@@ -684,7 +790,9 @@ export function DiscoverHomeActivitySection({
         onConfirm={
           selectedJobDetails
             ? () => {
-                const notif = inbound.find((n) => n.job_id === selectedJobDetails.id);
+                const notif = inbound.find(
+                  (n) => n.job_id === selectedJobDetails.id,
+                );
                 if (notif) void handleConfirm(selectedJobDetails.id, notif.id);
               }
             : undefined
@@ -693,21 +801,27 @@ export function DiscoverHomeActivitySection({
         showAcceptButton={
           selectedJobDetails
             ? inbound.some(
-                (n) => n.job_id === selectedJobDetails.id && !n.isConfirmed && !n.isDeclined
+                (n) =>
+                  n.job_id === selectedJobDetails.id &&
+                  !n.isConfirmed &&
+                  !n.isDeclined,
               )
             : false
         }
         onDecline={
           selectedJobDetails
             ? async () => {
-                const notif = inbound.find((n) => n.job_id === selectedJobDetails.id);
+                const notif = inbound.find(
+                  (n) => n.job_id === selectedJobDetails.id,
+                );
                 if (notif) await handleDecline(notif.id);
               }
             : undefined
         }
         isDeclining={
           selectedJobDetails != null &&
-          deleting === inbound.find((n) => n.job_id === selectedJobDetails.id)?.id
+          deleting ===
+            inbound.find((n) => n.job_id === selectedJobDetails.id)?.id
         }
       />
     </>

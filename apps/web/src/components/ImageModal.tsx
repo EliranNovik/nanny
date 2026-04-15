@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, X, ChevronLeft, ChevronRight } from "lucide-react";
@@ -109,7 +114,8 @@ export function ImageModal({
         <VisuallyHidden.Root>
           <DialogTitle>Image Viewer</DialogTitle>
           <DialogDescription>
-            Viewing image {currentIndex + 1} of {allImages.length}: {currentImg.attachment_name || "Image"}
+            Viewing image {currentIndex + 1} of {allImages.length}:{" "}
+            {currentImg.attachment_name || "Image"}
           </DialogDescription>
         </VisuallyHidden.Root>
         {/* Top Bar - Download and Share */}
@@ -154,7 +160,7 @@ export function ImageModal({
                 disabled={currentIndex === 0}
                 className={cn(
                   "absolute left-4 z-10 text-white hover:bg-white/10",
-                  currentIndex === 0 && "opacity-50 cursor-not-allowed"
+                  currentIndex === 0 && "opacity-50 cursor-not-allowed",
                 )}
               >
                 <ChevronLeft className="w-8 h-8" />
@@ -166,7 +172,8 @@ export function ImageModal({
                 disabled={currentIndex === allImages.length - 1}
                 className={cn(
                   "absolute right-4 z-10 text-white hover:bg-white/10",
-                  currentIndex === allImages.length - 1 && "opacity-50 cursor-not-allowed"
+                  currentIndex === allImages.length - 1 &&
+                    "opacity-50 cursor-not-allowed",
                 )}
               >
                 <ChevronRight className="w-8 h-8" />
@@ -180,7 +187,7 @@ export function ImageModal({
               src={currentImg.attachment_url}
               alt={currentImg.attachment_name || "Image"}
               className="max-w-full max-h-full object-contain rounded-lg"
-              style={{ maxHeight: 'calc(95vh - 200px)' }}
+              style={{ maxHeight: "calc(95vh - 200px)" }}
             />
           </div>
         </div>
@@ -201,7 +208,7 @@ export function ImageModal({
                       "flex-shrink-0 w-20 h-20 md:w-24 md:h-24 rounded-lg overflow-hidden border-2 transition-all",
                       index === currentIndex
                         ? "border-primary ring-2 ring-primary/50"
-                        : "border-transparent opacity-60 hover:opacity-100 hover:border-white/30"
+                        : "border-transparent opacity-60 hover:opacity-100 hover:border-white/30",
                     )}
                   >
                     <img
@@ -219,4 +226,3 @@ export function ImageModal({
     </Dialog>
   );
 }
-

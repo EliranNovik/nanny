@@ -50,8 +50,7 @@ export function SwipeDecisionLayer({
   const pointerIdRef = useRef<number | null>(null);
 
   /** Left edge = accept (green), shown when dragging right. Right edge = decline (red), when dragging left. */
-  const acceptLabel =
-    leftStamp ?? (variant === "incoming" ? "ACCEPT" : "HIRE");
+  const acceptLabel = leftStamp ?? (variant === "incoming" ? "ACCEPT" : "HIRE");
   const declineLabel =
     rightStamp ?? (variant === "incoming" ? "DECLINE" : "PASS");
 
@@ -65,7 +64,7 @@ export function SwipeDecisionLayer({
         setDragX(0);
       }
     },
-    [onSwipeLeft, onSwipeRight]
+    [onSwipeLeft, onSwipeRight],
   );
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -142,7 +141,11 @@ export function SwipeDecisionLayer({
   };
 
   const w = typeof window !== "undefined" ? window.innerWidth : 400;
-  const rotate = fling ? (fling === "left" ? -MAX_ROTATE : MAX_ROTATE) : Math.max(-MAX_ROTATE, Math.min(MAX_ROTATE, dragX * 0.06));
+  const rotate = fling
+    ? fling === "left"
+      ? -MAX_ROTATE
+      : MAX_ROTATE
+    : Math.max(-MAX_ROTATE, Math.min(MAX_ROTATE, dragX * 0.06));
   const tx = fling === "left" ? -w * 1.2 : fling === "right" ? w * 1.2 : dragX;
 
   let acceptEdgeOpacity = 0;
@@ -174,20 +177,31 @@ export function SwipeDecisionLayer({
         aria-hidden
       >
         <div className="flex flex-col items-center gap-1 px-2 text-center">
-          <Check className="h-7 w-7 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} />
-          <span className="text-[10px] font-black tracking-[0.2em] text-emerald-800 dark:text-emerald-200">{acceptLabel}</span>
+          <Check
+            className="h-7 w-7 text-emerald-600 dark:text-emerald-400"
+            strokeWidth={2.5}
+          />
+          <span className="text-[10px] font-black tracking-[0.2em] text-emerald-800 dark:text-emerald-200">
+            {acceptLabel}
+          </span>
         </div>
       </div>
       <div
         className="pointer-events-none absolute inset-y-3 right-2 z-[5] flex w-[min(28%,7rem)] items-center justify-center rounded-2xl border-2 border-red-500/55 bg-gradient-to-br from-red-500/25 to-rose-600/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[2px] dark:from-red-500/20 dark:to-rose-950/30"
         style={{
-          opacity: declineEdgeOpacity > 0 ? 0.12 + declineEdgeOpacity * 0.88 : 0,
+          opacity:
+            declineEdgeOpacity > 0 ? 0.12 + declineEdgeOpacity * 0.88 : 0,
         }}
         aria-hidden
       >
         <div className="flex flex-col items-center gap-1 px-2 text-center">
-          <X className="h-7 w-7 text-red-600 dark:text-red-400" strokeWidth={2.5} />
-          <span className="text-[10px] font-black tracking-[0.2em] text-red-700 dark:text-red-300">{declineLabel}</span>
+          <X
+            className="h-7 w-7 text-red-600 dark:text-red-400"
+            strokeWidth={2.5}
+          />
+          <span className="text-[10px] font-black tracking-[0.2em] text-red-700 dark:text-red-300">
+            {declineLabel}
+          </span>
         </div>
       </div>
 
@@ -195,7 +209,7 @@ export function SwipeDecisionLayer({
         className={cn(
           /** Opaque surface so idle edge hints (z-[5]) never show through plain/transparent cards */
           "relative z-[6] flex min-h-0 flex-1 flex-col overflow-hidden bg-card will-change-transform",
-          fling && "transition-[transform] duration-300 ease-out"
+          fling && "transition-[transform] duration-300 ease-out",
         )}
         style={{
           transform: `translateX(${tx}px) rotate(${rotate}deg)`,

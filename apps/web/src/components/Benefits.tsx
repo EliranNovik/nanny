@@ -15,31 +15,64 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 /** Local assets only — avoid `gradient-mesh` on this wrapper (global `.gradient-mesh` uses min-height: 100dvh and breaks the phone mock). */
 const BENEFITS_FAKE_PROFILES = [
-  { id: "1", name: "Maya K.", line: "3 km · Nanny", rating: "4.9", img: "/images/helper_profile_1.png" },
-  { id: "2", name: "Dana L.", line: "1 km · Cleaning", rating: "5.0", img: "/images/helper_profile_2.png" },
-  { id: "3", name: "Noam R.", line: "5 km · Chef", rating: "4.8", img: "/images/helper_profile_3.png" },
-  { id: "4", name: "Yoni S.", line: "2 km · Errands", rating: "4.9", img: "/images/helper_profile_4.png" },
-  { id: "5", name: "Tamar E.", line: "4 km · Sitter", rating: "5.0", img: "/pexels-dmitry-rodionov-30660800.jpg" },
+  {
+    id: "1",
+    name: "Maya K.",
+    line: "3 km · Nanny",
+    rating: "4.9",
+    img: "/images/helper_profile_1.png",
+  },
+  {
+    id: "2",
+    name: "Dana L.",
+    line: "1 km · Cleaning",
+    rating: "5.0",
+    img: "/images/helper_profile_2.png",
+  },
+  {
+    id: "3",
+    name: "Noam R.",
+    line: "5 km · Chef",
+    rating: "4.8",
+    img: "/images/helper_profile_3.png",
+  },
+  {
+    id: "4",
+    name: "Yoni S.",
+    line: "2 km · Errands",
+    rating: "4.9",
+    img: "/images/helper_profile_4.png",
+  },
+  {
+    id: "5",
+    name: "Tamar E.",
+    line: "4 km · Sitter",
+    rating: "5.0",
+    img: "/pexels-dmitry-rodionov-30660800.jpg",
+  },
 ] as const;
 
 const benefits = [
   {
     title: "Ideal helper, faster",
-    description: "AI matching shows you the best helpers first, ensuring a perfect fit.",
+    description:
+      "AI matching shows you the best helpers first, ensuring a perfect fit.",
     icon: <Target className="w-8 h-8 text-blue-500" />,
     color: "bg-blue-50/80",
     angle: -90,
   },
   {
     title: "Trust powered by AI",
-    description: "Every helper is ID‑verified with Teudat Zehut and selfie-match.",
+    description:
+      "Every helper is ID‑verified with Teudat Zehut and selfie-match.",
     icon: <ShieldCheck className="w-8 h-8 text-emerald-500" />,
     color: "bg-emerald-50/80",
     angle: -18,
   },
   {
     title: "Real reviews",
-    description: "Ratings come only from real families after a completed help together.",
+    description:
+      "Ratings come only from real families after a completed help together.",
     icon: <Star className="w-8 h-8 text-yellow-500" />,
     color: "bg-yellow-50/80",
     angle: 54,
@@ -104,16 +137,44 @@ function BenefitsHubShowcase() {
                   <div className="absolute left-0 right-0 top-0 z-30 flex items-center justify-between px-3 pt-1.5 text-[9px] font-semibold text-slate-900">
                     <span>9:41</span>
                     <div className="flex items-center gap-0.5 pr-0.5">
-                      <svg width="12" height="8" viewBox="0 0 14 10" className="text-slate-900" aria-hidden>
+                      <svg
+                        width="12"
+                        height="8"
+                        viewBox="0 0 14 10"
+                        className="text-slate-900"
+                        aria-hidden
+                      >
                         <path
                           fill="currentColor"
                           d="M1 7h2v2H1V7zm3-1h2v3H4V6zm3-2h2v5H7V4zm3-2h2v7h-2V2z"
                           opacity="0.95"
                         />
                       </svg>
-                      <svg width="14" height="8" viewBox="0 0 16 10" className="text-slate-900" aria-hidden>
-                        <rect x="0.5" y="2" width="11" height="6" rx="1" fill="none" stroke="currentColor" strokeWidth="1" />
-                        <rect x="12" y="3.5" width="2.5" height="3" rx="0.5" fill="currentColor" />
+                      <svg
+                        width="14"
+                        height="8"
+                        viewBox="0 0 16 10"
+                        className="text-slate-900"
+                        aria-hidden
+                      >
+                        <rect
+                          x="0.5"
+                          y="2"
+                          width="11"
+                          height="6"
+                          rx="1"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1"
+                        />
+                        <rect
+                          x="12"
+                          y="3.5"
+                          width="2.5"
+                          height="3"
+                          rx="0.5"
+                          fill="currentColor"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -136,51 +197,53 @@ function BenefitsHubShowcase() {
                             className="benefits-hub-scroll flex shrink-0 items-stretch gap-2 overflow-x-auto overflow-y-hidden pb-0.5 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin]"
                             style={{ WebkitOverflowScrolling: "touch" }}
                           >
-                          {BENEFITS_FAKE_PROFILES.map((p) => (
-                            <div
-                              key={p.id}
-                              className="flex w-[132px] shrink-0 snap-center flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-sm dark:border-border/60"
-                            >
-                              <div className="relative mb-1.5 w-full shrink-0 overflow-hidden rounded-xl bg-slate-200 aspect-[3/4]">
-                                <img
-                                  src={p.img}
-                                  alt=""
-                                  className="h-full w-full object-cover object-top"
-                                  loading="eager"
-                                />
-                                <div className="absolute left-1 top-1 rounded-md bg-black/55 px-1 py-0.5 text-[8px] font-bold text-white shadow-sm">
-                                  ★ {p.rating}
+                            {BENEFITS_FAKE_PROFILES.map((p) => (
+                              <div
+                                key={p.id}
+                                className="flex w-[132px] shrink-0 snap-center flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-sm dark:border-border/60"
+                              >
+                                <div className="relative mb-1.5 w-full shrink-0 overflow-hidden rounded-xl bg-slate-200 aspect-[3/4]">
+                                  <img
+                                    src={p.img}
+                                    alt=""
+                                    className="h-full w-full object-cover object-top"
+                                    loading="eager"
+                                  />
+                                  <div className="absolute left-1 top-1 rounded-md bg-black/55 px-1 py-0.5 text-[8px] font-bold text-white shadow-sm">
+                                    ★ {p.rating}
+                                  </div>
+                                </div>
+                                <p className="truncate text-[10px] font-black leading-tight text-slate-900">
+                                  {p.name}
+                                </p>
+                                <p className="mb-1 line-clamp-2 text-[8px] font-medium leading-snug text-slate-500">
+                                  {p.line}
+                                </p>
+                                <div className="flex flex-col gap-1">
+                                  <button
+                                    type="button"
+                                    className="flex h-7 w-full items-center justify-center gap-0.5 rounded-lg border border-slate-200 bg-white text-[8px] font-bold text-slate-800"
+                                  >
+                                    <Bookmark className="h-3 w-3 shrink-0" />
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="flex h-7 w-full items-center justify-center gap-0.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-[8px] font-bold text-white"
+                                  >
+                                    <MessageCircle className="h-3 w-3 shrink-0" />
+                                    Chat
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="flex h-7 w-full items-center justify-center gap-0.5 rounded-lg border border-red-200 bg-red-50 text-[8px] font-bold text-red-600"
+                                  >
+                                    <X className="h-3 w-3 shrink-0" />
+                                    Decline
+                                  </button>
                                 </div>
                               </div>
-                              <p className="truncate text-[10px] font-black leading-tight text-slate-900">{p.name}</p>
-                              <p className="mb-1 line-clamp-2 text-[8px] font-medium leading-snug text-slate-500">
-                                {p.line}
-                              </p>
-                              <div className="flex flex-col gap-1">
-                                <button
-                                  type="button"
-                                  className="flex h-7 w-full items-center justify-center gap-0.5 rounded-lg border border-slate-200 bg-white text-[8px] font-bold text-slate-800"
-                                >
-                                  <Bookmark className="h-3 w-3 shrink-0" />
-                                  Save
-                                </button>
-                                <button
-                                  type="button"
-                                  className="flex h-7 w-full items-center justify-center gap-0.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-[8px] font-bold text-white"
-                                >
-                                  <MessageCircle className="h-3 w-3 shrink-0" />
-                                  Chat
-                                </button>
-                                <button
-                                  type="button"
-                                  className="flex h-7 w-full items-center justify-center gap-0.5 rounded-lg border border-red-200 bg-red-50 text-[8px] font-bold text-red-600"
-                                >
-                                  <X className="h-3 w-3 shrink-0" />
-                                  Decline
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -203,13 +266,15 @@ function BenefitsHubShowcase() {
                             key={i}
                             className={cn(
                               "flex flex-col items-center justify-center p-0.5",
-                              item.active ? "text-slate-800" : "text-slate-500"
+                              item.active ? "text-slate-800" : "text-slate-500",
                             )}
                           >
                             <div
                               className={cn(
                                 "relative flex h-[26px] w-[26px] items-center justify-center rounded-xl transition-all",
-                                item.active ? "bg-white/70 text-slate-800 shadow-sm" : ""
+                                item.active
+                                  ? "bg-white/70 text-slate-800 shadow-sm"
+                                  : "",
                               )}
                             >
                               <Icon className="h-3.5 w-3.5" />
@@ -237,7 +302,9 @@ function BenefitsHubShowcase() {
                       <div className="flex flex-col items-center justify-center p-0.5 text-slate-500">
                         <div className="flex h-[26px] w-[26px] items-center justify-center rounded-xl bg-white/70 shadow-sm ring-1 ring-slate-300/50">
                           <Avatar className="h-5 w-5 border border-black/10">
-                            <AvatarFallback className="bg-slate-100 text-[8px] font-bold">SA</AvatarFallback>
+                            <AvatarFallback className="bg-slate-100 text-[8px] font-bold">
+                              SA
+                            </AvatarFallback>
                           </Avatar>
                         </div>
                       </div>
@@ -290,7 +357,7 @@ export default function Benefits() {
                   <div
                     className={cn(
                       "flex h-20 w-20 items-center justify-center rounded-[2.5rem] border border-white/40 shadow-xl backdrop-blur-sm transition-all duration-500 group-hover:rotate-6 group-hover:scale-110",
-                      benefit.color
+                      benefit.color,
                     )}
                   >
                     {benefit.icon}
@@ -312,18 +379,25 @@ export default function Benefits() {
         {/* Mobile / tablet grid */}
         <div className="grid w-full max-w-4xl grid-cols-1 gap-16 px-8 md:grid-cols-2 xl:hidden">
           {benefits.map((benefit, idx) => (
-            <div key={idx} className="group flex items-start gap-8 transition-all">
+            <div
+              key={idx}
+              className="group flex items-start gap-8 transition-all"
+            >
               <div
                 className={cn(
                   "flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-3xl border border-white/20 shadow-lg transition-transform group-hover:scale-110 md:rounded-[2rem]",
-                  benefit.color
+                  benefit.color,
                 )}
               >
                 <div className="scale-125">{benefit.icon}</div>
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-bold text-gray-900 transition-colors group-hover:text-primary">{benefit.title}</h3>
-                <p className="text-base font-medium leading-relaxed text-gray-600">{benefit.description}</p>
+                <h3 className="text-xl font-bold text-gray-900 transition-colors group-hover:text-primary">
+                  {benefit.title}
+                </h3>
+                <p className="text-base font-medium leading-relaxed text-gray-600">
+                  {benefit.description}
+                </p>
               </div>
             </div>
           ))}

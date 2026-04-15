@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -8,9 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   CommunityPostCard,
-  type CommunityFeedPost,
-  type CommunityPostImage,
-  type CommunityPostWithMeta,
 } from "@/components/community/CommunityPostCard";
 import { PublicPostsCategoryStepper } from "@/components/community/PublicPostsCategoryStepper";
 import {
@@ -23,6 +20,13 @@ import {
 import { openCommunityContact } from "@/lib/communityContact";
 import { apiPost } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import {
+  useCommunityPosts,
+  usePostFavorites,
+  usePendingHireInterests,
+} from "@/hooks/data/useCommunityPosts";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/hooks/data/keys";
 
 /** Mobile snap: directly under fixed category bar (~3.5rem header + ~3.25rem tabs) + small gap */
 const MOBILE_SNAP_TOP_LOGGED_IN =
@@ -30,10 +34,6 @@ const MOBILE_SNAP_TOP_LOGGED_IN =
 /** Guest: app header + back/title block (approx) */
 const MOBILE_SNAP_TOP_GUEST =
   "top-[calc(env(safe-area-inset-top,0px)+3.5rem+5.75rem)]";
-/**
- * Clears fixed BottomNav row: py-2 top (0.5rem) + tallest tap target (52px FAB) +
- * pb max(0.5rem, safe-area). Do not add safe-area twice — it is already in max(...).
- */
 const MOBILE_SNAP_BOTTOM =
   "bottom-[calc(3.75rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]";
 
@@ -42,12 +42,11 @@ export default function PublicCommunityPostsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryFilter = searchParams.get("category");
   const isAllHelp = isAllHelpCategory(categoryFilter);
-  const validCategory =
-    isAllHelp
-      ? null
-      : categoryFilter && isServiceCategoryId(categoryFilter)
-        ? categoryFilter
-        : null;
+  const validCategory = isAllHelp
+    ? null
+    : categoryFilter && isServiceCategoryId(categoryFilter)
+      ? categoryFilter
+      : null;
 
   const activeCategoryId: DiscoverHomeCategoryId = useMemo(() => {
     if (!categoryFilter) return ALL_HELP_CATEGORY_ID;
@@ -56,175 +55,72 @@ export default function PublicCommunityPostsPage() {
     return ALL_HELP_CATEGORY_ID;
   }, [categoryFilter]);
 
-  const selectCategory = useCallback((id: DiscoverHomeCategoryId) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (id === ALL_HELP_CATEGORY_ID) {
-          next.delete("category");
-        } else {
-          next.set("category", id);
-        }
-        return next;
-      },
-      { replace: true }
-    );
-  }, [setSearchParams]);
+  const selectCategory = useCallback(
+    (id: DiscoverHomeCategoryId) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (id === ALL_HELP_CATEGORY_ID) {
+            next.delete("category");
+          } else {
+            next.set("category", id);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const { user, profile } = useAuth();
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [posts, setPosts] = useState<CommunityPostWithMeta[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(() => new Set());
-  const [hiringPostId, setHiringPostId] = useState<string | null>(null);
-  /** Posts where this client already tapped Hire now and is still pending freelancer confirm */
-  const [pendingHirePostIds, setPendingHirePostIds] = useState<Set<string>>(() => new Set());
+  // --- Server state via React Query ---
+  const { data: posts = [], isLoading: loading } = useCommunityPosts(validCategory);
 
-  const postIdsKey = useMemo(
-    () =>
-      posts
-        .map((p) => p.id)
-        .sort()
-        .join(","),
-    [posts]
+  const postIds = useMemo(() => posts.map((p) => p.id), [posts]);
+
+  const { data: favoritedIdsSet = new Set<string>() } = usePostFavorites(user?.id, postIds);
+  const [localFavChanges, setLocalFavChanges] = useState<Map<string, boolean>>(() => new Map());
+
+  const { data: pendingHireIdsSet = new Set<string>() } = usePendingHireInterests(
+    user?.id,
+    profile?.role,
+    postIds,
   );
+  const [localHireAdded, setLocalHireAdded] = useState<Set<string>>(() => new Set());
+
+  // Merge server state with optimistic local overrides
+  const favoritedIds = useMemo(() => {
+    const merged = new Set(favoritedIdsSet);
+    localFavChanges.forEach((isFav, id) => {
+      if (isFav) merged.add(id);
+      else merged.delete(id);
+    });
+    return merged;
+  }, [favoritedIdsSet, localFavChanges]);
+
+  const pendingHirePostIds = useMemo(() => {
+    const merged = new Set(pendingHireIdsSet);
+    localHireAdded.forEach((id) => merged.add(id));
+    return merged;
+  }, [pendingHireIdsSet, localHireAdded]);
+
+  const [hiringPostId, setHiringPostId] = useState<string | null>(null);
 
   const categoryTitle =
     activeCategoryId === ALL_HELP_CATEGORY_ID
       ? "All help"
       : serviceCategoryLabel(activeCategoryId);
 
-  const loadPosts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: rows, error } = await supabase.rpc("get_community_feed_public", {
-        p_category: validCategory ?? null,
-      });
-
-      if (error) throw error;
-      const list = (rows || []) as CommunityFeedPost[];
-      if (list.length === 0) {
-        setPosts([]);
-        return;
-      }
-
-      const postIds = list.map((p) => p.id);
-      const { data: imgs, error: imgErr } = await supabase
-        .from("community_post_images")
-        .select("id, post_id, image_url, sort_order")
-        .in("post_id", postIds)
-        .order("sort_order", { ascending: true });
-
-      if (imgErr) throw imgErr;
-
-      const imagesByPost = new Map<string, CommunityPostImage[]>();
-      for (const img of imgs || []) {
-        const pid = img.post_id as string;
-        if (!imagesByPost.has(pid)) imagesByPost.set(pid, []);
-        imagesByPost.get(pid)!.push({
-          id: img.id as string,
-          image_url: img.image_url as string,
-          sort_order: Number(img.sort_order) || 0,
-        });
-      }
-
-      setPosts(
-        list.map((p) => ({
-          ...p,
-          images: imagesByPost.get(p.id) ?? [],
-        }))
-      );
-    } catch (e) {
-      console.error("[PublicCommunityPostsPage]", e);
-      addToast({
-        title: "Could not load posts",
-        description: e instanceof Error ? e.message : "Try again later.",
-        variant: "error",
-      });
-      setPosts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [addToast, validCategory]);
-
-  useEffect(() => {
-    void loadPosts();
-  }, [loadPosts]);
-
-  useEffect(() => {
-    if (!user?.id || posts.length === 0) {
-      setFavoritedIds(new Set());
-      return;
-    }
-    const ids = posts.map((p) => p.id);
-    let cancelled = false;
-    void (async () => {
-      const { data, error } = await supabase
-        .from("community_post_favorites")
-        .select("post_id")
-        .eq("user_id", user.id)
-        .in("post_id", ids);
-      if (cancelled) return;
-      if (error) {
-        console.error("[PublicCommunityPostsPage] favorites", error);
-        return;
-      }
-      setFavoritedIds(new Set((data || []).map((r) => r.post_id as string)));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, postIdsKey]);
-
-  const focusPostId = searchParams.get("post");
-  useEffect(() => {
-    if (!focusPostId || loading) return;
-    const t = window.setTimeout(() => {
-      document.getElementById(`community-post-${focusPostId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 150);
-    return () => clearTimeout(t);
-  }, [focusPostId, loading, postIdsKey]);
-
-  useEffect(() => {
-    if (!user?.id || profile?.role !== "client") {
-      setPendingHirePostIds(new Set());
-      return;
-    }
-    if (posts.length === 0) {
-      setPendingHirePostIds(new Set());
-      return;
-    }
-    const ids = posts.map((p) => p.id);
-    let cancelled = false;
-    void (async () => {
-      const { data, error } = await supabase
-        .from("community_post_hire_interests")
-        .select("community_post_id")
-        .eq("client_id", user.id)
-        .eq("status", "pending")
-        .in("community_post_id", ids);
-      if (cancelled) return;
-      if (error) {
-        console.error("[PublicCommunityPostsPage] pending hire interests", error);
-        return;
-      }
-      setPendingHirePostIds(
-        new Set((data || []).map((r) => r.community_post_id as string))
-      );
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, profile?.role, postIdsKey]);
-
   const loginRedirect = useMemo(() => {
     const base = "/public/posts";
     if (isAllHelp) return `${base}?category=${encodeURIComponent("all_help")}`;
-    const q = validCategory ? `?category=${encodeURIComponent(validCategory)}` : "";
+    const q = validCategory
+      ? `?category=${encodeURIComponent(validCategory)}`
+      : "";
     return `${base}${q}`;
   }, [validCategory, isAllHelp]);
 
@@ -234,10 +130,10 @@ export default function PublicCommunityPostsPage() {
       return false;
     }
     const wasFav = favoritedIds.has(postId);
-    setFavoritedIds((prev: Set<string>) => {
-      const next = new Set(prev);
-      if (wasFav) next.delete(postId);
-      else next.add(postId);
+    // Optimistic update
+    setLocalFavChanges((prev) => {
+      const next = new Map(prev);
+      next.set(postId, !wasFav);
       return next;
     });
     try {
@@ -249,18 +145,18 @@ export default function PublicCommunityPostsPage() {
           .eq("post_id", postId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("community_post_favorites").insert({
-          user_id: user.id,
-          post_id: postId,
-        });
+        const { error } = await supabase
+          .from("community_post_favorites")
+          .insert({ user_id: user.id, post_id: postId });
         if (error) throw error;
       }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.postFavorites(user.id, postIds) });
       return true;
     } catch (e) {
-      setFavoritedIds((prev: Set<string>) => {
-        const next = new Set(prev);
-        if (wasFav) next.add(postId);
-        else next.delete(postId);
+      // Rollback
+      setLocalFavChanges((prev) => {
+        const next = new Map(prev);
+        next.set(postId, wasFav);
         return next;
       });
       addToast({
@@ -275,14 +171,11 @@ export default function PublicCommunityPostsPage() {
   const handleHireFromPost = async (postId: string) => {
     setHiringPostId(postId);
     try {
-      await apiPost<{ interest_id: string; already_pending?: boolean }>("/api/jobs/from-community-post", {
-        community_post_id: postId,
-      });
-      setPendingHirePostIds((prev) => {
-        const next = new Set(prev);
-        next.add(postId);
-        return next;
-      });
+      await apiPost<{ interest_id: string; already_pending?: boolean }>(
+        "/api/jobs/from-community-post",
+        { community_post_id: postId },
+      );
+      setLocalHireAdded((prev) => new Set([...prev, postId]));
       addToast({
         title: "Interest sent",
         description:
@@ -303,8 +196,8 @@ export default function PublicCommunityPostsPage() {
   return (
     <div
       className={cn(
-        "min-h-screen gradient-mesh pb-6 md:pb-8",
-        posts.length > 0 && "max-md:overflow-hidden max-md:pb-0"
+        "min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8",
+        posts.length > 0 && "max-md:overflow-hidden max-md:pb-0",
       )}
       {...(posts.length > 0 ? { "data-public-snap-feed-mobile": "" } : {})}
     >
@@ -314,8 +207,7 @@ export default function PublicCommunityPostsPage() {
           user
             ? "pt-[calc(0.5rem+5.25rem+0.75rem)] md:pt-[calc(0.5rem+5.5rem+0.75rem)]"
             : "pt-4 md:pt-6",
-          /* Mobile snap feed is position:fixed — in-flow pt would only add an empty band (reads as white under tabs) */
-          posts.length > 0 && "max-md:!pt-0"
+          posts.length > 0 && "max-md:!pt-0",
         )}
       >
         {/* Fixed category stepper under header (Jobs-style) */}
@@ -325,12 +217,15 @@ export default function PublicCommunityPostsPage() {
               "fixed inset-x-0 z-[45] pointer-events-none",
               "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
               "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
-              "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+              "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]",
             )}
           >
             <div className="app-desktop-shell pointer-events-auto">
               <div className="mx-auto w-full px-0 py-2">
-                <PublicPostsCategoryStepper activeId={activeCategoryId} onSelect={selectCategory} />
+                <PublicPostsCategoryStepper
+                  activeId={activeCategoryId}
+                  onSelect={selectCategory}
+                />
               </div>
             </div>
           </div>
@@ -345,7 +240,11 @@ export default function PublicCommunityPostsPage() {
                 size="sm"
                 className="gap-1.5 -ml-2 rounded-full"
                 onClick={() => {
-                  if (typeof window !== "undefined" && window.history.length > 1) navigate(-1);
+                  if (
+                    typeof window !== "undefined" &&
+                    window.history.length > 1
+                  )
+                    navigate(-1);
                   else navigate("/");
                 }}
               >
@@ -358,7 +257,7 @@ export default function PublicCommunityPostsPage() {
           <div
             className={cn(
               posts.length > 0 && user && "max-md:hidden",
-              posts.length > 0 && !user && "max-md:pb-1"
+              posts.length > 0 && !user && "max-md:pb-1",
             )}
           >
             <h1 className="text-[26px] font-black tracking-tight text-slate-900 dark:text-white md:text-[30px]">
@@ -403,7 +302,7 @@ export default function PublicCommunityPostsPage() {
                   pendingHirePostIds={pendingHirePostIds}
                   onHireFromPost={handleHireFromPost}
                   plain
-                  cardClassName="h-full overflow-hidden rounded-2xl border-0 max-md:border max-md:border-neutral-200 bg-white/95 shadow-sm ring-0 md:bg-transparent md:shadow-none dark:bg-card dark:shadow-md dark:max-md:border-neutral-700 dark:md:bg-transparent dark:md:shadow-none"
+                      cardClassName="h-full overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm ring-0 dark:border-white/5 dark:bg-zinc-900"
                   iconOnlyActions
                   onOpenChat={() => {
                     if (!user || !profile) return;
@@ -427,13 +326,14 @@ export default function PublicCommunityPostsPage() {
                 "fixed inset-x-0 z-[20] overflow-y-auto overscroll-y-contain md:hidden",
                 "snap-y snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
                 user ? MOBILE_SNAP_TOP_LOGGED_IN : MOBILE_SNAP_TOP_GUEST,
-                MOBILE_SNAP_BOTTOM
+                MOBILE_SNAP_BOTTOM,
               )}
               aria-label="Availability posts"
             >
               {posts.map((post) => (
                 <div
                   key={post.id}
+                  id={`community-post-${post.id}`}
                   className="box-border flex min-h-full w-full snap-center snap-always flex-col justify-center px-3 py-2"
                 >
                   <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-1 flex-col overflow-y-auto [-webkit-overflow-scrolling:touch]">
@@ -448,7 +348,7 @@ export default function PublicCommunityPostsPage() {
                       pendingHirePostIds={pendingHirePostIds}
                       onHireFromPost={handleHireFromPost}
                       plain
-                      cardClassName="h-full overflow-hidden rounded-2xl border-0 max-md:border max-md:border-neutral-200 bg-white/95 shadow-sm ring-0 md:bg-transparent md:shadow-none dark:bg-card dark:shadow-md dark:max-md:border-neutral-700 dark:md:bg-transparent dark:md:shadow-none"
+                          cardClassName="h-full overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm ring-0 dark:border-white/5 dark:bg-zinc-900"
                       iconOnlyActions
                       onOpenChat={() => {
                         if (!user || !profile) return;

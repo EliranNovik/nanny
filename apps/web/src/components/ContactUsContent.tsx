@@ -12,7 +12,15 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { Clock, HeartHandshake, Loader2, Mail, MessageCircle, Send, CheckCircle2 } from "lucide-react";
+import {
+  Clock,
+  HeartHandshake,
+  Loader2,
+  Mail,
+  MessageCircle,
+  Send,
+  CheckCircle2,
+} from "lucide-react";
 
 const SUPPORT_EMAIL = "support@mamalama.com";
 
@@ -27,7 +35,13 @@ const TOPICS = [
 
 function Blob({ className }: { className?: string }) {
   return (
-    <div className={cn("pointer-events-none absolute rounded-full blur-3xl opacity-35", className)} aria-hidden />
+    <div
+      className={cn(
+        "pointer-events-none absolute rounded-full blur-3xl opacity-35",
+        className,
+      )}
+      aria-hidden
+    />
   );
 }
 
@@ -47,9 +61,13 @@ export function ContactUsContent() {
     if (!name.trim()) next.name = "Please add your name.";
     const em = email.trim();
     if (!em) next.email = "We need an email so we can reply.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) next.email = "That doesn’t look like a valid email.";
-    if (!message.trim()) next.message = "Tell us a little about how we can help.";
-    else if (message.trim().length < 15) next.message = "A few more words help us understand (at least 15 characters).";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))
+      next.email = "That doesn’t look like a valid email.";
+    if (!message.trim())
+      next.message = "Tell us a little about how we can help.";
+    else if (message.trim().length < 15)
+      next.message =
+        "A few more words help us understand (at least 15 characters).";
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -102,14 +120,20 @@ export function ContactUsContent() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-9 w-9" strokeWidth={2} />
           </div>
-          <h2 className="mt-6 text-2xl font-black tracking-tight text-slate-900 dark:text-white">We’ve got your note</h2>
+          <h2 className="mt-6 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            We’ve got your note
+          </h2>
           <p className="mt-3 text-base leading-relaxed text-slate-600 dark:text-slate-300">
-            Thanks for trusting us with your question. If your mail program opened, send the draft and our team will get
-            back to you as soon as we can—usually within one business day.
+            Thanks for trusting us with your question. If your mail program
+            opened, send the draft and our team will get back to you as soon as
+            we can—usually within one business day.
           </p>
           <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
             Nothing opened? Email us directly at{" "}
-            <a className="font-bold text-primary underline-offset-4 hover:underline" href={`mailto:${SUPPORT_EMAIL}`}>
+            <a
+              className="font-bold text-primary underline-offset-4 hover:underline"
+              href={`mailto:${SUPPORT_EMAIL}`}
+            >
               {SUPPORT_EMAIL}
             </a>
             .
@@ -142,10 +166,13 @@ export function ContactUsContent() {
             <MessageCircle className="h-3.5 w-3.5" />
             We’re here for you
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white md:text-5xl">Contact us</h1>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white md:text-5xl">
+            Contact us
+          </h1>
           <p className="text-lg font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-            Questions, worries, or a rough day with the app—tell us. MamaLama is built for real families and helpers; we
-            read what you send and answer with care, not scripts.
+            Questions, worries, or a rough day with the app—tell us. MamaLama is
+            built for real families and helpers; we read what you send and
+            answer with care, not scripts.
           </p>
         </div>
       </section>
@@ -159,10 +186,12 @@ export function ContactUsContent() {
                 <HeartHandshake className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-900 dark:text-white">People first</h2>
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                  People first
+                </h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                  We don’t route you through endless bots. Share what’s going on—we’ll take it seriously and reply in
-                  plain language.
+                  We don’t route you through endless bots. Share what’s going
+                  on—we’ll take it seriously and reply in plain language.
                 </p>
               </div>
             </div>
@@ -170,9 +199,14 @@ export function ContactUsContent() {
 
           <div className="space-y-4 rounded-[1.75rem] border border-slate-200/80 bg-card/80 p-6 shadow-sm dark:border-white/10">
             <div className="flex items-start gap-3">
-              <Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <Mail
+                className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                aria-hidden
+              />
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Email
+                </p>
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
                   className="font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-white"
@@ -182,9 +216,14 @@ export function ContactUsContent() {
               </div>
             </div>
             <div className="flex items-start gap-3 border-t border-border/60 pt-4">
-              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <Clock
+                className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                aria-hidden
+              />
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Typical reply</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Typical reply
+                </p>
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Within 1 business day, often sooner
                 </p>
@@ -195,10 +234,12 @@ export function ContactUsContent() {
 
         {/* Form */}
         <div className="rounded-[1.75rem] border-2 border-slate-200/90 bg-white/90 p-6 shadow-xl dark:border-white/10 dark:bg-slate-950/70 md:p-8">
-          <h2 className="text-xl font-black text-slate-900 dark:text-white">Send us a message</h2>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white">
+            Send us a message
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            The form below opens your email app with your message ready to send—we never store it on a server from this
-            page.
+            The form below opens your email app with your message ready to
+            send—we never store it on a server from this page.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
@@ -213,12 +254,20 @@ export function ContactUsContent() {
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    if (fieldErrors.name) setFieldErrors((f) => ({ ...f, name: "" }));
+                    if (fieldErrors.name)
+                      setFieldErrors((f) => ({ ...f, name: "" }));
                   }}
-                  className={cn(fieldErrors.name && "border-destructive focus-visible:ring-destructive")}
+                  className={cn(
+                    fieldErrors.name &&
+                      "border-destructive focus-visible:ring-destructive",
+                  )}
                   aria-invalid={!!fieldErrors.name}
                 />
-                {fieldErrors.name && <p className="text-xs font-medium text-destructive">{fieldErrors.name}</p>}
+                {fieldErrors.name && (
+                  <p className="text-xs font-medium text-destructive">
+                    {fieldErrors.name}
+                  </p>
+                )}
               </div>
               <div className="space-y-2 sm:col-span-1">
                 <Label htmlFor="contact-email">Email</Label>
@@ -231,17 +280,30 @@ export function ContactUsContent() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (fieldErrors.email) setFieldErrors((f) => ({ ...f, email: "" }));
+                    if (fieldErrors.email)
+                      setFieldErrors((f) => ({ ...f, email: "" }));
                   }}
-                  className={cn(fieldErrors.email && "border-destructive focus-visible:ring-destructive")}
+                  className={cn(
+                    fieldErrors.email &&
+                      "border-destructive focus-visible:ring-destructive",
+                  )}
                   aria-invalid={!!fieldErrors.email}
                 />
-                {fieldErrors.email && <p className="text-xs font-medium text-destructive">{fieldErrors.email}</p>}
+                {fieldErrors.email && (
+                  <p className="text-xs font-medium text-destructive">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contact-phone">Phone <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Label htmlFor="contact-phone">
+                Phone{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
               <Input
                 id="contact-phone"
                 name="phone"
@@ -256,7 +318,10 @@ export function ContactUsContent() {
             <div className="space-y-2">
               <Label htmlFor="contact-topic">Topic</Label>
               <Select value={topic} onValueChange={setTopic}>
-                <SelectTrigger id="contact-topic" className="h-11 rounded-lg border-2">
+                <SelectTrigger
+                  id="contact-topic"
+                  className="h-11 rounded-lg border-2"
+                >
                   <SelectValue placeholder="Choose a topic" />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,15 +344,21 @@ export function ContactUsContent() {
                 value={message}
                 onChange={(e) => {
                   setMessage(e.target.value);
-                  if (fieldErrors.message) setFieldErrors((f) => ({ ...f, message: "" }));
+                  if (fieldErrors.message)
+                    setFieldErrors((f) => ({ ...f, message: "" }));
                 }}
                 className={cn(
                   "min-h-[140px] rounded-lg border-2 border-input bg-background px-4 py-3 text-sm transition-colors focus-visible:ring-2",
-                  fieldErrors.message && "border-destructive focus-visible:ring-destructive"
+                  fieldErrors.message &&
+                    "border-destructive focus-visible:ring-destructive",
                 )}
                 aria-invalid={!!fieldErrors.message}
               />
-              {fieldErrors.message && <p className="text-xs font-medium text-destructive">{fieldErrors.message}</p>}
+              {fieldErrors.message && (
+                <p className="text-xs font-medium text-destructive">
+                  {fieldErrors.message}
+                </p>
+              )}
             </div>
 
             <Button
@@ -308,8 +379,10 @@ export function ContactUsContent() {
               )}
             </Button>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Submitting opens your default email app with your message addressed to {SUPPORT_EMAIL}. You can edit
-              before sending. Prefer not to use email? You can still reach us at the address above from any device.
+              Submitting opens your default email app with your message
+              addressed to {SUPPORT_EMAIL}. You can edit before sending. Prefer
+              not to use email? You can still reach us at the address above from
+              any device.
             </p>
           </form>
         </div>

@@ -162,7 +162,7 @@ export function CommunityPostCommentsControl({
         className={cn(
           "shrink-0 gap-1.5 px-2 text-muted-foreground hover:bg-transparent hover:text-foreground",
           largeIcon ? "h-12 min-w-[3.25rem] px-2.5" : "h-10 min-w-[2.75rem]",
-          className
+          className,
         )}
         onClick={() => setOpen(true)}
         aria-label={`Comments${count != null ? `, ${count}` : ""}`}
@@ -171,10 +171,10 @@ export function CommunityPostCommentsControl({
         <span
           className={cn(
             "min-w-[1ch] tabular-nums text-muted-foreground",
-            largeIcon ? "text-sm font-semibold" : "text-xs font-semibold"
+            largeIcon ? "text-sm font-semibold" : "text-xs font-semibold",
           )}
         >
-          {loadingCount ? "…" : count ?? "–"}
+          {loadingCount ? "…" : (count ?? "–")}
         </span>
       </Button>
 
@@ -185,10 +185,16 @@ export function CommunityPostCommentsControl({
         >
           <DialogHeader className="border-b border-border px-4 py-3 text-left">
             <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-              <MessageCircle className="h-5 w-5 text-orange-500" strokeWidth={2} aria-hidden />
+              <MessageCircle
+                className="h-5 w-5 text-orange-500"
+                strokeWidth={2}
+                aria-hidden
+              />
               Comments
               {count != null && (
-                <span className="text-sm font-normal text-muted-foreground">({count})</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({count})
+                </span>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -211,18 +217,27 @@ export function CommunityPostCommentsControl({
                   return (
                     <div key={c.id} className="flex gap-3">
                       <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarImage src={prof?.photo_url ?? undefined} alt="" />
-                        <AvatarFallback className="text-xs font-semibold">{initial}</AvatarFallback>
+                        <AvatarImage
+                          src={prof?.photo_url ?? undefined}
+                          alt=""
+                        />
+                        <AvatarFallback className="text-xs font-semibold">
+                          {initial}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                          <span className="text-sm font-semibold text-foreground">{name}</span>
+                          <span className="text-sm font-semibold text-foreground">
+                            {name}
+                          </span>
                           <time
                             className="text-xs text-muted-foreground"
                             dateTime={c.created_at}
                             title={new Date(c.created_at).toISOString()}
                           >
-                            {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                            {formatDistanceToNow(new Date(c.created_at), {
+                              addSuffix: true,
+                            })}
                           </time>
                         </div>
                         <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">

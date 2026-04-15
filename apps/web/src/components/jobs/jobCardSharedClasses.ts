@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
  * so job rows stay transparent on desktop — no grey panel.
  */
 export const JOB_CARD_SHELL =
-  "transition-all duration-500 w-full rounded-[32px] overflow-hidden border-0 shadow-none flex flex-col h-full bg-transparent group relative sm:border-0 sm:bg-transparent sm:shadow-none sm:hover:shadow-none";
+  "group relative flex min-h-[380px] w-full min-w-0 flex-col overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:shadow-md dark:border-white/5 dark:bg-zinc-900";
 
 /** Thumb + profile row: scales up on desktop */
 export const JOB_CARD_COMPACT_ROW = "flex gap-3 p-3 md:gap-5 md:p-6";
@@ -20,6 +20,6 @@ export const JOB_CARD_THUMB_BUTTON =
 
 /** Dashed empty-state panel — consistent with flat job cards */
 export const JOB_CARD_EMPTY_PANEL = cn(
-  "rounded-[32px] border border-dashed border-slate-300/45 bg-transparent shadow-none",
-  "dark:border-zinc-600/40"
+  "rounded-[20px] border border-dashed border-slate-300/45 bg-transparent shadow-none",
+  "dark:border-zinc-600/40",
 );

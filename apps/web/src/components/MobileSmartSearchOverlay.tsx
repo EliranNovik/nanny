@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, ChevronLeft, Loader2, Search, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StarRating } from "@/components/StarRating";
-import { useDebouncedProfileSearch } from "@/hooks/useDebouncedProfileSearch";
-import { filterPageSuggestions, type SmartSearchSuggestion } from "@/lib/smartSearchSuggestions";
-import { useAuth } from "@/context/AuthContext";
+import { Bell, ChevronLeft, Loader2, Search, X, Sparkles } from "lucide-react";
+import { useSmartSearch, type SmartResult } from "@/hooks/useSmartSearch";
 import { Button } from "@/components/ui/button";
+import { SearchResultItem } from "./SearchResultItem";
 
 type Props = {
   open: boolean;
@@ -15,15 +11,16 @@ type Props = {
   onOpenNotifications?: () => void;
 };
 
-export function MobileSmartSearchOverlay({ open, onClose, onOpenNotifications }: Props) {
+export function MobileSmartSearchOverlay({
+  open,
+  onClose,
+  onOpenNotifications,
+}: Props) {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const role = profile?.role === "freelancer" ? "freelancer" : "client";
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { results: profileResults, loading: profilesLoading } = useDebouncedProfileSearch(query, 300, 10);
-  const pageMatches = query.trim() ? filterPageSuggestions(query, role) : [];
+  const { results, loading, addRecent } = useSmartSearch(query);
 
   useEffect(() => {
     if (!open) {
@@ -50,15 +47,26 @@ export function MobileSmartSearchOverlay({ open, onClose, onOpenNotifications }:
 
   if (!open) return null;
 
-  const goPage = (to: string) => {
-    navigate(to);
+  const handleSelect = (result: SmartResult) => {
+    addRecent({
+      id: result.id,
+      kind: result.kind as any,
+      title: result.title,
+      subtitle: result.subtitle,
+      to: result.to
+    });
+    navigate(result.to);
     onClose();
   };
 
-  const goProfile = (id: string) => {
-    navigate(`/profile/${id}`);
-    onClose();
+  const handleAction = (action: string, result: SmartResult) => {
+    if (action === "message") {
+      navigate(`/chat/${result.id}`);
+      onClose();
+    }
   };
+
+  const hasQuery = query.trim().length > 0;
 
   return (
     <div
@@ -69,10 +77,20 @@ export function MobileSmartSearchOverlay({ open, onClose, onOpenNotifications }:
     >
       <header
         className="shrink-0 border-b border-border/50 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]"
-        style={{ paddingLeft: "max(0.75rem, env(safe-area-inset-left))", paddingRight: "max(0.75rem, env(safe-area-inset-right))" }}
+        style={{
+          paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.75rem, env(safe-area-inset-right))",
+        }}
       >
         <div className="flex items-center gap-2">
-          <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={onClose} aria-label="Close search">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={onClose}
+            aria-label="Close search"
+          >
             <ChevronLeft className="h-6 w-6" />
           </Button>
           <div className="relative min-w-0 flex-1">
@@ -82,7 +100,7 @@ export function MobileSmartSearchOverlay({ open, onClose, onOpenNotifications }:
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search helpers, pages, jobs…"
+              placeholder="Search anything..."
               autoComplete="off"
               enterKeyHint="search"
               className="h-11 w-full rounded-2xl border border-border/60 bg-muted/40 pl-10 pr-10 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -117,88 +135,62 @@ export function MobileSmartSearchOverlay({ open, onClose, onOpenNotifications }:
       </header>
 
       <div
-        className="min-h-0 flex-1 overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
-        style={{ paddingLeft: "max(0.75rem, env(safe-area-inset-left))", paddingRight: "max(0.75rem, env(safe-area-inset-right))" }}
+        className="min-h-0 flex-1 overflow-y-auto px-1 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        style={{
+          paddingLeft: "max(0.4rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.4rem, env(safe-area-inset-right))",
+        }}
       >
-        {pageMatches.length > 0 ? (
-          <section className="py-2">
-            <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pages & tabs</h2>
-            <ul className="flex flex-col gap-1">
-              {pageMatches.map((s) => (
-                <SuggestionRow key={s.id} item={s} onPick={() => goPage(s.to)} />
-              ))}
-            </ul>
-          </section>
-        ) : null}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Searching...</p>
+          </div>
+        ) : results.length > 0 ? (
+          <div className="space-y-6">
+            {(() => {
+              const groups: Record<string, SmartResult[]> = {};
+              results.forEach(r => {
+                const groupName = r.kind === "recent" ? "Recent" : (r.kind === "person" ? "People" : "Suggestions");
+                if (!groups[groupName]) groups[groupName] = [];
+                groups[groupName].push(r);
+              });
 
-        <section className={cn("py-2", pageMatches.length > 0 && "border-t border-border/40")}>
-          <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">People</h2>
-          {query.trim().length === 0 ? (
-            <p className="px-1 py-8 text-center text-sm text-muted-foreground">
-              Start typing to match pages and people.
-            </p>
-          ) : profilesLoading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : profileResults.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {profileResults.map((r) => (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    onClick={() => goProfile(r.id)}
-                    className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors hover:bg-muted/80"
-                  >
-                    <Avatar className="h-11 w-11 border border-border/50">
-                      <AvatarImage src={r.photo_url || undefined} className="object-cover" />
-                      <AvatarFallback className="text-xs font-bold">{r.full_name?.slice(0, 2) || "??"}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-foreground">{r.full_name}</p>
-                      <StarRating
-                        rating={r.average_rating || 0}
-                        totalRatings={r.total_ratings || 0}
-                        size="sm"
-                        className="gap-1"
-                        starClassName="text-muted-foreground"
-                        emptyStarClassName="text-muted-foreground/40"
-                        numberClassName="text-[11px] text-muted-foreground"
+              return Object.entries(groups).map(([groupName, groupItems]) => (
+                <section key={groupName} className="space-y-1">
+                  <h2 className="px-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2">
+                    {groupName}
+                  </h2>
+                  <div className="flex flex-col gap-1">
+                    {groupItems.map(item => (
+                      <SearchResultItem
+                        key={item.id}
+                        result={item}
+                        query={query}
+                        onSelect={handleSelect}
+                        onAction={handleAction}
+                        className="py-3.5 px-3"
                       />
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="px-1 py-4 text-center text-sm text-muted-foreground">No people match “{query.trim()}”.</p>
-          )}
-        </section>
+                    ))}
+                  </div>
+                </section>
+              ));
+            })()}
+          </div>
+        ) : (
+          <div className="py-20 px-8 text-center flex flex-col items-center">
+             <div className="w-16 h-16 bg-muted rounded-3xl flex items-center justify-center mb-6">
+                <Sparkles className="h-8 w-8 text-muted-foreground/40" />
+             </div>
+             <p className="text-base font-bold text-foreground mb-2">
+                {hasQuery ? `No matches found` : "Start searching"}
+             </p>
+             <p className="text-sm text-muted-foreground leading-relaxed max-w-[240px]">
+                {hasQuery ? `We couldn't find anything matching "${query}". Try a different term or category.` : "Find helpers, category shortcuts, actions, and frequent pages."}
+             </p>
+          </div>
+        )}
       </div>
     </div>
-  );
-}
-
-function SuggestionRow({ item, onPick }: { item: SmartSearchSuggestion; onPick: () => void }) {
-  const Icon = item.icon;
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onPick}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors",
-          "hover:bg-muted/80 active:bg-muted/60"
-        )}
-      >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold leading-tight text-foreground">{item.title}</p>
-          {item.subtitle ? <p className="mt-0.5 text-[13px] text-muted-foreground leading-snug">{item.subtitle}</p> : null}
-        </div>
-      </button>
-    </li>
   );
 }

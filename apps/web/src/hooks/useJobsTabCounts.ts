@@ -27,13 +27,17 @@ const INITIAL: JobsTabCountsState = {
 export function badgeCountForJobsTab(
   tabId: string,
   perspective: JobsPerspective,
-  counts: JobsTabCountsState
+  counts: JobsTabCountsState,
 ): number {
   if (tabId === "jobs") {
-    return perspective === "client" ? counts.jobs_client : counts.jobs_freelancer;
+    return perspective === "client"
+      ? counts.jobs_client
+      : counts.jobs_freelancer;
   }
   if (tabId === "past") {
-    return perspective === "client" ? counts.past_client : counts.past_freelancer;
+    return perspective === "client"
+      ? counts.past_client
+      : counts.past_freelancer;
   }
   if (tabId === "my_requests") return counts.my_requests;
   if (tabId === "requests") return counts.requests;
@@ -71,7 +75,10 @@ export function useJobsTabCounts(user: User | null): JobsTabCountsState {
             .select("job_id")
             .eq("freelancer_id", user.id)
             .in("status", ["pending", "opened"]),
-          supabase.from("job_confirmations").select("job_id,status").eq("freelancer_id", user.id),
+          supabase
+            .from("job_confirmations")
+            .select("job_id,status")
+            .eq("freelancer_id", user.id),
         ]);
 
         const rows = (jobsRes.data || []) as {
@@ -80,10 +87,16 @@ export function useJobsTabCounts(user: User | null): JobsTabCountsState {
           selected_freelancer_id: string | null;
         }[];
         const asClient = rows.filter((j) => j.client_id === user.id);
-        const asFreelancer = rows.filter((j) => j.selected_freelancer_id === user.id);
+        const asFreelancer = rows.filter(
+          (j) => j.selected_freelancer_id === user.id,
+        );
         const countLivePast = (arr: typeof rows) => ({
-          live: arr.filter((j) => j.status === "locked" || j.status === "active").length,
-          past: arr.filter((j) => j.status === "completed" || j.status === "cancelled").length,
+          live: arr.filter(
+            (j) => j.status === "locked" || j.status === "active",
+          ).length,
+          past: arr.filter(
+            (j) => j.status === "completed" || j.status === "cancelled",
+          ).length,
         });
         const clientLP = countLivePast(asClient);
         const freelancerLP = countLivePast(asFreelancer);
@@ -91,10 +104,10 @@ export function useJobsTabCounts(user: User | null): JobsTabCountsState {
         const confirmedIds = new Set(
           (confRes.data || [])
             .filter((c: { status: string }) => c.status === "available")
-            .map((c: { job_id: string }) => c.job_id)
+            .map((c: { job_id: string }) => c.job_id),
         );
         const pending = (notifsRes.data || []).filter((n: { job_id: string }) =>
-          confirmedIds.has(n.job_id)
+          confirmedIds.has(n.job_id),
         ).length;
         const requests = (notifsRes.data || []).length - pending;
 

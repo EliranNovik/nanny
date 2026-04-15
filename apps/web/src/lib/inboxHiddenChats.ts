@@ -14,7 +14,7 @@ export function loadHiddenChatUserIds(userId: string): Set<string> {
 
 export function persistHiddenChatUserIds(
   userId: string,
-  ids: Set<string>
+  ids: Set<string>,
 ): void {
   try {
     localStorage.setItem(storageKey(userId), JSON.stringify([...ids]));

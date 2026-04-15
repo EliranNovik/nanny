@@ -62,7 +62,8 @@ export function AvailabilityStoriesStrip({
 }: Props) {
   const [stackIndex, setStackIndex] = useState<number | null>(null);
 
-  const openPost = stackIndex != null && posts[stackIndex] ? posts[stackIndex] : null;
+  const openPost =
+    stackIndex != null && posts[stackIndex] ? posts[stackIndex] : null;
 
   useEffect(() => {
     if (stackIndex !== null && stackIndex >= posts.length) {
@@ -140,7 +141,7 @@ export function AvailabilityStoriesStrip({
         className={cn(
           "-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 pt-0.5",
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "snap-x snap-mandatory [touch-action:pan-x_pan-y] overscroll-x-contain"
+          "snap-x snap-mandatory [touch-action:pan-x_pan-y] overscroll-x-contain",
         )}
         role="list"
         aria-label="Availability posts"
@@ -156,7 +157,7 @@ export function AvailabilityStoriesStrip({
               className={cn(
                 "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center gap-2 rounded-xl pb-0.5 text-center outline-none",
                 "transition-transform active:scale-[0.97]",
-                "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               )}
             >
               <DiscoverStoriesRingAvatar
@@ -186,7 +187,10 @@ export function AvailabilityStoriesStrip({
         {trailingSlot}
       </div>
 
-      <Dialog open={stackIndex !== null} onOpenChange={(o) => !o && setStackIndex(null)}>
+      <Dialog
+        open={stackIndex !== null}
+        onOpenChange={(o) => !o && setStackIndex(null)}
+      >
         <DialogContent className={discoverSheetDialogContentClassName}>
           <DialogTitle className="sr-only">
             {openPost

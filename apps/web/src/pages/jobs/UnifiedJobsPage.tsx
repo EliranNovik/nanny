@@ -29,30 +29,36 @@ export default function UnifiedJobsPage() {
   const showRolePicker =
     !!profile &&
     !clientOnly &&
-    (profile.role === "freelancer" || (profile.role === "client" && receiveRequestsOn));
+    (profile.role === "freelancer" ||
+      (profile.role === "client" && receiveRequestsOn));
 
   /** Resolved acting mode: URL wins; else infer legacy tab; else client-only / non-picker default */
   const resolvedMode: JobsPerspective | null = useMemo(() => {
     if (clientOnly) return "client";
-    if (modeFromUrl === "freelancer" || modeFromUrl === "client") return modeFromUrl;
+    if (modeFromUrl === "freelancer" || modeFromUrl === "client")
+      return modeFromUrl;
     if (!showRolePicker) return "freelancer";
     return inferPerspectiveFromTab(tabFromUrl || "");
   }, [clientOnly, modeFromUrl, showRolePicker, tabFromUrl]);
 
   const effectiveTab = useMemo(() => {
     if (!resolvedMode) return null;
-    if (tabFromUrl && isTabValidForPerspective(resolvedMode, tabFromUrl)) return tabFromUrl;
+    if (tabFromUrl && isTabValidForPerspective(resolvedMode, tabFromUrl))
+      return tabFromUrl;
     return defaultTabForPerspective(resolvedMode);
   }, [resolvedMode, tabFromUrl]);
 
   useEffect(() => {
     const stateTab = (location.state as { tab?: string } | null)?.tab;
     if (stateTab && !tabFromUrl) {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("tab", stateTab);
-        return next;
-      }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("tab", stateTab);
+          return next;
+        },
+        { replace: true },
+      );
     }
   }, [location.state, tabFromUrl, setSearchParams]);
 
@@ -64,12 +70,15 @@ export default function UnifiedJobsPage() {
         ? tabFromUrl
         : defaultTabForPerspective("client");
     if (modeFromUrl !== "client" || tabFromUrl !== t) {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("mode", "client");
-        next.set("tab", t);
-        return next;
-      }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("mode", "client");
+          next.set("tab", t);
+          return next;
+        },
+        { replace: true },
+      );
     }
   }, [profile, clientOnly, modeFromUrl, tabFromUrl, setSearchParams]);
 
@@ -78,18 +87,28 @@ export default function UnifiedJobsPage() {
     if (!profile || clientOnly) return;
     if (modeFromUrl === "freelancer" || modeFromUrl === "client") return;
     if (!resolvedMode || !effectiveTab) return;
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("mode", resolvedMode);
-      next.set("tab", effectiveTab);
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("mode", resolvedMode);
+        next.set("tab", effectiveTab);
+        return next;
+      },
+      { replace: true },
+    );
     writeStoredPerspective(resolvedMode);
-  }, [profile, clientOnly, modeFromUrl, resolvedMode, effectiveTab, setSearchParams]);
+  }, [
+    profile,
+    clientOnly,
+    modeFromUrl,
+    resolvedMode,
+    effectiveTab,
+    setSearchParams,
+  ]);
 
   if (loading || !profile) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-mesh pb-6 md:pb-8">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
         <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
       </div>
     );
@@ -99,17 +118,20 @@ export default function UnifiedJobsPage() {
 
   if (needsPicker) {
     return (
-      <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
         <div className="app-desktop-shell flex min-h-[calc(100dvh-6rem)] flex-col justify-center pt-[calc(4.75rem+env(safe-area-inset-top,0px))] md:min-h-[70vh] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
           <JobsRolePicker
             onSelect={(mode) => {
               writeStoredPerspective(mode);
-              setSearchParams((prev) => {
-                const next = new URLSearchParams(prev);
-                next.set("mode", mode);
-                next.set("tab", defaultTabForPerspective(mode));
-                return next;
-              }, { replace: true });
+              setSearchParams(
+                (prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.set("mode", mode);
+                  next.set("tab", defaultTabForPerspective(mode));
+                  return next;
+                },
+                { replace: true },
+              );
             }}
           />
         </div>
@@ -119,7 +141,7 @@ export default function UnifiedJobsPage() {
 
   if (!resolvedMode || !effectiveTab) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-mesh pb-6 md:pb-8">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
         <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
       </div>
     );
@@ -128,7 +150,7 @@ export default function UnifiedJobsPage() {
   const isJobsOrPast = effectiveTab === "jobs" || effectiveTab === "past";
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <JobsMobileTabStepper />
       {/** Mobile: strip only — PageLayoutWithHeader already clears the nav (`app-content-below-fixed-header`). */}
       {/** Desktop: fixed directly under the app header (same offset as mobile strip). */}
@@ -150,9 +172,7 @@ export default function UnifiedJobsPage() {
             />
           ) : (
             <RequestsTabContent
-              activeTab={
-                effectiveTab as "my_requests" | "requests" | "pending"
-              }
+              activeTab={effectiveTab as "my_requests" | "requests" | "pending"}
             />
           )}
         </div>

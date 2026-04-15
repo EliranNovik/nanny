@@ -11,7 +11,10 @@ export default function FreelancerProfileRatesPage() {
   const ctx = useOutletContext<FreelancerProfileFormContext>();
 
   return (
-    <ProfileSubpageLayout title="Hourly rates" description="Set a single rate or a min–max range">
+    <ProfileSubpageLayout
+      title="Hourly rates"
+      description="Set a single rate or a min–max range"
+    >
       <div className="space-y-6">
         <Card className="border border-border/50 shadow-sm">
           <CardHeader>
@@ -24,7 +27,9 @@ export default function FreelancerProfileRatesPage() {
                 <span
                   className={cn(
                     "text-sm font-medium transition-colors",
-                    ctx.rateMode === "single" ? "text-foreground" : "text-muted-foreground"
+                    ctx.rateMode === "single"
+                      ? "text-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   Single
@@ -34,17 +39,31 @@ export default function FreelancerProfileRatesPage() {
                   onCheckedChange={(checked) => {
                     const newMode = checked ? "range" : "single";
                     ctx.setRateMode(newMode);
-                    if (newMode === "single" && ctx.data.hourly_rate_min !== null) {
-                      ctx.updateField("hourly_rate_max", ctx.data.hourly_rate_min);
-                    } else if (newMode === "single" && ctx.data.hourly_rate_max !== null) {
-                      ctx.updateField("hourly_rate_min", ctx.data.hourly_rate_max);
+                    if (
+                      newMode === "single" &&
+                      ctx.data.hourly_rate_min !== null
+                    ) {
+                      ctx.updateField(
+                        "hourly_rate_max",
+                        ctx.data.hourly_rate_min,
+                      );
+                    } else if (
+                      newMode === "single" &&
+                      ctx.data.hourly_rate_max !== null
+                    ) {
+                      ctx.updateField(
+                        "hourly_rate_min",
+                        ctx.data.hourly_rate_max,
+                      );
                     }
                   }}
                 />
                 <span
                   className={cn(
                     "text-sm font-medium transition-colors",
-                    ctx.rateMode === "range" ? "text-foreground" : "text-muted-foreground"
+                    ctx.rateMode === "range"
+                      ? "text-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   Range
@@ -56,9 +75,12 @@ export default function FreelancerProfileRatesPage() {
             {ctx.rateMode === "single" ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">Hourly rate</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Hourly rate
+                  </span>
                   <span className="text-2xl font-bold text-primary">
-                    ₪{ctx.data.hourly_rate_min || ctx.data.hourly_rate_max || 50}
+                    ₪
+                    {ctx.data.hourly_rate_min || ctx.data.hourly_rate_max || 50}
                   </span>
                 </div>
                 <div className="relative">
@@ -67,7 +89,9 @@ export default function FreelancerProfileRatesPage() {
                     min={20}
                     max={200}
                     step={5}
-                    value={ctx.data.hourly_rate_min || ctx.data.hourly_rate_max || 50}
+                    value={
+                      ctx.data.hourly_rate_min || ctx.data.hourly_rate_max || 50
+                    }
                     onChange={(e) => {
                       const value = Number(e.target.value);
                       ctx.updateField("hourly_rate_min", value);
@@ -85,8 +109,12 @@ export default function FreelancerProfileRatesPage() {
               <div className="space-y-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Minimum</span>
-                    <span className="text-2xl font-bold text-primary">₪{ctx.data.hourly_rate_min || 20}</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Minimum
+                    </span>
+                    <span className="text-2xl font-bold text-primary">
+                      ₪{ctx.data.hourly_rate_min || 20}
+                    </span>
                   </div>
                   <div className="relative">
                     <input
@@ -97,7 +125,10 @@ export default function FreelancerProfileRatesPage() {
                       value={ctx.data.hourly_rate_min || 20}
                       onChange={(e) => {
                         const value = Number(e.target.value);
-                        if (!ctx.data.hourly_rate_max || value <= ctx.data.hourly_rate_max) {
+                        if (
+                          !ctx.data.hourly_rate_max ||
+                          value <= ctx.data.hourly_rate_max
+                        ) {
                           ctx.updateField("hourly_rate_min", value);
                         }
                       }}
@@ -112,8 +143,12 @@ export default function FreelancerProfileRatesPage() {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Maximum</span>
-                    <span className="text-2xl font-bold text-primary">₪{ctx.data.hourly_rate_max || 200}</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Maximum
+                    </span>
+                    <span className="text-2xl font-bold text-primary">
+                      ₪{ctx.data.hourly_rate_max || 200}
+                    </span>
                   </div>
                   <div className="relative">
                     <input
@@ -124,7 +159,10 @@ export default function FreelancerProfileRatesPage() {
                       value={ctx.data.hourly_rate_max || 200}
                       onChange={(e) => {
                         const value = Number(e.target.value);
-                        if (!ctx.data.hourly_rate_min || value >= ctx.data.hourly_rate_min) {
+                        if (
+                          !ctx.data.hourly_rate_min ||
+                          value >= ctx.data.hourly_rate_min
+                        ) {
                           ctx.updateField("hourly_rate_max", value);
                         }
                       }}
@@ -139,15 +177,26 @@ export default function FreelancerProfileRatesPage() {
 
                 <p className="text-sm text-muted-foreground text-center pt-1">
                   Range:{" "}
-                  <span className="font-semibold text-foreground">₪{ctx.data.hourly_rate_min || 20}</span> –{" "}
-                  <span className="font-semibold text-foreground">₪{ctx.data.hourly_rate_max || 200}</span> / hour
+                  <span className="font-semibold text-foreground">
+                    ₪{ctx.data.hourly_rate_min || 20}
+                  </span>{" "}
+                  –{" "}
+                  <span className="font-semibold text-foreground">
+                    ₪{ctx.data.hourly_rate_max || 200}
+                  </span>{" "}
+                  / hour
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Button onClick={ctx.handleSave} disabled={ctx.saving} className="w-full" size="lg">
+        <Button
+          onClick={ctx.handleSave}
+          disabled={ctx.saving}
+          className="w-full"
+          size="lg"
+        >
           {ctx.saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

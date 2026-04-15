@@ -14,7 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Check, CheckCheck, Paperclip, X, Image as ImageIcon, File } from "lucide-react";
+import {
+  Loader2,
+  Send,
+  Check,
+  CheckCheck,
+  Paperclip,
+  X,
+  Image as ImageIcon,
+  File,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ImageModal } from "@/components/ImageModal";
 
@@ -66,12 +75,12 @@ export function ReportIssueModal() {
   // Fetch messages when conversation is available
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
-    
+
     if (conversationId) {
       fetchMessages();
       channel = subscribeToMessages();
     }
-    
+
     return () => {
       if (channel) {
         supabase.removeChannel(channel);
@@ -173,13 +182,16 @@ export function ReportIssueModal() {
     // Mark messages as read
     if (data && data.length > 0) {
       const unreadMessages = data.filter(
-        (msg) => msg.sender_id !== user?.id && !msg.read_at
+        (msg) => msg.sender_id !== user?.id && !msg.read_at,
       );
       if (unreadMessages.length > 0) {
         await supabase
           .from("messages")
           .update({ read_at: new Date().toISOString(), read_by: user?.id })
-          .in("id", unreadMessages.map((m) => m.id));
+          .in(
+            "id",
+            unreadMessages.map((m) => m.id),
+          );
       }
     }
   }
@@ -214,7 +226,7 @@ export function ReportIssueModal() {
               .update({ read_at: new Date().toISOString(), read_by: user?.id })
               .eq("id", newMessage.id);
           }
-        }
+        },
       )
       .subscribe();
 
@@ -338,7 +350,9 @@ export function ReportIssueModal() {
         variant: "error",
       });
     } else if (data) {
-      setMessages((prev) => prev.map((msg) => (msg.id === tempId ? data : msg)));
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === tempId ? data : msg)),
+      );
     }
 
     setSending(false);
@@ -383,23 +397,25 @@ export function ReportIssueModal() {
           "max-md:h-[100dvh] max-md:min-h-[100dvh] max-md:max-h-[100dvh] max-md:w-screen max-md:max-w-none",
           "max-md:translate-x-0 max-md:translate-y-0",
           "max-md:rounded-none max-md:border-0 max-md:shadow-none",
-          "max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100"
+          "max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100",
         )}
       >
         <DialogHeader
           className={cn(
             "flex shrink-0 flex-row items-center justify-between gap-3 space-y-0 border-b px-4 py-3 text-left sm:text-left",
-            "max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
+            "max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
           )}
         >
-          <DialogTitle className="text-lg font-semibold">Support Chat</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">
+            Support Chat
+          </DialogTitle>
           <DialogClose asChild>
             <button
               type="button"
               className={cn(
                 "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors",
                 "hover:bg-muted hover:text-foreground active:bg-muted/80",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               )}
               aria-label="Close support chat"
             >
@@ -419,14 +435,16 @@ export function ReportIssueModal() {
               <div className="space-y-4">
                 {messages.map((msg) => {
                   const isOwn = msg.sender_id === user?.id;
-                  const receiptStatus = isOwn ? getReadReceiptStatus(msg) : null;
+                  const receiptStatus = isOwn
+                    ? getReadReceiptStatus(msg)
+                    : null;
 
                   return (
                     <div key={msg.id} className="flex flex-col">
                       <div
                         className={cn(
                           "flex gap-2 max-w-[75%]",
-                          isOwn ? "ml-auto flex-row-reverse" : "mr-auto"
+                          isOwn ? "ml-auto flex-row-reverse" : "mr-auto",
                         )}
                       >
                         {!isOwn && (
@@ -437,58 +455,70 @@ export function ReportIssueModal() {
                           </Avatar>
                         )}
 
-                        <div className={cn("flex flex-col", isOwn ? "items-end" : "items-start")}>
-                          {/* Image Attachment */}
-                          {msg.attachment_url && msg.attachment_type === "image" && (
-                            <div className="mb-2">
-                              <img
-                                src={msg.attachment_url}
-                                alt={msg.attachment_name || "Attachment"}
-                                className="max-w-[300px] rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
-                                onClick={() => {
-                                  setSelectedImage(msg);
-                                  setIsImageModalOpen(true);
-                                }}
-                              />
-                            </div>
+                        <div
+                          className={cn(
+                            "flex flex-col",
+                            isOwn ? "items-end" : "items-start",
                           )}
+                        >
+                          {/* Image Attachment */}
+                          {msg.attachment_url &&
+                            msg.attachment_type === "image" && (
+                              <div className="mb-2">
+                                <img
+                                  src={msg.attachment_url}
+                                  alt={msg.attachment_name || "Attachment"}
+                                  className="max-w-[300px] rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
+                                  onClick={() => {
+                                    setSelectedImage(msg);
+                                    setIsImageModalOpen(true);
+                                  }}
+                                />
+                              </div>
+                            )}
 
                           {/* Message Body or File Attachment */}
-                          {(msg.body || (msg.attachment_url && msg.attachment_type !== "image")) && (
+                          {(msg.body ||
+                            (msg.attachment_url &&
+                              msg.attachment_type !== "image")) && (
                             <div
                               className={cn(
                                 "rounded-xl px-4 py-2 shadow-sm",
                                 isOwn
                                   ? "bg-primary text-primary-foreground rounded-br-md"
-                                  : "bg-card border border-border rounded-bl-md"
+                                  : "bg-card border border-border rounded-bl-md",
                               )}
                             >
                               {/* File Attachment */}
-                              {msg.attachment_url && msg.attachment_type !== "image" && (
-                                <div className="mb-2">
-                                  <a
-                                    href={msg.attachment_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={cn(
-                                      "flex items-center gap-2 p-2 rounded-lg hover:bg-black/10 transition-colors",
-                                      isOwn ? "bg-black/10" : "bg-muted"
-                                    )}
-                                  >
-                                    <File className="w-5 h-5 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">
-                                        {msg.attachment_name || "Attachment"}
-                                      </p>
-                                      {msg.attachment_size && (
-                                        <p className="text-xs opacity-75">
-                                          {(msg.attachment_size / 1024).toFixed(1)} KB
-                                        </p>
+                              {msg.attachment_url &&
+                                msg.attachment_type !== "image" && (
+                                  <div className="mb-2">
+                                    <a
+                                      href={msg.attachment_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={cn(
+                                        "flex items-center gap-2 p-2 rounded-lg hover:bg-black/10 transition-colors",
+                                        isOwn ? "bg-black/10" : "bg-muted",
                                       )}
-                                    </div>
-                                  </a>
-                                </div>
-                              )}
+                                    >
+                                      <File className="w-5 h-5 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                          {msg.attachment_name || "Attachment"}
+                                        </p>
+                                        {msg.attachment_size && (
+                                          <p className="text-xs opacity-75">
+                                            {(
+                                              msg.attachment_size / 1024
+                                            ).toFixed(1)}{" "}
+                                            KB
+                                          </p>
+                                        )}
+                                      </div>
+                                    </a>
+                                  </div>
+                                )}
                               {/* Message Body */}
                               {msg.body && (
                                 <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
@@ -500,7 +530,7 @@ export function ReportIssueModal() {
                           <div
                             className={cn(
                               "flex items-center gap-1.5 mt-1 px-1",
-                              isOwn ? "flex-row-reverse" : ""
+                              isOwn ? "flex-row-reverse" : "",
                             )}
                           >
                             <span className="text-[10px] text-muted-foreground">
@@ -521,7 +551,9 @@ export function ReportIssueModal() {
                     <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                       <Send className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <p className="text-muted-foreground">No messages yet. Start a conversation with support!</p>
+                    <p className="text-muted-foreground">
+                      No messages yet. Start a conversation with support!
+                    </p>
                   </div>
                 )}
               </div>
@@ -531,7 +563,7 @@ export function ReportIssueModal() {
             <div
               className={cn(
                 "flex-shrink-0 border-t bg-card px-4 py-3",
-                "max-md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+                "max-md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]",
               )}
             >
               {/* Selected File Preview */}
@@ -542,7 +574,9 @@ export function ReportIssueModal() {
                   ) : (
                     <File className="w-5 h-5 text-primary flex-shrink-0" />
                   )}
-                  <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
+                  <span className="text-sm flex-1 truncate">
+                    {selectedFile.name}
+                  </span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -575,7 +609,11 @@ export function ReportIssueModal() {
                 </Button>
                 <Input
                   ref={inputRef}
-                  placeholder={selectedFile ? "Add a message (optional)..." : "Type a message..."}
+                  placeholder={
+                    selectedFile
+                      ? "Add a message (optional)..."
+                      : "Type a message..."
+                  }
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   className="flex-1 rounded-full border-2 focus:border-primary h-10 text-sm"
@@ -585,9 +623,13 @@ export function ReportIssueModal() {
                   type="submit"
                   size="icon"
                   className="rounded-full h-10 w-10 flex-shrink-0"
-                  disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
+                  disabled={
+                    (!newMessage.trim() && !selectedFile) ||
+                    sending ||
+                    uploading
+                  }
                 >
-                  {(sending || uploading) ? (
+                  {sending || uploading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Send className="w-4 h-4" />

@@ -9,7 +9,12 @@ interface ImageLightboxModalProps {
   onClose: () => void;
 }
 
-export function ImageLightboxModal({ images, initialIndex = 0, isOpen, onClose }: ImageLightboxModalProps) {
+export function ImageLightboxModal({
+  images,
+  initialIndex = 0,
+  isOpen,
+  onClose,
+}: ImageLightboxModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
   useEffect(() => {
@@ -49,7 +54,15 @@ export function ImageLightboxModal({ images, initialIndex = 0, isOpen, onClose }
   const el = (
     <div
       className="pointer-events-auto fixed inset-0 z-[10000] flex h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-black"
-      style={{ width: "100vw", height: "100dvh", maxWidth: "100vw", left: 0, top: 0, right: 0, bottom: 0 }}
+      style={{
+        width: "100vw",
+        height: "100dvh",
+        maxWidth: "100vw",
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Image gallery"
@@ -86,9 +99,7 @@ export function ImageLightboxModal({ images, initialIndex = 0, isOpen, onClose }
         />
 
         {images.length > 1 && (
-          <div
-            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] md:pl-4 md:pr-4"
-          >
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] md:pl-4 md:pr-4">
             <button
               type="button"
               onClick={(e) => {
@@ -136,7 +147,12 @@ export function ImageLightboxModal({ images, initialIndex = 0, isOpen, onClose }
                     : "border-white/20 opacity-60 hover:opacity-100"
                 }`}
               >
-                <img src={img} alt="" className="pointer-events-none h-full w-full object-cover" draggable={false} />
+                <img
+                  src={img}
+                  alt=""
+                  className="pointer-events-none h-full w-full object-cover"
+                  draggable={false}
+                />
               </button>
             ))}
           </div>

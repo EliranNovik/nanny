@@ -14,7 +14,7 @@ export function useScheduleChanges() {
 
     async function fetchScheduleChanges() {
       if (!user || !profile) return;
-      
+
       try {
         // Get all conversations for active jobs (locked or active status)
         let conversations;
@@ -34,7 +34,10 @@ export function useScheduleChanges() {
           const { data: convos } = await supabase
             .from("conversations")
             .select("id")
-            .in("job_id", activeJobs.map(j => j.id));
+            .in(
+              "job_id",
+              activeJobs.map((j) => j.id),
+            );
 
           conversations = convos;
         } else {
@@ -53,7 +56,10 @@ export function useScheduleChanges() {
           const { data: convos } = await supabase
             .from("conversations")
             .select("id")
-            .in("job_id", activeJobs.map(j => j.id));
+            .in(
+              "job_id",
+              activeJobs.map((j) => j.id),
+            );
 
           conversations = convos;
         }
@@ -83,13 +89,14 @@ export function useScheduleChanges() {
           .select("id, body, sender_id, conversation_id, created_at, read_at")
           .in("conversation_id", conversationIds)
           .order("created_at", { ascending: false });
-        
+
         // Filter for schedule-related messages
-        const scheduleMessages = (allMessages || []).filter(msg => 
-          msg.body?.includes("📅 Schedule Request") || 
-          msg.body?.includes("🔄 Schedule Revision") ||
-          msg.body?.includes("✓ Schedule confirmed") ||
-          msg.body?.includes("Schedule confirmed")
+        const scheduleMessages = (allMessages || []).filter(
+          (msg) =>
+            msg.body?.includes("📅 Schedule Request") ||
+            msg.body?.includes("🔄 Schedule Revision") ||
+            msg.body?.includes("✓ Schedule confirmed") ||
+            msg.body?.includes("Schedule confirmed"),
         );
 
         if (!scheduleMessages || scheduleMessages.length === 0) {
@@ -99,37 +106,39 @@ export function useScheduleChanges() {
 
         // Count unread schedule-related messages from the other party
         let unreadCount = 0;
-        
+
         for (const msg of scheduleMessages) {
           const convo = convosDetails.find((c) => c.id === msg.conversation_id);
           if (!convo) continue;
 
-          const otherUserId = profile.role === "client" 
-            ? convo.freelancer_id 
-            : convo.client_id;
+          const otherUserId =
+            profile.role === "client" ? convo.freelancer_id : convo.client_id;
 
           // Only count messages from the other party
           if (msg.sender_id !== otherUserId) continue;
 
           // For clients: count revision requests (🔄 Schedule Revision)
           // For freelancers: count schedule requests (📅 Schedule Request)
-          const isScheduleMessage = profile.role === "client"
-            ? msg.body?.includes("🔄 Schedule Revision")
-            : msg.body?.includes("📅 Schedule Request");
+          const isScheduleMessage =
+            profile.role === "client"
+              ? msg.body?.includes("🔄 Schedule Revision")
+              : msg.body?.includes("📅 Schedule Request");
 
           if (!isScheduleMessage) continue;
 
           // Only count unread messages
           if (msg.read_at) continue;
 
-            // Check if there's a confirmation after this message
-            // If confirmed, don't count it
-            const hasConfirmation = scheduleMessages.some(m => 
+          // Check if there's a confirmation after this message
+          // If confirmed, don't count it
+          const hasConfirmation = scheduleMessages.some(
+            (m) =>
               m.conversation_id === msg.conversation_id &&
               new Date(m.created_at) > new Date(msg.created_at) &&
-              (m.body?.includes("✓ Schedule confirmed") || m.body?.includes("Schedule confirmed")) &&
-              m.sender_id === user.id
-            );
+              (m.body?.includes("✓ Schedule confirmed") ||
+                m.body?.includes("Schedule confirmed")) &&
+              m.sender_id === user.id,
+          );
 
           if (!hasConfirmation) {
             unreadCount++;
@@ -156,7 +165,7 @@ export function useScheduleChanges() {
         },
         () => {
           fetchScheduleChanges();
-        }
+        },
       )
       .subscribe();
 
@@ -167,4 +176,3 @@ export function useScheduleChanges() {
 
   return { scheduleChanges };
 }
-

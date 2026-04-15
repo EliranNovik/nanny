@@ -47,7 +47,7 @@ export function InboxChatSwipeRow({ children, onHide, className }: Props) {
     <div
       className={cn(
         "relative w-full min-w-0 max-w-full overflow-hidden [touch-action:pan-y]",
-        className
+        className,
       )}
     >
       <div
@@ -73,7 +73,7 @@ export function InboxChatSwipeRow({ children, onHide, className }: Props) {
       <div
         className={cn(
           "relative w-full min-w-0 max-w-full bg-background will-change-transform",
-          !touching && "transition-transform duration-200 ease-out"
+          !touching && "transition-transform duration-200 ease-out",
         )}
         style={{ transform: `translateX(${px}px)` }}
         onTouchStart={(e) => {
@@ -83,10 +83,7 @@ export function InboxChatSwipeRow({ children, onHide, className }: Props) {
         }}
         onTouchMove={(e) => {
           const dx = e.touches[0].clientX - startX.current;
-          const next = Math.min(
-            0,
-            Math.max(-REVEAL_PX, startOff.current + dx)
-          );
+          const next = Math.min(0, Math.max(-REVEAL_PX, startOff.current + dx));
           offsetRef.current = next;
           setOffset(next);
         }}

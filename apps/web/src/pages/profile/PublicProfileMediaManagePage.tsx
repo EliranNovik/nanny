@@ -5,8 +5,18 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { ProfileSubpageLayout } from "@/components/profile/ProfileSubpageLayout";
-import { PUBLIC_PROFILE_MEDIA_BUCKET, publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
-import { Image as ImageIcon, Video, Plus, Trash2, Loader2, ExternalLink } from "lucide-react";
+import {
+  PUBLIC_PROFILE_MEDIA_BUCKET,
+  publicProfileMediaPublicUrl,
+} from "@/lib/publicProfileMedia";
+import {
+  Image as ImageIcon,
+  Video,
+  Plus,
+  Trash2,
+  Loader2,
+  ExternalLink,
+} from "lucide-react";
 
 interface PublicProfileMediaRow {
   id: string;
@@ -72,16 +82,23 @@ export default function PublicProfileMediaManagePage() {
       return;
     }
 
-    const ext = file.name.split(".").pop()?.toLowerCase() || (kind === "image" ? "jpg" : "mp4");
+    const ext =
+      file.name.split(".").pop()?.toLowerCase() ||
+      (kind === "image" ? "jpg" : "mp4");
     const path = `${userId}/${crypto.randomUUID()}.${ext}`;
     const nextSort =
-      mediaItems.length === 0 ? 0 : Math.max(...mediaItems.map((m) => m.sort_order), -1) + 1;
+      mediaItems.length === 0
+        ? 0
+        : Math.max(...mediaItems.map((m) => m.sort_order), -1) + 1;
 
     setUploading(true);
     try {
       const { error: upErr } = await supabase.storage
         .from(PUBLIC_PROFILE_MEDIA_BUCKET)
-        .upload(path, file, { upsert: false, contentType: file.type || undefined });
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type || undefined,
+        });
 
       if (upErr) {
         const msg =
@@ -89,7 +106,11 @@ export default function PublicProfileMediaManagePage() {
           upErr.message?.toLowerCase().includes("not found")
             ? `Storage bucket "${PUBLIC_PROFILE_MEDIA_BUCKET}" is missing. Run db/sql/048_public_profile_media.sql in Supabase.`
             : upErr.message;
-        addToast({ title: "Upload failed", description: msg, variant: "error" });
+        addToast({
+          title: "Upload failed",
+          description: msg,
+          variant: "error",
+        });
         return;
       }
 
@@ -106,12 +127,21 @@ export default function PublicProfileMediaManagePage() {
 
       if (insErr) throw insErr;
       if (row) setMediaItems((prev) => [...prev, row as PublicProfileMediaRow]);
-      addToast({ title: kind === "image" ? "Photo added" : "Video added", variant: "success" });
+      addToast({
+        title: kind === "image" ? "Photo added" : "Video added",
+        variant: "success",
+      });
     } catch (e: unknown) {
       console.error(e);
       const msg =
-        e && typeof e === "object" && "message" in e ? String((e as { message: string }).message) : "Upload failed.";
-      addToast({ title: "Could not save media", description: msg, variant: "error" });
+        e && typeof e === "object" && "message" in e
+          ? String((e as { message: string }).message)
+          : "Upload failed.";
+      addToast({
+        title: "Could not save media",
+        description: msg,
+        variant: "error",
+      });
     } finally {
       setUploading(false);
     }
@@ -121,10 +151,15 @@ export default function PublicProfileMediaManagePage() {
     if (!userId) return;
     setUploading(true);
     try {
-      const { error: stErr } = await supabase.storage.from(PUBLIC_PROFILE_MEDIA_BUCKET).remove([row.storage_path]);
+      const { error: stErr } = await supabase.storage
+        .from(PUBLIC_PROFILE_MEDIA_BUCKET)
+        .remove([row.storage_path]);
       if (stErr) console.warn(stErr);
 
-      const { error: delErr } = await supabase.from("public_profile_media").delete().eq("id", row.id);
+      const { error: delErr } = await supabase
+        .from("public_profile_media")
+        .delete()
+        .eq("id", row.id);
       if (delErr) throw delErr;
       setMediaItems((prev) => prev.filter((m) => m.id !== row.id));
       addToast({ title: "Removed", variant: "success" });
@@ -203,18 +238,26 @@ export default function PublicProfileMediaManagePage() {
                 onClick={() => imageInputRef.current?.click()}
                 className="gap-1.5"
               >
-                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                {uploading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
                 Add photo
               </Button>
             </div>
             {imageRows.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border/70 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
-                No photos yet. Add images that represent your work or personality.
+                No photos yet. Add images that represent your work or
+                personality.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {imageRows.map((row) => (
-                  <div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted">
+                  <div
+                    key={row.id}
+                    className="group relative aspect-square overflow-hidden rounded-xl bg-muted"
+                  >
                     <img
                       src={publicProfileMediaPublicUrl(row.storage_path)}
                       alt=""
@@ -251,7 +294,11 @@ export default function PublicProfileMediaManagePage() {
                 onClick={() => videoInputRef.current?.click()}
                 className="gap-1.5"
               >
-                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                {uploading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
                 Add video
               </Button>
             </div>
@@ -262,7 +309,10 @@ export default function PublicProfileMediaManagePage() {
             ) : (
               <div className="flex flex-col gap-4">
                 {videoRows.map((row) => (
-                  <div key={row.id} className="relative overflow-hidden rounded-xl bg-black">
+                  <div
+                    key={row.id}
+                    className="relative overflow-hidden rounded-xl bg-black"
+                  >
                     <video
                       src={publicProfileMediaPublicUrl(row.storage_path)}
                       controls

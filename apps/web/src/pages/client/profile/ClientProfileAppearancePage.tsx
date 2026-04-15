@@ -19,8 +19,17 @@ export default function ClientProfileAppearancePage() {
           <ThemeToggle />
         </div>
 
-        <Button className="w-full" size="lg" onClick={ctx.handleSave} disabled={ctx.saving}>
-          {ctx.saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={ctx.handleSave}
+          disabled={ctx.saving}
+        >
+          {ctx.saving ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
           Save
         </Button>
       </div>

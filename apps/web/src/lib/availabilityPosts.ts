@@ -8,7 +8,8 @@ export const AVAILABILITY_STATUS_OPTIONS = [
   { id: "this_week", label: "Available this week", hours: 48 },
 ] as const;
 
-export type AvailabilityStatusId = (typeof AVAILABILITY_STATUS_OPTIONS)[number]["id"];
+export type AvailabilityStatusId =
+  (typeof AVAILABILITY_STATUS_OPTIONS)[number]["id"];
 
 export function getAvailabilityStatusOption(id: string) {
   return AVAILABILITY_STATUS_OPTIONS.find((o) => o.id === id) ?? null;
@@ -72,11 +73,16 @@ export function buildAvailabilityDisplayTitle(parts: {
 
 /** Badge / single-line label for feed cards (range, legacy single, or null). */
 export function formatPriceHintFromPayload(
-  p: AvailabilityPayload | null | undefined
+  p: AvailabilityPayload | null | undefined,
 ): string | null {
   if (!p) return null;
   const r = p.price_range_per_hour;
-  if (r && typeof r.min === "number" && typeof r.max === "number" && r.min <= r.max) {
+  if (
+    r &&
+    typeof r.min === "number" &&
+    typeof r.max === "number" &&
+    r.min <= r.max
+  ) {
     return `₪${r.min}–₪${r.max}/h`;
   }
   if (p.price_hint_per_hour != null) return `~₪${p.price_hint_per_hour}/h`;

@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -52,11 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // SECURITY: Never overwrite a profile that has specialized fields (whatsapp, telegram, categories)
     // with one that doesn't, unless the new object is null (signing out).
     if (p && profileDataRef.current && profileDataRef.current.id === p.id) {
-      const currentIsFull = !!profileDataRef.current.whatsapp_number_e164 || !!profileDataRef.current.telegram_username || (profileDataRef.current.categories?.length || 0) > 0;
-      const newIsFull = !!p.whatsapp_number_e164 || !!p.telegram_username || (p.categories?.length || 0) > 0;
+      const currentIsFull =
+        !!profileDataRef.current.whatsapp_number_e164 ||
+        !!profileDataRef.current.telegram_username ||
+        (profileDataRef.current.categories?.length || 0) > 0;
+      const newIsFull =
+        !!p.whatsapp_number_e164 ||
+        !!p.telegram_username ||
+        (p.categories?.length || 0) > 0;
 
       if (currentIsFull && !newIsFull) {
-        console.warn("[AuthContext] ⚠️ BLOCKING PROFILE DOWNGRADE: Attempted to overwrite full profile with partial data. Ignoring.");
+        console.warn(
+          "[AuthContext] ⚠️ BLOCKING PROFILE DOWNGRADE: Attempted to overwrite full profile with partial data. Ignoring.",
+        );
         return;
       }
     }
@@ -65,21 +79,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(p);
   };
 
-  async function fetchProfile(userId: string, forceRefresh: boolean = false): Promise<void> {
+  async function fetchProfile(
+    userId: string,
+    forceRefresh: boolean = false,
+  ): Promise<void> {
     // Prevent multiple simultaneous fetches for the same user
     if (fetchingProfileRef.current === userId) {
-      console.log("[AuthContext] Profile fetch already in progress for user", userId);
+      console.log(
+        "[AuthContext] Profile fetch already in progress for user",
+        userId,
+      );
       return;
     }
     // If profile for this user is already loaded, skip fetching (unless forced)
-    if (!forceRefresh && profileUserIdRef.current === userId && profile !== null) {
+    if (
+      !forceRefresh &&
+      profileUserIdRef.current === userId &&
+      profile !== null
+    ) {
       console.log("[AuthContext] Profile already loaded for user", userId);
       return;
     }
 
     // Check if tab is visible - don't fetch if tab is hidden (user switched away)
     if (typeof document !== "undefined" && document.hidden) {
-      console.log("[AuthContext] Tab is hidden, deferring profile fetch until tab becomes visible");
+      console.log(
+        "[AuthContext] Tab is hidden, deferring profile fetch until tab becomes visible",
+      );
       return;
     }
 
@@ -89,14 +115,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (cachedProfile) {
       try {
         const parsed = JSON.parse(cachedProfile);
-        const hasRequiredFields = parsed.data &&
+        const hasRequiredFields =
+          parsed.data &&
           "whatsapp_number_e164" in parsed.data &&
           "telegram_username" in parsed.data &&
           "categories" in parsed.data;
 
         // If it's valid, not too old, and has all fields, we can serve it and do background refresh
-        if (parsed.timestamp && Date.now() - parsed.timestamp < 5 * 60 * 1000 && hasRequiredFields) {
-          console.log("[AuthContext] Using cached profile (age:", Math.round((Date.now() - parsed.timestamp) / 1000), "s)");
+        if (
+          parsed.timestamp &&
+          Date.now() - parsed.timestamp < 5 * 60 * 1000 &&
+          hasRequiredFields
+        ) {
+          console.log(
+            "[AuthContext] Using cached profile (age:",
+            Math.round((Date.now() - parsed.timestamp) / 1000),
+            "s)",
+          );
           setProfileWithRef(parsed.data);
           profileUserIdRef.current = userId;
 
@@ -110,17 +145,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .eq("id", userId)
                 .maybeSingle();
 
-              if (!error && freshData && fetchingProfileRef.current === userId) {
+              if (
+                !error &&
+                freshData &&
+                fetchingProfileRef.current === userId
+              ) {
                 console.log("[AuthContext] Background refresh successful", {
                   whatsapp: freshData.whatsapp_number_e164,
                   telegram: freshData.telegram_username,
-                  categories: freshData.categories?.length || 0
+                  categories: freshData.categories?.length || 0,
                 });
                 setProfileWithRef(freshData);
-                localStorage.setItem(cachedProfileKey, JSON.stringify({
-                  data: freshData,
-                  timestamp: Date.now()
-                }));
+                localStorage.setItem(
+                  cachedProfileKey,
+                  JSON.stringify({
+                    data: freshData,
+                    timestamp: Date.now(),
+                  }),
+                );
               }
             } catch (err) {
               console.warn("[AuthContext] Background refresh failed:", err);
@@ -130,10 +172,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })();
           return; // Return early, served from cache
         } else {
-          // Cache is either too old or missing fields. 
+          // Cache is either too old or missing fields.
           // Serve it as a temporary placeholder if it exists, but don't return early.
           // This ensures the UI has something while the main query runs.
-          console.log("[AuthContext] Cache is " + (!hasRequiredFields ? "outdated" : "old") + ", using as placeholder while fetching...");
+          console.log(
+            "[AuthContext] Cache is " +
+              (!hasRequiredFields ? "outdated" : "old") +
+              ", using as placeholder while fetching...",
+          );
           setProfileWithRef(parsed.data);
           profileUserIdRef.current = userId;
           // Continue to synchronous fetch below...
@@ -143,19 +189,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-
     fetchingProfileRef.current = userId;
     console.log("[AuthContext] fetchProfile called", { userId });
 
     const startTime = Date.now();
     try {
       console.log("[AuthContext] Starting profile query...");
-      console.log("[AuthContext] Supabase URL:", import.meta.env.VITE_SUPABASE_URL?.substring(0, 30) + "...");
+      console.log(
+        "[AuthContext] Supabase URL:",
+        import.meta.env.VITE_SUPABASE_URL?.substring(0, 30) + "...",
+      );
       console.log("[AuthContext] User ID:", userId);
 
       // Verify Supabase client is configured
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl || supabaseUrl.includes("your-project-id") || supabaseUrl.includes("placeholder")) {
+      if (
+        !supabaseUrl ||
+        supabaseUrl.includes("your-project-id") ||
+        supabaseUrl.includes("placeholder")
+      ) {
         console.error("[AuthContext] Supabase not properly configured!");
         setProfileWithRef(null);
         return;
@@ -169,33 +221,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const sessionPromise = supabase.auth.getSession();
-        const sessionTimeout = new Promise<{ data: { session: null }; error: { message: string; code: string } }>((resolve) => {
+        const sessionTimeout = new Promise<{
+          data: { session: null };
+          error: { message: string; code: string };
+        }>((resolve) => {
           setTimeout(() => {
             resolve({
               data: { session: null },
-              error: { message: "getSession timeout after 3 seconds", code: "TIMEOUT" }
+              error: {
+                message: "getSession timeout after 3 seconds",
+                code: "TIMEOUT",
+              },
             });
           }, 3000); // Increased to 3 seconds
         });
 
-        const sessionResult = await Promise.race([sessionPromise, sessionTimeout]) as any;
+        const sessionResult = (await Promise.race([
+          sessionPromise,
+          sessionTimeout,
+        ])) as any;
         currentSession = sessionResult?.data?.session;
         sessionError = sessionResult?.error;
 
         if (sessionError?.code === "TIMEOUT") {
-          console.warn("[AuthContext] ⚠️ getSession timed out - using cached session if available");
+          console.warn(
+            "[AuthContext] ⚠️ getSession timed out - using cached session if available",
+          );
           // Try to get session from localStorage directly
           try {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
             if (supabaseUrl) {
-              const projectRef = supabaseUrl.split('//')[1]?.split('.')[0];
+              const projectRef = supabaseUrl.split("//")[1]?.split(".")[0];
               if (projectRef) {
-                const storedSession = localStorage.getItem(`sb-${projectRef}-auth-token`);
+                const storedSession = localStorage.getItem(
+                  `sb-${projectRef}-auth-token`,
+                );
                 if (storedSession) {
                   const parsed = JSON.parse(storedSession);
                   if (parsed?.currentSession?.user?.id === userId) {
                     currentSession = parsed.currentSession;
-                    console.log("[AuthContext] Using cached session from localStorage");
+                    console.log(
+                      "[AuthContext] Using cached session from localStorage",
+                    );
                     sessionError = null; // Clear error since we have cached session
                   }
                 }
@@ -211,14 +278,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (sessionError && !currentSession) {
-        console.warn("[AuthContext] Error getting session (but continuing with cached data if available):", sessionError.message || sessionError);
+        console.warn(
+          "[AuthContext] Error getting session (but continuing with cached data if available):",
+          sessionError.message || sessionError,
+        );
         // Try to use cached profile instead
         const cachedProfileKey = `profile_${userId}`;
         const cachedProfile = localStorage.getItem(cachedProfileKey);
         if (cachedProfile) {
           try {
             const parsed = JSON.parse(cachedProfile);
-            console.log("[AuthContext] Using cached profile due to session error");
+            console.log(
+              "[AuthContext] Using cached profile due to session error",
+            );
             setProfileWithRef(parsed.data);
             profileUserIdRef.current = userId;
             return;
@@ -235,7 +307,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!currentSession || !currentSession.user) {
-        console.error("[AuthContext] No valid session found, cannot fetch profile");
+        console.error(
+          "[AuthContext] No valid session found, cannot fetch profile",
+        );
         // Try cache
         const cachedProfileKey = `profile_${userId}`;
         const cachedProfile = localStorage.getItem(cachedProfileKey);
@@ -255,7 +329,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (currentSession.user.id !== userId) {
-        console.error("[AuthContext] Session user ID doesn't match requested user ID");
+        console.error(
+          "[AuthContext] Session user ID doesn't match requested user ID",
+        );
         setProfileWithRef(null);
         return;
       }
@@ -270,7 +346,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthContext] Session verified:", {
         userId: currentSession.user.id,
         hasAccessToken: !!currentSession.access_token,
-        expiresAt: currentSession.expires_at
+        expiresAt: currentSession.expires_at,
       });
 
       // Add explicit timeout wrapper to prevent hanging queries
@@ -280,9 +356,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthContext] Creating query promise...");
 
       // Create timeout promise first (will resolve after 3 seconds)
-      const timeoutPromise = new Promise<{ data: null; error: { message: string; code: string } }>((resolve) => {
+      const timeoutPromise = new Promise<{
+        data: null;
+        error: { message: string; code: string };
+      }>((resolve) => {
         setTimeout(() => {
-          console.error("[AuthContext] ⚠️ TIMEOUT: Query timeout after 3 seconds - request is hanging");
+          console.error(
+            "[AuthContext] ⚠️ TIMEOUT: Query timeout after 3 seconds - request is hanging",
+          );
           console.error("[AuthContext] This usually indicates:");
           console.error("  1. Network connectivity issues");
           console.error("  2. Supabase project is paused or inactive");
@@ -293,15 +374,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             userId: currentSession?.user?.id,
             expiresAt: currentSession?.expires_at,
             accessToken: currentSession?.access_token ? "present" : "missing",
-            tokenExpiry: currentSession?.expires_at ? new Date(currentSession.expires_at * 1000).toISOString() : "N/A"
+            tokenExpiry: currentSession?.expires_at
+              ? new Date(currentSession.expires_at * 1000).toISOString()
+              : "N/A",
           });
           queryAborted = true;
           resolve({
             data: null,
             error: {
               message: "Profile query timeout after 3 seconds",
-              code: "TIMEOUT"
-            }
+              code: "TIMEOUT",
+            },
           });
         }, 3000);
       });
@@ -315,24 +398,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq("id", userId)
             .maybeSingle();
 
-          console.log("[AuthContext] Query returned:", { hasData: !!result.data, hasError: !!result.error, errorCode: result.error?.code });
+          console.log("[AuthContext] Query returned:", {
+            hasData: !!result.data,
+            hasError: !!result.error,
+            errorCode: result.error?.code,
+          });
 
           if (queryAborted) {
-            console.log("[AuthContext] Query was aborted, returning abort error");
-            return { data: null, error: { message: "Query aborted", code: "ABORTED" } };
+            console.log(
+              "[AuthContext] Query was aborted, returning abort error",
+            );
+            return {
+              data: null,
+              error: { message: "Query aborted", code: "ABORTED" },
+            };
           }
           return result;
         } catch (err: any) {
           console.error("[AuthContext] Query threw exception:", err);
           if (queryAborted) {
-            return { data: null, error: { message: "Query aborted", code: "ABORTED" } };
+            return {
+              data: null,
+              error: { message: "Query aborted", code: "ABORTED" },
+            };
           }
           throw err;
         }
       })();
 
       console.log("[AuthContext] Racing query and timeout promises...");
-      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+      const result = (await Promise.race([
+        queryPromise,
+        timeoutPromise,
+      ])) as any;
       const { data, error } = result;
 
       const duration = Date.now() - startTime;
@@ -346,12 +444,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         errorMessage: error?.message,
         errorDetails: error,
         duration,
-        wasAborted: queryAborted
+        wasAborted: queryAborted,
       });
 
       // If query was aborted due to timeout, try to use cache
-      if (queryAborted && (error?.code === "TIMEOUT" || error?.code === "ABORTED")) {
-        console.warn("[AuthContext] Query was aborted due to timeout, checking cache...");
+      if (
+        queryAborted &&
+        (error?.code === "TIMEOUT" || error?.code === "ABORTED")
+      ) {
+        console.warn(
+          "[AuthContext] Query was aborted due to timeout, checking cache...",
+        );
         const cachedProfileKey = `profile_${userId}`;
         const cachedProfile = localStorage.getItem(cachedProfileKey);
         if (cachedProfile) {
@@ -373,7 +476,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("[AuthContext] Error fetching profile:", error);
         // If it's a timeout, try to use cached profile if available
-        if (error.code === "TIMEOUT" || error.code === "ABORTED" || error.message?.includes("timeout")) {
+        if (
+          error.code === "TIMEOUT" ||
+          error.code === "ABORTED" ||
+          error.message?.includes("timeout")
+        ) {
           console.error("[AuthContext] Query timed out - checking cache...");
           const cachedProfileKey = `profile_${userId}`;
           const cachedProfile = localStorage.getItem(cachedProfileKey);
@@ -381,7 +488,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
               const parsed = JSON.parse(cachedProfile);
               // Use cache even if old, better than nothing
-              console.log("[AuthContext] ✅ Using stale cached profile due to timeout");
+              console.log(
+                "[AuthContext] ✅ Using stale cached profile due to timeout",
+              );
               setProfileWithRef(parsed.data);
               profileUserIdRef.current = userId;
               return;
@@ -389,16 +498,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.warn("[AuthContext] Failed to parse cached profile", e);
             }
           } else {
-            console.warn("[AuthContext] No cached profile available for timeout fallback");
+            console.warn(
+              "[AuthContext] No cached profile available for timeout fallback",
+            );
           }
         }
         // If it's a permission error, log it clearly
-        if (error.code === "PGRST301" || error.message?.includes("permission") || error.message?.includes("policy")) {
-          console.error("[AuthContext] RLS POLICY ERROR - Check your Supabase RLS policies for the profiles table!");
+        if (
+          error.code === "PGRST301" ||
+          error.message?.includes("permission") ||
+          error.message?.includes("policy")
+        ) {
+          console.error(
+            "[AuthContext] RLS POLICY ERROR - Check your Supabase RLS policies for the profiles table!",
+          );
           console.error("[AuthContext] Current auth state:", {
             hasSession: !!currentSession,
             userId: currentSession?.user?.id,
-            authUid: currentSession?.user?.id
+            authUid: currentSession?.user?.id,
           });
           // Try to use cached profile even on RLS error
           const cachedProfileKey = `profile_${userId}`;
@@ -406,7 +523,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (cachedProfile) {
             try {
               const parsed = JSON.parse(cachedProfile);
-              console.log("[AuthContext] Using cached profile due to RLS error");
+              console.log(
+                "[AuthContext] Using cached profile due to RLS error",
+              );
               setProfileWithRef(parsed.data);
               profileUserIdRef.current = userId;
               return;
@@ -431,25 +550,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Cache profile in localStorage
       try {
-        localStorage.setItem(cachedProfileKey, JSON.stringify({
-          data,
-          timestamp: Date.now()
-        }));
+        localStorage.setItem(
+          cachedProfileKey,
+          JSON.stringify({
+            data,
+            timestamp: Date.now(),
+          }),
+        );
       } catch (e) {
         console.warn("[AuthContext] Failed to cache profile", e);
       }
     } catch (err: any) {
       const duration = Date.now() - startTime;
-      console.error("[AuthContext] Exception in fetchProfile after", duration, "ms", err);
+      console.error(
+        "[AuthContext] Exception in fetchProfile after",
+        duration,
+        "ms",
+        err,
+      );
       console.error("[AuthContext] Exception details:", {
         message: err?.message,
         stack: err?.stack,
-        name: err?.name
+        name: err?.name,
       });
 
       // If it's a timeout, log network issue but don't fail completely
       if (err?.message?.includes("timeout")) {
-        console.error("[AuthContext] NETWORK TIMEOUT - The query is hanging. Check:");
+        console.error(
+          "[AuthContext] NETWORK TIMEOUT - The query is hanging. Check:",
+        );
         console.error("  1. Browser Network tab - is the request being sent?");
         console.error("  2. Supabase dashboard - is the project active?");
         console.error("  3. RLS policies - are they blocking the query?");
@@ -457,8 +586,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[AuthContext] Retrying with simpler query...");
         try {
           // Verify session is still valid
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
-          if (!retrySession || !retrySession.user || retrySession.user.id !== userId) {
+          const {
+            data: { session: retrySession },
+          } = await supabase.auth.getSession();
+          if (
+            !retrySession ||
+            !retrySession.user ||
+            retrySession.user.id !== userId
+          ) {
             console.error("[AuthContext] Session invalid during retry");
             throw new Error("Invalid session");
           }
@@ -476,13 +611,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const { data: retryData, error: retryError } = await Promise.race([
             retryQueryPromise,
-            retryTimeoutPromise
+            retryTimeoutPromise,
           ]);
 
           if (!retryError && retryData) {
-            console.log("[AuthContext] Retry successful, got full profile data");
+            console.log(
+              "[AuthContext] Retry successful, got full profile data",
+            );
             // Only overwrite if we don't already have a more complete profile loaded
-            const alreadyHasFullProfile = profileDataRef.current &&
+            const alreadyHasFullProfile =
+              profileDataRef.current &&
               profileDataRef.current.id === userId &&
               "whatsapp_number_e164" in profileDataRef.current;
             if (!alreadyHasFullProfile) {
@@ -490,15 +628,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               profileUserIdRef.current = userId;
               // Cache the full profile
               try {
-                localStorage.setItem(cachedProfileKey, JSON.stringify({
-                  data: retryData,
-                  timestamp: Date.now()
-                }));
+                localStorage.setItem(
+                  cachedProfileKey,
+                  JSON.stringify({
+                    data: retryData,
+                    timestamp: Date.now(),
+                  }),
+                );
               } catch (e) {
                 console.warn("[AuthContext] Failed to cache retry profile", e);
               }
             } else {
-              console.log("[AuthContext] Full profile already set by concurrent fetch, skipping retry overwrite");
+              console.log(
+                "[AuthContext] Full profile already set by concurrent fetch, skipping retry overwrite",
+              );
             }
             return;
           } else if (retryError) {
@@ -573,8 +716,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         if (mounted) {
-          console.warn("[AuthContext] Safety timeout - forcing loading to false after 8 seconds");
-          console.warn("[AuthContext] If profile fetch is still pending, user can proceed to onboarding");
+          console.warn(
+            "[AuthContext] Safety timeout - forcing loading to false after 8 seconds",
+          );
+          console.warn(
+            "[AuthContext] If profile fetch is still pending, user can proceed to onboarding",
+          );
           setLoading(false);
           // If profile is still null after timeout, that's okay - user can go to onboarding
         }
@@ -587,13 +734,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthContext] Initializing, getting session...");
 
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
         console.log("[AuthContext] getSession result", {
           hasSession: !!session,
           hasUser: !!session?.user,
           userId: session?.user?.id,
-          hasError: !!error
+          hasError: !!error,
         });
 
         if (!mounted) return;
@@ -619,21 +769,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               try {
                 const parsed = JSON.parse(cachedProfile);
                 // Check if cache is less than 5 minutes old
-                if (parsed.timestamp && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
-                  console.log("[AuthContext] Using cached profile on init (age:", Math.round((Date.now() - parsed.timestamp) / 1000), "s)");
+                if (
+                  parsed.timestamp &&
+                  Date.now() - parsed.timestamp < 5 * 60 * 1000
+                ) {
+                  console.log(
+                    "[AuthContext] Using cached profile on init (age:",
+                    Math.round((Date.now() - parsed.timestamp) / 1000),
+                    "s)",
+                  );
                   setProfileWithRef(parsed.data);
                   profileUserIdRef.current = session.user.id;
                   lastProfileFetchTime = Date.now();
                   // Still try to fetch fresh data in background, but don't block
-                  fetchProfile(session.user.id).catch(err => {
-                    console.warn("[AuthContext] Background profile refresh failed:", err);
+                  fetchProfile(session.user.id).catch((err) => {
+                    console.warn(
+                      "[AuthContext] Background profile refresh failed:",
+                      err,
+                    );
                   });
                 } else {
                   console.log("[AuthContext] User found, fetching profile...");
                   await fetchProfile(session.user.id);
                 }
               } catch (e) {
-                console.warn("[AuthContext] Failed to parse cached profile, fetching fresh:", e);
+                console.warn(
+                  "[AuthContext] Failed to parse cached profile, fetching fresh:",
+                  e,
+                );
                 await fetchProfile(session.user.id);
               }
             } else {
@@ -652,7 +815,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (mounted) {
             if (timeoutId) clearTimeout(timeoutId);
             setLoading(false);
-            console.log("[AuthContext] Initialization complete, loading set to false");
+            console.log(
+              "[AuthContext] Initialization complete, loading set to false",
+            );
           }
         }
       } catch (err) {
@@ -666,171 +831,224 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // Skip INITIAL_SESSION - already handled by getSession()
-        if (event === "INITIAL_SESSION") {
-          console.log("[AuthContext] Skipping INITIAL_SESSION event");
-          return;
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip INITIAL_SESSION - already handled by getSession()
+      if (event === "INITIAL_SESSION") {
+        console.log("[AuthContext] Skipping INITIAL_SESSION event");
+        return;
+      }
 
-        // Rate limit auth events - ignore if too frequent (prevents spam when switching tabs)
-        const timeSinceLastAuthEvent = Date.now() - lastAuthEventTime;
-        if (timeSinceLastAuthEvent < MIN_AUTH_EVENT_INTERVAL && event !== "SIGNED_OUT") {
-          console.log("[AuthContext] Auth event too frequent, ignoring:", event);
-          return;
-        }
+      // Rate limit auth events - ignore if too frequent (prevents spam when switching tabs)
+      const timeSinceLastAuthEvent = Date.now() - lastAuthEventTime;
+      if (
+        timeSinceLastAuthEvent < MIN_AUTH_EVENT_INTERVAL &&
+        event !== "SIGNED_OUT"
+      ) {
+        console.log("[AuthContext] Auth event too frequent, ignoring:", event);
+        return;
+      }
 
-        // If tab just became visible and we have a profile, ignore SIGNED_IN events (they're just from tab visibility)
-        if (tabJustBecameVisible && event === "SIGNED_IN" && profile && session?.user && profile.id === session.user.id) {
-          const timeSinceTabVisible = Date.now() - tabVisibilityChangeTime;
-          if (timeSinceTabVisible < TAB_VISIBILITY_GRACE_PERIOD) {
-            console.log("[AuthContext] Tab just became visible, ignoring SIGNED_IN event (likely from visibility change)");
-            if (mounted) {
-              setSession(session);
-              setUser(session.user);
-            }
-            return;
-          }
-        }
-
-        lastAuthEventTime = Date.now();
-
-        // Skip TOKEN_REFRESHED events if profile is already loaded - these happen frequently
-        // and don't require re-fetching the profile
-        if (event === "TOKEN_REFRESHED") {
-          console.log("[AuthContext] Token refreshed, keeping existing profile");
+      // If tab just became visible and we have a profile, ignore SIGNED_IN events (they're just from tab visibility)
+      if (
+        tabJustBecameVisible &&
+        event === "SIGNED_IN" &&
+        profile &&
+        session?.user &&
+        profile.id === session.user.id
+      ) {
+        const timeSinceTabVisible = Date.now() - tabVisibilityChangeTime;
+        if (timeSinceTabVisible < TAB_VISIBILITY_GRACE_PERIOD) {
+          console.log(
+            "[AuthContext] Tab just became visible, ignoring SIGNED_IN event (likely from visibility change)",
+          );
           if (mounted) {
             setSession(session);
-            setUser(session?.user ?? null);
-            // Don't set loading or refetch profile for token refresh
+            setUser(session.user);
           }
           return;
-        }
-
-        // Skip SIGNED_IN events if we already have the same user and profile
-        // This prevents refetching when tab becomes visible again
-        if (event === "SIGNED_IN" && session?.user && profile && profile.id === session.user.id && profileUserIdRef.current === session.user.id) {
-          const timeSinceLastFetch = Date.now() - lastProfileFetchTime;
-          // Only skip if profile was fetched recently (within last 30 seconds)
-          if (timeSinceLastFetch < MIN_PROFILE_FETCH_INTERVAL) {
-            console.log("[AuthContext] Already signed in with same user and recent profile, skipping refetch");
-            if (mounted) {
-              setSession(session);
-              setUser(session.user);
-              // Don't set loading or refetch profile
-            }
-            return;
-          }
-        }
-
-        // Don't process auth events if tab is hidden (user switched away)
-        if (typeof document !== "undefined" && document.hidden && event !== "SIGNED_OUT") {
-          console.log("[AuthContext] Tab is hidden, deferring auth event:", event);
-          if (mounted) {
-            // Still update session/user but don't fetch profile
-            setSession(session);
-            setUser(session?.user ?? null);
-          }
-          return;
-        }
-
-        console.log("[AuthContext] Auth state changed", {
-          event,
-          hasSession: !!session,
-          hasUser: !!session?.user,
-          userId: session?.user?.id,
-          isTabVisible: !document.hidden
-        });
-
-        if (!mounted) return;
-
-        // Check if we recently fetched profile - prevent rapid refetches
-        const timeSinceLastFetch = Date.now() - lastProfileFetchTime;
-        const shouldSkipFetch = timeSinceLastFetch < MIN_PROFILE_FETCH_INTERVAL &&
-          profile &&
-          session?.user &&
-          profile.id === session.user.id &&
-          profileUserIdRef.current === session.user.id;
-
-        // Also skip if tab just became visible (grace period)
-        const shouldSkipDueToVisibility = tabJustBecameVisible &&
-          profile &&
-          session?.user &&
-          profile.id === session.user.id &&
-          (Date.now() - tabVisibilityChangeTime) < TAB_VISIBILITY_GRACE_PERIOD;
-
-        if ((shouldSkipFetch || shouldSkipDueToVisibility) && event !== "SIGNED_OUT") {
-          console.log("[AuthContext] Skipping refetch - profile recently fetched or tab just became visible. Event:", event);
-          if (mounted) {
-            setSession(session);
-            setUser(session?.user ?? null);
-          }
-          return;
-        }
-
-        // Only set loading if we actually need to fetch profile
-        const needsProfileFetch = session?.user && (
-          !profile ||
-          profile.id !== session.user.id ||
-          profileUserIdRef.current !== session.user.id
-        );
-
-        if (needsProfileFetch && !shouldSkipFetch && !shouldSkipDueToVisibility) {
-          setLoading(true);
-        }
-
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        try {
-          if (session?.user) {
-            // Only fetch profile if we don't already have it for this user
-            // AND if we're not already fetching it
-            // AND if tab is visible
-            // AND if we're not in the visibility grace period
-            if (
-              !shouldSkipFetch &&
-              !shouldSkipDueToVisibility &&
-              (!profile ||
-                profile.id !== session.user.id ||
-                profileUserIdRef.current !== session.user.id)
-            ) {
-              // Check if fetch is already in progress
-              if (fetchingProfileRef.current !== session.user.id) {
-                // Double-check tab is visible and not in grace period before fetching
-                if (typeof document !== "undefined" && !document.hidden && !tabJustBecameVisible) {
-                  console.log("[AuthContext] User in new session, fetching profile...");
-                  lastProfileFetchTime = Date.now();
-                  await fetchProfile(session.user.id);
-                } else {
-                  console.log("[AuthContext] Tab is hidden or in grace period, skipping profile fetch");
-                }
-              } else {
-                console.log("[AuthContext] Profile fetch already in progress, skipping");
-              }
-            } else {
-              console.log("[AuthContext] Profile already loaded for this user, skipping fetch");
-            }
-          } else {
-            console.log("[AuthContext] No user in new session, clearing profile");
-            setProfileWithRef(null);
-            profileUserIdRef.current = null;
-          }
-        } catch (err) {
-          console.error("[AuthContext] Error in onAuthStateChange handler:", err);
-          setProfileWithRef(null);
-          profileUserIdRef.current = null;
-        } finally {
-          // Only set loading to false if we set it to true
-          if (mounted && needsProfileFetch && !shouldSkipFetch && !shouldSkipDueToVisibility) {
-            if (timeoutId) clearTimeout(timeoutId);
-            setLoading(false);
-            console.log("[AuthContext] Auth state change handler complete, loading set to false");
-          }
         }
       }
-    );
+
+      lastAuthEventTime = Date.now();
+
+      // Skip TOKEN_REFRESHED events if profile is already loaded - these happen frequently
+      // and don't require re-fetching the profile
+      if (event === "TOKEN_REFRESHED") {
+        console.log("[AuthContext] Token refreshed, keeping existing profile");
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          // Don't set loading or refetch profile for token refresh
+        }
+        return;
+      }
+
+      // Skip SIGNED_IN events if we already have the same user and profile
+      // This prevents refetching when tab becomes visible again
+      if (
+        event === "SIGNED_IN" &&
+        session?.user &&
+        profile &&
+        profile.id === session.user.id &&
+        profileUserIdRef.current === session.user.id
+      ) {
+        const timeSinceLastFetch = Date.now() - lastProfileFetchTime;
+        // Only skip if profile was fetched recently (within last 30 seconds)
+        if (timeSinceLastFetch < MIN_PROFILE_FETCH_INTERVAL) {
+          console.log(
+            "[AuthContext] Already signed in with same user and recent profile, skipping refetch",
+          );
+          if (mounted) {
+            setSession(session);
+            setUser(session.user);
+            // Don't set loading or refetch profile
+          }
+          return;
+        }
+      }
+
+      // Don't process auth events if tab is hidden (user switched away)
+      if (
+        typeof document !== "undefined" &&
+        document.hidden &&
+        event !== "SIGNED_OUT"
+      ) {
+        console.log(
+          "[AuthContext] Tab is hidden, deferring auth event:",
+          event,
+        );
+        if (mounted) {
+          // Still update session/user but don't fetch profile
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+        return;
+      }
+
+      console.log("[AuthContext] Auth state changed", {
+        event,
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userId: session?.user?.id,
+        isTabVisible: !document.hidden,
+      });
+
+      if (!mounted) return;
+
+      // Check if we recently fetched profile - prevent rapid refetches
+      const timeSinceLastFetch = Date.now() - lastProfileFetchTime;
+      const shouldSkipFetch =
+        timeSinceLastFetch < MIN_PROFILE_FETCH_INTERVAL &&
+        profile &&
+        session?.user &&
+        profile.id === session.user.id &&
+        profileUserIdRef.current === session.user.id;
+
+      // Also skip if tab just became visible (grace period)
+      const shouldSkipDueToVisibility =
+        tabJustBecameVisible &&
+        profile &&
+        session?.user &&
+        profile.id === session.user.id &&
+        Date.now() - tabVisibilityChangeTime < TAB_VISIBILITY_GRACE_PERIOD;
+
+      if (
+        (shouldSkipFetch || shouldSkipDueToVisibility) &&
+        event !== "SIGNED_OUT"
+      ) {
+        console.log(
+          "[AuthContext] Skipping refetch - profile recently fetched or tab just became visible. Event:",
+          event,
+        );
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+        return;
+      }
+
+      // Only set loading if we actually need to fetch profile
+      const needsProfileFetch =
+        session?.user &&
+        (!profile ||
+          profile.id !== session.user.id ||
+          profileUserIdRef.current !== session.user.id);
+
+      if (needsProfileFetch && !shouldSkipFetch && !shouldSkipDueToVisibility) {
+        setLoading(true);
+      }
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      try {
+        if (session?.user) {
+          // Only fetch profile if we don't already have it for this user
+          // AND if we're not already fetching it
+          // AND if tab is visible
+          // AND if we're not in the visibility grace period
+          if (
+            !shouldSkipFetch &&
+            !shouldSkipDueToVisibility &&
+            (!profile ||
+              profile.id !== session.user.id ||
+              profileUserIdRef.current !== session.user.id)
+          ) {
+            // Check if fetch is already in progress
+            if (fetchingProfileRef.current !== session.user.id) {
+              // Double-check tab is visible and not in grace period before fetching
+              if (
+                typeof document !== "undefined" &&
+                !document.hidden &&
+                !tabJustBecameVisible
+              ) {
+                console.log(
+                  "[AuthContext] User in new session, fetching profile...",
+                );
+                lastProfileFetchTime = Date.now();
+                await fetchProfile(session.user.id);
+              } else {
+                console.log(
+                  "[AuthContext] Tab is hidden or in grace period, skipping profile fetch",
+                );
+              }
+            } else {
+              console.log(
+                "[AuthContext] Profile fetch already in progress, skipping",
+              );
+            }
+          } else {
+            console.log(
+              "[AuthContext] Profile already loaded for this user, skipping fetch",
+            );
+          }
+        } else {
+          console.log("[AuthContext] No user in new session, clearing profile");
+          setProfileWithRef(null);
+          profileUserIdRef.current = null;
+        }
+      } catch (err) {
+        console.error("[AuthContext] Error in onAuthStateChange handler:", err);
+        setProfileWithRef(null);
+        profileUserIdRef.current = null;
+      } finally {
+        // Only set loading to false if we set it to true
+        if (
+          mounted &&
+          needsProfileFetch &&
+          !shouldSkipFetch &&
+          !shouldSkipDueToVisibility
+        ) {
+          if (timeoutId) clearTimeout(timeoutId);
+          setLoading(false);
+          console.log(
+            "[AuthContext] Auth state change handler complete, loading set to false",
+          );
+        }
+      }
+    });
 
     return () => {
       mounted = false;
@@ -842,7 +1060,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string) {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       return { error: error as Error | null };
     } catch (err) {
       return { error: err as Error };
@@ -852,7 +1073,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signUp(email: string, password: string) {
     try {
       const redirect =
-        typeof window !== "undefined" ? `${window.location.origin}/login` : undefined;
+        typeof window !== "undefined"
+          ? `${window.location.origin}/login`
+          : undefined;
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -871,16 +1094,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      profile,
-      loading,
-      signIn,
-      signUp,
-      signOut,
-      refreshProfile
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        loading,
+        signIn,
+        signUp,
+        signOut,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

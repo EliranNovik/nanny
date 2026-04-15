@@ -10,14 +10,23 @@ interface ViewEditFieldRowProps {
 }
 
 /** Minimal view row (label + value); swaps to edit controls when `editing` is true. */
-export function ViewEditFieldRow({ label, editing, viewContent, editContent }: ViewEditFieldRowProps) {
+export function ViewEditFieldRow({
+  label,
+  editing,
+  viewContent,
+  editContent,
+}: ViewEditFieldRowProps) {
   if (editing) {
     return <div className="space-y-3 py-1">{editContent}</div>;
   }
   return (
     <div className="py-5 border-b border-border/35 last:border-b-0">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90 mb-2">{label}</p>
-      <div className="text-[16px] leading-relaxed text-foreground">{viewContent}</div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90 mb-2">
+        {label}
+      </p>
+      <div className="text-[16px] leading-relaxed text-foreground">
+        {viewContent}
+      </div>
     </div>
   );
 }

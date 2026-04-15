@@ -1,17 +1,23 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Briefcase, 
-  Users, 
-  BarChart3, 
-  MessageSquare, 
+import {
+  Briefcase,
+  Users,
+  BarChart3,
+  MessageSquare,
   CheckCircle2,
-  Clock
+  Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -105,14 +111,14 @@ export default function AdminPage() {
 
   async function fetchAllData() {
     if (!user) return;
-    
+
     setLoading(true);
     try {
       await Promise.all([
         fetchJobs(),
         fetchUsers(),
         fetchReports(),
-        fetchStatistics()
+        fetchStatistics(),
       ]);
     } catch (error) {
       console.error("Error fetching admin data:", error);
@@ -124,11 +130,13 @@ export default function AdminPage() {
   async function fetchJobs() {
     const { data, error } = await supabase
       .from("job_requests")
-      .select(`
+      .select(
+        `
         *,
         client:profiles!job_requests_client_id_fkey(id, full_name, photo_url),
         freelancer:profiles!job_requests_selected_freelancer_id_fkey(id, full_name, photo_url)
-      `)
+      `,
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -159,10 +167,12 @@ export default function AdminPage() {
     // Fetch conversations where job_id is null (admin reports)
     const { data: conversations, error: convError } = await supabase
       .from("conversations")
-      .select(`
+      .select(
+        `
         *,
         client:profiles!conversations_client_id_fkey(*)
-      `)
+      `,
+      )
       .is("job_id", null)
       .order("created_at", { ascending: false });
 
@@ -194,7 +204,7 @@ export default function AdminPage() {
           last_message: messages || undefined,
           unread_count: count || 0,
         };
-      })
+      }),
     );
 
     setReports(reportsWithMessages);
@@ -274,9 +284,13 @@ export default function AdminPage() {
     });
   }
 
-  const activeJobs = jobs.filter(j => j.status === "locked" || j.status === "active");
-  const requestedJobs = jobs.filter(j => j.status === "notifying" || j.status === "confirmations_closed");
-  const completedJobs = jobs.filter(j => j.status === "completed");
+  const activeJobs = jobs.filter(
+    (j) => j.status === "locked" || j.status === "active",
+  );
+  const requestedJobs = jobs.filter(
+    (j) => j.status === "notifying" || j.status === "confirmations_closed",
+  );
+  const completedJobs = jobs.filter((j) => j.status === "completed");
 
   // Show loading while auth is loading or data is loading
   if (authLoading || loading) {
@@ -292,7 +306,9 @@ export default function AdminPage() {
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Manage jobs, users, and reports</p>
+          <p className="text-muted-foreground mt-1">
+            Manage jobs, users, and reports
+          </p>
         </div>
 
         {/* Statistics Cards */}
@@ -300,7 +316,9 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Jobs
+                </CardTitle>
                 <Briefcase className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -313,11 +331,15 @@ export default function AdminPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Active Jobs
+                </CardTitle>
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{statistics.activeJobs}</div>
+                <div className="text-2xl font-bold">
+                  {statistics.activeJobs}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Currently in progress
                 </p>
@@ -326,13 +348,18 @@ export default function AdminPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Users
+                </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{statistics.totalUsers}</div>
+                <div className="text-2xl font-bold">
+                  {statistics.totalUsers}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  {statistics.totalClients} clients, {statistics.totalFreelancers} freelancers
+                  {statistics.totalClients} clients,{" "}
+                  {statistics.totalFreelancers} freelancers
                 </p>
               </CardContent>
             </Card>
@@ -344,9 +371,7 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{reports.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  User reports
-                </p>
+                <p className="text-xs text-muted-foreground">User reports</p>
               </CardContent>
             </Card>
           </div>
@@ -369,9 +394,9 @@ export default function AdminPage() {
             <TabsTrigger value="reports">
               <MessageSquare className="w-4 h-4 mr-2" />
               Reports
-              {reports.filter(r => r.unread_count > 0).length > 0 && (
+              {reports.filter((r) => r.unread_count > 0).length > 0 && (
                 <Badge className="ml-2" variant="destructive">
-                  {reports.filter(r => r.unread_count > 0).length}
+                  {reports.filter((r) => r.unread_count > 0).length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -389,7 +414,9 @@ export default function AdminPage() {
                 </CardHeader>
                 <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
                   {activeJobs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No active jobs</p>
+                    <p className="text-sm text-muted-foreground">
+                      No active jobs
+                    </p>
                   ) : (
                     activeJobs.map((job) => {
                       const handleClick = async () => {
@@ -403,19 +430,38 @@ export default function AdminPage() {
                         }
                       };
                       return (
-                        <Card key={job.id} className="p-3 cursor-pointer hover:bg-muted/50" onClick={handleClick}>
+                        <Card
+                          key={job.id}
+                          className="p-3 cursor-pointer hover:bg-muted/50"
+                          onClick={handleClick}
+                        >
                           <div className="flex items-start gap-2">
                             <Avatar className="w-8 h-8">
-                              <AvatarImage src={job.client?.photo_url || undefined} />
-                              <AvatarFallback>{job.client?.full_name?.[0] || "?"}</AvatarFallback>
+                              <AvatarImage
+                                src={job.client?.photo_url || undefined}
+                              />
+                              <AvatarFallback>
+                                {job.client?.full_name?.[0] || "?"}
+                              </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{job.client?.full_name || "Unknown"}</p>
-                              <p className="text-xs text-muted-foreground">{job.location_city}</p>
+                              <p className="text-sm font-medium truncate">
+                                {job.client?.full_name || "Unknown"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {job.location_city}
+                              </p>
                               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <Badge variant="outline" className="text-xs">{job.status}</Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {job.status}
+                                </Badge>
                                 {job.stage && (
-                                  <Badge variant={getJobStageBadge(job.stage).variant} className="text-xs">
+                                  <Badge
+                                    variant={
+                                      getJobStageBadge(job.stage).variant
+                                    }
+                                    className="text-xs"
+                                  >
                                     {getJobStageBadge(job.stage).label}
                                   </Badge>
                                 )}
@@ -439,22 +485,43 @@ export default function AdminPage() {
                 </CardHeader>
                 <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
                   {requestedJobs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No requested jobs</p>
+                    <p className="text-sm text-muted-foreground">
+                      No requested jobs
+                    </p>
                   ) : (
                     requestedJobs.map((job) => (
-                      <Card key={job.id} className="p-3 cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/client/jobs/${job.id}/confirmed`)}>
+                      <Card
+                        key={job.id}
+                        className="p-3 cursor-pointer hover:bg-muted/50"
+                        onClick={() =>
+                          navigate(`/client/jobs/${job.id}/confirmed`)
+                        }
+                      >
                         <div className="flex items-start gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={job.client?.photo_url || undefined} />
-                            <AvatarFallback>{job.client?.full_name?.[0] || "?"}</AvatarFallback>
+                            <AvatarImage
+                              src={job.client?.photo_url || undefined}
+                            />
+                            <AvatarFallback>
+                              {job.client?.full_name?.[0] || "?"}
+                            </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{job.client?.full_name || "Unknown"}</p>
-                            <p className="text-xs text-muted-foreground">{job.location_city}</p>
+                            <p className="text-sm font-medium truncate">
+                              {job.client?.full_name || "Unknown"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {job.location_city}
+                            </p>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <Badge variant="outline" className="text-xs">{job.status}</Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {job.status}
+                              </Badge>
                               {job.stage && (
-                                <Badge variant={getJobStageBadge(job.stage).variant} className="text-xs">
+                                <Badge
+                                  variant={getJobStageBadge(job.stage).variant}
+                                  className="text-xs"
+                                >
                                   {getJobStageBadge(job.stage).label}
                                 </Badge>
                               )}
@@ -477,18 +544,28 @@ export default function AdminPage() {
                 </CardHeader>
                 <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
                   {completedJobs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No completed jobs</p>
+                    <p className="text-sm text-muted-foreground">
+                      No completed jobs
+                    </p>
                   ) : (
                     completedJobs.map((job) => (
                       <Card key={job.id} className="p-3">
                         <div className="flex items-start gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={job.client?.photo_url || undefined} />
-                            <AvatarFallback>{job.client?.full_name?.[0] || "?"}</AvatarFallback>
+                            <AvatarImage
+                              src={job.client?.photo_url || undefined}
+                            />
+                            <AvatarFallback>
+                              {job.client?.full_name?.[0] || "?"}
+                            </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{job.client?.full_name || "Unknown"}</p>
-                            <p className="text-xs text-muted-foreground">{job.location_city}</p>
+                            <p className="text-sm font-medium truncate">
+                              {job.client?.full_name || "Unknown"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {job.location_city}
+                            </p>
                             <p className="text-xs text-muted-foreground mt-1">
                               {format(new Date(job.created_at), "MMM d, yyyy")}
                             </p>
@@ -521,18 +598,29 @@ export default function AdminPage() {
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="font-medium">{user.full_name || "Unnamed"}</p>
+                            <p className="font-medium">
+                              {user.full_name || "Unnamed"}
+                            </p>
                             {user.is_admin ? (
                               <Badge variant="destructive">Admin</Badge>
                             ) : (
-                              <Badge variant={user.role === "client" ? "default" : "secondary"}>
+                              <Badge
+                                variant={
+                                  user.role === "client"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
                                 {user.role}
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{user.city || "No location"}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {user.city || "No location"}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            Joined {format(new Date(user.created_at), "MMM d, yyyy")}
+                            Joined{" "}
+                            {format(new Date(user.created_at), "MMM d, yyyy")}
                           </p>
                         </div>
                       </div>
@@ -557,15 +645,21 @@ export default function AdminPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Active Jobs</span>
-                      <span className="font-bold text-green-600">{statistics.activeJobs}</span>
+                      <span className="font-bold text-green-600">
+                        {statistics.activeJobs}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Completed Jobs</span>
-                      <span className="font-bold text-blue-600">{statistics.completedJobs}</span>
+                      <span className="font-bold text-blue-600">
+                        {statistics.completedJobs}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Requested Jobs</span>
-                      <span className="font-bold text-amber-600">{statistics.requestedJobs}</span>
+                      <span className="font-bold text-amber-600">
+                        {statistics.requestedJobs}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -581,11 +675,15 @@ export default function AdminPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Clients</span>
-                      <span className="font-bold">{statistics.totalClients}</span>
+                      <span className="font-bold">
+                        {statistics.totalClients}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Freelancers</span>
-                      <span className="font-bold">{statistics.totalFreelancers}</span>
+                      <span className="font-bold">
+                        {statistics.totalFreelancers}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -602,26 +700,34 @@ export default function AdminPage() {
               <CardContent>
                 <div className="space-y-2">
                   {reports.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No reports yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      No reports yet
+                    </p>
                   ) : (
                     reports.map((report) => (
-                      <Card 
-                        key={report.id} 
+                      <Card
+                        key={report.id}
                         className={`p-4 cursor-pointer hover:bg-muted/50 ${report.unread_count > 0 ? "border-primary" : ""}`}
                         onClick={() => navigate(`/chat/${report.id}`)}
                       >
                         <div className="flex items-start gap-4">
                           <Avatar>
-                            <AvatarImage src={report.client?.photo_url || undefined} />
+                            <AvatarImage
+                              src={report.client?.photo_url || undefined}
+                            />
                             <AvatarFallback>
                               {report.client?.full_name?.[0] || "?"}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="font-medium">{report.client?.full_name || "Unknown User"}</p>
+                              <p className="font-medium">
+                                {report.client?.full_name || "Unknown User"}
+                              </p>
                               {report.unread_count > 0 && (
-                                <Badge variant="destructive">{report.unread_count}</Badge>
+                                <Badge variant="destructive">
+                                  {report.unread_count}
+                                </Badge>
                               )}
                             </div>
                             {report.last_message && (
@@ -630,7 +736,10 @@ export default function AdminPage() {
                               </p>
                             )}
                             <p className="text-xs text-muted-foreground mt-1">
-                              {format(new Date(report.created_at), "MMM d, yyyy 'at' h:mm a")}
+                              {format(
+                                new Date(report.created_at),
+                                "MMM d, yyyy 'at' h:mm a",
+                              )}
                             </p>
                           </div>
                         </div>
@@ -646,4 +755,3 @@ export default function AdminPage() {
     </div>
   );
 }
-

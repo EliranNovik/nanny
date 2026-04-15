@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
+import {
   ArrowLeft,
   MessageCircle,
   Loader2,
@@ -16,7 +16,7 @@ import {
   Calendar,
   AlignLeft,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +48,7 @@ interface ClientProfile {
 export default function FreelancerActiveJobsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   // Try to load cached data immediately
   const getCachedJobsData = () => {
     try {
@@ -65,10 +65,18 @@ export default function FreelancerActiveJobsPage() {
 
   const cachedData = user ? getCachedJobsData() : null;
   const [loading, setLoading] = useState(!cachedData);
-  const [activeJob, setActiveJob] = useState<JobRequest | null>(cachedData?.activeJob || null);
-  const [pastJobs, setPastJobs] = useState<JobRequest[]>(cachedData?.pastJobs || []);
-  const [conversations, setConversations] = useState<Record<string, Conversation>>(cachedData?.conversations || {});
-  const [clientProfiles, setClientProfiles] = useState<Record<string, ClientProfile>>(cachedData?.clientProfiles || {});
+  const [activeJob, setActiveJob] = useState<JobRequest | null>(
+    cachedData?.activeJob || null,
+  );
+  const [pastJobs, setPastJobs] = useState<JobRequest[]>(
+    cachedData?.pastJobs || [],
+  );
+  const [conversations, setConversations] = useState<
+    Record<string, Conversation>
+  >(cachedData?.conversations || {});
+  const [clientProfiles, setClientProfiles] = useState<
+    Record<string, ClientProfile>
+  >(cachedData?.clientProfiles || {});
   const [pastJobsExpanded, setPastJobsExpanded] = useState(false);
 
   useEffect(() => {
@@ -92,8 +100,12 @@ export default function FreelancerActiveJobsPage() {
         }
 
         // Separate into active and past jobs
-        const active = allJobs.find(j => j.status === "locked" || j.status === "active");
-        const past = allJobs.filter(j => j.status === "completed" || j.status === "cancelled");
+        const active = allJobs.find(
+          (j) => j.status === "locked" || j.status === "active",
+        );
+        const past = allJobs.filter(
+          (j) => j.status === "completed" || j.status === "cancelled",
+        );
 
         setActiveJob(active || null);
         setPastJobs(past);
@@ -112,7 +124,7 @@ export default function FreelancerActiveJobsPage() {
 
           if (convos) {
             setConversations({ [active.id]: convos });
-            
+
             const { data: profileData } = await supabase
               .from("profiles")
               .select("id, full_name, photo_url")
@@ -129,15 +141,22 @@ export default function FreelancerActiveJobsPage() {
         // Cache the data for instant loading next time
         if (user) {
           try {
-            localStorage.setItem(`freelancer_active_jobs_${user.id}`, JSON.stringify({
-              timestamp: Date.now(),
-              data: {
-                activeJob: active || null,
-                pastJobs: past,
-                conversations: active && convos ? { [active.id]: convos } : {},
-                clientProfiles: active && convos && profile ? { [convos.client_id]: profile } : {}
-              }
-            }));
+            localStorage.setItem(
+              `freelancer_active_jobs_${user.id}`,
+              JSON.stringify({
+                timestamp: Date.now(),
+                data: {
+                  activeJob: active || null,
+                  pastJobs: past,
+                  conversations:
+                    active && convos ? { [active.id]: convos } : {},
+                  clientProfiles:
+                    active && convos && profile
+                      ? { [convos.client_id]: profile }
+                      : {},
+                },
+              }),
+            );
           } catch (e) {
             // Ignore cache errors
           }
@@ -156,15 +175,18 @@ export default function FreelancerActiveJobsPage() {
   useEffect(() => {
     if (user && (activeJob !== null || pastJobs.length >= 0)) {
       try {
-        localStorage.setItem(`freelancer_active_jobs_${user.id}`, JSON.stringify({
-          timestamp: Date.now(),
-          data: {
-            activeJob,
-            pastJobs,
-            conversations,
-            clientProfiles
-          }
-        }));
+        localStorage.setItem(
+          `freelancer_active_jobs_${user.id}`,
+          JSON.stringify({
+            timestamp: Date.now(),
+            data: {
+              activeJob,
+              pastJobs,
+              conversations,
+              clientProfiles,
+            },
+          }),
+        );
       } catch (e) {
         // Ignore cache errors
       }
@@ -191,8 +213,17 @@ export default function FreelancerActiveJobsPage() {
     return map[group] || group;
   }
 
-  function getJobStatusBadge(status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } {
-    const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  function getJobStatusBadge(status: string): {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+  } {
+    const map: Record<
+      string,
+      {
+        label: string;
+        variant: "default" | "secondary" | "destructive" | "outline";
+      }
+    > = {
       locked: { label: "Scheduled", variant: "default" },
       active: { label: "In progress", variant: "default" },
       completed: { label: "Completed", variant: "outline" },
@@ -207,18 +238,18 @@ export default function FreelancerActiveJobsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8">
         <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => navigate("/freelancer/home")}
           >
@@ -237,38 +268,67 @@ export default function FreelancerActiveJobsPage() {
                     {formatJobTitle(activeJob)}
                   </CardTitle>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={cn("text-xs", getJobStatusBadge(activeJob.status).variant === "default" ? "bg-primary/10 text-primary" : "")}>
+                    <Badge
+                      className={cn(
+                        "text-xs",
+                        getJobStatusBadge(activeJob.status).variant ===
+                          "default"
+                          ? "bg-primary/10 text-primary"
+                          : "",
+                      )}
+                    >
                       {getJobStatusBadge(activeJob.status).label}
                     </Badge>
                   </div>
                 </div>
-                {conversations[activeJob.id] && clientProfiles[conversations[activeJob.id].client_id] && (
-                  <Avatar className="w-14 h-14 border-2 border-primary/20">
-                    <AvatarImage src={clientProfiles[conversations[activeJob.id].client_id].photo_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                      {clientProfiles[conversations[activeJob.id].client_id].full_name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+                {conversations[activeJob.id] &&
+                  clientProfiles[conversations[activeJob.id].client_id] && (
+                    <Avatar className="w-14 h-14 border-2 border-primary/20">
+                      <AvatarImage
+                        src={
+                          clientProfiles[conversations[activeJob.id].client_id]
+                            .photo_url || undefined
+                        }
+                      />
+                      <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                        {clientProfiles[
+                          conversations[activeJob.id].client_id
+                        ].full_name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
               </div>
               {activeJob.start_at && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="w-4 h-4" />
-                  <span>{new Date(activeJob.start_at).toLocaleDateString()}</span>
+                  <span>
+                    {new Date(activeJob.start_at).toLocaleDateString()}
+                  </span>
                   <Clock className="w-4 h-4 ml-2" />
-                  <span>{new Date(activeJob.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>
+                    {new Date(activeJob.start_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </div>
               )}
-              {conversations[activeJob.id] && clientProfiles[conversations[activeJob.id].client_id] && (
-                <div className="mt-2 text-sm">
-                  <span className="text-muted-foreground">With: </span>
-                  <span className="font-medium">{clientProfiles[conversations[activeJob.id].client_id].full_name}</span>
-                </div>
-              )}
+              {conversations[activeJob.id] &&
+                clientProfiles[conversations[activeJob.id].client_id] && (
+                  <div className="mt-2 text-sm">
+                    <span className="text-muted-foreground">With: </span>
+                    <span className="font-medium">
+                      {
+                        clientProfiles[conversations[activeJob.id].client_id]
+                          .full_name
+                      }
+                    </span>
+                  </div>
+                )}
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
@@ -282,20 +342,22 @@ export default function FreelancerActiveJobsPage() {
                 </div>
               </div>
               <div className="flex gap-3 mb-4">
-                <Button 
-                  className="flex-1" 
+                <Button
+                  className="flex-1"
                   variant="outline"
-                  size="lg" 
+                  size="lg"
                   onClick={() => navigate(`/jobs/${activeJob.id}/details`)}
                 >
                   <AlignLeft className="w-4 h-4 mr-2" />
                   Details
                 </Button>
                 {conversations[activeJob.id] && (
-                  <Button 
-                    className="flex-1" 
-                    size="lg" 
-                    onClick={() => navigate(`/chat/${conversations[activeJob.id].id}`)}
+                  <Button
+                    className="flex-1"
+                    size="lg"
+                    onClick={() =>
+                      navigate(`/chat/${conversations[activeJob.id].id}`)
+                    }
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Open Chat
@@ -309,7 +371,7 @@ export default function FreelancerActiveJobsPage() {
         {/* C. History of help (collapsed by default) */}
         {pastJobs.length > 0 && (
           <Card className="border-0 shadow-lg">
-            <CardHeader 
+            <CardHeader
               className="cursor-pointer"
               onClick={() => setPastJobsExpanded(!pastJobsExpanded)}
             >
@@ -327,21 +389,31 @@ export default function FreelancerActiveJobsPage() {
                 {pastJobs.map((job) => {
                   const statusBadge = getJobStatusBadge(job.status);
                   return (
-                    <div key={job.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div
+                      key={job.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                    >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{new Date(job.created_at).toLocaleDateString()}</span>
-                          <span className="text-sm text-muted-foreground truncate">{formatJobTitle(job)}</span>
+                          <span className="font-medium text-sm">
+                            {new Date(job.created_at).toLocaleDateString()}
+                          </span>
+                          <span className="text-sm text-muted-foreground truncate">
+                            {formatJobTitle(job)}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={statusBadge.variant} className="text-xs">
+                          <Badge
+                            variant={statusBadge.variant}
+                            className="text-xs"
+                          >
                             {statusBadge.label}
                           </Badge>
                         </div>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="ml-4 font-bold h-8 px-3"
                         onClick={() => navigate(`/jobs/${job.id}/details`)}
                       >
@@ -362,7 +434,9 @@ export default function FreelancerActiveJobsPage() {
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <Calendar className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Nothing in Helping now</h3>
+              <h3 className="font-semibold text-lg mb-2">
+                Nothing in Helping now
+              </h3>
               <p className="text-muted-foreground mb-4">
                 You'll see jobs here once clients select you.
               </p>

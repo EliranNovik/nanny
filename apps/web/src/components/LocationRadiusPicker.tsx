@@ -1,6 +1,9 @@
 import { useCallback, useRef, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
-import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_SCRIPT_ID } from "@/lib/googleMapsLoader";
+import {
+  GOOGLE_MAPS_LIBRARIES,
+  GOOGLE_MAPS_SCRIPT_ID,
+} from "@/lib/googleMapsLoader";
 import { Loader2, MapPin, Navigation } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
@@ -28,7 +31,11 @@ interface Props {
 
 const RADIUS_OPTIONS = [1, 2, 5, 10, 15, 20, 30, 50];
 
-export function LocationRadiusPicker({ value, onChange, variant = "default" }: Props) {
+export function LocationRadiusPicker({
+  value,
+  onChange,
+  variant = "default",
+}: Props) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const circleRef = useRef<google.maps.Circle | null>(null);
   const minimal = variant === "minimal";
@@ -40,13 +47,17 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
   });
 
   const center =
-    value.lat != null && value.lng != null ? { lat: value.lat, lng: value.lng } : DEFAULT_CENTER;
+    value.lat != null && value.lng != null
+      ? { lat: value.lat, lng: value.lng }
+      : DEFAULT_CENTER;
 
   useEffect(() => {
     if (!isLoaded || !mapRef.current) return;
 
     const stroke = minimal ? "#64748b" : "#f97316";
-    const fill = minimal ? "rgba(100, 116, 139, 0.12)" : "rgba(249, 115, 22, 0.14)";
+    const fill = minimal
+      ? "rgba(100, 116, 139, 0.12)"
+      : "rgba(249, 115, 22, 0.14)";
 
     if (circleRef.current) {
       circleRef.current.setCenter(center);
@@ -92,21 +103,21 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
         onChange({ ...value, address, lat, lng });
       });
     },
-    [onChange, value]
+    [onChange, value],
   );
 
   const handleMapClick = useCallback(
     (e: google.maps.MapMouseEvent) => {
       if (e.latLng) applyPosition(e.latLng.lat(), e.latLng.lng());
     },
-    [applyPosition]
+    [applyPosition],
   );
 
   const handleMarkerDragEnd = useCallback(
     (e: google.maps.MapMouseEvent) => {
       if (e.latLng) applyPosition(e.latLng.lat(), e.latLng.lng());
     },
-    [applyPosition]
+    [applyPosition],
   );
 
   const handleUseMyLocation = useCallback(() => {
@@ -118,7 +129,10 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
     });
   }, [applyPosition]);
 
-  if (loadError) return <p className="text-sm text-destructive">Error loading Google Maps</p>;
+  if (loadError)
+    return (
+      <p className="text-sm text-destructive">Error loading Google Maps</p>
+    );
 
   if (!isLoaded) {
     return (
@@ -134,7 +148,7 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
       <div
         className={cn(
           "overflow-hidden rounded-2xl border bg-muted/10",
-          minimal ? "border-border/50 shadow-none" : "border-border/60"
+          minimal ? "border-border/50 shadow-none" : "border-border/60",
         )}
       >
         <GoogleMap
@@ -158,7 +172,10 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
           />
         </GoogleMap>
         <p className="flex items-start gap-2 border-t border-border/40 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
-          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/80" aria-hidden />
+          <MapPin
+            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/80"
+            aria-hidden
+          />
           <span>Tap the map or drag the pin to set your area center.</span>
         </p>
       </div>
@@ -174,7 +191,9 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
           <Navigation className="h-3.5 w-3.5 opacity-70" />
           Use my location
         </Button>
-        <span className="text-[13px] font-semibold tabular-nums tracking-tight text-foreground/90">{value.radius} km</span>
+        <span className="text-[13px] font-semibold tabular-nums tracking-tight text-foreground/90">
+          {value.radius} km
+        </span>
       </div>
 
       <div className="space-y-3">
@@ -185,7 +204,9 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
           max={50}
           step={1}
           value={value.radius}
-          onChange={(e) => onChange({ ...value, radius: Number(e.target.value) })}
+          onChange={(e) =>
+            onChange({ ...value, radius: Number(e.target.value) })
+          }
         />
         <div className="flex flex-wrap gap-1.5">
           {RADIUS_OPTIONS.map((r) => {
@@ -199,7 +220,7 @@ export function LocationRadiusPicker({ value, onChange, variant = "default" }: P
                   "rounded-full px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors",
                   active
                     ? "bg-foreground text-background shadow-sm dark:bg-foreground dark:text-background"
-                    : "border border-border/60 bg-background/50 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
+                    : "border border-border/60 bg-background/50 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground",
                 )}
               >
                 {r} km

@@ -9,7 +9,7 @@ export function NotificationListener() {
   const { user, profile } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
-  
+
   // Refs to avoid duplicate toasts for the same event
   const processedNotificationIds = useRef<Set<string>>(new Set());
   const processedMessageIds = useRef<Set<string>>(new Set());
@@ -43,7 +43,7 @@ export function NotificationListener() {
 
           addToast({
             title: "New Message",
-            description: `${sender?.full_name || "Someone"} sent you a message: "${newMsg.body?.substring(0, 30)}${newMsg.body?.length > 30 ? '...' : ''}"`,
+            description: `${sender?.full_name || "Someone"} sent you a message: "${newMsg.body?.substring(0, 30)}${newMsg.body?.length > 30 ? "..." : ""}"`,
             variant: "info",
             duration: 5000,
             action: {
@@ -51,7 +51,7 @@ export function NotificationListener() {
               onClick: () => navigate(`/chat/${newMsg.conversation_id}`),
             },
           });
-        }
+        },
       )
       .subscribe();
 
@@ -89,7 +89,7 @@ export function NotificationListener() {
                 onClick: () => navigate(buildJobsUrl("freelancer", "requests")),
               },
             });
-          }
+          },
         )
         .subscribe();
     }
@@ -132,11 +132,12 @@ export function NotificationListener() {
                 duration: 6000,
                 action: {
                   label: "Review",
-                  onClick: () => navigate(buildJobsUrl("client", "my_requests")),
+                  onClick: () =>
+                    navigate(buildJobsUrl("client", "my_requests")),
                 },
               });
             }
-          }
+          },
         )
         .subscribe();
     }
@@ -154,20 +155,22 @@ export function NotificationListener() {
         async (payload) => {
           const oldJob = payload.old as any;
           const newJob = payload.new as any;
-          
+
           // Only notify if status changed and user is involved
-          const isInvolved = newJob.client_id === user.id || newJob.selected_freelancer_id === user.id;
+          const isInvolved =
+            newJob.client_id === user.id ||
+            newJob.selected_freelancer_id === user.id;
           if (!isInvolved || oldJob.status === newJob.status) return;
 
           let title = "Job Update";
           let message = `Job status changed to ${newJob.status}`;
           let targetTab: "jobs" | "past" = "jobs";
 
-          if (newJob.status === 'locked' || newJob.status === 'active') {
+          if (newJob.status === "locked" || newJob.status === "active") {
             title = "Job Confirmed! 🎉";
-            message = `Your ${newJob.care_type || 'job'} is now confirmed and ready.`;
+            message = `Your ${newJob.care_type || "job"} is now confirmed and ready.`;
             targetTab = "jobs";
-          } else if (newJob.status === 'completed') {
+          } else if (newJob.status === "completed") {
             title = "Job Completed ✨";
             message = "The job has been marked as finished.";
             targetTab = "past";
@@ -183,11 +186,11 @@ export function NotificationListener() {
             variant: "success",
             duration: 6000,
             action: {
-                label: "Go to Job",
-                onClick: () => navigate(buildJobsUrl(mode, targetTab)),
-            }
+              label: "Go to Job",
+              onClick: () => navigate(buildJobsUrl(mode, targetTab)),
+            },
           });
-        }
+        },
       )
       .subscribe();
 
@@ -201,4 +204,3 @@ export function NotificationListener() {
 
   return null;
 }
-

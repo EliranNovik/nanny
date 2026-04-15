@@ -58,7 +58,7 @@ type PostWithExtras = PostRow & {
 
 /** Same grey card shell as public profile history rows. */
 const profileCardShellClass =
-  "group border-none shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.35)] rounded-[24px] overflow-hidden bg-card/80 transition-all";
+  "group border border-slate-200/80 dark:border-white/5 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80 rounded-[20px] overflow-hidden bg-white dark:bg-zinc-900 transition-all duration-300";
 
 /** Newest interest per post for this user (from `community_post_hire_interests`, ordered by created_at desc). */
 type HireInterestState =
@@ -66,9 +66,7 @@ type HireInterestState =
   | { status: "confirmed"; job_request_id: string }
   | { status: "declined" };
 
-function mapProfileRowFromDb(
-  p: Record<string, unknown>
-): ProfileRow {
+function mapProfileRowFromDb(p: Record<string, unknown>): ProfileRow {
   return {
     id: p.id as string,
     full_name: (p.full_name as string | null) ?? null,
@@ -92,15 +90,19 @@ export default function LikedPage() {
   const [posts, setPosts] = useState<PostWithExtras[]>([]);
   const [busyProfileId, setBusyProfileId] = useState<string | null>(null);
   const [busyPostId, setBusyPostId] = useState<string | null>(null);
-  const [openingChatProfileId, setOpeningChatProfileId] = useState<string | null>(null);
+  const [openingChatProfileId, setOpeningChatProfileId] = useState<
+    string | null
+  >(null);
   /** Tapping the card (outside links/buttons) reveals "Remove from saved". */
-  const [profileCardMenuId, setProfileCardMenuId] = useState<string | null>(null);
+  const [profileCardMenuId, setProfileCardMenuId] = useState<string | null>(
+    null,
+  );
   const [hireInterestByPostId, setHireInterestByPostId] = useState<
     Record<string, HireInterestState>
   >({});
-  const [conversationIdByJobId, setConversationIdByJobId] = useState<Record<string, string>>(
-    {}
-  );
+  const [conversationIdByJobId, setConversationIdByJobId] = useState<
+    Record<string, string>
+  >({});
   const [savedTab, setSavedTab] = useState<"posts" | "profiles">("profiles");
 
   const load = useCallback(async () => {
@@ -132,9 +134,11 @@ export default function LikedPage() {
       if (postFavRes.error) throw postFavRes.error;
 
       const favUserIds = (profFavRes.data ?? []).map(
-        (r) => r.favorite_user_id as string
+        (r) => r.favorite_user_id as string,
       );
-      const favPostIds = (postFavRes.data ?? []).map((r) => r.post_id as string);
+      const favPostIds = (postFavRes.data ?? []).map(
+        (r) => r.post_id as string,
+      );
 
       if (favUserIds.length === 0) {
         setProfiles([]);
@@ -142,7 +146,7 @@ export default function LikedPage() {
         const { data: profs, error: pe } = await supabase
           .from("profiles")
           .select(
-            "id, full_name, photo_url, role, average_rating, total_ratings, whatsapp_number_e164, telegram_username"
+            "id, full_name, photo_url, role, average_rating, total_ratings, whatsapp_number_e164, telegram_username",
           )
           .in("id", favUserIds);
         if (pe) throw pe;
@@ -150,7 +154,7 @@ export default function LikedPage() {
           (profs ?? []).map((p) => [
             p.id as string,
             mapProfileRowFromDb(p as Record<string, unknown>),
-          ])
+          ]),
         );
         const ordered: ProfileRow[] = [];
         for (const id of favUserIds) {
@@ -168,7 +172,7 @@ export default function LikedPage() {
         const { data: postRows, error: postErr } = await supabase
           .from("community_posts")
           .select(
-            "id, author_id, category, title, body, note, created_at, expires_at, status, availability_payload"
+            "id, author_id, category, title, body, note, created_at, expires_at, status, availability_payload",
           )
           .in("id", favPostIds);
         if (postErr) throw postErr;
@@ -203,16 +207,18 @@ export default function LikedPage() {
         const authorMap = new Map(authorsData.map((a) => [a.id, a]));
         const firstImage = new Map<string, string>();
         for (const row of imageRows) {
-          if (!firstImage.has(row.post_id)) firstImage.set(row.post_id, row.image_url);
+          if (!firstImage.has(row.post_id))
+            firstImage.set(row.post_id, row.image_url);
         }
 
         setPosts(
           list.map((p) => ({
             ...p,
-            availability_payload: (p.availability_payload as AvailabilityPayload) ?? null,
+            availability_payload:
+              (p.availability_payload as AvailabilityPayload) ?? null,
             author: authorMap.get(p.author_id) ?? null,
             coverImage: firstImage.get(p.id) ?? null,
-          }))
+          })),
         );
 
         const hireMap: Record<string, HireInterestState> = {};
@@ -242,7 +248,10 @@ export default function LikedPage() {
         setHireInterestByPostId(hireMap);
 
         const confirmedJobIds = Object.values(hireMap)
-          .filter((h): h is Extract<HireInterestState, { status: "confirmed" }> => h.status === "confirmed")
+          .filter(
+            (h): h is Extract<HireInterestState, { status: "confirmed" }> =>
+              h.status === "confirmed",
+          )
           .map((h) => h.job_request_id);
         if (confirmedJobIds.length > 0) {
           const { data: convos, error: convErr } = await supabase
@@ -342,7 +351,8 @@ export default function LikedPage() {
     if (!user?.id || !profile?.role) {
       addToast({
         title: "Please wait",
-        description: "Sign in and wait for your profile to load, then try again.",
+        description:
+          "Sign in and wait for your profile to load, then try again.",
         variant: "default",
       });
       return;
@@ -371,7 +381,8 @@ export default function LikedPage() {
     if (myRole === theirRole) {
       addToast({
         title: "Messaging unavailable",
-        description: "You can only message someone in the opposite role (client ↔ helper).",
+        description:
+          "You can only message someone in the opposite role (client ↔ helper).",
         variant: "default",
       });
       return;
@@ -437,7 +448,10 @@ export default function LikedPage() {
         {profile?.role === "freelancer" ? "Jobs" : "Find helpers"}
       </Link>{" "}
       or{" "}
-      <Link to="/public/posts" className="font-semibold text-primary underline-offset-4 hover:underline">
+      <Link
+        to="/public/posts"
+        className="font-semibold text-primary underline-offset-4 hover:underline"
+      >
         community offers
       </Link>{" "}
       to save things here.
@@ -445,18 +459,17 @@ export default function LikedPage() {
   );
 
   /** Show pinned tabs while loading (immediate) or when there is anything saved; hide only after load if empty. */
-  const showSavedTabs =
-    loading || profiles.length > 0 || posts.length > 0;
+  const showSavedTabs = loading || profiles.length > 0 || posts.length > 0;
 
   return (
-    <div className="relative min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="relative min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       {showSavedTabs && (
         <div
           className={cn(
             "fixed inset-x-0 z-[45] pointer-events-none",
             "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
             "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
-            "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+            "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]",
           )}
         >
           <div className="app-desktop-shell pointer-events-auto">
@@ -468,38 +481,22 @@ export default function LikedPage() {
               >
                 <div
                   className={cn(
-                    "relative mx-auto grid min-h-[62px] w-full max-w-[22rem] grid-cols-2 gap-0.5 overflow-hidden rounded-full p-1 sm:max-w-[24rem] sm:min-h-[70px]",
-                    "border border-white/20 shadow-2xl backdrop-blur-md",
-                    "transition-shadow duration-300",
-                    savedTab === "posts" ? "shadow-rose-900/30" : "shadow-rose-900/28"
+                    "relative mx-auto grid min-h-[56px] w-full max-w-[22rem] grid-cols-2 gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[24rem] sm:min-h-[64px]",
+                    "bg-slate-100/80 border border-slate-200/60 shadow-inner",
+                    "dark:bg-zinc-900/50 dark:border-zinc-800/60 leading-none",
                   )}
                 >
                   <div
-                    className={cn(
-                      "pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-gradient-to-r from-rose-500 to-red-600",
-                      "transition-opacity duration-300 ease-out",
-                      savedTab === "posts" ? "opacity-100" : "opacity-0"
-                    )}
-                    aria-hidden
-                  />
-                  <div
-                    className={cn(
-                      "pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-gradient-to-r from-rose-600 via-red-600 to-rose-900",
-                      "transition-opacity duration-300 ease-out",
-                      savedTab === "profiles" ? "opacity-100" : "opacity-0"
-                    )}
-                    aria-hidden
-                  />
-                  <div
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute top-1 bottom-1 left-1 z-[5] rounded-full",
-                      "w-[calc((100%-0.625rem)/2)] will-change-transform",
-                      "bg-white/20 shadow-inner backdrop-blur-sm ring-1 ring-white/35",
-                      "transition-[transform] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+                      "pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 z-[5] rounded-[9999px]",
+                      "w-[calc((100%-1rem)/2)] will-change-transform",
+                      "bg-white shadow-sm ring-1 ring-slate-900/5",
+                      "dark:bg-zinc-800 dark:ring-white/10 dark:shadow-none",
+                      "transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
                       savedTab === "posts"
                         ? "translate-x-0"
-                        : "translate-x-[calc(100%+0.125rem)]"
+                        : "translate-x-[calc(100%+0.25rem)]",
                     )}
                   />
                   <button
@@ -517,27 +514,29 @@ export default function LikedPage() {
                     className={cn(
                       "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
                       "transition-[color,transform] duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                       "active:scale-[0.98] motion-reduce:transition-none",
                       savedTab === "posts"
-                        ? "gap-1.5 text-white sm:gap-2"
-                        : "gap-1.5 text-white/65 hover:text-white/85 sm:gap-2"
+                        ? "gap-2.5 text-slate-900 dark:text-white sm:gap-3"
+                        : "gap-2.5 text-slate-500 hover:text-slate-700 sm:gap-3 dark:text-zinc-400 dark:hover:text-zinc-200",
                     )}
                   >
                     <Sparkles
                       className={cn(
-                        "h-6 w-6 shrink-0 text-white transition-transform duration-300 sm:h-7 sm:w-7",
-                        savedTab === "posts" && "scale-105 drop-shadow-sm"
+                        "h-5 w-5 shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
+                        savedTab === "posts"
+                          ? "text-rose-500 dark:text-rose-500"
+                          : "text-slate-400 dark:text-zinc-500",
                       )}
                       strokeWidth={2.25}
                       aria-hidden
                     />
                     {savedTab === "posts" && (
                       <>
-                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-base">
+                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-[15px]">
                           Posts
                         </span>
-                        <span className="shrink-0 tabular-nums text-xs font-black text-white/95 sm:text-sm">
+                        <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
                           ({loading ? "…" : posts.length})
                         </span>
                       </>
@@ -558,27 +557,29 @@ export default function LikedPage() {
                     className={cn(
                       "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
                       "transition-[color,transform] duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                       "active:scale-[0.98] motion-reduce:transition-none",
                       savedTab === "profiles"
-                        ? "gap-1.5 text-white sm:gap-2"
-                        : "gap-1.5 text-white/65 hover:text-white/85 sm:gap-2"
+                        ? "gap-2.5 text-slate-900 dark:text-white sm:gap-3"
+                        : "gap-2.5 text-slate-500 hover:text-slate-700 sm:gap-3 dark:text-zinc-400 dark:hover:text-zinc-200",
                     )}
                   >
                     <UserRound
                       className={cn(
-                        "h-6 w-6 shrink-0 text-white transition-transform duration-300 sm:h-7 sm:w-7",
-                        savedTab === "profiles" && "scale-105 drop-shadow-sm"
+                        "h-5 w-5 shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
+                        savedTab === "profiles"
+                          ? "text-rose-500 dark:text-rose-500"
+                          : "text-slate-400 dark:text-zinc-500",
                       )}
                       strokeWidth={2.25}
                       aria-hidden
                     />
                     {savedTab === "profiles" && (
                       <>
-                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-base">
+                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-[15px]">
                           Profiles
                         </span>
-                        <span className="shrink-0 tabular-nums text-xs font-black text-white/95 sm:text-sm">
+                        <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
                           ({loading ? "…" : profiles.length})
                         </span>
                       </>
@@ -596,14 +597,14 @@ export default function LikedPage() {
           "app-desktop-shell px-1",
           showSavedTabs
             ? "pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]"
-            : "pt-4 md:pt-6"
+            : "pt-4 md:pt-6",
         )}
       >
         <h1 className="sr-only">Saved</h1>
         <div
           className={cn(
             "mx-auto max-w-2xl px-2 md:px-0",
-            !showSavedTabs && "mt-6"
+            !showSavedTabs && "mt-6",
           )}
         >
           {loading ? (
@@ -614,7 +615,9 @@ export default function LikedPage() {
             <Card className="rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15">
               <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
                 <Sparkles className="h-10 w-10 text-rose-400/80" />
-                <p className="text-base font-semibold text-foreground">Nothing saved yet</p>
+                <p className="text-base font-semibold text-foreground">
+                  Nothing saved yet
+                </p>
                 {emptyHint}
               </CardContent>
             </Card>
@@ -629,9 +632,12 @@ export default function LikedPage() {
                   <Card className="rounded-2xl border border-dashed border-border/60 bg-transparent">
                     <CardContent className="py-12 text-center">
                       <Sparkles className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
-                      <p className="text-sm font-semibold text-foreground">No saved posts</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        No saved posts
+                      </p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Heart a community offer on the public board to see it here.
+                        Heart a community offer on the public board to see it
+                        here.
                       </p>
                     </CardContent>
                   </Card>
@@ -640,11 +646,14 @@ export default function LikedPage() {
                     {posts.map((post) => {
                       const hire = hireInterestByPostId[post.id];
                       const expired =
-                        post.expires_at && !Number.isNaN(Date.parse(post.expires_at))
+                        post.expires_at &&
+                        !Number.isNaN(Date.parse(post.expires_at))
                           ? Date.parse(post.expires_at) <= Date.now()
                           : false;
                       const blurb =
-                        (post.note && post.note.trim()) || (post.body && post.body.trim()) || "";
+                        (post.note && post.note.trim()) ||
+                        (post.body && post.body.trim()) ||
+                        "";
                       const chatId =
                         hire?.status === "confirmed"
                           ? conversationIdByJobId[hire.job_request_id]
@@ -654,7 +663,7 @@ export default function LikedPage() {
                           <Card
                             className={cn(
                               profileCardShellClass,
-                              "border border-transparent hover:border-border/40"
+                              "border border-transparent hover:border-border/40",
                             )}
                           >
                             <CardContent className="p-3 md:p-4">
@@ -664,9 +673,16 @@ export default function LikedPage() {
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-2">
                                         <Avatar className="h-7 w-7 border border-border/60">
-                                          <AvatarImage src={post.author?.photo_url ?? undefined} />
+                                          <AvatarImage
+                                            src={
+                                              post.author?.photo_url ??
+                                              undefined
+                                            }
+                                          />
                                           <AvatarFallback className="bg-rose-500/15 text-[10px] font-black text-rose-700">
-                                            {(post.author?.full_name || "?").charAt(0).toUpperCase()}
+                                            {(post.author?.full_name || "?")
+                                              .charAt(0)
+                                              .toUpperCase()}
                                           </AvatarFallback>
                                         </Avatar>
                                         <p className="flex min-w-0 items-center gap-0.5 truncate text-xs font-bold text-foreground">
@@ -701,7 +717,9 @@ export default function LikedPage() {
                                       className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                                       disabled={busyPostId === post.id}
                                       aria-label="Remove from saved"
-                                      onClick={() => void removePostFavorite(post.id)}
+                                      onClick={() =>
+                                        void removePostFavorite(post.id)
+                                      }
                                     >
                                       {busyPostId === post.id ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -742,8 +760,8 @@ export default function LikedPage() {
                                       <div className="flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/30">
                                         <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
                                         <p className="text-[12px] font-semibold leading-snug text-amber-950 dark:text-amber-100">
-                                          Waiting for confirmation — the helper hasn’t accepted your hire
-                                          request yet.
+                                          Waiting for confirmation — the helper
+                                          hasn’t accepted your hire request yet.
                                         </p>
                                       </div>
                                     )}
@@ -751,27 +769,48 @@ export default function LikedPage() {
                                       <div className="flex items-start gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/30">
                                         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
                                         <p className="text-[12px] font-semibold leading-snug text-emerald-950 dark:text-emerald-100">
-                                          Helper confirmed — your booking is live. You can chat and manage
-                                          it from Jobs.
+                                          Helper confirmed — your booking is
+                                          live. You can chat and manage it from
+                                          Jobs.
                                         </p>
                                       </div>
                                     )}
                                     <div className="flex flex-wrap items-center gap-2">
-                                      {hire?.status === "confirmed" && chatId && (
-                                        <Button size="sm" className="gap-1.5 rounded-full" asChild>
-                                          <Link to={`/chat/${chatId}`}>
-                                            <MessageSquare className="h-3.5 w-3.5" />
-                                            Open chat
-                                          </Link>
-                                        </Button>
-                                      )}
-                                      {hire?.status === "confirmed" && profile?.role === "client" && (
-                                        <Button variant="outline" size="sm" className="rounded-full" asChild>
-                                          <Link to="/client/jobs">View jobs</Link>
-                                        </Button>
-                                      )}
-                                      <Button variant="outline" size="sm" className="rounded-full" asChild>
-                                        <Link to={`/public/posts?post=${post.id}`}>
+                                      {hire?.status === "confirmed" &&
+                                        chatId && (
+                                          <Button
+                                            size="sm"
+                                            className="gap-1.5 rounded-full"
+                                            asChild
+                                          >
+                                            <Link to={`/chat/${chatId}`}>
+                                              <MessageSquare className="h-3.5 w-3.5" />
+                                              Open chat
+                                            </Link>
+                                          </Button>
+                                        )}
+                                      {hire?.status === "confirmed" &&
+                                        profile?.role === "client" && (
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-full"
+                                            asChild
+                                          >
+                                            <Link to="/client/jobs">
+                                              View jobs
+                                            </Link>
+                                          </Button>
+                                        )}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="rounded-full"
+                                        asChild
+                                      >
+                                        <Link
+                                          to={`/public/posts?post=${post.id}`}
+                                        >
                                           <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                                           {hire?.status === "pending"
                                             ? "View post"
@@ -798,7 +837,9 @@ export default function LikedPage() {
                   <Card className="rounded-2xl border border-dashed border-border/60 bg-transparent">
                     <CardContent className="py-12 text-center">
                       <UserRound className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
-                      <p className="text-sm font-semibold text-foreground">No saved profiles</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        No saved profiles
+                      </p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         Save helpers from Find helpers or their public profile.
                       </p>
@@ -814,110 +855,127 @@ export default function LikedPage() {
                             onClick={(e) => {
                               const t = e.target as HTMLElement;
                               if (
-                                t.closest("a, button, [data-skip-profile-card-toggle]")
+                                t.closest(
+                                  "a, button, [data-skip-profile-card-toggle]",
+                                )
                               ) {
                                 return;
                               }
                               setProfileCardMenuId((prev) =>
-                                prev === p.id ? null : p.id
+                                prev === p.id ? null : p.id,
                               );
                             }}
                           >
                             <div className="relative">
                               <div className="flex gap-4">
-                              <Link
-                                to={`/profile/${p.id}`}
-                                className="relative z-10 shrink-0 self-start rounded-full overflow-hidden"
-                              >
-                                {p.photo_url ? (
-                                  <img
-                                    src={p.photo_url}
-                                    alt=""
-                                    className="h-20 w-20 rounded-full object-cover md:h-24 md:w-24"
-                                    loading="lazy"
-                                  />
-                                ) : (
-                                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-muted to-primary/10 text-base font-black text-primary/70 md:h-24 md:w-24 md:text-lg">
-                                    {(p.full_name || "?").slice(0, 2).toUpperCase()}
-                                  </div>
-                                )}
-                              </Link>
-                              <div className="min-w-0 flex-1 pt-0.5">
                                 <Link
                                   to={`/profile/${p.id}`}
-                                  className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 rounded-sm"
+                                  className="relative z-10 shrink-0 self-start rounded-full overflow-hidden"
                                 >
-                                  <h2 className="truncate text-[15px] font-black leading-snug text-slate-900 dark:text-white md:text-[18px] md:leading-snug">
-                                    {p.full_name || "Member"}
-                                  </h2>
-                                </Link>
-                                <div
-                                  className="mt-1.5 flex items-center justify-between gap-2"
-                                  data-skip-profile-card-toggle
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <StarRating
-                                      rating={Number(p.average_rating) || 0}
-                                      totalRatings={p.total_ratings ?? 0}
-                                      size="sm"
-                                      emptyStarClassName="text-muted-foreground/30"
-                                      starClassName="text-amber-500 dark:text-amber-400"
-                                      numberClassName="text-foreground md:text-sm"
-                                      countClassName="text-muted-foreground md:text-sm"
+                                  {p.photo_url ? (
+                                    <img
+                                      src={p.photo_url}
+                                      alt=""
+                                      className="h-20 w-20 rounded-full object-cover md:h-24 md:w-24"
+                                      loading="lazy"
                                     />
-                                  </div>
-                                  <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-                                    <button
-                                      type="button"
-                                      title="Messages"
-                                      aria-label="Open messages"
-                                      disabled={openingChatProfileId === p.id}
-                                      onClick={() => void openDirectChatWithProfile(p)}
-                                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:text-white md:h-11 md:w-11"
-                                    >
-                                      {openingChatProfileId === p.id ? (
-                                        <Loader2 className="h-[1.125rem] w-[1.125rem] animate-spin text-black dark:text-white md:h-5 md:w-5" />
-                                      ) : (
-                                        <MessageSquare className="h-[1.125rem] w-[1.125rem] text-black dark:text-white md:h-5 md:w-5" strokeWidth={2} />
+                                  ) : (
+                                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-muted to-primary/10 text-base font-black text-primary/70 md:h-24 md:w-24 md:text-lg">
+                                      {(p.full_name || "?")
+                                        .slice(0, 2)
+                                        .toUpperCase()}
+                                    </div>
+                                  )}
+                                </Link>
+                                <div className="min-w-0 flex-1 pt-0.5">
+                                  <Link
+                                    to={`/profile/${p.id}`}
+                                    className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 rounded-sm"
+                                  >
+                                    <h2 className="truncate text-[15px] font-black leading-snug text-slate-900 dark:text-white md:text-[18px] md:leading-snug">
+                                      {p.full_name || "Member"}
+                                    </h2>
+                                  </Link>
+                                  <div
+                                    className="mt-1.5 flex items-center justify-between gap-2"
+                                    data-skip-profile-card-toggle
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <StarRating
+                                        rating={Number(p.average_rating) || 0}
+                                        totalRatings={p.total_ratings ?? 0}
+                                        size="sm"
+                                        emptyStarClassName="text-muted-foreground/30"
+                                        starClassName="text-amber-500 dark:text-amber-400"
+                                        numberClassName="text-foreground md:text-sm"
+                                        countClassName="text-muted-foreground md:text-sm"
+                                      />
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+                                      <button
+                                        type="button"
+                                        title="Messages"
+                                        aria-label="Open messages"
+                                        disabled={openingChatProfileId === p.id}
+                                        onClick={() =>
+                                          void openDirectChatWithProfile(p)
+                                        }
+                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:text-white md:h-11 md:w-11"
+                                      >
+                                        {openingChatProfileId === p.id ? (
+                                          <Loader2 className="h-[1.125rem] w-[1.125rem] animate-spin text-black dark:text-white md:h-5 md:w-5" />
+                                        ) : (
+                                          <MessageSquare
+                                            className="h-[1.125rem] w-[1.125rem] text-black dark:text-white md:h-5 md:w-5"
+                                            strokeWidth={2}
+                                          />
+                                        )}
+                                      </button>
+                                      {p.whatsapp_number && (
+                                        <button
+                                          type="button"
+                                          title="WhatsApp"
+                                          aria-label="WhatsApp"
+                                          onClick={() =>
+                                            window.open(
+                                              `https://wa.me/${p.whatsapp_number}`,
+                                              "_blank",
+                                            )
+                                          }
+                                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white md:h-11 md:w-11"
+                                        >
+                                          <WhatsAppIcon
+                                            size={18}
+                                            className="text-black dark:text-white md:hidden"
+                                            aria-hidden
+                                          />
+                                          <WhatsAppIcon
+                                            size={22}
+                                            className="hidden text-black dark:text-white md:block"
+                                            aria-hidden
+                                          />
+                                        </button>
                                       )}
-                                    </button>
-                                    {p.whatsapp_number && (
-                                      <button
-                                        type="button"
-                                        title="WhatsApp"
-                                        aria-label="WhatsApp"
-                                        onClick={() =>
-                                          window.open(
-                                            `https://wa.me/${p.whatsapp_number}`,
-                                            "_blank"
-                                          )
-                                        }
-                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white md:h-11 md:w-11"
-                                      >
-                                        <WhatsAppIcon size={18} className="text-black dark:text-white md:hidden" aria-hidden />
-                                        <WhatsAppIcon size={22} className="hidden text-black dark:text-white md:block" aria-hidden />
-                                      </button>
-                                    )}
-                                    {p.telegram_username && (
-                                      <button
-                                        type="button"
-                                        title="Telegram"
-                                        aria-label="Telegram"
-                                        onClick={() =>
-                                          window.open(
-                                            `https://t.me/${p.telegram_username}`,
-                                            "_blank"
-                                          )
-                                        }
-                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white md:h-11 md:w-11"
-                                      >
-                                        <Send className="h-[1.125rem] w-[1.125rem] translate-x-[-0.5px] translate-y-[0.5px] text-black dark:text-white md:h-5 md:w-5" />
-                                      </button>
-                                    )}
+                                      {p.telegram_username && (
+                                        <button
+                                          type="button"
+                                          title="Telegram"
+                                          aria-label="Telegram"
+                                          onClick={() =>
+                                            window.open(
+                                              `https://t.me/${p.telegram_username}`,
+                                              "_blank",
+                                            )
+                                          }
+                                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition-colors hover:bg-muted/80 active:scale-95 dark:text-white md:h-11 md:w-11"
+                                        >
+                                          <Send className="h-[1.125rem] w-[1.125rem] translate-x-[-0.5px] translate-y-[0.5px] text-black dark:text-white md:h-5 md:w-5" />
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
                               </div>
                             </div>
 
@@ -932,7 +990,9 @@ export default function LikedPage() {
                                   variant="ghost"
                                   className="h-9 w-full justify-center gap-2 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"
                                   disabled={busyProfileId === p.id}
-                                  onClick={() => void removeProfileFavorite(p.id)}
+                                  onClick={() =>
+                                    void removeProfileFavorite(p.id)
+                                  }
                                 >
                                   {busyProfileId === p.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />

@@ -3,11 +3,20 @@ import { useSearchParams } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { badgeCountForJobsTab, useJobsTabCounts } from "@/hooks/useJobsTabCounts";
+import {
+  badgeCountForJobsTab,
+  useJobsTabCounts,
+} from "@/hooks/useJobsTabCounts";
 import type { JobsPerspective } from "./jobsPerspective";
 import { tabsForPerspective } from "./jobsTabConfig";
-import { defaultTabForPerspective, isTabValidForPerspective } from "./jobsPerspective";
-import { JOBS_STEPPER_STRIP_BASE, jobsMobileStepperThemeForTab } from "./jobsMobileStepperTheme";
+import {
+  defaultTabForPerspective,
+  isTabValidForPerspective,
+} from "./jobsPerspective";
+import {
+  JOBS_STEPPER_STRIP_BASE,
+  jobsMobileStepperThemeForTab,
+} from "./jobsMobileStepperTheme";
 
 interface JobsTabBarProps {
   menuAlign?: "left" | "right" | "center";
@@ -31,7 +40,10 @@ export function JobsTabBar({
   const mode = searchParams.get("mode") as JobsPerspective | null;
   const tabFromUrl = searchParams.get("tab");
 
-  const tabs = mode === "freelancer" || mode === "client" ? tabsForPerspective(mode) : null;
+  const tabs =
+    mode === "freelancer" || mode === "client"
+      ? tabsForPerspective(mode)
+      : null;
 
   const activeId =
     tabs && tabFromUrl && isTabValidForPerspective(mode!, tabFromUrl)
@@ -50,7 +62,10 @@ export function JobsTabBar({
   useEffect(() => {
     if (!mode || !tabs) return;
     if (tabFromUrl && isTabValidForPerspective(mode, tabFromUrl)) return;
-    setSearchParams({ mode, tab: defaultTabForPerspective(mode) }, { replace: true });
+    setSearchParams(
+      { mode, tab: defaultTabForPerspective(mode) },
+      { replace: true },
+    );
   }, [mode, tabFromUrl, tabs, setSearchParams]);
 
   if (!tabs || !active || !mode) {
@@ -90,7 +105,7 @@ export function JobsTabBar({
                 aria-label="Jobs section"
                 onChange={(e) => select(e.target.value)}
                 className={cn(
-                  "relative z-[2] h-9 w-full min-w-0 max-w-full cursor-pointer appearance-none border-0 bg-transparent py-1.5 pl-8 pr-10 text-[12px] font-semibold leading-tight text-slate-900 shadow-none outline-none ring-0 focus:ring-0 dark:text-white"
+                  "relative z-[2] h-9 w-full min-w-0 max-w-full cursor-pointer appearance-none border-0 bg-transparent py-1.5 pl-8 pr-10 text-[12px] font-semibold leading-tight text-slate-900 shadow-none outline-none ring-0 focus:ring-0 dark:text-white",
                 )}
               >
                 {tabs.map((tab) => (
@@ -121,7 +136,7 @@ export function JobsTabBar({
             menuAlign === "left" && "items-start",
             menuAlign === "right" && "items-end",
             menuAlign === "center" && "items-center",
-            JOBS_STEPPER_STRIP_BASE
+            JOBS_STEPPER_STRIP_BASE,
           )}
         >
           <div
@@ -129,14 +144,14 @@ export function JobsTabBar({
               "relative w-full max-w-[min(56rem,calc(100vw-2rem))] shrink-0",
               menuAlign === "left" && "mr-auto",
               menuAlign === "right" && "ml-auto",
-              menuAlign === "center" && "mx-auto"
+              menuAlign === "center" && "mx-auto",
             )}
           >
             <div
               className={cn(
                 "relative isolate min-h-[72px] w-full min-w-0 overflow-hidden rounded-full p-2 md:min-h-[76px]",
                 "border border-slate-200/90 bg-slate-100/85 shadow-sm shadow-black/5 transition-[box-shadow] duration-300",
-                "dark:border-border/50 dark:bg-zinc-900/55 dark:shadow-black/25"
+                "dark:border-border/50 dark:bg-zinc-900/55 dark:shadow-black/25",
               )}
               role="tablist"
               aria-label="Jobs sections"
@@ -147,14 +162,14 @@ export function JobsTabBar({
                   "pointer-events-none absolute top-2 bottom-2 z-[5] rounded-full",
                   "shadow-md shadow-black/15 ring-1 ring-white/25 dark:ring-white/10",
                   "transition-[left,width] duration-300 [transition-timing-function:cubic-bezier(0.33,1,0.68,1)]",
-                  stepperTheme.pillGradient
+                  stepperTheme.pillGradient,
                 )}
                 style={thumbStyle}
               />
               <div
                 className={cn(
                   "relative z-10 grid h-full min-h-[58px] w-full gap-0.5 md:min-h-[62px]",
-                  gridColsClass
+                  gridColsClass,
                 )}
               >
                 {tabs.map((tab) => {
@@ -168,7 +183,9 @@ export function JobsTabBar({
                       type="button"
                       role="tab"
                       aria-selected={selected}
-                      aria-label={count > 0 ? `${tab.label}, ${count} items` : tab.label}
+                      aria-label={
+                        count > 0 ? `${tab.label}, ${count} items` : tab.label
+                      }
                       onClick={() => select(tab.id)}
                       className={cn(
                         "relative z-10 flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full px-1 py-1",
@@ -178,14 +195,14 @@ export function JobsTabBar({
                         "active:scale-[0.98] motion-reduce:transition-none",
                         selected
                           ? "text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
-                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
                       )}
                     >
                       <span className="relative inline-flex shrink-0">
                         <Icon
                           className={cn(
                             "h-6 w-6 shrink-0 transition-transform duration-300 md:h-6 md:w-6",
-                            selected && "scale-105"
+                            selected && "scale-105",
                           )}
                           strokeWidth={2.25}
                           aria-hidden
@@ -194,7 +211,9 @@ export function JobsTabBar({
                           <span
                             className={cn(
                               "absolute -right-0.5 -top-2.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-0.5 text-[9px] font-bold leading-none tabular-nums transition-colors duration-300 md:-top-3 md:h-[18px] md:min-w-[18px] md:text-[10px]",
-                              selected ? itemTheme.countBadgeSelected : itemTheme.countBadgeIdle
+                              selected
+                                ? itemTheme.countBadgeSelected
+                                : itemTheme.countBadgeIdle,
                             )}
                             aria-hidden
                           >
@@ -205,7 +224,7 @@ export function JobsTabBar({
                       <span
                         className={cn(
                           "max-w-full px-0.5 text-center text-[10px] font-semibold leading-tight tracking-tight md:text-[11px]",
-                          "line-clamp-2 break-words [overflow-wrap:anywhere]"
+                          "line-clamp-2 break-words [overflow-wrap:anywhere]",
                         )}
                       >
                         {tab.label}

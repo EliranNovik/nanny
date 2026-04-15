@@ -17,7 +17,13 @@ interface SimpleCalendarProps {
   unavailableTimeSlots?: UnavailableTimeSlot[]; // Array of time slots that are unavailable
 }
 
-export function SimpleCalendar({ selectedDate, onDateSelect, minDate, unavailableDates = [], unavailableTimeSlots = [] }: SimpleCalendarProps) {
+export function SimpleCalendar({
+  selectedDate,
+  onDateSelect,
+  minDate,
+  unavailableDates = [],
+  unavailableTimeSlots = [],
+}: SimpleCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const today = new Date();
@@ -32,8 +38,18 @@ export function SimpleCalendar({ selectedDate, onDateSelect, minDate, unavailabl
   const startingDayOfWeek = firstDayOfMonth.getDay();
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -47,27 +63,39 @@ export function SimpleCalendar({ selectedDate, onDateSelect, minDate, unavailabl
   };
 
   const isDateUnavailable = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    
+    const dateStr = date.toISOString().split("T")[0];
+
     // Check new time slots format
     if (unavailableTimeSlots && unavailableTimeSlots.length > 0) {
-      return unavailableTimeSlots.some(slot => slot.date === dateStr);
+      return unavailableTimeSlots.some((slot) => slot.date === dateStr);
     }
-    
+
     // Fallback to old dates format
     if (unavailableDates && unavailableDates.length > 0) {
-      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      return unavailableDates.some(unavailableDate => {
-        const unavailableOnly = new Date(unavailableDate.getFullYear(), unavailableDate.getMonth(), unavailableDate.getDate());
+      const dateOnly = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      return unavailableDates.some((unavailableDate) => {
+        const unavailableOnly = new Date(
+          unavailableDate.getFullYear(),
+          unavailableDate.getMonth(),
+          unavailableDate.getDate(),
+        );
         return dateOnly.getTime() === unavailableOnly.getTime();
       });
     }
-    
+
     return false;
   };
 
   const isDateDisabled = (date: Date) => {
-    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dateOnly = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+    );
     const minOnly = new Date(min.getFullYear(), min.getMonth(), min.getDate());
     return dateOnly < minOnly || isDateUnavailable(date);
   };
@@ -158,10 +186,13 @@ export function SimpleCalendar({ selectedDate, onDateSelect, minDate, unavailabl
                 "aspect-square rounded-md text-sm font-medium transition-colors relative",
                 "hover:bg-accent hover:text-accent-foreground",
                 disabled && "opacity-30 cursor-not-allowed",
-                unavailable && !disabled && "bg-destructive/20 text-destructive/70",
-                selected && "bg-primary text-primary-foreground hover:bg-primary/90",
+                unavailable &&
+                  !disabled &&
+                  "bg-destructive/20 text-destructive/70",
+                selected &&
+                  "bg-primary text-primary-foreground hover:bg-primary/90",
                 !selected && !disabled && !unavailable && "hover:bg-muted",
-                isTodayDate && !selected && "ring-2 ring-primary/50"
+                isTodayDate && !selected && "ring-2 ring-primary/50",
               )}
               title={unavailable ? "Unavailable" : undefined}
             >
@@ -176,4 +207,3 @@ export function SimpleCalendar({ selectedDate, onDateSelect, minDate, unavailabl
     </div>
   );
 }
-

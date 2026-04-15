@@ -10,7 +10,7 @@ function FakeQrCode() {
   let seed = 1337;
   const rnd = () => {
     seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return (seed / 0x7fffffff) > 0.5;
+    return seed / 0x7fffffff > 0.5;
   };
 
   for (let y = 0; y < cells; y++) {
@@ -49,7 +49,7 @@ function FakeQrCode() {
             width={cell}
             height={cell}
             fill="currentColor"
-          />
+          />,
         );
       }
     }
@@ -79,12 +79,15 @@ export function LandingDownloadAppPromo() {
     <div className="mt-6 w-full md:mt-10">
       <div className="flex max-w-xl flex-col items-start gap-4 md:gap-5">
         <div className="space-y-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-200/90">App</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-200/90">
+            App
+          </p>
           <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
             Get MamaLama on your phone
           </h2>
           <p className="max-w-sm text-sm font-medium text-white/80 drop-shadow-md">
-            Scan the code with your camera to open the app. Use the same login as the website.
+            Scan the code with your camera to open the app. Use the same login
+            as the website.
           </p>
         </div>
 
@@ -92,7 +95,9 @@ export function LandingDownloadAppPromo() {
           <FakeQrCode />
         </div>
 
-        <p className="text-[10px] font-medium text-white/50">Store availability may vary by region.</p>
+        <p className="text-[10px] font-medium text-white/50">
+          Store availability may vary by region.
+        </p>
       </div>
     </div>
   );

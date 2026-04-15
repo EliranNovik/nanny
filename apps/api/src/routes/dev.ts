@@ -1,9 +1,18 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { supabaseAdmin } from "../supabase";
 import { AuthenticatedRequest } from "../middleware/auth";
 
 // Development-only routes for testing
 export const devRouter = Router();
+
+/** Guard: block all dev routes in production environments. */
+devRouter.use((_req: Request, res: Response, next: NextFunction): void => {
+  if (process.env.NODE_ENV === "production") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  next();
+});
 
 // Create a test conversation (for development/testing)
 devRouter.post("/test-conversation", async (req: Request, res: Response): Promise<void> => {
@@ -80,7 +89,7 @@ devRouter.post("/test-conversation", async (req: Request, res: Response): Promis
       client_id: user.id,
       freelancer_id: freelancerId,
     })
-    .select("*")
+    .select("id")
     .single();
 
   if (convoErr) {

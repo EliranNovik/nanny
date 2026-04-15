@@ -12,7 +12,10 @@ import { cn } from "@/lib/utils";
 function Blob({ className }: { className?: string }) {
   return (
     <div
-      className={cn("pointer-events-none absolute rounded-full blur-3xl opacity-40", className)}
+      className={cn(
+        "pointer-events-none absolute rounded-full blur-3xl opacity-40",
+        className,
+      )}
       aria-hidden
     />
   );
@@ -75,13 +78,16 @@ export function AboutUsContent() {
               to find each other
             </h1>
             <p className="text-lg font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-              MamaLama isn’t a stiff listings site—it’s a place to meet real people nearby. Helpers and families each get a
-              simple path in, honest profiles, a spot to see who’s connecting with you, chat that feels like texting a
-              neighbor, and map-first discovery when you care about who’s close.
+              MamaLama isn’t a stiff listings site—it’s a place to meet real
+              people nearby. Helpers and families each get a simple path in,
+              honest profiles, a spot to see who’s connecting with you, chat
+              that feels like texting a neighbor, and map-first discovery when
+              you care about who’s close.
             </p>
             <p className="text-base leading-relaxed text-slate-500 dark:text-slate-400">
-              We wanted something kinder: clear asks, warm responses, and ratings that only show up after you’ve actually
-              spent time helping each other—so trust grows from real life, not buzzwords.
+              We wanted something kinder: clear asks, warm responses, and
+              ratings that only show up after you’ve actually spent time helping
+              each other—so trust grows from real life, not buzzwords.
             </p>
           </div>
 
@@ -103,9 +109,13 @@ export function AboutUsContent() {
                 aria-hidden
               />
               <figcaption className="absolute inset-x-0 bottom-0 p-5 pt-16 text-white">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/85">What we’re about</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/85">
+                  What we’re about
+                </p>
                 <p className="mt-1 text-lg font-black leading-snug drop-shadow-md">
-                  Hands helping hands—<span className="text-orange-200">real care</span> in your community
+                  Hands helping hands—
+                  <span className="text-orange-200">real care</span> in your
+                  community
                 </p>
               </figcaption>
             </figure>
@@ -122,19 +132,27 @@ export function AboutUsContent() {
           </h2>
           <div className="space-y-5 text-base leading-relaxed text-slate-600 dark:text-slate-300">
             <p>
-              Needing a hand shouldn’t mean five open tabs and a stressed group chat. MamaLama keeps the story in one
-              place: you put your ask out there, helpers respond, you sort invites and confirmations together, and you
-              can always see what’s happening from your own little home in the app—without losing the thread.
+              Needing a hand shouldn’t mean five open tabs and a stressed group
+              chat. MamaLama keeps the story in one place: you put your ask out
+              there, helpers respond, you sort invites and confirmations
+              together, and you can always see what’s happening from your own
+              little home in the app—without losing the thread.
             </p>
             <p>
-              When you open <strong className="font-semibold text-slate-800 dark:text-slate-100">Find helpers</strong>,
-              you’re not scrolling endless strangers—you’re pairing a map with real faces and signals that help you pick
-              someone who can genuinely show up. Local, clear, and a bit more like asking around the neighborhood than
-              filling out a form for “the market.”
+              When you open{" "}
+              <strong className="font-semibold text-slate-800 dark:text-slate-100">
+                Find helpers
+              </strong>
+              , you’re not scrolling endless strangers—you’re pairing a map with
+              real faces and signals that help you pick someone who can
+              genuinely show up. Local, clear, and a bit more like asking around
+              the neighborhood than filling out a form for “the market.”
             </p>
             <p>
-              Stars and notes only appear after you’ve been through something together, alongside trust cues we surface
-              when we can—so a helper’s reputation is built from actual kindness shown, not mystery reviews.
+              Stars and notes only appear after you’ve been through something
+              together, alongside trust cues we surface when we can—so a
+              helper’s reputation is built from actual kindness shown, not
+              mystery reviews.
             </p>
           </div>
         </div>
@@ -165,14 +183,23 @@ export function AboutUsContent() {
               <div
                 className={cn(
                   "mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg",
-                  accent
+                  accent,
                 )}
               >
                 <Icon className="h-7 w-7" strokeWidth={2} />
               </div>
-              <div className={cn("absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-30 blur-2xl", bg)} />
-              <h3 className="relative text-lg font-black text-slate-900 dark:text-white">{title}</h3>
-              <p className="relative mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{description}</p>
+              <div
+                className={cn(
+                  "absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-30 blur-2xl",
+                  bg,
+                )}
+              />
+              <h3 className="relative text-lg font-black text-slate-900 dark:text-white">
+                {title}
+              </h3>
+              <p className="relative mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                {description}
+              </p>
             </article>
           ))}
         </div>
@@ -186,16 +213,23 @@ export function AboutUsContent() {
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white">Trust, without the cold stuff</h3>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                Trust, without the cold stuff
+              </h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                We care about who people say they are, profiles you can actually read, and messages that keep everyone
-                comfy before anyone commits time or money. We’re still growing—always nudging the experience from “nice to
-                meet you” to “I’m glad you’re here.”
+                We care about who people say they are, profiles you can actually
+                read, and messages that keep everyone comfy before anyone
+                commits time or money. We’re still growing—always nudging the
+                experience from “nice to meet you” to “I’m glad you’re here.”
               </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3 md:justify-end">
-            {["Families & helpers", "Chat that stays human", "Ratings from real helps"].map((label) => (
+            {[
+              "Families & helpers",
+              "Chat that stays human",
+              "Ratings from real helps",
+            ].map((label) => (
               <span
                 key={label}
                 className="rounded-full border border-emerald-200/80 bg-white/80 px-4 py-2 text-xs font-bold text-emerald-900 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-950/50 dark:text-emerald-100"

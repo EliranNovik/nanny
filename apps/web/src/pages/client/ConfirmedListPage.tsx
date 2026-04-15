@@ -26,51 +26,55 @@ import {
   X,
   Sparkles,
   UploadCloud,
-  Plus
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Textarea } from "@/components/ui/textarea";
 const JobMap = lazy(() => import("@/components/JobMap"));
 const ImageLightboxModal = lazy(() =>
-  import("@/components/ImageLightboxModal").then((m) => ({ default: m.ImageLightboxModal }))
+  import("@/components/ImageLightboxModal").then((m) => ({
+    default: m.ImageLightboxModal,
+  })),
 );
 const FullscreenMapModal = lazy(() =>
-  import("@/components/FullscreenMapModal").then((m) => ({ default: m.FullscreenMapModal }))
+  import("@/components/FullscreenMapModal").then((m) => ({
+    default: m.FullscreenMapModal,
+  })),
 );
 
 export const HOME_SIZES = [
-  { id: '1_room', label: '1 Room' },
-  { id: '2_rooms', label: '2 Rooms' },
-  { id: '3_rooms', label: '3 Rooms' },
-  { id: '4_rooms', label: '4 Rooms' },
-  { id: '5_plus_rooms', label: '5+ Rooms' },
+  { id: "1_room", label: "1 Room" },
+  { id: "2_rooms", label: "2 Rooms" },
+  { id: "3_rooms", label: "3 Rooms" },
+  { id: "4_rooms", label: "4 Rooms" },
+  { id: "5_plus_rooms", label: "5+ Rooms" },
 ];
 
 export const COOKING_WHO_FOR = [
-  { id: 'kids', label: 'Kids' },
-  { id: 'adults', label: 'Adults' },
-  { id: 'family', label: 'Family' },
+  { id: "kids", label: "Kids" },
+  { id: "adults", label: "Adults" },
+  { id: "family", label: "Family" },
 ];
 
 export const DELIVERY_WEIGHTS = [
-  { id: 'light', label: 'Light (up to 5kg)' },
-  { id: 'medium', label: 'Medium (5-15kg)' },
-  { id: 'heavy', label: 'Heavy (15kg+)' },
+  { id: "light", label: "Light (up to 5kg)" },
+  { id: "medium", label: "Medium (5-15kg)" },
+  { id: "heavy", label: "Heavy (15kg+)" },
 ];
 
 export const NANNY_AGE_GROUPS = [
-  { id: '0_1', label: '0-1 years' },
-  { id: '1_3', label: '1-3 years' },
-  { id: '3_6', label: '3-6 years' },
-  { id: '6_plus', label: '6+ years' },
+  { id: "0_1", label: "0-1 years" },
+  { id: "1_3", label: "1-3 years" },
+  { id: "3_6", label: "3-6 years" },
+  { id: "6_plus", label: "6+ years" },
 ];
 
 export const MOBILITY_LEVELS = [
-  { id: 'independent', label: 'Independent' },
-  { id: 'needs_assistance', label: 'Needs Assistance' },
-  { id: 'wheelchair', label: 'Wheelchair Bound' },
-  { id: 'bedridden', label: 'Bedridden' },
+  { id: "independent", label: "Independent" },
+  { id: "needs_assistance", label: "Needs Assistance" },
+  { id: "wheelchair", label: "Wheelchair Bound" },
+  { id: "bedridden", label: "Bedridden" },
 ];
 
 interface FreelancerProfile {
@@ -135,7 +139,7 @@ function freelancerListSignature(rows: Freelancer[]): string {
   return rows
     .map(
       (f) =>
-        `${f.id}\u001f${f.confirmation_note ?? ""}\u001f${f.is_open_job_accepted ? "1" : "0"}`
+        `${f.id}\u001f${f.confirmation_note ?? ""}\u001f${f.is_open_job_accepted ? "1" : "0"}`,
     )
     .join("\u001e");
 }
@@ -149,7 +153,7 @@ export default function ConfirmedListPage() {
   const seededJob = useMemo(
     () => (location.state as { job?: any } | null)?.job ?? null,
     // Re-read when navigation entry changes
-    [location.key]
+    [location.key],
   );
 
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
@@ -202,7 +206,10 @@ export default function ConfirmedListPage() {
         setFreelancers(sorted);
       }
     } catch (err) {
-      console.error("[ConfirmedListPage] Error fetching confirmed freelancers:", err);
+      console.error(
+        "[ConfirmedListPage] Error fetching confirmed freelancers:",
+        err,
+      );
       setError("Failed to load job details");
     } finally {
       fetchInFlight.current = false;
@@ -236,21 +243,29 @@ export default function ConfirmedListPage() {
       const currentDetails = job?.service_details || {};
       const updatedDetails = {
         ...currentDetails,
-        custom: customDetails
+        custom: customDetails,
       };
 
       const { error } = await supabase
-        .from('job_requests')
+        .from("job_requests")
         .update({ service_details: updatedDetails })
-        .eq('id', jobId);
+        .eq("id", jobId);
 
       if (error) throw error;
 
-      addToast({ title: "Details Saved", description: "Your custom details have been added to the request.", variant: "success" });
+      addToast({
+        title: "Details Saved",
+        description: "Your custom details have been added to the request.",
+        variant: "success",
+      });
       fetchJobDirectly();
     } catch (err: any) {
       console.error("[ConfirmedListPage] Error saving details:", err);
-      addToast({ title: "Failed to save details", description: err.message || "An error occurred.", variant: "error" });
+      addToast({
+        title: "Failed to save details",
+        description: err.message || "An error occurred.",
+        variant: "error",
+      });
     } finally {
       setSavingDetails(false);
     }
@@ -263,7 +278,11 @@ export default function ConfirmedListPage() {
 
     const POLL_MS = 5000;
     const tick = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      )
+        return;
       void fetchConfirmed();
     };
     const interval = setInterval(tick, POLL_MS);
@@ -285,40 +304,48 @@ export default function ConfirmedListPage() {
     try {
       const newImages: string[] = [];
       for (const file of files) {
-        const fileExt = file.name.split('.').pop();
+        const fileExt = file.name.split(".").pop();
         const filePath = `${jobId}/${Math.random()}.${fileExt}`;
-        
+
         const { error: uploadError } = await supabase.storage
-          .from('job-images')
+          .from("job-images")
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('job-images')
-          .getPublicUrl(filePath);
-          
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("job-images").getPublicUrl(filePath);
+
         newImages.push(publicUrl);
       }
 
       const currentImages = job?.service_details?.images || [];
       const updatedDetails = {
         ...(job?.service_details || {}),
-        images: [...currentImages, ...newImages]
+        images: [...currentImages, ...newImages],
       };
 
       const { error: dbError } = await supabase
-        .from('job_requests')
+        .from("job_requests")
         .update({ service_details: updatedDetails })
-        .eq('id', jobId);
+        .eq("id", jobId);
 
       if (dbError) throw dbError;
 
-      addToast({ title: "Images Uploaded", description: "Your images have been added to the request.", variant: "success" });
+      addToast({
+        title: "Images Uploaded",
+        description: "Your images have been added to the request.",
+        variant: "success",
+      });
       fetchJobDirectly();
     } catch (err: any) {
       console.error("[ConfirmedListPage] Error uploading images:", err);
-      addToast({ title: "Upload Failed", description: err.message || "Could not upload images.", variant: "error" });
+      addToast({
+        title: "Upload Failed",
+        description: err.message || "Could not upload images.",
+        variant: "error",
+      });
     } finally {
       setSavingDetails(false);
     }
@@ -327,7 +354,7 @@ export default function ConfirmedListPage() {
   // Sync customDetails from job data (v2)
   useEffect(() => {
     if (job?.service_details?.custom !== undefined && customDetails === "") {
-        setCustomDetails(job.service_details.custom || "");
+      setCustomDetails(job.service_details.custom || "");
     }
   }, [job?.service_details?.custom]);
 
@@ -338,7 +365,7 @@ export default function ConfirmedListPage() {
     try {
       const result = await apiPost<{ conversation_id: string }>(
         `/api/jobs/${jobId}/select`,
-        { freelancer_id: freelancerId }
+        { freelancer_id: freelancerId },
       );
       navigate(`/chat/${result.conversation_id}`);
     } catch (err) {
@@ -362,7 +389,9 @@ export default function ConfirmedListPage() {
       setFreelancers((prev) => prev.filter((f) => f.id !== freelancerId));
     } catch (err) {
       console.error("[ConfirmedListPage] Error declining freelancer:", err);
-      setError(err instanceof Error ? err.message : "Failed to decline freelancer");
+      setError(
+        err instanceof Error ? err.message : "Failed to decline freelancer",
+      );
     } finally {
       setDeclining(null);
     }
@@ -416,7 +445,7 @@ export default function ConfirmedListPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">loading request...</p>
@@ -426,7 +455,7 @@ export default function ConfirmedListPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8">
         {/* Timer Header */}
         <div className="text-center mb-8 animate-fade-in">
@@ -436,7 +465,9 @@ export default function ConfirmedListPage() {
               <ElapsedTimer createdAt={job?.created_at} startTime={startTime} />
             </span>
           </div>
-          <h1 className="text-2xl font-bold mb-2">Waiting for Confirmations...</h1>
+          <h1 className="text-2xl font-bold mb-2">
+            Waiting for Confirmations...
+          </h1>
           <p className="text-muted-foreground">
             {freelancers.length === 0
               ? "No freelancers have confirmed availability yet"
@@ -493,7 +524,8 @@ export default function ConfirmedListPage() {
         {freelancers.length > 0 && (
           <div className="flex items-center gap-2 mb-3">
             <span className="text-sm font-medium text-muted-foreground">
-              {freelancers.length} helper{freelancers.length !== 1 ? "s" : ""} available
+              {freelancers.length} helper{freelancers.length !== 1 ? "s" : ""}{" "}
+              available
             </span>
             {freelancers.length > 1 && (
               <Badge variant="secondary" className="text-xs">
@@ -505,18 +537,19 @@ export default function ConfirmedListPage() {
         <div
           className={cn(
             "flex gap-4 overflow-x-auto overflow-y-hidden pb-3 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth mb-8",
-            freelancers.length === 0 && "hidden"
+            freelancers.length === 0 && "hidden",
           )}
           style={{ scrollbarWidth: "thin" }}
         >
           <div className="flex gap-4 flex-shrink-0 pr-1">
             {freelancers.map((freelancer, index) => {
               const fp = freelancer.freelancer_profiles;
-              const initials = freelancer.full_name
-                ?.split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase() || "?";
+              const initials =
+                freelancer.full_name
+                  ?.split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase() || "?";
 
               return (
                 <Card
@@ -525,7 +558,7 @@ export default function ConfirmedListPage() {
                     "flex w-[min(82vw,300px)] flex-shrink-0 snap-start flex-col overflow-hidden",
                     "rounded-[28px] border border-slate-300/45 bg-card shadow-none",
                     "dark:border-zinc-500/35",
-                    "md:shadow-[0_16px_40px_rgba(0,0,0,0.1)] md:dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)]"
+                    "md:shadow-[0_16px_40px_rgba(0,0,0,0.1)] md:dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)]",
                   )}
                 >
                   <CardContent className="flex flex-1 flex-col p-0">
@@ -535,7 +568,7 @@ export default function ConfirmedListPage() {
                       className={cn(
                         "relative w-full shrink-0 overflow-hidden aspect-[3/4] border-0 bg-transparent p-0 text-left",
                         "cursor-pointer rounded-t-[26px] transition-[transform,filter] hover:brightness-[1.02] active:scale-[0.995]",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card",
                       )}
                       onClick={() => navigate(`/profile/${freelancer.id}`)}
                       aria-label={`View public profile of ${freelancer.full_name}`}
@@ -583,7 +616,9 @@ export default function ConfirmedListPage() {
                     <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-3">
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <MapPin className="h-4 w-4 shrink-0 text-primary/80" />
-                        <span className="truncate">{freelancer.city || "Location not set"}</span>
+                        <span className="truncate">
+                          {freelancer.city || "Location not set"}
+                        </span>
                       </div>
 
                       {(fp?.hourly_rate_min || fp?.hourly_rate_max) && (
@@ -601,17 +636,26 @@ export default function ConfirmedListPage() {
 
                       <div className="flex flex-wrap gap-1.5">
                         {fp?.has_first_aid && (
-                          <Badge variant="success" className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+                          <Badge
+                            variant="success"
+                            className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                          >
                             🩹 First Aid
                           </Badge>
                         )}
                         {fp?.newborn_experience && (
-                          <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+                          <Badge
+                            variant="secondary"
+                            className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                          >
                             👶 Newborn
                           </Badge>
                         )}
                         {fp?.special_needs_experience && (
-                          <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+                          <Badge
+                            variant="secondary"
+                            className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                          >
                             💜 Special Needs
                           </Badge>
                         )}
@@ -629,7 +673,7 @@ export default function ConfirmedListPage() {
                             "rounded-2xl border p-3",
                             freelancer.is_open_job_accepted
                               ? "border-amber-500/25 bg-amber-500/10"
-                              : "border-primary/25 bg-primary/8"
+                              : "border-primary/25 bg-primary/8",
                           )}
                         >
                           <p
@@ -637,7 +681,7 @@ export default function ConfirmedListPage() {
                               "mb-1 text-[11px] font-bold uppercase tracking-wide",
                               freelancer.is_open_job_accepted
                                 ? "text-amber-700 dark:text-amber-400"
-                                : "text-primary"
+                                : "text-primary",
                             )}
                           >
                             Note from helper
@@ -647,7 +691,7 @@ export default function ConfirmedListPage() {
                               "text-sm leading-snug",
                               freelancer.is_open_job_accepted
                                 ? "text-amber-900 dark:text-amber-200"
-                                : "text-foreground"
+                                : "text-foreground",
                             )}
                           >
                             {freelancer.confirmation_note}
@@ -661,7 +705,10 @@ export default function ConfirmedListPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDecline(freelancer.id)}
-                        disabled={declining === freelancer.id || selecting === freelancer.id}
+                        disabled={
+                          declining === freelancer.id ||
+                          selecting === freelancer.id
+                        }
                         className="h-11 flex-1 gap-1 rounded-2xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       >
                         {declining === freelancer.id ? (
@@ -674,7 +721,10 @@ export default function ConfirmedListPage() {
                       <Button
                         size="sm"
                         onClick={() => handleSelect(freelancer.id)}
-                        disabled={selecting === freelancer.id || declining === freelancer.id}
+                        disabled={
+                          selecting === freelancer.id ||
+                          declining === freelancer.id
+                        }
                         className="h-11 flex-[1.15] gap-1.5 rounded-2xl font-bold shadow-sm"
                       >
                         {selecting === freelancer.id ? (
@@ -733,7 +783,7 @@ export default function ConfirmedListPage() {
             className={cn(
               "mb-6 w-full overflow-hidden rounded-[32px] border border-slate-300/45 bg-card backdrop-blur-sm shadow-none",
               "dark:border-zinc-500/35",
-              "md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)]"
+              "md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)]",
             )}
           >
             <CardContent className="p-6 md:p-7">
@@ -744,19 +794,19 @@ export default function ConfirmedListPage() {
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <span className="text-xl">
-                      {job.service_type === 'cleaning' && '🧹'}
-                      {job.service_type === 'cooking' && '👨‍🍳'}
-                      {job.service_type === 'pickup_delivery' && '📦'}
-                      {job.service_type === 'nanny' && '👶'}
-                      {job.service_type === 'other_help' && '🔧'}
+                      {job.service_type === "cleaning" && "🧹"}
+                      {job.service_type === "cooking" && "👨‍🍳"}
+                      {job.service_type === "pickup_delivery" && "📦"}
+                      {job.service_type === "nanny" && "👶"}
+                      {job.service_type === "other_help" && "🔧"}
                     </span>
                   </div>
                   <div className="flex-1">
                     <p className="font-medium capitalize">
-                      {job.service_type?.replace('_', ' & ')}
-                      {job.service_type === 'other_help' && job.service_details?.other_type &&
-                        ` - ${job.service_details.other_type.replace(/_/g, ' ').charAt(0).toUpperCase() + job.service_details.other_type.replace(/_/g, ' ').slice(1)}`
-                      }
+                      {job.service_type?.replace("_", " & ")}
+                      {job.service_type === "other_help" &&
+                        job.service_details?.other_type &&
+                        ` - ${job.service_details.other_type.replace(/_/g, " ").charAt(0).toUpperCase() + job.service_details.other_type.replace(/_/g, " ").slice(1)}`}
                     </p>
                     <div className="grid grid-cols-2 gap-2 mt-2 text-sm text-muted-foreground">
                       {job.location_city && (
@@ -768,44 +818,89 @@ export default function ConfirmedListPage() {
                       {job.time_duration && (
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          <span className="capitalize">{job.time_duration.replace(/_/g, ' ')}</span>
+                          <span className="capitalize">
+                            {job.time_duration.replace(/_/g, " ")}
+                          </span>
                         </div>
                       )}
                       {job.care_frequency && (
                         <div>
-                          <span className="capitalize">{job.care_frequency.replace('_', ' ')}</span>
+                          <span className="capitalize">
+                            {job.care_frequency.replace("_", " ")}
+                          </span>
                         </div>
                       )}
                       {job.service_details?.kids_count && (
                         <div>
-                          <span>{job.service_details.kids_count.replace('_', '-')} kids</span>
+                          <span>
+                            {job.service_details.kids_count.replace("_", "-")}{" "}
+                            kids
+                          </span>
                         </div>
                       )}
-                      {job.service_type === 'cleaning' && job.service_details?.home_size && (
-                        <div>
-                          <span>{HOME_SIZES.find(s => s.id === job.service_details.home_size)?.label || job.service_details.home_size.replace(/_/g, ' ')}</span>
-                        </div>
-                      )}
-                      {job.service_type === 'cooking' && job.service_details?.who_for && (
-                        <div>
-                          <span>For: {COOKING_WHO_FOR.find(w => w.id === job.service_details.who_for)?.label || job.service_details.who_for.replace(/_/g, ' ')}</span>
-                        </div>
-                      )}
-                      {job.service_type === 'pickup_delivery' && job.service_details?.weight && (
-                        <div>
-                          <span>{DELIVERY_WEIGHTS.find(w => w.id === job.service_details.weight)?.label || job.service_details.weight.replace(/_/g, ' ')}</span>
-                        </div>
-                      )}
-                      {job.service_type === 'nanny' && job.service_details?.age_group && (
-                        <div>
-                          <span>Ages: {NANNY_AGE_GROUPS.find(g => g.id === job.service_details.age_group)?.label || job.service_details.age_group.replace(/_/g, ' ')}</span>
-                        </div>
-                      )}
-                      {job.service_type === 'other_help' && job.service_details?.mobility_level && (
-                        <div>
-                          <span>{job.service_details.mobility_level.replace(/_/g, ' ')}</span>
-                        </div>
-                      )}
+                      {job.service_type === "cleaning" &&
+                        job.service_details?.home_size && (
+                          <div>
+                            <span>
+                              {HOME_SIZES.find(
+                                (s) => s.id === job.service_details.home_size,
+                              )?.label ||
+                                job.service_details.home_size.replace(
+                                  /_/g,
+                                  " ",
+                                )}
+                            </span>
+                          </div>
+                        )}
+                      {job.service_type === "cooking" &&
+                        job.service_details?.who_for && (
+                          <div>
+                            <span>
+                              For:{" "}
+                              {COOKING_WHO_FOR.find(
+                                (w) => w.id === job.service_details.who_for,
+                              )?.label ||
+                                job.service_details.who_for.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                        )}
+                      {job.service_type === "pickup_delivery" &&
+                        job.service_details?.weight && (
+                          <div>
+                            <span>
+                              {DELIVERY_WEIGHTS.find(
+                                (w) => w.id === job.service_details.weight,
+                              )?.label ||
+                                job.service_details.weight.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                        )}
+                      {job.service_type === "nanny" &&
+                        job.service_details?.age_group && (
+                          <div>
+                            <span>
+                              Ages:{" "}
+                              {NANNY_AGE_GROUPS.find(
+                                (g) => g.id === job.service_details.age_group,
+                              )?.label ||
+                                job.service_details.age_group.replace(
+                                  /_/g,
+                                  " ",
+                                )}
+                            </span>
+                          </div>
+                        )}
+                      {job.service_type === "other_help" &&
+                        job.service_details?.mobility_level && (
+                          <div>
+                            <span>
+                              {job.service_details.mobility_level.replace(
+                                /_/g,
+                                " ",
+                              )}
+                            </span>
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -814,7 +909,7 @@ export default function ConfirmedListPage() {
                   <div
                     className={cn(
                       "mt-4 w-full rounded-2xl border border-slate-200/90 bg-muted/40 p-4 sm:p-5",
-                      "dark:border-border/50 dark:bg-muted/25"
+                      "dark:border-border/50 dark:bg-muted/25",
                     )}
                   >
                     <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
@@ -827,21 +922,32 @@ export default function ConfirmedListPage() {
                 )}
 
                 {/* Pickup/Delivery Addresses */}
-                {job.service_type === 'pickup_delivery' && job.service_details?.from_address && job.service_details?.to_address && (
-                  <div className="mt-4 mb-2 space-y-2 text-sm border-t pt-4">
-                    <div className="flex items-start gap-2">
-                      <span className="text-green-600 font-semibold min-w-[40px]">From:</span>
-                      <span className="flex-1 text-muted-foreground">{job.service_details.from_address}</span>
+                {job.service_type === "pickup_delivery" &&
+                  job.service_details?.from_address &&
+                  job.service_details?.to_address && (
+                    <div className="mt-4 mb-2 space-y-2 text-sm border-t pt-4">
+                      <div className="flex items-start gap-2">
+                        <span className="text-green-600 font-semibold min-w-[40px]">
+                          From:
+                        </span>
+                        <span className="flex-1 text-muted-foreground">
+                          {job.service_details.from_address}
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-600 font-semibold min-w-[40px]">
+                          To:
+                        </span>
+                        <span className="flex-1 text-muted-foreground">
+                          {job.service_details.to_address}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-red-600 font-semibold min-w-[40px]">To:</span>
-                      <span className="flex-1 text-muted-foreground">{job.service_details.to_address}</span>
-                    </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Job Map — tap opens full map modal */}
-                {(job.service_type === 'pickup_delivery' || job.location_city) && (
+                {(job.service_type === "pickup_delivery" ||
+                  job.location_city) && (
                   <div className="relative mt-4 h-28 overflow-hidden rounded-2xl border border-slate-200/80 ring-1 ring-black/5 dark:border-border/40 dark:ring-white/10 shadow-sm">
                     <button
                       type="button"
@@ -874,7 +980,8 @@ export default function ConfirmedListPage() {
                 Additional Job Details
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Add any extra details, instructions, or requirements for this job. These will be visible to helpers.
+                Add any extra details, instructions, or requirements for this
+                job. These will be visible to helpers.
               </p>
               <div className="space-y-4">
                 <Textarea
@@ -884,11 +991,17 @@ export default function ConfirmedListPage() {
                   onChange={(e) => setCustomDetails(e.target.value)}
                 />
                 <div className="flex justify-end pt-2 border-t">
-                  <Button 
-                    onClick={handleSaveDetails} 
-                    disabled={savingDetails || customDetails.trim() === (job?.service_details?.custom || "").trim()}
+                  <Button
+                    onClick={handleSaveDetails}
+                    disabled={
+                      savingDetails ||
+                      customDetails.trim() ===
+                        (job?.service_details?.custom || "").trim()
+                    }
                   >
-                    {savingDetails ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    {savingDetails ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : null}
                     Save Notes
                   </Button>
                 </div>
@@ -906,7 +1019,8 @@ export default function ConfirmedListPage() {
                 Job Images
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Upload photos to help helpers understand the task better (e.g., items to pick up, area to clean).
+                Upload photos to help helpers understand the task better (e.g.,
+                items to pick up, area to clean).
               </p>
 
               <div className="space-y-6">
@@ -924,29 +1038,51 @@ export default function ConfirmedListPage() {
                 />
 
                 <div
-                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-primary', 'bg-primary/5'); }}
-                  onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove('border-primary', 'bg-primary/5'); }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add(
+                      "border-primary",
+                      "bg-primary/5",
+                    );
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove(
+                      "border-primary",
+                      "bg-primary/5",
+                    );
+                  }}
                   onDrop={async (e) => {
                     e.preventDefault();
-                    e.currentTarget.classList.remove('border-primary', 'bg-primary/5');
-                    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                    e.currentTarget.classList.remove(
+                      "border-primary",
+                      "bg-primary/5",
+                    );
+                    const files = Array.from(e.dataTransfer.files).filter((f) =>
+                      f.type.startsWith("image/"),
+                    );
                     if (files.length > 0 && jobId) await handleFiles(files);
                   }}
                   className={cn(
                     "relative group cursor-pointer transition-all duration-300",
                     "border-2 border-dashed border-border/60 hover:border-primary/50 hover:bg-primary/5",
                     "rounded-[2.5rem] p-10 text-center flex flex-col items-center justify-center gap-3",
-                    savingDetails && "opacity-50 pointer-events-none"
+                    savingDetails && "opacity-50 pointer-events-none",
                   )}
-                  onClick={() => document.getElementById('job-image-upload')?.click()}
+                  onClick={() =>
+                    document.getElementById("job-image-upload")?.click()
+                  }
                 >
                   <div className="w-20 h-20 rounded-[1.8rem] bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-500">
                     <UploadCloud className="w-10 h-10" />
                   </div>
                   <div>
-                    <h4 className="text-lg font-bold text-foreground">Drag & Drop or Add Photos</h4>
+                    <h4 className="text-lg font-bold text-foreground">
+                      Drag & Drop or Add Photos
+                    </h4>
                     <p className="text-sm text-muted-foreground mt-1 px-4">
-                      Tap to choose camera or library — or drag files here on desktop
+                      Tap to choose camera or library — or drag files here on
+                      desktop
                     </p>
                   </div>
                   <Button
@@ -963,55 +1099,84 @@ export default function ConfirmedListPage() {
                     <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px] rounded-[2.5rem] flex items-center justify-center z-10">
                       <div className="flex flex-col items-center gap-2">
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        <span className="text-xs font-bold text-primary uppercase tracking-widest">Uploading...</span>
+                        <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                          Uploading...
+                        </span>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {job?.service_details?.images && job.service_details.images.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
-                    {job.service_details.images.map((img: string, idx: number) => (
-                      <div key={idx} className="relative aspect-square rounded-[1.5rem] overflow-hidden border border-black/10 dark:border-white/10 group cursor-zoom-in shadow-sm hover:shadow-md transition-all">
-                        <img
-                          src={img}
-                          alt={`Job detail ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                          onClick={() => setLightboxIndex(idx)}
-                        />
-                        <div className="absolute inset-x-0 top-0 p-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                           <button
-                             className="bg-black/50 hover:bg-black/70 backdrop-blur-md text-white rounded-full p-2 shadow-lg scale-90 hover:scale-100 transition-all"
-                             onClick={async (e) => {
-                                e.stopPropagation();
-                                if(!confirm("Are you sure you want to remove this image?")) return;
-                                setSavingDetails(true);
-                                try {
-                                    const newImgList = job.service_details.images.filter((_: any, i: number) => i !== idx);
-                                    const updatedDetails = { ...job.service_details, images: newImgList };
+                {job?.service_details?.images &&
+                  job.service_details.images.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
+                      {job.service_details.images.map(
+                        (img: string, idx: number) => (
+                          <div
+                            key={idx}
+                            className="relative aspect-square rounded-[1.5rem] overflow-hidden border border-black/10 dark:border-white/10 group cursor-zoom-in shadow-sm hover:shadow-md transition-all"
+                          >
+                            <img
+                              src={img}
+                              alt={`Job detail ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                              onClick={() => setLightboxIndex(idx)}
+                            />
+                            <div className="absolute inset-x-0 top-0 p-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                className="bg-black/50 hover:bg-black/70 backdrop-blur-md text-white rounded-full p-2 shadow-lg scale-90 hover:scale-100 transition-all"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    !confirm(
+                                      "Are you sure you want to remove this image?",
+                                    )
+                                  )
+                                    return;
+                                  setSavingDetails(true);
+                                  try {
+                                    const newImgList =
+                                      job.service_details.images.filter(
+                                        (_: any, i: number) => i !== idx,
+                                      );
+                                    const updatedDetails = {
+                                      ...job.service_details,
+                                      images: newImgList,
+                                    };
 
                                     const { error } = await supabase
-                                        .from('job_requests')
-                                        .update({ service_details: updatedDetails })
-                                        .eq('id', jobId);
+                                      .from("job_requests")
+                                      .update({
+                                        service_details: updatedDetails,
+                                      })
+                                      .eq("id", jobId);
 
                                     if (error) throw error;
-                                    addToast({ title: "Image Removed", description: "Image successfully deleted", variant: "success" });
+                                    addToast({
+                                      title: "Image Removed",
+                                      description: "Image successfully deleted",
+                                      variant: "success",
+                                    });
                                     fetchJobDirectly();
-                                } catch (err: any) {
-                                    addToast({ title: "Error", description: err.message, variant: "error" });
-                                } finally {
+                                  } catch (err: any) {
+                                    addToast({
+                                      title: "Error",
+                                      description: err.message,
+                                      variant: "error",
+                                    });
+                                  } finally {
                                     setSavingDetails(false);
-                                }
-                             }}
-                           >
-                             <X className="w-4 h-4" />
-                           </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                                  }
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  )}
               </div>
             </CardContent>
           </Card>
@@ -1035,8 +1200,7 @@ export default function ConfirmedListPage() {
             />
           </Suspense>
         )}
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }
-

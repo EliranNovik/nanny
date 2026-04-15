@@ -29,6 +29,8 @@ export const CLIENT_JOBS_TABS: readonly JobsTabConfigItem[] = [
   { id: "past", label: "History of help", icon: CheckCircle2 },
 ];
 
-export function tabsForPerspective(mode: JobsPerspective): readonly JobsTabConfigItem[] {
+export function tabsForPerspective(
+  mode: JobsPerspective,
+): readonly JobsTabConfigItem[] {
   return mode === "client" ? CLIENT_JOBS_TABS : FREELANCER_JOBS_TABS;
 }

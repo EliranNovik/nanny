@@ -13,16 +13,27 @@ interface ProfileImageCropModalProps {
 const FRAME_SIZE = 280;
 const OUTPUT_SIZE = 512;
 
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
 
-export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: ProfileImageCropModalProps) {
+export function ProfileImageCropModal({
+  file,
+  open,
+  onCancel,
+  onConfirm,
+}: ProfileImageCropModalProps) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const dragStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const dragStart = useRef<{
+    x: number;
+    y: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
   const zoomPct = Math.round(((zoom - 1) / 1.5) * 100);
 
   useEffect(() => {
@@ -76,7 +87,12 @@ export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: Profi
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (!rendered) return;
     setDragging(true);
-    dragStart.current = { x: e.clientX, y: e.clientY, panX: rendered.panX, panY: rendered.panY };
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: rendered.panX,
+      panY: rendered.panY,
+    };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
@@ -85,8 +101,16 @@ export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: Profi
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
     setPan({
-      x: clamp(dragStart.current.panX + dx, -rendered.maxPanX, rendered.maxPanX),
-      y: clamp(dragStart.current.panY + dy, -rendered.maxPanY, rendered.maxPanY),
+      x: clamp(
+        dragStart.current.panX + dx,
+        -rendered.maxPanX,
+        rendered.maxPanX,
+      ),
+      y: clamp(
+        dragStart.current.panY + dy,
+        -rendered.maxPanY,
+        rendered.maxPanY,
+      ),
     });
   }
 
@@ -115,7 +139,8 @@ export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: Profi
         img.src = objectUrl || "";
       });
 
-      const scale = Math.max(OUTPUT_SIZE / imgSize.w, OUTPUT_SIZE / imgSize.h) * zoom;
+      const scale =
+        Math.max(OUTPUT_SIZE / imgSize.w, OUTPUT_SIZE / imgSize.h) * zoom;
       const drawW = imgSize.w * scale;
       const drawH = imgSize.h * scale;
       const factor = OUTPUT_SIZE / FRAME_SIZE;
@@ -124,10 +149,16 @@ export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: Profi
 
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.92),
+      );
       if (!blob) return;
 
-      const cropped = new File([blob], `${file.name.replace(/\.[^/.]+$/, "")}-cropped.jpg`, { type: "image/jpeg" });
+      const cropped = new File(
+        [blob],
+        `${file.name.replace(/\.[^/.]+$/, "")}-cropped.jpg`,
+        { type: "image/jpeg" },
+      );
       await onConfirm(cropped);
     } finally {
       setSaving(false);
@@ -138,8 +169,12 @@ export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: Profi
     <Dialog open={open} onOpenChange={(v) => (!v ? onCancel() : null)}>
       <DialogContent className="w-[min(94vw,32rem)] rounded-2xl border border-border/70 bg-gradient-to-b from-white to-slate-50 p-0 shadow-2xl dark:from-zinc-900 dark:to-zinc-950">
         <div className="border-b border-border/60 px-5 py-4">
-          <DialogTitle className="text-[18px] font-semibold">Adjust profile photo</DialogTitle>
-          <p className="mt-1 text-sm text-muted-foreground">Drag to position and zoom for best framing.</p>
+          <DialogTitle className="text-[18px] font-semibold">
+            Adjust profile photo
+          </DialogTitle>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Drag to position and zoom for best framing.
+          </p>
         </div>
 
         <div className="space-y-4 px-5 py-4">
@@ -147,7 +182,11 @@ export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: Profi
             <div className="mx-auto flex w-full justify-center">
               <div
                 className="relative select-none overflow-hidden rounded-full border-2 border-white bg-muted shadow-[0_10px_35px_rgba(0,0,0,0.2)] ring-1 ring-black/5"
-                style={{ width: FRAME_SIZE, height: FRAME_SIZE, cursor: dragging ? "grabbing" : "grab" }}
+                style={{
+                  width: FRAME_SIZE,
+                  height: FRAME_SIZE,
+                  cursor: dragging ? "grabbing" : "grab",
+                }}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
@@ -212,11 +251,23 @@ export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: Profi
           </div>
 
           <div className="flex justify-end gap-2 border-t border-border/60 pt-3">
-            <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onCancel}
+              disabled={saving}
+            >
               Cancel
             </Button>
-            <Button type="button" className="min-w-24" onClick={handleConfirm} disabled={saving || !file}>
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button
+              type="button"
+              className="min-w-24"
+              onClick={handleConfirm}
+              disabled={saving || !file}
+            >
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               Use photo
             </Button>
           </div>
@@ -225,4 +276,3 @@ export function ProfileImageCropModal({ file, open, onCancel, onConfirm }: Profi
     </Dialog>
   );
 }
-

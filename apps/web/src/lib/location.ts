@@ -9,7 +9,10 @@ export interface LocationData {
 /**
  * Get user's current location using GPS
  */
-export async function getCurrentLocation(): Promise<{ lat: number; lng: number }> {
+export async function getCurrentLocation(): Promise<{
+  lat: number;
+  lng: number;
+}> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error("Geolocation is not supported by your browser"));
@@ -27,7 +30,8 @@ export async function getCurrentLocation(): Promise<{ lat: number; lng: number }
         let message = "Failed to get location";
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            message = "Location access denied. Please enable location permissions in your browser settings.";
+            message =
+              "Location access denied. Please enable location permissions in your browser settings.";
             break;
           case error.POSITION_UNAVAILABLE:
             message = "Location information unavailable.";
@@ -42,7 +46,7 @@ export async function getCurrentLocation(): Promise<{ lat: number; lng: number }
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0,
-      }
+      },
     );
   });
 }
@@ -51,7 +55,10 @@ export async function getCurrentLocation(): Promise<{ lat: number; lng: number }
  * Reverse geocode coordinates to get city name
  * Uses OpenStreetMap Nominatim API (free, no API key required)
  */
-export async function reverseGeocode(lat: number, lng: number): Promise<string> {
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<string> {
   try {
     // Use Nominatim API for reverse geocoding
     const response = await fetch(
@@ -60,7 +67,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
         headers: {
           "User-Agent": "NannyApp/1.0", // Required by Nominatim
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -68,21 +75,21 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
     }
 
     const data = await response.json();
-    
+
     // Extract city name from address components
     const address = data.address || {};
-    
+
     // Try different possible city fields (varies by country)
-    const city = 
-      address.city || 
-      address.town || 
-      address.village || 
+    const city =
+      address.city ||
+      address.town ||
+      address.village ||
       address.municipality ||
       address.county ||
       address.state_district ||
       address.state ||
       "Unknown";
-    
+
     return city;
   } catch (error) {
     console.error("Reverse geocoding error:", error);

@@ -6,7 +6,11 @@ import {
   getQuickDetailsOption,
   type AvailabilityPayload,
 } from "@/lib/availabilityPosts";
-import { isServiceCategoryId, serviceCategoryLabel, type ServiceCategoryId } from "@/lib/serviceCategories";
+import {
+  isServiceCategoryId,
+  serviceCategoryLabel,
+  type ServiceCategoryId,
+} from "@/lib/serviceCategories";
 
 const BUCKET = "community-posts";
 
@@ -29,7 +33,7 @@ export type PublishAvailabilityPulseResult =
  * Creates a community availability post (same payload shape as CommunityPostsPage dialog).
  */
 export async function publishCommunityAvailabilityPulse(
-  input: PublishAvailabilityPulseInput
+  input: PublishAvailabilityPulseInput,
 ): Promise<PublishAvailabilityPulseResult> {
   if (!isServiceCategoryId(input.category)) {
     return { ok: false, error: new Error("Invalid service category") };
@@ -47,7 +51,10 @@ export async function publishCommunityAvailabilityPulse(
 
   const noteTrim = input.note.trim();
   if (noteTrim.length > 120) {
-    return { ok: false, error: new Error("Note is too long (max 120 characters)") };
+    return {
+      ok: false,
+      error: new Error("Note is too long (max 120 characters)"),
+    };
   }
 
   const area = input.areaTag.trim().slice(0, 40);
@@ -104,18 +111,23 @@ export async function publishCommunityAvailabilityPulse(
     }
     const ext = file.name.split(".").pop() || "jpg";
     const path = `${input.userId}/${postId}/${crypto.randomUUID()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-      upsert: false,
-      contentType: file.type,
-    });
+    const { error: upErr } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+      });
     if (upErr) return { ok: false, error: upErr };
     const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    const { error: imgErr } = await supabase.from("community_post_images").insert({
-      post_id: postId,
-      image_url: pub.publicUrl,
-      sort_order: 0,
-    });
-    if (imgErr) console.error("[publishCommunityAvailabilityPulse] image row", imgErr);
+    const { error: imgErr } = await supabase
+      .from("community_post_images")
+      .insert({
+        post_id: postId,
+        image_url: pub.publicUrl,
+        sort_order: 0,
+      });
+    if (imgErr)
+      console.error("[publishCommunityAvailabilityPulse] image row", imgErr);
   }
 
   return { ok: true, postId };

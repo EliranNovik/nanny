@@ -7,7 +7,7 @@ export default function FreelancerProfileLayout() {
 
   if (form.loading) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );

@@ -44,7 +44,10 @@ export function ExpiryCountdown({
 
   if (remaining <= 0) {
     return (
-      <span className={cn("text-xs font-medium text-muted-foreground", className)} title="Expired">
+      <span
+        className={cn("text-xs font-medium text-muted-foreground", className)}
+        title="Expired"
+      >
         {endedLabel}
       </span>
     );
@@ -53,7 +56,10 @@ export function ExpiryCountdown({
   if (compact) {
     return (
       <span
-        className={cn("font-mono tabular-nums text-sm font-semibold tracking-tight", className)}
+        className={cn(
+          "font-mono tabular-nums text-sm font-semibold tracking-tight",
+          className,
+        )}
         title="Time remaining until this listing is removed"
       >
         {formatHms(remaining)}
@@ -63,12 +69,17 @@ export function ExpiryCountdown({
 
   return (
     <span
-      className={cn("inline-flex items-center gap-2 text-sm text-foreground", className)}
+      className={cn(
+        "inline-flex items-center gap-2 text-sm text-foreground",
+        className,
+      )}
       title="Time remaining until this listing is removed"
     >
       <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <span className="font-medium text-muted-foreground">Time left</span>
-      <span className="font-mono tabular-nums font-semibold tracking-tight">{formatHms(remaining)}</span>
+      <span className="font-mono tabular-nums font-semibold tracking-tight">
+        {formatHms(remaining)}
+      </span>
     </span>
   );
 }

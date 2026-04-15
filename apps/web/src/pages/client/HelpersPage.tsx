@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { haversineDistanceKm } from "@/lib/geo";
-import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_SCRIPT_ID } from "@/lib/googleMapsLoader";
+import {
+  isServiceCategoryId,
+  serviceCategoryLabel,
+} from "@/lib/serviceCategories";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  GOOGLE_MAPS_LIBRARIES,
+  GOOGLE_MAPS_SCRIPT_ID,
+} from "@/lib/googleMapsLoader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +23,8 @@ import {
   Navigation,
   ChevronRight,
   Heart,
+  UsersRound,
+  PlusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/StarRating";
@@ -53,21 +62,6 @@ type FreelancerRow = {
     available_now: boolean | null;
   } | null;
 };
-
-const HELPERS_PROFILE_SELECT = `
-  id,
-  full_name,
-  photo_url,
-  city,
-  location_lat,
-  location_lng,
-  service_radius,
-  average_rating,
-  total_ratings,
-  role,
-  is_available_for_jobs,
-  freelancer_profiles ( hourly_rate_min, hourly_rate_max, bio, available_now )
-`;
 
 /** Trim + lowercase for comparing city strings when there are no coordinates. */
 function normalizeCityLabel(s: string | null | undefined): string {
@@ -149,8 +143,8 @@ function HelpersMapBlock({
   if (loadError || !mapsApiKey) {
     return (
       <div className="flex h-full min-h-[220px] items-center justify-center bg-muted/40 px-4 text-center text-sm text-muted-foreground">
-        Map unavailable. Set VITE_GOOGLE_MAPS_API_KEY to show the map. You can still search helpers by
-        distance from your profile location.
+        Map unavailable. Set VITE_GOOGLE_MAPS_API_KEY to show the map. You can
+        still search helpers by distance from your profile location.
       </div>
     );
   }
@@ -229,12 +223,14 @@ export default function HelpersPage() {
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
-  const [center, setCenter] = useState<{ lat: number; lng: number }>(DEFAULT_CENTER);
+  const [center, setCenter] = useState<{ lat: number; lng: number }>(
+    DEFAULT_CENTER,
+  );
   const [radiusKm, setRadiusKm] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
   /** Debounced value used for API fetch + geocode (avoids hammering while typing). */
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [profileRows, setProfileRows] = useState<FreelancerRow[]>([]);
+  const [results, setResults] = useState<HelperResult[]>([]);
   const [loadingFetch, setLoadingFetch] = useState(false);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -242,16 +238,18 @@ export default function HelpersPage() {
   const [geocodeMatchedPlace, setGeocodeMatchedPlace] = useState(false);
   const resultsAnchorRef = useRef<HTMLDivElement>(null);
   const userTriggeredSearchRef = useRef(false);
-  const lastAutoScrollKeyRef = useRef<string>("");
   /** Apply saved profile search radius once when it loads (does not override after user moves slider). */
   const appliedProfileRadiusRef = useRef(false);
   /** First coords from profile — used when clearing search to restore map center. */
-  const profileCenterSnapshotRef = useRef<{ lat: number; lng: number } | null>(null);
+  const profileCenterSnapshotRef = useRef<{ lat: number; lng: number } | null>(
+    null,
+  );
   const searchDebounceBootRef = useRef(false);
   const geocodeRequestIdRef = useRef(0);
 
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
   const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
+  const [availableNowFilter, setAvailableNowFilter] = useState(false);
 
   const loadFavorites = useCallback(async () => {
     if (!user?.id) {
@@ -266,7 +264,9 @@ export default function HelpersPage() {
       console.error("HelpersPage loadFavorites:", error);
       return;
     }
-    setFavoriteIds(new Set((data ?? []).map((r) => r.favorite_user_id as string)));
+    setFavoriteIds(
+      new Set((data ?? []).map((r) => r.favorite_user_id as string)),
+    );
   }, [user?.id]);
 
   useEffect(() => {
@@ -307,13 +307,13 @@ export default function HelpersPage() {
         addToast({
           title: "Could not update favorite",
           description: err instanceof Error ? err.message : "Try again.",
-          variant: "error",
+          variant: "error" as any,
         });
       } finally {
         setFavoriteBusyId(null);
       }
     },
-    [user?.id, favoriteIds, addToast]
+    [user?.id, favoriteIds, addToast],
   );
 
   const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
@@ -327,13 +327,16 @@ export default function HelpersPage() {
     (userId: string) => {
       navigate(`/profile/${userId}`);
     },
-    [navigate]
+    [navigate],
   );
 
   useEffect(() => {
-    const lat = profile?.location_lat != null ? Number(profile.location_lat) : null;
-    const lng = profile?.location_lng != null ? Number(profile.location_lng) : null;
-    if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return;
+    const lat =
+      profile?.location_lat != null ? Number(profile.location_lat) : null;
+    const lng =
+      profile?.location_lng != null ? Number(profile.location_lng) : null;
+    if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng))
+      return;
     if (!profileCenterSnapshotRef.current) {
       profileCenterSnapshotRef.current = { lat, lng };
       setCenter({ lat, lng });
@@ -361,155 +364,40 @@ export default function HelpersPage() {
     appliedProfileRadiusRef.current = true;
   }, [profile?.service_radius]);
 
-  const computeResults = useCallback(
-    (rows: FreelancerRow[]) => {
-      const q = searchQuery.trim().toLowerCase();
-      const viewerCityNorm = normalizeCityLabel(profile?.city);
-      const withDistance: HelperResult[] = [];
-
-      for (const row of rows) {
-        if (user?.id && row.id === user.id) continue;
-        const lat =
-          row.location_lat != null ? Number(String(row.location_lat).replace(",", ".")) : NaN;
-        const lng =
-          row.location_lng != null ? Number(String(row.location_lng).replace(",", ".")) : NaN;
-        const hasCoords = !Number.isNaN(lat) && !Number.isNaN(lng);
-
-        if (hasCoords) {
-          const d = haversineDistanceKm(center.lat, center.lng, lat, lng);
-          if (d > radiusKm) continue;
-          // If geocode found a place, show everyone in the circle; otherwise filter by name/city text.
-          if (q && !geocodeMatchedPlace) {
-            const name = (row.full_name || "").toLowerCase();
-            const city = (row.city || "").toLowerCase();
-            if (!name.includes(q) && !city.includes(q)) continue;
-          }
-          withDistance.push({ ...row, distanceKm: d });
-          continue;
-        }
-
-        // No map pin: cannot compute km. Still show if search matches name/city, or same city as viewer.
-        const name = (row.full_name || "").toLowerCase();
-        const rowCityNorm = normalizeCityLabel(row.city);
-        if (q) {
-          if (!name.includes(q) && !rowCityNorm.includes(q)) continue;
-        } else if (viewerCityNorm.length > 0 && rowCityNorm === viewerCityNorm) {
-          // empty search: only surface no-pin profiles in your city
-        } else {
-          continue;
-        }
-        withDistance.push({ ...row, distanceKm: null });
-      }
-
-      withDistance.sort((a, b) => {
-        if (a.distanceKm == null && b.distanceKm == null) return 0;
-        if (a.distanceKm == null) return 1;
-        if (b.distanceKm == null) return -1;
-        return a.distanceKm - b.distanceKm;
-      });
-      return withDistance;
-    },
-    [
-      center.lat,
-      center.lng,
-      radiusKm,
-      searchQuery,
-      user?.id,
-      profile?.city,
-      geocodeMatchedPlace,
-    ]
-  );
-
-  const results = useMemo(
-    () => computeResults(profileRows),
-    [profileRows, computeResults]
-  );
-
-  // Auto-scroll to results after the user interacts (tab open + search / radius / map click),
-  // but avoid scrolling on the initial page load.
-  useEffect(() => {
-    if (!hasFetchedOnce) return;
-    if (!userTriggeredSearchRef.current) return;
-
-    // Use debouncedSearch so typing doesn't spam-scroll.
-    const key = [
-      debouncedSearch.trim().toLowerCase(),
-      Math.round(radiusKm),
-      Math.round(center.lat * 1000) / 1000,
-      Math.round(center.lng * 1000) / 1000,
-      results.length,
-    ].join("|");
-
-    if (lastAutoScrollKeyRef.current === key) return;
-    lastAutoScrollKeyRef.current = key;
-
-    // Wait a frame so the grid (and counts) are laid out.
-    requestAnimationFrame(() => {
-      resultsAnchorRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }, [hasFetchedOnce, debouncedSearch, radiusKm, center.lat, center.lng, results.length]);
-
   const fetchProfiles = useCallback(async () => {
+    if (!searchDebounceBootRef.current) return;
+    
     setLoadingFetch(true);
     try {
-      const withLocation = () =>
-        supabase
-          .from("profiles")
-          .select(HELPERS_PROFILE_SELECT)
-          .not("location_lat", "is", null)
-          .not("location_lng", "is", null)
-          .limit(5000);
-
-      const withoutLocation = () =>
-        supabase
-          .from("profiles")
-          .select(HELPERS_PROFILE_SELECT)
-          .or("location_lat.is.null,location_lng.is.null")
-          .limit(3000);
-
-      // Always merge no-pin rows so name/city text filter works immediately while typing.
-      const [freelancersRes, clientsReceivingRes, fNoLoc, cNoLoc] = await Promise.all([
-        withLocation().eq("role", "freelancer"),
-        withLocation().eq("role", "client").eq("is_available_for_jobs", true),
-        withoutLocation().eq("role", "freelancer"),
-        withoutLocation().eq("role", "client").eq("is_available_for_jobs", true),
-      ]);
-
-      if (freelancersRes.error) throw freelancersRes.error;
-      if (clientsReceivingRes.error) throw clientsReceivingRes.error;
-      if (fNoLoc.error) throw fNoLoc.error;
-      if (cNoLoc.error) throw cNoLoc.error;
-
-      const byId = new Map<string, Record<string, unknown>>();
-      for (const r of freelancersRes.data || []) byId.set(r.id as string, r);
-      for (const r of clientsReceivingRes.data || []) byId.set(r.id as string, r);
-      for (const r of fNoLoc.data || []) {
-        if (!byId.has(r.id as string)) byId.set(r.id as string, r);
-      }
-      for (const r of cNoLoc.data || []) {
-        if (!byId.has(r.id as string)) byId.set(r.id as string, r);
-      }
-
-      let combined = [...byId.values()];
-      if (user?.id) combined = combined.filter((r) => r.id !== user.id);
-
-      const rows = combined.map((r: Record<string, unknown>) => {
-        const fp = r.freelancer_profiles;
-        const fpObj = Array.isArray(fp) ? fp[0] : fp;
-        return { ...r, freelancer_profiles: fpObj ?? null } as FreelancerRow;
+      const viewerCityNorm = normalizeCityLabel(profile?.city);
+      const { data, error } = await supabase.rpc('get_helpers_near_location', {
+        search_lat: center.lat,
+        search_lng: center.lng,
+        radius_km: radiusKm,
+        search_query: debouncedSearch.trim(),
+        viewer_city_norm: viewerCityNorm || '',
+        geocode_matched_place: geocodeMatchedPlace
       });
-      setProfileRows(rows);
-    } catch (e) {
+
+      if (error) throw error;
+      
+      let rows = data as HelperResult[];
+      if (user?.id) rows = rows.filter((r) => r.id !== user.id);
+      
+      setResults(rows);
+    } catch (e: any) {
       console.error("HelpersPage fetch:", e);
-      setProfileRows([]);
+      setResults([]);
+      addToast({
+        title: "Error fetching helpers",
+        description: e?.message || "An unexpected error occurred.",
+        variant: "error" as any,
+      });
     } finally {
       setLoadingFetch(false);
       setHasFetchedOnce(true);
     }
-  }, [user?.id]);
+  }, [center.lat, center.lng, radiusKm, debouncedSearch, geocodeMatchedPlace, user?.id, profile?.city, addToast]);
 
   useEffect(() => {
     void fetchProfiles();
@@ -529,7 +417,8 @@ export default function HelpersPage() {
       setGeocodeMatchedPlace(false);
       return;
     }
-    if (!isLoaded || typeof google === "undefined" || !google.maps?.Geocoder) return;
+    if (!isLoaded || typeof google === "undefined" || !google.maps?.Geocoder)
+      return;
 
     const reqId = ++geocodeRequestIdRef.current;
     const geocoder = new google.maps.Geocoder();
@@ -544,7 +433,7 @@ export default function HelpersPage() {
         const loc = geoResults[0].geometry.location;
         setCenter({ lat: loc.lat(), lng: loc.lng() });
         setGeocodeMatchedPlace(true);
-      }
+      },
     );
   }, [debouncedSearch, isLoaded]);
 
@@ -559,19 +448,24 @@ export default function HelpersPage() {
         setLocating(false);
       },
       () => setLocating(false),
-      { enableHighAccuracy: true, timeout: 12000 }
+      { enableHighAccuracy: true, timeout: 12000 },
     );
   };
 
+  const filteredResults = availableNowFilter
+    ? results.filter((h) => h.is_available_for_jobs === true)
+    : results;
+
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell space-y-6 pt-6 md:pt-8">
         <div className="mx-auto w-full max-w-5xl px-1 md:max-w-6xl">
           <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
             Helpers near you
           </h1>
           <p className="mt-1 text-[15px] font-medium text-muted-foreground">
-            Type a city to move the map and circle, or a name to filter. Results update as you type.
+            Type a city to move the map and circle, or a name to filter. Results
+            update as you type.
           </p>
         </div>
 
@@ -606,6 +500,23 @@ export default function HelpersPage() {
                 )}
                 My location
               </Button>
+              {/* Available Now toggle */}
+              <button
+                type="button"
+                onClick={() => setAvailableNowFilter((v) => !v)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all border",
+                  availableNowFilter
+                    ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                    : "bg-white text-slate-600 border-slate-200 dark:bg-zinc-900 dark:text-slate-300 dark:border-white/10 hover:border-emerald-400 hover:text-emerald-600"
+                )}
+              >
+                <span className={cn(
+                  "h-2 w-2 rounded-full",
+                  availableNowFilter ? "bg-white" : "bg-emerald-400"
+                )} />
+                Available now
+              </button>
               <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:max-w-xs">
                 <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   Radius (km)
@@ -616,10 +527,10 @@ export default function HelpersPage() {
                   max={100}
                   step={5}
                   value={radiusKm}
-                onChange={(e) => {
-                  userTriggeredSearchRef.current = true;
-                  setRadiusKm(Number(e.target.value));
-                }}
+                  onChange={(e) => {
+                    userTriggeredSearchRef.current = true;
+                    setRadiusKm(Number(e.target.value));
+                  }}
                   className="h-2 w-full cursor-pointer accent-orange-500"
                 />
                 <span className="text-sm font-bold tabular-nums text-slate-800 dark:text-slate-100">
@@ -654,13 +565,16 @@ export default function HelpersPage() {
           <h2 className="text-lg font-black text-slate-900 dark:text-white">
             {hasFetchedOnce ? (
               <>
-                {results.length} helper{results.length === 1 ? "" : "s"}
+                {filteredResults.length} helper{filteredResults.length === 1 ? "" : "s"}
+                {availableNowFilter && (
+                  <span className="ml-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">available now</span>
+                )}
               </>
             ) : (
               "Results"
             )}
           </h2>
-          {hasFetchedOnce && results.length > 0 && (
+          {hasFetchedOnce && filteredResults.length > 0 && (
             <span className="text-xs font-semibold text-muted-foreground">
               {results.some((r) => r.distanceKm == null)
                 ? "Pinned locations by distance; others match search or your city"
@@ -670,27 +584,71 @@ export default function HelpersPage() {
         </div>
 
         {!hasFetchedOnce ? (
-          <Card className="mx-auto w-full max-w-5xl border border-dashed border-slate-300/50 bg-muted/20 dark:border-white/10 md:max-w-6xl">
-            <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
-              <Loader2 className="h-10 w-10 animate-spin text-orange-500/70" />
-              <p className="text-sm font-medium text-muted-foreground">Loading helpers…</p>
-            </CardContent>
-          </Card>
-        ) : results.length === 0 ? (
-          <Card className="mx-auto w-full max-w-5xl border border-dashed md:max-w-6xl">
-            <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              No helpers match this area and filters. Try a larger radius, search by name or city (includes
-              people without a map pin), or set your city on your profile to match others by city.
-            </CardContent>
-          </Card>
+          <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 md:max-w-6xl lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={`skeleton-${i}`} className="flex h-[440px] flex-col overflow-hidden border-slate-200/80 dark:border-white/5 bg-white dark:bg-zinc-900 rounded-[20px]">
+                <Skeleton className="h-[200px] w-full rounded-b-none" />
+                <CardContent className="flex-1 p-5 space-y-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-3/4 rounded" />
+                    <Skeleton className="h-4 w-1/2 rounded" />
+                  </div>
+                  <div className="space-y-3 pt-6">
+                    <Skeleton className="h-4 w-full rounded" />
+                    <Skeleton className="h-4 w-full rounded" />
+                    <Skeleton className="h-4 w-2/3 rounded" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredResults.length === 0 ? (
+          <div className="mx-auto w-full max-w-5xl md:max-w-6xl">
+            <Card className="border border-dashed">
+              <CardContent className="py-14 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                  <UsersRound className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <p className="text-base font-semibold text-foreground mb-1">
+                  {availableNowFilter ? "No helpers available right now" : "No helpers in this area"}
+                </p>
+                <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
+                  {availableNowFilter
+                    ? "Try removing the 'Available now' filter to see all helpers."
+                    : "Try expanding your search radius or a different city."}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  {availableNowFilter ? (
+                    <Button variant="outline" onClick={() => setAvailableNowFilter(false)}>
+                      Show all helpers
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        userTriggeredSearchRef.current = true;
+                        setRadiusKm((r) => Math.min(100, r + 10));
+                      }}
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Expand radius (+10 km)
+                    </Button>
+                  )}
+                  <Button onClick={() => navigate("/client/create")}>
+                    Post a request instead
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         ) : (
           <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 md:max-w-6xl lg:grid-cols-3">
-            {results.map((h) => (
+            {filteredResults.map((h) => (
               <Card
                 key={h.id}
                 className={cn(
-                  "group flex h-full min-h-[440px] cursor-pointer flex-col overflow-hidden border border-slate-200/70 transition-all",
-                  "hover:-translate-y-1 hover:shadow-xl dark:border-white/10"
+                  "group flex h-full min-h-[440px] cursor-pointer flex-col overflow-hidden border border-slate-200/80 shadow-sm bg-white dark:bg-zinc-900 dark:border-white/5 transition-all duration-300 rounded-[20px]",
+                  "hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300/80",
                 )}
                 onClick={() => navigate(`/profile/${h.id}`)}
               >
@@ -700,7 +658,9 @@ export default function HelpersPage() {
                       <button
                         type="button"
                         aria-label={
-                          favoriteIds.has(h.id) ? "Remove from favorites" : "Add to favorites"
+                          favoriteIds.has(h.id)
+                            ? "Remove from favorites"
+                            : "Add to favorites"
                         }
                         aria-pressed={favoriteIds.has(h.id)}
                         disabled={favoriteBusyId === h.id}
@@ -708,16 +668,20 @@ export default function HelpersPage() {
                         className={cn(
                           "absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/35 text-white shadow-md backdrop-blur-sm transition-colors",
                           "hover:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400",
-                          "disabled:opacity-60"
+                          "disabled:opacity-60",
                         )}
                       >
                         {favoriteBusyId === h.id ? (
-                          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                          <Loader2
+                            className="h-5 w-5 animate-spin"
+                            aria-hidden
+                          />
                         ) : (
                           <Heart
                             className={cn(
                               "h-5 w-5 text-white drop-shadow-sm",
-                              favoriteIds.has(h.id) && "fill-red-500 text-red-500"
+                              favoriteIds.has(h.id) &&
+                                "fill-red-500 text-red-500",
                             )}
                             strokeWidth={favoriteIds.has(h.id) ? 0 : 2.25}
                           />
@@ -762,7 +726,17 @@ export default function HelpersPage() {
                         className="origin-left scale-100"
                       />
                     ) : (
-                      <span className="text-xs font-semibold text-muted-foreground">New helper</span>
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        New helper
+                      </span>
+                    )}
+
+                    {/* Available now badge */}
+                    {h.is_available_for_jobs && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Available now</span>
+                      </div>
                     )}
 
                     {(h.freelancer_profiles?.hourly_rate_min != null ||

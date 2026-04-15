@@ -2,7 +2,15 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogIn, Users, Menu, X, Home, MessageCircle, ChevronLeft } from "lucide-react";
+import {
+  LogIn,
+  Users,
+  Menu,
+  X,
+  Home,
+  MessageCircle,
+  ChevronLeft,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +35,8 @@ export function LandingSiteHeader({
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const dashboardPath = profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
+  const dashboardPath =
+    profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
 
   return (
     <>
@@ -74,14 +83,18 @@ export function LandingSiteHeader({
               className="md:hidden p-2 text-white hover:text-white/80 transition-colors shrink-0"
               aria-label="Toggle menu"
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
 
           <div
             className={cn(
               "flex items-center gap-2 md:gap-8 min-w-0 flex-1 justify-center md:justify-start md:pl-2",
-              homeLinkRight && !user && "md:justify-center md:pl-0"
+              homeLinkRight && !user && "md:justify-center md:pl-0",
             )}
           >
             {user ? (
@@ -103,24 +116,39 @@ export function LandingSiteHeader({
                   </span>
                 </div>
                 <div className="hidden md:flex items-center gap-8 text-white shrink-0">
-                  <Link to="/about" className="text-sm font-bold hover:text-white/80 transition-colors">
+                  <Link
+                    to="/about"
+                    className="text-sm font-bold hover:text-white/80 transition-colors"
+                  >
                     About Us
                   </Link>
-                  <Link to="/contact" className="text-sm font-bold hover:text-white/80 transition-colors">
+                  <Link
+                    to="/contact"
+                    className="text-sm font-bold hover:text-white/80 transition-colors"
+                  >
                     Contact
                   </Link>
                 </div>
               </div>
             ) : (
               <div className="hidden md:flex items-center gap-8 text-white">
-                <Link to="/about" className="text-sm font-bold hover:text-white/80 transition-colors">
+                <Link
+                  to="/about"
+                  className="text-sm font-bold hover:text-white/80 transition-colors"
+                >
                   About Us
                 </Link>
-                <Link to="/contact" className="text-sm font-bold hover:text-white/80 transition-colors">
+                <Link
+                  to="/contact"
+                  className="text-sm font-bold hover:text-white/80 transition-colors"
+                >
                   Contact
                 </Link>
                 {!homeLinkRight ? (
-                  <Link to="/" className="flex items-center gap-1.5 text-sm font-bold hover:text-white/80 transition-colors">
+                  <Link
+                    to="/"
+                    className="flex items-center gap-1.5 text-sm font-bold hover:text-white/80 transition-colors"
+                  >
                     <Home className="w-4 h-4" /> Home
                   </Link>
                 ) : null}
@@ -138,7 +166,11 @@ export function LandingSiteHeader({
                   <Home className="h-4 w-4 shrink-0" aria-hidden />
                   Home
                 </Link>
-                <Link to="/" className="md:hidden inline-flex p-2 text-white hover:text-white/90" aria-label="Home">
+                <Link
+                  to="/"
+                  className="md:hidden inline-flex p-2 text-white hover:text-white/90"
+                  aria-label="Home"
+                >
                   <Home className="h-6 w-6" />
                 </Link>
               </>
@@ -162,11 +194,19 @@ export function LandingSiteHeader({
               </div>
             ) : null}
             {!hideLoginCta && !user ? (
-              <button type="button" onClick={() => navigate("/login")} className="md:hidden p-2 text-white">
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="md:hidden p-2 text-white"
+              >
                 <LogIn className="w-6 h-6" />
               </button>
             ) : user ? (
-              <button type="button" onClick={() => navigate(dashboardPath)} className="md:hidden p-2 text-white">
+              <button
+                type="button"
+                onClick={() => navigate(dashboardPath)}
+                className="md:hidden p-2 text-white"
+              >
                 <Home className="w-6 h-6" />
               </button>
             ) : null}
@@ -226,7 +266,11 @@ export function LandingSiteHeader({
                 </>
               )}
             </div>
-            <button type="button" onClick={() => setIsMenuOpen(false)} className="mt-8 w-full py-4 text-slate-400 font-bold">
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(false)}
+              className="mt-8 w-full py-4 text-slate-400 font-bold"
+            >
               Close
             </button>
           </div>

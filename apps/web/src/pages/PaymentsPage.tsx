@@ -4,15 +4,38 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, CheckCircle2, Clock, DollarSign, Edit, Trash2, Search, Filter, X } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  Edit,
+  Trash2,
+  Search,
+  Filter,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SimpleCalendar } from "@/components/SimpleCalendar";
 import { sumPaymentsInNIS, getCurrencyIcon } from "@/lib/currencyConverter";
@@ -57,7 +80,7 @@ interface Payment {
 export default function PaymentsPage() {
   const { user, profile } = useAuth();
   const { addToast } = useToast();
-  
+
   // Try to load cached data immediately
   const getCachedPaymentsData = () => {
     try {
@@ -74,25 +97,37 @@ export default function PaymentsPage() {
 
   const cachedData = user ? getCachedPaymentsData() : null;
   const [loading, setLoading] = useState(!cachedData);
-  const [pendingPayments, setPendingPayments] = useState<Payment[]>(cachedData?.pendingPayments || []);
-  const [paidPayments, setPaidPayments] = useState<Payment[]>(cachedData?.paidPayments || []);
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>(
+    cachedData?.pendingPayments || [],
+  );
+  const [paidPayments, setPaidPayments] = useState<Payment[]>(
+    cachedData?.paidPayments || [],
+  );
   const [activeTab, setActiveTab] = useState("pending");
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editHours, setEditHours] = useState<string>("");
   const [editCurrencyId, setEditCurrencyId] = useState<string>("");
-  const [currencies, setCurrencies] = useState<Array<{ id: string; name: string; iso: string; icon: string }>>([]);
+  const [currencies, setCurrencies] = useState<
+    Array<{ id: string; name: string; iso: string; icon: string }>
+  >([]);
   const [editPending, setEditPending] = useState(false);
   const [deletingPayment, setDeletingPayment] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFilterType, setDateFilterType] = useState<"created" | "job_ended" | "job_requested" | "">("");
+  const [dateFilterType, setDateFilterType] = useState<
+    "created" | "job_ended" | "job_requested" | ""
+  >("");
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
   const [showDateFromPicker, setShowDateFromPicker] = useState(false);
   const [showDateToPicker, setShowDateToPicker] = useState(false);
-  const [filteredPendingPayments, setFilteredPendingPayments] = useState<Payment[]>([]);
-  const [filteredPaidPayments, setFilteredPaidPayments] = useState<Payment[]>([]);
+  const [filteredPendingPayments, setFilteredPendingPayments] = useState<
+    Payment[]
+  >([]);
+  const [filteredPaidPayments, setFilteredPaidPayments] = useState<Payment[]>(
+    [],
+  );
 
   useEffect(() => {
     if (!user || !profile) {
@@ -108,13 +143,16 @@ export default function PaymentsPage() {
   useEffect(() => {
     if (user && (pendingPayments.length >= 0 || paidPayments.length >= 0)) {
       try {
-        localStorage.setItem(`payments_${user.id}`, JSON.stringify({
-          timestamp: Date.now(),
-          data: {
-            pendingPayments,
-            paidPayments
-          }
-        }));
+        localStorage.setItem(
+          `payments_${user.id}`,
+          JSON.stringify({
+            timestamp: Date.now(),
+            data: {
+              pendingPayments,
+              paidPayments,
+            },
+          }),
+        );
       } catch (e) {
         // Ignore cache errors
       }
@@ -127,7 +165,7 @@ export default function PaymentsPage() {
         .from("currencies")
         .select("*")
         .order("name");
-      
+
       if (error) {
         console.error("Error fetching currencies:", error);
       } else if (data) {
@@ -201,7 +239,7 @@ export default function PaymentsPage() {
 
       // Reload payments
       await loadPayments();
-      
+
       closeEditModal();
       addToast({
         title: "Payment updated",
@@ -222,7 +260,11 @@ export default function PaymentsPage() {
   async function handleDeletePayment(paymentId: string) {
     if (!user || deletingPayment) return;
 
-    if (!confirm("Are you sure you want to delete this payment? You can create a new one after deletion.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this payment? You can create a new one after deletion.",
+      )
+    ) {
       return;
     }
 
@@ -237,10 +279,11 @@ export default function PaymentsPage() {
 
       // Reload payments
       await loadPayments();
-      
+
       addToast({
         title: "Payment deleted",
-        description: "The payment has been deleted. You can create a new payment request.",
+        description:
+          "The payment has been deleted. You can create a new payment request.",
       });
     } catch (error) {
       console.error("Error deleting payment:", error);
@@ -259,29 +302,33 @@ export default function PaymentsPage() {
 
     try {
       let paymentsQuery;
-      
+
       if (profile.role === "client") {
         // Clients see payments for their jobs
         paymentsQuery = supabase
           .from("payments")
-          .select(`
+          .select(
+            `
             *,
             currency:currencies(id, name, iso, icon),
             job:job_requests(id, children_count, children_age_group, location_city, start_at, created_at, updated_at, stage),
             freelancer:profiles!payments_freelancer_id_fkey(id, full_name, photo_url)
-          `)
+          `,
+          )
           .eq("client_id", user.id)
           .order("created_at", { ascending: false });
       } else {
         // Freelancers see payments for their work
         paymentsQuery = supabase
           .from("payments")
-          .select(`
+          .select(
+            `
             *,
             currency:currencies(id, name, iso, icon),
             job:job_requests(id, children_count, children_age_group, location_city, start_at, created_at, updated_at, stage),
             client:profiles!payments_client_id_fkey(id, full_name, photo_url)
-          `)
+          `,
+          )
           .eq("freelancer_id", user.id)
           .order("created_at", { ascending: false });
       }
@@ -297,15 +344,15 @@ export default function PaymentsPage() {
         // Map the relationship data to other_party
         const mappedPayments = payments.map((p: any) => ({
           ...p,
-          other_party: profile.role === "client" ? p.freelancer : p.client
+          other_party: profile.role === "client" ? p.freelancer : p.client,
         }));
-        
+
         // Pending includes both "pending" and "accepted" statuses (accepted but not yet paid)
-        const pending = mappedPayments.filter((p: Payment) => 
-          p.status === "pending" || p.status === "accepted"
+        const pending = mappedPayments.filter(
+          (p: Payment) => p.status === "pending" || p.status === "accepted",
         );
         const paid = mappedPayments.filter((p: Payment) => p.status === "paid");
-        
+
         setPendingPayments(pending);
         setPaidPayments(paid);
         // Initialize filtered payments with all payments
@@ -315,19 +362,21 @@ export default function PaymentsPage() {
         // Cache the data for instant loading next time
         if (user) {
           try {
-            localStorage.setItem(`payments_${user.id}`, JSON.stringify({
-              timestamp: Date.now(),
-              data: {
-                pendingPayments: pending,
-                paidPayments: paid
-              }
-            }));
+            localStorage.setItem(
+              `payments_${user.id}`,
+              JSON.stringify({
+                timestamp: Date.now(),
+                data: {
+                  pendingPayments: pending,
+                  paidPayments: paid,
+                },
+              }),
+            );
           } catch (e) {
             // Ignore cache errors
           }
         }
       }
-
     } catch (err) {
       console.error("Error loading payments:", err);
     } finally {
@@ -372,7 +421,7 @@ export default function PaymentsPage() {
     payment: Payment,
     filterType: "created" | "job_ended" | "job_requested",
     from: Date | null,
-    to: Date | null
+    to: Date | null,
   ): boolean {
     let dateToCheck: Date | null = null;
 
@@ -382,22 +431,37 @@ export default function PaymentsPage() {
         break;
       case "job_ended":
         // Use job.updated_at when stage is "Job Ended" or later as proxy for job end date
-        if (payment.job?.updated_at && payment.job?.stage && 
-            (payment.job.stage === "Job Ended" || payment.job.stage === "Payment" || payment.job.stage === "Completed")) {
+        if (
+          payment.job?.updated_at &&
+          payment.job?.stage &&
+          (payment.job.stage === "Job Ended" ||
+            payment.job.stage === "Payment" ||
+            payment.job.stage === "Completed")
+        ) {
           dateToCheck = new Date(payment.job.updated_at);
         }
         break;
       case "job_requested":
-        dateToCheck = payment.job?.created_at ? new Date(payment.job.created_at) : null;
+        dateToCheck = payment.job?.created_at
+          ? new Date(payment.job.created_at)
+          : null;
         break;
     }
 
     if (!dateToCheck) return false;
 
     // Check if date is within range
-    const dateOnly = new Date(dateToCheck.getFullYear(), dateToCheck.getMonth(), dateToCheck.getDate());
-    const fromDate = from ? new Date(from.getFullYear(), from.getMonth(), from.getDate()) : null;
-    const toDate = to ? new Date(to.getFullYear(), to.getMonth(), to.getDate()) : null;
+    const dateOnly = new Date(
+      dateToCheck.getFullYear(),
+      dateToCheck.getMonth(),
+      dateToCheck.getDate(),
+    );
+    const fromDate = from
+      ? new Date(from.getFullYear(), from.getMonth(), from.getDate())
+      : null;
+    const toDate = to
+      ? new Date(to.getFullYear(), to.getMonth(), to.getDate())
+      : null;
 
     if (fromDate && dateOnly < fromDate) return false;
     if (toDate && dateOnly > toDate) return false;
@@ -416,7 +480,14 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     applyFilters(pendingPayments, paidPayments);
-  }, [searchQuery, dateFilterType, dateFrom, dateTo, pendingPayments, paidPayments]);
+  }, [
+    searchQuery,
+    dateFilterType,
+    dateFrom,
+    dateTo,
+    pendingPayments,
+    paidPayments,
+  ]);
 
   function formatJobTitle(job: Payment["job"]): string {
     if (!job) return "Job";
@@ -425,19 +496,19 @@ export default function PaymentsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-2">Payments</h1>
           <p className="text-muted-foreground">
-            {profile?.role === "client" 
+            {profile?.role === "client"
               ? "Track payments for your jobs"
               : "View your payment requests and history"}
           </p>
@@ -474,19 +545,26 @@ export default function PaymentsPage() {
                   <Filter className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Filters</span>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {/* Date Filter Type */}
                   <div>
-                    <Label htmlFor="date-filter-type" className="text-xs">Filter By Date</Label>
-                    <Select value={dateFilterType} onValueChange={(value) => setDateFilterType(value as any)}>
+                    <Label htmlFor="date-filter-type" className="text-xs">
+                      Filter By Date
+                    </Label>
+                    <Select
+                      value={dateFilterType}
+                      onValueChange={(value) => setDateFilterType(value as any)}
+                    >
                       <SelectTrigger id="date-filter-type" className="mt-1">
                         <SelectValue placeholder="Select date type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="created">Payment Created</SelectItem>
                         <SelectItem value="job_ended">Job Ended</SelectItem>
-                        <SelectItem value="job_requested">Job Requested</SelectItem>
+                        <SelectItem value="job_requested">
+                          Job Requested
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -513,13 +591,18 @@ export default function PaymentsPage() {
                     {/* From Date */}
                     <div>
                       <Label className="text-xs">From Date</Label>
-                      <Dialog open={showDateFromPicker} onOpenChange={setShowDateFromPicker}>
+                      <Dialog
+                        open={showDateFromPicker}
+                        onOpenChange={setShowDateFromPicker}
+                      >
                         <DialogTrigger asChild>
                           <Button
                             variant="outline"
                             className="w-full mt-1 justify-start text-left font-normal"
                           >
-                            {dateFrom ? format(dateFrom, "MMM d, yyyy") : "Select date"}
+                            {dateFrom
+                              ? format(dateFrom, "MMM d, yyyy")
+                              : "Select date"}
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -540,13 +623,18 @@ export default function PaymentsPage() {
                     {/* To Date */}
                     <div>
                       <Label className="text-xs">To Date</Label>
-                      <Dialog open={showDateToPicker} onOpenChange={setShowDateToPicker}>
+                      <Dialog
+                        open={showDateToPicker}
+                        onOpenChange={setShowDateToPicker}
+                      >
                         <DialogTrigger asChild>
                           <Button
                             variant="outline"
                             className="w-full mt-1 justify-start text-left font-normal"
                           >
-                            {dateTo ? format(dateTo, "MMM d, yyyy") : "Select date"}
+                            {dateTo
+                              ? format(dateTo, "MMM d, yyyy")
+                              : "Select date"}
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -597,15 +685,15 @@ export default function PaymentsPage() {
                 <CardContent>
                   <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="font-semibold text-lg mb-2">
-                    {pendingPayments.length === 0 
+                    {pendingPayments.length === 0
                       ? "No Pending Payments"
                       : "No Payments Match Filters"}
                   </h3>
                   <p className="text-muted-foreground">
                     {pendingPayments.length === 0
-                      ? (profile?.role === "client"
-                          ? "You don't have any pending payments to review."
-                          : "You don't have any pending payment requests.")
+                      ? profile?.role === "client"
+                        ? "You don't have any pending payments to review."
+                        : "You don't have any pending payment requests."
                       : "Try adjusting your search or filter criteria."}
                   </p>
                 </CardContent>
@@ -620,13 +708,18 @@ export default function PaymentsPage() {
                           {formatJobTitle(payment.job)}
                         </CardTitle>
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="secondary" className={cn(
-                            payment.status === "accepted" 
-                              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                              : "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
-                          )}>
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              payment.status === "accepted"
+                                ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
+                            )}
+                          >
                             <Clock className="w-3 h-3 mr-1" />
-                            {payment.status === "accepted" ? "Accepted" : "Pending"}
+                            {payment.status === "accepted"
+                              ? "Accepted"
+                              : "Pending"}
                           </Badge>
                           {payment.job?.location_city && (
                             <span className="text-sm text-muted-foreground">
@@ -636,7 +729,9 @@ export default function PaymentsPage() {
                         </div>
                         {payment.other_party && (
                           <p className="text-sm text-muted-foreground">
-                            {profile?.role === "client" ? "Freelancer: " : "Client: "}
+                            {profile?.role === "client"
+                              ? "Freelancer: "
+                              : "Client: "}
                             {payment.other_party.full_name || "Unknown"}
                           </p>
                         )}
@@ -647,134 +742,160 @@ export default function PaymentsPage() {
                     <div className="p-4 bg-muted rounded-lg space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Hours:</span>
-                        <span className="font-medium">{payment.hours_worked}</span>
+                        <span className="font-medium">
+                          {payment.hours_worked}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Hourly Rate:</span>
+                        <span className="text-muted-foreground">
+                          Hourly Rate:
+                        </span>
                         <span className="font-medium">
-                          {payment.currency?.icon || "$"}{payment.hourly_rate.toFixed(2)}
+                          {payment.currency?.icon || "$"}
+                          {payment.hourly_rate.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal:</span>
                         <span className="font-medium">
-                          {payment.currency?.icon || "$"}{payment.subtotal.toFixed(2)}
+                          {payment.currency?.icon || "$"}
+                          {payment.subtotal.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">VAT ({payment.vat_rate}%):</span>
+                        <span className="text-muted-foreground">
+                          VAT ({payment.vat_rate}%):
+                        </span>
                         <span className="font-medium">
-                          {payment.currency?.icon || "$"}{payment.vat_amount.toFixed(2)}
+                          {payment.currency?.icon || "$"}
+                          {payment.vat_amount.toFixed(2)}
                         </span>
                       </div>
                       <div className="border-t pt-2 mt-2">
                         <div className="flex justify-between text-base font-semibold">
                           <span>Total:</span>
                           <span className="text-primary">
-                            {payment.currency?.icon || "$"}{payment.total_amount.toFixed(2)} {payment.currency?.iso || ""}
+                            {payment.currency?.icon || "$"}
+                            {payment.total_amount.toFixed(2)}{" "}
+                            {payment.currency?.iso || ""}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground mb-3">
-                      Created: {format(new Date(payment.created_at), "MMM d, yyyy 'at' h:mm a")}
+                      Created:{" "}
+                      {format(
+                        new Date(payment.created_at),
+                        "MMM d, yyyy 'at' h:mm a",
+                      )}
                     </div>
                     <div className="flex gap-2">
-                      {payment.status === "accepted" && profile?.role === "client" && (
-                        <Button
-                          onClick={async () => {
-                            if (!user || !payment.id) return;
-                            setMarkingPaid(payment.id);
-                            
-                            try {
-                              // Update payment status to paid
-                              const { error: paymentError } = await supabase
-                                .from("payments")
-                                .update({
-                                  status: "paid",
-                                  paid_at: new Date().toISOString()
-                                })
-                                .eq("id", payment.id);
-                              
-                              if (paymentError) throw paymentError;
+                      {payment.status === "accepted" &&
+                        profile?.role === "client" && (
+                          <Button
+                            onClick={async () => {
+                              if (!user || !payment.id) return;
+                              setMarkingPaid(payment.id);
 
-                              // Update job stage to Completed
-                              if (payment.job_id) {
-                                const { error: jobError } = await supabase
-                                  .from("job_requests")
+                              try {
+                                // Update payment status to paid
+                                const { error: paymentError } = await supabase
+                                  .from("payments")
                                   .update({
-                                    stage: "Completed",
-                                    status: "completed"
+                                    status: "paid",
+                                    paid_at: new Date().toISOString(),
                                   })
-                                  .eq("id", payment.job_id);
-                                
-                                if (jobError) console.error("Error updating job:", jobError);
-                              }
+                                  .eq("id", payment.id);
 
-                              // Reload payments
-                              await loadPayments();
-                              
-                              addToast({
-                                title: "Payment completed",
-                                description: "The payment has been marked as paid.",
-                              });
-                            } catch (error) {
-                              console.error("Error completing payment:", error);
-                              addToast({
-                                title: "Error",
-                                description: "Failed to complete payment. Please try again.",
-                                variant: "error",
-                              });
-                            } finally {
-                              setMarkingPaid(null);
-                            }
-                          }}
-                          disabled={markingPaid === payment.id}
-                          className="flex-1"
-                          size="sm"
-                        >
-                          {markingPaid === payment.id ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            "Mark as Paid"
-                          )}
-                        </Button>
-                      )}
-                      {payment.status === "pending" && profile?.role === "freelancer" && (
-                        <>
-                          <Button
-                            onClick={() => openEditModal(payment)}
-                            variant="outline"
-                            size="sm"
+                                if (paymentError) throw paymentError;
+
+                                // Update job stage to Completed
+                                if (payment.job_id) {
+                                  const { error: jobError } = await supabase
+                                    .from("job_requests")
+                                    .update({
+                                      stage: "Completed",
+                                      status: "completed",
+                                    })
+                                    .eq("id", payment.job_id);
+
+                                  if (jobError)
+                                    console.error(
+                                      "Error updating job:",
+                                      jobError,
+                                    );
+                                }
+
+                                // Reload payments
+                                await loadPayments();
+
+                                addToast({
+                                  title: "Payment completed",
+                                  description:
+                                    "The payment has been marked as paid.",
+                                });
+                              } catch (error) {
+                                console.error(
+                                  "Error completing payment:",
+                                  error,
+                                );
+                                addToast({
+                                  title: "Error",
+                                  description:
+                                    "Failed to complete payment. Please try again.",
+                                  variant: "error",
+                                });
+                              } finally {
+                                setMarkingPaid(null);
+                              }
+                            }}
+                            disabled={markingPaid === payment.id}
                             className="flex-1"
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit
-                          </Button>
-                          <Button
-                            onClick={() => handleDeletePayment(payment.id)}
-                            variant="outline"
                             size="sm"
-                            className="flex-1"
-                            disabled={deletingPayment === payment.id}
                           >
-                            {deletingPayment === payment.id ? (
+                            {markingPaid === payment.id ? (
                               <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Deleting...
+                                Processing...
                               </>
                             ) : (
-                              <>
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </>
+                              "Mark as Paid"
                             )}
                           </Button>
-                        </>
-                      )}
+                        )}
+                      {payment.status === "pending" &&
+                        profile?.role === "freelancer" && (
+                          <>
+                            <Button
+                              onClick={() => openEditModal(payment)}
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </Button>
+                            <Button
+                              onClick={() => handleDeletePayment(payment.id)}
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              disabled={deletingPayment === payment.id}
+                            >
+                              {deletingPayment === payment.id ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </>
+                              )}
+                            </Button>
+                          </>
+                        )}
                     </div>
                   </CardContent>
                 </Card>
@@ -788,7 +909,7 @@ export default function PaymentsPage() {
                 <CardContent>
                   <CheckCircle2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="font-semibold text-lg mb-2">
-                    {paidPayments.length === 0 
+                    {paidPayments.length === 0
                       ? "No Payment History"
                       : "No Payments Match Filters"}
                   </h3>
@@ -807,17 +928,21 @@ export default function PaymentsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">
-                          {profile?.role === "client" ? "Total Paid" : "Total Earned"}
+                          {profile?.role === "client"
+                            ? "Total Paid"
+                            : "Total Earned"}
                         </p>
                         <p className="text-2xl font-bold">
                           {(() => {
                             // Convert all payments to NIS and sum them
-                            const totalInNIS = sumPaymentsInNIS(filteredPaidPayments);
+                            const totalInNIS =
+                              sumPaymentsInNIS(filteredPaidPayments);
                             const nisIcon = getCurrencyIcon("ILS");
-                            
+
                             return (
                               <span>
-                                {nisIcon}{totalInNIS.toFixed(2)} NIS
+                                {nisIcon}
+                                {totalInNIS.toFixed(2)} NIS
                               </span>
                             );
                           })()}
@@ -837,7 +962,10 @@ export default function PaymentsPage() {
                             {formatJobTitle(payment.job)}
                           </CardTitle>
                           <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                            <Badge
+                              variant="outline"
+                              className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                            >
                               <CheckCircle2 className="w-3 h-3 mr-1" />
                               Paid
                             </Badge>
@@ -849,7 +977,9 @@ export default function PaymentsPage() {
                           </div>
                           {payment.other_party && (
                             <p className="text-sm text-muted-foreground">
-                              {profile?.role === "client" ? "Freelancer: " : "Client: "}
+                              {profile?.role === "client"
+                                ? "Freelancer: "
+                                : "Client: "}
                               {payment.other_party.full_name || "Unknown"}
                             </p>
                           )}
@@ -860,42 +990,63 @@ export default function PaymentsPage() {
                       <div className="p-4 bg-muted rounded-lg space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Hours:</span>
-                          <span className="font-medium">{payment.hours_worked}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Hourly Rate:</span>
                           <span className="font-medium">
-                            {payment.currency?.icon || "$"}{payment.hourly_rate.toFixed(2)}
+                            {payment.hours_worked}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Subtotal:</span>
+                          <span className="text-muted-foreground">
+                            Hourly Rate:
+                          </span>
                           <span className="font-medium">
-                            {payment.currency?.icon || "$"}{payment.subtotal.toFixed(2)}
+                            {payment.currency?.icon || "$"}
+                            {payment.hourly_rate.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">VAT ({payment.vat_rate}%):</span>
+                          <span className="text-muted-foreground">
+                            Subtotal:
+                          </span>
                           <span className="font-medium">
-                            {payment.currency?.icon || "$"}{payment.vat_amount.toFixed(2)}
+                            {payment.currency?.icon || "$"}
+                            {payment.subtotal.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            VAT ({payment.vat_rate}%):
+                          </span>
+                          <span className="font-medium">
+                            {payment.currency?.icon || "$"}
+                            {payment.vat_amount.toFixed(2)}
                           </span>
                         </div>
                         <div className="border-t pt-2 mt-2">
                           <div className="flex justify-between text-base font-semibold">
                             <span>Total:</span>
                             <span className="text-primary">
-                              {payment.currency?.icon || "$"}{payment.total_amount.toFixed(2)} {payment.currency?.iso || ""}
+                              {payment.currency?.icon || "$"}
+                              {payment.total_amount.toFixed(2)}{" "}
+                              {payment.currency?.iso || ""}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div className="text-xs text-muted-foreground space-y-1">
                         <div>
-                          Created: {format(new Date(payment.created_at), "MMM d, yyyy 'at' h:mm a")}
+                          Created:{" "}
+                          {format(
+                            new Date(payment.created_at),
+                            "MMM d, yyyy 'at' h:mm a",
+                          )}
                         </div>
                         {payment.paid_at && (
                           <div>
-                            Paid: {format(new Date(payment.paid_at), "MMM d, yyyy 'at' h:mm a")}
+                            Paid:{" "}
+                            {format(
+                              new Date(payment.paid_at),
+                              "MMM d, yyyy 'at' h:mm a",
+                            )}
                           </div>
                         )}
                       </div>
@@ -919,7 +1070,10 @@ export default function PaymentsPage() {
             <div className="space-y-4 mt-4">
               <div>
                 <Label htmlFor="edit-currency-select">Currency</Label>
-                <Select value={editCurrencyId} onValueChange={setEditCurrencyId}>
+                <Select
+                  value={editCurrencyId}
+                  onValueChange={setEditCurrencyId}
+                >
                   <SelectTrigger id="edit-currency-select" className="mt-2">
                     <SelectValue placeholder="Select currency" />
                   </SelectTrigger>
@@ -932,7 +1086,7 @@ export default function PaymentsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="edit-hours-input">Hours Worked</Label>
                 <Input
@@ -947,43 +1101,66 @@ export default function PaymentsPage() {
                 />
               </div>
 
-              {editingPayment && editHours && parseFloat(editHours) > 0 && editCurrencyId && (
-                <div className="p-4 bg-muted rounded-lg space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Hourly Rate:</span>
-                    <span className="font-medium">
-                      {currencies.find(c => c.id === editCurrencyId)?.icon || "$"}
-                      {editingPayment.hourly_rate.toFixed(2)}
-                    </span>
+              {editingPayment &&
+                editHours &&
+                parseFloat(editHours) > 0 &&
+                editCurrencyId && (
+                  <div className="p-4 bg-muted rounded-lg space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        Hourly Rate:
+                      </span>
+                      <span className="font-medium">
+                        {currencies.find((c) => c.id === editCurrencyId)
+                          ?.icon || "$"}
+                        {editingPayment.hourly_rate.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Hours:</span>
+                      <span className="font-medium">
+                        {parseFloat(editHours) || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span className="font-medium">
+                        {currencies.find((c) => c.id === editCurrencyId)
+                          ?.icon || "$"}
+                        {(
+                          parseFloat(editHours) * editingPayment.hourly_rate
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">VAT (18%):</span>
+                      <span className="font-medium">
+                        {currencies.find((c) => c.id === editCurrencyId)
+                          ?.icon || "$"}
+                        {(
+                          parseFloat(editHours) *
+                          editingPayment.hourly_rate *
+                          0.18
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-base font-semibold">
+                      <span>Total:</span>
+                      <span>
+                        {currencies.find((c) => c.id === editCurrencyId)
+                          ?.icon || "$"}
+                        {(
+                          parseFloat(editHours) *
+                          editingPayment.hourly_rate *
+                          1.18
+                        ).toFixed(2)}{" "}
+                        {currencies.find((c) => c.id === editCurrencyId)?.iso ||
+                          ""}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Hours:</span>
-                    <span className="font-medium">{parseFloat(editHours) || 0}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal:</span>
-                    <span className="font-medium">
-                      {currencies.find(c => c.id === editCurrencyId)?.icon || "$"}
-                      {(parseFloat(editHours) * editingPayment.hourly_rate).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">VAT (18%):</span>
-                    <span className="font-medium">
-                      {currencies.find(c => c.id === editCurrencyId)?.icon || "$"}
-                      {(parseFloat(editHours) * editingPayment.hourly_rate * 0.18).toFixed(2)}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-base font-semibold">
-                    <span>Total:</span>
-                    <span>
-                      {currencies.find(c => c.id === editCurrencyId)?.icon || "$"}
-                      {(parseFloat(editHours) * editingPayment.hourly_rate * 1.18).toFixed(2)} {currencies.find(c => c.id === editCurrencyId)?.iso || ""}
-                    </span>
-                  </div>
-                </div>
-              )}
+                )}
 
               <div className="flex gap-2 pt-4">
                 <Button
@@ -997,7 +1174,12 @@ export default function PaymentsPage() {
                 <Button
                   className="flex-1"
                   onClick={handleEditPayment}
-                  disabled={editPending || !editHours || parseFloat(editHours) <= 0 || !editCurrencyId}
+                  disabled={
+                    editPending ||
+                    !editHours ||
+                    parseFloat(editHours) <= 0 ||
+                    !editCurrencyId
+                  }
                 >
                   {editPending ? (
                     <>

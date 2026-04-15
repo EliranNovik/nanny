@@ -1,11 +1,20 @@
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { badgeCountForJobsTab, useJobsTabCounts } from "@/hooks/useJobsTabCounts";
+import {
+  badgeCountForJobsTab,
+  useJobsTabCounts,
+} from "@/hooks/useJobsTabCounts";
 import type { JobsPerspective } from "./jobsPerspective";
 import { tabsForPerspective } from "./jobsTabConfig";
-import { defaultTabForPerspective, isTabValidForPerspective } from "./jobsPerspective";
-import { JOBS_STEPPER_STRIP_BASE, jobsMobileStepperThemeForTab } from "./jobsMobileStepperTheme";
+import {
+  defaultTabForPerspective,
+  isTabValidForPerspective,
+} from "./jobsPerspective";
+import {
+  JOBS_STEPPER_STRIP_BASE,
+  jobsMobileStepperThemeForTab,
+} from "./jobsMobileStepperTheme";
 
 /** Base strip; theme adds tinted gradient (`jobsMobileStepperTheme.strip`) */
 const STRIP_BASE = JOBS_STEPPER_STRIP_BASE;
@@ -24,7 +33,10 @@ export function JobsMobileTabStepper() {
   const mode = searchParams.get("mode") as JobsPerspective | null;
   const tabFromUrl = searchParams.get("tab");
 
-  const tabs = mode === "freelancer" || mode === "client" ? tabsForPerspective(mode) : null;
+  const tabs =
+    mode === "freelancer" || mode === "client"
+      ? tabsForPerspective(mode)
+      : null;
 
   const activeId =
     tabs && tabFromUrl && isTabValidForPerspective(mode!, tabFromUrl)
@@ -69,40 +81,44 @@ export function JobsMobileTabStepper() {
       className={cn(
         "md:hidden pointer-events-none fixed inset-x-0 z-[59] transition-[background,box-shadow] duration-300",
         STRIP_BASE,
-        theme.strip
       )}
       style={{ top: HEADER_OFFSET }}
     >
       <div className="pointer-events-auto app-desktop-shell px-3 py-2.5 sm:px-4">
         <div className="mx-auto w-full max-w-[min(42rem,calc(100vw-1.25rem))]">
-          {/** Full-width gradient pill + frosted sliding thumb */}
+          {/** Neutral track + solid floating thumb with subtle accent */}
           <div
             className={cn(
               "relative isolate min-h-[54px] w-full min-w-0 overflow-hidden rounded-full p-1.5 sm:min-h-[58px]",
-              "border border-white/20 shadow-lg shadow-black/12 transition-[box-shadow] duration-300",
-              "dark:shadow-black/35"
+              "bg-slate-100/90 border border-slate-200/60 shadow-inner transition-[box-shadow,background] duration-300",
+              "dark:bg-zinc-900/60 dark:border-zinc-800/60",
             )}
             role="tablist"
             aria-label="Jobs sections"
           >
             <div
-              className={cn(
-                "pointer-events-none absolute inset-0 z-0 rounded-[inherit] transition-[background] duration-300",
-                theme.pillGradient
-              )}
-              aria-hidden
-            />
-            <div
               aria-hidden
               className={cn(
                 "pointer-events-none absolute top-1.5 bottom-1.5 z-[5] rounded-full",
-                /** Solid overlay only — backdrop-blur + ring bled past bounds and looked like extra halos on neighbouring tabs */
-                "bg-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]",
-                "transition-[left,width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
+                "bg-white shadow-md ring-1 ring-slate-900/5 transition-[left,width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+                "dark:bg-zinc-800 dark:ring-white/10 dark:shadow-none",
               )}
               style={thumbStyle}
-            />
-            <div className={cn("relative z-10 grid h-full min-h-[44px] w-full gap-0.5 sm:min-h-[48px]", gridColsClass)}>
+            >
+              {/* Subtle category color accent on the solid thumb */}
+              <div
+                className={cn(
+                  "absolute inset-0 rounded-full opacity-[0.14] transition-opacity duration-300 dark:opacity-[0.22]",
+                  theme.pillGradient,
+                )}
+              />
+            </div>
+            <div
+              className={cn(
+                "relative z-10 grid h-full min-h-[44px] w-full gap-0.5 sm:min-h-[48px]",
+                gridColsClass,
+              )}
+            >
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const selected = tab.id === active.id;
@@ -113,31 +129,38 @@ export function JobsMobileTabStepper() {
                     type="button"
                     role="tab"
                     aria-selected={selected}
-                    aria-label={count > 0 ? `${tab.label}, ${count} items` : tab.label}
+                    aria-label={
+                      count > 0 ? `${tab.label}, ${count} items` : tab.label
+                    }
                     onClick={() => selectTab(tab.id)}
                     className={cn(
                       "relative flex min-w-0 items-center justify-center rounded-full px-0.5 py-1",
                       "bg-transparent [-webkit-tap-highlight-color:transparent]",
                       "transition-[color,transform] duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/55",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500/30",
                       "active:scale-[0.98] motion-reduce:transition-none",
-                      selected ? "text-white" : "text-white/65 hover:text-white/85"
+                      selected
+                        ? "text-slate-900 dark:text-white"
+                        : "text-slate-400/90 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300",
                     )}
                   >
                     <span className="relative inline-flex">
                       <Icon
                         className={cn(
-                          "h-6 w-6 shrink-0 transition-transform duration-300 sm:h-7 sm:w-7",
-                          selected && "scale-105"
+                          "h-6 w-6 shrink-0 transition-all duration-300 sm:h-7 sm:w-7",
+                          selected && "scale-105",
+                          !selected && "opacity-80 grayscale-[0.35]",
                         )}
-                        strokeWidth={2.25}
+                        strokeWidth={selected ? 2.5 : 2.25}
                         aria-hidden
                       />
                       {count > 0 && (
                         <span
                           className={cn(
                             "absolute -right-0.5 -top-2.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-0.5 text-[10px] font-bold leading-none tabular-nums transition-colors duration-300 sm:-top-3",
-                            selected ? theme.countBadgeSelected : theme.countBadgeIdle
+                            selected
+                              ? theme.countBadgeIdle.replace("bg-white/95", "bg-slate-100").replace("shadow-sm", "shadow-none") // Use neutral for count on light pill
+                              : theme.countBadgeIdle,
                           )}
                           aria-hidden
                         >

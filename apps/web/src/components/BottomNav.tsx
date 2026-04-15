@@ -1,9 +1,17 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
-import { badgeCountForJobsTab, useJobsTabCounts } from "@/hooks/useJobsTabCounts";
+import {
+  badgeCountForJobsTab,
+  useJobsTabCounts,
+} from "@/hooks/useJobsTabCounts";
 import {
   HeartHandshake,
   HelpingHand,
@@ -38,7 +46,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserSearch } from "./UserSearch";
 import { MobileSmartSearchOverlay } from "./MobileSmartSearchOverlay";
-import { FREELANCER_JOBS_TABS, CLIENT_JOBS_TABS } from "@/components/jobs/jobsTabConfig";
+import {
+  FREELANCER_JOBS_TABS,
+  CLIENT_JOBS_TABS,
+} from "@/components/jobs/jobsTabConfig";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { CommunityPostsCategoryNativeSelect } from "@/components/community/CommunityPostsCategoryNativeSelect";
 import { ALL_HELP_CATEGORY_ID } from "@/lib/serviceCategories";
@@ -48,7 +59,7 @@ import { useReportIssue } from "@/context/ReportIssueContext";
 const appMenuJobsCountBadgeClassName = cn(
   "shrink-0 min-w-[1.75rem] justify-center rounded-full border px-2 py-0.5 text-xs font-bold tabular-nums",
   "border-white/20 bg-black/50 text-white shadow-sm backdrop-blur-md ring-1 ring-inset ring-white/10",
-  "dark:border-white/35 dark:bg-white/35 dark:text-zinc-950 dark:shadow-md dark:backdrop-blur-md dark:ring-white/25"
+  "dark:border-white/35 dark:bg-white/35 dark:text-zinc-950 dark:shadow-md dark:backdrop-blur-md dark:ring-white/25",
 );
 
 export function BottomNav() {
@@ -70,27 +81,35 @@ export function BottomNav() {
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
   const { openReportModal } = useReportIssue();
   const previousPathnameRef = useRef(location.pathname);
-  const profilePath = profile?.role === "freelancer" ? "/freelancer/profile" : profile?.role === "client" ? "/client/profile" : "/dashboard";
+  const profilePath =
+    profile?.role === "freelancer"
+      ? "/freelancer/profile"
+      : profile?.role === "client"
+        ? "/client/profile"
+        : "/dashboard";
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
   /** `/profile/:userId` ships its own fixed back button — hide nav duplicate */
   const isPublicUserProfilePage = /^\/profile\/[^/]+$/.test(pathnameNorm);
   const receiveRequestsOn = profile?.is_available_for_jobs === true;
   const showFreelancerJobNav =
-    profile?.role === "freelancer" || (profile?.role === "client" && receiveRequestsOn);
+    profile?.role === "freelancer" ||
+    (profile?.role === "client" && receiveRequestsOn);
   const isProfileHub =
-    pathnameNorm === "/client/profile" || pathnameNorm === "/freelancer/profile";
-  const isProfileSubpage = /^\/(client|freelancer)\/profile\/.+/.test(pathnameNorm);
-  const profileBackTarget =
-    isProfileHub
+    pathnameNorm === "/client/profile" ||
+    pathnameNorm === "/freelancer/profile";
+  const isProfileSubpage = /^\/(client|freelancer)\/profile\/.+/.test(
+    pathnameNorm,
+  );
+  const profileBackTarget = isProfileHub
+    ? pathnameNorm.startsWith("/freelancer")
+      ? "/freelancer/home"
+      : "/client/home"
+    : isProfileSubpage
       ? pathnameNorm.startsWith("/freelancer")
-        ? "/freelancer/home"
-        : "/client/home"
-      : isProfileSubpage
-        ? pathnameNorm.startsWith("/freelancer")
-          ? "/freelancer/profile"
-          : "/client/profile"
-        : null;
+        ? "/freelancer/profile"
+        : "/client/profile"
+      : null;
   const showProfileBack = profileBackTarget !== null;
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
@@ -102,9 +121,12 @@ export function BottomNav() {
   const isPublicPostsPage = pathnameNorm === "/public/posts";
   /** Availability + post-now: no category pill in header (category is chosen on-page). */
   const isAvailabilityHeaderPage =
-    pathnameNorm === "/availability" || pathnameNorm === "/availability/post-now";
+    pathnameNorm === "/availability" ||
+    pathnameNorm === "/availability/post-now";
   const showCommunityHeaderCategoryDropdown =
-    isCommunityPostsFilterPage && !isPublicPostsPage && !isAvailabilityHeaderPage;
+    isCommunityPostsFilterPage &&
+    !isPublicPostsPage &&
+    !isAvailabilityHeaderPage;
   const communityCategoryParam = jobsSearchParams.get("category");
   const communityHomeFallback =
     profile?.role === "freelancer"
@@ -157,7 +179,10 @@ export function BottomNav() {
   useEffect(() => {
     if (!fabMenuOpen) return;
     const close = (e: MouseEvent) => {
-      if (fabMenuRef.current && !fabMenuRef.current.contains(e.target as Node)) {
+      if (
+        fabMenuRef.current &&
+        !fabMenuRef.current.contains(e.target as Node)
+      ) {
         setFabMenuOpen(false);
       }
     };
@@ -182,7 +207,8 @@ export function BottomNav() {
   /** Bell: same pipeline as News & Activity modal + schedule ping counts (not in modal). */
   const notificationBadgeCount = scheduleChanges + activityInboxCount;
 
-  const searchHelpersPath = profile?.role === "client" ? "/client/helpers" : "/public/posts";
+  const searchHelpersPath =
+    profile?.role === "client" ? "/client/helpers" : "/public/posts";
   const appMenuUserLabel =
     profile?.full_name?.trim() || user?.email?.trim() || "Signed in";
 
@@ -198,14 +224,14 @@ export function BottomNav() {
           /** Mobile: full-screen sheet */
           "max-md:inset-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none",
           "max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-none max-md:border-0 max-md:shadow-none",
-          "max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100"
+          "max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100",
         )}
       >
         <DialogTitle className="sr-only">App menu</DialogTitle>
         <div
           className={cn(
             "shrink-0 border-b border-border/30 bg-background px-4 pb-3",
-            "pt-4 max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
+            "pt-4 max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
           )}
         >
           <div className="flex items-start justify-between gap-3">
@@ -218,20 +244,20 @@ export function BottomNav() {
                 className={cn(
                   "inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground md:h-9 md:w-9",
                   "transition-colors hover:bg-muted/50 hover:text-foreground active:bg-muted/60",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
                 aria-label="Close menu"
               >
-                <X className="h-6 w-6 md:h-5 md:w-5" strokeWidth={2.25} aria-hidden />
+                <X
+                  className="h-6 w-6 md:h-5 md:w-5"
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
               </button>
             </DialogClose>
           </div>
         </div>
-        <div
-          className={cn(
-            "min-h-0 flex-1 overflow-y-auto px-4 py-2"
-          )}
-        >
+        <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-2")}>
           <div className="flex flex-col">
             <button
               type="button"
@@ -283,7 +309,7 @@ export function BottomNav() {
               className="flex w-full items-center gap-3 py-3.5 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3 md:text-sm"
               onClick={() => {
                 navigate(
-                  `/public/posts?category=${encodeURIComponent(ALL_HELP_CATEGORY_ID)}`
+                  `/public/posts?category=${encodeURIComponent(ALL_HELP_CATEGORY_ID)}`,
                 );
                 setDesktopAppMenuOpen(false);
               }}
@@ -315,12 +341,14 @@ export function BottomNav() {
                       strokeWidth={2}
                       aria-hidden
                     />
-                    <span className="text-base font-medium text-foreground md:text-sm">Help others</span>
+                    <span className="text-base font-medium text-foreground md:text-sm">
+                      Help others
+                    </span>
                   </span>
                   <ChevronDown
                     className={cn(
                       "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 md:h-4 md:w-4",
-                      appMenuHelpOthersOpen && "rotate-180"
+                      appMenuHelpOthersOpen && "rotate-180",
                     )}
                     aria-hidden
                   />
@@ -340,14 +368,24 @@ export function BottomNav() {
                           }}
                         >
                           <span className="flex min-w-0 flex-1 items-center gap-2.5">
-                            <Icon className="h-5 w-5 shrink-0 text-muted-foreground md:h-[1.125rem] md:w-[1.125rem]" aria-hidden />
+                            <Icon
+                              className="h-5 w-5 shrink-0 text-muted-foreground md:h-[1.125rem] md:w-[1.125rem]"
+                              aria-hidden
+                            />
                             <span className="truncate">{tab.label}</span>
                           </span>
                           <Badge
                             variant="secondary"
-                            className={cn(appMenuJobsCountBadgeClassName, "text-sm md:text-xs")}
+                            className={cn(
+                              appMenuJobsCountBadgeClassName,
+                              "text-sm md:text-xs",
+                            )}
                           >
-                            {badgeCountForJobsTab(tab.id, "freelancer", jobsTabCounts)}
+                            {badgeCountForJobsTab(
+                              tab.id,
+                              "freelancer",
+                              jobsTabCounts,
+                            )}
                           </Badge>
                         </button>
                       );
@@ -370,12 +408,14 @@ export function BottomNav() {
                     strokeWidth={2}
                     aria-hidden
                   />
-                  <span className="text-base font-medium text-foreground md:text-sm">I need help</span>
+                  <span className="text-base font-medium text-foreground md:text-sm">
+                    I need help
+                  </span>
                 </span>
                 <ChevronDown
                   className={cn(
                     "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 md:h-4 md:w-4",
-                    appMenuNeedHelpOpen && "rotate-180"
+                    appMenuNeedHelpOpen && "rotate-180",
                   )}
                   aria-hidden
                 />
@@ -395,14 +435,24 @@ export function BottomNav() {
                         }}
                       >
                         <span className="flex min-w-0 flex-1 items-center gap-2.5">
-                          <Icon className="h-5 w-5 shrink-0 text-muted-foreground md:h-[1.125rem] md:w-[1.125rem]" aria-hidden />
+                          <Icon
+                            className="h-5 w-5 shrink-0 text-muted-foreground md:h-[1.125rem] md:w-[1.125rem]"
+                            aria-hidden
+                          />
                           <span className="truncate">{tab.label}</span>
                         </span>
                         <Badge
                           variant="secondary"
-                          className={cn(appMenuJobsCountBadgeClassName, "text-sm md:text-xs")}
+                          className={cn(
+                            appMenuJobsCountBadgeClassName,
+                            "text-sm md:text-xs",
+                          )}
                         >
-                          {badgeCountForJobsTab(tab.id, "client", jobsTabCounts)}
+                          {badgeCountForJobsTab(
+                            tab.id,
+                            "client",
+                            jobsTabCounts,
+                          )}
                         </Badge>
                       </button>
                     );
@@ -416,7 +466,7 @@ export function BottomNav() {
         <div
           className={cn(
             "flex shrink-0 items-end justify-between gap-3 border-t border-border/30 bg-background px-4 pt-3",
-            "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+            "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]",
           )}
         >
           <button
@@ -431,10 +481,14 @@ export function BottomNav() {
             <Avatar className="h-11 w-11 shrink-0 border border-black/5 shadow-sm dark:border-white/10 md:h-10 md:w-10">
               <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
               <AvatarFallback className="text-sm font-bold bg-slate-100 dark:bg-zinc-800 md:text-xs">
-                {(profile?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
+                {(profile?.full_name ?? user?.email ?? "U")
+                  .slice(0, 2)
+                  .toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="min-w-0 truncate text-base font-semibold text-foreground md:text-sm">{appMenuUserLabel}</span>
+            <span className="min-w-0 truncate text-base font-semibold text-foreground md:text-sm">
+              {appMenuUserLabel}
+            </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-0.5">
             <Button
@@ -444,14 +498,17 @@ export function BottomNav() {
                 "bg-gradient-to-r from-orange-500 to-red-600",
                 "hover:from-orange-600 hover:to-red-700 active:scale-[0.98]",
                 "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                "md:text-sm md:py-2"
+                "md:text-sm md:py-2",
               )}
               onClick={() => {
                 openReportModal();
                 setDesktopAppMenuOpen(false);
               }}
             >
-              <AlertCircle className="h-5 w-5 shrink-0 text-white md:h-4 md:w-4" aria-hidden />
+              <AlertCircle
+                className="h-5 w-5 shrink-0 text-white md:h-4 md:w-4"
+                aria-hidden
+              />
               Report
             </Button>
             <button
@@ -463,12 +520,18 @@ export function BottomNav() {
               className={cn(
                 "flex items-center gap-2 rounded-lg px-2 py-2 text-destructive transition-colors",
                 "hover:bg-destructive/10 active:bg-destructive/15",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               )}
               aria-label="Log out"
             >
-              <LogOut className="h-6 w-6 shrink-0 md:h-5 md:w-5" strokeWidth={2} aria-hidden />
-              <span className="text-base font-semibold md:text-sm">Log out</span>
+              <LogOut
+                className="h-6 w-6 shrink-0 md:h-5 md:w-5"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <span className="text-base font-semibold md:text-sm">
+                Log out
+              </span>
             </button>
           </div>
         </div>
@@ -501,12 +564,14 @@ export function BottomNav() {
             <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
               <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
               <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
-                {(profile?.full_name ?? user?.email ?? "User").slice(0, 2).toUpperCase()}
+                {(profile?.full_name ?? user?.email ?? "User")
+                  .slice(0, 2)
+                  .toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col text-left min-w-0">
               <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
-                {profile?.full_name?.split(' ')[0] ?? "User"}
+                {profile?.full_name?.split(" ")[0] ?? "User"}
                 <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
               </span>
             </div>
@@ -568,7 +633,7 @@ export function BottomNav() {
       data-mobile-header-strip=""
       className={cn(
         "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] translate-y-0 opacity-100",
-        "border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background"
+        "border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background",
       )}
       style={{
         paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
@@ -587,7 +652,7 @@ export function BottomNav() {
         "md:hidden fixed z-[60] pointer-events-none",
         mobileSearchOpen || showCommunityHeaderCategoryDropdown
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
-          : "right-[max(0.75rem,env(safe-area-inset-right))]"
+          : "right-[max(0.75rem,env(safe-area-inset-right))]",
       )}
       style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
     >
@@ -601,7 +666,7 @@ export function BottomNav() {
               : "w-full"
             : "max-w-[calc(100vw-1rem)] justify-end",
           mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end",
-          isPublicPostsPage && !mobileSearchOpen && "justify-end"
+          isPublicPostsPage && !mobileSearchOpen && "justify-end",
         )}
       >
         {showCommunityHeaderCategoryDropdown && !mobileSearchOpen && (
@@ -618,7 +683,9 @@ export function BottomNav() {
         <div
           className={cn(
             "relative shrink-0",
-            (!isCommunityPostsFilterPage || isPublicPostsPage) && !mobileSearchOpen && "ml-auto"
+            (!isCommunityPostsFilterPage || isPublicPostsPage) &&
+              !mobileSearchOpen &&
+              "ml-auto",
           )}
         >
           <button
@@ -628,7 +695,11 @@ export function BottomNav() {
             aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
             aria-expanded={mobileSearchOpen}
           >
-            {mobileSearchOpen ? <X className="h-6 w-6" strokeWidth={2} /> : <Search className="h-6 w-6" strokeWidth={2} />}
+            {mobileSearchOpen ? (
+              <X className="h-6 w-6" strokeWidth={2} />
+            ) : (
+              <Search className="h-6 w-6" strokeWidth={2} />
+            )}
           </button>
         </div>
         {!mobileSearchOpen && (
@@ -670,9 +741,17 @@ export function BottomNav() {
   const MobileLeftHeaderCluster = isPublicUserProfilePage ? null : (
     <div
       className="md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1"
-      style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
+      style={{
+        top: "max(0.75rem, env(safe-area-inset-top))",
+        left: "max(0.75rem, env(safe-area-inset-left))",
+      }}
     >
-      <button type="button" onClick={handleHeaderBack} className={mobileUniversalBackBtnClass} aria-label="Back">
+      <button
+        type="button"
+        onClick={handleHeaderBack}
+        className={mobileUniversalBackBtnClass}
+        aria-label="Back"
+      >
         <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
       </button>
     </div>
@@ -728,7 +807,10 @@ export function BottomNav() {
         {MobileLeftHeaderCluster}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
-        <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
+        <NotificationsModal
+          open={notificationsOpen}
+          onOpenChange={setNotificationsOpen}
+        />
       </>
     );
   }
@@ -763,9 +845,9 @@ export function BottomNav() {
       "/liked",
       "/dashboard",
       "/messages",
-      "/calendar"
+      "/calendar",
     ];
-    if (!allowedPaths.some(path => location.pathname.startsWith(path))) {
+    if (!allowedPaths.some((path) => location.pathname.startsWith(path))) {
       return null;
     }
   }
@@ -784,28 +866,45 @@ export function BottomNav() {
           <div
             className={cn(
               // Desktop: keep it pinned to the viewport bottom (no floating gap).
-              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl"
+              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl",
             )}
           >
             <div className="flex items-center justify-center px-6 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-[env(safe-area-inset-bottom,0px)]">
-              <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0" title="Getting Started">
+              <div
+                className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 flex-shrink-0"
+                title="Getting Started"
+              >
                 <Home className="w-7 h-7" />
               </div>
             </div>
           </div>
         </nav>
-        <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
+        <NotificationsModal
+          open={notificationsOpen}
+          onOpenChange={setNotificationsOpen}
+        />
       </>
     );
   }
 
   // User navigation (Client & Freelancer)
-  if ((profile && !profile.is_admin) || (!profile && (location.pathname.startsWith("/client") || location.pathname.startsWith("/freelancer")))) {
+  if (
+    (profile && !profile.is_admin) ||
+    (!profile &&
+      (location.pathname.startsWith("/client") ||
+        location.pathname.startsWith("/freelancer")))
+  ) {
     const isFreelancer = profile?.role === "freelancer";
 
-    const profileTabPath = isFreelancer ? "/freelancer/profile" : "/client/profile";
+    const profileTabPath = isFreelancer
+      ? "/freelancer/profile"
+      : "/client/profile";
     const userNav = [
-      { path: isFreelancer ? "/freelancer/home" : "/client/home", icon: Home, label: "Home" },
+      {
+        path: isFreelancer ? "/freelancer/home" : "/client/home",
+        icon: Home,
+        label: "Home",
+      },
       { path: "/liked", icon: Heart, label: "Liked" },
       // { path: "/jobs", icon: Briefcase, label: "Jobs" }, // hidden for now — re-add Briefcase import when restoring
       { path: "/messages", icon: MessageCircle, label: "Inbox" },
@@ -821,7 +920,7 @@ export function BottomNav() {
           <div
             className={cn(
               // Desktop: keep it pinned to the viewport bottom (no floating gap).
-              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-md md:rounded-2xl"
+              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-md md:rounded-2xl",
             )}
           >
             <div className="mx-0 flex w-full max-w-none items-center justify-evenly overflow-visible px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12">
@@ -834,7 +933,9 @@ export function BottomNav() {
                     : location.pathname.startsWith(item.path);
 
                 const jobsBadgeCount =
-                  item.path === "/jobs" ? scheduleChanges + activityInboxCount : 0;
+                  item.path === "/jobs"
+                    ? scheduleChanges + activityInboxCount
+                    : 0;
 
                 return (
                   <Link
@@ -842,23 +943,31 @@ export function BottomNav() {
                     to={item.path}
                     className={cn(
                       "flex flex-col items-center justify-center p-1 transition-all relative",
-                      isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      isActive
+                        ? "text-slate-800 dark:text-slate-100"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
                     )}
                   >
                     <div
-                      data-nav-liked-anchor={item.path === "/liked" ? "" : undefined}
+                      data-nav-liked-anchor={
+                        item.path === "/liked" ? "" : undefined
+                      }
                       className={cn(
                         "flex flex-col items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] rounded-2xl transition-all duration-300 relative",
                         isActive
                           ? "bg-white/70 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
-                          : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80"
+                          : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80",
                       )}
                     >
                       <Icon
                         className={cn(
                           "transition-all duration-300",
-                          isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110",
-                          isActive && item.path === "/liked" && "text-rose-500 dark:text-rose-400"
+                          isActive
+                            ? "w-6 h-6 sm:w-7 sm:h-7 fill-current"
+                            : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110",
+                          isActive &&
+                            item.path === "/liked" &&
+                            "text-rose-500 dark:text-rose-400",
                         )}
                       />
                       {jobsBadgeCount > 0 && (
@@ -873,7 +982,9 @@ export function BottomNav() {
                     <span
                       className={cn(
                         "mt-0.5 hidden text-[10px] font-semibold leading-none md:inline",
-                        isActive && item.path === "/liked" && "text-rose-600 dark:text-rose-400"
+                        isActive &&
+                          item.path === "/liked" &&
+                          "text-rose-600 dark:text-rose-400",
                       )}
                     >
                       {item.label}
@@ -896,13 +1007,16 @@ export function BottomNav() {
                     "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-900/30",
                     "dark:shadow-orange-950/40",
                     "transition-all active:scale-95",
-                    "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   )}
                   aria-label="Create post or browse"
                   aria-expanded={fabMenuOpen}
                   aria-haspopup="menu"
                 >
-                  <Plus className="h-7 w-7 stroke-[2.5] text-white" aria-hidden />
+                  <Plus
+                    className="h-7 w-7 stroke-[2.5] text-white"
+                    aria-hidden
+                  />
                 </button>
                 {fabMenuOpen && (
                   <div
@@ -918,9 +1032,14 @@ export function BottomNav() {
                         setFabMenuOpen(false);
                       }}
                     >
-                      <ClipboardList className="h-6 w-6 shrink-0 text-primary" aria-hidden />
+                      <ClipboardList
+                        className="h-6 w-6 shrink-0 text-primary"
+                        aria-hidden
+                      />
                       <span className="min-w-0 flex-1">
-                        <span className="block leading-snug">Post a request</span>
+                        <span className="block leading-snug">
+                          Post a request
+                        </span>
                         <span className="mt-1 block text-[13px] font-normal text-muted-foreground leading-snug">
                           Find helpers — describe what you need
                         </span>
@@ -935,9 +1054,14 @@ export function BottomNav() {
                         setFabMenuOpen(false);
                       }}
                     >
-                      <UsersRound className="h-6 w-6 shrink-0 text-primary" aria-hidden />
+                      <UsersRound
+                        className="h-6 w-6 shrink-0 text-primary"
+                        aria-hidden
+                      />
                       <span className="min-w-0 flex-1">
-                        <span className="block leading-snug">Set availability</span>
+                        <span className="block leading-snug">
+                          Set availability
+                        </span>
                         <span className="mt-1 block text-[13px] font-normal text-muted-foreground leading-snug">
                           Short window — clients see you now and can tap to chat
                         </span>
@@ -952,7 +1076,8 @@ export function BottomNav() {
                 const Icon = item.icon;
                 const isActive = location.pathname.startsWith(item.path);
                 const inboxBadgeCount = unreadMessages;
-                const showMessageBadge = item.path === "/messages" && inboxBadgeCount > 0;
+                const showMessageBadge =
+                  item.path === "/messages" && inboxBadgeCount > 0;
 
                 return (
                   <Link
@@ -960,7 +1085,9 @@ export function BottomNav() {
                     to={item.path}
                     className={cn(
                       "flex flex-col items-center justify-center p-1 transition-all relative",
-                      isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      isActive
+                        ? "text-slate-800 dark:text-slate-100"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
                     )}
                   >
                     <div
@@ -968,12 +1095,21 @@ export function BottomNav() {
                         "flex flex-col items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] rounded-2xl transition-all duration-300 relative",
                         isActive
                           ? "bg-white/70 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
-                          : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80"
+                          : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80",
                       )}
                     >
-                      <Icon className={cn("transition-all duration-300", isActive ? "w-6 h-6 sm:w-7 sm:h-7 fill-current" : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110")} />
+                      <Icon
+                        className={cn(
+                          "transition-all duration-300",
+                          isActive
+                            ? "w-6 h-6 sm:w-7 sm:h-7 fill-current"
+                            : "w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110",
+                        )}
+                      />
                     </div>
-                    <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">{item.label}</span>
+                    <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">
+                      {item.label}
+                    </span>
 
                     {showMessageBadge && (
                       <Badge
@@ -997,7 +1133,9 @@ export function BottomNav() {
                       onClick={() => setProfileMenuOpen(true)}
                       className={cn(
                         "md:hidden flex flex-col items-center justify-center p-1 transition-all relative",
-                        isActive ? "text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                        isActive
+                          ? "text-slate-800 dark:text-slate-100"
+                          : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
                       )}
                       aria-label="Open profile menu"
                     >
@@ -1006,30 +1144,55 @@ export function BottomNav() {
                           "flex flex-col items-center justify-center w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] rounded-2xl transition-all duration-300 relative overflow-visible",
                           isActive
                             ? "bg-white/70 shadow-sm ring-1 ring-slate-300/50 dark:bg-white/15 dark:ring-white/25"
-                            : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80"
+                            : "md:hover:bg-slate-50 dark:md:hover:bg-zinc-800/80",
                         )}
                       >
                         <Avatar className="h-9 w-9 border border-black/10 dark:border-white/15">
-                          <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+                          <AvatarImage
+                            src={profile?.photo_url ?? undefined}
+                            alt=""
+                          />
                           <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
-                            {(profile?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
+                            {(profile?.full_name ?? user?.email ?? "U")
+                              .slice(0, 2)
+                              .toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">Profile</span>
+                      <span className="mt-0.5 hidden text-[10px] font-semibold leading-none md:inline">
+                        Profile
+                      </span>
                     </button>
 
                     <Link
                       to={profileTabPath}
                       className={cn(
                         "hidden md:flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
-                        isActive ? "text-slate-700 dark:text-slate-200" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                        isActive
+                          ? "text-slate-700 dark:text-slate-200"
+                          : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300",
                       )}
                     >
-                      <div className={cn("flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative", isActive ? "bg-slate-100 dark:bg-zinc-800/80" : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800")}>
-                        <User className={cn("transition-all duration-300", isActive ? "w-7 h-7 fill-current" : "w-7 h-7 group-hover:scale-110")} />
+                      <div
+                        className={cn(
+                          "flex flex-col items-center justify-center w-[48px] h-[48px] rounded-xl transition-all duration-300 relative",
+                          isActive
+                            ? "bg-slate-100 dark:bg-zinc-800/80"
+                            : "group-hover:bg-slate-50 dark:group-hover:bg-zinc-800",
+                        )}
+                      >
+                        <User
+                          className={cn(
+                            "transition-all duration-300",
+                            isActive
+                              ? "w-7 h-7 fill-current"
+                              : "w-7 h-7 group-hover:scale-110",
+                          )}
+                        />
                       </div>
-                      <span className="mt-0.5 text-[10px] font-semibold leading-none">Profile</span>
+                      <span className="mt-0.5 text-[10px] font-semibold leading-none">
+                        Profile
+                      </span>
                     </Link>
                   </>
                 );
@@ -1046,7 +1209,10 @@ export function BottomNav() {
           onClose={() => setMobileSearchOpen(false)}
           onOpenNotifications={() => setNotificationsOpen(true)}
         />
-        <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
+        <NotificationsModal
+          open={notificationsOpen}
+          onOpenChange={setNotificationsOpen}
+        />
       </>
     );
   }
@@ -1075,11 +1241,13 @@ export function BottomNav() {
           onClose={() => setMobileSearchOpen(false)}
           onOpenNotifications={() => setNotificationsOpen(true)}
         />
-        <NotificationsModal open={notificationsOpen} onOpenChange={setNotificationsOpen} />
+        <NotificationsModal
+          open={notificationsOpen}
+          onOpenChange={setNotificationsOpen}
+        />
       </>
     );
   }
 
   return null;
 }
-

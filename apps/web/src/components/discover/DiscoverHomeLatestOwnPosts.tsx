@@ -5,7 +5,10 @@ import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
-import { DISCOVER_HOME_CATEGORIES, SERVICE_CATEGORIES } from "@/lib/serviceCategories";
+import {
+  DISCOVER_HOME_CATEGORIES,
+  SERVICE_CATEGORIES,
+} from "@/lib/serviceCategories";
 import { supabase } from "@/lib/supabase";
 
 type LatestOwnPost = {
@@ -21,7 +24,10 @@ function initials(name: string | null | undefined): string {
   if (!t) return "??";
   const parts = t.split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : (parts[0]?.[1] ?? "");
+  const last =
+    parts.length > 1
+      ? (parts[parts.length - 1]?.[0] ?? "")
+      : (parts[0]?.[1] ?? "");
   const s = (first + last).toUpperCase();
   return s || "??";
 }
@@ -54,14 +60,23 @@ function postCategoryImageSrc(category: string | null): string | null {
 const connectBadgeClass = cn(
   "absolute right-1.5 top-1.5 z-[1] inline-flex h-6 min-w-[1.375rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums leading-none text-white shadow-sm",
   "bg-gradient-to-r from-emerald-500 to-teal-600",
-  "ring-1 ring-emerald-600/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+  "ring-1 ring-emerald-600/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]",
 );
 
 function LiveExpiryRow({ expiresAtIso }: { expiresAtIso: string }) {
   return (
-    <div className="mt-1 flex min-w-0 items-center gap-1.5" role="status" aria-live="polite">
-      <Clock className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Live</span>
+    <div
+      className="mt-1 flex min-w-0 items-center gap-1.5"
+      role="status"
+      aria-live="polite"
+    >
+      <Clock
+        className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+        aria-hidden
+      />
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Live
+      </span>
       <ExpiryCountdown
         expiresAtIso={expiresAtIso}
         compact
@@ -81,9 +96,14 @@ export function DiscoverHomeLatestOwnPosts() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<LatestOwnPost[]>([]);
   const [loading, setLoading] = useState(false);
-  const [connectCountByPostId, setConnectCountByPostId] = useState<Record<string, number>>({});
+  const [connectCountByPostId, setConnectCountByPostId] = useState<
+    Record<string, number>
+  >({});
   const [connectAvatarsByPostId, setConnectAvatarsByPostId] = useState<
-    Record<string, { id: string; photo_url: string | null; full_name: string | null }[]>
+    Record<
+      string,
+      { id: string; photo_url: string | null; full_name: string | null }[]
+    >
   >({});
 
   useEffect(() => {
@@ -171,8 +191,13 @@ export function DiscoverHomeLatestOwnPosts() {
         avatarClientIdsByPost[pid] = ids;
       }
 
-      const allClientIds = Array.from(new Set(Object.values(avatarClientIdsByPost).flat()));
-      const profileMap = new Map<string, { photo_url: string | null; full_name: string | null }>();
+      const allClientIds = Array.from(
+        new Set(Object.values(avatarClientIdsByPost).flat()),
+      );
+      const profileMap = new Map<
+        string,
+        { photo_url: string | null; full_name: string | null }
+      >();
       if (allClientIds.length > 0) {
         const { data: profs, error: pErr } = await supabase
           .from("profiles")
@@ -180,7 +205,11 @@ export function DiscoverHomeLatestOwnPosts() {
           .in("id", allClientIds);
         if (!pErr && profs) {
           for (const p of profs) {
-            const row = p as { id: string; photo_url: string | null; full_name: string | null };
+            const row = p as {
+              id: string;
+              photo_url: string | null;
+              full_name: string | null;
+            };
             profileMap.set(String(row.id), {
               photo_url: row.photo_url ?? null,
               full_name: row.full_name ?? null,
@@ -189,7 +218,10 @@ export function DiscoverHomeLatestOwnPosts() {
         }
       }
 
-      const avatars: Record<string, { id: string; photo_url: string | null; full_name: string | null }[]> = {};
+      const avatars: Record<
+        string,
+        { id: string; photo_url: string | null; full_name: string | null }[]
+      > = {};
       for (const pid of postIds) {
         avatars[pid] = (avatarClientIdsByPost[pid] || []).map((cid) => ({
           id: cid,
@@ -214,13 +246,15 @@ export function DiscoverHomeLatestOwnPosts() {
   const availabilityListUrl = "/availability";
 
   return (
-    <section className="mt-4 px-1 md:mt-5" aria-label="Your latest availability posts">
+    <section
+      className="mt-4 px-1 md:mt-5"
+      aria-label="Your latest availability posts"
+    >
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
             Your latest posts
           </p>
-          
         </div>
         <button
           type="button"
@@ -228,7 +262,7 @@ export function DiscoverHomeLatestOwnPosts() {
           className={cn(
             "shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground transition-colors",
             "hover:bg-muted/60 hover:text-foreground active:bg-muted/80",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
         >
           Show more
@@ -246,23 +280,30 @@ export function DiscoverHomeLatestOwnPosts() {
               const count = connectCountByPostId[r.id] || 0;
               const clients = connectAvatarsByPostId[r.id] || [];
               const imgSrc = postCategoryImageSrc(r.category);
-              const subtitle = formatCategoryLabel(r.category || "") || "Availability";
+              const subtitle =
+                formatCategoryLabel(r.category || "") || "Availability";
               return (
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => navigate(`/availability/post/${encodeURIComponent(r.id)}/hires`)}
+                  onClick={() =>
+                    navigate(
+                      `/availability/post/${encodeURIComponent(r.id)}/hires`,
+                    )
+                  }
                   className={cn(
                     "relative w-full rounded-xl bg-muted/20 p-2.5 text-left transition-colors dark:bg-muted/40",
                     "hover:bg-muted/30 active:bg-muted/45 dark:hover:bg-muted/55 dark:active:bg-muted/70",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   )}
                 >
-                  {count > 0 ? <span className={connectBadgeClass}>{count}</span> : null}
+                  {count > 0 ? (
+                    <span className={connectBadgeClass}>{count}</span>
+                  ) : null}
                   <div
                     className={cn(
                       "flex items-start justify-between gap-3",
-                      count > 0 ? "pr-9" : undefined
+                      count > 0 ? "pr-9" : undefined,
                     )}
                   >
                     <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
@@ -271,8 +312,14 @@ export function DiscoverHomeLatestOwnPosts() {
                     <div className="flex shrink-0 items-center">
                       <div className="flex -space-x-2.5">
                         {clients.slice(0, 3).map((p) => (
-                          <Avatar key={p.id} className="h-9 w-9 border-2 border-background shadow-md">
-                            <AvatarImage src={p.photo_url || undefined} className="object-cover" />
+                          <Avatar
+                            key={p.id}
+                            className="h-9 w-9 border-2 border-background shadow-md"
+                          >
+                            <AvatarImage
+                              src={p.photo_url || undefined}
+                              className="object-cover"
+                            />
                             <AvatarFallback className="bg-card text-[11px] font-black text-foreground">
                               {initials(p.full_name)}
                             </AvatarFallback>
@@ -287,17 +334,29 @@ export function DiscoverHomeLatestOwnPosts() {
                       className="relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
                       aria-hidden
                     >
-                      {imgSrc ? <img src={imgSrc} alt="" className="h-full w-full object-cover" /> : null}
+                      {imgSrc ? (
+                        <img
+                          src={imgSrc}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
                       <div className="pointer-events-none absolute inset-0 bg-black/15" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold text-muted-foreground">{subtitle}</p>
+                      <p className="truncate text-xs font-semibold text-muted-foreground">
+                        {subtitle}
+                      </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         Posted {new Date(r.created_at).toLocaleDateString()}
                       </p>
                       <LiveExpiryRow expiresAtIso={r.expires_at} />
                     </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+                    <ChevronRight
+                      className="h-5 w-5 shrink-0 text-muted-foreground"
+                      aria-hidden
+                      strokeWidth={2}
+                    />
                   </div>
                 </button>
               );
@@ -309,23 +368,30 @@ export function DiscoverHomeLatestOwnPosts() {
               const count = connectCountByPostId[r.id] || 0;
               const clients = connectAvatarsByPostId[r.id] || [];
               const imgSrc = postCategoryImageSrc(r.category);
-              const subtitle = formatCategoryLabel(r.category || "") || "Availability";
+              const subtitle =
+                formatCategoryLabel(r.category || "") || "Availability";
               return (
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => navigate(`/availability/post/${encodeURIComponent(r.id)}/hires`)}
+                  onClick={() =>
+                    navigate(
+                      `/availability/post/${encodeURIComponent(r.id)}/hires`,
+                    )
+                  }
                   className={cn(
                     "relative w-full rounded-2xl bg-muted/20 p-4 text-left transition-colors dark:bg-muted/30",
                     "hover:bg-muted/25 active:bg-muted/40 dark:hover:bg-muted/45 dark:active:bg-muted/60",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   )}
                 >
-                  {count > 0 ? <span className={connectBadgeClass}>{count}</span> : null}
+                  {count > 0 ? (
+                    <span className={connectBadgeClass}>{count}</span>
+                  ) : null}
                   <div
                     className={cn(
                       "flex items-start justify-between gap-3",
-                      count > 0 ? "pr-9" : undefined
+                      count > 0 ? "pr-9" : undefined,
                     )}
                   >
                     <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
@@ -334,8 +400,14 @@ export function DiscoverHomeLatestOwnPosts() {
                     <div className="flex shrink-0 items-center">
                       <div className="flex -space-x-2.5">
                         {clients.slice(0, 3).map((p) => (
-                          <Avatar key={p.id} className="h-10 w-10 border-2 border-background shadow-md">
-                            <AvatarImage src={p.photo_url || undefined} className="object-cover" />
+                          <Avatar
+                            key={p.id}
+                            className="h-10 w-10 border-2 border-background shadow-md"
+                          >
+                            <AvatarImage
+                              src={p.photo_url || undefined}
+                              className="object-cover"
+                            />
                             <AvatarFallback className="bg-card text-[11px] font-black text-foreground">
                               {initials(p.full_name)}
                             </AvatarFallback>
@@ -350,17 +422,29 @@ export function DiscoverHomeLatestOwnPosts() {
                       className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
                       aria-hidden
                     >
-                      {imgSrc ? <img src={imgSrc} alt="" className="h-full w-full object-cover" /> : null}
+                      {imgSrc ? (
+                        <img
+                          src={imgSrc}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
                       <div className="pointer-events-none absolute inset-0 bg-black/15" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-muted-foreground">{subtitle}</p>
+                      <p className="truncate text-sm font-semibold text-muted-foreground">
+                        {subtitle}
+                      </p>
                       <p className="mt-0.5 text-sm text-muted-foreground">
                         Posted {new Date(r.created_at).toLocaleDateString()}
                       </p>
                       <LiveExpiryRow expiresAtIso={r.expires_at} />
                     </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+                    <ChevronRight
+                      className="h-5 w-5 shrink-0 text-muted-foreground"
+                      aria-hidden
+                      strokeWidth={2}
+                    />
                   </div>
                 </button>
               );

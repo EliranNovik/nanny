@@ -1,4 +1,13 @@
-import { Baby, Sparkles, Truck, ChefHat, HelpCircle, CheckCircle2, ArrowRight, X } from "lucide-react";
+import {
+  Baby,
+  Sparkles,
+  Truck,
+  ChefHat,
+  HelpCircle,
+  CheckCircle2,
+  ArrowRight,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,9 +35,16 @@ const categories: JobCategory[] = [
   {
     id: "childcare",
     title: "Childcare",
-    description: "Meet trusted nannies and babysitters who feel right for your family.",
-    modalDetails: "Our childcare professionals are rigorously vetted, experienced, and passionate about children. Whether you need a full-time returning nanny, an after-school sitter, or emergency backup care, we’ve got you covered with a seamless booking experience and thoroughly screened caregivers.",
-    benefits: ["Verified background checks & reviews", "CPR & First Aid certified options", "Available on short notice", "Flexible scheduling tailored to you"],
+    description:
+      "Meet trusted nannies and babysitters who feel right for your family.",
+    modalDetails:
+      "Our childcare professionals are rigorously vetted, experienced, and passionate about children. Whether you need a full-time returning nanny, an after-school sitter, or emergency backup care, we’ve got you covered with a seamless booking experience and thoroughly screened caregivers.",
+    benefits: [
+      "Verified background checks & reviews",
+      "CPR & First Aid certified options",
+      "Available on short notice",
+      "Flexible scheduling tailored to you",
+    ],
     ctaText: "Hire a Nanny",
     icon: Baby,
     iconColor: "text-purple-600",
@@ -38,9 +54,16 @@ const categories: JobCategory[] = [
   {
     id: "cleaning",
     title: "Cleaning",
-    description: "Keep your home fresh and tidy, from quick touch-ups to deep cleans.",
-    modalDetails: "Experience a spotless home with our top-tier cleaning services. Our helpers use professional-grade techniques to ensure every corner of your house shines, giving you back your precious weekend time. We make the matching process instant and hassle-free.",
-    benefits: ["Standard and deep cleaning options", "Eco-friendly products upon request", "Move-in / Move-out specials", "100% Satisfaction guaranteed"],
+    description:
+      "Keep your home fresh and tidy, from quick touch-ups to deep cleans.",
+    modalDetails:
+      "Experience a spotless home with our top-tier cleaning services. Our helpers use professional-grade techniques to ensure every corner of your house shines, giving you back your precious weekend time. We make the matching process instant and hassle-free.",
+    benefits: [
+      "Standard and deep cleaning options",
+      "Eco-friendly products upon request",
+      "Move-in / Move-out specials",
+      "100% Satisfaction guaranteed",
+    ],
     ctaText: "Hire a Cleaner",
     icon: Sparkles,
     iconColor: "text-orange-600",
@@ -50,9 +73,16 @@ const categories: JobCategory[] = [
   {
     id: "pickup",
     title: "Pick-up & Delivery",
-    description: "From A to B – groceries, packages, and essentials delivered right when you need them.",
-    modalDetails: "Forget traffic and lines. Our reliable helpers will pick up your groceries, packages, dry cleaning, or any other items and deliver them straight to your door, safely and on time. We ensure the fastest matching so your errands are complete within hours, not days.",
-    benefits: ["Real-time status updates", "Careful handling of fragile items", "Contactless delivery available", "Fast, efficient, and direct point-to-point"],
+    description:
+      "From A to B – groceries, packages, and essentials delivered right when you need them.",
+    modalDetails:
+      "Forget traffic and lines. Our reliable helpers will pick up your groceries, packages, dry cleaning, or any other items and deliver them straight to your door, safely and on time. We ensure the fastest matching so your errands are complete within hours, not days.",
+    benefits: [
+      "Real-time status updates",
+      "Careful handling of fragile items",
+      "Contactless delivery available",
+      "Fast, efficient, and direct point-to-point",
+    ],
     ctaText: "Hire a Courier",
     icon: Truck,
     iconColor: "text-green-600",
@@ -62,9 +92,16 @@ const categories: JobCategory[] = [
   {
     id: "cooking",
     title: "Cooking",
-    description: "Find home cooks and chefs for daily meals, meal prep, or fun cook-together evenings.",
-    modalDetails: "Enjoy healthy, home-cooked meals without the hassle. Hire a talented home cook or professional chef to prepare weekly meals, cater a small dinner party, or even teach you new recipes. Our platform allows you to browse specific dietary specialties in just a few taps.",
-    benefits: ["Customizable menus & dietary accommodations", "Grocery shopping included if needed", "Kitchen cleanup after cooking", "Restaurant-quality dining at home"],
+    description:
+      "Find home cooks and chefs for daily meals, meal prep, or fun cook-together evenings.",
+    modalDetails:
+      "Enjoy healthy, home-cooked meals without the hassle. Hire a talented home cook or professional chef to prepare weekly meals, cater a small dinner party, or even teach you new recipes. Our platform allows you to browse specific dietary specialties in just a few taps.",
+    benefits: [
+      "Customizable menus & dietary accommodations",
+      "Grocery shopping included if needed",
+      "Kitchen cleanup after cooking",
+      "Restaurant-quality dining at home",
+    ],
     ctaText: "Hire a Chef",
     icon: ChefHat,
     iconColor: "text-pink-600",
@@ -74,9 +111,16 @@ const categories: JobCategory[] = [
   {
     id: "other_help",
     title: "Other help",
-    description: "Need something else? We match you with versatile helpers for any home task.",
-    modalDetails: "Some tasks just don't fit into a box. Need help organizing a chaotic garage, assembling flat-pack furniture, packing boxes, or planning a small event? Our versatile network of helpers is ready to tackle your unique to-do list quickly and smoothly.",
-    benefits: ["Diverse skill sets available on demand", "Hourly or project-based flexible rates", "Creative problem solvers", "Quick turnaround for any unique task"],
+    description:
+      "Need something else? We match you with versatile helpers for any home task.",
+    modalDetails:
+      "Some tasks just don't fit into a box. Need help organizing a chaotic garage, assembling flat-pack furniture, packing boxes, or planning a small event? Our versatile network of helpers is ready to tackle your unique to-do list quickly and smoothly.",
+    benefits: [
+      "Diverse skill sets available on demand",
+      "Hourly or project-based flexible rates",
+      "Creative problem solvers",
+      "Quick turnaround for any unique task",
+    ],
     ctaText: "Find a Helper",
     icon: HelpCircle,
     iconColor: "text-blue-600",
@@ -96,16 +140,16 @@ export default function JobCategories() {
           return (
             <Dialog key={category.id}>
               <DialogTrigger asChild>
-                <div
-                  className="bg-card rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-2xl hover:bg-card transition-all duration-700 flex items-center justify-between group overflow-hidden cursor-pointer"
-                >
+                <div className="bg-card rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-2xl hover:bg-card transition-all duration-700 flex items-center justify-between group overflow-hidden cursor-pointer">
                   <div className="flex-1 pr-6 flex flex-col items-start text-left">
                     {/* Icon and Title Section */}
                     <div className="flex items-center gap-3 mb-3">
-                      <div className={cn(
-                        "h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 shadow-inner",
-                        category.bgColor
-                      )}>
+                      <div
+                        className={cn(
+                          "h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 shadow-inner",
+                          category.bgColor,
+                        )}
+                      >
                         <Icon className={cn("w-5 h-5", category.iconColor)} />
                       </div>
                       <h3 className="text-xl font-black text-slate-800 tracking-tight group-hover:text-primary transition-colors">
@@ -140,13 +184,23 @@ export default function JobCategories() {
 
                 {/* Full Bleed Image Header */}
                 <div className="relative h-64 md:h-80 w-full flex-shrink-0">
-                  <img src={category.image} alt={category.title} className="w-full h-full object-cover" />
+                  <img
+                    src={category.image}
+                    alt={category.title}
+                    className="w-full h-full object-cover"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8 md:p-10">
                     <div className="flex items-center gap-3 mb-2 opacity-90 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-100">
-                      <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center backdrop-blur-md bg-white/20")}>
+                      <div
+                        className={cn(
+                          "h-8 w-8 rounded-xl flex items-center justify-center backdrop-blur-md bg-white/20",
+                        )}
+                      >
                         <Icon className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-white/90 text-sm font-bold tracking-widest uppercase">Service Overview</span>
+                      <span className="text-white/90 text-sm font-bold tracking-widest uppercase">
+                        Service Overview
+                      </span>
                     </div>
                     <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight animate-in fade-in slide-in-from-bottom-5 duration-700">
                       {category.title}
@@ -161,10 +215,15 @@ export default function JobCategories() {
                   </p>
 
                   <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 md:p-8 space-y-5">
-                    <h3 className="text-xl font-bold text-slate-900">What makes our {category.title} help the best?</h3>
+                    <h3 className="text-xl font-bold text-slate-900">
+                      What makes our {category.title} help the best?
+                    </h3>
                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {category.benefits.map((benefit, i) => (
-                        <li key={i} className="flex items-start gap-3 text-slate-700">
+                        <li
+                          key={i}
+                          className="flex items-start gap-3 text-slate-700"
+                        >
                           <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                           <span className="font-semibold">{benefit}</span>
                         </li>
@@ -177,7 +236,7 @@ export default function JobCategories() {
                       Ready to get started?
                     </p>
                     <Button
-                      onClick={() => navigate('/onboarding?role=client')}
+                      onClick={() => navigate("/onboarding?role=client")}
                       className="w-full sm:w-auto rounded-full px-8 h-12 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 flex items-center gap-2 group"
                     >
                       {category.ctaText}
@@ -190,9 +249,7 @@ export default function JobCategories() {
           );
         })}
       </div>
-      <p className="text-center text-slate-400 font-bold tracking-widest text-xs uppercase opacity-50 flex items-center justify-center gap-2">
-
-      </p>
+      <p className="text-center text-slate-400 font-bold tracking-widest text-xs uppercase opacity-50 flex items-center justify-center gap-2"></p>
     </div>
   );
 }

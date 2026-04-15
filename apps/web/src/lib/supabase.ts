@@ -6,13 +6,13 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 // Validate environment variables
 if (!supabaseUrl || supabaseUrl.includes("your-project-id")) {
   console.error(
-    "❌ Missing or invalid VITE_SUPABASE_URL. Please update apps/web/.env with your actual Supabase URL"
+    "❌ Missing or invalid VITE_SUPABASE_URL. Please update apps/web/.env with your actual Supabase URL",
   );
 }
 
 if (!supabaseAnonKey || supabaseAnonKey.includes("your-anon-key")) {
   console.error(
-    "❌ Missing or invalid VITE_SUPABASE_ANON_KEY. Please update apps/web/.env with your actual Supabase anon key"
+    "❌ Missing or invalid VITE_SUPABASE_ANON_KEY. Please update apps/web/.env with your actual Supabase anon key",
   );
 }
 
@@ -35,6 +35,5 @@ export const supabase = createClient(
         "x-client-info": "nanny-marketplace-web",
       },
     },
-  }
+  },
 );
-

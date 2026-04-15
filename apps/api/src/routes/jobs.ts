@@ -6,31 +6,85 @@ import { AuthenticatedRequest } from "../middleware/auth";
 
 export const jobsRouter = Router();
 
-const CreateJobSchema = z.object({
-  // New multi-service fields
-  service_type: z.string().optional(),
-  care_frequency: z.string().optional(),
-  time_duration: z.string().optional(),
-  service_details: z.record(z.any()).optional(),
+// ─── Allowed field lists ───────────────────────────────────────────────────────
 
-  // Old nanny-specific fields (kept for backward compatibility)
+/** Safe job fields returned to callers. Never includes internal admin flags. */
+const JOB_SAFE_FIELDS = [
+  "id", "client_id", "selected_freelancer_id", "status", "stage",
+  "service_type", "care_type", "care_frequency", "time_duration",
+  "service_details", "children_count", "children_age_group",
+  "location_city", "start_at", "created_at", "locked_at",
+  "confirm_starts_at", "confirm_ends_at", "confirm_window_seconds",
+  "notes", "budget_min", "budget_max", "languages_pref", "requirements",
+  "offered_hourly_rate", "price_offer_status", "community_post_id",
+  "community_post_expires_at",
+].join(", ");
+
+/** Freelancer profile fields safe to expose to another user (client). */
+const FREELANCER_PROFILE_SAFE_FIELDS =
+  "hourly_rate_min, hourly_rate_max, bio, available_now, languages, categories";
+
+/** Profile fields safe to include in confirmations list. */
+const PROFILE_CARD_FIELDS = "id, full_name, photo_url, city";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Pull caller role from profiles table. Used for role-gated actions. */
+async function getCallerRole(userId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .single();
+  return data?.role ?? null;
+}
+
+/** Verify a job exists and belongs to the given client. Returns job or null. */
+async function getJobForClient(jobId: string, clientId: string) {
+  const { data } = await supabaseAdmin
+    .from("job_requests")
+    .select(JOB_SAFE_FIELDS)
+    .eq("id", jobId)
+    .eq("client_id", clientId)
+    .single();
+  return data ?? null;
+}
+
+// ─── Schemas ──────────────────────────────────────────────────────────────────
+
+const VALID_SERVICE_TYPES = [
+  "cleaning", "cooking", "pickup_delivery", "nanny", "other_help",
+] as const;
+
+const VALID_CARE_FREQUENCIES = ["one_time", "part_time", "regularly"] as const;
+const VALID_TIME_DURATIONS = [
+  "1_2_hours", "3_4_hours", "5_6_hours", "full_day",
+] as const;
+
+const CreateJobSchema = z.object({
+  service_type: z.enum(VALID_SERVICE_TYPES),
+  care_frequency: z.enum(VALID_CARE_FREQUENCIES),
+  time_duration: z.enum(VALID_TIME_DURATIONS),
+  service_details: z.record(z.unknown()).optional(),
+
+  // Old nanny-specific fields (backward compat)
   care_type: z.string().optional(),
-  children_count: z.number().int().min(1).optional(),
-  children_age_group: z.string().optional(),
-  shift_hours: z.string().optional(),
+  children_count: z.number().int().min(0).max(20).optional(),
+  children_age_group: z.string().max(100).optional(),
+  shift_hours: z.string().max(100).optional(),
 
   // Common fields
-  location_city: z.string(),
+  location_city: z.string().min(1).max(200),
   start_at: z.string().datetime().optional(),
-  languages_pref: z.array(z.string()).default([]),
-  requirements: z.array(z.string()).default([]),
-  budget_min: z.number().int().optional().nullable(),
-  budget_max: z.number().int().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  confirm_window_seconds: z.number().int().min(30).max(180).default(90)
+  languages_pref: z.array(z.string().max(50)).max(10).default([]),
+  requirements: z.array(z.string().max(100)).max(20).default([]),
+  budget_min: z.number().int().min(0).max(100_000).optional().nullable(),
+  budget_max: z.number().int().min(0).max(100_000).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  confirm_window_seconds: z.number().int().min(30).max(180).default(90),
 });
 
-/** Values must match DB `job_requests_time_duration_check` and CreateJobPage TIME_DURATIONS. */
+/** Values must match DB job_requests_time_duration_check and CreateJobPage TIME_DURATIONS. */
 function timeDurationFromCommunityPayload(payload: unknown): string {
   const p = payload as { quick_details?: string; duration_preset?: string } | null;
   const q = typeof p?.quick_details === "string" ? p.quick_details.trim() : "";
@@ -88,17 +142,38 @@ function buildCommunityHireJobRow(params: {
   };
 }
 
-// Create job and start notifying immediately
+// ─── Routes ───────────────────────────────────────────────────────────────────
+
+// POST / — Create job (CLIENT only)
 jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
-  const parsed = CreateJobSchema.safeParse(req.body);
 
+  // SECURITY: only clients may create job requests
+  const role = await getCallerRole(user.id);
+  if (role !== "client" && role !== "freelancer") {
+    // freelancers with is_available_for_jobs can also post — keep original intent
+    // but block requests from unknown/admin-only roles
+    res.status(403).json({ error: "Only registered users can create job requests" });
+    return;
+  }
+
+  const parsed = CreateJobSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json(parsed.error);
+    res.status(400).json({ error: "Invalid request data", details: parsed.error.flatten() });
     return;
   }
 
   const payload = parsed.data;
+
+  // INTEGRITY: budget_max must be >= budget_min if both present
+  if (
+    payload.budget_min != null &&
+    payload.budget_max != null &&
+    payload.budget_max < payload.budget_min
+  ) {
+    res.status(400).json({ error: "budget_max must be greater than or equal to budget_min" });
+    return;
+  }
 
   const { data: job, error: jobErr } = await supabaseAdmin
     .from("job_requests")
@@ -107,27 +182,27 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
       status: "ready",
       stage: "Request" as const,
       ...payload,
-      start_at: payload.start_at ? new Date(payload.start_at).toISOString() : null
+      start_at: payload.start_at ? new Date(payload.start_at).toISOString() : null,
     })
-    .select("*")
+    .select(JOB_SAFE_FIELDS)
     .single();
 
   if (jobErr) {
     res.status(500).json({ error: jobErr.message });
     return;
   }
+  const j = job as any;
 
   // Find matching candidates
-  console.log("[JobsAPI] Finding candidates for job:", job.id);
-  const candidates = await findCandidates(job, 30);
+  console.log("[JobsAPI] Finding candidates for job:", j.id);
+  const candidates = await findCandidates(j, 30);
   console.log("[JobsAPI] Found", candidates.length, "matching candidates");
 
-  // Create notifications for matching freelancers
   if (candidates.length > 0) {
     const rows = candidates.map((fid) => ({
-      job_id: job.id,
+      job_id: j.id,
       freelancer_id: fid,
-      status: "pending" as const
+      status: "pending" as const,
     }));
     const { error: notifError } = await supabaseAdmin
       .from("job_candidate_notifications")
@@ -138,34 +213,32 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
       res.status(500).json({ error: `Failed to create notifications: ${notifError.message}` });
       return;
     }
-
     console.log("[JobsAPI] Created", candidates.length, "notifications");
   } else {
     console.log("[JobsAPI] No matching candidates found");
   }
 
-  // Open confirmation window
   const starts = new Date();
-  const ends = new Date(starts.getTime() + (job.confirm_window_seconds || 90) * 1000);
+  const ends = new Date(starts.getTime() + (j.confirm_window_seconds || 90) * 1000);
 
   await supabaseAdmin
     .from("job_requests")
     .update({
       status: "notifying",
       confirm_starts_at: starts.toISOString(),
-      confirm_ends_at: ends.toISOString()
+      confirm_ends_at: ends.toISOString(),
     })
-    .eq("id", job.id);
+    .eq("id", j.id);
 
-  res.json({ job_id: job.id, confirm_ends_at: ends.toISOString() });
+  res.json({ job_id: j.id, confirm_ends_at: ends.toISOString() });
 });
 
-/** Client or freelancer expresses hire interest; post author confirms on availability page (no incoming-requests flow). */
+// POST /from-community-post — CLIENT hires from a community post
 jobsRouter.post("/from-community-post", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const parsed = z.object({ community_post_id: z.string().uuid() }).safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json(parsed.error);
+    res.status(400).json({ error: "Invalid community_post_id" });
     return;
   }
 
@@ -179,8 +252,10 @@ jobsRouter.post("/from-community-post", async (req: Request, res: Response): Pro
     res.status(500).json({ error: meErr?.message ?? "Profile not found" });
     return;
   }
-  if (me.role !== "client" && me.role !== "freelancer") {
-    res.status(403).json({ error: "Only client and freelancer accounts can hire from community posts" });
+
+  // SECURITY: only clients can hire from community posts (freelancers have their own flow)
+  if (me.role !== "client") {
+    res.status(403).json({ error: "Only client accounts can hire from community posts" });
     return;
   }
 
@@ -231,6 +306,7 @@ jobsRouter.post("/from-community-post", async (req: Request, res: Response): Pro
 
   if (insErr) {
     if (insErr.code === "23505") {
+      // INTEGRITY: return existing pending interest instead of error
       const { data: existing } = await supabaseAdmin
         .from("community_post_hire_interests")
         .select("id")
@@ -238,10 +314,7 @@ jobsRouter.post("/from-community-post", async (req: Request, res: Response): Pro
         .eq("client_id", user.id)
         .eq("status", "pending")
         .maybeSingle();
-      res.json({
-        interest_id: existing?.id ?? null,
-        already_pending: true,
-      });
+      res.json({ interest_id: existing?.id ?? null, already_pending: true });
       return;
     }
     res.status(500).json({ error: insErr.message });
@@ -251,7 +324,7 @@ jobsRouter.post("/from-community-post", async (req: Request, res: Response): Pro
   res.json({ interest_id: inserted.id, already_pending: false });
 });
 
-/** Post author: list hire interests for a community post. */
+// GET /community-post/:postId/hire-interests — Post author lists interests
 jobsRouter.get("/community-post/:postId/hire-interests", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const postId = req.params.postId;
@@ -266,6 +339,7 @@ jobsRouter.get("/community-post/:postId/hire-interests", async (req: Request, re
     .eq("id", postId)
     .single();
 
+  // SECURITY: only the post author can see hire interests
   if (postErr || !post || post.author_id !== user.id) {
     res.status(404).json({ error: "Post not found" });
     return;
@@ -288,7 +362,8 @@ jobsRouter.get("/community-post/:postId/hire-interests", async (req: Request, re
     clientIds.length > 0
       ? await supabaseAdmin
           .from("profiles")
-          .select("id, full_name, photo_url, city, role")
+          // SECURITY: only public-safe profile fields
+          .select(PROFILE_CARD_FIELDS)
           .in("id", clientIds)
       : { data: [] as Record<string, unknown>[] };
   const profMap = new Map((profs || []).map((p: any) => [p.id, p]));
@@ -301,7 +376,7 @@ jobsRouter.get("/community-post/:postId/hire-interests", async (req: Request, re
   res.json({ interests });
 });
 
-/** Post author: confirm a pending interest → locked job + conversation. */
+// POST /community-hire-interest/:interestId/confirm — Post author confirms interest
 jobsRouter.post("/community-hire-interest/:interestId/confirm", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const interestId = req.params.interestId;
@@ -320,8 +395,16 @@ jobsRouter.post("/community-hire-interest/:interestId/confirm", async (req: Requ
     res.status(404).json({ error: "Interest not found" });
     return;
   }
+
+  // INTEGRITY: only pending interests can be confirmed
   if (interest.status !== "pending") {
     res.status(400).json({ error: "This interest is no longer pending" });
+    return;
+  }
+
+  // INTEGRITY: prevent confirming if a job request was already created
+  if (interest.job_request_id) {
+    res.status(400).json({ error: "A job has already been created for this interest" });
     return;
   }
 
@@ -331,8 +414,15 @@ jobsRouter.post("/community-hire-interest/:interestId/confirm", async (req: Requ
     .eq("id", interest.community_post_id)
     .single();
 
+  // SECURITY: only the post author can confirm interests
   if (postErr || !post || post.author_id !== user.id) {
     res.status(403).json({ error: "Not allowed" });
+    return;
+  }
+
+  // INTEGRITY: the post must still be active
+  if (post.status !== "active" || !post.expires_at || new Date(post.expires_at) <= new Date()) {
+    res.status(400).json({ error: "This post is no longer active" });
     return;
   }
 
@@ -376,7 +466,11 @@ jobsRouter.post("/community-hire-interest/:interestId/confirm", async (req: Requ
     notes: noteLines.join("\n"),
   });
 
-  const { data: job, error: jobErr } = await supabaseAdmin.from("job_requests").insert(jobRow).select("id").single();
+  const { data: job, error: jobErr } = await supabaseAdmin
+    .from("job_requests")
+    .insert(jobRow)
+    .select("id")
+    .single();
 
   if (jobErr || !job) {
     res.status(500).json({ error: jobErr?.message ?? "Failed to create job" });
@@ -401,12 +495,9 @@ jobsRouter.post("/community-hire-interest/:interestId/confirm", async (req: Requ
 
   const { error: upErr } = await supabaseAdmin
     .from("community_post_hire_interests")
-    .update({
-      status: "confirmed",
-      job_request_id: job.id,
-    })
+    .update({ status: "confirmed", job_request_id: job.id })
     .eq("id", interestId)
-    .eq("status", "pending");
+    .eq("status", "pending"); // double-check atomicity
 
   if (upErr) {
     res.status(500).json({ error: upErr.message });
@@ -416,7 +507,7 @@ jobsRouter.post("/community-hire-interest/:interestId/confirm", async (req: Requ
   res.json({ job_id: job.id, conversation_id: convo.id });
 });
 
-/** Post author: decline a pending interest. */
+// POST /community-hire-interest/:interestId/decline — Post author declines interest
 jobsRouter.post("/community-hire-interest/:interestId/decline", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const interestId = req.params.interestId;
@@ -436,26 +527,29 @@ jobsRouter.post("/community-hire-interest/:interestId/decline", async (req: Requ
     return;
   }
 
+  // INTEGRITY: can only decline pending interests
+  if (interest.status !== "pending") {
+    res.status(400).json({ error: "This interest is no longer pending" });
+    return;
+  }
+
   const { data: post } = await supabaseAdmin
     .from("community_posts")
     .select("author_id")
     .eq("id", interest.community_post_id)
     .single();
 
+  // SECURITY: only the post author can decline
   if (!post || post.author_id !== user.id) {
     res.status(403).json({ error: "Not allowed" });
-    return;
-  }
-
-  if (interest.status !== "pending") {
-    res.status(400).json({ error: "This interest is no longer pending" });
     return;
   }
 
   const { error } = await supabaseAdmin
     .from("community_post_hire_interests")
     .update({ status: "declined" })
-    .eq("id", interestId);
+    .eq("id", interestId)
+    .eq("status", "pending"); // atomic guard
 
   if (error) {
     res.status(500).json({ error: error.message });
@@ -465,15 +559,22 @@ jobsRouter.post("/community-hire-interest/:interestId/decline", async (req: Requ
   res.json({ ok: true });
 });
 
-// Freelancer opens notification
+// POST /:jobId/notifications/:notifId/open — Freelancer opens notification
 jobsRouter.post("/:jobId/notifications/:notifId/open", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
-  const { notifId } = req.params;
+  const { jobId, notifId } = req.params;
 
+  if (!z.string().uuid().safeParse(jobId).success || !z.string().uuid().safeParse(notifId).success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  // SECURITY: .eq("job_id", jobId) & .eq("freelancer_id", user.id) prevents cross-user abuse
   const { error } = await supabaseAdmin
     .from("job_candidate_notifications")
     .update({ status: "opened", opened_at: new Date().toISOString() })
     .eq("id", notifId)
+    .eq("job_id", jobId)
     .eq("freelancer_id", user.id);
 
   if (error) {
@@ -484,12 +585,47 @@ jobsRouter.post("/:jobId/notifications/:notifId/open", async (req: Request, res:
   res.json({ ok: true });
 });
 
-// Freelancer confirms availability
+// POST /:jobId/confirm — Freelancer confirms availability
 jobsRouter.post("/:jobId/confirm", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
 
-  // Insert confirmation (Expiration window check removed)
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
+  // SECURITY: verify this freelancer was actually invited to this job
+  const { data: notification } = await supabaseAdmin
+    .from("job_candidate_notifications")
+    .select("id, status")
+    .eq("job_id", jobId)
+    .eq("freelancer_id", user.id)
+    .maybeSingle();
+
+  if (!notification) {
+    res.status(403).json({ error: "You were not invited to this job" });
+    return;
+  }
+
+  // INTEGRITY: check the job is still in a confirmable state
+  const { data: job } = await supabaseAdmin
+    .from("job_requests")
+    .select("id, status, selected_freelancer_id, confirm_ends_at")
+    .eq("id", jobId)
+    .single();
+
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  if (job.status === "locked" || job.selected_freelancer_id) {
+    res.status(400).json({ error: "This job has already been assigned" });
+    return;
+  }
+
+  // INTEGRITY: check for duplicate confirmation (idempotent upsert is fine but log)
   const { error } = await supabaseAdmin
     .from("job_confirmations")
     .upsert({ job_id: jobId, freelancer_id: user.id, status: "available" });
@@ -502,14 +638,18 @@ jobsRouter.post("/:jobId/confirm", async (req: Request, res: Response): Promise<
   res.json({ ok: true });
 });
 
-// Freelancer accepts open job request with note
+// POST /:jobId/accept-open-job — Freelancer accepts an open (expired-window) job
 jobsRouter.post("/:jobId/accept-open-job", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
 
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
   const schema = z.object({ note: z.string().min(1).max(500) });
   const parsed = schema.safeParse(req.body);
-
   if (!parsed.success) {
     res.status(400).json({ error: "Note is required (1-500 characters)" });
     return;
@@ -517,10 +657,22 @@ jobsRouter.post("/:jobId/accept-open-job", async (req: Request, res: Response): 
 
   const { note } = parsed.data;
 
-  // Check job exists and window has expired (making it an open job)
+  // SECURITY: verify a notification exists for the caller
+  const { data: notification } = await supabaseAdmin
+    .from("job_candidate_notifications")
+    .select("id")
+    .eq("job_id", jobId)
+    .eq("freelancer_id", user.id)
+    .maybeSingle();
+
+  if (!notification) {
+    res.status(403).json({ error: "You were not invited to this job" });
+    return;
+  }
+
   const { data: job } = await supabaseAdmin
     .from("job_requests")
-    .select("*")
+    .select("id, status, selected_freelancer_id, confirm_ends_at")
     .eq("id", jobId)
     .single();
 
@@ -531,25 +683,32 @@ jobsRouter.post("/:jobId/accept-open-job", async (req: Request, res: Response): 
 
   const now = new Date();
   if (!job.confirm_ends_at || now <= new Date(job.confirm_ends_at)) {
-    res.status(400).json({ error: "Confirmation window is still open. Use /confirm endpoint instead." });
+    res.status(400).json({
+      error: "Confirmation window is still open. Use /confirm endpoint instead.",
+    });
     return;
   }
 
-  // Check if job is already locked
+  // INTEGRITY: can't accept an already-assigned job
   if (job.status === "locked" || job.selected_freelancer_id) {
     res.status(400).json({ error: "Job has already been assigned" });
     return;
   }
 
-  // Insert open job acceptance confirmation
+  // INTEGRITY: can't accept completed/cancelled jobs
+  if (job.status === "completed" || job.status === "cancelled") {
+    res.status(400).json({ error: "This job is no longer available" });
+    return;
+  }
+
   const { error } = await supabaseAdmin
     .from("job_confirmations")
     .upsert({
       job_id: jobId,
       freelancer_id: user.id,
       status: "available",
-      note: note,
-      is_open_job_accepted: true
+      note,
+      is_open_job_accepted: true,
     });
 
   if (error) {
@@ -560,18 +719,18 @@ jobsRouter.post("/:jobId/accept-open-job", async (req: Request, res: Response): 
   res.json({ ok: true });
 });
 
-// Client fetches confirmed candidates after window
+// GET /:jobId/confirmed — Client fetches confirmed candidates
 jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
 
-  const { data: job } = await supabaseAdmin
-    .from("job_requests")
-    .select("*")
-    .eq("id", jobId)
-    .single();
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
 
-  if (!job || job.client_id !== user.id) {
+  const job = await getJobForClient(jobId, user.id);
+  if (!job) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -590,49 +749,49 @@ jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise
   const ids = (confs || []).map((c) => c.freelancer_id);
 
   if (ids.length === 0) {
-    res.json({
-      freelancers: [],
-      confirm_ends_at: job.confirm_ends_at,
-      job,
-    });
+    res.json({ freelancers: [], confirm_ends_at: (job as any).confirm_ends_at, job });
     return;
   }
 
-  // Pull profile data for cards
+  // SECURITY: explicit safe field lists, no select(*)
   const { data: profiles, error: pErr } = await supabaseAdmin
     .from("profiles")
-    .select("id, full_name, photo_url, city, freelancer_profiles(*)")
+    .select(
+      `${PROFILE_CARD_FIELDS}, freelancer_profiles(${FREELANCER_PROFILE_SAFE_FIELDS})`
+    )
     .in("id", ids);
-
-  // Map confirmations to freelancers
-  const confsMap = new Map((confs || []).map((c) => [c.freelancer_id, c]));
-  const enrichedProfiles = (profiles || []).map((profile) => ({
-    ...profile,
-    confirmation_note: confsMap.get(profile.id)?.note || null,
-    is_open_job_accepted: confsMap.get(profile.id)?.is_open_job_accepted || false,
-  }));
 
   if (pErr) {
     res.status(500).json({ error: pErr.message });
     return;
   }
 
+  const confsMap = new Map((confs || []).map((c) => [c.freelancer_id, c]));
+  const enrichedProfiles = (profiles || []).map((profile: any) => ({
+    ...profile,
+    confirmation_note: confsMap.get(profile.id)?.note || null,
+    is_open_job_accepted: confsMap.get(profile.id)?.is_open_job_accepted || false,
+  }));
+
   res.json({
-    freelancers: enrichedProfiles || [],
-    confirm_ends_at: job.confirm_ends_at,
-    // Full row — client uses one round-trip (no extra Supabase fetch for job)
+    freelancers: enrichedProfiles,
+    confirm_ends_at: (job as any).confirm_ends_at,
     job,
   });
 });
 
-// Client selects freelancer and locks job + creates conversation
+// POST /:jobId/select — Client selects a freelancer and locks the job
 jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
 
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
   const schema = z.object({ freelancer_id: z.string().uuid() });
   const parsed = schema.safeParse(req.body);
-
   if (!parsed.success) {
     res.status(400).json(parsed.error);
     return;
@@ -640,18 +799,24 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
 
   const { freelancer_id } = parsed.data;
 
-  const { data: job } = await supabaseAdmin
-    .from("job_requests")
-    .select("*")
-    .eq("id", jobId)
-    .single();
-
-  if (!job || job.client_id !== user.id) {
+  const job = await getJobForClient(jobId, user.id);
+  if (!job) {
     res.status(404).json({ error: "Not found" });
     return;
   }
 
-  // Check if freelancer has confirmed (either during window or open job acceptance)
+  // INTEGRITY: cannot select on an already-locked or completed/cancelled job
+  const status = (job as any).status;
+  if ((job as any).selected_freelancer_id || status === "locked") {
+    res.status(400).json({ error: "Job has already been assigned" });
+    return;
+  }
+  if (status === "completed" || status === "cancelled") {
+    res.status(400).json({ error: "Cannot modify a completed or cancelled job" });
+    return;
+  }
+
+  // SECURITY: verify the selected freelancer actually confirmed this job
   const { data: confirmation } = await supabaseAdmin
     .from("job_confirmations")
     .select("id")
@@ -665,25 +830,21 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
     return;
   }
 
-  // Lock the job - set stage based on price offer status
-  // If no price offer has been sent yet, keep at "Request"
-  // If price offer is pending, set to "Price Offer"
-  // If price offer is accepted, set to "Price Offer" (will move to "Schedule" when schedule is confirmed)
+  // Determine stage based on price offer
   const { data: currentJob } = await supabaseAdmin
     .from("job_requests")
     .select("offered_hourly_rate, price_offer_status")
     .eq("id", jobId)
     .single();
 
-  let newStage = "Request"; // Default: stay at Request if no price offer sent
+  let newStage = "Request";
   if (currentJob?.offered_hourly_rate) {
-    if (currentJob.price_offer_status === "accepted") {
-      // Price offer accepted but schedule not yet confirmed - stay at "Price Offer"
-      newStage = "Price Offer";
-    } else if (currentJob.price_offer_status === "pending") {
+    if (
+      currentJob.price_offer_status === "accepted" ||
+      currentJob.price_offer_status === "pending"
+    ) {
       newStage = "Price Offer";
     }
-    // If declined or null, stay at "Request"
   }
 
   const { error: lockErr } = await supabaseAdmin
@@ -692,7 +853,7 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
       status: "locked",
       selected_freelancer_id: freelancer_id,
       locked_at: new Date().toISOString(),
-      stage: newStage
+      stage: newStage,
     })
     .eq("id", jobId);
 
@@ -701,8 +862,7 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
     return;
   }
 
-  // Remove job from all freelancers' requests (delete all notifications for this job)
-  // This ensures the job disappears from all freelancers' request lists
+  // Clean up all candidate notifications for this job
   const { error: deleteErr } = await supabaseAdmin
     .from("job_candidate_notifications")
     .delete()
@@ -710,18 +870,16 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
 
   if (deleteErr) {
     console.error("[JobsAPI] Error deleting notifications:", deleteErr);
-    // Continue anyway - the job is already locked
   }
 
-  // Create conversation
   const { data: convo, error: convoErr } = await supabaseAdmin
     .from("conversations")
     .insert({
       job_id: jobId,
       client_id: user.id,
-      freelancer_id
+      freelancer_id,
     })
-    .select("*")
+    .select("id")
     .single();
 
   if (convoErr) {
@@ -732,14 +890,18 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
   res.json({ conversation_id: convo.id });
 });
 
-// Client declines a freelancer's confirmation
+// POST /:jobId/decline — Client declines a freelancer's confirmation
 jobsRouter.post("/:jobId/decline", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
 
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
   const schema = z.object({ freelancer_id: z.string().uuid() });
   const parsed = schema.safeParse(req.body);
-
   if (!parsed.success) {
     res.status(400).json(parsed.error);
     return;
@@ -747,30 +909,24 @@ jobsRouter.post("/:jobId/decline", async (req: Request, res: Response): Promise<
 
   const { freelancer_id } = parsed.data;
 
-  const { data: job } = await supabaseAdmin
-    .from("job_requests")
-    .select("*")
-    .eq("id", jobId)
-    .single();
-
-  if (!job || job.client_id !== user.id) {
+  const job = await getJobForClient(jobId, user.id);
+  if (!job) {
     res.status(404).json({ error: "Not found" });
     return;
   }
 
-  // Check if job is already locked
-  if (job.status === "locked" || job.selected_freelancer_id) {
+  // INTEGRITY: can't decline on an already-locked job
+  if ((job as any).status === "locked" || (job as any).selected_freelancer_id) {
     res.status(400).json({ error: "Job has already been assigned" });
     return;
   }
 
-  // Update confirmation status to declined
   const { error } = await supabaseAdmin
     .from("job_confirmations")
     .update({ status: "declined" })
     .eq("job_id", jobId)
     .eq("freelancer_id", freelancer_id)
-    .eq("status", "available");
+    .eq("status", "available"); // atomic — only decline if still available
 
   if (error) {
     res.status(500).json({ error: error.message });
@@ -780,15 +936,19 @@ jobsRouter.post("/:jobId/decline", async (req: Request, res: Response): Promise<
   res.json({ ok: true });
 });
 
-// Restart search for a job (resend notifications without going through questions)
+// POST /:jobId/restart — Client restarts candidate search
 jobsRouter.post("/:jobId/restart", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
 
-  // Get the existing job
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
   const { data: job, error: jobErr } = await supabaseAdmin
     .from("job_requests")
-    .select("*")
+    .select(JOB_SAFE_FIELDS)
     .eq("id", jobId)
     .single();
 
@@ -797,41 +957,31 @@ jobsRouter.post("/:jobId/restart", async (req: Request, res: Response): Promise<
     return;
   }
 
-  // Only the client who created the job can restart it
-  if (job.client_id !== user.id) {
+  // SECURITY: only the job's client can restart
+  if ((job as any).client_id !== user.id) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
 
-  // Can only restart if job is not locked/active/completed
-  if (job.status === "locked" || job.status === "active" || job.status === "completed") {
-    res.status(400).json({ error: "Cannot restart a job that has been assigned or completed" });
+  // INTEGRITY: can only restart jobs that aren't closed
+  const status = (job as any).status;
+  if (status === "locked" || status === "active" || status === "completed" || status === "cancelled") {
+    res.status(400).json({ error: "Cannot restart a job that has been assigned, completed, or cancelled" });
     return;
   }
 
-  // Delete old notifications
-  await supabaseAdmin
-    .from("job_candidate_notifications")
-    .delete()
-    .eq("job_id", jobId);
+  await supabaseAdmin.from("job_candidate_notifications").delete().eq("job_id", jobId);
+  await supabaseAdmin.from("job_confirmations").delete().eq("job_id", jobId);
 
-  // Delete old confirmations
-  await supabaseAdmin
-    .from("job_confirmations")
-    .delete()
-    .eq("job_id", jobId);
-
-  // Find matching candidates again
-  console.log("[JobsAPI] Restarting search for job:", job.id);
-  const candidates = await findCandidates(job, 30);
+  console.log("[JobsAPI] Restarting search for job:", (job as any).id);
+  const candidates = await findCandidates(job as any, 30);
   console.log("[JobsAPI] Found", candidates.length, "matching candidates");
 
-  // Create new notifications for matching freelancers
   if (candidates.length > 0) {
     const rows = candidates.map((fid) => ({
-      job_id: job.id,
+      job_id: (job as any).id,
       freelancer_id: fid,
-      status: "pending" as const
+      status: "pending" as const,
     }));
     const { error: notifError } = await supabaseAdmin
       .from("job_candidate_notifications")
@@ -842,15 +992,13 @@ jobsRouter.post("/:jobId/restart", async (req: Request, res: Response): Promise<
       res.status(500).json({ error: `Failed to create notifications: ${notifError.message}` });
       return;
     }
-
     console.log("[JobsAPI] Created", candidates.length, "new notifications");
   } else {
     console.log("[JobsAPI] No matching candidates found");
   }
 
-  // Reset confirmation window
   const starts = new Date();
-  const ends = new Date(starts.getTime() + (job.confirm_window_seconds || 90) * 1000);
+  const ends = new Date(starts.getTime() + ((job as any).confirm_window_seconds || 90) * 1000);
 
   const { error: updateErr } = await supabaseAdmin
     .from("job_requests")
@@ -860,7 +1008,7 @@ jobsRouter.post("/:jobId/restart", async (req: Request, res: Response): Promise<
       confirm_starts_at: starts.toISOString(),
       confirm_ends_at: ends.toISOString(),
       selected_freelancer_id: null,
-      locked_at: null
+      locked_at: null,
     })
     .eq("id", jobId);
 
@@ -870,20 +1018,26 @@ jobsRouter.post("/:jobId/restart", async (req: Request, res: Response): Promise<
   }
 
   res.json({
-    job_id: job.id,
+    job_id: (job as any).id,
     confirm_ends_at: ends.toISOString(),
-    notifications_sent: candidates.length
+    notifications_sent: candidates.length,
   });
 });
 
-// Get job details
+// GET /:jobId — Get job details (client or selected freelancer only)
 jobsRouter.get("/:jobId", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
 
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
+  // SECURITY: explicit field list, no select(*)
   const { data: job, error } = await supabaseAdmin
     .from("job_requests")
-    .select("*")
+    .select(JOB_SAFE_FIELDS)
     .eq("id", jobId)
     .single();
 
@@ -892,34 +1046,51 @@ jobsRouter.get("/:jobId", async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
-  // Only client or selected freelancer can view
-  if (job.client_id !== user.id && job.selected_freelancer_id !== user.id) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
+  // SECURITY: only the client or the selected freelancer can view
+  const clientId = (job as any).client_id;
+  const selectedFreelancerId = (job as any).selected_freelancer_id;
+
+  if (clientId !== user.id && selectedFreelancerId !== user.id) {
+    // Also allow any candidate who has a notification for this job
+    const { data: notif } = await supabaseAdmin
+      .from("job_candidate_notifications")
+      .select("id")
+      .eq("job_id", jobId)
+      .eq("freelancer_id", user.id)
+      .maybeSingle();
+
+    if (!notif) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
   }
 
   res.json({ job });
 });
 
-// POST /:jobId/details - Update job service details (follow-up questions)
+// POST /:jobId/details — Client updates service details (follow-up questions)
 const UpdateJobDetailsSchema = z.object({
-  service_details: z.record(z.any()),
+  service_details: z.record(z.unknown()),
 });
 
 jobsRouter.post("/:jobId/details", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
-  const parsed = UpdateJobDetailsSchema.safeParse(req.body);
 
-  if (!parsed.success) {
-    res.status(400).json(parsed.error);
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
     return;
   }
 
-  // Fetch the job to verify ownership
+  const parsed = UpdateJobDetailsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid data", details: parsed.error.flatten() });
+    return;
+  }
+
   const { data: job, error: fetchErr } = await supabaseAdmin
     .from("job_requests")
-    .select("id, client_id, service_details")
+    .select("id, client_id, service_details, status")
     .eq("id", jobId)
     .single();
 
@@ -928,24 +1099,28 @@ jobsRouter.post("/:jobId/details", async (req: Request, res: Response): Promise<
     return;
   }
 
-  // Only the client who created the job can update details
+  // SECURITY: only the client can update details
   if (job.client_id !== user.id) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
 
-  // Merge new details with existing service_details
+  // INTEGRITY: cannot update details on closed/completed jobs
+  if (job.status === "completed" || job.status === "cancelled") {
+    res.status(400).json({ error: "Cannot modify a completed or cancelled job" });
+    return;
+  }
+
   const updatedDetails = {
-    ...job.service_details,
+    ...(job.service_details as Record<string, unknown> | null),
     ...parsed.data.service_details,
   };
 
-  // Update the job
   const { data: updatedJob, error: updateErr } = await supabaseAdmin
     .from("job_requests")
     .update({ service_details: updatedDetails })
     .eq("id", jobId)
-    .select()
+    .select(JOB_SAFE_FIELDS)
     .single();
 
   if (updateErr) {
@@ -956,4 +1131,3 @@ jobsRouter.post("/:jobId/details", async (req: Request, res: Response): Promise<
 
   res.json({ job: updatedJob });
 });
-

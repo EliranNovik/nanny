@@ -36,11 +36,16 @@ export function CommunityPostsCategoryNativeSelect({
   const isHeader = variant === "header";
 
   return (
-    <div className={cn(isHeader ? "relative w-full min-w-0" : "relative w-full max-w-md", className)}>
+    <div
+      className={cn(
+        isHeader ? "relative w-full min-w-0" : "relative w-full max-w-md",
+        className,
+      )}
+    >
       <ListFilter
         className={cn(
           "pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 text-muted-foreground",
-          isHeader ? "left-2 h-3 w-3" : "left-3 h-4 w-4"
+          isHeader ? "left-2 h-3 w-3" : "left-3 h-4 w-4",
         )}
         aria-hidden
       />
@@ -51,7 +56,7 @@ export function CommunityPostsCategoryNativeSelect({
           isHeader
             ? "h-9 rounded-full py-1 pl-8 pr-8 text-[11px] leading-tight"
             : "h-11 rounded-2xl py-2 pl-10 pr-10 text-sm",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
         )}
         value={value}
         onChange={(e) => {
@@ -70,7 +75,7 @@ export function CommunityPostsCategoryNativeSelect({
       <ChevronDown
         className={cn(
           "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground",
-          isHeader ? "right-2 h-3 w-3" : "right-3 h-4 w-4"
+          isHeader ? "right-2 h-3 w-3" : "right-3 h-4 w-4",
         )}
         aria-hidden
       />

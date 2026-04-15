@@ -13,7 +13,9 @@ export function useUnreadCounts() {
   const { user, profile } = useAuth();
   const [activityInboxCount, setActivityInboxCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const activityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const scheduleActivityInboxFetch = useCallback(() => {
     if (activityDebounceRef.current) clearTimeout(activityDebounceRef.current);
@@ -46,7 +48,10 @@ export function useUnreadCounts() {
 
     const onDismiss = () => scheduleActivityInboxFetch();
     const onVisible = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible"
+      ) {
         scheduleActivityInboxFetch();
       }
     };
@@ -129,7 +134,7 @@ export function useUnreadCounts() {
         },
         () => {
           scheduleActivityInboxFetch();
-        }
+        },
       )
       .subscribe();
 
@@ -147,7 +152,7 @@ export function useUnreadCounts() {
               },
               () => {
                 scheduleActivityInboxFetch();
-              }
+              },
             )
             .subscribe()
         : null;
@@ -166,7 +171,7 @@ export function useUnreadCounts() {
               },
               () => {
                 scheduleActivityInboxFetch();
-              }
+              },
             )
             .subscribe()
         : null;
@@ -183,14 +188,15 @@ export function useUnreadCounts() {
         () => {
           fetchUnreadMessages();
           scheduleActivityInboxFetch();
-        }
+        },
       )
       .subscribe();
 
     return () => {
       window.removeEventListener("activity-inbox-dismiss", onDismiss);
       document.removeEventListener("visibilitychange", onVisible);
-      if (activityDebounceRef.current) clearTimeout(activityDebounceRef.current);
+      if (activityDebounceRef.current)
+        clearTimeout(activityDebounceRef.current);
       if (notificationsChannel) {
         supabase.removeChannel(notificationsChannel);
       }

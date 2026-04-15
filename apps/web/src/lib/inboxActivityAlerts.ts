@@ -4,7 +4,12 @@ import { loadDismissedActivityIds } from "@/lib/inboxDismissedActivity";
 
 export interface NotificationAlert {
   id: string;
-  type: "job_request" | "confirmation" | "message" | "job_update" | "hire_interest";
+  type:
+    | "job_request"
+    | "confirmation"
+    | "message"
+    | "job_update"
+    | "hire_interest";
   title: string;
   description?: string;
   link: string;
@@ -26,7 +31,7 @@ type FetchOpts = {
 export async function fetchInboxActivityAlerts(
   user: { id: string },
   profile: { role: string },
-  opts: FetchOpts
+  opts: FetchOpts,
 ): Promise<NotificationAlert[]> {
   const allAlerts: NotificationAlert[] = [];
 
@@ -40,7 +45,7 @@ export async function fetchInboxActivityAlerts(
           freelancer_id,
           job_id,
           job_requests (care_type)
-        `
+        `,
       )
       .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`);
 
@@ -100,7 +105,9 @@ export async function fetchInboxActivityAlerts(
       .order("created_at", { ascending: false })
       .limit(60);
 
-    const myPostIds = (myPosts ?? []).map((p) => p.id as string).filter(Boolean);
+    const myPostIds = (myPosts ?? [])
+      .map((p) => p.id as string)
+      .filter(Boolean);
     if (myPostIds.length > 0) {
       const { data: interests, error: iErr } = await supabase
         .from("community_post_hire_interests")
@@ -115,15 +122,20 @@ export async function fetchInboxActivityAlerts(
       } else if (interests && interests.length > 0) {
         const clientIds = Array.from(
           new Set(
-            (interests as any[]).map((r) => r.client_id as string).filter(Boolean)
-          )
+            (interests as any[])
+              .map((r) => r.client_id as string)
+              .filter(Boolean),
+          ),
         );
         const { data: clientProfiles } = await supabase
           .from("profiles")
           .select("id, full_name, photo_url")
           .in("id", clientIds);
 
-        const clients = new Map<string, { full_name: string | null; photo_url: string | null }>();
+        const clients = new Map<
+          string,
+          { full_name: string | null; photo_url: string | null }
+        >();
         for (const p of clientProfiles ?? []) {
           clients.set(p.id as string, {
             full_name: (p as any).full_name ?? null,
@@ -143,7 +155,11 @@ export async function fetchInboxActivityAlerts(
             created_at: r.created_at as string | undefined,
             sender_name: c?.full_name ?? undefined,
             sender_photo: c?.photo_url ?? undefined,
-            metadata: { table: "community_post_hire_interests", interest_id: r.id, post_id: r.community_post_id },
+            metadata: {
+              table: "community_post_hire_interests",
+              interest_id: r.id,
+              post_id: r.community_post_id,
+            },
           });
         }
       }
@@ -157,7 +173,7 @@ export async function fetchInboxActivityAlerts(
             job_requests (
               id, location_city, service_type, care_type, confirm_ends_at, community_post_id
             )
-          `
+          `,
       )
       .eq("freelancer_id", user.id)
       .in("status", ["pending", "opened"])
@@ -170,13 +186,16 @@ export async function fetchInboxActivityAlerts(
         if (job?.community_post_id) continue;
         if (
           job &&
-          (!job.confirm_ends_at || new Date(job.confirm_ends_at).getTime() > now.getTime())
+          (!job.confirm_ends_at ||
+            new Date(job.confirm_ends_at).getTime() > now.getTime())
         ) {
           allAlerts.push({
             id: n.id as string,
             type: "job_request",
             title: `New ${job.care_type || job.service_type || "job"} request`,
-            description: job.location_city ? `Location: ${job.location_city}` : "Open to review",
+            description: job.location_city
+              ? `Location: ${job.location_city}`
+              : "Open to review",
             link: buildJobsUrl("freelancer", "requests"),
             created_at: n.created_at,
             metadata: { table: "job_candidate_notifications", job_id: job.id },
@@ -190,7 +209,10 @@ export async function fetchInboxActivityAlerts(
       .select("id, status, care_type, updated_at")
       .eq("selected_freelancer_id", user.id)
       .in("status", ["locked", "active"])
-      .gte("updated_at", new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
+      .gte(
+        "updated_at",
+        new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+      )
       .order("updated_at", { ascending: false });
 
     if (liveJobs) {
@@ -223,7 +245,7 @@ export async function fetchInboxActivityAlerts(
           `
                 id, created_at, job_id, freelancer_id,
                 profiles (full_name, photo_url)
-            `
+            `,
         )
         .in("job_id", jobIds)
         .eq("status", "available");
@@ -253,7 +275,7 @@ export async function fetchInboxActivityAlerts(
       .in("status", ["locked", "active"])
       .gte(
         "locked_at",
-        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       )
       .order("locked_at", { ascending: false });
 
@@ -283,7 +305,9 @@ export async function fetchInboxActivityAlerts(
   return visible;
 }
 
-export function inboxActivityKindLabel(type: NotificationAlert["type"]): string {
+export function inboxActivityKindLabel(
+  type: NotificationAlert["type"],
+): string {
   switch (type) {
     case "message":
       return "Chat";

@@ -27,7 +27,12 @@ const QUICK_EMPTY = "__quick_empty__";
 const PRICE_EMPTY = "__price_empty__";
 
 /** Preset hourly bands within slider bounds */
-const PRICE_BAND_OPTIONS: { id: string; label: string; min: number; max: number }[] = [
+const PRICE_BAND_OPTIONS: {
+  id: string;
+  label: string;
+  min: number;
+  max: number;
+}[] = [
   { id: "skip", label: "Don’t show a rate", min: 0, max: 0 },
   { id: "30_50", label: "₪30–₪50/h", min: 30, max: 50 },
   { id: "40_70", label: "₪40–₪70/h", min: 40, max: 70 },
@@ -58,7 +63,7 @@ function choiceCardClass(selected: boolean) {
     selected &&
       "border-emerald-500/80 shadow-[0_12px_40px_-16px_rgba(16,185,129,0.35)] ring-1 ring-emerald-500/25 dark:border-emerald-400/60 dark:ring-emerald-400/20",
     selected &&
-      "before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-full before:bg-emerald-500 before:content-[''] dark:before:bg-emerald-400"
+      "before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-full before:bg-emerald-500 before:content-[''] dark:before:bg-emerald-400",
   );
 }
 
@@ -73,7 +78,8 @@ export default function PostAvailabilityNowPage() {
   const { addToast } = useToast();
 
   const [step, setStep] = useState(0);
-  const [availabilityStatusId, setAvailabilityStatusId] = useState(STATUS_EMPTY);
+  const [availabilityStatusId, setAvailabilityStatusId] =
+    useState(STATUS_EMPTY);
   const [quickDetailsId, setQuickDetailsId] = useState(QUICK_EMPTY);
   const [priceBandId, setPriceBandId] = useState(PRICE_EMPTY);
   const [areaTag, setAreaTag] = useState("");
@@ -83,8 +89,11 @@ export default function PostAvailabilityNowPage() {
 
   const categoryLabel = category ? serviceCategoryLabel(category) : "";
   const categoryImageSrc = useMemo(
-    () => (category ? SERVICE_CATEGORIES.find((c) => c.id === category)?.imageSrc : undefined),
-    [category]
+    () =>
+      category
+        ? SERVICE_CATEGORIES.find((c) => c.id === category)?.imageSrc
+        : undefined,
+    [category],
   );
 
   const stepTip = STEP_TIPS[step] ?? "";
@@ -113,10 +122,17 @@ export default function PostAvailabilityNowPage() {
     if (!user?.id || !profile || !category) return;
     const noteTrim = note.trim();
     if (noteTrim.length > 120) {
-      addToast({ title: "Note is too long (max 120 characters)", variant: "warning" });
+      addToast({
+        title: "Note is too long (max 120 characters)",
+        variant: "warning",
+      });
       return;
     }
-    if (availabilityStatusId === STATUS_EMPTY || quickDetailsId === QUICK_EMPTY || priceBandId === PRICE_EMPTY) {
+    if (
+      availabilityStatusId === STATUS_EMPTY ||
+      quickDetailsId === QUICK_EMPTY ||
+      priceBandId === PRICE_EMPTY
+    ) {
       addToast({ title: "Complete all steps", variant: "warning" });
       return;
     }
@@ -125,7 +141,8 @@ export default function PostAvailabilityNowPage() {
       const result = await publishCommunityAvailabilityPulse({
         userId: user.id,
         category,
-        availabilityStatusId: availabilityStatusId === STATUS_EMPTY ? "" : availabilityStatusId,
+        availabilityStatusId:
+          availabilityStatusId === STATUS_EMPTY ? "" : availabilityStatusId,
         quickDetailsId: quickDetailsId === QUICK_EMPTY ? "" : quickDetailsId,
         priceRange: priceRangeFromBand,
         areaTag,
@@ -155,7 +172,7 @@ export default function PostAvailabilityNowPage() {
 
   if (!category) {
     return (
-      <div className="min-h-screen gradient-mesh pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[2.625rem] md:pt-7">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[2.625rem] md:pt-7">
         <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-8">
           <div className="flex items-center gap-2">
             <Button
@@ -172,8 +189,13 @@ export default function PostAvailabilityNowPage() {
               <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                 Post availability
               </p>
-              <h1 className="text-xl font-black tracking-tight text-foreground">Choose a category</h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">What kind of work are you offering? You can fill in the details next.</p>
+              <h1 className="text-xl font-black tracking-tight text-foreground">
+                Choose a category
+              </h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                What kind of work are you offering? You can fill in the details
+                next.
+              </p>
             </div>
           </div>
 
@@ -182,11 +204,13 @@ export default function PostAvailabilityNowPage() {
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setSearchParams({ category: cat.id }, { replace: true })}
+                onClick={() =>
+                  setSearchParams({ category: cat.id }, { replace: true })
+                }
                 className={cn(
-                  "group relative aspect-square w-full overflow-hidden rounded-2xl text-left outline-none",
-                  "shadow-md transition-[transform,box-shadow] duration-200 hover:shadow-lg active:scale-[0.97]",
-                  "focus-visible:ring-2 focus-visible:ring-emerald-500/60 focus-visible:ring-inset"
+                  "group relative aspect-square w-full overflow-hidden rounded-[18px] text-left outline-none border border-slate-200/80 dark:border-white/5 shadow-sm",
+                  "transition-[transform,box-shadow,border-color] duration-200 hover:shadow-md hover:border-slate-300/80 active:scale-[0.97]",
+                  "focus-visible:ring-2 focus-visible:ring-emerald-500/60 focus-visible:ring-inset",
                 )}
                 aria-label={`Offer ${cat.label}`}
               >
@@ -195,7 +219,10 @@ export default function PostAvailabilityNowPage() {
                   alt=""
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-black/40" aria-hidden />
+                <div
+                  className="pointer-events-none absolute inset-0 bg-black/40"
+                  aria-hidden
+                />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-3 pt-12">
                   <span className="block text-center text-sm font-bold leading-tight text-white drop-shadow-sm sm:text-base">
                     {cat.label}
@@ -219,7 +246,7 @@ export default function PostAvailabilityNowPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 md:pt-7">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 md:pt-7">
       {/* Mobile: full-bleed hero — image to top edge; back + titles on image */}
       <div className="md:hidden">
         {categoryImageSrc ? (
@@ -297,7 +324,7 @@ export default function PostAvailabilityNowPage() {
                       key={i}
                       className={cn(
                         "h-1 flex-1 rounded-full transition-colors",
-                        i <= step ? "bg-emerald-500" : "bg-white/25"
+                        i <= step ? "bg-emerald-500" : "bg-white/25",
                       )}
                     />
                   ))}
@@ -356,7 +383,7 @@ export default function PostAvailabilityNowPage() {
             <div
               className={cn(
                 "relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-100 shadow-md sm:h-28 sm:w-28",
-                "dark:border-white/15 dark:bg-white/[0.06]"
+                "dark:border-white/15 dark:bg-white/[0.06]",
               )}
               aria-hidden
             >
@@ -370,7 +397,10 @@ export default function PostAvailabilityNowPage() {
         </div>
 
         <div
-          className={cn("flex gap-1.5", categoryImageSrc ? "hidden md:flex" : "flex")}
+          className={cn(
+            "flex gap-1.5",
+            categoryImageSrc ? "hidden md:flex" : "flex",
+          )}
           aria-hidden
         >
           {Array.from({ length: STEPS }).map((_, i) => (
@@ -378,7 +408,9 @@ export default function PostAvailabilityNowPage() {
               key={i}
               className={cn(
                 "h-1 flex-1 rounded-full transition-colors",
-                i <= step ? "bg-emerald-500" : "bg-emerald-500/15 dark:bg-emerald-400/10"
+                i <= step
+                  ? "bg-emerald-500"
+                  : "bg-emerald-500/15 dark:bg-emerald-400/10",
               )}
             />
           ))}
@@ -389,8 +421,13 @@ export default function PostAvailabilityNowPage() {
             className="hidden gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] px-4 py-3 dark:border-emerald-400/20 dark:bg-emerald-500/[0.06] md:flex"
             role="note"
           >
-            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-            <p className="text-sm leading-snug text-slate-700 dark:text-slate-200">{stepTip}</p>
+            <Lightbulb
+              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+              aria-hidden
+            />
+            <p className="text-sm leading-snug text-slate-700 dark:text-slate-200">
+              {stepTip}
+            </p>
           </div>
         ) : null}
 
@@ -398,12 +435,19 @@ export default function PostAvailabilityNowPage() {
           {step === 0 && (
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-semibold">When are you available?</Label>
+                <Label className="text-base font-semibold">
+                  When are you available?
+                </Label>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  How long your pulse stays visible (2h / 24h / 48h). Tap to continue.
+                  How long your pulse stays visible (2h / 24h / 48h). Tap to
+                  continue.
                 </p>
               </div>
-              <div className="flex flex-col gap-2.5" role="listbox" aria-label="Availability window">
+              <div
+                className="flex flex-col gap-2.5"
+                role="listbox"
+                aria-label="Availability window"
+              >
                 {AVAILABILITY_STATUS_OPTIONS.map((o) => (
                   <button
                     key={o.id}
@@ -416,7 +460,9 @@ export default function PostAvailabilityNowPage() {
                     }}
                     className={choiceCardClass(availabilityStatusId === o.id)}
                   >
-                    <span className="block text-base font-semibold text-foreground">{o.label}</span>
+                    <span className="block text-base font-semibold text-foreground">
+                      {o.label}
+                    </span>
                     <span className="mt-1 block text-sm font-medium text-slate-500 dark:text-slate-400">
                       {o.hours}h on the board
                     </span>
@@ -429,10 +475,18 @@ export default function PostAvailabilityNowPage() {
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-semibold">What kind of work?</Label>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pick one — tap to continue.</p>
+                <Label className="text-base font-semibold">
+                  What kind of work?
+                </Label>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Pick one — tap to continue.
+                </p>
               </div>
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2" role="listbox" aria-label="Job shape">
+              <div
+                className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
+                role="listbox"
+                aria-label="Job shape"
+              >
                 {QUICK_DETAILS_OPTIONS.map((o) => (
                   <button
                     key={o.id}
@@ -443,9 +497,14 @@ export default function PostAvailabilityNowPage() {
                       setQuickDetailsId(o.id);
                       setStep(2);
                     }}
-                    className={cn(choiceCardClass(quickDetailsId === o.id), "min-h-[4.5rem] sm:min-h-[5rem]")}
+                    className={cn(
+                      choiceCardClass(quickDetailsId === o.id),
+                      "min-h-[4.5rem] sm:min-h-[5rem]",
+                    )}
                   >
-                    <span className="block text-[15px] font-semibold leading-snug text-foreground">{o.label}</span>
+                    <span className="block text-[15px] font-semibold leading-snug text-foreground">
+                      {o.label}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -455,12 +514,18 @@ export default function PostAvailabilityNowPage() {
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-semibold">Hourly rate hint</Label>
+                <Label className="text-base font-semibold">
+                  Hourly rate hint
+                </Label>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   ₪min–₪max/h · range {PRICE_RANGE_MIN}–{PRICE_RANGE_MAX}
                 </p>
               </div>
-              <div className="flex flex-col gap-2.5" role="listbox" aria-label="Rate hint">
+              <div
+                className="flex flex-col gap-2.5"
+                role="listbox"
+                aria-label="Rate hint"
+              >
                 {PRICE_BAND_OPTIONS.map((o) => (
                   <button
                     key={o.id}
@@ -473,7 +538,9 @@ export default function PostAvailabilityNowPage() {
                     }}
                     className={choiceCardClass(priceBandId === o.id)}
                   >
-                    <span className="block text-base font-semibold text-foreground">{o.label}</span>
+                    <span className="block text-base font-semibold text-foreground">
+                      {o.label}
+                    </span>
                     {o.id !== "skip" && (
                       <span className="mt-1 block text-sm font-medium text-slate-500 dark:text-slate-400">
                         Shown on your live pulse
@@ -491,7 +558,9 @@ export default function PostAvailabilityNowPage() {
                 <Label htmlFor="area-tag" className="text-base font-semibold">
                   Area (optional)
                 </Label>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Neighborhood or area — max 40 characters.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Neighborhood or area — max 40 characters.
+                </p>
               </div>
               <Input
                 id="area-tag"
@@ -510,7 +579,9 @@ export default function PostAvailabilityNowPage() {
                 <Label htmlFor="offer-note" className="text-base font-semibold">
                   Short note (optional)
                 </Label>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">One line — max 120 characters</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  One line — max 120 characters
+                </p>
               </div>
               <Textarea
                 id="offer-note"
@@ -521,15 +592,21 @@ export default function PostAvailabilityNowPage() {
                 maxLength={120}
                 className="resize-none rounded-xl"
               />
-              <p className="text-xs text-slate-500 dark:text-slate-400">{note.length}/120</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {note.length}/120
+              </p>
             </div>
           )}
 
           {step === 5 && (
             <div className="space-y-3">
               <div>
-                <Label className="text-base font-semibold">Photo (optional)</Label>
-                <p className="text-sm text-slate-500 dark:text-slate-400">One image helps you stand out.</p>
+                <Label className="text-base font-semibold">
+                  Photo (optional)
+                </Label>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  One image helps you stand out.
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
@@ -537,7 +614,9 @@ export default function PostAvailabilityNowPage() {
                   variant="outline"
                   size="sm"
                   className="gap-2 rounded-xl"
-                  onClick={() => document.getElementById("post-now-files")?.click()}
+                  onClick={() =>
+                    document.getElementById("post-now-files")?.click()
+                  }
                 >
                   <ImagePlus className="h-4 w-4" />
                   Add photo
@@ -608,7 +687,10 @@ export default function PostAvailabilityNowPage() {
         </div>
 
         <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-          <Link to="/availability" className="font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400">
+          <Link
+            to="/availability"
+            className="font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
+          >
             Manage existing posts
           </Link>
         </p>

@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle2, Loader2, MapPin, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  MapPin,
+  XCircle,
+} from "lucide-react";
 
 type ProfileEmbed = {
   id: string;
@@ -29,7 +35,7 @@ type HireInterest = {
 function profileFromRow(row: HireInterest): ProfileEmbed | null {
   const p = row.profiles;
   if (!p) return null;
-  return Array.isArray(p) ? p[0] ?? null : p;
+  return Array.isArray(p) ? (p[0] ?? null) : p;
 }
 
 export default function CommunityPostHireInterestsPage() {
@@ -46,7 +52,7 @@ export default function CommunityPostHireInterestsPage() {
     setLoading(true);
     try {
       const res = await apiGet<{ interests: HireInterest[] }>(
-        `/api/jobs/community-post/${postId}/hire-interests`
+        `/api/jobs/community-post/${postId}/hire-interests`,
       );
       setInterests(res.interests || []);
     } catch (e) {
@@ -70,7 +76,7 @@ export default function CommunityPostHireInterestsPage() {
     try {
       const res = await apiPost<{ job_id: string; conversation_id: string }>(
         `/api/jobs/community-hire-interest/${interestId}/confirm`,
-        {}
+        {},
       );
       addToast({
         title: "Booking confirmed",
@@ -93,7 +99,10 @@ export default function CommunityPostHireInterestsPage() {
   const handleDecline = async (interestId: string) => {
     setActingId(interestId);
     try {
-      await apiPost(`/api/jobs/community-hire-interest/${interestId}/decline`, {});
+      await apiPost(
+        `/api/jobs/community-hire-interest/${interestId}/decline`,
+        {},
+      );
       addToast({ title: "Declined", variant: "default" });
       await load();
     } catch (e) {
@@ -110,7 +119,9 @@ export default function CommunityPostHireInterestsPage() {
   if (!user || profile?.role !== "freelancer") {
     return (
       <div className="app-desktop-shell px-4 py-10">
-        <p className="text-sm text-muted-foreground">Only helpers can manage hire interest on their posts.</p>
+        <p className="text-sm text-muted-foreground">
+          Only helpers can manage hire interest on their posts.
+        </p>
         <Button className="mt-4" variant="outline" asChild>
           <Link to="/availability">Back</Link>
         </Button>
@@ -121,10 +132,15 @@ export default function CommunityPostHireInterestsPage() {
   const pending = interests.filter((i) => i.status === "pending");
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell max-w-2xl space-y-6 px-4 py-6">
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 rounded-full" asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 -ml-2 rounded-full"
+            asChild
+          >
             <Link to="/availability">
               <ArrowLeft className="h-4 w-4" />
               Availability
@@ -137,7 +153,8 @@ export default function CommunityPostHireInterestsPage() {
             Hire interest
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            People who tapped Hire now on this availability post. Confirm to start a live job and chat.
+            People who tapped Hire now on this availability post. Confirm to
+            start a live job and chat.
           </p>
         </div>
 
@@ -156,11 +173,17 @@ export default function CommunityPostHireInterestsPage() {
             {pending.map((row) => {
               const p = profileFromRow(row);
               return (
-                <Card key={row.id} className="overflow-hidden border-border/80 shadow-sm">
+                <Card
+                  key={row.id}
+                  className="overflow-hidden border-border/80 shadow-sm"
+                >
                   <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 flex-1 gap-3">
                       <Avatar className="h-14 w-14 shrink-0 border border-border/60">
-                        <AvatarImage src={p?.photo_url ?? undefined} className="object-cover" />
+                        <AvatarImage
+                          src={p?.photo_url ?? undefined}
+                          className="object-cover"
+                        />
                         <AvatarFallback className="bg-orange-100 text-lg font-bold text-orange-800">
                           {(p?.full_name || "?").charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -178,8 +201,14 @@ export default function CommunityPostHireInterestsPage() {
                         <p className="mt-1 text-[11px] font-medium text-muted-foreground">
                           Interested {new Date(row.created_at).toLocaleString()}
                         </p>
-                        <Button variant="link" className="mt-1 h-auto p-0 text-xs font-bold" asChild>
-                          <Link to={`/profile/${row.client_id}`}>View profile</Link>
+                        <Button
+                          variant="link"
+                          className="mt-1 h-auto p-0 text-xs font-bold"
+                          asChild
+                        >
+                          <Link to={`/profile/${row.client_id}`}>
+                            View profile
+                          </Link>
                         </Button>
                       </div>
                     </div>
@@ -231,7 +260,9 @@ export default function CommunityPostHireInterestsPage() {
                     key={row.id}
                     className="flex items-center justify-between rounded-xl border border-border/50 bg-card/50 px-3 py-2 text-sm"
                   >
-                    <span className="truncate font-medium">{p?.full_name || "Client"}</span>
+                    <span className="truncate font-medium">
+                      {p?.full_name || "Client"}
+                    </span>
                     <Badge variant="secondary" className="shrink-0 capitalize">
                       {row.status}
                     </Badge>

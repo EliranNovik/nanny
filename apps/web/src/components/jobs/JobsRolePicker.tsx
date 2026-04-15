@@ -19,8 +19,8 @@ export function JobsRolePicker({
           How are you using Jobs?
         </h2>
         <p className="mx-auto mt-2 max-w-sm text-center text-sm font-medium leading-relaxed text-muted-foreground">
-          Pick whether you&apos;re helping others as a helper or managing work you&apos;ve posted as a
-          client. You can switch any time.
+          Pick whether you&apos;re helping others as a helper or managing work
+          you&apos;ve posted as a client. You can switch any time.
         </p>
 
         <div className="mt-8 flex flex-col gap-4">
@@ -30,16 +30,19 @@ export function JobsRolePicker({
             className={cn(
               "group flex w-full items-start gap-4 rounded-2xl border border-orange-200/70 bg-gradient-to-br from-orange-50/95 via-white to-white p-5 text-left shadow-sm transition-all",
               "hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md",
-              "dark:border-orange-900/50 dark:from-orange-950/40 dark:via-zinc-950/80 dark:to-zinc-950 dark:hover:border-orange-700/60"
+              "dark:border-orange-900/50 dark:from-orange-950/40 dark:via-zinc-950/80 dark:to-zinc-950 dark:hover:border-orange-700/60",
             )}
           >
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-md shadow-orange-500/25 dark:bg-orange-600">
               <HeartHandshake className="h-6 w-6" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-base font-black text-slate-900 dark:text-white">Helping others</span>
+              <span className="block text-base font-black text-slate-900 dark:text-white">
+                Helping others
+              </span>
               <span className="mt-1 block text-sm font-medium leading-snug text-muted-foreground">
-                Community requests, pending responses, Helping now, and your history of help as a helper.
+                Community requests, pending responses, Helping now, and your
+                history of help as a helper.
               </span>
             </span>
           </button>
@@ -50,14 +53,16 @@ export function JobsRolePicker({
             className={cn(
               "group flex w-full items-start gap-4 rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50/95 via-white to-white p-5 text-left shadow-sm transition-all",
               "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
-              "dark:border-white/10 dark:from-zinc-900/80 dark:via-zinc-950 dark:to-zinc-950 dark:hover:border-white/20"
+              "dark:border-white/10 dark:from-zinc-900/80 dark:via-zinc-950 dark:to-zinc-950 dark:hover:border-white/20",
             )}
           >
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-800 text-white shadow-md dark:bg-slate-700">
               <Briefcase className="h-6 w-6" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-base font-black text-slate-900 dark:text-white">My Helpers</span>
+              <span className="block text-base font-black text-slate-900 dark:text-white">
+                My Helpers
+              </span>
               <span className="mt-1 block text-sm font-medium leading-snug text-muted-foreground">
                 Your posted requests, Helping me now, and your history of help.
               </span>

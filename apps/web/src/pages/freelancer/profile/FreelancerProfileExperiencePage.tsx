@@ -27,12 +27,16 @@ export default function FreelancerProfileExperiencePage() {
                 <Shield className="w-5 h-5 text-emerald-500 shrink-0" />
                 <div>
                   <p className="font-medium">First aid certified</p>
-                  <p className="text-sm text-muted-foreground">CPR & first aid</p>
+                  <p className="text-sm text-muted-foreground">
+                    CPR & first aid
+                  </p>
                 </div>
               </div>
               <Switch
                 checked={ctx.data.has_first_aid}
-                onCheckedChange={(checked) => ctx.updateField("has_first_aid", checked)}
+                onCheckedChange={(checked) =>
+                  ctx.updateField("has_first_aid", checked)
+                }
               />
             </div>
 
@@ -46,7 +50,9 @@ export default function FreelancerProfileExperiencePage() {
               </div>
               <Switch
                 checked={ctx.data.newborn_experience}
-                onCheckedChange={(checked) => ctx.updateField("newborn_experience", checked)}
+                onCheckedChange={(checked) =>
+                  ctx.updateField("newborn_experience", checked)
+                }
               />
             </div>
 
@@ -55,12 +61,16 @@ export default function FreelancerProfileExperiencePage() {
                 <Heart className="w-5 h-5 text-purple-500 shrink-0" />
                 <div>
                   <p className="font-medium">Special needs experience</p>
-                  <p className="text-sm text-muted-foreground">Additional support</p>
+                  <p className="text-sm text-muted-foreground">
+                    Additional support
+                  </p>
                 </div>
               </div>
               <Switch
                 checked={ctx.data.special_needs_experience}
-                onCheckedChange={(checked) => ctx.updateField("special_needs_experience", checked)}
+                onCheckedChange={(checked) =>
+                  ctx.updateField("special_needs_experience", checked)
+                }
               />
             </div>
 
@@ -76,7 +86,7 @@ export default function FreelancerProfileExperiencePage() {
                       "w-12 h-12 rounded-lg border-2 font-semibold transition-all",
                       ctx.data.max_children === num
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border hover:border-primary/50"
+                        : "border-border hover:border-primary/50",
                     )}
                   >
                     {num === 4 ? "4+" : num}
@@ -87,7 +97,12 @@ export default function FreelancerProfileExperiencePage() {
           </CardContent>
         </Card>
 
-        <Button onClick={ctx.handleSave} disabled={ctx.saving} className="w-full" size="lg">
+        <Button
+          onClick={ctx.handleSave}
+          disabled={ctx.saving}
+          className="w-full"
+          size="lg"
+        >
           {ctx.saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -20,7 +20,7 @@ import {
   ChevronUp,
   Eye,
   X,
-  Bell
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -70,19 +70,31 @@ export default function ActiveJobsPage() {
           return parsed.data;
         }
       }
-    } catch (e) { }
+    } catch (e) {}
     return null;
   };
 
   const cachedData = user ? getCachedJobsData() : null;
   const [loading, setLoading] = useState(!cachedData);
-  const [activeJob, setActiveJob] = useState<JobRequest | null>(cachedData?.activeJob || null);
-  const [openRequests, setOpenRequests] = useState<JobRequest[]>(cachedData?.openRequests || []);
-  const [pastJobs, setPastJobs] = useState<JobRequest[]>(cachedData?.pastJobs || []);
-  const [conversations, setConversations] = useState<Record<string, Conversation>>(cachedData?.conversations || {});
-  const [freelancerProfiles, setFreelancerProfiles] = useState<Record<string, FreelancerProfile>>(cachedData?.freelancerProfiles || {});
+  const [activeJob, setActiveJob] = useState<JobRequest | null>(
+    cachedData?.activeJob || null,
+  );
+  const [openRequests, setOpenRequests] = useState<JobRequest[]>(
+    cachedData?.openRequests || [],
+  );
+  const [pastJobs, setPastJobs] = useState<JobRequest[]>(
+    cachedData?.pastJobs || [],
+  );
+  const [conversations, setConversations] = useState<
+    Record<string, Conversation>
+  >(cachedData?.conversations || {});
+  const [freelancerProfiles, setFreelancerProfiles] = useState<
+    Record<string, FreelancerProfile>
+  >(cachedData?.freelancerProfiles || {});
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [confirmationCounts, setConfirmationCounts] = useState<Record<string, number>>(cachedData?.confirmationCounts || {});
+  const [confirmationCounts, setConfirmationCounts] = useState<
+    Record<string, number>
+  >(cachedData?.confirmationCounts || {});
   const [openRequestsExpanded, setOpenRequestsExpanded] = useState(false);
   const [pastJobsExpanded, setPastJobsExpanded] = useState(false);
   const [hasNewActions, setHasNewActions] = useState(false);
@@ -108,15 +120,17 @@ export default function ActiveJobsPage() {
         }
 
         // Separate into active, open requests, and past jobs
-        const active = allJobs.find(j => j.status === "locked" || j.status === "active");
-        const open = allJobs.filter(j =>
-          j.status === "ready" ||
-          j.status === "notifying" ||
-          j.status === "confirmations_closed"
+        const active = allJobs.find(
+          (j) => j.status === "locked" || j.status === "active",
         );
-        const past = allJobs.filter(j =>
-          j.status === "completed" ||
-          j.status === "cancelled"
+        const open = allJobs.filter(
+          (j) =>
+            j.status === "ready" ||
+            j.status === "notifying" ||
+            j.status === "confirmations_closed",
+        );
+        const past = allJobs.filter(
+          (j) => j.status === "completed" || j.status === "cancelled",
         );
 
         setActiveJob(active || null);
@@ -129,7 +143,10 @@ export default function ActiveJobsPage() {
           const { data: confirmations } = await supabase
             .from("job_confirmations")
             .select("job_id")
-            .in("job_id", open.map((j) => j.id))
+            .in(
+              "job_id",
+              open.map((j) => j.id),
+            )
             .eq("status", "available");
 
           (confirmations || []).forEach((conf) => {
@@ -162,7 +179,9 @@ export default function ActiveJobsPage() {
             profile = profileData;
 
             if (profile) {
-              setFreelancerProfiles({ [active.selected_freelancer_id]: profile });
+              setFreelancerProfiles({
+                [active.selected_freelancer_id]: profile,
+              });
             }
 
             // Check for schedule requests that need confirmation
@@ -175,18 +194,21 @@ export default function ActiveJobsPage() {
 
             if (messages) {
               // Check if there's a schedule request from client that hasn't been confirmed
-              const scheduleRequest = messages.find(msg =>
-                msg.body?.includes("📅 Schedule Request") &&
-                msg.sender_id === user.id
+              const scheduleRequest = messages.find(
+                (msg) =>
+                  msg.body?.includes("📅 Schedule Request") &&
+                  msg.sender_id === user.id,
               );
 
               if (scheduleRequest) {
                 // Check if there's a confirmation after the request
-                const confirmation = messages.find(msg =>
-                  (msg.body?.includes("Schedule confirmed") ||
-                    msg.body?.includes("✓")) &&
-                  msg.sender_id === active.selected_freelancer_id &&
-                  new Date(msg.created_at) > new Date(scheduleRequest.created_at)
+                const confirmation = messages.find(
+                  (msg) =>
+                    (msg.body?.includes("Schedule confirmed") ||
+                      msg.body?.includes("✓")) &&
+                    msg.sender_id === active.selected_freelancer_id &&
+                    new Date(msg.created_at) >
+                      new Date(scheduleRequest.created_at),
                 );
 
                 // If no confirmation found, there's a new action available
@@ -204,14 +226,23 @@ export default function ActiveJobsPage() {
               activeJob: active || null,
               openRequests: open,
               pastJobs: past,
-              conversations: active && active.selected_freelancer_id && convos ? { [active.id]: convos } : {},
-              freelancerProfiles: active && active.selected_freelancer_id && profile ? { [active.selected_freelancer_id]: profile } : {},
-              confirmationCounts: countsMap
+              conversations:
+                active && active.selected_freelancer_id && convos
+                  ? { [active.id]: convos }
+                  : {},
+              freelancerProfiles:
+                active && active.selected_freelancer_id && profile
+                  ? { [active.selected_freelancer_id]: profile }
+                  : {},
+              confirmationCounts: countsMap,
             };
-            localStorage.setItem(`active_jobs_${user.id}`, JSON.stringify({
-              timestamp: Date.now(),
-              data: cacheData
-            }));
+            localStorage.setItem(
+              `active_jobs_${user.id}`,
+              JSON.stringify({
+                timestamp: Date.now(),
+                data: cacheData,
+              }),
+            );
           } catch (e) {
             // Ignore cache errors
           }
@@ -231,7 +262,10 @@ export default function ActiveJobsPage() {
         supabase
           .from("job_confirmations")
           .select("job_id")
-          .in("job_id", openRequests.map((j) => j.id))
+          .in(
+            "job_id",
+            openRequests.map((j) => j.id),
+          )
           .eq("status", "available")
           .then(({ data: confirmations }) => {
             const countsMap: Record<string, number> = {};
@@ -248,24 +282,38 @@ export default function ActiveJobsPage() {
 
   // Update cache whenever jobs data changes (from real-time updates or initial load)
   useEffect(() => {
-    if (user && (activeJob !== null || openRequests.length >= 0 || pastJobs.length >= 0)) {
+    if (
+      user &&
+      (activeJob !== null || openRequests.length >= 0 || pastJobs.length >= 0)
+    ) {
       try {
-        localStorage.setItem(`active_jobs_${user.id}`, JSON.stringify({
-          timestamp: Date.now(),
-          data: {
-            activeJob,
-            openRequests,
-            pastJobs,
-            conversations,
-            freelancerProfiles,
-            confirmationCounts
-          }
-        }));
+        localStorage.setItem(
+          `active_jobs_${user.id}`,
+          JSON.stringify({
+            timestamp: Date.now(),
+            data: {
+              activeJob,
+              openRequests,
+              pastJobs,
+              conversations,
+              freelancerProfiles,
+              confirmationCounts,
+            },
+          }),
+        );
       } catch (e) {
         // Ignore cache errors
       }
     }
-  }, [activeJob, openRequests, pastJobs, conversations, freelancerProfiles, confirmationCounts, user]);
+  }, [
+    activeJob,
+    openRequests,
+    pastJobs,
+    conversations,
+    freelancerProfiles,
+    confirmationCounts,
+    user,
+  ]);
 
   // function formatCareType(type: string): string {
   //   const map: Record<string, string> = {
@@ -304,29 +352,45 @@ export default function ActiveJobsPage() {
   function formatDateTime(dateStr: string | null): string {
     if (!dateStr) return "N/A";
     const date = new Date(dateStr);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   }
 
-  function getJobStatusBadge(status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } {
-    const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  function getJobStatusBadge(status: string): {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+  } {
+    const map: Record<
+      string,
+      {
+        label: string;
+        variant: "default" | "secondary" | "destructive" | "outline";
+      }
+    > = {
       locked: { label: "Scheduled", variant: "default" },
       active: { label: "In progress", variant: "default" },
       notifying: { label: "Finding nannies", variant: "secondary" },
-      confirmations_closed: { label: "Waiting for availability", variant: "secondary" },
+      confirmations_closed: {
+        label: "Waiting for availability",
+        variant: "secondary",
+      },
       completed: { label: "Completed", variant: "outline" },
       cancelled: { label: "Cancelled", variant: "destructive" },
     };
     return map[status] || { label: status, variant: "outline" };
   }
 
-  function getPrimaryAction(job: JobRequest): { label: string; onClick: () => void; icon?: any } {
+  function getPrimaryAction(job: JobRequest): {
+    label: string;
+    onClick: () => void;
+    icon?: any;
+  } {
     if (job.status === "locked" || job.status === "active") {
       const conversation = conversations[job.id];
       if (conversation) {
@@ -362,7 +426,7 @@ export default function ActiveJobsPage() {
 
       if (error) throw error;
 
-      setOpenRequests(prev => prev.filter(j => j.id !== jobId));
+      setOpenRequests((prev) => prev.filter((j) => j.id !== jobId));
       addToast({
         title: "Job deleted",
         description: "The job request has been removed.",
@@ -382,26 +446,26 @@ export default function ActiveJobsPage() {
   }
 
   function formatJobTitle(job: JobRequest): string {
-    if (job.service_type === 'cleaning') return 'Cleaning';
-    if (job.service_type === 'cooking') return 'Cooking';
-    if (job.service_type === 'pickup_delivery') return 'Pickup & Delivery';
-    if (job.service_type === 'nanny') return 'Nanny';
-    if (job.service_type === 'other_help') return 'Other Help';
+    if (job.service_type === "cleaning") return "Cleaning";
+    if (job.service_type === "cooking") return "Cooking";
+    if (job.service_type === "pickup_delivery") return "Pickup & Delivery";
+    if (job.service_type === "nanny") return "Nanny";
+    if (job.service_type === "other_help") return "Other Help";
 
     // Fallback for old jobs
-    return `Nanny – ${Number(job.children_count) || 0} kid${Number(job.children_count) !== 1 ? "s" : ""} (${job.children_age_group && job.children_age_group !== 'null' ? formatAgeGroup(job.children_age_group) : 'N/A'})`;
+    return `Nanny – ${Number(job.children_count) || 0} kid${Number(job.children_count) !== 1 ? "s" : ""} (${job.children_age_group && job.children_age_group !== "null" ? formatAgeGroup(job.children_age_group) : "N/A"})`;
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8">
         <div className="flex items-center gap-4 mb-8">
           <Button
@@ -433,39 +497,68 @@ export default function ActiveJobsPage() {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     {activeJob.status !== "notifying" && (
-                      <Badge className={cn("text-xs", getJobStatusBadge(activeJob.status).variant === "default" ? "bg-primary/10 text-primary" : "")}>
+                      <Badge
+                        className={cn(
+                          "text-xs",
+                          getJobStatusBadge(activeJob.status).variant ===
+                            "default"
+                            ? "bg-primary/10 text-primary"
+                            : "",
+                        )}
+                      >
                         {getJobStatusBadge(activeJob.status).label}
                       </Badge>
                     )}
                   </div>
                 </div>
-                {activeJob.selected_freelancer_id && freelancerProfiles[activeJob.selected_freelancer_id] && (
-                  <Avatar className="w-14 h-14 border-2 border-primary/20">
-                    <AvatarImage src={freelancerProfiles[activeJob.selected_freelancer_id].photo_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                      {freelancerProfiles[activeJob.selected_freelancer_id].full_name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+                {activeJob.selected_freelancer_id &&
+                  freelancerProfiles[activeJob.selected_freelancer_id] && (
+                    <Avatar className="w-14 h-14 border-2 border-primary/20">
+                      <AvatarImage
+                        src={
+                          freelancerProfiles[activeJob.selected_freelancer_id]
+                            .photo_url || undefined
+                        }
+                      />
+                      <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                        {freelancerProfiles[
+                          activeJob.selected_freelancer_id
+                        ].full_name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
               </div>
               {activeJob.start_at && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="w-4 h-4" />
-                  <span>{new Date(activeJob.start_at).toLocaleDateString()}</span>
+                  <span>
+                    {new Date(activeJob.start_at).toLocaleDateString()}
+                  </span>
                   <Clock className="w-4 h-4 ml-2" />
-                  <span>{new Date(activeJob.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>
+                    {new Date(activeJob.start_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </div>
               )}
-              {activeJob.selected_freelancer_id && freelancerProfiles[activeJob.selected_freelancer_id] && (
-                <div className="mt-2 text-sm">
-                  <span className="text-muted-foreground">With: </span>
-                  <span className="font-medium">{freelancerProfiles[activeJob.selected_freelancer_id].full_name}</span>
-                </div>
-              )}
+              {activeJob.selected_freelancer_id &&
+                freelancerProfiles[activeJob.selected_freelancer_id] && (
+                  <div className="mt-2 text-sm">
+                    <span className="text-muted-foreground">With: </span>
+                    <span className="font-medium">
+                      {
+                        freelancerProfiles[activeJob.selected_freelancer_id]
+                          .full_name
+                      }
+                    </span>
+                  </div>
+                )}
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4 flex-wrap">
@@ -480,27 +573,35 @@ export default function ActiveJobsPage() {
                     <Clock className="w-4 h-4" />
                     <span className="capitalize">
                       {[
-                        activeJob.time_duration?.replace('_', '-'),
-                        activeJob.care_frequency?.replace('_', ' ')
-                      ].filter(Boolean).join(' · ')}
+                        activeJob.time_duration?.replace("_", "-"),
+                        activeJob.care_frequency?.replace("_", " "),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   </div>
                 )}
 
                 {/* Service Details */}
-                {activeJob.service_type === 'nanny' && activeJob.service_details?.kids_count && (
-                  <div className="flex items-center gap-1">
-                    <Baby className="w-4 h-4" />
-                    {activeJob.service_details.kids_count.replace('_', '-')} kids
-                  </div>
-                )}
+                {activeJob.service_type === "nanny" &&
+                  activeJob.service_details?.kids_count && (
+                    <div className="flex items-center gap-1">
+                      <Baby className="w-4 h-4" />
+                      {activeJob.service_details.kids_count.replace(
+                        "_",
+                        "-",
+                      )}{" "}
+                      kids
+                    </div>
+                  )}
 
-                {activeJob.service_type === 'cleaning' && activeJob.service_details?.home_size && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    {activeJob.service_details.home_size.replace(/_/g, ' ')}
-                  </div>
-                )}
+                {activeJob.service_type === "cleaning" &&
+                  activeJob.service_details?.home_size && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {activeJob.service_details.home_size.replace(/_/g, " ")}
+                    </div>
+                  )}
 
                 {/* Fallback for old jobs */}
                 {!activeJob.service_type && activeJob.children_count > 0 && (
@@ -546,14 +647,21 @@ export default function ActiveJobsPage() {
                   const statusBadge = getJobStatusBadge(job.status);
                   const action = getPrimaryAction(job);
                   return (
-                    <div key={job.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div
+                      key={job.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                    >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm truncate">{formatJobTitle(job)}</span>
+                          <span className="font-medium text-sm truncate">
+                            {formatJobTitle(job)}
+                          </span>
                           {confirmationCounts[job.id] > 0 && (
                             <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-background">
                               <span className="text-[10px] font-bold text-white">
-                                {confirmationCounts[job.id] > 9 ? "9+" : confirmationCounts[job.id]}
+                                {confirmationCounts[job.id] > 9
+                                  ? "9+"
+                                  : confirmationCounts[job.id]}
                               </span>
                             </div>
                           )}
@@ -566,7 +674,10 @@ export default function ActiveJobsPage() {
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                           {job.status !== "notifying" && (
-                            <Badge variant={statusBadge.variant} className="text-xs">
+                            <Badge
+                              variant={statusBadge.variant}
+                              className="text-xs"
+                            >
                               {statusBadge.label}
                             </Badge>
                           )}
@@ -580,7 +691,8 @@ export default function ActiveJobsPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        {(job.status === "notifying" || job.status === "confirmations_closed") && (
+                        {(job.status === "notifying" ||
+                          job.status === "confirmations_closed") && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -624,19 +736,33 @@ export default function ActiveJobsPage() {
                 {pastJobs.map((job) => {
                   const statusBadge = getJobStatusBadge(job.status);
                   return (
-                    <div key={job.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div
+                      key={job.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                    >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{new Date(job.created_at).toLocaleDateString()}</span>
-                          <span className="text-sm text-muted-foreground truncate">{formatJobTitle(job)}</span>
+                          <span className="font-medium text-sm">
+                            {new Date(job.created_at).toLocaleDateString()}
+                          </span>
+                          <span className="text-sm text-muted-foreground truncate">
+                            {formatJobTitle(job)}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={statusBadge.variant} className="text-xs">
+                          <Badge
+                            variant={statusBadge.variant}
+                            className="text-xs"
+                          >
                             {statusBadge.label}
                           </Badge>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => navigate("/client/create")}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate("/client/create")}
+                      >
                         Rebook
                       </Button>
                     </div>

@@ -70,11 +70,19 @@ export function useClientProfileForm() {
     if (!file || !user) return;
 
     if (!file.type.startsWith("image/")) {
-      addToast({ title: "Invalid file type", description: "Please upload an image file", variant: "error" });
+      addToast({
+        title: "Invalid file type",
+        description: "Please upload an image file",
+        variant: "error",
+      });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      addToast({ title: "File too large", description: "Please upload an image smaller than 5MB", variant: "error" });
+      addToast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "error",
+      });
       return;
     }
 
@@ -86,16 +94,26 @@ export function useClientProfileForm() {
       }
       const fileExt = file.name.split(".").pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
       setPhotoUrl(data.publicUrl);
-      addToast({ title: "Photo uploaded", description: "Don't forget to save your changes", variant: "success" });
+      addToast({
+        title: "Photo uploaded",
+        description: "Don't forget to save your changes",
+        variant: "success",
+      });
     } catch (error: any) {
-      addToast({ title: "Upload failed", description: error.message || "Failed to upload image", variant: "error" });
+      addToast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload image",
+        variant: "error",
+      });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -114,9 +132,17 @@ export function useClientProfileForm() {
       const fileName = photoUrl.split("/").pop();
       if (fileName) await supabase.storage.from("avatars").remove([fileName]);
       setPhotoUrl(null);
-      addToast({ title: "Photo removed", description: "Don't forget to save your changes", variant: "info" });
+      addToast({
+        title: "Photo removed",
+        description: "Don't forget to save your changes",
+        variant: "info",
+      });
     } catch (error: any) {
-      addToast({ title: "Failed to remove photo", description: error.message || "Please try again", variant: "error" });
+      addToast({
+        title: "Failed to remove photo",
+        description: error.message || "Please try again",
+        variant: "error",
+      });
     }
   }
 
@@ -125,9 +151,17 @@ export function useClientProfileForm() {
     try {
       const cityName = await getCityFromLocation();
       setCity(cityName);
-      addToast({ title: "Location found", description: `Your location has been set to ${cityName}`, variant: "success" });
+      addToast({
+        title: "Location found",
+        description: `Your location has been set to ${cityName}`,
+        variant: "success",
+      });
     } catch (error: any) {
-      addToast({ title: "Location error", description: error.message || "Failed to get your location", variant: "error" });
+      addToast({
+        title: "Location error",
+        description: error.message || "Failed to get your location",
+        variant: "error",
+      });
     } finally {
       setGettingLocation(false);
     }
@@ -157,10 +191,18 @@ export function useClientProfileForm() {
       });
       if (error) throw error;
       await refreshProfile();
-      addToast({ title: "Profile updated", description: "Your changes have been saved successfully", variant: "success" });
+      addToast({
+        title: "Profile updated",
+        description: "Your changes have been saved successfully",
+        variant: "success",
+      });
       return true;
     } catch (error: any) {
-      addToast({ title: "Save failed", description: error.message || "Failed to save profile", variant: "error" });
+      addToast({
+        title: "Save failed",
+        description: error.message || "Failed to save profile",
+        variant: "error",
+      });
       return false;
     } finally {
       setSaving(false);

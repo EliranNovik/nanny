@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isServiceCategoryId, serviceCategoryLabel, type ServiceCategoryId } from "@/lib/serviceCategories";
+import {
+  isServiceCategoryId,
+  serviceCategoryLabel,
+  type ServiceCategoryId,
+} from "@/lib/serviceCategories";
 
 function categoryDisplayLabel(categoryId: string): string {
   if (isServiceCategoryId(categoryId)) {
@@ -14,7 +18,10 @@ function viewerDisplayName(fullName: string | null | undefined): string {
   return "Someone";
 }
 
-export type KnockMessageErrorCode = "not_signed_in" | "no_role" | "messaging_unavailable";
+export type KnockMessageErrorCode =
+  | "not_signed_in"
+  | "no_role"
+  | "messaging_unavailable";
 
 /** Two user IDs in stable order for new job-less DMs (columns are participants, not strict roles). */
 function sortedParticipantIds(a: string, b: string): [string, string] {
@@ -30,7 +37,10 @@ export async function sendKnockMessage(opts: {
   targetUserId: string;
   targetRole: string | null;
   categoryId: string;
-}): Promise<{ ok: true; conversationId: string } | { ok: false; code: KnockMessageErrorCode; message?: string }> {
+}): Promise<
+  | { ok: true; conversationId: string }
+  | { ok: false; code: KnockMessageErrorCode; message?: string }
+> {
   const {
     supabase,
     currentUserId,
@@ -41,7 +51,11 @@ export async function sendKnockMessage(opts: {
   } = opts;
 
   if (targetUserId === currentUserId) {
-    return { ok: false, code: "messaging_unavailable", message: "Cannot knock your own profile." };
+    return {
+      ok: false,
+      code: "messaging_unavailable",
+      message: "Cannot knock your own profile.",
+    };
   }
 
   const myRole = currentProfileRole;
@@ -70,13 +84,20 @@ export async function sendKnockMessage(opts: {
     .maybeSingle();
 
   if (findErr) {
-    return { ok: false, code: "messaging_unavailable", message: findErr.message };
+    return {
+      ok: false,
+      code: "messaging_unavailable",
+      message: findErr.message,
+    };
   }
 
   let conversationId = existing?.id as string | undefined;
 
   if (!conversationId) {
-    const [clientId, freelancerId] = sortedParticipantIds(currentUserId, targetUserId);
+    const [clientId, freelancerId] = sortedParticipantIds(
+      currentUserId,
+      targetUserId,
+    );
     const { data: created, error: insErr } = await supabase
       .from("conversations")
       .insert({
@@ -104,7 +125,11 @@ export async function sendKnockMessage(opts: {
   });
 
   if (msgErr) {
-    return { ok: false, code: "messaging_unavailable", message: msgErr.message };
+    return {
+      ok: false,
+      code: "messaging_unavailable",
+      message: msgErr.message,
+    };
   }
 
   return { ok: true, conversationId };

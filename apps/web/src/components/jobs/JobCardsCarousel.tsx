@@ -64,7 +64,9 @@ export function JobCardsCarousel({
     if (!el) return;
     const card = el.querySelector<HTMLElement>("[data-job-card]");
     const gap = 12;
-    const step = card ? card.offsetWidth + gap : Math.min(el.clientWidth * 0.75, 360);
+    const step = card
+      ? card.offsetWidth + gap
+      : Math.min(el.clientWidth * 0.75, 360);
     el.scrollBy({ left: direction * step, behavior: "smooth" });
   };
 
@@ -75,7 +77,7 @@ export function JobCardsCarousel({
         "relative min-w-0 md:mx-auto md:max-w-6xl lg:max-w-7xl",
         /* Break out of app-desktop-shell horizontal padding on mobile */
         "max-md:left-1/2 max-md:w-screen max-md:max-w-[100dvw] max-md:-translate-x-1/2 max-md:px-3",
-        "md:translate-x-0 md:px-0 md:w-full"
+        "md:translate-x-0 md:px-0 md:w-full",
       )}
     >
       <div
@@ -84,7 +86,7 @@ export function JobCardsCarousel({
           /* pan-x alone blocks vertical page scroll when the gesture starts on the strip (mobile). */
           "flex min-h-0 min-w-0 w-full gap-3 overflow-x-auto overflow-y-visible pb-2 pt-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "[touch-action:pan-x_pan-y] overscroll-x-contain",
-          "md:touch-auto md:overscroll-x-auto md:grid md:grid-cols-2 md:gap-7 md:overflow-visible md:pb-0 md:pt-0 md:snap-none lg:grid-cols-3 lg:gap-8"
+          "md:touch-auto md:overscroll-x-auto md:grid md:grid-cols-2 md:gap-7 md:overflow-visible md:pb-0 md:pt-0 md:snap-none lg:grid-cols-3 lg:gap-8",
         )}
       >
         {children}

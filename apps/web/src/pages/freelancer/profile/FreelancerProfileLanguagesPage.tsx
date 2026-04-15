@@ -2,7 +2,10 @@ import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileSubpageLayout } from "@/components/profile/ProfileSubpageLayout";
-import { FREELANCER_LANGUAGES, type FreelancerProfileFormContext } from "@/hooks/useFreelancerProfileForm";
+import {
+  FREELANCER_LANGUAGES,
+  type FreelancerProfileFormContext,
+} from "@/hooks/useFreelancerProfileForm";
 import { Save, Loader2, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +13,10 @@ export default function FreelancerProfileLanguagesPage() {
   const ctx = useOutletContext<FreelancerProfileFormContext>();
 
   return (
-    <ProfileSubpageLayout title="Languages" description="Languages you speak with families">
+    <ProfileSubpageLayout
+      title="Languages"
+      description="Languages you speak with families"
+    >
       <div className="space-y-6">
         <Card className="border border-border/50 shadow-sm">
           <CardHeader>
@@ -30,7 +36,7 @@ export default function FreelancerProfileLanguagesPage() {
                     "px-4 py-2 rounded-full border-2 text-sm font-medium transition-all",
                     ctx.data.languages.includes(lang)
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/50"
+                      : "border-border hover:border-primary/50",
                   )}
                 >
                   {lang}
@@ -40,7 +46,12 @@ export default function FreelancerProfileLanguagesPage() {
           </CardContent>
         </Card>
 
-        <Button onClick={ctx.handleSave} disabled={ctx.saving} className="w-full" size="lg">
+        <Button
+          onClick={ctx.handleSave}
+          disabled={ctx.saving}
+          className="w-full"
+          size="lg"
+        >
           {ctx.saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

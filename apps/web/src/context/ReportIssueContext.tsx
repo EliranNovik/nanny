@@ -15,7 +15,9 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
   const closeReportModal = () => setIsOpen(false);
 
   return (
-    <ReportIssueContext.Provider value={{ openReportModal, closeReportModal, isOpen }}>
+    <ReportIssueContext.Provider
+      value={{ openReportModal, closeReportModal, isOpen }}
+    >
       {children}
     </ReportIssueContext.Provider>
   );
@@ -28,4 +30,3 @@ export function useReportIssue() {
   }
   return context;
 }
-

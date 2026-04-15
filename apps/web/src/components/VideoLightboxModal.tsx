@@ -9,7 +9,11 @@ interface VideoLightboxModalProps {
 }
 
 /** Full-viewport video overlay (mobile-friendly safe areas). */
-export function VideoLightboxModal({ src, isOpen, onClose }: VideoLightboxModalProps) {
+export function VideoLightboxModal({
+  src,
+  isOpen,
+  onClose,
+}: VideoLightboxModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -41,7 +45,15 @@ export function VideoLightboxModal({ src, isOpen, onClose }: VideoLightboxModalP
   const el = (
     <div
       className="pointer-events-auto fixed inset-0 z-[10000] flex h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-black"
-      style={{ width: "100vw", height: "100dvh", maxWidth: "100vw", left: 0, top: 0, right: 0, bottom: 0 }}
+      style={{
+        width: "100vw",
+        height: "100dvh",
+        maxWidth: "100vw",
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Video"
@@ -62,7 +74,10 @@ export function VideoLightboxModal({ src, isOpen, onClose }: VideoLightboxModalP
       </div>
 
       <div className="relative z-10 flex min-h-0 w-full flex-1 items-center justify-center px-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="flex max-h-full max-w-full items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="flex max-h-full max-w-full items-center justify-center"
+          onClick={(e) => e.stopPropagation()}
+        >
           <video
             ref={videoRef}
             key={src}

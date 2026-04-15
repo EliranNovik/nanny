@@ -40,7 +40,8 @@ const TAB_DEFS: TabDef[] = [
     Icon: ICONS[ALL_HELP_CATEGORY_ID],
     activeClass:
       "border-transparent bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-md shadow-rose-900/20 dark:shadow-rose-950/40",
-    idleRing: "border-rose-200/60 bg-rose-50/40 text-rose-900/80 hover:bg-rose-50/80 dark:border-rose-500/25 dark:bg-rose-950/20 dark:text-rose-100",
+    idleRing:
+      "border-rose-200/60 bg-rose-50/40 text-rose-900/80 hover:bg-rose-50/80 dark:border-rose-500/25 dark:bg-rose-950/20 dark:text-rose-100",
   },
   ...SERVICE_CATEGORIES.map((c) => {
     const base = ((): Omit<TabDef, "id" | "label" | "Icon"> => {
@@ -82,7 +83,8 @@ const TAB_DEFS: TabDef[] = [
           };
         default:
           return {
-            activeClass: "border-transparent bg-primary text-primary-foreground shadow-md",
+            activeClass:
+              "border-transparent bg-primary text-primary-foreground shadow-md",
             idleRing: "border-border bg-muted/60 text-foreground",
           };
       }
@@ -103,12 +105,16 @@ export interface PublicPostsCategoryTabsProps {
 }
 
 /** Icon + label chips to filter `/public/posts?category=`. */
-export function PublicPostsCategoryTabs({ activeId, onSelect, className }: PublicPostsCategoryTabsProps) {
+export function PublicPostsCategoryTabs({
+  activeId,
+  onSelect,
+  className,
+}: PublicPostsCategoryTabsProps) {
   return (
     <div
       className={cn(
         "-mx-1 flex gap-2 overflow-x-auto pb-1 pt-0.5 [scrollbar-width:thin] md:mx-0 md:flex-wrap md:overflow-visible",
-        className
+        className,
       )}
       role="tablist"
       aria-label="Availability categories"
@@ -125,11 +131,19 @@ export function PublicPostsCategoryTabs({ activeId, onSelect, className }: Publi
             onClick={() => onSelect(tab.id)}
             className={cn(
               "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-2 text-left text-[11px] font-bold transition-all sm:px-3 sm:text-xs md:gap-2 md:py-2.5",
-              selected ? tab.activeClass : cn("border bg-transparent", tab.idleRing)
+              selected
+                ? tab.activeClass
+                : cn("border bg-transparent", tab.idleRing),
             )}
           >
-            <Icon className="h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem]" strokeWidth={2.25} aria-hidden />
-            <span className="max-w-[5.5rem] truncate sm:max-w-none">{tab.label}</span>
+            <Icon
+              className="h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem]"
+              strokeWidth={2.25}
+              aria-hidden
+            />
+            <span className="max-w-[5.5rem] truncate sm:max-w-none">
+              {tab.label}
+            </span>
           </button>
         );
       })}

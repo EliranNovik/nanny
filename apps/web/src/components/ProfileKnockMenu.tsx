@@ -4,11 +4,16 @@ import { BellRing, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
 import { sendKnockMessage } from "@/lib/knockMessage";
-import { isServiceCategoryId, serviceCategoryLabel, type ServiceCategoryId } from "@/lib/serviceCategories";
+import {
+  isServiceCategoryId,
+  serviceCategoryLabel,
+  type ServiceCategoryId,
+} from "@/lib/serviceCategories";
 import { cn } from "@/lib/utils";
 
 function labelForCategoryId(id: string): string {
-  if (isServiceCategoryId(id)) return serviceCategoryLabel(id as ServiceCategoryId);
+  if (isServiceCategoryId(id))
+    return serviceCategoryLabel(id as ServiceCategoryId);
   return id.replace(/_/g, " ");
 }
 
@@ -73,7 +78,8 @@ export function ProfileKnockMenu({
         if (result.code === "no_role") {
           addToast({
             title: "Please wait",
-            description: "Your profile is still loading. Try again in a moment.",
+            description:
+              "Your profile is still loading. Try again in a moment.",
             variant: "default",
           });
         } else {
@@ -116,20 +122,26 @@ export function ProfileKnockMenu({
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "inline-flex items-center justify-center transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60",
-          btnHero
+          btnHero,
         )}
       >
         {sending ? (
           <Loader2
             className={
-              variant === "hero" ? "h-6 w-6 animate-spin" : "h-5 w-5 animate-spin"
+              variant === "hero"
+                ? "h-6 w-6 animate-spin"
+                : "h-5 w-5 animate-spin"
             }
             aria-hidden
           />
         ) : (
           <BellRing
             className={
-              variant === "hero" ? "h-7 w-7" : variant === "contact" ? "h-5 w-5" : "h-6 w-6"
+              variant === "hero"
+                ? "h-7 w-7"
+                : variant === "contact"
+                  ? "h-5 w-5"
+                  : "h-6 w-6"
             }
             strokeWidth={2}
             aria-hidden

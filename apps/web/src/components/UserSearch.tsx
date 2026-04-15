@@ -1,12 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Search, X, Loader2 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StarRating } from "@/components/StarRating";
-import { useDebouncedProfileSearch } from "@/hooks/useDebouncedProfileSearch";
-import { filterPageSuggestions, type SmartSearchSuggestion } from "@/lib/smartSearchSuggestions";
-import { useAuth } from "@/context/AuthContext";
+import { Search, X, Loader2, Sparkles } from "lucide-react";
+import { useSmartSearch, type SmartResult } from "@/hooks/useSmartSearch";
+import { SearchResultItem } from "./SearchResultItem";
 
 interface UserSearchProps {
   className?: string;
@@ -16,21 +13,26 @@ interface UserSearchProps {
   onResultSelect?: () => void;
 }
 
-export function UserSearch({ className, variant = "default", autoFocus = false, onResultSelect }: UserSearchProps) {
+export function UserSearch({
+  className,
+  variant = "default",
+  autoFocus = false,
+  onResultSelect,
+}: UserSearchProps) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { profile } = useAuth();
-  const role = profile?.role === "freelancer" ? "freelancer" : "client";
 
-  const { results, loading } = useDebouncedProfileSearch(query, 300, 5);
-  const pageMatches = filterPageSuggestions(query, role);
+  const { results, loading, addRecent } = useSmartSearch(query);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -46,22 +48,45 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
 
   const isInline = variant === "inline";
 
-  const goPage = (to: string) => {
-    navigate(to);
+  const handleSelect = (result: SmartResult) => {
+    addRecent({
+      id: result.id,
+      kind: result.kind as any,
+      title: result.title,
+      subtitle: result.subtitle,
+      to: result.to
+    });
+    navigate(result.to);
     setIsOpen(false);
     setQuery("");
     onResultSelect?.();
   };
 
-  const showPanel = isOpen && query.length > 0;
+  const handleAction = (action: string, result: SmartResult) => {
+    if (action === "message") {
+      navigate(`/chat/${result.id}`);
+      setIsOpen(false);
+      setQuery("");
+      onResultSelect?.();
+    }
+  };
+
+  const showPanel = isOpen; // Show even when empty for "Recents"
+  const hasQuery = query.trim().length > 0;
 
   return (
-    <div ref={searchRef} className={cn("group relative w-full max-w-[200px] sm:max-w-xs", className)}>
+    <div
+      ref={searchRef}
+      className={cn(
+        "group relative w-full max-w-[240px] sm:max-w-sm",
+        className,
+      )}
+    >
       <div className="relative">
         <Search
           className={cn(
-            "absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-slate-600 dark:group-focus-within:text-slate-300",
-            isInline && "left-0 w-[18px] h-[18px] text-slate-500 dark:text-slate-400"
+            "absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 transition-colors group-focus-within:text-orange-500 dark:group-focus-within:text-orange-400",
+            isInline && "left-0",
           )}
         />
         <input
@@ -73,13 +98,13 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Search helpers & pages…"
+          placeholder="Search anything..."
           autoComplete="off"
           className={cn(
-            "w-full text-sm transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
+            "w-full text-[14px] transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
             isInline
-              ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-7 pr-8 text-slate-900 shadow-none focus-visible:outline-none focus-visible:ring-0 focus:border-slate-600 dark:border-white/35 dark:text-white dark:focus:border-slate-300"
-              : "h-10 rounded-2xl border border-slate-300/70 bg-black/5 pl-10 pr-10 shadow-none focus:border-slate-400 dark:border-zinc-600/70 dark:bg-white/5 dark:focus:border-zinc-500"
+              ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-8 pr-8 text-slate-900 focus:border-orange-500 dark:border-white/35 dark:text-white dark:focus:border-orange-400"
+              : "h-11 rounded-2xl border border-slate-300/70 bg-black/[0.03] pl-10 pr-10 shadow-sm focus:border-orange-400/50 focus:bg-white dark:border-zinc-700 dark:bg-white/5 dark:focus:border-orange-500/50 dark:focus:bg-zinc-900",
           )}
         />
         {query && (
@@ -87,11 +112,9 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
             type="button"
             onClick={() => {
               setQuery("");
+              inputRef.current?.focus();
             }}
-            className={cn(
-              "absolute top-1/2 -translate-y-1/2 p-0.5 transition-colors",
-              isInline ? "right-0 hover:opacity-70" : "right-3 hover:bg-black/10 dark:hover:bg-white/10 rounded-full"
-            )}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors"
           >
             <X className="h-3.5 w-3.5 text-slate-400" />
           </button>
@@ -101,92 +124,71 @@ export function UserSearch({ className, variant = "default", autoFocus = false, 
       {showPanel && (
         <div
           className={cn(
-            "absolute left-0 right-0 top-full z-[100] mt-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 max-h-[min(70vh,24rem)] overflow-y-auto",
-            isInline
-              ? "rounded-xl border border-slate-200/50 bg-card/90 shadow-md backdrop-blur-md dark:border-border/40 dark:bg-card/90"
-              : "rounded-2xl border border-slate-200/50 bg-card/95 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-border/50 dark:bg-card/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)]"
+            "absolute left-[-20px] right-[-20px] sm:left-0 sm:right-0 top-full z-[100] mt-3 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
+            "rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-950/95 dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]",
+            "max-h-[min(80vh,32rem)] overflow-y-auto"
           )}
         >
-          <div className="p-2 space-y-1">
-            {pageMatches.length > 0 && (
-              <div className="mb-1 space-y-0.5">
-                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Go to</p>
-                {pageMatches.slice(0, 6).map((s) => (
-                  <DesktopPageRow key={s.id} item={s} onPick={() => goPage(s.to)} />
-                ))}
-              </div>
-            )}
-            {pageMatches.length > 0 && (
-              <div className="mx-1 border-t border-border/40 pt-1">
-                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">People</p>
-              </div>
-            )}
+          <div className="p-2.5">
             {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+                <p className="text-xs font-medium text-slate-400 animate-pulse">Searching the community...</p>
               </div>
             ) : results.length > 0 ? (
-              results.map((result) => (
-                <button
-                  key={result.id}
-                  onClick={() => {
-                    navigate(`/profile/${result.id}`);
-                    setIsOpen(false);
-                    setQuery("");
-                    onResultSelect?.();
-                  }}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all group/item text-left"
-                >
-                  <Avatar className="w-9 h-9 border border-black/5 dark:border-white/5">
-                    <AvatarImage src={result.photo_url || undefined} className="object-cover" />
-                    <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold uppercase">
-                      {result.full_name?.slice(0, 2) || "??"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate transition-colors group-hover/item:text-slate-700 dark:group-hover/item:text-slate-200">
-                      {result.full_name}
-                    </p>
-                    <div className="mt-0.5">
-                      <StarRating
-                        rating={result.average_rating || 0}
-                        totalRatings={result.total_ratings || 0}
-                        size="sm"
-                        className="gap-1"
-                        starClassName="text-slate-500 dark:text-slate-300"
-                        emptyStarClassName="text-slate-300 dark:text-slate-600"
-                        numberClassName="text-[11px] text-slate-600 dark:text-slate-300"
-                      />
+              <div className="space-y-4">
+                {/* Visual grouping of results */}
+                {(() => {
+                  const groups: Record<string, SmartResult[]> = {};
+                  results.forEach(r => {
+                    const groupName = r.kind === "recent" ? "Recent" : (r.kind === "person" ? "People" : "Suggestions");
+                    if (!groups[groupName]) groups[groupName] = [];
+                    groups[groupName].push(r);
+                  });
+
+                  return Object.entries(groups).map(([groupName, groupItems]) => (
+                    <div key={groupName} className="space-y-1">
+                      <h3 className="px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400/80 mb-1.5">
+                        {groupName}
+                      </h3>
+                      {groupItems.map(item => (
+                        <SearchResultItem
+                          key={item.id}
+                          result={item}
+                          query={query}
+                          onSelect={handleSelect}
+                          onAction={handleAction}
+                        />
+                      ))}
                     </div>
-                  </div>
-                </button>
-              ))
-            ) : pageMatches.length === 0 ? (
-              <div className="py-8 px-4 text-center">
-                <p className="text-sm text-slate-400 font-medium">No results for "{query}"</p>
+                  ));
+                })()}
               </div>
             ) : (
-              <div className="py-4 px-4 text-center">
-                <p className="text-sm text-slate-400 font-medium">No people match "{query}"</p>
+              <div className="py-10 px-6 text-center">
+                <div className="mx-auto w-12 h-12 bg-slate-50 dark:bg-white/5 rounded-2xl flex items-center justify-center mb-4">
+                  <Sparkles className="w-6 h-6 text-slate-300" />
+                </div>
+                <p className="text-sm text-slate-500 font-semibold mb-1">
+                  {hasQuery ? `No results for "${query}"` : "Try searching for..."}
+                </p>
+                <p className="text-xs text-slate-400 max-w-[200px] mx-auto leading-relaxed">
+                  {hasQuery ? "Try checking your spelling or search for categories like 'Cleaning'" : "Search for people, categories like 'Nanny', or pages like 'Messages'"}
+                </p>
               </div>
             )}
+          </div>
+          
+          {/* Subtle footer */}
+          <div className="px-5 py-3 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between">
+             <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Smart Search v2</span>
+             <div className="flex gap-1.5">
+                <kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 text-[9px] font-bold bg-white dark:bg-zinc-800 text-slate-400 shadow-sm">ESC</kbd>
+                <kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 text-[9px] font-bold bg-white dark:bg-zinc-800 text-slate-400 shadow-sm">↵</kbd>
+             </div>
           </div>
         </div>
       )}
     </div>
-  );
-}
-
-function DesktopPageRow({ item, onPick }: { item: SmartSearchSuggestion; onPick: () => void }) {
-  const Icon = item.icon;
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-    >
-      <Icon className="h-4 w-4 shrink-0 text-primary" />
-      <span className="min-w-0 flex-1 truncate font-medium">{item.title}</span>
-    </button>
   );
 }

@@ -1,7 +1,12 @@
 /** How the user is acting on the unified /jobs page */
 export type JobsPerspective = "freelancer" | "client";
 
-export const FREELANCER_TAB_IDS = ["requests", "pending", "jobs", "past"] as const;
+export const FREELANCER_TAB_IDS = [
+  "requests",
+  "pending",
+  "jobs",
+  "past",
+] as const;
 export type FreelancerJobsTabId = (typeof FREELANCER_TAB_IDS)[number];
 
 export const CLIENT_TAB_IDS = ["my_requests", "jobs", "past"] as const;
@@ -29,21 +34,26 @@ export function writeStoredPerspective(p: JobsPerspective) {
   }
 }
 
-export function defaultTabForPerspective(mode: JobsPerspective): UnifiedJobsTabId {
+export function defaultTabForPerspective(
+  mode: JobsPerspective,
+): UnifiedJobsTabId {
   return mode === "client" ? "my_requests" : "requests";
 }
 
 export function isTabValidForPerspective(
   mode: JobsPerspective,
-  tab: string | null | undefined
+  tab: string | null | undefined,
 ): tab is UnifiedJobsTabId {
   if (!tab) return false;
-  if (mode === "client") return (CLIENT_TAB_IDS as readonly string[]).includes(tab);
+  if (mode === "client")
+    return (CLIENT_TAB_IDS as readonly string[]).includes(tab);
   return (FREELANCER_TAB_IDS as readonly string[]).includes(tab);
 }
 
 /** Infer perspective from legacy ?tab= when ?mode= was missing */
-export function inferPerspectiveFromTab(tab: string | null | undefined): JobsPerspective | null {
+export function inferPerspectiveFromTab(
+  tab: string | null | undefined,
+): JobsPerspective | null {
   if (!tab) return null;
   if (tab === "my_requests") return "client";
   if (tab === "requests" || tab === "pending") return "freelancer";
@@ -52,14 +62,18 @@ export function inferPerspectiveFromTab(tab: string | null | undefined): JobsPer
 }
 
 export function buildJobsUrl(mode: JobsPerspective, tab?: string) {
-  const t = tab && isTabValidForPerspective(mode, tab) ? tab : defaultTabForPerspective(mode);
+  const t =
+    tab && isTabValidForPerspective(mode, tab)
+      ? tab
+      : defaultTabForPerspective(mode);
   return `/jobs?mode=${mode}&tab=${encodeURIComponent(t)}`;
 }
 
 /** Deep links from notifications / dashboard when only a tab id is known */
 export function buildJobsUrlFromTabId(tabId: string): string {
   if (tabId === "my_requests") return buildJobsUrl("client", "my_requests");
-  if (tabId === "requests" || tabId === "pending") return buildJobsUrl("freelancer", tabId);
+  if (tabId === "requests" || tabId === "pending")
+    return buildJobsUrl("freelancer", tabId);
   const m = readStoredPerspective() ?? "freelancer";
   return buildJobsUrl(m, tabId);
 }

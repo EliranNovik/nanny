@@ -21,7 +21,14 @@ export interface FreelancerData {
 
 export type RateMode = "single" | "range";
 
-export const FREELANCER_LANGUAGES = ["Hebrew", "English", "Russian", "Arabic", "French", "Spanish"];
+export const FREELANCER_LANGUAGES = [
+  "Hebrew",
+  "English",
+  "Russian",
+  "Arabic",
+  "French",
+  "Spanish",
+];
 
 export function useFreelancerProfileForm() {
   const { user, profile, refreshProfile } = useAuth();
@@ -96,7 +103,10 @@ export function useFreelancerProfileForm() {
         .maybeSingle();
 
       if (error && error.code !== "PGRST116") {
-        console.error("[FreelancerProfile] Error fetching freelancer profile:", error);
+        console.error(
+          "[FreelancerProfile] Error fetching freelancer profile:",
+          error,
+        );
         return;
       }
 
@@ -168,14 +178,19 @@ export function useFreelancerProfileForm() {
     };
   }, [user?.id]);
 
-  function updateField<K extends keyof FreelancerData>(field: K, value: FreelancerData[K]) {
+  function updateField<K extends keyof FreelancerData>(
+    field: K,
+    value: FreelancerData[K],
+  ) {
     setData((prev) => ({ ...prev, [field]: value }));
   }
 
   function toggleLanguage(lang: string) {
     setData((prev) => ({
       ...prev,
-      languages: prev.languages.includes(lang) ? prev.languages.filter((l) => l !== lang) : [...prev.languages, lang],
+      languages: prev.languages.includes(lang)
+        ? prev.languages.filter((l) => l !== lang)
+        : [...prev.languages, lang],
     }));
   }
 
@@ -214,16 +229,20 @@ export function useFreelancerProfileForm() {
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const filePath = fileName;
 
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
 
       if (uploadError) {
         throw uploadError;
       }
 
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
       setPhotoUrl(urlData.publicUrl);
 
       addToast({
@@ -324,13 +343,18 @@ export function useFreelancerProfileForm() {
     setSaving(true);
 
     try {
-      const { error: freelancerError } = await supabase.from("freelancer_profiles").upsert({
-        user_id: user.id,
-        ...data,
-      });
+      const { error: freelancerError } = await supabase
+        .from("freelancer_profiles")
+        .upsert({
+          user_id: user.id,
+          ...data,
+        });
 
       if (freelancerError) {
-        console.error("[FreelancerProfile] Error saving freelancer profile:", freelancerError);
+        console.error(
+          "[FreelancerProfile] Error saving freelancer profile:",
+          freelancerError,
+        );
         throw freelancerError;
       }
 
@@ -362,7 +386,9 @@ export function useFreelancerProfileForm() {
       if (shareTelegram !== (profile?.share_telegram || false)) {
         profileUpdates.share_telegram = shareTelegram;
       }
-      if (JSON.stringify(categories) !== JSON.stringify(profile?.categories || [])) {
+      if (
+        JSON.stringify(categories) !== JSON.stringify(profile?.categories || [])
+      ) {
         profileUpdates.categories = categories;
       }
       profileUpdates.address = locationRadius.address || null;
@@ -378,7 +404,10 @@ export function useFreelancerProfileForm() {
         });
 
         if (profileError) {
-          console.error("[FreelancerProfile] Error saving profile info:", profileError);
+          console.error(
+            "[FreelancerProfile] Error saving profile info:",
+            profileError,
+          );
           throw profileError;
         }
       }
@@ -399,7 +428,8 @@ export function useFreelancerProfileForm() {
       return true;
     } catch (err: any) {
       console.error("[FreelancerProfile] Failed to save:", err);
-      const errorMessage = err?.message || "Failed to save profile. Please try again.";
+      const errorMessage =
+        err?.message || "Failed to save profile. Please try again.";
       addToast({
         title: "Save failed",
         description: errorMessage,
@@ -451,4 +481,6 @@ export function useFreelancerProfileForm() {
   };
 }
 
-export type FreelancerProfileFormContext = ReturnType<typeof useFreelancerProfileForm>;
+export type FreelancerProfileFormContext = ReturnType<
+  typeof useFreelancerProfileForm
+>;

@@ -7,10 +7,23 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { GoogleMap, useJsApiLoader, DirectionsRenderer } from "@react-google-maps/api";
-import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_SCRIPT_ID } from "@/lib/googleMapsLoader";
+import {
+  GoogleMap,
+  useJsApiLoader,
+  DirectionsRenderer,
+} from "@react-google-maps/api";
+import {
+  GOOGLE_MAPS_LIBRARIES,
+  GOOGLE_MAPS_SCRIPT_ID,
+} from "@/lib/googleMapsLoader";
 import { StarRating } from "@/components/StarRating";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -25,9 +38,10 @@ import {
   ArrowLeft,
   Trash2,
   MessageSquare,
-  Navigation
+  Navigation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNotificationsRealtime } from "@/hooks/useNotificationsRealtime";
 
 interface JobRequest {
   id: string;
@@ -79,7 +93,8 @@ interface RouteMapProps {
 }
 
 function RouteMap({ fromLat, fromLng, toLat, toLng }: RouteMapProps) {
-  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+  const [directions, setDirections] =
+    useState<google.maps.DirectionsResult | null>(null);
   const [distance, setDistance] = useState<string>("");
   const [duration, setDuration] = useState<string>("");
 
@@ -108,7 +123,7 @@ function RouteMap({ fromLat, fromLng, toLat, toLng }: RouteMapProps) {
             setDuration(route.legs[0].duration?.text || "");
           }
         }
-      }
+      },
     );
   }, [isLoaded, fromLat, fromLng, toLat, toLng]);
 
@@ -157,7 +172,13 @@ function RouteMap({ fromLat, fromLng, toLat, toLng }: RouteMapProps) {
     </div>
   );
 }
-const LiveTimer = ({ createdAt, render }: { createdAt: string; render?: (props: { time: string; expired: boolean }) => React.ReactNode }) => {
+const LiveTimer = ({
+  createdAt,
+  render,
+}: {
+  createdAt: string;
+  render?: (props: { time: string; expired: boolean }) => React.ReactNode;
+}) => {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -196,8 +217,12 @@ export default function NotificationsPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [openJobAcceptModalOpen, setOpenJobAcceptModalOpen] = useState(false);
-  const [openJobAcceptJobId, setOpenJobAcceptJobId] = useState<string | null>(null);
-  const [openJobAcceptNotifId, setOpenJobAcceptNotifId] = useState<string | null>(null);
+  const [openJobAcceptJobId, setOpenJobAcceptJobId] = useState<string | null>(
+    null,
+  );
+  const [openJobAcceptNotifId, setOpenJobAcceptNotifId] = useState<
+    string | null
+  >(null);
   const [openJobAcceptNote, setOpenJobAcceptNote] = useState("");
   const [acceptingOpenJob, setAcceptingOpenJob] = useState(false);
   const previousNotificationIdsRef = useRef<Set<string>>(new Set());
@@ -209,12 +234,16 @@ export default function NotificationsPage() {
     }
 
     try {
-      console.log("[NotificationsPage] Fetching notifications for user", user.id);
+      console.log(
+        "[NotificationsPage] Fetching notifications for user",
+        user.id,
+      );
 
       // Fetch notifications
       const { data: notificationsData, error: notifError } = await supabase
         .from("job_candidate_notifications")
-        .select(`
+        .select(
+          `
           id,
           job_id,
           status,
@@ -242,13 +271,17 @@ export default function NotificationsPage() {
               total_ratings
             )
           )
-        `)
+        `,
+        )
         .eq("freelancer_id", user.id)
         .in("status", ["pending", "opened"])
         .order("created_at", { ascending: false });
 
       if (notifError) {
-        console.error("[NotificationsPage] Error fetching notifications:", notifError);
+        console.error(
+          "[NotificationsPage] Error fetching notifications:",
+          notifError,
+        );
         throw notifError;
       }
 
@@ -261,44 +294,66 @@ export default function NotificationsPage() {
       const confirmedJobIds = new Set(
         (confirmationsData || [])
           .filter((c) => c.status === "available")
-          .map((c) => c.job_id)
+          .map((c) => c.job_id),
       );
 
       const declinedJobIds = new Set(
         (confirmationsData || [])
           .filter((c) => c.status === "declined")
-          .map((c) => c.job_id)
+          .map((c) => c.job_id),
       );
 
-      console.log("[NotificationsPage] Loaded", (notificationsData || []).length, "notifications");
-      console.log("[NotificationsPage] Found", confirmedJobIds.size, "confirmed jobs");
+      console.log(
+        "[NotificationsPage] Loaded",
+        (notificationsData || []).length,
+        "notifications",
+      );
+      console.log(
+        "[NotificationsPage] Found",
+        confirmedJobIds.size,
+        "confirmed jobs",
+      );
 
       // Filter out notifications where job_requests is null (RLS blocked)
-      const validNotifications = (notificationsData || []).filter((notif: any) => {
-        if (!notif.job_requests) {
-          console.warn("[NotificationsPage] Notification", notif.id, "has null job_requests - RLS may be blocking");
-          return false;
-        }
-        return true;
-      });
+      const validNotifications = (notificationsData || []).filter(
+        (notif: any) => {
+          if (!notif.job_requests) {
+            console.warn(
+              "[NotificationsPage] Notification",
+              notif.id,
+              "has null job_requests - RLS may be blocking",
+            );
+            return false;
+          }
+          return true;
+        },
+      );
 
       // Add confirmation status to each notification
       const enrichedNotifications = validNotifications.map((notif: any) => ({
         ...notif,
         isConfirmed: confirmedJobIds.has(notif.job_id),
-        isDeclined: declinedJobIds.has(notif.job_id)
+        isDeclined: declinedJobIds.has(notif.job_id),
       }));
 
-      console.log("[NotificationsPage] Valid notifications after filtering:", enrichedNotifications.length);
+      console.log(
+        "[NotificationsPage] Valid notifications after filtering:",
+        enrichedNotifications.length,
+      );
 
       // Check for new notifications and show toast
-      const currentNotificationIds = new Set(enrichedNotifications.map((n: any) => n.id));
-      const newNotifications = enrichedNotifications.filter((n: any) =>
-        !previousNotificationIdsRef.current.has(n.id)
+      const currentNotificationIds = new Set(
+        enrichedNotifications.map((n: any) => n.id),
+      );
+      const newNotifications = enrichedNotifications.filter(
+        (n: any) => !previousNotificationIdsRef.current.has(n.id),
       );
 
       // Show toast for new notifications (but not on initial load)
-      if (previousNotificationIdsRef.current.size > 0 && newNotifications.length > 0) {
+      if (
+        previousNotificationIdsRef.current.size > 0 &&
+        newNotifications.length > 0
+      ) {
         newNotifications.forEach((notif: any) => {
           const job = notif.job_requests;
           addToast({
@@ -317,13 +372,27 @@ export default function NotificationsPage() {
       }
 
       previousNotificationIdsRef.current = currentNotificationIds;
-      setNotifications((enrichedNotifications as unknown as Notification[]) || []);
+      setNotifications(
+        (enrichedNotifications as unknown as Notification[]) || [],
+      );
     } catch (err) {
       console.error("[NotificationsPage] Failed to fetch notifications:", err);
     } finally {
       setLoading(false);
     }
   }, [user, addToast, navigate]);
+
+  useNotificationsRealtime({
+    userId: user?.id,
+    onNotificationUpdate: () => {
+      console.log("[NotificationsPage] Realtime update received, refetching...");
+      fetchNotifications();
+    },
+    onConfirmationUpdate: () => {
+      console.log("[NotificationsPage] Confirmation status changed, refetching...");
+      fetchNotifications();
+    }
+  });
 
   useEffect(() => {
     if (!user) {
@@ -332,49 +401,6 @@ export default function NotificationsPage() {
     }
 
     fetchNotifications();
-
-    // Subscribe to realtime updates for INSERT and UPDATE
-    const notificationsChannel = supabase
-      .channel(`notifications:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*", // Listen for INSERT, UPDATE, DELETE
-          schema: "public",
-          table: "job_candidate_notifications",
-          filter: `freelancer_id=eq.${user.id}`,
-        },
-        () => {
-          console.log("[NotificationsPage] Realtime update received, refetching...");
-          // Re-fetch notifications when realtime update is received
-          fetchNotifications();
-        }
-      )
-      .subscribe();
-
-    // Subscribe to job_confirmations to detect when client declines
-    const confirmationsChannel = supabase
-      .channel(`confirmations:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE", // Listen for UPDATE (when status changes to "declined")
-          schema: "public",
-          table: "job_confirmations",
-          filter: `freelancer_id=eq.${user.id}`,
-        },
-        () => {
-          console.log("[NotificationsPage] Confirmation status changed, refetching...");
-          // Re-fetch notifications to update declined status
-          fetchNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(notificationsChannel);
-      supabase.removeChannel(confirmationsChannel);
-    };
   }, [user, fetchNotifications]);
 
   async function handleConfirm(jobId: string, notifId: string) {
@@ -393,16 +419,19 @@ export default function NotificationsPage() {
 
       // Update local state optimistically
       setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notifId ? { ...n, isConfirmed: true } : n
-        )
+        prev.map((n) => (n.id === notifId ? { ...n, isConfirmed: true } : n)),
       );
 
       // Refresh to get latest data
       fetchNotifications();
     } catch (err: any) {
       console.error("[NotificationsPage] Error confirming availability:", err);
-      alert(err?.message || "Failed to confirm availability. Please try again.");
+      addToast({
+        title: "Couldn't confirm availability",
+        description: err?.message || "Please try again.",
+        variant: "error",
+        duration: 4000,
+      });
     } finally {
       setConfirming(null);
     }
@@ -416,23 +445,23 @@ export default function NotificationsPage() {
   }
 
   async function handleAcceptOpenJob() {
-    if (!openJobAcceptJobId || !openJobAcceptNotifId || !openJobAcceptNote.trim()) {
-      addToast({
-        title: "Note required",
-        description: "Please add a note explaining why you're interested in this open job.",
-        variant: "error",
-        duration: 3000,
-      });
+    if (!openJobAcceptJobId || !openJobAcceptNotifId) {
       return;
     }
 
     setAcceptingOpenJob(true);
 
     try {
-      console.log("[NotificationsPage] Accepting open job request", openJobAcceptJobId);
+      console.log(
+        "[NotificationsPage] Accepting open job request",
+        openJobAcceptJobId,
+      );
 
       // Mark as opened first
-      await apiPost(`/api/jobs/${openJobAcceptJobId}/notifications/${openJobAcceptNotifId}/open`, {});
+      await apiPost(
+        `/api/jobs/${openJobAcceptJobId}/notifications/${openJobAcceptNotifId}/open`,
+        {},
+      );
 
       // Accept open job request with note
       await apiPost(`/api/jobs/${openJobAcceptJobId}/accept-open-job`, {
@@ -444,13 +473,14 @@ export default function NotificationsPage() {
       // Update local state
       setNotifications((prev) =>
         prev.map((n) =>
-          n.id === openJobAcceptNotifId ? { ...n, isConfirmed: true } : n
-        )
+          n.id === openJobAcceptNotifId ? { ...n, isConfirmed: true } : n,
+        ),
       );
 
       addToast({
         title: "Request accepted",
-        description: "Your note has been sent to the client. They can now review your response.",
+        description:
+          "Your note has been sent to the client. They can now review your response.",
         variant: "success",
         duration: 5000,
       });
@@ -463,10 +493,14 @@ export default function NotificationsPage() {
       // Refresh to get latest data
       fetchNotifications();
     } catch (err: any) {
-      console.error("[NotificationsPage] Error accepting open job request:", err);
+      console.error(
+        "[NotificationsPage] Error accepting open job request:",
+        err,
+      );
       addToast({
         title: "Failed to accept",
-        description: err?.message || "Could not accept the request. Please try again.",
+        description:
+          err?.message || "Could not accept the request. Please try again.",
         variant: "error",
         duration: 5000,
       });
@@ -508,7 +542,8 @@ export default function NotificationsPage() {
       console.error("[NotificationsPage] Error deleting notification:", err);
       addToast({
         title: "Failed to delete",
-        description: err?.message || "Could not delete the request. Please try again.",
+        description:
+          err?.message || "Could not delete the request. Please try again.",
         variant: "error",
         duration: 5000,
       });
@@ -516,7 +551,6 @@ export default function NotificationsPage() {
       setDeleting(null);
     }
   }
-
 
   function formatCareType(type: string): string {
     const map: Record<string, string> = {
@@ -602,7 +636,6 @@ export default function NotificationsPage() {
     return map[weight] || weight;
   }
 
-
   function formatMobilityLevel(level: string): string {
     const map: Record<string, string> = {
       no_disability: "No Disability",
@@ -612,17 +645,16 @@ export default function NotificationsPage() {
     return map[level] || level;
   }
 
-
   if (loading) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8">
         <div className="flex items-center gap-4 mb-8">
           <Button
@@ -656,41 +688,49 @@ export default function NotificationsPage() {
                 key={notif.id}
                 className={cn(
                   "border-0 shadow-lg overflow-hidden transition-all",
-                  isDeclined && "opacity-60"
+                  isDeclined && "opacity-60",
                 )}
               >
                 <CardContent className="p-0">
-                    <div className={cn(
+                  <div
+                    className={cn(
                       "px-4 py-2 flex items-center justify-between",
                       isDeclined
                         ? "bg-red-500/10"
                         : isConfirmed
                           ? "bg-emerald-500/10"
-                          : "bg-primary/10"
-                    )}>
-                      <div className="flex items-center gap-2">
-                        {isDeclined ? (
-                          <>
-                            <XCircle className="w-4 h-4 text-red-500" />
-                            <span className="text-sm font-medium text-red-600">
-                              Client Declined
-                            </span>
-                          </>
-                        ) : (
-                          <LiveTimer createdAt={notif.created_at} render={({ time, expired }) => (
+                          : "bg-primary/10",
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isDeclined ? (
+                        <>
+                          <XCircle className="w-4 h-4 text-red-500" />
+                          <span className="text-sm font-medium text-red-600">
+                            Client Declined
+                          </span>
+                        </>
+                      ) : (
+                        <LiveTimer
+                          createdAt={notif.created_at}
+                          render={({ time, expired }) => (
                             <div className="flex items-center gap-2">
-                              <Clock className={cn(
-                                "w-4 h-4",
-                                isConfirmed
-                                  ? "text-emerald-500"
-                                  : "text-primary animate-pulse-soft"
-                              )} />
-                              <span className={cn(
-                                "text-sm font-medium",
-                                (expired || isConfirmed)
-                                  ? "text-emerald-600"
-                                  : "text-primary"
-                              )}>
+                              <Clock
+                                className={cn(
+                                  "w-4 h-4",
+                                  isConfirmed
+                                    ? "text-emerald-500"
+                                    : "text-primary animate-pulse-soft",
+                                )}
+                              />
+                              <span
+                                className={cn(
+                                  "text-sm font-medium",
+                                  expired || isConfirmed
+                                    ? "text-emerald-600"
+                                    : "text-primary",
+                                )}
+                              >
                                 {isConfirmed
                                   ? "Confirmed!"
                                   : expired
@@ -698,11 +738,22 @@ export default function NotificationsPage() {
                                     : `${time} left`}
                               </span>
                             </div>
-                          )} />
-                        )}
-                      </div>
-                      <Badge variant={isDeclined ? "destructive" : "default"}>
-                      {job.service_type ? formatServiceType(job.service_type).icon + " " + formatServiceType(job.service_type).label : formatCareType(job.care_type || "")}
+                          )}
+                        />
+                      )}
+                    </div>
+                    {/* Timer context — reduces pressure by explaining what happens at expiry */}
+                    {!isConfirmed && !isDeclined && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5 pl-0.5">
+                        After the timer, this job opens to the community
+                      </p>
+                    )}
+                    <Badge variant={isDeclined ? "destructive" : "default"}>
+                      {job.service_type
+                        ? formatServiceType(job.service_type).icon +
+                          " " +
+                          formatServiceType(job.service_type).label
+                        : formatCareType(job.care_type || "")}
                     </Badge>
                   </div>
 
@@ -711,13 +762,18 @@ export default function NotificationsPage() {
                     {job.profiles && (
                       <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-border/50">
                         <Avatar className="w-12 h-12 border-2 border-primary/20">
-                          <AvatarImage src={job.profiles.photo_url || undefined} />
+                          <AvatarImage
+                            src={job.profiles.photo_url || undefined}
+                          />
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
-                            {job.profiles.full_name?.charAt(0).toUpperCase() || "C"}
+                            {job.profiles.full_name?.charAt(0).toUpperCase() ||
+                              "C"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <p className="font-semibold text-base">{job.profiles.full_name || "Client"}</p>
+                          <p className="font-semibold text-base">
+                            {job.profiles.full_name || "Client"}
+                          </p>
                           <StarRating
                             rating={job.profiles.average_rating || 0}
                             totalRatings={job.profiles.total_ratings || 0}
@@ -732,51 +788,76 @@ export default function NotificationsPage() {
                     {job.service_type && (
                       <div className="flex flex-wrap gap-2">
                         {job.care_frequency && (
-                          <Badge variant="secondary">{formatFrequency(job.care_frequency)}</Badge>
+                          <Badge variant="secondary">
+                            {formatFrequency(job.care_frequency)}
+                          </Badge>
                         )}
                         {job.time_duration && (
-                          <Badge variant="outline">{formatDuration(job.time_duration)}</Badge>
+                          <Badge variant="outline">
+                            {formatDuration(job.time_duration)}
+                          </Badge>
                         )}
 
                         {/* Optional: Home Size for Cleaning */}
-                        {job.service_type === "cleaning" && job.service_details?.home_size && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            🏠 {formatHomeSize(job.service_details.home_size)}
-                          </Badge>
-                        )}
+                        {job.service_type === "cleaning" &&
+                          job.service_details?.home_size && (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 text-blue-700 border-blue-200"
+                            >
+                              🏠 {formatHomeSize(job.service_details.home_size)}
+                            </Badge>
+                          )}
 
                         {/* Optional: Who For in Cooking */}
-                        {job.service_type === "cooking" && job.service_details?.who_for && (
-                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                            👥 {formatWhoFor(job.service_details.who_for)}
-                          </Badge>
-                        )}
+                        {job.service_type === "cooking" &&
+                          job.service_details?.who_for && (
+                            <Badge
+                              variant="outline"
+                              className="bg-purple-50 text-purple-700 border-purple-200"
+                            >
+                              👥 {formatWhoFor(job.service_details.who_for)}
+                            </Badge>
+                          )}
 
                         {/* Optional: Weight for Pickup/Delivery */}
-                        {job.service_type === "pickup_delivery" && job.service_details?.weight && (
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                            ⚖️ {formatWeight(job.service_details.weight)}
-                          </Badge>
-                        )}
+                        {job.service_type === "pickup_delivery" &&
+                          job.service_details?.weight && (
+                            <Badge
+                              variant="outline"
+                              className="bg-orange-50 text-orange-700 border-orange-200"
+                            >
+                              ⚖️ {formatWeight(job.service_details.weight)}
+                            </Badge>
+                          )}
 
                         {/* Optional: Age Group for Nanny */}
-                        {job.service_type === "nanny" && job.service_details?.age_group && (
-                          <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200">
-                            👶 {formatAgeGroup(job.service_details.age_group)}
-                          </Badge>
-                        )}
+                        {job.service_type === "nanny" &&
+                          job.service_details?.age_group && (
+                            <Badge
+                              variant="outline"
+                              className="bg-pink-50 text-pink-700 border-pink-200"
+                            >
+                              👶 {formatAgeGroup(job.service_details.age_group)}
+                            </Badge>
+                          )}
 
                         {/* Optional: Mobility Level for Caregiving */}
                         {job.service_type === "other_help" &&
                           job.service_details?.other_type === "caregiving" &&
                           job.service_details?.mobility_level && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                              ♿ {formatMobilityLevel(job.service_details.mobility_level)}
+                            <Badge
+                              variant="outline"
+                              className="bg-green-50 text-green-700 border-green-200"
+                            >
+                              ♿{" "}
+                              {formatMobilityLevel(
+                                job.service_details.mobility_level,
+                              )}
                             </Badge>
                           )}
                       </div>
                     )}
-
 
                     {/* Job Details */}
                     <div className="grid grid-cols-2 gap-4">
@@ -786,35 +867,45 @@ export default function NotificationsPage() {
                       </div>
 
                       {/* Service-specific details */}
-                      {job.service_type === "cleaning" && job.service_details?.type && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm capitalize">{job.service_details.type} cleaning</span>
-                        </div>
-                      )}
+                      {job.service_type === "cleaning" &&
+                        job.service_details?.type && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm capitalize">
+                              {job.service_details.type} cleaning
+                            </span>
+                          </div>
+                        )}
 
-                      {job.service_type === "cooking" && job.service_details?.people_count && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">
-                            {job.service_details.people_count.replace("_", "-").replace("plus", "+")} people
-                          </span>
-                        </div>
-                      )}
+                      {job.service_type === "cooking" &&
+                        job.service_details?.people_count && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">
+                              {job.service_details.people_count
+                                .replace("_", "-")
+                                .replace("plus", "+")}{" "}
+                              people
+                            </span>
+                          </div>
+                        )}
 
-                      {job.service_type === "nanny" && job.service_details?.kids_count && (
-                        <div className="flex items-center gap-2">
-                          <Baby className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">
-                            {job.service_details.kids_count.replace("_", "-")} kids
-                          </span>
-                        </div>
-                      )}
+                      {job.service_type === "nanny" &&
+                        job.service_details?.kids_count && (
+                          <div className="flex items-center gap-2">
+                            <Baby className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">
+                              {job.service_details.kids_count.replace("_", "-")}{" "}
+                              kids
+                            </span>
+                          </div>
+                        )}
 
                       {/* Fallback to old nanny fields if no service_type */}
                       {!job.service_type && job.children_count && (
                         <div className="flex items-center gap-2">
                           <Baby className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm">
-                            {job.children_count} child{job.children_count > 1 ? "ren" : ""}
+                            {job.children_count} child
+                            {job.children_count > 1 ? "ren" : ""}
                           </span>
                         </div>
                       )}
@@ -830,14 +921,22 @@ export default function NotificationsPage() {
                           <div className="space-y-2 text-sm">
                             {job.service_details.from_address && (
                               <div className="flex items-start gap-2">
-                                <span className="text-green-600 font-semibold min-w-[50px]">From:</span>
-                                <span className="flex-1">{job.service_details.from_address}</span>
+                                <span className="text-green-600 font-semibold min-w-[50px]">
+                                  From:
+                                </span>
+                                <span className="flex-1">
+                                  {job.service_details.from_address}
+                                </span>
                               </div>
                             )}
                             {job.service_details.to_address && (
                               <div className="flex items-start gap-2">
-                                <span className="text-red-600 font-semibold min-w-[50px]">To:</span>
-                                <span className="flex-1">{job.service_details.to_address}</span>
+                                <span className="text-red-600 font-semibold min-w-[50px]">
+                                  To:
+                                </span>
+                                <span className="flex-1">
+                                  {job.service_details.to_address}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -851,16 +950,26 @@ export default function NotificationsPage() {
                       )}
 
                     {/* Other Help Description */}
-                    {job.service_type === "other_help" && job.service_details?.description && (
-                      <div className="text-sm text-muted-foreground">
-                        <p>{job.service_details.description}</p>
-                      </div>
-                    )}
+                    {job.service_type === "other_help" &&
+                      job.service_details?.description && (
+                        <div className="text-sm text-muted-foreground">
+                          <p>{job.service_details.description}</p>
+                        </div>
+                      )}
 
                     {/* Age group for nanny (old or new) */}
-                    {((job.service_type === "nanny" && job.service_details?.age_group) || (!job.service_type && job.children_age_group)) && (
+                    {((job.service_type === "nanny" &&
+                      job.service_details?.age_group) ||
+                      (!job.service_type && job.children_age_group)) && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Age: {formatAgeGroup(job.service_details?.age_group || job.children_age_group || "")}</span>
+                        <span>
+                          Age:{" "}
+                          {formatAgeGroup(
+                            job.service_details?.age_group ||
+                              job.children_age_group ||
+                              "",
+                          )}
+                        </span>
                       </div>
                     )}
 
@@ -881,13 +990,19 @@ export default function NotificationsPage() {
                     {job.requirements.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {job.requirements.includes("first_aid") && (
-                          <Badge variant="secondary">🩹 First Aid Required</Badge>
+                          <Badge variant="secondary">
+                            🩹 First Aid Required
+                          </Badge>
                         )}
                         {job.requirements.includes("newborn") && (
-                          <Badge variant="secondary">👶 Newborn Exp. Required</Badge>
+                          <Badge variant="secondary">
+                            👶 Newborn Exp. Required
+                          </Badge>
                         )}
                         {job.requirements.includes("special_needs") && (
-                          <Badge variant="secondary">💜 Special Needs Required</Badge>
+                          <Badge variant="secondary">
+                            💜 Special Needs Required
+                          </Badge>
                         )}
                       </div>
                     )}
@@ -897,7 +1012,9 @@ export default function NotificationsPage() {
                       <div className="flex flex-col items-center gap-2 py-2">
                         <div className="flex items-center justify-center gap-2 text-red-600">
                           <XCircle className="w-5 h-5" />
-                          <span className="font-medium">Client declined your confirmation</span>
+                          <span className="font-medium">
+                            Client declined your confirmation
+                          </span>
                         </div>
                         <Button
                           variant="outline"
@@ -921,71 +1038,78 @@ export default function NotificationsPage() {
                       </div>
                     )}
 
-                    <LiveTimer createdAt={notif.created_at} render={({ expired }) => (
-                      <div className="space-y-4">
-                        {!isDeclined && !isConfirmed && (
-                          expired ? (
-                            <div className="flex flex-col items-center gap-3 py-2">
-                              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                                <XCircle className="w-5 h-5" />
-                                <span>Open Job</span>
+                    <LiveTimer
+                      createdAt={notif.created_at}
+                      render={({ expired }) => (
+                        <div className="space-y-4">
+                          {!isDeclined &&
+                            !isConfirmed &&
+                            (expired ? (
+                              <div className="flex flex-col items-center gap-3 py-2">
+                                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                                  <XCircle className="w-5 h-5" />
+                                  <span>Open Job</span>
+                                </div>
+                                <div className="w-full space-y-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      openOpenJobAcceptModal(job.id, notif.id)
+                                    }
+                                    disabled={acceptingOpenJob}
+                                    className="w-full"
+                                  >
+                                    <MessageSquare className="w-4 h-4 mr-2" />
+                                    Accept Open Job
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(notif.id)}
+                                    disabled={deleting === notif.id}
+                                    className="w-full"
+                                  >
+                                    {deleting === notif.id ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Deleting...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Remove Request
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="w-full space-y-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => openOpenJobAcceptModal(job.id, notif.id)}
-                                  disabled={acceptingOpenJob}
-                                  className="w-full"
-                                >
-                                  <MessageSquare className="w-4 h-4 mr-2" />
-                                  Accept Open Job
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDelete(notif.id)}
-                                  disabled={deleting === notif.id}
-                                  className="w-full"
-                                >
-                                  {deleting === notif.id ? (
-                                    <>
-                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                      Deleting...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Remove Request
-                                    </>
-                                  )}
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <Button
-                              className="w-full"
-                              size="lg"
-                              onClick={() => handleConfirm(job.id, notif.id)}
-                              disabled={confirming === notif.id}
-                            >
-                              {confirming === notif.id ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              ) : (
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                              )}
-                              I'm Available!
-                            </Button>
-                          )
-                        )}
+                            ) : (
+                              <Button
+                                className="w-full"
+                                size="lg"
+                                onClick={() => handleConfirm(job.id, notif.id)}
+                                disabled={confirming === notif.id}
+                              >
+                                {confirming === notif.id ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                                )}
+                                I'm Available!
+                              </Button>
+                            ))}
 
-                        {!isDeclined && isConfirmed && (
-                          <div className="flex items-center justify-center gap-2 text-emerald-600 py-2">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-medium">You confirmed availability</span>
-                          </div>
-                        )}
-                      </div>
-                    )} />
+                          {!isDeclined && isConfirmed && (
+                            <div className="flex items-center justify-center gap-2 text-emerald-600 py-2">
+                              <CheckCircle2 className="w-5 h-5" />
+                              <span className="font-medium">
+                                You confirmed availability
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -1001,7 +1125,8 @@ export default function NotificationsPage() {
                 </div>
                 <h3 className="font-semibold text-lg mb-2">No Job Requests</h3>
                 <p className="text-muted-foreground mb-4">
-                  Make sure you're set as "Available" in your profile to receive requests.
+                  Make sure you're set as "Available" in your profile to receive
+                  requests.
                 </p>
                 <Button onClick={() => navigate("/freelancer/profile")}>
                   Update Profile
@@ -1013,12 +1138,16 @@ export default function NotificationsPage() {
       </div>
 
       {/* Open Job Acceptance Modal */}
-      <Dialog open={openJobAcceptModalOpen} onOpenChange={setOpenJobAcceptModalOpen}>
+      <Dialog
+        open={openJobAcceptModalOpen}
+        onOpenChange={setOpenJobAcceptModalOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Accept Open Job</DialogTitle>
             <DialogDescription>
-              The confirmation window has closed, but this job is still open. Express your interest by adding a note to the client.
+              The confirmation window has closed, but this job is still open.
+              Express your interest by adding a note to the client.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1072,4 +1201,3 @@ export default function NotificationsPage() {
     </div>
   );
 }
-

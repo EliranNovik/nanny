@@ -3,7 +3,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { isServiceCategoryId, serviceCategoryLabel } from "@/lib/serviceCategories";
+import {
+  isServiceCategoryId,
+  serviceCategoryLabel,
+} from "@/lib/serviceCategories";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
@@ -38,7 +41,9 @@ function timeAgoShort(iso: string): string {
 function serviceLabel(serviceType: string | null | undefined): string {
   const st = String(serviceType ?? "").trim();
   if (!st) return "Help request";
-  return isServiceCategoryId(st) ? serviceCategoryLabel(st) : st.replace(/_/g, " ");
+  return isServiceCategoryId(st)
+    ? serviceCategoryLabel(st)
+    : st.replace(/_/g, " ");
 }
 
 function initials(name: string): string {
@@ -46,7 +51,10 @@ function initials(name: string): string {
   if (!t) return "?";
   const parts = t.split(/\s+/).filter(Boolean);
   const a = parts[0]?.[0] ?? "";
-  const b = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : parts[0]?.[1] ?? "";
+  const b =
+    parts.length > 1
+      ? (parts[parts.length - 1]?.[0] ?? "")
+      : (parts[0]?.[1] ?? "");
   return (a + b).toUpperCase() || "?";
 }
 
@@ -55,10 +63,13 @@ export type DiscoverHomeLiveTrackerVariant = "hire" | "work";
 type Props = { variant?: DiscoverHomeLiveTrackerVariant };
 
 /** Same rule as `PublicProfilePage` / Jobs “freelancer” mode: clients who receive requests can be selected as helper. */
-function canActAsHelper(profile: { role?: string; is_available_for_jobs?: boolean } | null): boolean {
+function canActAsHelper(
+  profile: { role?: string; is_available_for_jobs?: boolean } | null,
+): boolean {
   if (!profile?.role) return false;
   if (profile.role === "freelancer") return true;
-  if (profile.role === "client" && profile.is_available_for_jobs === true) return true;
+  if (profile.role === "client" && profile.is_available_for_jobs === true)
+    return true;
   return false;
 }
 
@@ -68,20 +79,28 @@ const HELPING_NOW_STATUSES = ["locked", "active"] as const;
 const JOB_MATCH_FLAT_SELECT =
   "id, created_at, service_type, location_city, client_id, selected_freelancer_id, status";
 
-type ProfileMini = { id: string; full_name: string | null; photo_url: string | null };
+type ProfileMini = {
+  id: string;
+  full_name: string | null;
+  photo_url: string | null;
+};
 
 async function fetchProfileMapForJobRows(
-  rows: { client_id?: string | null; selected_freelancer_id?: string | null }[]
+  rows: { client_id?: string | null; selected_freelancer_id?: string | null }[],
 ): Promise<Map<string, ProfileMini>> {
   const ids = new Set<string>();
   for (const r of rows) {
     const c = r.client_id != null ? String(r.client_id) : "";
-    const h = r.selected_freelancer_id != null ? String(r.selected_freelancer_id) : "";
+    const h =
+      r.selected_freelancer_id != null ? String(r.selected_freelancer_id) : "";
     if (c) ids.add(c);
     if (h) ids.add(h);
   }
   if (ids.size === 0) return new Map();
-  const { data, error } = await supabase.from("profiles").select("id, full_name, photo_url").in("id", [...ids]);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, photo_url")
+    .in("id", [...ids]);
   if (error) {
     console.warn("[DiscoverHomeLiveTrackerBoard] profiles for matches:", error);
     return new Map();
@@ -94,8 +113,15 @@ async function fetchProfileMapForJobRows(
 }
 
 function flatJobRowsToLiveMatches(
-  rows: { id?: string; created_at?: string; service_type?: string | null; location_city?: string | null; client_id?: string | null; selected_freelancer_id?: string | null }[],
-  profMap: Map<string, ProfileMini>
+  rows: {
+    id?: string;
+    created_at?: string;
+    service_type?: string | null;
+    location_city?: string | null;
+    client_id?: string | null;
+    selected_freelancer_id?: string | null;
+  }[],
+  profMap: Map<string, ProfileMini>,
 ): LiveMatch[] {
   return rows.map((r) => {
     const cid = String(r.client_id ?? "");
@@ -118,8 +144,10 @@ function flatJobRowsToLiveMatches(
 }
 
 function jobRowToLiveMatch(r: any): LiveMatch {
-  const helperName = String(r?.helper?.full_name ?? "Helper").trim() || "Helper";
-  const clientName = String(r?.client?.full_name ?? "Client").trim() || "Client";
+  const helperName =
+    String(r?.helper?.full_name ?? "Helper").trim() || "Helper";
+  const clientName =
+    String(r?.client?.full_name ?? "Client").trim() || "Client";
   return {
     jobId: String(r?.id ?? ""),
     helperId: String(r?.helper?.id ?? ""),
@@ -194,7 +222,10 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
 
         if (cancelled) return;
         if (error) {
-          console.warn("[DiscoverHomeLiveTrackerBoard] client community matches:", error);
+          console.warn(
+            "[DiscoverHomeLiveTrackerBoard] client community matches:",
+            error,
+          );
           setMatches([]);
           setLoading(false);
           return;
@@ -218,7 +249,10 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
 
       if (cancelled) return;
       if (primaryErr) {
-        console.warn("[DiscoverHomeLiveTrackerBoard] helper matches:", primaryErr);
+        console.warn(
+          "[DiscoverHomeLiveTrackerBoard] helper matches:",
+          primaryErr,
+        );
         setMatches([]);
         setLoading(false);
         return;
@@ -234,10 +268,15 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
       }[];
       const primaryIds = new Set(primaryRows.map((r) => String(r.id ?? "")));
 
-      const { data: myPosts } = await supabase.from("community_posts").select("id").eq("author_id", user.id);
+      const { data: myPosts } = await supabase
+        .from("community_posts")
+        .select("id")
+        .eq("author_id", user.id);
       if (cancelled) return;
 
-      const postIds = (myPosts ?? []).map((p: { id: string }) => p.id).filter(Boolean);
+      const postIds = (myPosts ?? [])
+        .map((p: { id: string }) => p.id)
+        .filter(Boolean);
       let extraRows: typeof primaryRows = [];
       if (postIds.length > 0) {
         const { data: interests, error: intErr } = await supabase
@@ -249,13 +288,18 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
 
         if (cancelled) return;
         if (intErr) {
-          console.warn("[DiscoverHomeLiveTrackerBoard] hire interests:", intErr);
+          console.warn(
+            "[DiscoverHomeLiveTrackerBoard] hire interests:",
+            intErr,
+          );
         } else {
           const hiredJobIds = [
             ...new Set(
               (interests ?? [])
-                .map((i: { job_request_id?: string | null }) => String(i.job_request_id ?? "").trim())
-                .filter(Boolean)
+                .map((i: { job_request_id?: string | null }) =>
+                  String(i.job_request_id ?? "").trim(),
+                )
+                .filter(Boolean),
             ),
           ];
           const missing = hiredJobIds.filter((jid) => !primaryIds.has(jid));
@@ -267,7 +311,10 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
               .in("status", [...HELPING_NOW_STATUSES]);
             if (cancelled) return;
             if (extraErr) {
-              console.warn("[DiscoverHomeLiveTrackerBoard] extra jobs from hire interests:", extraErr);
+              console.warn(
+                "[DiscoverHomeLiveTrackerBoard] extra jobs from hire interests:",
+                extraErr,
+              );
             } else {
               extraRows = (extraData ?? []) as typeof primaryRows;
             }
@@ -281,7 +328,9 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
         if (id && !byId.has(id)) byId.set(id, r);
       }
       const sorted = [...byId.values()].sort(
-        (a, b) => new Date(String(b.created_at ?? 0)).getTime() - new Date(String(a.created_at ?? 0)).getTime()
+        (a, b) =>
+          new Date(String(b.created_at ?? 0)).getTime() -
+          new Date(String(a.created_at ?? 0)).getTime(),
       );
       const top = sorted.slice(0, 8);
       const profMap = await fetchProfileMapForJobRows(top);
@@ -318,7 +367,7 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
         "relative w-full rounded-2xl bg-muted/20 p-4 text-left transition-colors dark:bg-muted/30",
         "hover:bg-muted/30 active:bg-muted/45 dark:hover:bg-muted/45 dark:active:bg-muted/60",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        className
+        className,
       )}
       aria-label={isWork ? "Open Helping now" : "Open Helping me now"}
     >
@@ -339,12 +388,22 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
         {!compact && isWork ? (
           <div className="relative flex shrink-0 -space-x-2">
             <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
-              <AvatarImage src={row.helperPhoto || undefined} className="object-cover" />
-              <AvatarFallback className="bg-card text-[11px] font-black">{initials(row.helper)}</AvatarFallback>
+              <AvatarImage
+                src={row.helperPhoto || undefined}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-card text-[11px] font-black">
+                {initials(row.helper)}
+              </AvatarFallback>
             </Avatar>
             <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
-              <AvatarImage src={row.clientPhoto || undefined} className="object-cover" />
-              <AvatarFallback className="bg-card text-[11px] font-black">{initials(row.client)}</AvatarFallback>
+              <AvatarImage
+                src={row.clientPhoto || undefined}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-card text-[11px] font-black">
+                {initials(row.client)}
+              </AvatarFallback>
             </Avatar>
           </div>
         ) : null}
@@ -352,28 +411,50 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
 
       <div className={cn("mt-3 flex items-center gap-3", compact && "mt-2.5")}>
         <div className="relative flex shrink-0 -space-x-2" aria-hidden>
-          <Avatar className={cn("h-11 w-11 border-2 border-background", compact && "h-10 w-10")}>
+          <Avatar
+            className={cn(
+              "h-11 w-11 border-2 border-background",
+              compact && "h-10 w-10",
+            )}
+          >
             <AvatarImage src={row.helperPhoto || undefined} />
-            <AvatarFallback className="text-[10px] font-black">{initials(row.helper)}</AvatarFallback>
+            <AvatarFallback className="text-[10px] font-black">
+              {initials(row.helper)}
+            </AvatarFallback>
           </Avatar>
-          <Avatar className={cn("h-11 w-11 border-2 border-background", compact && "h-10 w-10")}>
+          <Avatar
+            className={cn(
+              "h-11 w-11 border-2 border-background",
+              compact && "h-10 w-10",
+            )}
+          >
             <AvatarImage src={row.clientPhoto || undefined} />
-            <AvatarFallback className="text-[10px] font-black">{initials(row.client)}</AvatarFallback>
+            <AvatarFallback className="text-[10px] font-black">
+              {initials(row.client)}
+            </AvatarFallback>
           </Avatar>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-muted-foreground">{row.workType}</p>
+          <p className="truncate text-sm font-semibold text-muted-foreground">
+            {row.workType}
+          </p>
           <p className="mt-0.5 text-sm text-muted-foreground">{row.city}</p>
           <p
             className={cn(
               "mt-1 text-xs font-semibold tabular-nums",
-              isWork ? "text-emerald-700 dark:text-emerald-400" : "text-orange-700 dark:text-orange-400"
+              isWork
+                ? "text-emerald-700 dark:text-emerald-400"
+                : "text-orange-700 dark:text-orange-400",
             )}
           >
             Matched {row.when}
           </p>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+        <ChevronRight
+          className="h-5 w-5 shrink-0 text-muted-foreground"
+          aria-hidden
+          strokeWidth={2}
+        />
       </div>
     </button>
   );
@@ -382,7 +463,9 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
     <section className="mt-4 px-1 md:mt-5" aria-label="Your matches">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Your matches</p>
+          <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+            Your matches
+          </p>
           <p className="mt-0.5 text-sm font-semibold text-foreground">
             {isWork
               ? "Jobs you’re on and Connect matches from your posts"
@@ -395,7 +478,7 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
           className={cn(
             "shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground transition-colors",
             "hover:bg-muted/60 hover:text-foreground active:bg-muted/80",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
         >
           Show more

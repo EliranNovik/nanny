@@ -5,9 +5,10 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Mail, MapPin, Loader2 } from "lucide-react";
+import { ArrowRight, Mail, MapPin, Loader2, Users, Heart, Check } from "lucide-react";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import { getLocationDataFromGps } from "@/lib/location";
+import { cn } from "@/lib/utils";
 
 type Role = "client" | "freelancer";
 
@@ -46,7 +47,14 @@ export default function OnboardingPage() {
   useEffect(() => {
     async function checkExistingProfile() {
       // Prevent multiple simultaneous checks
-      if (!user || profile || authLoading || checkingProfile || profileChecked || checkInitiatedRef.current) {
+      if (
+        !user ||
+        profile ||
+        authLoading ||
+        checkingProfile ||
+        profileChecked ||
+        checkInitiatedRef.current
+      ) {
         return;
       }
 
@@ -69,24 +77,27 @@ export default function OnboardingPage() {
         }
 
         if (existingProfile) {
-          console.log("[OnboardingPage] Profile already exists in database, redirecting immediately...", existingProfile);
+          console.log(
+            "[OnboardingPage] Profile already exists in database, redirecting immediately...",
+            existingProfile,
+          );
           setProfileChecked(true);
           setCheckingProfile(false);
           // Clear any pending profile
           localStorage.removeItem("pendingProfile");
-          
+
           // Navigate immediately without waiting for anything
           if (existingProfile.role === "client") {
             navigate("/client/home", { replace: true });
           } else {
             navigate("/freelancer/home", { replace: true });
           }
-          
+
           // Try to refresh profile in context in background (don't wait)
           refreshProfile().catch(() => {
             // Ignore errors, profile exists in DB
           });
-          
+
           return;
         }
 
@@ -95,22 +106,32 @@ export default function OnboardingPage() {
         if (pendingProfile) {
           try {
             const profileData = JSON.parse(pendingProfile);
-            console.log("[OnboardingPage] Found pending profile, creating...", profileData);
+            console.log(
+              "[OnboardingPage] Found pending profile, creating...",
+              profileData,
+            );
             setRole(profileData.role);
             setFullName(profileData.fullName);
             setCity(profileData.city);
-            if (typeof profileData.location_lat === "number") setLocationLat(profileData.location_lat);
-            if (typeof profileData.location_lng === "number") setLocationLng(profileData.location_lng);
+            if (typeof profileData.location_lat === "number")
+              setLocationLat(profileData.location_lat);
+            if (typeof profileData.location_lng === "number")
+              setLocationLng(profileData.location_lng);
             setRegistrationEmail(profileData.email);
-            
+
             // Create the profile now that user is verified
             console.log("[OnboardingPage] Calling createProfile...");
             try {
               await createProfile();
-              console.log("[OnboardingPage] createProfile completed successfully");
+              console.log(
+                "[OnboardingPage] createProfile completed successfully",
+              );
               // Don't set checkingProfile to false here - let createProfile handle navigation
             } catch (createError) {
-              console.error("[OnboardingPage] Error in createProfile", createError);
+              console.error(
+                "[OnboardingPage] Error in createProfile",
+                createError,
+              );
               setError("Failed to create profile. Please try again.");
               setCheckingProfile(false);
               checkInitiatedRef.current = false; // Allow retry
@@ -129,15 +150,29 @@ export default function OnboardingPage() {
     }
 
     // Only run if we have a user, no profile in context, not loading, and haven't checked yet
-    if (user && !profile && !authLoading && !checkingProfile && !profileChecked) {
+    if (
+      user &&
+      !profile &&
+      !authLoading &&
+      !checkingProfile &&
+      !profileChecked
+    ) {
       checkExistingProfile();
     }
-  }, [user, profile, authLoading, checkingProfile, profileChecked, navigate, refreshProfile]);
+  }, [
+    user,
+    profile,
+    authLoading,
+    checkingProfile,
+    profileChecked,
+    navigate,
+    refreshProfile,
+  ]);
 
   // Show loading while checking authentication (only briefly)
   if (authLoading) {
     return (
-      <div className="min-h-screen gradient-mesh flex flex-col">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
         <LandingSiteHeader />
         <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -151,7 +186,12 @@ export default function OnboardingPage() {
   console.log("[OnboardingPage] Render", {
     hasUser: !!user,
     userId: user?.id,
-    profileState: profile === undefined ? "undefined" : profile === null ? "null" : "exists",
+    profileState:
+      profile === undefined
+        ? "undefined"
+        : profile === null
+          ? "null"
+          : "exists",
     profile,
     authLoading,
     step,
@@ -173,7 +213,11 @@ export default function OnboardingPage() {
   }
 
   async function handleNameCitySubmit() {
-    console.log("[OnboardingPage] handleNameCitySubmit called", { role, fullName, city });
+    console.log("[OnboardingPage] handleNameCitySubmit called", {
+      role,
+      fullName,
+      city,
+    });
 
     if (!fullName.trim() || !city.trim()) {
       console.log("[OnboardingPage] Validation failed");
@@ -193,7 +237,13 @@ export default function OnboardingPage() {
   }
 
   async function handleRegister() {
-    console.log("[OnboardingPage] handleRegister called", { email, password, role, fullName, city });
+    console.log("[OnboardingPage] handleRegister called", {
+      email,
+      password,
+      role,
+      fullName,
+      city,
+    });
 
     if (!email.trim() || !password.trim()) {
       setError("Please fill in email and password");
@@ -211,17 +261,21 @@ export default function OnboardingPage() {
     const emailRedirectTo = `${window.location.origin}/login`;
 
     // Register the user directly with Supabase to get full response
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password: password,
-      options: {
-        emailRedirectTo,
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
+      {
+        email: email.trim(),
+        password: password,
+        options: {
+          emailRedirectTo,
+        },
       },
-    });
-    
+    );
+
     if (signUpError) {
       console.error("[OnboardingPage] Sign up error", signUpError);
-      setError(signUpError.message || "Failed to create account. Please try again.");
+      setError(
+        signUpError.message || "Failed to create account. Please try again.",
+      );
       setLoading(false);
       return;
     }
@@ -238,7 +292,7 @@ export default function OnboardingPage() {
     if (signUpData.user && !signUpData.session) {
       console.log("[OnboardingPage] Email confirmation required");
       setRegistrationEmail(email.trim());
-      
+
       // Save profile data to localStorage to create after email verification
       const pendingProfile: Record<string, unknown> = {
         role,
@@ -251,7 +305,7 @@ export default function OnboardingPage() {
         pendingProfile.location_lng = locationLng;
       }
       localStorage.setItem("pendingProfile", JSON.stringify(pendingProfile));
-      
+
       setLoading(false);
       setStep(3); // Email verification step
       return;
@@ -259,11 +313,13 @@ export default function OnboardingPage() {
 
     // If session exists, user is immediately signed in (email confirmation disabled)
     // Wait a moment for auth state to update
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // Check if user is now available
-    const { data: { user: newUser } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user: newUser },
+    } = await supabase.auth.getUser();
+
     if (!newUser) {
       setError("Account created but unable to sign in. Please try logging in.");
       setLoading(false);
@@ -275,8 +331,13 @@ export default function OnboardingPage() {
   }
 
   async function createProfile() {
-    console.log("[OnboardingPage] createProfile START", { loading, role, fullName, city });
-    
+    console.log("[OnboardingPage] createProfile START", {
+      loading,
+      role,
+      fullName,
+      city,
+    });
+
     // Prevent multiple calls
     if (loading) {
       console.log("[OnboardingPage] createProfile already in progress");
@@ -288,7 +349,10 @@ export default function OnboardingPage() {
 
     // Get current user
     console.log("[OnboardingPage] Getting current user...");
-    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user: currentUser },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError) {
       console.error("[OnboardingPage] Error getting user", userError);
       setError("Unable to get user information. Please try again.");
@@ -305,8 +369,14 @@ export default function OnboardingPage() {
 
     // Validate required fields
     if (!fullName.trim() || !city.trim()) {
-      console.error("[OnboardingPage] Validation failed", { role, fullName, city });
-      setError("Missing required profile information. Please complete the form.");
+      console.error("[OnboardingPage] Validation failed", {
+        role,
+        fullName,
+        city,
+      });
+      setError(
+        "Missing required profile information. Please complete the form.",
+      );
       setLoading(false);
       return;
     }
@@ -320,20 +390,29 @@ export default function OnboardingPage() {
       .maybeSingle();
 
     if (checkError && checkError.code !== "PGRST116") {
-      console.error("[OnboardingPage] Error checking for existing profile", checkError);
+      console.error(
+        "[OnboardingPage] Error checking for existing profile",
+        checkError,
+      );
       // Continue with creation attempt
     } else if (existingProfile) {
-      console.log("[OnboardingPage] Profile already exists, skipping creation", existingProfile);
+      console.log(
+        "[OnboardingPage] Profile already exists, skipping creation",
+        existingProfile,
+      );
       // Clear pending profile
       localStorage.removeItem("pendingProfile");
       setProfileChecked(true);
       setLoading(false);
-      
+
       // Try to refresh profile (but don't wait if it times out)
-      refreshProfile().catch(err => {
-        console.warn("[OnboardingPage] Profile refresh failed, but profile exists", err);
+      refreshProfile().catch((err) => {
+        console.warn(
+          "[OnboardingPage] Profile refresh failed, but profile exists",
+          err,
+        );
       });
-      
+
       // Navigate based on role immediately
       if (existingProfile.role === "client") {
         navigate("/client/home", { replace: true });
@@ -357,21 +436,24 @@ export default function OnboardingPage() {
       full_name: fullName.trim(),
       city: city.trim(),
     });
-    
-    const { error: profileError, data: profileData } = await supabase.from("profiles").upsert({
-      id: currentUser.id,
-      role,
-      full_name: fullName.trim(),
-      city: city.trim(),
-      location_lat: locationLat,
-      location_lng: locationLng,
-    }).select();
 
-    console.log("[OnboardingPage] Profile upsert result", { 
-      hasError: !!profileError, 
-      error: profileError, 
+    const { error: profileError, data: profileData } = await supabase
+      .from("profiles")
+      .upsert({
+        id: currentUser.id,
+        role,
+        full_name: fullName.trim(),
+        city: city.trim(),
+        location_lat: locationLat,
+        location_lng: locationLng,
+      })
+      .select();
+
+    console.log("[OnboardingPage] Profile upsert result", {
+      hasError: !!profileError,
+      error: profileError,
       hasData: !!profileData,
-      data: profileData 
+      data: profileData,
     });
 
     if (profileError) {
@@ -384,23 +466,35 @@ export default function OnboardingPage() {
 
     if (!profileData || profileData.length === 0) {
       console.error("[OnboardingPage] Profile created but no data returned");
-      setError("Profile created but unable to verify. Please refresh the page.");
+      setError(
+        "Profile created but unable to verify. Please refresh the page.",
+      );
       setLoading(false);
       setCheckingProfile(false);
       return;
     }
 
-    console.log("[OnboardingPage] Profile created successfully!", profileData[0]);
+    console.log(
+      "[OnboardingPage] Profile created successfully!",
+      profileData[0],
+    );
 
     // If freelancer, also create freelancer_profiles entry
     if (role === "freelancer") {
       console.log("[OnboardingPage] Creating freelancer profile...");
-      const { error: freelancerError } = await supabase.from("freelancer_profiles").upsert({
-        user_id: currentUser.id,
+      const { error: freelancerError } = await supabase
+        .from("freelancer_profiles")
+        .upsert({
+          user_id: currentUser.id,
+        });
+      console.log("[OnboardingPage] Freelancer profile result", {
+        freelancerError,
       });
-      console.log("[OnboardingPage] Freelancer profile result", { freelancerError });
       if (freelancerError) {
-        console.error("[OnboardingPage] Freelancer profile error", freelancerError);
+        console.error(
+          "[OnboardingPage] Freelancer profile error",
+          freelancerError,
+        );
         // Don't fail the whole process if freelancer profile fails
       }
     }
@@ -411,48 +505,161 @@ export default function OnboardingPage() {
     setCheckingProfile(false);
     setLoading(false);
 
-    console.log("[OnboardingPage] Profile created successfully, navigating NOW...", { role });
-    
+    console.log(
+      "[OnboardingPage] Profile created successfully, navigating NOW...",
+      { role },
+    );
+
     // Navigate based on role immediately - use window.location as fallback
     const targetPath = role === "client" ? "/client/home" : "/freelancer/home";
     console.log("[OnboardingPage] Target path:", targetPath);
-    
+
     // Use window.location immediately for guaranteed navigation
     console.log("[OnboardingPage] Using window.location.href to navigate");
     window.location.href = targetPath;
-    
+
     // Also try React Router navigate as backup (though window.location should work)
     try {
       navigate(targetPath, { replace: true });
     } catch (navError) {
-      console.error("[OnboardingPage] React Router navigate failed (but window.location should work)", navError);
+      console.error(
+        "[OnboardingPage] React Router navigate failed (but window.location should work)",
+        navError,
+      );
     }
 
     // Try to refresh profile in background (don't wait)
-    refreshProfile().catch(err => {
-      console.warn("[OnboardingPage] Profile refresh failed, but profile was created", err);
+    refreshProfile().catch((err) => {
+      console.warn(
+        "[OnboardingPage] Profile refresh failed, but profile was created",
+        err,
+      );
     });
   }
 
   console.log("[OnboardingPage] Rendering onboarding form");
+
+  const progressStep = step; // 1, 2, or 3
+
   return (
-    <div className="min-h-screen gradient-mesh flex flex-col">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
       <LandingSiteHeader />
       <main className="flex w-full flex-1 flex-col items-center justify-center px-4 pb-16 pt-28 md:px-8 md:pb-20 md:pt-36">
         <div className="animate-fade-in w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-[40rem] mx-auto">
-        {step !== 3 && (
-          <div className="text-center mb-8 md:mb-10">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              {step === 1 ? "Your name and city" : "Email and password"}
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {step === 1
-                ? "First, tell us your name and city."
-                : "Then create your account. If email confirmation is on, we will send you a link next."}
-            </p>
-          </div>
-        )}
-        <div>
+
+          {/* Step progress indicator */}
+          {step !== 3 && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between">
+                {[1, 2].map((s) => (
+                  <div key={s} className="flex flex-1 items-center">
+                    <div className={cn(
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
+                      progressStep > s
+                        ? "bg-primary text-primary-foreground"
+                        : progressStep === s
+                          ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                          : "bg-muted text-muted-foreground"
+                    )}>
+                      {progressStep > s ? <Check className="h-3.5 w-3.5" /> : s}
+                    </div>
+                    <div className={cn(
+                      "h-0.5 flex-1 mx-2 rounded-full transition-all",
+                      progressStep > s ? "bg-primary" : "bg-muted"
+                    )} />
+                  </div>
+                ))}
+                <div className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
+                  progressStep === 2
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  3
+                </div>
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className={cn("text-[11px] font-medium", progressStep >= 1 ? "text-primary" : "text-muted-foreground")}>Details</span>
+                <span className={cn("text-[11px] font-medium", progressStep >= 2 ? "text-primary" : "text-muted-foreground")}>Account</span>
+              </div>
+            </div>
+          )}
+
+          {step !== 3 && (
+            <div className="text-center mb-8 md:mb-10">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                {step === 1 ? "Your name and city" : "Create your account"}
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {step === 1
+                  ? "Just the basics — we'll match you with the right people."
+                  : "Almost there. Your account is free and takes seconds."}
+              </p>
+            </div>
+          )}
+
+          {/* Role selector — shown at top of step 1 */}
+          {step === 1 && (
+            <div className="mb-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2.5">I am joining as…</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRole("client")}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-2xl border-2 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                    role === "client"
+                      ? "border-primary bg-primary/5 shadow-md"
+                      : "border-border bg-card hover:border-primary/40 hover:bg-primary/5"
+                  )}
+                >
+                  <div className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full",
+                    role === "client" ? "bg-primary/15" : "bg-muted"
+                  )}>
+                    <Heart className={cn("h-5 w-5", role === "client" ? "text-primary" : "text-muted-foreground")} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">I need help</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Find helpers near you</p>
+                  </div>
+                  {role === "client" && (
+                    <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                    </div>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("freelancer")}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-2xl border-2 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 relative",
+                    role === "freelancer"
+                      ? "border-primary bg-primary/5 shadow-md"
+                      : "border-border bg-card hover:border-primary/40 hover:bg-primary/5"
+                  )}
+                >
+                  <div className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full",
+                    role === "freelancer" ? "bg-primary/15" : "bg-muted"
+                  )}>
+                    <Users className={cn("h-5 w-5", role === "freelancer" ? "text-primary" : "text-muted-foreground")} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">I want to help</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Earn by helping others</p>
+                  </div>
+                  {role === "freelancer" && (
+                    <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                    </div>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div>
             {error && (
               <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
                 {error}
@@ -502,12 +709,14 @@ export default function OnboardingPage() {
                     </Button>
                   </div>
                   {locationLat != null && locationLng != null ? (
-                    <p className="text-xs text-muted-foreground">
-                      Location saved with map coordinates for nearby helpers.
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <Check className="h-3 w-3" />
+                      Location saved — helpers nearby will see your request.
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Type a city or use <span className="font-medium">My location</span> to save your position.
+                      Type a city or use{" "}
+                      <span className="font-medium">My location</span> for more precise matching.
                     </p>
                   )}
                 </div>
@@ -540,7 +749,7 @@ export default function OnboardingPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
@@ -552,7 +761,7 @@ export default function OnboardingPage() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Create a password (min. 6 characters)"
+                    placeholder="Min. 6 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
@@ -592,34 +801,37 @@ export default function OnboardingPage() {
                   </h2>
                   <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
                     We sent a confirmation link to{" "}
-                    <span className="font-medium text-foreground">{registrationEmail || email}</span>.
-                    Open the link from Supabase to verify your address—you will be signed in and taken
-                    to your dashboard. If the link doesn’t open the app, sign in here with the same
-                    email and password.
+                    <span className="font-medium text-foreground">
+                      {registrationEmail || email}
+                    </span>
+                    . Click the link to verify your email — you&apos;ll be signed in automatically and taken to your dashboard.
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Didn&apos;t get it? Check your spam folder or go back and try a different email.
                   </p>
                 </div>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Button
                     variant="outline"
                     onClick={() => {
-                      localStorage.removeItem("pendingProfile");
+                      // Do NOT clear pendingProfile — preserve it so the user
+                      // can fix their email and re-register without losing data
                       setStep(2);
                     }}
                     className="flex-1"
                   >
-                    Back
+                    Change email
                   </Button>
                   <Button onClick={() => navigate("/login")} className="flex-1">
-                    Sign in
+                    Sign in instead
                   </Button>
                 </div>
               </div>
             )}
-        </div>
+          </div>
         </div>
       </main>
     </div>
   );
 }
-
 

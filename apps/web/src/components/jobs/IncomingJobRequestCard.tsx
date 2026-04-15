@@ -1,5 +1,11 @@
 import { Link } from "react-router-dom";
-import { Clock, XCircle, CheckCircle2, Loader2, ChevronRight } from "lucide-react";
+import {
+  Clock,
+  XCircle,
+  CheckCircle2,
+  Loader2,
+  ChevronRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +15,10 @@ import JobMap from "@/components/JobMap";
 import { StarRating } from "@/components/StarRating";
 import { LiveTimer } from "@/components/LiveTimer";
 import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
-import { JobAttachedPhotosStrip, jobAttachmentImageUrls } from "@/components/JobAttachedPhotosStrip";
+import {
+  JobAttachedPhotosStrip,
+  jobAttachmentImageUrls,
+} from "@/components/JobAttachedPhotosStrip";
 import { jobCardCarouselItemClass } from "@/components/jobs/JobCardsCarousel";
 import {
   JOB_CARD_COMPACT_ROW,
@@ -93,7 +102,10 @@ export function IncomingJobRequestCard({
   onDecline: (notifId: string) => void;
   onConfirm: (jobId: string, notifId: string) => void;
   onOpenPreview: (job: IncomingJobRequestCardJob) => void;
-  onProfileClick: (e: React.MouseEvent, userId: string | null | undefined) => void;
+  onProfileClick: (
+    e: React.MouseEvent,
+    userId: string | null | undefined,
+  ) => void;
   showUserAttachments?: boolean;
 }) {
   const job = notif.job_requests;
@@ -110,7 +122,7 @@ export function IncomingJobRequestCard({
         !isMinMd && "cursor-pointer",
         isMinMd && "md:cursor-default",
         isDeclined && "opacity-60",
-        jobCardCarouselItemClass
+        jobCardCarouselItemClass,
       )}
     >
       <div
@@ -122,15 +134,19 @@ export function IncomingJobRequestCard({
           trailing={
             <Badge
               className={cn(
-                "h-7 min-h-7 shrink-0 rounded-full border-none px-2.5 shadow-md sm:px-3",
+                "h-7 min-h-7 shrink-0 rounded-full border-none px-2.5 shadow-sm sm:px-3",
                 isDeclined
-                  ? "text-[9px] font-black uppercase leading-tight tracking-wide bg-slate-200 text-slate-600"
+                  ? "text-[9px] font-black uppercase leading-tight tracking-wide bg-slate-100/80 text-slate-500 dark:bg-white/5 dark:text-slate-400"
                   : isConfirmed
-                    ? "text-[9px] font-black uppercase leading-tight tracking-wide bg-emerald-500 text-white shadow-emerald-500/20 sm:text-[10px]"
-                    : "bg-red-600 px-2.5 text-[10px] font-bold leading-tight tracking-tight text-white shadow-red-500/25 dark:bg-red-500 sm:px-3 sm:text-[11px]"
+                    ? "text-[9px] font-black uppercase leading-tight tracking-wide bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 sm:text-[10px]"
+                    : "bg-rose-500 text-[10px] font-bold leading-tight tracking-tight text-white shadow-md shadow-rose-500/25 dark:bg-rose-600 sm:px-3 sm:text-[11px]",
               )}
             >
-              {isDeclined ? "Declined" : isConfirmed ? "Confirmed" : "Action required"}
+              {isDeclined
+                ? "Declined"
+                : isConfirmed
+                  ? "Confirmed"
+                  : "Action required"}
             </Badge>
           }
         />
@@ -139,7 +155,9 @@ export function IncomingJobRequestCard({
         <div
           className={cn(
             "pointer-events-none absolute inset-0 z-[100] bg-zinc-900/20 backdrop-blur-[0.5px] transition-opacity duration-500 md:hidden",
-            clippedCardIds.has(`card-${notif.id}`) ? "opacity-100" : "opacity-0"
+            clippedCardIds.has(`card-${notif.id}`)
+              ? "opacity-100"
+              : "opacity-0",
           )}
         />
         <div className={JOB_CARD_COMPACT_ROW}>
@@ -192,7 +210,9 @@ export function IncomingJobRequestCard({
                 emptyStarClassName="text-slate-900/25 dark:text-neutral-500/35"
               />
             ) : (
-              <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400 md:text-sm">New client</span>
+              <span className="text-[13px] font-semibold text-slate-500 dark:text-slate-400 md:text-sm">
+                New client
+              </span>
             )}
             <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400 md:text-sm">
               {formatJobTitle(job)}
@@ -202,7 +222,10 @@ export function IncomingJobRequestCard({
             className="flex shrink-0 items-center self-center text-slate-400 dark:text-slate-500 pointer-events-none"
             aria-hidden
           >
-            <ChevronRight className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2.25} />
+            <ChevronRight
+              className="h-7 w-7 md:h-8 md:w-8"
+              strokeWidth={2.25}
+            />
           </div>
         </div>
 
@@ -213,41 +236,57 @@ export function IncomingJobRequestCard({
         <CardContent
           className={cn(
             "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-4",
-            isMinMd && "md:cursor-pointer"
+            isMinMd && "md:cursor-pointer",
           )}
           onClick={isMinMd ? () => onOpenPreview(job) : undefined}
         >
           <div className="flex flex-col gap-6">
-            {!isConfirmed && !isDeclined && job.community_post_id && job.community_post_expires_at && (
-              <div className="flex w-full items-center justify-between gap-2 text-[14px] font-bold leading-snug tracking-tight text-orange-500 dark:text-orange-400">
-                <div className="flex min-w-0 flex-1 items-start gap-2">
-                  <Clock className="mt-0.5 h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden />
-                  <span className="min-w-0 font-medium opacity-90">Post expires</span>
-                </div>
-                <ExpiryCountdown
-                  expiresAtIso={job.community_post_expires_at}
-                  endedLabel="Post ended"
-                  compact
-                  className="shrink-0 tabular-nums text-[13px] font-bold text-orange-600 dark:text-orange-300"
-                />
-              </div>
-            )}
-            {!isConfirmed && !isDeclined && !job.community_post_id && job.created_at && (
-              <div className="flex w-full items-center justify-between gap-2 text-[14px] font-bold leading-snug tracking-tight text-orange-500 dark:text-orange-400">
-                <div className="flex min-w-0 flex-1 items-start gap-2">
-                  <Clock className="mt-0.5 h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden />
-                  <span className="min-w-0 font-medium opacity-90">Time since invite</span>
-                </div>
-                <LiveTimer
-                  createdAt={job.created_at}
-                  render={({ time }) => (
-                    <span className="shrink-0 tabular-nums text-[13px] font-bold text-orange-600 dark:text-orange-300">
-                      {time}
+            {!isConfirmed &&
+              !isDeclined &&
+              job.community_post_id &&
+              job.community_post_expires_at && (
+                <div className="flex w-full items-center justify-between gap-2 text-[14px] font-bold leading-snug tracking-tight text-orange-500 dark:text-orange-400">
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
+                    <Clock
+                      className="mt-0.5 h-4 w-4 shrink-0 sm:h-5 sm:w-5"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 font-medium opacity-90">
+                      Post expires
                     </span>
-                  )}
-                />
-              </div>
-            )}
+                  </div>
+                  <ExpiryCountdown
+                    expiresAtIso={job.community_post_expires_at}
+                    endedLabel="Post ended"
+                    compact
+                    className="shrink-0 tabular-nums text-[13px] font-bold text-orange-600 dark:text-orange-300"
+                  />
+                </div>
+              )}
+            {!isConfirmed &&
+              !isDeclined &&
+              !job.community_post_id &&
+              job.created_at && (
+                <div className="flex w-full items-center justify-between gap-2 text-[14px] font-bold leading-snug tracking-tight text-orange-500 dark:text-orange-400">
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
+                    <Clock
+                      className="mt-0.5 h-4 w-4 shrink-0 sm:h-5 sm:w-5"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 font-medium opacity-90">
+                      Time since invite
+                    </span>
+                  </div>
+                  <LiveTimer
+                    createdAt={job.created_at}
+                    render={({ time }) => (
+                      <span className="shrink-0 tabular-nums text-[13px] font-bold text-orange-600 dark:text-orange-300">
+                        {time}
+                      </span>
+                    )}
+                  />
+                </div>
+              )}
           </div>
 
           {job.community_post_id && (

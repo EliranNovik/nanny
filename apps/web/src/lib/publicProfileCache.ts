@@ -26,7 +26,7 @@ function key(viewerId: string, profileUserId: string): string {
 export function readPublicProfileCache(
   viewerId: string,
   profileUserId: string,
-  ttlMs: number = DEFAULT_TTL_MS
+  ttlMs: number = DEFAULT_TTL_MS,
 ): PublicProfileCachePayload | null {
   if (typeof sessionStorage === "undefined") return null;
   try {
@@ -51,7 +51,7 @@ export function readPublicProfileCache(
 export function writePublicProfileCache(
   viewerId: string,
   profileUserId: string,
-  payload: PublicProfileCachePayload
+  payload: PublicProfileCachePayload,
 ): void {
   if (typeof sessionStorage === "undefined") return;
   try {

@@ -20,7 +20,15 @@ export async function openCommunityContact(opts: {
   navigate: NavigateFunction;
   addToast: ToastFn;
 }): Promise<void> {
-  const { supabase, user, myRole, targetUserId, targetRole, navigate, addToast } = opts;
+  const {
+    supabase,
+    user,
+    myRole,
+    targetUserId,
+    targetRole,
+    navigate,
+    addToast,
+  } = opts;
   if (targetUserId === user.id) return;
 
   if (myRole !== "client" && myRole !== "freelancer") {
@@ -62,7 +70,11 @@ export async function openCommunityContact(opts: {
 
     const { data: created, error: insErr } = await supabase
       .from("conversations")
-      .insert({ job_id: null, client_id: clientId, freelancer_id: freelancerId })
+      .insert({
+        job_id: null,
+        client_id: clientId,
+        freelancer_id: freelancerId,
+      })
       .select("id")
       .single();
 

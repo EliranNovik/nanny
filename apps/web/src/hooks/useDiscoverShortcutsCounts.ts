@@ -29,22 +29,28 @@ export function useDiscoverShortcutsCounts() {
         .select("id, job_id, job_requests ( client_id, community_post_id )")
         .eq("freelancer_id", user.id)
         .in("status", ["pending", "opened"]),
-      supabase.from("job_confirmations").select("job_id, status").eq("freelancer_id", user.id),
+      supabase
+        .from("job_confirmations")
+        .select("job_id, status")
+        .eq("freelancer_id", user.id),
     ]);
 
-    setMyPostedRequestsCount(postedRes.error ? 0 : postedRes.count ?? 0);
+    setMyPostedRequestsCount(postedRes.error ? 0 : (postedRes.count ?? 0));
 
     const confirmedJobIds = confsRes.error
       ? new Set<string>()
       : new Set(
           (confsRes.data || [])
             .filter((c: { status?: string }) => c.status === "available")
-            .map((c: { job_id: string }) => c.job_id)
+            .map((c: { job_id: string }) => c.job_id),
         );
 
     const incomingRows = (incomingRowsRes.data || []) as {
       job_id: string;
-      job_requests?: { client_id?: string; community_post_id?: string | null } | { client_id?: string; community_post_id?: string | null }[] | null;
+      job_requests?:
+        | { client_id?: string; community_post_id?: string | null }
+        | { client_id?: string; community_post_id?: string | null }[]
+        | null;
     }[];
     const incomingVisible = incomingRows.filter((row) => {
       const raw = row.job_requests;
@@ -53,7 +59,9 @@ export function useDiscoverShortcutsCounts() {
       if (confirmedJobIds.has(row.job_id)) return false;
       return true;
     });
-    setIncomingRequestsCount(incomingRowsRes.error ? 0 : incomingVisible.length);
+    setIncomingRequestsCount(
+      incomingRowsRes.error ? 0 : incomingVisible.length,
+    );
   }, [user?.id]);
 
   useEffect(() => {
@@ -75,7 +83,7 @@ export function useDiscoverShortcutsCounts() {
         },
         () => {
           void fetchCounts();
-        }
+        },
       )
       .subscribe();
 
@@ -91,7 +99,7 @@ export function useDiscoverShortcutsCounts() {
         },
         () => {
           void fetchCounts();
-        }
+        },
       )
       .subscribe();
 
@@ -107,7 +115,7 @@ export function useDiscoverShortcutsCounts() {
         },
         () => {
           void fetchCounts();
-        }
+        },
       )
       .subscribe();
 

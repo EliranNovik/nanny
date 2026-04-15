@@ -68,7 +68,7 @@ export default function MessagesPage() {
               },
               last_message: lastMessage || undefined,
             };
-          })
+          }),
         );
 
         setConversations(enriched);
@@ -84,25 +84,32 @@ export default function MessagesPage() {
 
   async function createTestConversation() {
     if (!user || creatingTest) {
-      console.log("Cannot create test conversation:", { user: !!user, creatingTest });
+      console.log("Cannot create test conversation:", {
+        user: !!user,
+        creatingTest,
+      });
       return;
     }
     setCreatingTest(true);
-    
+
     try {
       // Verify and refresh session first
-      const { data: session, error: sessionError } = await supabase.auth.getSession();
+      const { data: session, error: sessionError } =
+        await supabase.auth.getSession();
       if (sessionError || !session.session) {
         throw new Error("Please log in first");
       }
-      
+
       // Refresh session to ensure token is valid
       const { error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError) {
         console.warn("Session refresh error:", refreshError);
       }
-      
-      const result = await apiPost<{ conversation_id: string }>("/api/dev/test-conversation", {});
+
+      const result = await apiPost<{ conversation_id: string }>(
+        "/api/dev/test-conversation",
+        {},
+      );
       // Reload conversations
       const { data: convos } = await supabase
         .from("conversations")
@@ -135,11 +142,11 @@ export default function MessagesPage() {
               },
               last_message: lastMessage || undefined,
             };
-          })
+          }),
         );
         setConversations(enriched);
       }
-      
+
       // Navigate to the new conversation
       navigate(`/chat/${result.conversation_id}`);
     } catch (error: any) {
@@ -152,7 +159,7 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="app-main-scroll-pad flex min-h-[100dvh] min-h-[-webkit-fill-available] items-center justify-center bg-transparent pt-4 gradient-mesh md:pt-14">
+      <div className="app-main-scroll-pad flex min-h-[100dvh] min-h-[-webkit-fill-available] items-center justify-center bg-transparent pt-4 bg-slate-50/50 dark:bg-background md:pt-14">
         <MessageCircle className="w-8 h-8 animate-pulse text-primary" />
       </div>
     );
@@ -160,11 +167,11 @@ export default function MessagesPage() {
 
   if (conversations.length === 0) {
     return (
-      <div className="app-main-scroll-pad min-h-[100dvh] min-h-[-webkit-fill-available] bg-transparent pt-4 gradient-mesh pb-6 md:pt-14 md:pb-8">
+      <div className="app-main-scroll-pad min-h-[100dvh] min-h-[-webkit-fill-available] bg-transparent pt-4 bg-slate-50/50 dark:bg-background pb-6 md:pt-14 md:pb-8">
         <div className="app-desktop-shell pt-8">
           <div className="flex items-center gap-4 mb-8">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => navigate("/client/home")}
             >
@@ -186,8 +193,8 @@ export default function MessagesPage() {
                 <Button onClick={() => navigate("/client/create")}>
                   Find a Nanny
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={createTestConversation}
                   disabled={creatingTest}
                 >
@@ -209,11 +216,11 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="app-main-scroll-pad min-h-[100dvh] min-h-[-webkit-fill-available] bg-transparent pt-4 gradient-mesh pb-6 md:pt-14 md:pb-8">
+    <div className="app-main-scroll-pad min-h-[100dvh] min-h-[-webkit-fill-available] bg-transparent pt-4 bg-slate-50/50 dark:bg-background pb-6 md:pt-14 md:pb-8">
       <div className="app-desktop-shell pt-8">
         <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => navigate("/client/home")}
           >
@@ -224,11 +231,12 @@ export default function MessagesPage() {
 
         <div className="space-y-3">
           {conversations.map((convo) => {
-            const initials = convo.freelancer_profile?.full_name
-              ?.split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase() || "?";
+            const initials =
+              convo.freelancer_profile?.full_name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase() || "?";
 
             return (
               <Card
@@ -239,7 +247,9 @@ export default function MessagesPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="w-12 h-12">
-                      <AvatarImage src={convo.freelancer_profile?.photo_url || undefined} />
+                      <AvatarImage
+                        src={convo.freelancer_profile?.photo_url || undefined}
+                      />
                       <AvatarFallback className="bg-primary/10 text-primary">
                         {initials}
                       </AvatarFallback>
@@ -264,4 +274,3 @@ export default function MessagesPage() {
     </div>
   );
 }
-

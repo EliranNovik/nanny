@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { 
-  MessageSquare, 
+import {
+  MessageSquare,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -32,7 +32,10 @@ import { StarRating } from "@/components/StarRating";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
-import { PUBLIC_PROFILE_MEDIA_BUCKET, publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
+import {
+  PUBLIC_PROFILE_MEDIA_BUCKET,
+  publicProfileMediaPublicUrl,
+} from "@/lib/publicProfileMedia";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
@@ -44,29 +47,54 @@ import {
   getQuickDetailsOption,
   type AvailabilityPayload,
 } from "@/lib/availabilityPosts";
-import { isServiceCategoryId, serviceCategoryLabel, type ServiceCategoryId } from "@/lib/serviceCategories";
+import {
+  isServiceCategoryId,
+  serviceCategoryLabel,
+  type ServiceCategoryId,
+} from "@/lib/serviceCategories";
 import { apiPost } from "@/lib/api";
-import { readPublicProfileCache, writePublicProfileCache } from "@/lib/publicProfileCache";
+import {
+  readPublicProfileCache,
+  writePublicProfileCache,
+} from "@/lib/publicProfileCache";
 import {
   playFavoriteAddedToLikedTabFlight,
   playFavoriteRemovedFromLikedTabFlight,
 } from "@/lib/favoriteToLikedTabFlight";
 import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
 
-type PostedHelpEngagement = "idle" | "loading" | "can_respond" | "accepted" | "declined" | "not_invited" | "hidden";
+type PostedHelpEngagement =
+  | "idle"
+  | "loading"
+  | "can_respond"
+  | "accepted"
+  | "declined"
+  | "not_invited"
+  | "hidden";
 
-function canActAsHelper(profile: { role?: string | null; is_available_for_jobs?: boolean | null } | null): boolean {
+function canActAsHelper(
+  profile: {
+    role?: string | null;
+    is_available_for_jobs?: boolean | null;
+  } | null,
+): boolean {
   if (!profile?.role) return false;
   if (profile.role === "freelancer") return true;
-  if (profile.role === "client" && profile.is_available_for_jobs === true) return true;
+  if (profile.role === "client" && profile.is_available_for_jobs === true)
+    return true;
   return false;
 }
 
 function livePostCategoryLabel(category: string): string {
-  return isServiceCategoryId(category) ? serviceCategoryLabel(category as ServiceCategoryId) : category.replace(/_/g, " ");
+  return isServiceCategoryId(category)
+    ? serviceCategoryLabel(category as ServiceCategoryId)
+    : category.replace(/_/g, " ");
 }
 
-function livePostSummaryLine(payload: AvailabilityPayload | null, note: string | null): string {
+function livePostSummaryLine(
+  payload: AvailabilityPayload | null,
+  note: string | null,
+): string {
   const parts: string[] = [];
   if (payload?.availability_status) {
     const o = getAvailabilityStatusOption(String(payload.availability_status));
@@ -104,15 +132,26 @@ function jobServiceLabel(serviceType: string | undefined): string {
 
 function jobRequestStatusBadgeClass(status: string): string {
   const s = status.toLowerCase();
-  if (s === "completed") return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
-  if (s === "cancelled") return "bg-slate-500/10 text-slate-600 dark:text-slate-400";
-  if (s === "confirmed" || s === "active") return "bg-orange-500/10 text-orange-700 dark:text-orange-400";
+  if (s === "completed")
+    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+  if (s === "cancelled")
+    return "bg-slate-500/10 text-slate-600 dark:text-slate-400";
+  if (s === "confirmed" || s === "active")
+    return "bg-orange-500/10 text-orange-700 dark:text-orange-400";
   return "bg-amber-500/10 text-amber-800 dark:text-amber-300";
 }
 
 function jobRequestStatusLabel(status: string): string {
   const s = status.toLowerCase();
-  if (["pending", "opened", "ready", "notifying", "confirmations_closed"].includes(s)) {
+  if (
+    [
+      "pending",
+      "opened",
+      "ready",
+      "notifying",
+      "confirmations_closed",
+    ].includes(s)
+  ) {
     return "In progress";
   }
   if (s === "confirmed" || s === "active" || s === "locked") return "Active";
@@ -175,7 +214,7 @@ interface SharedJob {
 function jobIsBetweenUsers(
   job: SharedJob,
   userA: string,
-  userB: string
+  userB: string,
 ): boolean {
   const sf = job.selected_freelancer_id;
   if (!sf) return false;
@@ -205,15 +244,30 @@ export default function PublicProfilePage() {
   const [sharedJobs, setSharedJobs] = useState<SharedJob[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
   const [mediaItems, setMediaItems] = useState<PublicProfileMediaRow[]>([]);
-  const [liveCommunityPosts, setLiveCommunityPosts] = useState<LiveCommunityPostRow[]>([]);
-  const [postedHelpRequests, setPostedHelpRequests] = useState<ProfilePostedHelpRequest[]>([]);
-  const [postedHelpPreviewJob, setPostedHelpPreviewJob] = useState<Record<string, unknown> | null>(null);
-  const [postedHelpMapJob, setPostedHelpMapJob] = useState<Record<string, unknown> | null>(null);
-  const [postedHelpEngagement, setPostedHelpEngagement] = useState<PostedHelpEngagement>("idle");
-  const [postedHelpNotifId, setPostedHelpNotifId] = useState<string | null>(null);
+  const [liveCommunityPosts, setLiveCommunityPosts] = useState<
+    LiveCommunityPostRow[]
+  >([]);
+  const [postedHelpRequests, setPostedHelpRequests] = useState<
+    ProfilePostedHelpRequest[]
+  >([]);
+  const [postedHelpPreviewJob, setPostedHelpPreviewJob] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [postedHelpMapJob, setPostedHelpMapJob] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [postedHelpEngagement, setPostedHelpEngagement] =
+    useState<PostedHelpEngagement>("idle");
+  const [postedHelpNotifId, setPostedHelpNotifId] = useState<string | null>(
+    null,
+  );
   const [postedHelpConfirming, setPostedHelpConfirming] = useState(false);
   const [postedHelpDeclining, setPostedHelpDeclining] = useState(false);
-  const [loadingPostedHelpPreviewId, setLoadingPostedHelpPreviewId] = useState<string | null>(null);
+  const [loadingPostedHelpPreviewId, setLoadingPostedHelpPreviewId] = useState<
+    string | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [openingChat, setOpeningChat] = useState(false);
   const [profileFavorited, setProfileFavorited] = useState(false);
@@ -225,8 +279,11 @@ export default function PublicProfilePage() {
     urls: string[];
     initialIndex: number;
   } | null>(null);
-  const [profileVideoLightboxUrl, setProfileVideoLightboxUrl] = useState<string | null>(null);
-  const [profileMediaTab, setProfileMediaTab] = useState<ProfileMediaSectionTab>("images");
+  const [profileVideoLightboxUrl, setProfileVideoLightboxUrl] = useState<
+    string | null
+  >(null);
+  const [profileMediaTab, setProfileMediaTab] =
+    useState<ProfileMediaSectionTab>("images");
   const profileFavoriteButtonRef = useRef<HTMLButtonElement>(null);
 
   async function handleOpenDirectChat() {
@@ -264,7 +321,8 @@ export default function PublicProfilePage() {
     if (myRole === theirRole) {
       addToast({
         title: "Messaging unavailable",
-        description: "You can only message someone in the opposite role (client ↔ helper).",
+        description:
+          "You can only message someone in the opposite role (client ↔ helper).",
         variant: "default",
       });
       return;
@@ -306,7 +364,10 @@ export default function PublicProfilePage() {
       navigate(`/messages?conversation=${created.id}`);
     } catch (e: unknown) {
       console.error(e);
-      const msg = e && typeof e === "object" && "message" in e ? String((e as { message: string }).message) : "Please try again.";
+      const msg =
+        e && typeof e === "object" && "message" in e
+          ? String((e as { message: string }).message)
+          : "Please try again.";
       addToast({
         title: "Could not open chat",
         description: msg,
@@ -331,7 +392,9 @@ export default function PublicProfilePage() {
         setProfileFavorited(false);
         addToast({ title: "Removed from saved profiles", variant: "success" });
         requestAnimationFrame(() => {
-          playFavoriteRemovedFromLikedTabFlight(profileFavoriteButtonRef.current);
+          playFavoriteRemovedFromLikedTabFlight(
+            profileFavoriteButtonRef.current,
+          );
         });
       } else {
         const { error } = await supabase.from("profile_favorites").insert({
@@ -389,8 +452,12 @@ export default function PublicProfilePage() {
       setSharedJobs(cached.sharedJobs as SharedJob[]);
       setReviews(cached.reviews as UserReview[]);
       setMediaItems(cached.mediaItems as PublicProfileMediaRow[]);
-      setLiveCommunityPosts(cached.liveCommunityPosts as LiveCommunityPostRow[]);
-      setPostedHelpRequests(cached.postedHelpRequests as ProfilePostedHelpRequest[]);
+      setLiveCommunityPosts(
+        cached.liveCommunityPosts as LiveCommunityPostRow[],
+      );
+      setPostedHelpRequests(
+        cached.postedHelpRequests as ProfilePostedHelpRequest[],
+      );
       setLoading(false);
     } else {
       setLoading(true);
@@ -403,12 +470,14 @@ export default function PublicProfilePage() {
         // 1. Fetch Basic Profile
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("id, full_name, photo_url, role, city, categories, whatsapp_number_e164, telegram_username, average_rating, total_ratings")
+          .select(
+            "id, full_name, photo_url, role, city, categories, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
+          )
           .eq("id", userId)
           .single();
 
         if (profileError) throw profileError;
-        
+
         // 2. Fetch Bio/Freelancer Info if applicable
         const { data: freelancerData } = await supabase
           .from("freelancer_profiles")
@@ -419,7 +488,7 @@ export default function PublicProfilePage() {
         const nextProfile: PublicProfile = {
           ...profileData,
           bio: freelancerData?.bio || null,
-          whatsapp_number: profileData.whatsapp_number_e164
+          whatsapp_number: profileData.whatsapp_number_e164,
         };
         setProfile(nextProfile);
 
@@ -428,7 +497,8 @@ export default function PublicProfilePage() {
         // `.in(freelancer_id, [A,B])` pulls rows where freelancer is A but client is a third party.
         const profileId = userId;
 
-        const jrSelect = "id, service_type, status, created_at, client_id, selected_freelancer_id" as const;
+        const jrSelect =
+          "id, service_type, status, created_at, client_id, selected_freelancer_id" as const;
         const notifSelect = `
               job_id, status, created_at, freelancer_id,
               job_requests (
@@ -436,37 +506,42 @@ export default function PublicProfilePage() {
               )
             `;
 
-        const [jobsViewerClient, jobsProfileClient, notifWhenProfileIsHelper, notifWhenViewerIsHelper] =
-          await Promise.all([
-            supabase
-              .from("job_requests")
-              .select(jrSelect)
-              .eq("client_id", viewerId)
-              .eq("selected_freelancer_id", profileId)
-              .order("created_at", { ascending: false }),
-            supabase
-              .from("job_requests")
-              .select(jrSelect)
-              .eq("client_id", profileId)
-              .eq("selected_freelancer_id", viewerId)
-              .order("created_at", { ascending: false }),
-            supabase
-              .from("job_candidate_notifications")
-              .select(notifSelect)
-              .in("status", ["pending", "opened"])
-              .eq("freelancer_id", profileId)
-              .order("created_at", { ascending: false }),
-            supabase
-              .from("job_candidate_notifications")
-              .select(notifSelect)
-              .in("status", ["pending", "opened"])
-              .eq("freelancer_id", viewerId)
-              .order("created_at", { ascending: false }),
-          ]);
+        const [
+          jobsViewerClient,
+          jobsProfileClient,
+          notifWhenProfileIsHelper,
+          notifWhenViewerIsHelper,
+        ] = await Promise.all([
+          supabase
+            .from("job_requests")
+            .select(jrSelect)
+            .eq("client_id", viewerId)
+            .eq("selected_freelancer_id", profileId)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("job_requests")
+            .select(jrSelect)
+            .eq("client_id", profileId)
+            .eq("selected_freelancer_id", viewerId)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("job_candidate_notifications")
+            .select(notifSelect)
+            .in("status", ["pending", "opened"])
+            .eq("freelancer_id", profileId)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("job_candidate_notifications")
+            .select(notifSelect)
+            .in("status", ["pending", "opened"])
+            .eq("freelancer_id", viewerId)
+            .order("created_at", { ascending: false }),
+        ]);
 
         if (jobsViewerClient.error) throw jobsViewerClient.error;
         if (jobsProfileClient.error) throw jobsProfileClient.error;
-        if (notifWhenProfileIsHelper.error) throw notifWhenProfileIsHelper.error;
+        if (notifWhenProfileIsHelper.error)
+          throw notifWhenProfileIsHelper.error;
         if (notifWhenViewerIsHelper.error) throw notifWhenViewerIsHelper.error;
 
         const shared: SharedJob[] = [
@@ -474,7 +549,9 @@ export default function PublicProfilePage() {
           ...((jobsProfileClient.data || []) as SharedJob[]),
         ];
 
-        function embeddedJobRequest(n: { job_requests?: unknown }): SharedJob | null {
+        function embeddedJobRequest(n: {
+          job_requests?: unknown;
+        }): SharedJob | null {
           const raw = n.job_requests;
           const jr = (Array.isArray(raw) ? raw[0] : raw) as
             | {
@@ -501,8 +578,10 @@ export default function PublicProfilePage() {
         const pendingFromNotifications: SharedJob[] = [];
 
         type NotifRow = { job_requests?: unknown; freelancer_id?: string };
-        const profileHelperRows = (notifWhenProfileIsHelper.data ?? []) as NotifRow[];
-        const viewerHelperRows = (notifWhenViewerIsHelper.data ?? []) as NotifRow[];
+        const profileHelperRows = (notifWhenProfileIsHelper.data ??
+          []) as NotifRow[];
+        const viewerHelperRows = (notifWhenViewerIsHelper.data ??
+          []) as NotifRow[];
 
         for (const n of profileHelperRows) {
           const jr = embeddedJobRequest(n);
@@ -537,14 +616,15 @@ export default function PublicProfilePage() {
           if (!mergedMap.has(job.id)) mergedMap.set(job.id, job);
         });
         const merged = Array.from(mergedMap.values()).filter((job) =>
-          jobIsBetweenUsers(job, viewerId, profileId)
+          jobIsBetweenUsers(job, viewerId, profileId),
         );
         setSharedJobs(merged);
 
         // 4. Fetch Reviews
         const { data: reviewsData, error: reviewsError } = await supabase
           .from("job_reviews")
-          .select(`
+          .select(
+            `
             id,
             rating,
             review_text,
@@ -553,14 +633,15 @@ export default function PublicProfilePage() {
               full_name,
               photo_url
             )
-          `)
+          `,
+          )
           .eq("reviewee_id", userId)
           .order("created_at", { ascending: false });
 
         if (reviewsError) throw reviewsError;
-        const nextReviews = (reviewsData as any[]).map(r => ({
+        const nextReviews = (reviewsData as any[]).map((r) => ({
           ...r,
-          reviewer: r.reviewer || { full_name: "Anonymous", photo_url: null }
+          reviewer: r.reviewer || { full_name: "Anonymous", photo_url: null },
         }));
         setReviews(nextReviews);
 
@@ -568,13 +649,17 @@ export default function PublicProfilePage() {
         const [mediaRes, livePostsRes] = await Promise.all([
           supabase
             .from("public_profile_media")
-            .select("id, user_id, media_type, storage_path, sort_order, created_at")
+            .select(
+              "id, user_id, media_type, storage_path, sort_order, created_at",
+            )
             .eq("user_id", userId)
             .order("sort_order", { ascending: true })
             .order("created_at", { ascending: true }),
           supabase
             .from("community_posts")
-            .select("id, category, title, note, expires_at, availability_payload, created_at")
+            .select(
+              "id, category, title, note, expires_at, availability_payload, created_at",
+            )
             .eq("author_id", userId)
             .eq("status", "active")
             .gt("expires_at", nowIso)
@@ -602,7 +687,8 @@ export default function PublicProfilePage() {
             title: String(r.title ?? ""),
             note: (r.note as string | null) ?? null,
             expires_at: String(r.expires_at ?? ""),
-            availability_payload: (r.availability_payload as AvailabilityPayload | null) ?? null,
+            availability_payload:
+              (r.availability_payload as AvailabilityPayload | null) ?? null,
             created_at: String(r.created_at ?? ""),
           }));
           setLiveCommunityPosts(nextLive);
@@ -610,11 +696,14 @@ export default function PublicProfilePage() {
 
         const { data: postedReqData, error: postedReqErr } = await supabase.rpc(
           "get_public_profile_client_job_requests",
-          { p_client_id: userId }
+          { p_client_id: userId },
         );
         let nextPosted: ProfilePostedHelpRequest[] = [];
         if (postedReqErr) {
-          console.warn("[PublicProfile] get_public_profile_client_job_requests:", postedReqErr);
+          console.warn(
+            "[PublicProfile] get_public_profile_client_job_requests:",
+            postedReqErr,
+          );
           setPostedHelpRequests([]);
         } else {
           const rows = (postedReqData || []) as Record<string, unknown>[];
@@ -638,7 +727,6 @@ export default function PublicProfilePage() {
             postedHelpRequests: nextPosted,
           });
         }
-
       } catch (error: any) {
         console.error("Error fetching public profile:", error);
         if (!fromCache) {
@@ -671,10 +759,14 @@ export default function PublicProfilePage() {
 
   if (!profile) return null;
 
-  const isOwnProfile = Boolean(currentUser && userId && currentUser.id === userId);
+  const isOwnProfile = Boolean(
+    currentUser && userId && currentUser.id === userId,
+  );
   const imageRows = mediaItems.filter((m) => m.media_type === "image");
   const videoRows = mediaItems.filter((m) => m.media_type === "video");
-  const galleryImageUrls = imageRows.map((r) => publicProfileMediaPublicUrl(r.storage_path));
+  const galleryImageUrls = imageRows.map((r) =>
+    publicProfileMediaPublicUrl(r.storage_path),
+  );
 
   async function handleProfileMediaUpload(file: File, kind: "image" | "video") {
     if (!userId || !currentUser || currentUser.id !== userId) return;
@@ -689,16 +781,23 @@ export default function PublicProfilePage() {
       return;
     }
 
-    const ext = file.name.split(".").pop()?.toLowerCase() || (kind === "image" ? "jpg" : "mp4");
+    const ext =
+      file.name.split(".").pop()?.toLowerCase() ||
+      (kind === "image" ? "jpg" : "mp4");
     const path = `${userId}/${crypto.randomUUID()}.${ext}`;
     const nextSort =
-      mediaItems.length === 0 ? 0 : Math.max(...mediaItems.map((m) => m.sort_order), -1) + 1;
+      mediaItems.length === 0
+        ? 0
+        : Math.max(...mediaItems.map((m) => m.sort_order), -1) + 1;
 
     setUploadingMedia(true);
     try {
       const { error: upErr } = await supabase.storage
         .from(PUBLIC_PROFILE_MEDIA_BUCKET)
-        .upload(path, file, { upsert: false, contentType: file.type || undefined });
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type || undefined,
+        });
 
       if (upErr) {
         const msg =
@@ -706,7 +805,11 @@ export default function PublicProfilePage() {
           upErr.message?.toLowerCase().includes("not found")
             ? `Storage bucket "${PUBLIC_PROFILE_MEDIA_BUCKET}" is missing. Run db/sql/048_public_profile_media.sql in Supabase.`
             : upErr.message;
-        addToast({ title: "Upload failed", description: msg, variant: "error" });
+        addToast({
+          title: "Upload failed",
+          description: msg,
+          variant: "error",
+        });
         return;
       }
 
@@ -723,12 +826,21 @@ export default function PublicProfilePage() {
 
       if (insErr) throw insErr;
       if (row) setMediaItems((prev) => [...prev, row as PublicProfileMediaRow]);
-      addToast({ title: kind === "image" ? "Photo added" : "Video added", variant: "success" });
+      addToast({
+        title: kind === "image" ? "Photo added" : "Video added",
+        variant: "success",
+      });
     } catch (e: unknown) {
       console.error(e);
       const msg =
-        e && typeof e === "object" && "message" in e ? String((e as { message: string }).message) : "Upload failed.";
-      addToast({ title: "Could not save media", description: msg, variant: "error" });
+        e && typeof e === "object" && "message" in e
+          ? String((e as { message: string }).message)
+          : "Upload failed.";
+      addToast({
+        title: "Could not save media",
+        description: msg,
+        variant: "error",
+      });
     } finally {
       setUploadingMedia(false);
     }
@@ -738,10 +850,15 @@ export default function PublicProfilePage() {
     if (!userId || !currentUser || currentUser.id !== userId) return;
     setUploadingMedia(true);
     try {
-      const { error: stErr } = await supabase.storage.from(PUBLIC_PROFILE_MEDIA_BUCKET).remove([row.storage_path]);
+      const { error: stErr } = await supabase.storage
+        .from(PUBLIC_PROFILE_MEDIA_BUCKET)
+        .remove([row.storage_path]);
       if (stErr) console.warn(stErr);
 
-      const { error: delErr } = await supabase.from("public_profile_media").delete().eq("id", row.id);
+      const { error: delErr } = await supabase
+        .from("public_profile_media")
+        .delete()
+        .eq("id", row.id);
       if (delErr) throw delErr;
       setMediaItems((prev) => prev.filter((m) => m.id !== row.id));
       addToast({ title: "Removed", variant: "success" });
@@ -753,28 +870,40 @@ export default function PublicProfilePage() {
     }
   }
 
-  const activeJobs = sharedJobs.filter(j => j.status === "confirmed" || j.status === "active");
-  const pendingJobs = sharedJobs.filter(j =>
-    j.status === "pending" ||
-    j.status === "opened" ||
-    j.status === "ready" ||
-    j.status === "notifying" ||
-    j.status === "confirmations_closed"
+  const activeJobs = sharedJobs.filter(
+    (j) => j.status === "confirmed" || j.status === "active",
   );
-  const pastJobs = sharedJobs.filter(j => j.status === "completed" || j.status === "cancelled");
-  const helpedOthersCount = sharedJobs.filter(j => j.selected_freelancer_id === userId).length;
-  const gotHelpedCount = sharedJobs.filter(j => j.client_id === userId).length;
+  const pendingJobs = sharedJobs.filter(
+    (j) =>
+      j.status === "pending" ||
+      j.status === "opened" ||
+      j.status === "ready" ||
+      j.status === "notifying" ||
+      j.status === "confirmations_closed",
+  );
+  const pastJobs = sharedJobs.filter(
+    (j) => j.status === "completed" || j.status === "cancelled",
+  );
+  const helpedOthersCount = sharedJobs.filter(
+    (j) => j.selected_freelancer_id === userId,
+  ).length;
+  const gotHelpedCount = sharedJobs.filter(
+    (j) => j.client_id === userId,
+  ).length;
   const photoInitials = profile.full_name?.slice(0, 2) || "??";
   const profileFirstName = profile.full_name?.trim().split(/\s+/)[0] ?? "";
-  const profileDisplayName = profile.full_name?.trim() || profileFirstName || "This user";
+  const profileDisplayName =
+    profile.full_name?.trim() || profileFirstName || "This user";
 
   async function loadPostedHelpEngagement(
     jobId: string,
-    clientId: string
+    clientId: string,
   ): Promise<{ engagement: PostedHelpEngagement; notifId: string | null }> {
     if (!currentUser?.id) return { engagement: "hidden", notifId: null };
-    if (currentUser.id === clientId) return { engagement: "hidden", notifId: null };
-    if (!canActAsHelper(currentProfile)) return { engagement: "hidden", notifId: null };
+    if (currentUser.id === clientId)
+      return { engagement: "hidden", notifId: null };
+    if (!canActAsHelper(currentProfile))
+      return { engagement: "hidden", notifId: null };
 
     const [confRes, notifRes] = await Promise.all([
       supabase
@@ -791,8 +920,13 @@ export default function PublicProfilePage() {
         .maybeSingle(),
     ]);
 
-    if (confRes.error) console.warn("[PublicProfile] job_confirmations", confRes.error);
-    if (notifRes.error) console.warn("[PublicProfile] job_candidate_notifications", notifRes.error);
+    if (confRes.error)
+      console.warn("[PublicProfile] job_confirmations", confRes.error);
+    if (notifRes.error)
+      console.warn(
+        "[PublicProfile] job_candidate_notifications",
+        notifRes.error,
+      );
 
     const st = confRes.data?.status;
     if (st === "available") return { engagement: "accepted", notifId: null };
@@ -812,13 +946,20 @@ export default function PublicProfilePage() {
     setPostedHelpEngagement("loading");
     setPostedHelpNotifId(null);
     try {
-      const { data, error } = await supabase.rpc("get_public_job_request_preview", {
-        p_job_id: jobId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_public_job_request_preview",
+        {
+          p_job_id: jobId,
+        },
+      );
       if (error) throw error;
       const job = data as Record<string, unknown> | null;
       if (!job || typeof job.id !== "string") {
-        addToast({ title: "Could not load request", description: "Try again later.", variant: "error" });
+        addToast({
+          title: "Could not load request",
+          description: "Try again later.",
+          variant: "error",
+        });
         return;
       }
       const clientId = String(job.client_id ?? "");
@@ -851,13 +992,17 @@ export default function PublicProfilePage() {
     if (!job || typeof job.id !== "string" || !postedHelpNotifId) return;
     setPostedHelpConfirming(true);
     try {
-      await apiPost(`/api/jobs/${job.id}/notifications/${postedHelpNotifId}/open`, {});
+      await apiPost(
+        `/api/jobs/${job.id}/notifications/${postedHelpNotifId}/open`,
+        {},
+      );
       await apiPost(`/api/jobs/${job.id}/confirm`, {});
       setPostedHelpEngagement("accepted");
       setPostedHelpNotifId(null);
       addToast({
         title: "Job accepted",
-        description: "It's been moved to Pending response while we wait for the client's final confirmation.",
+        description:
+          "It's been moved to Pending response while we wait for the client's final confirmation.",
         variant: "success",
       });
     } catch (err: unknown) {
@@ -876,7 +1021,10 @@ export default function PublicProfilePage() {
     if (!postedHelpNotifId) return;
     setPostedHelpDeclining(true);
     try {
-      const { error } = await supabase.from("job_candidate_notifications").delete().eq("id", postedHelpNotifId);
+      const { error } = await supabase
+        .from("job_candidate_notifications")
+        .delete()
+        .eq("id", postedHelpNotifId);
       if (error) throw error;
       setPostedHelpEngagement("declined");
       setPostedHelpNotifId(null);
@@ -898,15 +1046,19 @@ export default function PublicProfilePage() {
   }
 
   const postedHelpIncomingActionMessage = (() => {
-    if (postedHelpEngagement === "accepted") return "You have already accepted.";
-    if (postedHelpEngagement === "declined") return "You have already declined.";
+    if (postedHelpEngagement === "accepted")
+      return "You have already accepted.";
+    if (postedHelpEngagement === "declined")
+      return "You have already declined.";
     if (postedHelpEngagement === "not_invited") {
       return "You can respond here once this client sends you a request.";
     }
     if (postedHelpEngagement === "hidden") {
       if (!currentUser?.id) return "Sign in to accept or decline requests.";
       const openJobClientId =
-        activePostedHelpJob && typeof (activePostedHelpJob as { client_id?: unknown }).client_id === "string"
+        activePostedHelpJob &&
+        typeof (activePostedHelpJob as { client_id?: unknown }).client_id ===
+          "string"
           ? (activePostedHelpJob as { client_id: string }).client_id
           : null;
       if (openJobClientId && currentUser.id === openJobClientId) {
@@ -943,11 +1095,15 @@ export default function PublicProfilePage() {
             </div>
             <div className="min-w-0 text-left">
               <p className="font-bold text-slate-900 dark:text-white">
-                <span className="capitalize">{jobServiceLabel(job.service_type)}</span>
+                <span className="capitalize">
+                  {jobServiceLabel(job.service_type)}
+                </span>
                 {job.location_city ? (
                   <>
                     {" "}
-                    <span className="font-semibold text-muted-foreground">in</span>{" "}
+                    <span className="font-semibold text-muted-foreground">
+                      in
+                    </span>{" "}
                     <span className="font-bold">{job.location_city}</span>
                   </>
                 ) : null}
@@ -961,13 +1117,16 @@ export default function PublicProfilePage() {
             <Badge
               className={cn(
                 "border-none px-3 py-1 text-[10px] font-black uppercase tracking-wider",
-                jobRequestStatusBadgeClass(job.status)
+                jobRequestStatusBadgeClass(job.status),
               )}
             >
               {jobRequestStatusLabel(job.status)}
             </Badge>
             {loadingPostedHelpPreviewId === job.id ? (
-              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" aria-hidden />
+              <Loader2
+                className="h-5 w-5 shrink-0 animate-spin text-primary"
+                aria-hidden
+              />
             ) : (
               <ChevronRight className={historyRowChevronClass} aria-hidden />
             )}
@@ -978,21 +1137,22 @@ export default function PublicProfilePage() {
   );
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <button
         type="button"
         onClick={() => navigate(-1)}
         className="md:hidden fixed z-[60] flex h-11 w-11 items-center justify-center text-slate-600 transition hover:opacity-80 active:scale-95 dark:text-slate-300"
-        style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
+        style={{
+          top: "max(0.75rem, env(safe-area-inset-top))",
+          left: "max(0.75rem, env(safe-area-inset-left))",
+        }}
         aria-label="Back"
       >
         <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
       </button>
 
       <div className="app-desktop-shell pt-[calc(4.75rem+env(safe-area-inset-top))] md:pt-10">
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
           {/* Left Column: User Card */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="border-0 shadow-none rounded-none bg-transparent overflow-visible backdrop-blur-none sm:rounded-none sm:border-0 sm:bg-transparent sm:shadow-none sm:hover:shadow-none">
@@ -1017,7 +1177,11 @@ export default function PublicProfilePage() {
                         >
                           <img
                             src={profile.photo_url}
-                            alt={profile.full_name ? `${profile.full_name} profile photo` : "Profile photo"}
+                            alt={
+                              profile.full_name
+                                ? `${profile.full_name} profile photo`
+                                : "Profile photo"
+                            }
                             className="h-full w-full rounded-full object-cover"
                             loading="eager"
                           />
@@ -1052,7 +1216,10 @@ export default function PublicProfilePage() {
                       </div>
                       {profile.city?.trim() ? (
                         <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
-                          <MapPin className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
+                          <MapPin
+                            className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500"
+                            aria-hidden
+                          />
                           <span>{profile.city.trim()}</span>
                         </p>
                       ) : null}
@@ -1097,7 +1264,11 @@ export default function PublicProfilePage() {
                       >
                         <img
                           src={profile.photo_url}
-                          alt={profile.full_name ? `${profile.full_name} profile photo` : "Profile photo"}
+                          alt={
+                            profile.full_name
+                              ? `${profile.full_name} profile photo`
+                              : "Profile photo"
+                          }
                           className="h-full w-full rounded-full object-cover"
                           loading="eager"
                         />
@@ -1133,7 +1304,10 @@ export default function PublicProfilePage() {
                       />
                       {profile.city?.trim() ? (
                         <p className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
-                          <MapPin className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
+                          <MapPin
+                            className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500"
+                            aria-hidden
+                          />
                           <span>{profile.city.trim()}</span>
                         </p>
                       ) : null}
@@ -1141,7 +1315,9 @@ export default function PublicProfilePage() {
 
                     {profile.categories && profile.categories.length > 0 && (
                       <div className="mt-5 w-full">
-                        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Job With</p>
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          Job With
+                        </p>
                         <div className="flex flex-wrap justify-start gap-2.5">
                           {profile.categories.map((category, idx) => (
                             <Badge
@@ -1159,364 +1335,415 @@ export default function PublicProfilePage() {
                 </div>
 
                 <div className="flex flex-col items-stretch px-4 pt-5 pb-4 text-left sm:px-5 md:items-center md:px-7 md:pt-2 md:pb-4 md:text-center sm:px-8">
-                <div className="w-full border-t-0 pt-0 md:border-t md:border-slate-100 md:pt-6 md:dark:border-white/5">
-                  <div className="mb-6 flex flex-wrap items-center justify-center gap-4 py-3 sm:gap-5 md:mb-8 md:gap-4 md:py-2">
-                    {!isOwnProfile && currentUser && (
+                  <div className="w-full border-t-0 pt-0 md:border-t md:border-slate-100 md:pt-6 md:dark:border-white/5">
+                    <div className="mb-6 flex flex-wrap items-center justify-center gap-4 py-3 sm:gap-5 md:mb-8 md:gap-4 md:py-2">
+                      {!isOwnProfile && currentUser && (
+                        <button
+                          ref={profileFavoriteButtonRef}
+                          type="button"
+                          onClick={() => void toggleProfileFavorite()}
+                          disabled={favoriteBusy}
+                          title={
+                            profileFavorited
+                              ? "Remove from saved"
+                              : "Save profile"
+                          }
+                          aria-label={
+                            profileFavorited
+                              ? "Remove from saved profiles"
+                              : "Save profile to Saved"
+                          }
+                          aria-pressed={profileFavorited}
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md backdrop-blur-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-900/40 dark:bg-zinc-900/95 dark:text-rose-400 md:h-11 md:w-11"
+                        >
+                          {favoriteBusy ? (
+                            <Loader2
+                              className="h-5 w-5 animate-spin text-rose-500"
+                              aria-hidden
+                            />
+                          ) : (
+                            <Heart
+                              className={cn(
+                                "h-6 w-6",
+                                profileFavorited &&
+                                  "fill-rose-500 text-rose-500",
+                              )}
+                              strokeWidth={profileFavorited ? 0 : 2.25}
+                              aria-hidden
+                            />
+                          )}
+                        </button>
+                      )}
                       <button
-                        ref={profileFavoriteButtonRef}
                         type="button"
-                        onClick={() => void toggleProfileFavorite()}
-                        disabled={favoriteBusy}
-                        title={profileFavorited ? "Remove from saved" : "Save profile"}
-                        aria-label={
-                          profileFavorited
-                            ? "Remove from saved profiles"
-                            : "Save profile to Saved"
-                        }
-                        aria-pressed={profileFavorited}
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md backdrop-blur-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-900/40 dark:bg-zinc-900/95 dark:text-rose-400 md:h-11 md:w-11"
+                        onClick={() => void handleOpenDirectChat()}
+                        disabled={openingChat}
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition-all hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:shadow-slate-100/20 md:h-11 md:w-11"
+                        title="Messages"
+                        aria-label="Open messages"
                       >
-                        {favoriteBusy ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
+                        {openingChat ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
                         ) : (
-                          <Heart
-                            className={cn(
-                              "h-6 w-6",
-                              profileFavorited && "fill-rose-500 text-rose-500"
-                            )}
-                            strokeWidth={profileFavorited ? 0 : 2.25}
-                            aria-hidden
+                          <MessageSquare className="h-5 w-5" strokeWidth={2} />
+                        )}
+                      </button>
+                      {!isOwnProfile &&
+                        currentUser &&
+                        profile.categories &&
+                        profile.categories.length > 0 && (
+                          <ProfileKnockMenu
+                            variant="contact"
+                            targetUserId={userId!}
+                            targetRole={profile.role}
+                            categories={profile.categories}
+                            viewerId={currentUser.id}
+                            viewerRole={currentProfile?.role ?? null}
+                            viewerName={currentProfile?.full_name ?? null}
                           />
                         )}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void handleOpenDirectChat()}
-                      disabled={openingChat}
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition-all hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:shadow-slate-100/20 md:h-11 md:w-11"
-                      title="Messages"
-                      aria-label="Open messages"
-                    >
-                      {openingChat ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <MessageSquare className="h-5 w-5" strokeWidth={2} />
+                      {profile.whatsapp_number && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            window.open(
+                              `https://wa.me/${profile.whatsapp_number}`,
+                              "_blank",
+                            )
+                          }
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
+                          title="WhatsApp"
+                          aria-label="WhatsApp"
+                        >
+                          <Phone className="h-5 w-5 fill-current" />
+                        </button>
                       )}
-                    </button>
-                    {!isOwnProfile &&
-                      currentUser &&
-                      profile.categories &&
-                      profile.categories.length > 0 && (
-                        <ProfileKnockMenu
-                          variant="contact"
-                          targetUserId={userId!}
-                          targetRole={profile.role}
-                          categories={profile.categories}
-                          viewerId={currentUser.id}
-                          viewerRole={currentProfile?.role ?? null}
-                          viewerName={currentProfile?.full_name ?? null}
-                        />
+                      {profile.telegram_username && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            window.open(
+                              `https://t.me/${profile.telegram_username}`,
+                              "_blank",
+                            )
+                          }
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
+                          title="Telegram"
+                          aria-label="Telegram"
+                        >
+                          <Send className="h-5 w-5 translate-x-[-1px] translate-y-[1px] fill-current" />
+                        </button>
                       )}
-                    {profile.whatsapp_number && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(`https://wa.me/${profile.whatsapp_number}`, "_blank")
-                        }
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
-                        title="WhatsApp"
-                        aria-label="WhatsApp"
-                      >
-                        <Phone className="h-5 w-5 fill-current" />
-                      </button>
-                    )}
-                    {profile.telegram_username && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(`https://t.me/${profile.telegram_username}`, "_blank")
-                        }
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
-                        title="Telegram"
-                        aria-label="Telegram"
-                      >
-                        <Send className="h-5 w-5 translate-x-[-1px] translate-y-[1px] fill-current" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleProfileMediaUpload(f, "image");
-                    e.target.value = "";
-                  }}
-                />
-                <input
-                  ref={videoInputRef}
-                  type="file"
-                  accept="video/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleProfileMediaUpload(f, "video");
-                    e.target.value = "";
-                  }}
-                />
-
-                <Tabs
-                  value={profileMediaTab}
-                  onValueChange={(v) =>
-                    setProfileMediaTab(v as ProfileMediaSectionTab)
-                  }
-                  className="w-full px-0 pb-4 md:px-0 md:pb-6"
-                >
-                  <div
-                    role="tablist"
-                    aria-label="Profile sections"
-                    className="mb-4 flex justify-center"
-                  >
-                    <div
-                      className={cn(
-                        "relative mx-auto grid h-11 w-full max-w-[19rem] grid-cols-3 gap-0.5 rounded-full p-1 sm:max-w-[21rem]",
-                        "bg-muted/50 ring-1 ring-inset ring-black/[0.06] dark:bg-muted/35 dark:ring-white/[0.08]",
-                        "shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]"
-                      )}
-                    >
-                      <div
-                        aria-hidden
-                        className={cn(
-                          "pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-background",
-                          "w-[calc((100%-0.75rem)/3)] will-change-transform",
-                          "shadow-[0_2px_10px_-3px_rgba(15,23,42,0.18),0_1px_0_rgba(255,255,255,0.85)_inset] ring-1",
-                          "transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
-                          "dark:bg-zinc-900/95 dark:shadow-[0_4px_16px_-6px_rgba(0,0,0,0.55)]",
-                          "ring-rose-200/90 dark:shadow-[0_4px_18px_-6px_rgba(244,63,94,0.28)] dark:ring-rose-500/30",
-                          profileMediaTab === "images" && "translate-x-0",
-                          profileMediaTab === "videos" &&
-                            "translate-x-[calc(100%+0.125rem)]",
-                          profileMediaTab === "about" &&
-                            "translate-x-[calc(200%+0.25rem)]"
-                        )}
-                      />
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={profileMediaTab === "images"}
-                        aria-label="Photos"
-                        onClick={() => setProfileMediaTab("images")}
-                        className={cn(
-                          "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                          "active:scale-[0.98] motion-reduce:transition-none",
-                          profileMediaTab === "images"
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-muted-foreground hover:text-foreground/85"
-                        )}
-                      >
-                        <ImageIcon
-                          className={cn(
-                            "h-5 w-5 shrink-0 transition-transform duration-300",
-                            profileMediaTab === "images" && "scale-105"
-                          )}
-                          strokeWidth={2.25}
-                          aria-hidden
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={profileMediaTab === "videos"}
-                        aria-label="Videos"
-                        onClick={() => setProfileMediaTab("videos")}
-                        className={cn(
-                          "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                          "active:scale-[0.98] motion-reduce:transition-none",
-                          profileMediaTab === "videos"
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-muted-foreground hover:text-foreground/85"
-                        )}
-                      >
-                        <Video
-                          className={cn(
-                            "h-5 w-5 shrink-0 transition-transform duration-300",
-                            profileMediaTab === "videos" && "scale-105"
-                          )}
-                          strokeWidth={2.25}
-                          aria-hidden
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={profileMediaTab === "about"}
-                        aria-label="About me"
-                        onClick={() => setProfileMediaTab("about")}
-                        className={cn(
-                          "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                          "active:scale-[0.98] motion-reduce:transition-none",
-                          profileMediaTab === "about"
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-muted-foreground hover:text-foreground/85"
-                        )}
-                      >
-                        <UserCircle
-                          className={cn(
-                            "h-5 w-5 shrink-0 transition-transform duration-300",
-                            profileMediaTab === "about" && "scale-105"
-                          )}
-                          strokeWidth={2.25}
-                          aria-hidden
-                        />
-                      </button>
                     </div>
                   </div>
 
-                  <TabsContent value="images" className="mt-4 space-y-3">
-                    {isOwnProfile && (
-                      <div className="flex justify-end">
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleProfileMediaUpload(f, "image");
+                      e.target.value = "";
+                    }}
+                  />
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleProfileMediaUpload(f, "video");
+                      e.target.value = "";
+                    }}
+                  />
+
+                  <Tabs
+                    value={profileMediaTab}
+                    onValueChange={(v) =>
+                      setProfileMediaTab(v as ProfileMediaSectionTab)
+                    }
+                    className="w-full px-0 pb-4 md:px-0 md:pb-6"
+                  >
+                    <div
+                      role="tablist"
+                      aria-label="Profile sections"
+                      className="mb-4 flex justify-center"
+                    >
+                      <div
+                        className={cn(
+                          "relative mx-auto grid h-11 w-full max-w-[19rem] grid-cols-3 gap-0.5 rounded-full p-1 sm:max-w-[21rem]",
+                          "bg-muted/50 ring-1 ring-inset ring-black/[0.06] dark:bg-muted/35 dark:ring-white/[0.08]",
+                          "shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]",
+                        )}
+                      >
+                        <div
+                          aria-hidden
+                          className={cn(
+                            "pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-background",
+                            "w-[calc((100%-0.75rem)/3)] will-change-transform",
+                            "shadow-[0_2px_10px_-3px_rgba(15,23,42,0.18),0_1px_0_rgba(255,255,255,0.85)_inset] ring-1",
+                            "transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+                            "dark:bg-zinc-900/95 dark:shadow-[0_4px_16px_-6px_rgba(0,0,0,0.55)]",
+                            "ring-rose-200/90 dark:shadow-[0_4px_18px_-6px_rgba(244,63,94,0.28)] dark:ring-rose-500/30",
+                            profileMediaTab === "images" && "translate-x-0",
+                            profileMediaTab === "videos" &&
+                              "translate-x-[calc(100%+0.125rem)]",
+                            profileMediaTab === "about" &&
+                              "translate-x-[calc(200%+0.25rem)]",
+                          )}
+                        />
                         <button
                           type="button"
-                          disabled={uploadingMedia}
-                          onClick={() => imageInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-slate-200 dark:hover:bg-zinc-800"
+                          role="tab"
+                          aria-selected={profileMediaTab === "images"}
+                          aria-label="Photos"
+                          onClick={() => setProfileMediaTab("images")}
+                          className={cn(
+                            "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                            "active:scale-[0.98] motion-reduce:transition-none",
+                            profileMediaTab === "images"
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-muted-foreground hover:text-foreground/85",
+                          )}
                         >
-                          {uploadingMedia ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                          Add photo
+                          <ImageIcon
+                            className={cn(
+                              "h-5 w-5 shrink-0 transition-transform duration-300",
+                              profileMediaTab === "images" && "scale-105",
+                            )}
+                            strokeWidth={2.25}
+                            aria-hidden
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={profileMediaTab === "videos"}
+                          aria-label="Videos"
+                          onClick={() => setProfileMediaTab("videos")}
+                          className={cn(
+                            "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                            "active:scale-[0.98] motion-reduce:transition-none",
+                            profileMediaTab === "videos"
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-muted-foreground hover:text-foreground/85",
+                          )}
+                        >
+                          <Video
+                            className={cn(
+                              "h-5 w-5 shrink-0 transition-transform duration-300",
+                              profileMediaTab === "videos" && "scale-105",
+                            )}
+                            strokeWidth={2.25}
+                            aria-hidden
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={profileMediaTab === "about"}
+                          aria-label="About me"
+                          onClick={() => setProfileMediaTab("about")}
+                          className={cn(
+                            "relative z-10 flex h-full min-w-0 items-center justify-center rounded-full py-2 transition-colors duration-300 ease-out",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                            "active:scale-[0.98] motion-reduce:transition-none",
+                            profileMediaTab === "about"
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-muted-foreground hover:text-foreground/85",
+                          )}
+                        >
+                          <UserCircle
+                            className={cn(
+                              "h-5 w-5 shrink-0 transition-transform duration-300",
+                              profileMediaTab === "about" && "scale-105",
+                            )}
+                            strokeWidth={2.25}
+                            aria-hidden
+                          />
                         </button>
                       </div>
-                    )}
-                    {imageRows.length === 0 ? (
-                      <div className="flex flex-col items-center gap-3 py-6 text-center">
-                        <ImageIcon className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
-                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No photos yet.</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {imageRows.map((row, idx) => (
-                          <div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setProfileMediaLightbox({
-                                  urls: galleryImageUrls,
-                                  initialIndex: idx,
-                                })
-                              }
-                              className="absolute inset-0 block h-full w-full"
-                              aria-label="View photo full screen"
+                    </div>
+
+                    <TabsContent value="images" className="mt-4 space-y-3">
+                      {isOwnProfile && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            disabled={uploadingMedia}
+                            onClick={() => imageInputRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-slate-200 dark:hover:bg-zinc-800"
+                          >
+                            {uploadingMedia ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Plus className="h-3.5 w-3.5" />
+                            )}
+                            Add photo
+                          </button>
+                        </div>
+                      )}
+                      {imageRows.length === 0 ? (
+                        <div className="flex flex-col items-center gap-3 py-6 text-center">
+                          <ImageIcon
+                            className="h-10 w-10 text-slate-300 dark:text-slate-600"
+                            aria-hidden
+                          />
+                          <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                            No photos yet.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {imageRows.map((row, idx) => (
+                            <div
+                              key={row.id}
+                              className="group relative aspect-square overflow-hidden rounded-xl bg-muted"
                             >
-                              <img
-                                src={publicProfileMediaPublicUrl(row.storage_path)}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                            </button>
-                            {isOwnProfile && (
                               <button
                                 type="button"
-                                disabled={uploadingMedia}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleDeleteProfileMedia(row);
-                                }}
-                                className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100 md:opacity-100"
-                                aria-label="Remove photo"
+                                onClick={() =>
+                                  setProfileMediaLightbox({
+                                    urls: galleryImageUrls,
+                                    initialIndex: idx,
+                                  })
+                                }
+                                className="absolute inset-0 block h-full w-full"
+                                aria-label="View photo full screen"
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="videos" className="mt-4 space-y-3">
-                    {isOwnProfile && (
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          disabled={uploadingMedia}
-                          onClick={() => videoInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-slate-200 dark:hover:bg-zinc-800"
-                        >
-                          {uploadingMedia ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                          Add video
-                        </button>
-                      </div>
-                    )}
-                    {videoRows.length === 0 ? (
-                      <div className="flex flex-col items-center gap-3 py-6 text-center">
-                        <Video className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
-                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No videos yet.</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-4">
-                        {videoRows.map((row) => {
-                          const videoSrc = publicProfileMediaPublicUrl(row.storage_path);
-                          return (
-                            <div key={row.id} className="group relative overflow-hidden rounded-xl bg-black">
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => setProfileVideoLightboxUrl(videoSrc)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    setProfileVideoLightboxUrl(videoSrc);
-                                  }
-                                }}
-                                className="cursor-pointer outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-orange-500"
-                                aria-label="Open video full screen"
-                              >
-                                <video
-                                  src={videoSrc}
-                                  muted
-                                  playsInline
-                                  preload="metadata"
-                                  className="pointer-events-none max-h-[min(70vh,420px)] w-full object-contain"
+                                <img
+                                  src={publicProfileMediaPublicUrl(
+                                    row.storage_path,
+                                  )}
+                                  alt=""
+                                  className="h-full w-full object-cover"
                                 />
-                              </div>
+                              </button>
                               {isOwnProfile && (
                                 <button
                                   type="button"
                                   disabled={uploadingMedia}
-                                  onClick={() => void handleDeleteProfileMedia(row)}
-                                  className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-md transition hover:bg-black/70"
-                                  aria-label="Remove video"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleDeleteProfileMedia(row);
+                                  }}
+                                  className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100 md:opacity-100"
+                                  aria-label="Remove photo"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
                               )}
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </TabsContent>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
 
-                  <TabsContent value="about" className="mt-4">
-                    {profile.bio?.trim() ? (
-                      <p className="text-left text-base leading-relaxed text-slate-700 dark:text-slate-300 md:text-center md:text-sm">
-                        {profile.bio}
-                      </p>
-                    ) : (
-                      <div className="flex flex-col items-center gap-3 py-6 text-center">
-                        <UserCircle className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
-                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No bio yet.</p>
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
+                    <TabsContent value="videos" className="mt-4 space-y-3">
+                      {isOwnProfile && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            disabled={uploadingMedia}
+                            onClick={() => videoInputRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-slate-200 dark:hover:bg-zinc-800"
+                          >
+                            {uploadingMedia ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Plus className="h-3.5 w-3.5" />
+                            )}
+                            Add video
+                          </button>
+                        </div>
+                      )}
+                      {videoRows.length === 0 ? (
+                        <div className="flex flex-col items-center gap-3 py-6 text-center">
+                          <Video
+                            className="h-10 w-10 text-slate-300 dark:text-slate-600"
+                            aria-hidden
+                          />
+                          <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                            No videos yet.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-4">
+                          {videoRows.map((row) => {
+                            const videoSrc = publicProfileMediaPublicUrl(
+                              row.storage_path,
+                            );
+                            return (
+                              <div
+                                key={row.id}
+                                className="group relative overflow-hidden rounded-xl bg-black"
+                              >
+                                <div
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() =>
+                                    setProfileVideoLightboxUrl(videoSrc)
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      setProfileVideoLightboxUrl(videoSrc);
+                                    }
+                                  }}
+                                  className="cursor-pointer outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                  aria-label="Open video full screen"
+                                >
+                                  <video
+                                    src={videoSrc}
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    className="pointer-events-none max-h-[min(70vh,420px)] w-full object-contain"
+                                  />
+                                </div>
+                                {isOwnProfile && (
+                                  <button
+                                    type="button"
+                                    disabled={uploadingMedia}
+                                    onClick={() =>
+                                      void handleDeleteProfileMedia(row)
+                                    }
+                                    className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-md transition hover:bg-black/70"
+                                    aria-label="Remove video"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="about" className="mt-4">
+                      {profile.bio?.trim() ? (
+                        <p className="text-left text-base leading-relaxed text-slate-700 dark:text-slate-300 md:text-center md:text-sm">
+                          {profile.bio}
+                        </p>
+                      ) : (
+                        <div className="flex flex-col items-center gap-3 py-6 text-center">
+                          <UserCircle
+                            className="h-10 w-10 text-slate-300 dark:text-slate-600"
+                            aria-hidden
+                          />
+                          <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                            No bio yet.
+                          </p>
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </div>
               </CardContent>
             </Card>
@@ -1527,13 +1754,17 @@ export default function PublicProfilePage() {
                 <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500 md:text-[10px] md:text-slate-400">
                   Helped Others
                 </p>
-                <p className="text-3xl font-black text-slate-900 dark:text-white md:text-2xl">{helpedOthersCount}</p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white md:text-2xl">
+                  {helpedOthersCount}
+                </p>
               </div>
               <div className="rounded-2xl border border-slate-200/70 bg-card/85 p-5 dark:border-border/50 md:rounded-[20px] md:p-6">
                 <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500 md:text-[10px] md:text-slate-400">
                   Got Helped
                 </p>
-                <p className="text-3xl font-black text-slate-900 dark:text-white md:text-2xl">{gotHelpedCount}</p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white md:text-2xl">
+                  {gotHelpedCount}
+                </p>
               </div>
             </div>
           </div>
@@ -1559,7 +1790,12 @@ export default function PublicProfilePage() {
                       to={`/public/posts?post=${encodeURIComponent(post.id)}`}
                       className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
-                      <Card className={cn(profileHistoryCardClass, "cursor-pointer")}>
+                      <Card
+                        className={cn(
+                          profileHistoryCardClass,
+                          "cursor-pointer",
+                        )}
+                      >
                         <CardContent className="flex items-center justify-between p-6">
                           <div className="flex min-w-0 flex-1 items-center gap-4">
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/70">
@@ -1570,7 +1806,10 @@ export default function PublicProfilePage() {
                                 {post.title}
                               </p>
                               <p className="mt-0.5 line-clamp-2 text-xs font-medium text-slate-400">
-                                {livePostSummaryLine(post.availability_payload, post.note)}
+                                {livePostSummaryLine(
+                                  post.availability_payload,
+                                  post.note,
+                                )}
                               </p>
                             </div>
                           </div>
@@ -1586,7 +1825,10 @@ export default function PublicProfilePage() {
                               compact
                               className="text-[11px] font-semibold text-orange-600 dark:text-orange-400"
                             />
-                            <ChevronRight className={historyRowChevronClass} aria-hidden />
+                            <ChevronRight
+                              className={historyRowChevronClass}
+                              aria-hidden
+                            />
                           </div>
                         </CardContent>
                       </Card>
@@ -1594,7 +1836,10 @@ export default function PublicProfilePage() {
                   ))
                 ) : (
                   <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
-                    <Sparkles className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
+                    <Sparkles
+                      className="h-10 w-10 text-slate-300 dark:text-slate-600"
+                      aria-hidden
+                    />
                     <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
                       No live availability on the public board right now.
                     </p>
@@ -1619,9 +1864,13 @@ export default function PublicProfilePage() {
                   postedHelpRequests.map((job) => renderPostedHelpRow(job))
                 ) : (
                   <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
-                    <HeartHandshake className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden />
+                    <HeartHandshake
+                      className="h-10 w-10 text-slate-300 dark:text-slate-600"
+                      aria-hidden
+                    />
                     <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
-                      {profileDisplayName} doesn’t have any open help requests right now.
+                      {profileDisplayName} doesn’t have any open help requests
+                      right now.
                     </p>
                   </div>
                 )}
@@ -1644,7 +1893,12 @@ export default function PublicProfilePage() {
                   [...pendingJobs, ...activeJobs].map((job) => {
                     const isPending = pendingJobs.some((p) => p.id === job.id);
                     const card = (
-                      <Card className={cn(profileHistoryCardClass, isPending && "cursor-pointer")}>
+                      <Card
+                        className={cn(
+                          profileHistoryCardClass,
+                          isPending && "cursor-pointer",
+                        )}
+                      >
                         <CardContent className="flex items-center justify-between p-6">
                           <div className="flex min-w-0 flex-1 items-center gap-4">
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/70">
@@ -1652,7 +1906,10 @@ export default function PublicProfilePage() {
                             </div>
                             <div className="min-w-0 text-left">
                               <p className="font-bold capitalize text-slate-900 dark:text-white">
-                                {String(job.service_type ?? "").replace(/_/g, " ")}
+                                {String(job.service_type ?? "").replace(
+                                  /_/g,
+                                  " ",
+                                )}
                               </p>
                               <p className="text-xs font-medium text-slate-400">
                                 {isPending
@@ -1671,7 +1928,10 @@ export default function PublicProfilePage() {
                                 {job.status}
                               </Badge>
                             )}
-                            <ChevronRight className={historyRowChevronClass} aria-hidden />
+                            <ChevronRight
+                              className={historyRowChevronClass}
+                              aria-hidden
+                            />
                           </div>
                         </CardContent>
                       </Card>
@@ -1681,7 +1941,9 @@ export default function PublicProfilePage() {
                         <button
                           key={job.id}
                           type="button"
-                          onClick={() => navigate(buildJobsUrl("freelancer", "pending"))}
+                          onClick={() =>
+                            navigate(buildJobsUrl("freelancer", "pending"))
+                          }
                           className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         >
                           {card}
@@ -1696,8 +1958,13 @@ export default function PublicProfilePage() {
                   })
                 ) : (
                   <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
-                    <Clock className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
-                    <p className="font-medium text-slate-400 dark:text-slate-500">No active jobs with this user</p>
+                    <Clock
+                      className="h-12 w-12 text-slate-300 dark:text-slate-600"
+                      aria-hidden
+                    />
+                    <p className="font-medium text-slate-400 dark:text-slate-500">
+                      No active jobs with this user
+                    </p>
                   </div>
                 )}
               </div>
@@ -1715,38 +1982,49 @@ export default function PublicProfilePage() {
               </div>
 
               <div className="space-y-4">
-                {pastJobs.length > 0 ? pastJobs.map(job => (
-                  <Card
-                    key={job.id}
-                    onClick={() => navigate(`/jobs/${job.id}/details`)}
-                    className={cn(profileHistoryCardClass, "cursor-pointer")}
-                  >
-                    <CardContent className="flex items-center justify-between p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/70">
-                          <CheckCircle2 className="h-6 w-6 text-slate-500 dark:text-slate-400" />
+                {pastJobs.length > 0 ? (
+                  pastJobs.map((job) => (
+                    <Card
+                      key={job.id}
+                      onClick={() => navigate(`/jobs/${job.id}/details`)}
+                      className={cn(profileHistoryCardClass, "cursor-pointer")}
+                    >
+                      <CardContent className="flex items-center justify-between p-6">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/70">
+                            <CheckCircle2 className="h-6 w-6 text-slate-500 dark:text-slate-400" />
+                          </div>
+                          <div>
+                            <p className="font-bold capitalize text-slate-900 dark:text-white">
+                              {job.service_type?.replace("_", " ")}
+                            </p>
+                            <p className="text-xs font-medium text-slate-400">
+                              Completed on{" "}
+                              {new Date(job.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold capitalize text-slate-900 dark:text-white">
-                            {job.service_type?.replace('_', ' ')}
-                          </p>
-                          <p className="text-xs font-medium text-slate-400">
-                            Completed on {new Date(job.created_at).toLocaleDateString()}
-                          </p>
+                        <div className="flex items-center gap-2 text-right">
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-200 bg-emerald-50 text-[10px] font-bold uppercase tracking-widest text-emerald-600"
+                          >
+                            {job.status}
+                          </Badge>
+                          <ChevronRight className={historyRowChevronClass} />
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-right">
-                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                          {job.status}
-                        </Badge>
-                        <ChevronRight className={historyRowChevronClass} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )) : (
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
                   <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
-                    <CheckCircle2 className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
-                    <p className="text-slate-400 font-medium dark:text-slate-500">No past history with this user</p>
+                    <CheckCircle2
+                      className="h-12 w-12 text-slate-300 dark:text-slate-600"
+                      aria-hidden
+                    />
+                    <p className="text-slate-400 font-medium dark:text-slate-500">
+                      No past history with this user
+                    </p>
                   </div>
                 )}
               </div>
@@ -1758,68 +2036,87 @@ export default function PublicProfilePage() {
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center">
                   <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
                 </div>
-                <h2 className="text-xl font-black tracking-tight uppercase">User Reviews</h2>
+                <h2 className="text-xl font-black tracking-tight uppercase">
+                  User Reviews
+                </h2>
               </div>
 
               <div className="grid grid-cols-1 gap-x-6 gap-y-14 pt-8 md:grid-cols-2 md:gap-y-16 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-14">
-                {reviews.length > 0 ? reviews.map((review, idx) => {
-                  const gradients = [
-                    "from-blue-400 to-purple-500",
-                    "from-green-400 to-teal-500",
-                    "from-orange-400 to-pink-500",
-                    "from-red-400 to-indigo-500",
-                    "from-purple-400 to-blue-500",
-                  ];
-                  const gradient = gradients[idx % gradients.length];
+                {reviews.length > 0 ? (
+                  reviews.map((review, idx) => {
+                    const gradients = [
+                      "from-blue-400 to-purple-500",
+                      "from-green-400 to-teal-500",
+                      "from-orange-400 to-pink-500",
+                      "from-red-400 to-indigo-500",
+                      "from-purple-400 to-blue-500",
+                    ];
+                    const gradient = gradients[idx % gradients.length];
 
-                  return (
-                    <div
-                      key={review.id}
-                      className="relative flex h-full flex-col rounded-3xl border border-slate-200/90 bg-white p-6 pt-12 shadow-md shadow-slate-950/5 transition-all duration-500 hover:shadow-lg dark:border-border/50 dark:bg-zinc-900 dark:shadow-black/20 dark:hover:shadow-lg group lg:p-5 lg:pt-11"
-                    >
-                      {/* Floating Avatar */}
-                      <div className={cn(
-                        "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110 lg:-top-8 lg:left-5 lg:h-16 lg:w-16 lg:p-1",
-                        gradient
-                      )}>
-                        <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
-                          <AvatarImage src={review.reviewer.photo_url || undefined} className="object-cover" />
-                          <AvatarFallback className="bg-transparent text-white font-bold text-2xl lg:text-lg">
-                            {review.reviewer.full_name?.slice(0, 2).toUpperCase() || "??"}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-
-                      <div className="flex min-h-0 flex-1 flex-col">
-                        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 lg:mb-2">
-                          <div className="min-w-0 pr-2">
-                            <h4 className="truncate text-lg font-bold text-gray-900 group-hover:text-primary transition-colors dark:text-white lg:text-base">
-                              {review.reviewer.full_name}
-                            </h4>
-                            <p className="mt-0.5 text-[11px] font-medium text-slate-400">
-                              {new Date(review.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
-                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                            <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">{review.rating}</span>
-                          </div>
+                    return (
+                      <div
+                        key={review.id}
+                        className="relative flex h-full flex-col rounded-3xl border border-slate-200/90 bg-white p-6 pt-12 shadow-md shadow-slate-950/5 transition-all duration-500 hover:shadow-lg dark:border-border/50 dark:bg-zinc-900 dark:shadow-black/20 dark:hover:shadow-lg group lg:p-5 lg:pt-11"
+                      >
+                        {/* Floating Avatar */}
+                        <div
+                          className={cn(
+                            "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110 lg:-top-8 lg:left-5 lg:h-16 lg:w-16 lg:p-1",
+                            gradient,
+                          )}
+                        >
+                          <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
+                            <AvatarImage
+                              src={review.reviewer.photo_url || undefined}
+                              className="object-cover"
+                            />
+                            <AvatarFallback className="bg-transparent text-white font-bold text-2xl lg:text-lg">
+                              {review.reviewer.full_name
+                                ?.slice(0, 2)
+                                .toUpperCase() || "??"}
+                            </AvatarFallback>
+                          </Avatar>
                         </div>
-                        <p className="line-clamp-6 text-base italic leading-relaxed text-gray-700 dark:text-slate-300 lg:text-sm">
-                          "{review.review_text || "No comments provided."}"
-                        </p>
+
+                        <div className="flex min-h-0 flex-1 flex-col">
+                          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 lg:mb-2">
+                            <div className="min-w-0 pr-2">
+                              <h4 className="truncate text-lg font-bold text-gray-900 group-hover:text-primary transition-colors dark:text-white lg:text-base">
+                                {review.reviewer.full_name}
+                              </h4>
+                              <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                                {new Date(
+                                  review.created_at,
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
+                              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                              <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">
+                                {review.rating}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="line-clamp-6 text-base italic leading-relaxed text-gray-700 dark:text-slate-300 lg:text-sm">
+                            "{review.review_text || "No comments provided."}"
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                }) : (
+                    );
+                  })
+                ) : (
                   <div className="flex flex-col items-center gap-3 px-2 py-4 text-center sm:py-6">
-                    <UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
-                    <p className="text-slate-400 font-medium dark:text-slate-500">No reviews yet for this user</p>
+                    <UserIcon
+                      className="h-12 w-12 text-slate-300 dark:text-slate-600"
+                      aria-hidden
+                    />
+                    <p className="text-slate-400 font-medium dark:text-slate-500">
+                      No reviews yet for this user
+                    </p>
                   </div>
                 )}
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -1853,8 +2150,9 @@ export default function PublicProfilePage() {
         formatJobTitle={formatJobTitleForModal}
         isOwnRequest={Boolean(
           currentUser?.id &&
-            postedHelpPreviewJob &&
-            currentUser.id === (postedHelpPreviewJob as { client_id?: string }).client_id
+          postedHelpPreviewJob &&
+          currentUser.id ===
+            (postedHelpPreviewJob as { client_id?: string }).client_id,
         )}
         previewLayout
         incomingActionMessage={postedHelpIncomingActionMessage}

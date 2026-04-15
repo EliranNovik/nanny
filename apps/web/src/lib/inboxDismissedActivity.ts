@@ -17,7 +17,10 @@ export function loadDismissedActivityIds(userId: string): Set<string> {
   }
 }
 
-export function persistDismissedActivityIds(userId: string, ids: Set<string>): void {
+export function persistDismissedActivityIds(
+  userId: string,
+  ids: Set<string>,
+): void {
   try {
     const arr = [...ids].slice(-MAX_IDS);
     localStorage.setItem(storageKey(userId), JSON.stringify(arr));
@@ -27,7 +30,10 @@ export function persistDismissedActivityIds(userId: string, ids: Set<string>): v
 }
 
 /** Merge one id (e.g. dismissed from the bell modal) into stored dismissed set. */
-export function rememberDismissedActivity(userId: string, activityId: string): void {
+export function rememberDismissedActivity(
+  userId: string,
+  activityId: string,
+): void {
   const s = loadDismissedActivityIds(userId);
   s.add(activityId);
   persistDismissedActivityIds(userId, s);

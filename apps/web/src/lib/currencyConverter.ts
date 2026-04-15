@@ -13,10 +13,10 @@ export interface Currency {
 // Currency conversion rates to NIS (Israeli Shekels)
 // These are approximate rates - in production, you should fetch real-time rates from an API
 const CURRENCY_RATES_TO_NIS: Record<string, number> = {
-  ILS: 1.0,      // NIS to NIS (1:1)
-  USD: 3.6,      // 1 USD ≈ 3.6 NIS (approximate)
-  EUR: 3.9,      // 1 EUR ≈ 3.9 NIS (approximate)
-  GBP: 4.5,      // 1 GBP ≈ 4.5 NIS (approximate)
+  ILS: 1.0, // NIS to NIS (1:1)
+  USD: 3.6, // 1 USD ≈ 3.6 NIS (approximate)
+  EUR: 3.9, // 1 EUR ≈ 3.9 NIS (approximate)
+  GBP: 4.5, // 1 GBP ≈ 4.5 NIS (approximate)
 };
 
 /**
@@ -61,7 +61,7 @@ export function convertFromNIS(amount: number, toCurrencyIso: string): number {
 export function formatCurrency(
   amount: number,
   currencyIso: string,
-  currencyIcon?: string
+  currencyIcon?: string,
 ): string {
   const icon = currencyIcon || getCurrencyIcon(currencyIso);
   const iso = currencyIso.toUpperCase();
@@ -90,7 +90,7 @@ export function getCurrencyIcon(currencyIso: string): string {
  * @returns Total amount in NIS
  */
 export function sumPaymentsInNIS(
-  payments: Array<{ total_amount: number; currency?: Currency | null }>
+  payments: Array<{ total_amount: number; currency?: Currency | null }>,
 ): number {
   return payments.reduce((sum, payment) => {
     const currencyIso = payment.currency?.iso || "ILS";

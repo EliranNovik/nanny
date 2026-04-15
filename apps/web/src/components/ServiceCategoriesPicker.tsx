@@ -2,16 +2,19 @@ import type { LucideIcon } from "lucide-react";
 import { Sparkles, ChefHat, Truck, Baby, Wrench, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const SERVICE_TYPES: { id: string; label: string; Icon: LucideIcon }[] = [
-  { id: "cleaning", label: "Cleaning", Icon: Sparkles },
-  { id: "cooking", label: "Cooking", Icon: ChefHat },
-  { id: "pickup_delivery", label: "Pick up & delivery", Icon: Truck },
-  { id: "nanny", label: "Nanny", Icon: Baby },
-  { id: "other_help", label: "Other help", Icon: Wrench },
-];
+export const SERVICE_TYPES: { id: string; label: string; Icon: LucideIcon }[] =
+  [
+    { id: "cleaning", label: "Cleaning", Icon: Sparkles },
+    { id: "cooking", label: "Cooking", Icon: ChefHat },
+    { id: "pickup_delivery", label: "Pick up & delivery", Icon: Truck },
+    { id: "nanny", label: "Nanny", Icon: Baby },
+    { id: "other_help", label: "Other help", Icon: Wrench },
+  ];
 
 export function serviceLabelsForIds(ids: string[]): string {
-  const labels = SERVICE_TYPES.filter((t) => ids.includes(t.id)).map((t) => t.label);
+  const labels = SERVICE_TYPES.filter((t) => ids.includes(t.id)).map(
+    (t) => t.label,
+  );
   return labels.length ? labels.join(" · ") : "—";
 }
 
@@ -54,7 +57,7 @@ export function ServiceCategoriesPicker({
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               selected
                 ? "border-2 border-primary bg-primary/12 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] dark:bg-primary/18 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-                : "border border-border/70 bg-muted/25 hover:border-border hover:bg-muted/40 dark:bg-muted/15"
+                : "border border-border/70 bg-muted/25 hover:border-border hover:bg-muted/40 dark:bg-muted/15",
             )}
           >
             {selected && (
@@ -70,7 +73,7 @@ export function ServiceCategoriesPicker({
                 "flex h-9 w-9 items-center justify-center rounded-xl border transition-colors",
                 selected
                   ? "border-primary/35 bg-background/90 text-primary dark:bg-background/70"
-                  : "border-transparent bg-muted/60 text-muted-foreground group-hover:text-foreground/85"
+                  : "border-transparent bg-muted/60 text-muted-foreground group-hover:text-foreground/85",
               )}
             >
               <Icon className="h-[18px] w-[18px] stroke-[1.5]" aria-hidden />
@@ -78,7 +81,9 @@ export function ServiceCategoriesPicker({
             <span
               className={cn(
                 "pr-5 text-[13px] leading-snug tracking-tight",
-                selected ? "font-semibold text-foreground" : "font-medium text-muted-foreground group-hover:text-foreground/90"
+                selected
+                  ? "font-semibold text-foreground"
+                  : "font-medium text-muted-foreground group-hover:text-foreground/90",
               )}
             >
               {type.label}

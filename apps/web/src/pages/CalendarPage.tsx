@@ -2,11 +2,24 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Plus } from "lucide-react";
+import {
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+  X,
+  Plus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -34,11 +47,13 @@ interface BookedJob extends JobRequest {
 export default function CalendarPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  
+
   // Try to load cached data immediately
   const getCachedCalendarData = () => {
     try {
-      const cached = localStorage.getItem(`calendar_${user?.id}_${profile?.role}`);
+      const cached = localStorage.getItem(
+        `calendar_${user?.id}_${profile?.role}`,
+      );
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed.timestamp && Date.now() - parsed.timestamp < 30000) {
@@ -49,15 +64,21 @@ export default function CalendarPage() {
     return null;
   };
 
-  const cachedData = (user && profile) ? getCachedCalendarData() : null;
+  const cachedData = user && profile ? getCachedCalendarData() : null;
   const [loading, setLoading] = useState(!cachedData);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [bookedJobs, setBookedJobs] = useState<BookedJob[]>(cachedData?.bookedJobs || []);
+  const [bookedJobs, setBookedJobs] = useState<BookedJob[]>(
+    cachedData?.bookedJobs || [],
+  );
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedJobs, setSelectedJobs] = useState<BookedJob[]>([]);
-  const [unavailableTimeSlots, setUnavailableTimeSlots] = useState<Array<{id: string, date: string, start_time: string, end_time: string}>>([]);
+  const [unavailableTimeSlots, setUnavailableTimeSlots] = useState<
+    Array<{ id: string; date: string; start_time: string; end_time: string }>
+  >([]);
   const [showTimeSlotModal, setShowTimeSlotModal] = useState(false);
-  const [selectedDateForSlot, setSelectedDateForSlot] = useState<Date | null>(null);
+  const [selectedDateForSlot, setSelectedDateForSlot] = useState<Date | null>(
+    null,
+  );
   const [newStartTime, setNewStartTime] = useState("09:00");
   const [newEndTime, setNewEndTime] = useState("17:00");
   const [addingSlot, setAddingSlot] = useState(false);
@@ -83,12 +104,14 @@ export default function CalendarPage() {
         }
 
         if (data) {
-          setUnavailableTimeSlots(data.map(item => ({
-            id: item.id,
-            date: item.unavailable_date,
-            start_time: item.start_time,
-            end_time: item.end_time
-          })));
+          setUnavailableTimeSlots(
+            data.map((item) => ({
+              id: item.id,
+              date: item.unavailable_date,
+              start_time: item.start_time,
+              end_time: item.end_time,
+            })),
+          );
         }
       } catch (err) {
         console.error("Error loading unavailable time slots:", err);
@@ -107,7 +130,7 @@ export default function CalendarPage() {
 
       try {
         let jobsQuery;
-        
+
         if (profile.role === "client") {
           // For clients: get jobs where they are the client and job is booked (locked/active)
           jobsQuery = supabase
@@ -141,25 +164,29 @@ export default function CalendarPage() {
         }
 
         // Fetch other party profiles (freelancer for client, client for freelancer)
-        const otherPartyIds = profile.role === "client"
-          ? jobs.map(j => j.selected_freelancer_id).filter(Boolean) as string[]
-          : jobs.map(j => j.client_id).filter(Boolean) as string[];
+        const otherPartyIds =
+          profile.role === "client"
+            ? (jobs
+                .map((j) => j.selected_freelancer_id)
+                .filter(Boolean) as string[])
+            : (jobs.map((j) => j.client_id).filter(Boolean) as string[]);
 
         const { data: profiles } = await supabase
           .from("profiles")
           .select("id, full_name, photo_url")
           .in("id", otherPartyIds);
 
-        const profilesMap = new Map(
-          (profiles || []).map(p => [p.id, p])
-        );
+        const profilesMap = new Map((profiles || []).map((p) => [p.id, p]));
 
-        const enrichedJobs: BookedJob[] = jobs.map(job => {
-          const otherPartyId = profile.role === "client" 
-            ? job.selected_freelancer_id 
-            : job.client_id;
-          const otherParty = otherPartyId ? profilesMap.get(otherPartyId) : null;
-          
+        const enrichedJobs: BookedJob[] = jobs.map((job) => {
+          const otherPartyId =
+            profile.role === "client"
+              ? job.selected_freelancer_id
+              : job.client_id;
+          const otherParty = otherPartyId
+            ? profilesMap.get(otherPartyId)
+            : null;
+
           return {
             ...job,
             otherPartyName: otherParty?.full_name || null,
@@ -172,12 +199,15 @@ export default function CalendarPage() {
         // Cache the data for instant loading next time
         if (user && profile) {
           try {
-            localStorage.setItem(`calendar_${user.id}_${profile.role}`, JSON.stringify({
-              timestamp: Date.now(),
-              data: {
-                bookedJobs: enrichedJobs
-              }
-            }));
+            localStorage.setItem(
+              `calendar_${user.id}_${profile.role}`,
+              JSON.stringify({
+                timestamp: Date.now(),
+                data: {
+                  bookedJobs: enrichedJobs,
+                },
+              }),
+            );
           } catch (e) {
             // Ignore cache errors
           }
@@ -196,12 +226,15 @@ export default function CalendarPage() {
   useEffect(() => {
     if (user && profile && bookedJobs.length >= 0) {
       try {
-        localStorage.setItem(`calendar_${user.id}_${profile.role}`, JSON.stringify({
-          timestamp: Date.now(),
-          data: {
-            bookedJobs
-          }
-        }));
+        localStorage.setItem(
+          `calendar_${user.id}_${profile.role}`,
+          JSON.stringify({
+            timestamp: Date.now(),
+            data: {
+              bookedJobs,
+            },
+          }),
+        );
       } catch (e) {
         // Ignore cache errors
       }
@@ -215,7 +248,7 @@ export default function CalendarPage() {
       return;
     }
 
-    const jobsOnDate = bookedJobs.filter(job => {
+    const jobsOnDate = bookedJobs.filter((job) => {
       if (!job.start_at) return false;
       const jobDate = new Date(job.start_at);
       return (
@@ -230,7 +263,7 @@ export default function CalendarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -245,8 +278,18 @@ export default function CalendarPage() {
   const startingDayOfWeek = firstDayOfMonth.getDay();
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -271,7 +314,7 @@ export default function CalendarPage() {
   };
 
   const hasJobOnDate = (date: Date) => {
-    return bookedJobs.some(job => {
+    return bookedJobs.some((job) => {
       if (!job.start_at) return false;
       const jobDate = new Date(job.start_at);
       return (
@@ -283,14 +326,15 @@ export default function CalendarPage() {
   };
 
   const isDateUnavailable = (date: Date) => {
-    if (!unavailableTimeSlots || unavailableTimeSlots.length === 0) return false;
-    const dateStr = date.toISOString().split('T')[0];
-    return unavailableTimeSlots.some(slot => slot.date === dateStr);
+    if (!unavailableTimeSlots || unavailableTimeSlots.length === 0)
+      return false;
+    const dateStr = date.toISOString().split("T")[0];
+    return unavailableTimeSlots.some((slot) => slot.date === dateStr);
   };
 
   const getUnavailableSlotsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return unavailableTimeSlots.filter(slot => slot.date === dateStr);
+    const dateStr = date.toISOString().split("T")[0];
+    return unavailableTimeSlots.filter((slot) => slot.date === dateStr);
   };
 
   const isDateSelected = (date: Date) => {
@@ -305,7 +349,7 @@ export default function CalendarPage() {
   const handleDateClick = async (day: number) => {
     const date = new Date(year, month, day);
     setSelectedDate(date);
-    
+
     // For freelancers, also allow opening modal to add time slots
     if (profile?.role === "freelancer") {
       // Could add double-click to open modal, but for now just select
@@ -322,7 +366,7 @@ export default function CalendarPage() {
 
   const handleSaveTimeSlot = async () => {
     if (!user || !selectedDateForSlot || !newStartTime || !newEndTime) return;
-    
+
     if (newEndTime <= newStartTime) {
       alert("End time must be after start time");
       return;
@@ -330,14 +374,14 @@ export default function CalendarPage() {
 
     setAddingSlot(true);
     try {
-      const dateStr = selectedDateForSlot.toISOString().split('T')[0];
+      const dateStr = selectedDateForSlot.toISOString().split("T")[0];
       const { error } = await supabase
         .from("freelancer_unavailable_dates")
         .insert({
           freelancer_id: user.id,
           unavailable_date: dateStr,
           start_time: newStartTime,
-          end_time: newEndTime
+          end_time: newEndTime,
         });
 
       if (error) throw error;
@@ -351,12 +395,14 @@ export default function CalendarPage() {
         .order("start_time", { ascending: true });
 
       if (data) {
-        setUnavailableTimeSlots(data.map(item => ({
-          id: item.id,
-          date: item.unavailable_date,
-          start_time: item.start_time,
-          end_time: item.end_time
-        })));
+        setUnavailableTimeSlots(
+          data.map((item) => ({
+            id: item.id,
+            date: item.unavailable_date,
+            start_time: item.start_time,
+            end_time: item.end_time,
+          })),
+        );
       }
 
       setShowTimeSlotModal(false);
@@ -370,7 +416,7 @@ export default function CalendarPage() {
 
   const handleDeleteTimeSlot = async (slotId: string) => {
     if (!user) return;
-    
+
     try {
       const { error } = await supabase
         .from("freelancer_unavailable_dates")
@@ -389,12 +435,14 @@ export default function CalendarPage() {
         .order("start_time", { ascending: true });
 
       if (data) {
-        setUnavailableTimeSlots(data.map(item => ({
-          id: item.id,
-          date: item.unavailable_date,
-          start_time: item.start_time,
-          end_time: item.end_time
-        })));
+        setUnavailableTimeSlots(
+          data.map((item) => ({
+            id: item.id,
+            date: item.unavailable_date,
+            start_time: item.start_time,
+            end_time: item.end_time,
+          })),
+        );
       }
     } catch (err) {
       console.error("Error deleting time slot:", err);
@@ -420,11 +468,22 @@ export default function CalendarPage() {
   const formatTime = (time: string): string => {
     // Remove seconds from time string (HH:MM:SS -> HH:MM)
     if (!time) return "";
-    return time.split(':').slice(0, 2).join(':');
+    return time.split(":").slice(0, 2).join(":");
   };
 
-  const getJobStatusBadge = (status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } => {
-    const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  const getJobStatusBadge = (
+    status: string,
+  ): {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+  } => {
+    const map: Record<
+      string,
+      {
+        label: string;
+        variant: "default" | "secondary" | "destructive" | "outline";
+      }
+    > = {
       locked: { label: "Scheduled", variant: "default" },
       active: { label: "In progress", variant: "default" },
     };
@@ -432,7 +491,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-mesh pb-6 md:pb-8">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
@@ -507,11 +566,14 @@ export default function CalendarPage() {
                       "aspect-square rounded-md text-sm font-medium transition-colors relative",
                       "hover:bg-accent hover:text-accent-foreground",
                       unavailable && "bg-destructive/20 text-destructive/70",
-                      selected && "bg-primary text-primary-foreground hover:bg-primary/90",
+                      selected &&
+                        "bg-primary text-primary-foreground hover:bg-primary/90",
                       !selected && !unavailable && "hover:bg-muted",
-                      isTodayDate && !selected && "ring-2 ring-primary/50"
+                      isTodayDate && !selected && "ring-2 ring-primary/50",
                     )}
-                    title={unavailable ? "Has unavailable time slots" : undefined}
+                    title={
+                      unavailable ? "Has unavailable time slots" : undefined
+                    }
                   >
                     {day}
                     {hasJob && !unavailable && (
@@ -557,9 +619,13 @@ export default function CalendarPage() {
               {/* Unavailable Time Slots for Freelancers */}
               {profile?.role === "freelancer" && (
                 <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-2">Unavailable Time Slots</h4>
+                  <h4 className="text-sm font-medium mb-2">
+                    Unavailable Time Slots
+                  </h4>
                   {getUnavailableSlotsForDate(selectedDate).length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No unavailable time slots</p>
+                    <p className="text-sm text-muted-foreground">
+                      No unavailable time slots
+                    </p>
                   ) : (
                     <div className="space-y-2">
                       {getUnavailableSlotsForDate(selectedDate).map((slot) => (
@@ -568,7 +634,8 @@ export default function CalendarPage() {
                           className="flex items-center justify-between p-2 rounded border bg-destructive/5"
                         >
                           <span className="text-sm">
-                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                            {formatTime(slot.start_time)} -{" "}
+                            {formatTime(slot.end_time)}
                           </span>
                           <Button
                             variant="ghost"
@@ -592,8 +659,10 @@ export default function CalendarPage() {
                 <div className="space-y-3">
                   {selectedJobs.map((job) => {
                     const statusBadge = getJobStatusBadge(job.status);
-                    const jobDate = job.start_at ? new Date(job.start_at) : null;
-                    
+                    const jobDate = job.start_at
+                      ? new Date(job.start_at)
+                      : null;
+
                     return (
                       <div
                         key={job.id}
@@ -610,17 +679,25 @@ export default function CalendarPage() {
                             </h3>
                             {job.otherPartyName && (
                               <p className="text-sm text-muted-foreground">
-                                {profile?.role === "client" ? "With: " : "Client: "}
+                                {profile?.role === "client"
+                                  ? "With: "
+                                  : "Client: "}
                                 {job.otherPartyName}
                               </p>
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={statusBadge.variant} className="text-xs">
+                            <Badge
+                              variant={statusBadge.variant}
+                              className="text-xs"
+                            >
                               {statusBadge.label}
                             </Badge>
                             {job.stage && (
-                              <Badge variant={getJobStageBadge(job.stage).variant} className="text-xs">
+                              <Badge
+                                variant={getJobStageBadge(job.stage).variant}
+                                className="text-xs"
+                              >
                                 {getJobStageBadge(job.stage).label}
                               </Badge>
                             )}
@@ -704,7 +781,12 @@ export default function CalendarPage() {
                 </Button>
                 <Button
                   onClick={handleSaveTimeSlot}
-                  disabled={addingSlot || !newStartTime || !newEndTime || newEndTime <= newStartTime}
+                  disabled={
+                    addingSlot ||
+                    !newStartTime ||
+                    !newEndTime ||
+                    newEndTime <= newStartTime
+                  }
                 >
                   {addingSlot ? (
                     <>
@@ -723,4 +805,3 @@ export default function CalendarPage() {
     </div>
   );
 }
-

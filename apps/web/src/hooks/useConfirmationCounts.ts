@@ -14,7 +14,7 @@ export function useConfirmationCounts() {
 
     async function fetchConfirmationCounts() {
       if (!user) return;
-      
+
       try {
         // Get all jobs waiting for responses
         const { data: jobs } = await supabase
@@ -32,7 +32,10 @@ export function useConfirmationCounts() {
         const { count } = await supabase
           .from("job_confirmations")
           .select("*", { count: "exact", head: true })
-          .in("job_id", jobs.map((j) => j.id))
+          .in(
+            "job_id",
+            jobs.map((j) => j.id),
+          )
           .eq("status", "available");
 
         setTotalConfirmations(count || 0);
@@ -55,7 +58,7 @@ export function useConfirmationCounts() {
         },
         () => {
           fetchConfirmationCounts();
-        }
+        },
       )
       .subscribe();
 
@@ -71,7 +74,7 @@ export function useConfirmationCounts() {
         },
         () => {
           fetchConfirmationCounts();
-        }
+        },
       )
       .subscribe();
 
@@ -83,4 +86,3 @@ export function useConfirmationCounts() {
 
   return { totalConfirmations };
 }
-

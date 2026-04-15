@@ -12,12 +12,12 @@ export const discoverSheetDialogContentClassName = cn(
   "!data-[state=open]:slide-in-from-left-0 !data-[state=open]:slide-in-from-top-0",
   "!data-[state=closed]:slide-out-to-left-0 !data-[state=closed]:slide-out-to-top-0",
   "!data-[state=open]:zoom-in-100 !data-[state=closed]:zoom-out-100",
-  "!data-[state=open]:slide-in-from-bottom !data-[state=closed]:slide-out-to-bottom"
+  "!data-[state=open]:slide-in-from-bottom !data-[state=closed]:slide-out-to-bottom",
 );
 
 /** Single white/card surface from the top (handle closes sheet). */
 export const discoverSheetInnerCardClassName = cn(
-  "relative flex h-full min-h-0 w-full max-h-[min(92dvh,860px)] max-md:min-h-[68dvh] flex-1 flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-card shadow-sm sm:rounded-t-2xl"
+  "relative flex h-full min-h-0 w-full max-h-[min(92dvh,860px)] max-md:min-h-[68dvh] flex-1 flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-card shadow-sm sm:rounded-t-2xl",
 );
 
 /** Pill “stick” at top of sheet — tap to close (DialogClose). */

@@ -33,14 +33,16 @@ const THEMES: Record<UnifiedJobsTabId, JobsMobileStepperTheme> = {
   jobs: {
     strip:
       "bg-gradient-to-b from-emerald-500/18 via-background/92 to-background/95 dark:from-emerald-500/12 dark:via-background/90",
-    pillGradient: "bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-500 dark:to-teal-600",
+    pillGradient:
+      "bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-500 dark:to-teal-600",
     countBadgeSelected: "bg-white text-emerald-900 shadow-sm",
     countBadgeIdle: "bg-white/95 text-emerald-950 shadow-sm",
   },
   past: {
     strip:
       "bg-gradient-to-b from-blue-500/22 via-background/92 to-background/95 dark:from-blue-400/14 dark:via-background/90",
-    pillGradient: "bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-500 dark:to-indigo-600",
+    pillGradient:
+      "bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-500 dark:to-indigo-600",
     countBadgeSelected: "bg-white text-blue-800 shadow-sm dark:text-blue-100",
     countBadgeIdle: "bg-white/95 text-blue-900 shadow-sm dark:text-blue-100",
   },
@@ -53,7 +55,9 @@ const THEMES: Record<UnifiedJobsTabId, JobsMobileStepperTheme> = {
   },
 };
 
-export function jobsMobileStepperThemeForTab(tabId: string): JobsMobileStepperTheme {
+export function jobsMobileStepperThemeForTab(
+  tabId: string,
+): JobsMobileStepperTheme {
   if (tabId in THEMES) return THEMES[tabId as UnifiedJobsTabId];
   return THEMES.requests;
 }

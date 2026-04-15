@@ -52,7 +52,7 @@ function playHeartSplitApart(
   layer: HTMLDivElement,
   centerX: number,
   centerY: number,
-  onSplitDone: () => void
+  onSplitDone: () => void,
 ) {
   const wrap = document.createElement("div");
   wrap.className = "absolute flex h-7 w-7";
@@ -90,7 +90,7 @@ function playHeartSplitApart(
         opacity: 0,
       },
     ],
-    { duration: 420, easing: splitEase }
+    { duration: 420, easing: splitEase },
   );
   const rightAnim = right.animate(
     [
@@ -100,7 +100,7 @@ function playHeartSplitApart(
         opacity: 0,
       },
     ],
-    { duration: 420, easing: splitEase }
+    { duration: 420, easing: splitEase },
   );
 
   void Promise.all([leftAnim.finished, rightAnim.finished]).then(() => {
@@ -123,7 +123,7 @@ function floatLabel(
   x: number,
   y: number,
   text: string,
-  textClass: string
+  textClass: string,
 ) {
   const el = document.createElement("div");
   el.textContent = text;
@@ -137,12 +137,14 @@ function floatLabel(
       { opacity: 1, transform: "translateY(0) scale(1)", offset: 0.2 },
       { opacity: 0, transform: "translateY(-20px) scale(1.15)" },
     ],
-    { duration: 950, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+    { duration: 950, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
   ).onfinish = () => el.remove();
 }
 
 /** Heart flies from profile save button to Liked tab; “+1” appears at tab. */
-export function playFavoriteAddedToLikedTabFlight(sourceEl: HTMLElement | null): void {
+export function playFavoriteAddedToLikedTabFlight(
+  sourceEl: HTMLElement | null,
+): void {
   if (typeof document === "undefined" || !sourceEl) return;
   const target = document.querySelector(LIKED_TAB_ANCHOR);
   if (!target || !(target instanceof HTMLElement)) return;
@@ -154,7 +156,13 @@ export function playFavoriteAddedToLikedTabFlight(sourceEl: HTMLElement | null):
 
   if (prefersReducedMotion()) {
     const layer = ensureOverlay();
-    floatLabel(layer, tc.x, tc.y, "+1", "text-emerald-600 dark:text-emerald-400");
+    floatLabel(
+      layer,
+      tc.x,
+      tc.y,
+      "+1",
+      "text-emerald-600 dark:text-emerald-400",
+    );
     window.setTimeout(() => layer.remove(), 1100);
     return;
   }
@@ -174,15 +182,24 @@ export function playFavoriteAddedToLikedTabFlight(sourceEl: HTMLElement | null):
   const anim = heart.animate(
     [
       { transform: "translate(0, 0) scale(1.2)", offset: 0 },
-      { transform: `translate(${dx * 0.5}px, ${dy * 0.5}px) scale(1)`, offset: 0.5 },
+      {
+        transform: `translate(${dx * 0.5}px, ${dy * 0.5}px) scale(1)`,
+        offset: 0.5,
+      },
       { transform: `translate(${dx}px, ${dy}px) scale(1.08)`, offset: 1 },
     ],
-    { duration: 720, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+    { duration: 720, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
   );
 
   anim.onfinish = () => {
     heart.remove();
-    floatLabel(layer, tc.x, tc.y, "+1", "text-emerald-600 dark:text-emerald-400");
+    floatLabel(
+      layer,
+      tc.x,
+      tc.y,
+      "+1",
+      "text-emerald-600 dark:text-emerald-400",
+    );
     window.setTimeout(() => {
       layer.remove();
     }, 1000);
@@ -190,7 +207,9 @@ export function playFavoriteAddedToLikedTabFlight(sourceEl: HTMLElement | null):
 }
 
 /** Heart flies from Liked tab to top-right below header, then splits; “-1” there. */
-export function playFavoriteRemovedFromLikedTabFlight(sourceEl: HTMLElement | null): void {
+export function playFavoriteRemovedFromLikedTabFlight(
+  sourceEl: HTMLElement | null,
+): void {
   if (typeof document === "undefined" || !sourceEl) return;
   const target = document.querySelector(LIKED_TAB_ANCHOR);
   if (!target || !(target instanceof HTMLElement)) return;
@@ -202,7 +221,13 @@ export function playFavoriteRemovedFromLikedTabFlight(sourceEl: HTMLElement | nu
 
   if (prefersReducedMotion()) {
     const layer = ensureOverlay();
-    floatLabel(layer, anchor.x, anchor.y, "-1", "text-red-600 dark:text-red-400");
+    floatLabel(
+      layer,
+      anchor.x,
+      anchor.y,
+      "-1",
+      "text-red-600 dark:text-red-400",
+    );
     window.setTimeout(() => layer.remove(), 1100);
     return;
   }
@@ -226,13 +251,19 @@ export function playFavoriteRemovedFromLikedTabFlight(sourceEl: HTMLElement | nu
         transform: `translate(${dx}px, ${dy}px) scale(1.02)`,
       },
     ],
-    { duration: 620, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
+    { duration: 620, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
   );
 
   flyToHeaderZone.onfinish = () => {
     heart.remove();
     playHeartSplitApart(layer, anchor.x, anchor.y, () => {
-      floatLabel(layer, anchor.x, anchor.y, "-1", "text-red-600 dark:text-red-400");
+      floatLabel(
+        layer,
+        anchor.x,
+        anchor.y,
+        "-1",
+        "text-red-600 dark:text-red-400",
+      );
       window.setTimeout(() => {
         layer.remove();
       }, 1000);
