@@ -44,9 +44,9 @@ export function useRealtimeSubscription(
       const channel = supabase
         .channel(channelId)
         .on(
-          'postgres_changes',
+          'postgres_changes' as any,
           { event, schema, table, filter },
-          (payload) => {
+          (payload: any) => {
             const customEvent = new CustomEvent('payload', { detail: payload });
             emitter.dispatchEvent(customEvent);
           }
