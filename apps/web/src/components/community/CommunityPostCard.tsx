@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import {
   BadgeCheck,
-  Briefcase,
   Clock,
   Heart,
-  Loader2,
   MessageSquare,
   Share2,
 } from "lucide-react";
@@ -671,7 +669,7 @@ export function CommunityPostCard({
                       <Button
                         type="button"
                         className={cn(
-                          "shrink-0 gap-2 rounded-full border-0 font-semibold text-white shadow-md",
+                          "shrink-0 rounded-full border-0 font-semibold text-white shadow-md",
                           "bg-orange-500 hover:bg-orange-600",
                           "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-offset-2",
                           "disabled:opacity-60 dark:bg-orange-500 dark:hover:bg-orange-600",
@@ -680,24 +678,7 @@ export function CommunityPostCard({
                         disabled={hiringPostId === post.id || pendingHirePostIds.has(post.id)}
                         onClick={() => void onHireFromPost(post.id)}
                       >
-                        {hiringPostId === post.id ? (
-                          <Loader2
-                            className={cn(
-                              "animate-spin",
-                              largePublicIconRow ? "h-5 w-5" : "h-4 w-4"
-                            )}
-                            aria-hidden
-                          />
-                        ) : (
-                          <Briefcase
-                            className={cn(
-                              "shrink-0",
-                              largePublicIconRow ? "h-5 w-5" : "h-4 w-4"
-                            )}
-                            aria-hidden
-                          />
-                        )}
-                        Hire now
+                        {hiringPostId === post.id ? "Connecting…" : "Connect now"}
                       </Button>
                     )}
                   <Button
@@ -751,16 +732,11 @@ export function CommunityPostCard({
                     <Button
                       type="button"
                       size="sm"
-                      className="w-full gap-2 rounded-xl"
+                      className="w-full rounded-xl"
                       disabled={hiringPostId === post.id || pendingHirePostIds.has(post.id)}
                       onClick={() => void onHireFromPost(post.id)}
                     >
-                      {hiringPostId === post.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Briefcase className="h-4 w-4" />
-                      )}
-                      Hire now
+                      {hiringPostId === post.id ? "Connecting…" : "Connect now"}
                     </Button>
                     {pendingHirePostIds.has(post.id) && (
                       <p className="text-center text-[11px] font-semibold leading-snug text-muted-foreground sm:text-left">

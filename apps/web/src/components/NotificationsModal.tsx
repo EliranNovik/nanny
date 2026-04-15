@@ -76,7 +76,7 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
           .update({ status: "closed" })
           .eq("id", alert.id);
       }
-      /* confirmation + job_update: no safe status to set; inbox hides via rememberDismissedActivity */
+      /* confirmation + job_update + hire_interest: no safe status to set; inbox hides via rememberDismissedActivity */
     } catch (err) {
       console.error("Error ignoring notification:", err);
     } finally {
@@ -151,10 +151,13 @@ export function NotificationsModal({ open, onOpenChange }: NotificationsModalPro
                       <div className={cn(
                         "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
                         alert.type === 'message' ? "bg-blue-500/10 text-blue-600" :
-                        alert.type === 'job_request' ? "bg-emerald-500/10 text-emerald-600" : "bg-orange-500/10 text-orange-600"
+                        alert.type === 'job_request' ? "bg-emerald-500/10 text-emerald-600" :
+                        alert.type === 'hire_interest' ? "bg-orange-500/10 text-orange-600" : "bg-orange-500/10 text-orange-600"
                       )}>
                         {alert.type === 'message' ? <MessageSquare className="w-6 h-6" /> :
-                         alert.type === 'job_request' ? <Bell className="w-6 h-6" /> : <Briefcase className="w-6 h-6" />}
+                         alert.type === 'job_request' ? <Bell className="w-6 h-6" /> :
+                         alert.type === 'hire_interest' ? <Sparkles className="w-6 h-6" /> :
+                         <Briefcase className="w-6 h-6" />}
                       </div>
                     )}
                   </div>

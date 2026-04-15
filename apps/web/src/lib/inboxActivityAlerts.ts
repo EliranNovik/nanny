@@ -4,7 +4,7 @@ import { loadDismissedActivityIds } from "@/lib/inboxDismissedActivity";
 
 export interface NotificationAlert {
   id: string;
-  type: "job_request" | "confirmation" | "message" | "job_update";
+  type: "job_request" | "confirmation" | "message" | "job_update" | "hire_interest";
   title: string;
   description?: string;
   link: string;
@@ -92,6 +92,63 @@ export async function fetchInboxActivityAlerts(
   }
 
   if (profile.role === "freelancer") {
+    // Hire interest on the freelancer's availability posts (community).
+    const { data: myPosts } = await supabase
+      .from("community_posts")
+      .select("id")
+      .eq("author_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(60);
+
+    const myPostIds = (myPosts ?? []).map((p) => p.id as string).filter(Boolean);
+    if (myPostIds.length > 0) {
+      const { data: interests, error: iErr } = await supabase
+        .from("community_post_hire_interests")
+        .select("id, created_at, status, community_post_id, client_id")
+        .in("community_post_id", myPostIds)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (iErr) {
+        console.warn("[fetchInboxActivityAlerts] hire interests", iErr);
+      } else if (interests && interests.length > 0) {
+        const clientIds = Array.from(
+          new Set(
+            (interests as any[]).map((r) => r.client_id as string).filter(Boolean)
+          )
+        );
+        const { data: clientProfiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, photo_url")
+          .in("id", clientIds);
+
+        const clients = new Map<string, { full_name: string | null; photo_url: string | null }>();
+        for (const p of clientProfiles ?? []) {
+          clients.set(p.id as string, {
+            full_name: (p as any).full_name ?? null,
+            photo_url: (p as any).photo_url ?? null,
+          });
+        }
+
+        for (const r of interests as any[]) {
+          const c = clients.get(r.client_id as string);
+          const name = c?.full_name?.trim() || "Someone";
+          allAlerts.push({
+            id: `hire-${r.id as string}`,
+            type: "hire_interest",
+            title: `${name} wants to connect`,
+            description: "New interest on your availability post.",
+            link: `/availability/post/${encodeURIComponent(r.community_post_id as string)}/hires`,
+            created_at: r.created_at as string | undefined,
+            sender_name: c?.full_name ?? undefined,
+            sender_photo: c?.photo_url ?? undefined,
+            metadata: { table: "community_post_hire_interests", interest_id: r.id, post_id: r.community_post_id },
+          });
+        }
+      }
+    }
+
     const { data: notifications } = await supabase
       .from("job_candidate_notifications")
       .select(
@@ -236,6 +293,8 @@ export function inboxActivityKindLabel(type: NotificationAlert["type"]): string 
       return "Response";
     case "job_update":
       return "Update";
+    case "hire_interest":
+      return "Interest";
     default:
       return "Activity";
   }

@@ -1,22 +1,21 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
-  Bell,
-  Briefcase,
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
+  Clock,
   HeartHandshake,
   HelpingHand,
-  LayoutDashboard,
   Megaphone,
   Search,
   Users,
 } from "lucide-react";
+import { ExpiryCountdown } from "@/components/ExpiryCountdown";
+import { LiveTimer } from "@/components/LiveTimer";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/context/AuthContext";
 import {
   ALL_HELP_CATEGORY_ID,
   DISCOVER_HOME_CATEGORIES,
@@ -24,11 +23,11 @@ import {
 } from "@/lib/serviceCategories";
 import { supabase } from "@/lib/supabase";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
-import { useDiscoverShortcutsCounts } from "@/hooks/useDiscoverShortcutsCounts";
 import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeActivitySection";
 import { DiscoverHomeLiveTrackerBoard } from "@/components/discover/DiscoverHomeLiveTrackerBoard";
 import { DiscoverHomeLatestReviews } from "@/components/discover/DiscoverHomeLatestReviews";
 import { DiscoverHomeLatestPosts } from "@/components/discover/DiscoverHomeLatestPosts";
+import { DiscoverHomeLatestOwnPosts } from "@/components/discover/DiscoverHomeLatestOwnPosts";
 import { DiscoverHomeRecentActivity } from "@/components/discover/DiscoverHomeRecentActivity";
  
 type DiscoverRole = "client" | "freelancer";
@@ -66,6 +65,77 @@ function initials(name: string | null | undefined): string {
   return s || "??";
 }
 
+/**
+ * Best future deadline for the request card: confirmation end, computed window, community expiry
+ * (snapshot or live post row), then scheduled job start.
+ */
+function requestLiveExpiresAtIso(r: {
+  confirm_ends_at?: string | null;
+  confirm_starts_at?: string | null;
+  confirm_window_seconds?: number | null;
+  community_post_expires_at?: string | null;
+  linked_post_expires_at?: string | null;
+  start_at?: string | null;
+}): string | null {
+  const now = Date.now();
+  const tryFuture = (iso: string | null | undefined) => {
+    if (!iso) return null;
+    const t = Date.parse(iso);
+    if (Number.isNaN(t) || t <= now) return null;
+    return iso;
+  };
+
+  let iso = tryFuture(r.confirm_ends_at);
+  if (iso) return iso;
+
+  if (r.confirm_starts_at != null && r.confirm_window_seconds != null && r.confirm_window_seconds > 0) {
+    const start = Date.parse(r.confirm_starts_at);
+    if (!Number.isNaN(start)) {
+      const endMs = start + r.confirm_window_seconds * 1000;
+      if (endMs > now) return new Date(endMs).toISOString();
+    }
+  }
+
+  iso = tryFuture(r.community_post_expires_at);
+  if (iso) return iso;
+
+  iso = tryFuture(r.linked_post_expires_at);
+  if (iso) return iso;
+
+  iso = tryFuture(r.start_at);
+  if (iso) return iso;
+
+  return null;
+}
+
+function HelpRequestLiveExpiryRow({ expiresAtIso }: { expiresAtIso: string }) {
+  return (
+    <div className="mt-1 flex min-w-0 items-center gap-1.5" role="status" aria-live="polite">
+      <Clock className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" aria-hidden />
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Live</span>
+      <ExpiryCountdown
+        expiresAtIso={expiresAtIso}
+        compact
+        endedLabel="Ended"
+        className="!font-mono text-[11px] font-semibold tabular-nums text-orange-700 dark:text-orange-400"
+      />
+    </div>
+  );
+}
+
+/** When no future deadline exists (e.g. confirmation ended), still show a live elapsed timer. */
+function HelpRequestLiveElapsedRow({ createdAtIso }: { createdAtIso: string }) {
+  return (
+    <div className="mt-1 flex min-w-0 items-center gap-1.5" role="status" aria-live="polite">
+      <Clock className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" aria-hidden />
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Live</span>
+      <span className="font-mono text-[11px] font-semibold tabular-nums text-orange-700 dark:text-orange-400">
+        <LiveTimer createdAt={createdAtIso} />
+      </span>
+    </div>
+  );
+}
+
 function readStoredHomeMode(): DiscoverHomeMode | null {
   try {
     const v = localStorage.getItem(HOME_INTENT_STORAGE_KEY);
@@ -79,6 +149,7 @@ function readStoredHomeMode(): DiscoverHomeMode | null {
 export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   const navigate = useNavigate();
   const isClient = role === "client";
+  const { user, profile } = useAuth();
 
   const [homeMode, setHomeMode] = useState<DiscoverHomeMode>(() => {
     const stored = readStoredHomeMode();
@@ -94,11 +165,171 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
     }
   }, [homeMode]);
 
-  const dashboardPath = isClient ? "/dashboard" : "/freelancer/dashboard";
-  const { myPostedRequestsCount, incomingRequestsCount } = useDiscoverShortcutsCounts();
   const myPostedUrl = buildJobsUrl("client", "my_requests");
-  const clientLiveJobsUrl = buildJobsUrl("client", "jobs");
-  const incomingUrl = buildJobsUrl("freelancer", "requests");
+
+  type LatestClientRequest = {
+    id: string;
+    created_at: string;
+    status: string | null;
+    care_type: string | null;
+    service_type: string | null;
+    location_city: string | null;
+    confirm_ends_at: string | null;
+    confirm_starts_at: string | null;
+    confirm_window_seconds: number | null;
+    community_post_id: string | null;
+    community_post_expires_at: string | null;
+    /** From `community_posts` when the job links to a post — fills gaps if snapshot column is empty. */
+    linked_post_expires_at?: string | null;
+    start_at: string | null;
+  };
+
+  const [latestRequests, setLatestRequests] = useState<LatestClientRequest[]>([]);
+  const [latestRequestsLoading, setLatestRequestsLoading] = useState(false);
+  const [acceptedCountsByJobId, setAcceptedCountsByJobId] = useState<Record<string, number>>({});
+  const [acceptedAvatarsByJobId, setAcceptedAvatarsByJobId] = useState<
+    Record<string, { id: string; photo_url: string | null; full_name: string | null }[]>
+  >({});
+
+  function formatRequestTitle(r: LatestClientRequest): string {
+    const raw = (r.care_type || r.service_type || "").trim();
+    if (!raw) return "Request for help";
+    return raw
+      .split("_")
+      .map((p) => p.slice(0, 1).toUpperCase() + p.slice(1))
+      .join(" ");
+  }
+
+  function requestImageSrc(r: LatestClientRequest): string | null {
+    const id = (r.service_type || r.care_type || "").trim();
+    if (!id) return null;
+    const fromService = SERVICE_CATEGORIES.find((c) => c.id === id)?.imageSrc;
+    if (fromService) return fromService;
+    const fromDiscover = DISCOVER_HOME_CATEGORIES.find((c) => c.id === id)?.imageSrc;
+    return fromDiscover ?? null;
+  }
+
+  useEffect(() => {
+    if (homeMode !== "hire") return;
+    if (!user?.id || profile?.role !== "client") {
+      setLatestRequests([]);
+      setAcceptedCountsByJobId({});
+      setAcceptedAvatarsByJobId({});
+      return;
+    }
+
+    let cancelled = false;
+    setLatestRequestsLoading(true);
+    void (async () => {
+      const { data: reqs, error: reqErr } = await supabase
+        .from("job_requests")
+        .select(
+          [
+            "id, created_at, status, care_type, service_type, location_city",
+            "confirm_ends_at, confirm_starts_at, confirm_window_seconds",
+            "community_post_id, community_post_expires_at, start_at",
+          ].join(", ")
+        )
+        .eq("client_id", user.id)
+        .in("status", ["ready", "notifying", "confirmations_closed"])
+        .order("created_at", { ascending: false })
+        .limit(4);
+
+      if (cancelled) return;
+      if (reqErr) {
+        console.warn("[DiscoverHomeContent] latest requests", reqErr);
+        setLatestRequests([]);
+        setAcceptedCountsByJobId({});
+        setAcceptedAvatarsByJobId({});
+        setLatestRequestsLoading(false);
+        return;
+      }
+
+      const rawRows = (reqs ?? []) as unknown as LatestClientRequest[];
+      const nowIso = new Date().toISOString();
+      const postIds = [...new Set(rawRows.map((r) => r.community_post_id).filter(Boolean))] as string[];
+      const linkedExpiryByPostId: Record<string, string> = {};
+      if (postIds.length > 0) {
+        const { data: postRows, error: postErr } = await supabase
+          .from("community_posts")
+          .select("id, expires_at")
+          .in("id", postIds)
+          .gt("expires_at", nowIso);
+        if (postErr) {
+          console.warn("[DiscoverHomeContent] latest requests post expiry", postErr);
+        } else {
+          for (const pr of postRows ?? []) {
+            const row = pr as { id: string; expires_at: string };
+            if (row.id && row.expires_at) linkedExpiryByPostId[row.id] = row.expires_at;
+          }
+        }
+      }
+
+      const rows = rawRows.map((r) => ({
+        ...r,
+        linked_post_expires_at: r.community_post_id
+          ? linkedExpiryByPostId[r.community_post_id] ?? null
+          : null,
+      }));
+      setLatestRequests(rows);
+
+      if (rows.length === 0) {
+        setAcceptedCountsByJobId({});
+        setAcceptedAvatarsByJobId({});
+        setLatestRequestsLoading(false);
+        return;
+      }
+
+      const jobIds = rows.map((r) => r.id);
+      const { data: confs, error: confErr } = await supabase
+        .from("job_confirmations")
+        .select(
+          `
+            job_id,
+            freelancer_id,
+            created_at,
+            profiles!job_confirmations_freelancer_id_fkey ( id, photo_url, full_name )
+          `
+        )
+        .in("job_id", jobIds)
+        .eq("status", "available")
+        .order("created_at", { ascending: true });
+
+      if (cancelled) return;
+      if (confErr) {
+        console.warn("[DiscoverHomeContent] latest request accepts", confErr);
+        setAcceptedCountsByJobId({});
+        setAcceptedAvatarsByJobId({});
+        setLatestRequestsLoading(false);
+        return;
+      }
+
+      const counts: Record<string, number> = {};
+      const avatars: Record<string, { id: string; photo_url: string | null; full_name: string | null }[]> = {};
+      (confs as any[] | null)?.forEach((c) => {
+        const jobId = String(c.job_id ?? "");
+        if (!jobId) return;
+        counts[jobId] = (counts[jobId] || 0) + 1;
+        if (!avatars[jobId]) avatars[jobId] = [];
+        if (avatars[jobId].length >= 3) return;
+        const raw = c.profiles;
+        const p = Array.isArray(raw) ? raw[0] : raw;
+        avatars[jobId].push(
+          p
+            ? { id: String(p.id), photo_url: (p.photo_url ?? null) as string | null, full_name: (p.full_name ?? null) as string | null }
+            : { id: String(c.freelancer_id ?? ""), photo_url: null, full_name: null }
+        );
+      });
+
+      setAcceptedCountsByJobId(counts);
+      setAcceptedAvatarsByJobId(avatars);
+      setLatestRequestsLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [homeMode, user?.id, profile?.role]);
 
   const onCategoryClick = (id: string) => {
     navigate(`/public/posts?category=${encodeURIComponent(id)}`);
@@ -291,7 +522,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           "fixed inset-x-0 z-[45] pointer-events-none",
           /** Directly under fixed BottomNav header — keep in sync with `.app-content-below-fixed-header` in index.css */
           "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
-          "bg-white dark:bg-zinc-950"
+          "bg-background"
         )}
       >
         <div className="app-desktop-shell pointer-events-auto">
@@ -301,11 +532,10 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               <div
                 className={cn(
                   "relative mx-auto grid min-h-[62px] w-full max-w-[22rem] grid-cols-2 gap-0.5 overflow-hidden rounded-full p-1 sm:max-w-[24rem] sm:min-h-[70px]",
-                  "border border-zinc-200/90 bg-white",
-                  "dark:border-zinc-700 dark:bg-zinc-900",
-                  /** Recessed “well” — depth without floating drop shadow */
+                  "border border-border bg-white dark:bg-muted",
+                  /** Recessed “well” — keep dark inset subtle (heavy inset reads as a black band on the pill) */
                   "shadow-[inset_0_3px_14px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.35)]",
-                  "dark:shadow-[inset_0_4px_18px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]",
+                  "dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.06)]",
                   "transition-shadow duration-300"
                 )}
               >
@@ -314,9 +544,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   className={cn(
                     "pointer-events-none absolute top-1 bottom-1 left-1 z-[5] rounded-full",
                     "w-[calc((100%-0.625rem)/2)] will-change-transform",
-                    /** Inset depth on the active segment — reads pressed into the track, not lifted */
+                    /** Inset depth — lighter dark shadows so the thumb doesn’t get a muddy bottom band */
                     "shadow-[inset_0_2px_0_rgba(255,255,255,0.28),inset_0_-6px_14px_rgba(0,0,0,0.38),inset_0_0_0_1px_rgba(0,0,0,0.12)]",
-                    "dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-8px_18px_rgba(0,0,0,0.55),inset_0_0_0_1px_rgba(0,0,0,0.35)]",
+                    "dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-4px_12px_rgba(0,0,0,0.22),inset_0_0_0_1px_rgba(0,0,0,0.18)]",
                     "transition-[transform,background-image] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
                     homeMode === "hire"
                       ? "translate-x-0 bg-gradient-to-r from-orange-500 to-red-600"
@@ -391,11 +621,6 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </div>
           </div>
         </div>
-        {/** Soft blend into page background — no bottom border/hairline */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-white to-transparent dark:from-zinc-950 dark:to-transparent"
-        />
       </div>
 
       <div
@@ -406,114 +631,167 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
         )}
       >
         <div className="flex w-full flex-col gap-6 md:gap-8 lg:gap-10">
-          {homeMode === "hire" && isClient && (
-            <div className="w-full">
-              <button
-                type="button"
-                onClick={() => navigate("/client/create")}
+          <div className="flex w-full flex-col gap-4 md:flex-row md:items-start md:gap-4 lg:gap-6">
+            <div className="order-2 min-w-0 flex-1 md:order-1">
+              <DiscoverHomeActivitySection mode={homeMode} viewerRole={role} />
+            </div>
+
+            {(homeMode === "hire" && isClient) ||
+            (homeMode === "work" && isClient) ||
+            (homeMode === "work" && !isClient) ? (
+              <div
                 className={cn(
-                  "group flex w-full items-center gap-2.5 rounded-xl py-1.5 text-left outline-none transition-colors sm:gap-3",
-                  "focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  "dark:gap-3 dark:py-2.5 dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]"
+                  "order-1 w-full shrink-0 md:order-2",
+                  homeMode === "hire" && isClient
+                    ? "md:w-[min(100%,36rem)] lg:w-[min(100%,40rem)]"
+                    : "md:w-[min(100%,22rem)] lg:w-[min(100%,26rem)]"
                 )}
-                aria-label="Post a request for help"
               >
-                <div
-                  className={cn(
-                    "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
-                    "bg-orange-500 shadow-orange-500/20",
-                    "dark:bg-orange-500/15 dark:text-orange-400 dark:shadow-none"
-                  )}
-                >
-                  <Megaphone className="h-7 w-7" aria-hidden strokeWidth={2.25} />
-                </div>
-                <div
-                  className={cn(
-                    "flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5 transition-colors sm:gap-3",
-                    "bg-muted group-hover:bg-muted/90"
-                  )}
-                >
-                  <div className="min-w-0 flex-1 leading-snug">
-                    <p className="text-xs font-medium text-orange-600 dark:text-orange-400">Get help</p>
-                    <p className="text-base font-semibold text-foreground">Post a request for help</p>
-                    <p className="text-sm text-muted-foreground">Tell us what you need.</p>
+                {homeMode === "hire" && isClient ? (
+                  <div className="flex flex-col gap-3 md:flex-row md:items-stretch md:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/client/create")}
+                      className={cn(
+                        "group flex w-full min-w-0 items-center gap-2.5 rounded-xl py-1.5 text-left outline-none transition-colors sm:gap-3",
+                        "md:flex-1",
+                        "focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        "dark:gap-3 dark:py-2.5 dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]"
+                      )}
+                      aria-label="Post a request for help"
+                    >
+                    <div
+                      className={cn(
+                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
+                        "bg-orange-500 shadow-orange-500/20",
+                        "dark:bg-orange-500/15 dark:text-orange-400 dark:shadow-none"
+                      )}
+                    >
+                      <Megaphone className="h-7 w-7" aria-hidden strokeWidth={2.25} />
+                    </div>
+                    <div
+                      className={cn(
+                        "flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5 transition-colors sm:gap-3",
+                        "bg-muted group-hover:bg-muted/90"
+                      )}
+                    >
+                      <div className="min-w-0 flex-1 leading-snug">
+                        <p className="text-xs font-medium text-orange-600 dark:text-orange-400">Get help</p>
+                        <p className="text-base font-semibold text-foreground">Post a request for help</p>
+                        <p className="text-sm text-muted-foreground">Tell us what you need.</p>
+                      </div>
+                      <ChevronRight
+                        className="h-5 w-5 shrink-0 self-center text-muted-foreground transition group-hover:translate-x-0.5"
+                        aria-hidden
+                        strokeWidth={2}
+                      />
+                    </div>
+                  </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(hireHelpersPath)}
+                      className={cn(
+                        "flex w-full min-w-0 items-center gap-2.5 rounded-xl py-1.5 text-left outline-none transition-all sm:gap-3",
+                        "md:flex-1",
+                        "hover:bg-muted/40 active:scale-[0.99]",
+                        "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        "dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]"
+                      )}
+                      aria-label="Find helpers"
+                    >
+                      <div
+                        className={cn(
+                          "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-orange-600 shadow-sm",
+                          "bg-orange-500/10 ring-1 ring-orange-500/15",
+                          "dark:bg-orange-500/15 dark:text-orange-400 dark:shadow-none"
+                        )}
+                      >
+                        <Search className="h-7 w-7" aria-hidden strokeWidth={2.25} />
+                      </div>
+                      <div
+                        className={cn(
+                          "flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5 transition-colors sm:gap-3",
+                          "bg-muted hover:bg-muted/90"
+                        )}
+                      >
+                        <div className="min-w-0 flex-1 leading-snug">
+                          <p className="text-xs font-medium text-orange-600 dark:text-orange-400">Search</p>
+                          <p className="text-base font-semibold text-foreground">Find helpers</p>
+                          <p className="text-sm text-muted-foreground">Map & profiles</p>
+                        </div>
+                        <ChevronRight
+                          className="h-5 w-5 shrink-0 self-center text-muted-foreground"
+                          aria-hidden
+                          strokeWidth={2}
+                        />
+                      </div>
+                    </button>
                   </div>
-                  <ChevronRight
-                    className="h-5 w-5 shrink-0 self-center text-muted-foreground transition group-hover:translate-x-0.5"
-                    aria-hidden
-                    strokeWidth={2}
-                  />
-                </div>
-              </button>
-            </div>
-          )}
+                ) : null}
 
-          {homeMode === "work" && isClient && (
-            <div className="w-full">
-              <button
-                type="button"
-                onClick={() => navigate(workPrimaryPath)}
-                className={cn(
-                  "group flex w-full items-center gap-2.5 rounded-xl py-1.5 text-left outline-none transition-colors sm:gap-3",
-                  "focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  "dark:gap-3 dark:py-2.5 dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]"
-                )}
-                aria-label="Post availability"
-              >
-                <div
-                  className={cn(
-                    "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
-                    "bg-emerald-600 shadow-emerald-600/20",
-                    "dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-none"
-                  )}
-                >
-                  <CalendarPlus className="h-7 w-7" aria-hidden strokeWidth={2.25} />
-                </div>
-                <div
-                  className={cn(
-                    "flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5 transition-colors sm:gap-3",
-                    "bg-muted group-hover:bg-muted/90"
-                  )}
-                >
-                  <div className="min-w-0 flex-1 leading-snug">
-                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Go live</p>
-                    <p className="text-base font-semibold text-foreground">Post availability</p>
-                    <p className="text-sm text-muted-foreground">Go live so people can find you.</p>
-                  </div>
-                  <ChevronRight
-                    className="h-5 w-5 shrink-0 self-center text-muted-foreground transition group-hover:translate-x-0.5"
-                    aria-hidden
-                    strokeWidth={2}
-                  />
-                </div>
-              </button>
-            </div>
-          )}
+                {homeMode === "work" && isClient ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(workPrimaryPath)}
+                    className={cn(
+                      "group flex w-full items-center gap-2.5 rounded-xl py-1.5 text-left outline-none transition-colors sm:gap-3",
+                      "focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "dark:gap-3 dark:py-2.5 dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]"
+                    )}
+                    aria-label="Post availability"
+                  >
+                    <div
+                      className={cn(
+                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
+                        "bg-emerald-600 shadow-emerald-600/20",
+                        "dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-none"
+                      )}
+                    >
+                      <CalendarPlus className="h-7 w-7" aria-hidden strokeWidth={2.25} />
+                    </div>
+                    <div
+                      className={cn(
+                        "flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5 transition-colors sm:gap-3",
+                        "bg-muted group-hover:bg-muted/90"
+                      )}
+                    >
+                      <div className="min-w-0 flex-1 leading-snug">
+                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Go live</p>
+                        <p className="text-base font-semibold text-foreground">Post availability</p>
+                        <p className="text-sm text-muted-foreground">Go live so people can find you.</p>
+                      </div>
+                      <ChevronRight
+                        className="h-5 w-5 shrink-0 self-center text-muted-foreground transition group-hover:translate-x-0.5"
+                        aria-hidden
+                        strokeWidth={2}
+                      />
+                    </div>
+                  </button>
+                ) : null}
 
-          {homeMode === "work" && !isClient && (
-            <div className="mb-1 px-1 md:mb-0">
-              <button
-                type="button"
-                onClick={() => navigate(workPrimaryPath)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-3 text-left outline-none transition-all",
-                  "hover:bg-muted/45 active:scale-[0.99]",
-                  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                )}
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  <Users className="h-6 w-6" aria-hidden strokeWidth={2.25} />
-                </div>
-                <div className="min-w-0 flex-1 leading-none">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Open work</p>
-                  <p className="mt-0.5 text-base font-bold text-foreground">Browse open requests</p>
-                </div>
-                <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
-              </button>
-            </div>
-          )}
-
-          <DiscoverHomeActivitySection mode={homeMode} viewerRole={role} />
+                {homeMode === "work" && !isClient ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(workPrimaryPath)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-3 text-left outline-none transition-all",
+                      "hover:bg-muted/45 active:scale-[0.99]",
+                      "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    )}
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                      <Users className="h-6 w-6" aria-hidden strokeWidth={2.25} />
+                    </div>
+                    <div className="min-w-0 flex-1 leading-none">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Open work</p>
+                      <p className="mt-0.5 text-base font-bold text-foreground">Browse open requests</p>
+                    </div>
+                    <ChevronRight className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
 
           {homeMode === "hire" && (
             <section
@@ -578,15 +856,15 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       ) : null}
                       <span
                         className={cn(
-                          "absolute left-2 top-2 z-[2] rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums leading-none sm:left-2.5 sm:top-2.5",
-                          "bg-black/40 text-white/95 opacity-90 ring-1 ring-white/10 backdrop-blur-[2px]",
-                          "dark:bg-black/45 dark:text-white/95"
+                          "absolute left-2 top-2 z-[2] rounded-full px-3 py-1 text-xs font-black tabular-nums leading-none sm:left-2.5 sm:top-2.5 md:left-3 md:top-3 md:px-3.5 md:py-1.5 md:text-sm",
+                          "bg-black/45 text-white opacity-95 ring-1 ring-white/15 backdrop-blur-[2px]",
+                          "dark:bg-black/50 dark:text-white"
                         )}
                         aria-hidden
                       >
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1.5">
                           <span>{liveCountLabel(cat.id)}</span>
-                          <span className="text-[9px] font-semibold uppercase tracking-wide text-white/85">
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-white/90 sm:text-xs md:text-sm">
                             now
                           </span>
                         </span>
@@ -644,7 +922,203 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </section>
           )}
 
-          {homeMode === "hire" && (
+          {homeMode === "hire" && user?.id && profile?.role === "client" && latestRequests.length > 0 && (
+            <section className="px-1" aria-label="Your latest requests">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Your latest requests
+                  </p>
+                  
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate(myPostedUrl)}
+                  className={cn(
+                    "shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground transition-colors",
+                    "hover:bg-muted/60 hover:text-foreground active:bg-muted/80",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  )}
+                >
+                  Show more
+                </button>
+              </div>
+
+              {latestRequestsLoading ? (
+                <div className="rounded-xl border border-border/60 bg-card/30 px-3 py-4 text-sm text-muted-foreground">
+                  Loading your latest requests…
+                </div>
+              ) : (
+                <>
+                  <div className="sm:hidden">
+                    {latestRequests.slice(0, 1).map((r) => {
+                      const count = acceptedCountsByJobId[r.id] || 0;
+                      const helpers = acceptedAvatarsByJobId[r.id] || [];
+                      const imgSrc = requestImageSrc(r);
+                      const liveIso = requestLiveExpiresAtIso(r);
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => navigate(myPostedUrl)}
+                          className={cn(
+                            "relative w-full rounded-xl bg-muted/20 p-2.5 text-left transition-colors dark:bg-muted/40",
+                            "hover:bg-muted/30 active:bg-muted/45 dark:hover:bg-muted/55 dark:active:bg-muted/70",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          )}
+                        >
+                          {count > 0 ? (
+                            <span
+                              className={cn(
+                                "absolute right-1.5 top-1.5 z-[1] inline-flex h-6 min-w-[1.375rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums leading-none text-white shadow-sm",
+                                "bg-gradient-to-r from-orange-500 to-red-600",
+                                "ring-1 ring-orange-600/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                              )}
+                            >
+                              {count}
+                            </span>
+                          ) : null}
+                          <div
+                            className={cn(
+                              "flex items-start justify-between gap-3",
+                              count > 0 ? "pr-9" : undefined
+                            )}
+                          >
+                            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                              {formatRequestTitle(r)}
+                            </p>
+                            <div className="flex shrink-0 items-center">
+                              <div className="flex -space-x-2.5">
+                                {helpers.slice(0, 3).map((p) => (
+                                  <Avatar key={p.id} className="h-9 w-9 border-2 border-background shadow-md">
+                                    <AvatarImage src={p.photo_url || undefined} className="object-cover" />
+                                    <AvatarFallback className="bg-card text-[11px] font-black text-foreground">
+                                      {initials(p.full_name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-2.5 flex items-center gap-2.5">
+                            <div
+                              className="relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border border-orange-500/20 bg-muted/40 shadow-sm ring-1 ring-orange-500/15"
+                              aria-hidden
+                            >
+                              {imgSrc ? <img src={imgSrc} alt="" className="h-full w-full object-cover" /> : null}
+                              <div className="pointer-events-none absolute inset-0 bg-black/15" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold text-muted-foreground">
+                                {r.location_city?.trim() ? r.location_city.trim() : "No location"}
+                              </p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                Posted {new Date(r.created_at).toLocaleDateString()}
+                              </p>
+                              {liveIso ? (
+                                <HelpRequestLiveExpiryRow expiresAtIso={liveIso} />
+                              ) : (
+                                <HelpRequestLiveElapsedRow createdAtIso={r.created_at} />
+                              )}
+                            </div>
+                            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="hidden sm:grid sm:grid-cols-1 sm:gap-2 md:grid-cols-2 md:gap-3 lg:grid-cols-4 lg:gap-3">
+                    {latestRequests.slice(0, 4).map((r) => {
+                      const count = acceptedCountsByJobId[r.id] || 0;
+                      const helpers = acceptedAvatarsByJobId[r.id] || [];
+                      const imgSrc = requestImageSrc(r);
+                      const liveIso = requestLiveExpiresAtIso(r);
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => navigate(myPostedUrl)}
+                          className={cn(
+                            "relative w-full rounded-2xl bg-muted/20 p-4 text-left transition-colors dark:bg-muted/30",
+                            "hover:bg-muted/25 active:bg-muted/40 dark:hover:bg-muted/45 dark:active:bg-muted/60",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          )}
+                        >
+                          {count > 0 ? (
+                            <span
+                              className={cn(
+                                "absolute right-1.5 top-1.5 z-[1] inline-flex h-6 min-w-[1.375rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums leading-none text-white shadow-sm",
+                                "bg-gradient-to-r from-orange-500 to-red-600",
+                                "ring-1 ring-orange-600/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                              )}
+                            >
+                              {count}
+                            </span>
+                          ) : null}
+                          <div
+                            className={cn(
+                              "flex items-start justify-between gap-3",
+                              count > 0 ? "pr-9" : undefined
+                            )}
+                          >
+                            <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
+                              {formatRequestTitle(r)}
+                            </p>
+                            <div className="flex shrink-0 items-center">
+                              <div className="flex -space-x-2.5">
+                                {helpers.slice(0, 3).map((p) => (
+                                  <Avatar key={p.id} className="h-10 w-10 border-2 border-background shadow-md">
+                                    <AvatarImage src={p.photo_url || undefined} className="object-cover" />
+                                    <AvatarFallback className="bg-card text-[11px] font-black text-foreground">
+                                      {initials(p.full_name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-3">
+                            <div
+                              className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-orange-500/20 bg-muted/40 shadow-sm ring-1 ring-orange-500/15"
+                              aria-hidden
+                            >
+                              {imgSrc ? <img src={imgSrc} alt="" className="h-full w-full object-cover" /> : null}
+                              <div className="pointer-events-none absolute inset-0 bg-black/15" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-muted-foreground">
+                                {r.location_city?.trim() ? r.location_city.trim() : "No location"}
+                              </p>
+                              <p className="mt-0.5 text-sm text-muted-foreground">
+                                Posted {new Date(r.created_at).toLocaleDateString()}
+                              </p>
+                              {liveIso ? (
+                                <HelpRequestLiveExpiryRow expiresAtIso={liveIso} />
+                              ) : (
+                                <HelpRequestLiveElapsedRow createdAtIso={r.created_at} />
+                              )}
+                            </div>
+                            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden strokeWidth={2} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
+          {homeMode === "hire" && user?.id && profile?.role === "client" && (
+            <div className="mb-4 px-1 md:mb-0">
+              <DiscoverHomeLiveTrackerBoard variant="hire" />
+            </div>
+          )}
+
+          {homeMode === "hire" && !isClient && (
             <section className="mb-1 px-1 md:mb-0" aria-label="Find helpers">
               <button
                 type="button"
@@ -741,15 +1215,15 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       ) : null}
                       <span
                         className={cn(
-                          "absolute left-2 top-2 z-[2] rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums leading-none sm:left-2.5 sm:top-2.5",
-                          "bg-black/40 text-white/95 opacity-90 ring-1 ring-white/10 backdrop-blur-[2px]",
-                          "dark:bg-black/45 dark:text-white/95"
+                          "absolute left-2 top-2 z-[2] rounded-full px-3 py-1 text-xs font-black tabular-nums leading-none sm:left-2.5 sm:top-2.5 md:left-3 md:top-3 md:px-3.5 md:py-1.5 md:text-sm",
+                          "bg-black/45 text-white opacity-95 ring-1 ring-white/15 backdrop-blur-[2px]",
+                          "dark:bg-black/50 dark:text-white"
                         )}
                         aria-hidden
                       >
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1.5">
                           <span>{liveCountLabel(cat.id)}</span>
-                          <span className="text-[9px] font-semibold uppercase tracking-wide text-white/85">
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-white/90 sm:text-xs md:text-sm">
                             live
                           </span>
                         </span>
@@ -807,6 +1281,14 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             </section>
           )}
 
+          {homeMode === "work" && <DiscoverHomeLatestOwnPosts />}
+
+          {homeMode === "work" && (
+            <div className="mb-4 md:mb-0">
+              <DiscoverHomeLiveTrackerBoard variant="work" />
+            </div>
+          )}
+
           {homeMode === "work" && <DiscoverHomeRecentActivity viewerRole={role} />}
 
           {homeMode === "work" && (
@@ -816,115 +1298,10 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           )}
 
           {homeMode === "hire" && (
-          <>
           <div className="mb-4 mt-6 md:mb-0 md:mt-0">
-            <DiscoverHomeLiveTrackerBoard />
-          </div>
-          <div className="mb-4 md:mb-0">
             <DiscoverHomeLatestPosts />
           </div>
-          </>
           )}
-
-          <section className="mt-6 px-1 pb-8 md:mt-0 md:pb-12" aria-label="Shortcuts">
-            <div className="grid grid-cols-3 gap-1 sm:gap-2">
-              {homeMode === "hire" ? (
-                <>
-                  <Link
-                    to={myPostedUrl}
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    {myPostedRequestsCount > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -right-0.5 -top-0.5 flex h-7 min-w-7 items-center justify-center border-[3px] border-background px-1.5 text-xs font-black leading-none shadow-sm"
-                      >
-                        {myPostedRequestsCount > 99 ? "99+" : myPostedRequestsCount}
-                      </Badge>
-                    )}
-                    <ClipboardList className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">My posted requests</span>
-                  </Link>
-                  <Link
-                    to={clientLiveJobsUrl}
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    <Briefcase className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">
-                      {isClient ? "Helping me now" : "Helping now"}
-                    </span>
-                  </Link>
-                  <Link
-                    to={dashboardPath}
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    <LayoutDashboard className="h-8 w-8 text-slate-600 dark:text-slate-300" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Dashboard</span>
-                  </Link>
-                </>
-              ) : isClient ? (
-                <>
-                  <Link
-                    to="/availability"
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    <CalendarPlus className="h-8 w-8 text-emerald-600" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">My availability</span>
-                  </Link>
-                  <Link
-                    to={clientLiveJobsUrl}
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    <Briefcase className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">
-                      Helping now
-                    </span>
-                  </Link>
-                  <Link
-                    to={dashboardPath}
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    <LayoutDashboard className="h-8 w-8 text-slate-600 dark:text-slate-300" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Dashboard</span>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to={incomingUrl}
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    {incomingRequestsCount > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -right-0.5 -top-0.5 flex h-7 min-w-7 items-center justify-center border-[3px] border-background px-1.5 text-xs font-black leading-none shadow-sm"
-                      >
-                        {incomingRequestsCount > 99 ? "99+" : incomingRequestsCount}
-                      </Badge>
-                    )}
-                    <Bell className="h-8 w-8 text-orange-500" aria-hidden strokeWidth={2.25} />
-                    <span className="px-0.5 text-[10px] font-bold leading-tight text-foreground sm:text-xs">
-                      We need your help in…
-                    </span>
-                  </Link>
-                  <Link
-                    to="/availability"
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    <CalendarPlus className="h-8 w-8 text-emerald-600" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">My availability</span>
-                  </Link>
-                  <Link
-                    to={dashboardPath}
-                    className="relative flex flex-col items-center gap-2 py-2 text-center outline-none transition-opacity hover:opacity-90 active:opacity-75 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-                  >
-                    <LayoutDashboard className="h-8 w-8 text-slate-600 dark:text-slate-300" aria-hidden strokeWidth={2.25} />
-                    <span className="text-xs font-bold leading-tight text-foreground sm:text-sm">Dashboard</span>
-                  </Link>
-                </>
-              )}
-            </div>
-          </section>
         </div>
       </div>
     </div>
