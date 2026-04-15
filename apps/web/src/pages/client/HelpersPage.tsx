@@ -3,10 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import {
-  isServiceCategoryId,
-  serviceCategoryLabel,
-} from "@/lib/serviceCategories";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   GOOGLE_MAPS_LIBRARIES,
