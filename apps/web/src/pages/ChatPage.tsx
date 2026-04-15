@@ -190,6 +190,7 @@ export default function ChatPage({
     const h = Math.min(Math.max(el.scrollHeight, minLine), maxPx);
     el.style.height = `${h}px`;
   }
+  const { addToast } = useToast();
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [mobileView, setMobileView] = useState<"steps" | "chat">("steps"); // Default to steps on mobile
 
@@ -359,19 +360,40 @@ export default function ChatPage({
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const [markingRead, setMarkingRead] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedImage, setSelectedImage] = useState<Message | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   // Job details state
   const [job, setJob] = useState<Job | null>(null);
+  const [communityPostCard, setCommunityPostCard] =
+    useState<CommunityPostCardState | null>(null);
   const [priceOffer, setPriceOffer] = useState<number | null>(null);
 
   // Revise schedule state
+  const [showReviseModal, setShowReviseModal] = useState(false);
+  const [reviseDate, setReviseDate] = useState<Date | null>(null);
+  const [reviseTime, setReviseTime] = useState("");
+  const [revisePending, setRevisePending] = useState(false);
   const [freelancerUnavailableTimeSlots, setFreelancerUnavailableTimeSlots] =
     useState<string[]>([]);
   const [scheduledJobs, setScheduledJobs] = useState<Job[]>([]);
 
+  // Revise Price state
+  const [showRevisePriceModal, setShowRevisePriceModal] = useState(false);
+  const [priceOfferInput, setPriceOfferInput] = useState("");
+  const [priceOfferPending, setPriceOfferPending] = useState(false);
+
   // Payment state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentHoursInput, setPaymentHoursInput] = useState("");
+  const [paymentHourlyRateInput, setPaymentHourlyRateInput] = useState("");
   const [paymentHourlyRate, setPaymentHourlyRate] = useState(0);
   const [paymentTotal, setPaymentTotal] = useState(0);
+  const [paymentPending, setPaymentPending] = useState(false);
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>("");
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [reportConversations, setReportConversations] = useState<
@@ -544,6 +566,10 @@ export default function ChatPage({
         jobRowId: convo.job_id,
       };
     }
+
+    (async () => {
+      await fetchConversation();
+    })();
 
     (async () => {
       await fetchConversation();
