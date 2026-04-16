@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -19,7 +18,7 @@ import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Activity, Bell, ChevronRight, Loader2, Radio } from "lucide-react";
+import { Bell, ChevronRight, Loader2, Radio } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -596,61 +595,13 @@ export function DiscoverHomeActivitySection({
 
   const workSection = (
     <>
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">
-          Searching for you...
-        </p>
-      </div>
-
-      {!inboundLoading && inbound.length > 0 && viewerRole === "freelancer" && (
-        <div
-          className="mb-3 space-y-2 rounded-2xl border border-border/50 bg-background/60 px-3 py-2.5 dark:bg-background/40"
-          aria-label="Live activity"
-        >
-          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <Activity
-              className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            />
-            Live activity
-          </div>
-          <ul className="space-y-2">
-            {inbound.slice(0, 2).map((n) => {
-              const job = n.job_requests;
-              const prof = job.profiles as
-                | { full_name?: string | null }
-                | { full_name?: string | null }[]
-                | undefined;
-              const profileRow = Array.isArray(prof) ? prof[0] : prof;
-              const name = profileRow?.full_name?.trim() || "Someone";
-              const city = job.location_city?.trim();
-              const when = formatDistanceToNow(new Date(n.created_at), {
-                addSuffix: true,
-              });
-              return (
-                <li key={n.id} className="flex gap-2 text-sm leading-snug">
-                  <span
-                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500 motion-safe:animate-pulse"
-                    aria-hidden
-                  />
-                  <span className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">
-                      {name}
-                    </span>{" "}
-                    <span className="text-foreground/90">
-                      needs {formatJobTitle(job)}
-                    </span>
-                    {city ? ` · ${city}` : ""}{" "}
-                    <span className="text-xs text-muted-foreground">
-                      · {when}
-                    </span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+      {viewerRole !== "freelancer" ? (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <p className="text-sm font-extrabold uppercase tracking-wider text-foreground">
+            Searching for you...
+          </p>
         </div>
-      )}
+      ) : null}
 
       {!inboundLoading &&
         inbound.length === 0 &&

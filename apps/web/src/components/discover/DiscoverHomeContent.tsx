@@ -20,7 +20,7 @@ import {
   DISCOVER_HOME_CATEGORIES,
   SERVICE_CATEGORIES,
 } from "@/lib/serviceCategories";
- import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { DiscoverHomeActivitySection } from "@/components/discover/DiscoverHomeActivitySection";
 import { DiscoverHomeLiveTrackerBoard } from "@/components/discover/DiscoverHomeLiveTrackerBoard";
 import { DiscoverHomeLatestReviews } from "@/components/discover/DiscoverHomeLatestReviews";
@@ -303,7 +303,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   const [homeMode, setHomeMode] = useState<DiscoverHomeMode>(() => {
     const stored = readStoredHomeMode();
     if (stored) return stored;
-    return isClient ? "hire" : "work";
+    return "hire";
   });
   useEffect(() => {
     try {
@@ -353,10 +353,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   const onWorkCategoryPostAvailability = (id: string) => {
     navigate(`/availability/post-now?category=${encodeURIComponent(id)}`);
   };
-  const hireHelpersPath = isClient ? "/client/helpers" : "/public/posts";
-  const workPrimaryPath = isClient
-    ? "/availability/post-now"
-    : buildJobsUrl("freelancer", "requests");
+  const hireHelpersPath = "/client/helpers";
+  /** Post availability — same for clients and freelancers on discover home */
+  const workPrimaryPath = "/availability/post-now";
 
   const liveCountLabel = useMemo(
     () => (catId: string) => {
@@ -532,19 +531,16 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
               <DiscoverHomeActivitySection mode={homeMode} viewerRole={role} />
             </div>
 
-            {(homeMode === "hire" && isClient) ||
-            (homeMode === "work" && isClient) ||
-            (homeMode === "work" && !isClient) ? (
-              <div
-                className={cn(
-                  "order-1 w-full shrink-0 md:order-2",
-                  homeMode === "hire" && isClient
-                    ? "md:w-[min(100%,36rem)] lg:w-[min(100%,40rem)]"
-                    : "md:w-[min(100%,22rem)] lg:w-[min(100%,26rem)]",
-                )}
-              >
-                {homeMode === "hire" && isClient ? (
-                  <div className="flex flex-col gap-3 md:flex-row md:items-stretch md:gap-3">
+            <div
+              className={cn(
+                "order-1 w-full shrink-0 md:order-2",
+                homeMode === "hire"
+                  ? "md:w-[min(100%,36rem)] lg:w-[min(100%,40rem)]"
+                  : "md:w-[min(100%,22rem)] lg:w-[min(100%,26rem)]",
+              )}
+            >
+              {homeMode === "hire" ? (
+                <div className="flex flex-col gap-3 md:flex-row md:items-stretch md:gap-3">
                     <button
                       type="button"
                       onClick={() => navigate("/client/create")}
@@ -634,92 +630,56 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       </div>
                     </button>
                   </div>
-                ) : null}
+              ) : null}
 
-                {homeMode === "work" && isClient ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(workPrimaryPath)}
+              {homeMode === "work" ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(workPrimaryPath)}
+                  className={cn(
+                    "group flex w-full min-w-0 items-center gap-2.5 rounded-[20px] p-2 text-left outline-none sm:gap-3",
+                    "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5",
+                    "shadow-sm",
+                    INTERACTIVE_CARD_HOVER,
+                    isClient
+                      ? "focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      : "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  )}
+                  aria-label="Post availability"
+                >
+                  <div
                     className={cn(
-                      "group flex w-full min-w-0 items-center gap-2.5 rounded-[20px] p-2 text-left outline-none sm:gap-3",
-                      "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5",
-                      "shadow-sm",
-                      INTERACTIVE_CARD_HOVER,
-                      "focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    )}
-                    aria-label="Post availability"
-                  >
-                    <div
-                      className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm",
-                        "bg-gradient-to-br from-emerald-400 to-emerald-500 text-white",
-                      )}
-                    >
-                      <CalendarPlus
-                        className="h-6 w-6"
-                        aria-hidden
-                        strokeWidth={2.5}
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1 leading-snug">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-0.5">
-                        Go live
-                      </p>
-                      <p className="text-[15px] font-bold text-slate-900 dark:text-slate-100 mb-0.5">
-                        Post availability
-                      </p>
-                      <p className="text-[13px] font-medium text-slate-500 dark:text-zinc-400 leading-tight">
-                        Go live so people can find you.
-                      </p>
-                    </div>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 dark:bg-zinc-800 text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors mr-1">
-                      <ChevronRight
-                        className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-                        aria-hidden
-                        strokeWidth={2.5}
-                      />
-                    </div>
-                  </button>
-                ) : null}
-
-                {homeMode === "work" && !isClient ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(workPrimaryPath)}
-                    className={cn(
-                      "group flex w-full min-w-0 items-center gap-2.5 rounded-[20px] p-2 text-left outline-none sm:gap-3",
-                      "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5",
-                      "shadow-sm",
-                      INTERACTIVE_CARD_HOVER,
-                      "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm",
+                      "bg-gradient-to-br from-emerald-400 to-emerald-500 text-white",
                     )}
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 border border-slate-200/50 dark:bg-zinc-800 dark:text-slate-300 dark:border-white/5 shadow-sm">
-                      <ChevronRight
-                        className="h-6 w-6"
-                        aria-hidden
-                        strokeWidth={2.5}
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1 leading-snug">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-0.5">
-                        Open work
-                      </p>
-                      <p className="text-[15px] font-bold text-slate-900 dark:text-slate-100 mb-0.5">
-                        Browse open requests
-                      </p>
-                    </div>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 dark:bg-zinc-800 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-800 transition-colors mr-1">
-                      <ChevronRight
-                        className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-                        aria-hidden
-                        strokeWidth={2.5}
-                      />
-                    </div>
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+                    <CalendarPlus
+                      className="h-6 w-6"
+                      aria-hidden
+                      strokeWidth={2.5}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1 leading-snug">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-0.5">
+                      Go live
+                    </p>
+                    <p className="text-[15px] font-bold text-slate-900 dark:text-slate-100 mb-0.5">
+                      Post availability
+                    </p>
+                    <p className="text-[13px] font-medium text-slate-500 dark:text-zinc-400 leading-tight">
+                      Go live so people can find you.
+                    </p>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 dark:bg-zinc-800 text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors mr-1">
+                    <ChevronRight
+                      className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                      aria-hidden
+                      strokeWidth={2.5}
+                    />
+                  </div>
+                </button>
+              ) : null}
+            </div>
           </div>
 
           {homeMode === "hire" && (
@@ -737,7 +697,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
                     "max-md:pr-2",
                     "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                    "touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+                    /** pan-x + pan-y: vertical scroll passes to the page; horizontal still scrolls this row */
+                    "[touch-action:pan-x_pan-y] overscroll-x-contain [-webkit-overflow-scrolling:touch]",
                     "md:grid md:grid-cols-6 md:gap-3 md:overflow-visible md:snap-none md:overscroll-auto md:touch-auto md:pr-0 md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:auto",
                   )}
                 >
@@ -1066,7 +1027,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
                     "max-md:pr-2",
                     "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                    "touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+                    "[touch-action:pan-x_pan-y] overscroll-x-contain [-webkit-overflow-scrolling:touch]",
                     "md:grid md:grid-cols-6 md:gap-3 md:overflow-visible md:snap-none md:overscroll-auto md:touch-auto md:pr-0 md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:auto",
                   )}
                 >

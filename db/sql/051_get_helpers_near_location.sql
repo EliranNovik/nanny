@@ -32,12 +32,12 @@ BEGIN
       p.full_name,
       p.photo_url,
       p.city,
-      p.location_lat,
-      p.location_lng,
-      p.service_radius,
-      p.average_rating,
+      (p.location_lat)::double precision,
+      (p.location_lng)::double precision,
+      (p.service_radius)::double precision,
+      (p.average_rating)::double precision,
       p.total_ratings,
-      p.role,
+      (p.role)::text,
       p.is_available_for_jobs,
       jsonb_build_object(
         'hourly_rate_min', fp.hourly_rate_min,
@@ -46,17 +46,19 @@ BEGIN
         'available_now', fp.available_now
       ) as freelancer_profiles,
       -- Haversine formula (6371 km)
-      CASE 
-        WHEN p.location_lat IS NOT NULL AND p.location_lng IS NOT NULL THEN
-          6371 * acos(
-            least(1.0, greatest(-1.0,
-              cos(radians(search_lat)) * cos(radians(p.location_lat)) *
-              cos(radians(p.location_lng) - radians(search_lng)) +
-              sin(radians(search_lat)) * sin(radians(p.location_lat))
-            ))
-          )
-        ELSE NULL
-      END AS distance_km
+      (
+        CASE 
+          WHEN p.location_lat IS NOT NULL AND p.location_lng IS NOT NULL THEN
+            6371 * acos(
+              least(1.0, greatest(-1.0,
+                cos(radians(search_lat)) * cos(radians(p.location_lat)) *
+                cos(radians(p.location_lng) - radians(search_lng)) +
+                sin(radians(search_lat)) * sin(radians(p.location_lat))
+              ))
+            )
+          ELSE NULL
+        END
+      )::double precision AS distance_km
     FROM profiles p
     LEFT JOIN freelancer_profiles fp ON p.id = fp.user_id
     WHERE p.role = 'freelancer' OR (p.role = 'client' AND p.is_available_for_jobs = true)

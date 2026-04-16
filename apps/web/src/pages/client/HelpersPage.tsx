@@ -650,6 +650,31 @@ export default function HelpersPage() {
               >
                 <CardContent className="flex flex-1 flex-col gap-0 p-0">
                   <div className="relative aspect-[5/4] w-full min-h-[200px] shrink-0 bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-800 dark:to-slate-900">
+                    {h.is_available_for_jobs && (
+                      <div
+                        className="pointer-events-none absolute left-3 top-3 z-[11] max-w-[calc(100%-5rem)]"
+                        role="status"
+                        aria-label="Available for jobs now"
+                      >
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-md border border-white/20",
+                            "bg-slate-950/75 px-2.5 py-1.5 shadow-lg shadow-black/15 backdrop-blur-md",
+                            "text-[10px] font-bold uppercase leading-none tracking-[0.14em] text-white",
+                            "ring-1 ring-inset ring-white/10",
+                          )}
+                        >
+                          <span
+                            className="relative flex h-2 w-2 shrink-0"
+                            aria-hidden
+                          >
+                            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
+                          </span>
+                          <span className="pr-0.5">Available now</span>
+                        </span>
+                      </div>
+                    )}
                     {user?.id && (
                       <button
                         type="button"
@@ -725,14 +750,6 @@ export default function HelpersPage() {
                       <span className="text-xs font-semibold text-muted-foreground">
                         New helper
                       </span>
-                    )}
-
-                    {/* Available now badge */}
-                    {h.is_available_for_jobs && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Available now</span>
-                      </div>
                     )}
 
                     {(h.freelancer_profiles?.hourly_rate_min != null ||

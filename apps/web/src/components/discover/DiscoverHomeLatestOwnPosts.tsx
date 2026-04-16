@@ -289,7 +289,7 @@ export function DiscoverHomeLatestOwnPosts() {
                   type="button"
                   onClick={() =>
                     navigate(
-                      `/availability/post/${encodeURIComponent(r.id)}/hires`,
+                      `/availability?post=${encodeURIComponent(r.id)}`,
                     )
                   }
                   className={cn(
@@ -378,7 +378,7 @@ export function DiscoverHomeLatestOwnPosts() {
                   type="button"
                   onClick={() =>
                     navigate(
-                      `/availability/post/${encodeURIComponent(r.id)}/hires`,
+                      `/availability?post=${encodeURIComponent(r.id)}`,
                     )
                   }
                   className={cn(

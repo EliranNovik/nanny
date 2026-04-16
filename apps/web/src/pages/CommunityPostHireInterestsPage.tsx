@@ -41,7 +41,7 @@ function profileFromRow(row: HireInterest): ProfileEmbed | null {
 export default function CommunityPostHireInterestsPage() {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [interests, setInterests] = useState<HireInterest[]>([]);
@@ -116,15 +116,31 @@ export default function CommunityPostHireInterestsPage() {
     }
   };
 
-  if (!user || profile?.role !== "freelancer") {
+  if (authLoading) {
+    return (
+      <div className="app-desktop-shell flex min-h-[40vh] items-center justify-center px-4 py-10">
+        <Loader2
+          className="h-10 w-10 animate-spin text-orange-500"
+          aria-hidden
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="app-desktop-shell px-4 py-10">
         <p className="text-sm text-muted-foreground">
-          Only helpers can manage hire interest on their posts.
+          Sign in to manage hire interest on your availability posts.
         </p>
-        <Button className="mt-4" variant="outline" asChild>
-          <Link to="/availability">Back</Link>
-        </Button>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button asChild>
+            <Link to="/login">Sign in</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/availability">Back</Link>
+          </Button>
+        </div>
       </div>
     );
   }

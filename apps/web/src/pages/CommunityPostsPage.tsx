@@ -114,12 +114,15 @@ function OwnAvailabilityPostCard({
   navigate,
   user,
   loginRedirect,
+  focusPostId,
 }: {
   post: PostWithMeta;
   hireCount: number;
   navigate: NavigateFunction;
   user: User | null;
   loginRedirect: string;
+  /** When set (from `?post=`), this card is scrolled into view and highlighted */
+  focusPostId: string | null;
 }) {
   const { addToast } = useToast();
   const [imageLightboxIndex, setImageLightboxIndex] = useState<number | null>(
@@ -176,13 +179,18 @@ function OwnAvailabilityPostCard({
 
   const showTimeUnderNotes = !expired && imageUrls.length === 0;
 
+  const isFocused = Boolean(focusPostId && focusPostId === post.id);
+
   return (
     <>
       <Card
+        id={`availability-post-${post.id}`}
         className={cn(
           "relative flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/5 dark:bg-zinc-900",
           expired &&
             "border-neutral-300/90 bg-neutral-100/80 text-neutral-600 shadow-none dark:border-neutral-600 dark:bg-neutral-900/75 dark:text-neutral-400",
+          isFocused &&
+            "ring-2 ring-orange-400/55 ring-offset-2 ring-offset-background dark:ring-orange-400/45",
         )}
         aria-label={expired ? "Expired availability post" : undefined}
       >
@@ -439,6 +447,7 @@ export default function CommunityPostsPage() {
   const { pathname: postsBasePath } = useLocation();
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get("category");
+  const focusPostId = searchParams.get("post");
   const isAllHelp = isAllHelpCategory(categoryParam);
   const categoryFilter = isAllHelp
     ? null
@@ -586,6 +595,19 @@ export default function CommunityPostsPage() {
   useEffect(() => {
     void loadPosts();
   }, [loadPosts]);
+
+  /** Deep link from discover “Your latest posts”: scroll the matching card into view */
+  useEffect(() => {
+    if (!focusPostId || loading) return;
+    const exists = posts.some((p) => p.id === focusPostId);
+    if (!exists) return;
+    const id = window.setTimeout(() => {
+      document
+        .getElementById(`availability-post-${focusPostId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [focusPostId, loading, posts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -825,6 +847,7 @@ export default function CommunityPostsPage() {
                 navigate={navigate}
                 user={user}
                 loginRedirect={loginRedirect}
+                focusPostId={focusPostId}
               />
             ))}
           </div>
