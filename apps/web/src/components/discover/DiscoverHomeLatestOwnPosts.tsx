@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Clock } from "lucide-react";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
+import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
@@ -71,17 +72,17 @@ function LiveExpiryRow({ expiresAtIso }: { expiresAtIso: string }) {
       aria-live="polite"
     >
       <Clock
-        className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+        className="h-4 w-4 shrink-0 text-emerald-600 sm:h-3.5 sm:w-3.5 dark:text-emerald-400"
         aria-hidden
       />
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:text-[10px]">
         Live
       </span>
       <ExpiryCountdown
         expiresAtIso={expiresAtIso}
         compact
         endedLabel="Ended"
-        className="!font-mono text-[11px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400"
+        className="!font-mono text-xs font-semibold tabular-nums text-emerald-700 sm:text-[11px] dark:text-emerald-400"
       />
     </div>
   );
@@ -292,9 +293,10 @@ export function DiscoverHomeLatestOwnPosts() {
                     )
                   }
                   className={cn(
-                    "relative w-full rounded-xl bg-muted/20 p-2.5 text-left transition-colors dark:bg-muted/40",
-                    "hover:bg-muted/30 active:bg-muted/45 dark:hover:bg-muted/55 dark:active:bg-muted/70",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "group relative w-full rounded-xl p-3 text-left bg-white dark:bg-zinc-900",
+                    "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
+                    INTERACTIVE_CARD_HOVER,
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                   )}
                 >
                   {count > 0 ? (
@@ -306,7 +308,7 @@ export function DiscoverHomeLatestOwnPosts() {
                       count > 0 ? "pr-9" : undefined,
                     )}
                   >
-                    <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                    <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
                       {formatPostHeading(r)}
                     </p>
                     <div className="flex shrink-0 items-center">
@@ -344,10 +346,10 @@ export function DiscoverHomeLatestOwnPosts() {
                       <div className="pointer-events-none absolute inset-0 bg-black/15" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold text-muted-foreground">
+                      <p className="truncate text-base font-semibold text-muted-foreground">
                         {subtitle}
                       </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
+                      <p className="mt-0.5 text-base text-muted-foreground">
                         Posted {new Date(r.created_at).toLocaleDateString()}
                       </p>
                       <LiveExpiryRow expiresAtIso={r.expires_at} />
@@ -380,9 +382,10 @@ export function DiscoverHomeLatestOwnPosts() {
                     )
                   }
                   className={cn(
-                    "relative w-full rounded-2xl bg-muted/20 p-4 text-left transition-colors dark:bg-muted/30",
-                    "hover:bg-muted/25 active:bg-muted/40 dark:hover:bg-muted/45 dark:active:bg-muted/60",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "group relative w-full rounded-2xl p-4 text-left bg-white dark:bg-zinc-900",
+                    "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
+                    INTERACTIVE_CARD_HOVER,
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                   )}
                 >
                   {count > 0 ? (

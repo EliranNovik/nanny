@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useDiscoverHomeScrollHeader } from "@/context/DiscoverHomeScrollHeaderContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
 import {
@@ -89,6 +90,11 @@ export function BottomNav() {
         : "/dashboard";
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
+  const { compact: discoverHomeHeaderCompact } = useDiscoverHomeScrollHeader();
+  const isDiscoverHome =
+    pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
+  const hideDiscoverMobileTopChrome =
+    isDiscoverHome && discoverHomeHeaderCompact;
   /** `/profile/:userId` ships its own fixed back button — hide nav duplicate */
   const isPublicUserProfilePage = /^\/profile\/[^/]+$/.test(pathnameNorm);
   const receiveRequestsOn = profile?.is_available_for_jobs === true;
@@ -111,6 +117,10 @@ export function BottomNav() {
         : "/client/profile"
       : null;
   const showProfileBack = profileBackTarget !== null;
+  /** Create job + post availability: own hero — hide floating mobile header row */
+  const hideMobileAppHeaderChrome =
+    pathnameNorm === "/client/create" ||
+    pathnameNorm === "/availability/post-now";
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
     pathnameNorm === "/availability" ||
@@ -633,7 +643,10 @@ export function BottomNav() {
       data-mobile-header-strip=""
       className={cn(
         "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] translate-y-0 opacity-100",
-        "border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background",
+        "border-none bg-background shadow-none backdrop-blur-none dark:bg-background",
+        hideDiscoverMobileTopChrome &&
+          "-translate-y-[130%] opacity-0 motion-reduce:translate-y-0 motion-reduce:opacity-100",
+        "transition-[transform,opacity,background-color] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
       )}
       style={{
         paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
@@ -653,6 +666,9 @@ export function BottomNav() {
         mobileSearchOpen || showCommunityHeaderCategoryDropdown
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
           : "right-[max(0.75rem,env(safe-area-inset-right))]",
+        hideDiscoverMobileTopChrome &&
+          "-translate-y-[130%] opacity-0 motion-reduce:translate-y-0 motion-reduce:opacity-100",
+        "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
       )}
       style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
     >
@@ -740,7 +756,12 @@ export function BottomNav() {
 
   const MobileLeftHeaderCluster = isPublicUserProfilePage ? null : (
     <div
-      className="md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1"
+      className={cn(
+        "md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1",
+        hideDiscoverMobileTopChrome &&
+          "-translate-y-[130%] opacity-0 motion-reduce:translate-y-0 motion-reduce:opacity-100",
+        "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+      )}
       style={{
         top: "max(0.75rem, env(safe-area-inset-top))",
         left: "max(0.75rem, env(safe-area-inset-left))",
@@ -857,9 +878,9 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {mobileScrollHeaderLayer}
-        {MobileLeftHeaderCluster}
-        {MobileFloatingActions}
+        {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
+        {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
+        {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
@@ -913,9 +934,9 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {mobileScrollHeaderLayer}
-        {MobileLeftHeaderCluster}
-        {MobileFloatingActions}
+        {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
+        {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
+        {!hideMobileAppHeaderChrome && MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0">
           <div
             className={cn(
@@ -1004,8 +1025,7 @@ export function BottomNav() {
                   className={cn(
                     /** Match Discover home “I need help” pill: orange → red gradient */
                     "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full",
-                    "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-900/30",
-                    "dark:shadow-orange-950/40",
+                    "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-none",
                     "transition-all active:scale-95",
                     "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   )}
@@ -1222,9 +1242,9 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {mobileScrollHeaderLayer}
-        {MobileLeftHeaderCluster}
-        {MobileFloatingActions}
+        {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
+        {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
+        {!hideMobileAppHeaderChrome && MobileFloatingActions}
         <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
           <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl">
             <div className="flex items-center justify-center px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">

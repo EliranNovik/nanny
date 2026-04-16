@@ -26,10 +26,6 @@ import { useJobCardEdgeOverlay } from "@/hooks/useJobCardEdgeOverlay";
 import { useIsMinMd } from "@/hooks/useIsMinMd";
 import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
 import {
-  JobAttachedPhotosStrip,
-  jobAttachmentImageUrls,
-} from "@/components/JobAttachedPhotosStrip";
-import {
   JobCardsCarousel,
   jobCardCarouselItemClass,
 } from "@/components/jobs/JobCardsCarousel";
@@ -133,7 +129,6 @@ export default function RequestsTabContent({
 
   const { data, isLoading: loading } = useFreelancerRequests(user?.id);
   const myOpenRequests: JobRequest[] = data?.myOpenRequests ?? [];
-  const confirmedHelperAvatarsByJobId = data?.confirmedHelperAvatarsByJobId ?? {};
   const inboundNotifications: InboundNotification[] = data?.inboundNotifications ?? [];
 
   const edgeOverlayKey = useMemo(
@@ -142,27 +137,6 @@ export default function RequestsTabContent({
     [activeTab, inboundNotifications.length, myOpenRequests.length, loading],
   );
   const clippedCardIds = useJobCardEdgeOverlay(edgeOverlayKey);
-
-  /** Mobile-only extras under the hero on My Posted Requests — notes only (summary grid removed). */
-  const renderMobileJobDetails = (job: JobRequest) => {
-    const notes =
-      typeof (job as any).notes === "string" ? (job as any).notes.trim() : "";
-    if (!notes) return null;
-
-    return (
-      <div className="mt-3 md:mt-4">
-        <div className="rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04] md:px-5 md:py-4">
-          <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground md:text-xs">
-            Notes
-          </p>
-          <p className="mt-1.5 whitespace-pre-wrap text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100 md:text-base">
-            {notes}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
 
   async function handleConfirm(jobId: string, notifId: string) {
     setConfirming(notifId);
@@ -401,12 +375,7 @@ export default function RequestsTabContent({
                 </JobCardsCarousel>
               </>
             ) : (
-              <Card
-                className={cn(
-                  JOB_CARD_EMPTY_PANEL,
-                  "mr-4 min-w-[85vw] md:mr-0 md:min-w-0",
-                )}
-              >
+              <Card className={JOB_CARD_EMPTY_PANEL}>
                 <CardContent className="p-6 text-center text-muted-foreground">
                   <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                   <p className="text-sm">
@@ -564,20 +533,16 @@ export default function RequestsTabContent({
                               />
                             </div>
                           </div>
-                          <JobAttachedPhotosStrip
-                            images={jobAttachmentImageUrls(job)}
-                          />
                           <CardContent
                             className={cn(
-                              "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-4",
+                              "border-t border-slate-100 p-4 dark:border-white/5 md:p-5",
                               isMinMd && "md:cursor-pointer",
                             )}
                             onClick={
                               isMinMd ? () => openJobPreview(job) : undefined
                             }
                           >
-                            <div className="flex flex-col gap-6">
-                              <div className="flex w-full items-center justify-between gap-2 text-[14px] font-bold leading-snug tracking-tight text-orange-500 dark:text-orange-400">
+                            <div className="flex w-full items-center justify-between gap-2 text-[14px] font-bold leading-snug tracking-tight text-orange-500 dark:text-orange-400">
                                 <div className="flex min-w-0 flex-1 items-start gap-2">
                                   <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 sm:h-5 sm:w-5" />
                                   <span className="min-w-0">
@@ -603,7 +568,6 @@ export default function RequestsTabContent({
                                   )}
                                 />
                               </div>
-                            </div>
                           </CardContent>
                         </div>
                       </Card>
@@ -612,12 +576,7 @@ export default function RequestsTabContent({
                 </JobCardsCarousel>
               </>
             ) : (
-              <Card
-                className={cn(
-                  JOB_CARD_EMPTY_PANEL,
-                  "mr-4 min-w-[85vw] md:mr-0 md:min-w-0",
-                )}
-              >
+              <Card className={JOB_CARD_EMPTY_PANEL}>
                 <CardContent className="p-6 text-center text-muted-foreground">
                   <Hourglass className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                   <p className="text-sm">
@@ -659,25 +618,47 @@ export default function RequestsTabContent({
             {filteredMyOpenRequests.length > 0 ? (
               <>
                 <JobCardsCarousel className="mt-3">
-                  {filteredMyOpenRequests.map((job) => (
+                  {filteredMyOpenRequests.map((job) => {
+                    const rawAccepted = (job as { acceptedCount?: number })
+                      .acceptedCount;
+                    const acceptedCount =
+                      typeof rawAccepted === "number" ? rawAccepted : null;
+                    const goConfirmed = () =>
+                      navigate(`/client/jobs/${job.id}/confirmed`);
+                    return (
                     <Card
                       key={job.id}
                       id={`card-${job.id}`}
                       data-job-card
-                      onClick={isMinMd ? undefined : () => openJobPreview(job)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={goConfirmed}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          goConfirmed();
+                        }
+                      }}
                       className={cn(
                         JOB_CARD_SHELL,
-                        !isMinMd && "cursor-pointer",
-                        isMinMd && "md:cursor-default",
+                        "cursor-pointer",
                         jobCardCarouselItemClass,
                       )}
                     >
-                      <div
-                        className={cn(isMinMd && "cursor-pointer")}
-                        onClick={
-                          isMinMd ? () => openJobPreview(job) : undefined
-                        }
-                      >
+                      {acceptedCount !== null ? (
+                        <span
+                          className={cn(
+                            "absolute right-2.5 top-2.5 z-[2] inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-full px-2 text-[13px] font-black tabular-nums leading-none shadow-sm",
+                            acceptedCount > 0
+                              ? "bg-gradient-to-r from-orange-500 to-red-600 text-white ring-1 ring-orange-600/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                              : "border border-slate-200/90 bg-slate-100/90 text-slate-500 dark:border-white/10 dark:bg-white/10 dark:text-slate-400",
+                          )}
+                          aria-label={`${acceptedCount} accepted helper${acceptedCount === 1 ? "" : "s"}`}
+                        >
+                          {acceptedCount}
+                        </span>
+                      ) : null}
+                      <div>
                         <JobCardLocationBar
                           location={job.location_city}
                           trailing={getJobStatusBadge(job.status)}
@@ -700,10 +681,10 @@ export default function RequestsTabContent({
                               JOB_CARD_THUMB,
                               JOB_CARD_THUMB_BUTTON,
                             )}
-                            aria-label={`Open job preview: ${formatJobTitle(job)}`}
+                            aria-label={`Open confirmed helpers: ${formatJobTitle(job)}`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              openJobPreview(job);
+                              goConfirmed();
                             }}
                           >
                             {job.service_type === "pickup_delivery" ? (
@@ -738,122 +719,14 @@ export default function RequestsTabContent({
                             />
                           </div>
                         </div>
-
-                        <JobAttachedPhotosStrip
-                          images={jobAttachmentImageUrls(job)}
-                        />
-
-                        <CardContent
-                          className={cn(
-                            "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-4",
-                            isMinMd && "md:cursor-pointer",
-                          )}
-                          onClick={
-                            isMinMd ? () => openJobPreview(job) : undefined
-                          }
-                        >
-                          {renderMobileJobDetails(job)}
-                          <div className="mt-auto flex flex-col gap-4 border-t border-slate-100 pt-6 dark:border-white/5 max-md:border-t-0 max-md:pt-3">
-                            <div className="relative w-full md:pt-2">
-                              {(() => {
-                                const accepted =
-                                  (job as { acceptedCount?: number })
-                                    .acceptedCount ?? 0;
-                                const helpers =
-                                  confirmedHelperAvatarsByJobId[job.id] ?? [];
-                                if (accepted <= 0 || helpers.length === 0)
-                                  return null;
-                                const overflow = Math.max(
-                                  0,
-                                  accepted - helpers.length,
-                                );
-                                return (
-                                  <div
-                                    className="mb-3 hidden flex-row items-center justify-center gap-0 md:flex"
-                                    aria-label={`${accepted} confirmed helper${accepted === 1 ? "" : "s"}`}
-                                  >
-                                    {helpers.map((p, i) => {
-                                      const initials =
-                                        p.full_name
-                                          ?.split(" ")
-                                          .map((n) => n[0])
-                                          .join("")
-                                          .toUpperCase()
-                                          .slice(0, 2) || "?";
-                                      return (
-                                        <Avatar
-                                          key={p.id}
-                                          className={cn(
-                                            "h-14 w-14 overflow-hidden shadow-md md:h-16 md:w-16",
-                                            i > 0 && "-ml-3",
-                                          )}
-                                          title={p.full_name || undefined}
-                                        >
-                                          <AvatarImage
-                                            src={p.photo_url || undefined}
-                                            alt=""
-                                            className="object-cover"
-                                          />
-                                          <AvatarFallback className="bg-orange-500 text-sm font-black text-white">
-                                            {initials}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                      );
-                                    })}
-                                    {overflow > 0 && (
-                                      <div
-                                        className="-ml-3 flex h-14 min-w-[2.75rem] items-center justify-center rounded-full bg-slate-200 px-2 text-xs font-black tabular-nums text-slate-700 shadow-md dark:bg-zinc-700 dark:text-zinc-100 md:h-16"
-                                        title={`${overflow} more`}
-                                      >
-                                        +{overflow}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                              <div className="relative group/btn w-full">
-                                <Button
-                                  className="flex h-12 w-full items-center justify-between rounded-[18px] bg-orange-500 px-6 text-[17px] font-bold text-white shadow-[0_8px_20px_rgba(249,115,22,0.2)] transition-all hover:bg-orange-600 active:scale-[0.96] md:h-14 md:text-[18px]"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(
-                                      `/client/jobs/${job.id}/confirmed`,
-                                    );
-                                  }}
-                                >
-                                  <span>Check Status</span>
-
-                                  {/* Integrated Acceptance Count */}
-                                  {typeof (job as any).acceptedCount ===
-                                    "number" && (
-                                    <div
-                                      className={cn(
-                                        "flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-[13px] font-black bg-card ring-4 ring-orange-500/10",
-                                        (job as any).acceptedCount > 0
-                                          ? "text-orange-600"
-                                          : "text-slate-400 opacity-50",
-                                      )}
-                                    >
-                                      {(job as any).acceptedCount}
-                                    </div>
-                                  )}
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
                       </div>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </JobCardsCarousel>
               </>
             ) : (
-              <Card
-                className={cn(
-                  JOB_CARD_EMPTY_PANEL,
-                  "mr-4 min-w-[85vw] md:mr-0 md:min-w-0",
-                )}
-              >
+              <Card className={JOB_CARD_EMPTY_PANEL}>
                 <CardContent className="p-6 text-center text-muted-foreground">
                   {serviceFilter && myOpenRequests.length > 0 ? (
                     <>

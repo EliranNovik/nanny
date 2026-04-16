@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { ChevronRight, Radio, X } from "lucide-react";
@@ -212,8 +213,7 @@ export function DiscoverHomeLatestPosts() {
         className={cn(
           "group w-full rounded-2xl bg-white dark:bg-zinc-900 px-4 py-4 text-left",
           "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
-          "transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-          "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+          INTERACTIVE_CARD_HOVER,
           "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         )}
         aria-label="Open post"
@@ -256,13 +256,13 @@ export function DiscoverHomeLatestPosts() {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {when ? (
-                <span className="text-xs font-semibold text-muted-foreground">
+                <span className="text-sm font-semibold text-muted-foreground sm:text-xs">
                   {when}
                 </span>
               ) : null}
             </div>
             {note ? (
-              <p className="mt-2 line-clamp-2 text-sm font-semibold leading-relaxed text-slate-700 dark:text-slate-200">
+              <p className="mt-2 line-clamp-2 text-base font-semibold leading-relaxed text-slate-700 sm:text-sm dark:text-slate-200">
                 {clampText(note, 120)}
               </p>
             ) : null}

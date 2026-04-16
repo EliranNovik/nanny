@@ -1,9 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2, ChevronLeft, ImagePlus, Lightbulb, X } from "lucide-react";
@@ -14,6 +20,8 @@ import {
   PRICE_RANGE_MIN,
 } from "@/lib/availabilityPosts";
 import { publishCommunityAvailabilityPulse } from "@/lib/publishCommunityAvailabilityPulse";
+import { getCityFromLocation } from "@/lib/location";
+import { CreateJobCityAutocomplete } from "@/components/CreateJobCityAutocomplete";
 import {
   isServiceCategoryId,
   SERVICE_CATEGORIES,
@@ -47,7 +55,7 @@ const STEP_TIPS: readonly string[] = [
   "Shorter windows feel more urgent; longer ones stay visible for browsers who check later.",
   "Pick the shape that best matches this offer — you can post again anytime.",
   "A rate hint sets expectations; skip if you’d rather agree on pay in chat.",
-  "Neighborhood or city helps nearby clients find you — leave blank if you’re flexible.",
+  "City helps nearby clients find you — leave blank if you’re flexible.",
   "One friendly, specific line stands out in the feed — you’ve got 120 characters.",
   "A real photo builds trust; skip if you prefer to stay more private.",
 ];
@@ -82,12 +90,39 @@ export default function PostAvailabilityNowPage() {
     useState(STATUS_EMPTY);
   const [quickDetailsId, setQuickDetailsId] = useState(QUICK_EMPTY);
   const [priceBandId, setPriceBandId] = useState(PRICE_EMPTY);
-  const [areaTag, setAreaTag] = useState("");
+  const [areaCity, setAreaCity] = useState("");
+  const [areaCityConfirmed, setAreaCityConfirmed] = useState(false);
+  /** User cleared the field — don’t immediately re-fill from profile until they leave this step. */
+  const [profileCityDismissed, setProfileCityDismissed] = useState(false);
+  const [gettingAreaCity, setGettingAreaCity] = useState(false);
   const [note, setNote] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const categoryLabel = category ? serviceCategoryLabel(category) : "";
+  /** Home tab (BottomNav) — used when exiting this flow via the top Back control. */
+  const mainTabHomePath = useMemo(() => {
+    if (profile?.is_admin) return "/admin";
+    if (profile?.role === "freelancer") return "/freelancer/home";
+    return "/client/home";
+  }, [profile?.is_admin, profile?.role]);
+
+  const isCategoryPicker = !category;
+  const categoryPickerHeaderRef = useRef<HTMLElement>(null);
+  const [categoryPickerHeaderH, setCategoryPickerHeaderH] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!isCategoryPicker) return;
+    const el = categoryPickerHeaderRef.current;
+    if (!el) return;
+    const measure = () =>
+      setCategoryPickerHeaderH(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isCategoryPicker]);
+
   const categoryImageSrc = useMemo(
     () =>
       category
@@ -114,9 +149,65 @@ export default function PostAvailabilityNowPage() {
   }, []);
 
   const handleHeaderBack = useCallback(() => {
-    if (step > 0) goBack();
-    else setSearchParams({}, { replace: true });
-  }, [goBack, setSearchParams, step]);
+    if (step > 0) {
+      goBack();
+      return;
+    }
+    navigate(mainTabHomePath, { replace: true });
+  }, [goBack, mainTabHomePath, navigate, step]);
+
+  useEffect(() => {
+    if (step !== 3) setProfileCityDismissed(false);
+  }, [step]);
+
+  /** Pre-fill city from saved profile (same idea as Create Job location step). */
+  useEffect(() => {
+    if (step !== 3 || profileCityDismissed) return;
+    const saved = profile?.city?.trim();
+    if (!saved) return;
+    if (areaCity || areaCityConfirmed) return;
+    setAreaCity(saved);
+    setAreaCityConfirmed(true);
+  }, [
+    step,
+    profile?.city,
+    profileCityDismissed,
+    areaCity,
+    areaCityConfirmed,
+  ]);
+
+  const pickAreaCity = useCallback((city: string) => {
+    setAreaCity(city.trim());
+    setAreaCityConfirmed(true);
+  }, []);
+
+  const invalidateAreaCity = useCallback(() => {
+    setAreaCity("");
+    setAreaCityConfirmed(false);
+    setProfileCityDismissed(true);
+  }, []);
+
+  const handleAreaCityGps = useCallback(async () => {
+    setGettingAreaCity(true);
+    try {
+      const name = await getCityFromLocation();
+      setAreaCity(name);
+      setAreaCityConfirmed(true);
+      addToast({
+        title: "City from location",
+        description: name,
+        variant: "success",
+      });
+    } catch (e) {
+      addToast({
+        title: "Could not detect city",
+        description: e instanceof Error ? e.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setGettingAreaCity(false);
+    }
+  }, [addToast]);
 
   const handlePublish = async () => {
     if (!user?.id || !profile || !category) return;
@@ -145,7 +236,10 @@ export default function PostAvailabilityNowPage() {
           availabilityStatusId === STATUS_EMPTY ? "" : availabilityStatusId,
         quickDetailsId: quickDetailsId === QUICK_EMPTY ? "" : quickDetailsId,
         priceRange: priceRangeFromBand,
-        areaTag,
+        areaTag:
+          areaCityConfirmed && areaCity.trim()
+            ? areaCity.trim().slice(0, 40)
+            : "",
         note: noteTrim,
         imageFile: files[0] ?? null,
       });
@@ -172,33 +266,62 @@ export default function PostAvailabilityNowPage() {
 
   if (!category) {
     return (
-      <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[2.625rem] md:pt-7">
-        <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-8">
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="shrink-0 rounded-full"
-              onClick={() => navigate("/availability")}
-              aria-label="Back to availability"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                Post availability
-              </p>
-              <h1 className="text-xl font-black tracking-tight text-foreground">
-                Choose a category
-              </h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                What kind of work are you offering? You can fill in the details
-                next.
-              </p>
+      <div
+        data-post-availability-no-mobile-header=""
+        className="min-h-screen bg-slate-50/50 dark:bg-background pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0"
+      >
+        {/*
+          Mobile: fixed below notch — body scroll makes sticky unreliable.
+          Desktop: static header; parent layout already clears the top bar.
+        */}
+        <header
+          ref={categoryPickerHeaderRef}
+          className={cn(
+            "border-b border-slate-200/80 bg-slate-50/95 shadow-sm backdrop-blur-md dark:border-white/[0.08] dark:bg-background/95",
+            "pb-3 pt-2.5",
+            "fixed inset-x-0 z-[55] top-[env(safe-area-inset-top,0px)] md:static md:inset-auto md:z-auto md:shadow-none md:pt-4",
+          )}
+        >
+          <div className="app-desktop-shell mx-auto w-full max-w-lg px-4">
+            <div className="flex items-start gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mt-0.5 shrink-0 rounded-full"
+                onClick={() => navigate(mainTabHomePath, { replace: true })}
+                aria-label="Back to home"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Post availability
+                </p>
+                <h1 className="text-xl font-black tracking-tight text-foreground">
+                  Choose a category
+                </h1>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  What kind of work are you offering? You can fill in the
+                  details next.
+                </p>
+              </div>
             </div>
           </div>
+        </header>
 
+        <div
+          aria-hidden
+          className="w-full shrink-0 md:hidden"
+          style={{
+            height:
+              categoryPickerHeaderH > 0
+                ? `calc(env(safe-area-inset-top, 0px) + ${categoryPickerHeaderH}px)`
+                : "clamp(6.5rem, 22vh, 9rem)",
+          }}
+        />
+
+        <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-8 pt-2 md:pt-0">
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {SERVICE_CATEGORIES.map((cat) => (
               <button
@@ -223,8 +346,8 @@ export default function PostAvailabilityNowPage() {
                   className="pointer-events-none absolute inset-0 bg-black/40"
                   aria-hidden
                 />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-3 pt-12">
-                  <span className="block text-center text-sm font-bold leading-tight text-white drop-shadow-sm sm:text-base">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 pb-3.5 pt-14">
+                  <span className="block text-center text-base font-bold leading-tight text-white drop-shadow-sm sm:text-lg">
                     {cat.label}
                   </span>
                 </div>
@@ -245,117 +368,121 @@ export default function PostAvailabilityNowPage() {
     );
   }
 
+  /** Mobile header pills — align with create-job flow (md:hidden hero only) */
+  const mobileHeroBackPillClass =
+    "mt-0.5 h-10 shrink-0 gap-1.5 rounded-full border border-white/30 bg-white/15 px-3.5 text-sm font-semibold text-white backdrop-blur-md hover:bg-white/25 sm:h-11 sm:px-4 sm:text-[0.9375rem]";
+  const mobilePlainBackPillClass =
+    "mt-0.5 h-11 shrink-0 gap-1.5 rounded-full border border-border/70 bg-background/95 px-4 text-base font-semibold shadow-sm backdrop-blur-sm hover:bg-muted/60 dark:border-white/15 dark:bg-background/90";
+
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 md:pt-7">
-      {/* Mobile: full-bleed hero — image to top edge; back + titles on image */}
+    <div
+      data-post-availability-no-mobile-header=""
+      className="min-h-screen bg-slate-50/50 dark:bg-background pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 md:pt-7"
+    >
+      {/* Mobile: fixed short hero (app chrome hidden on this route); no tip overlay on small screens */}
       <div className="md:hidden">
         {categoryImageSrc ? (
-          <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
-            <div className="relative aspect-[5/4] min-h-[12rem] w-full overflow-hidden">
-              <img
-                src={categoryImageSrc}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              <div
-                className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/35 to-black/60"
-                aria-hidden
-              />
-              <div
-                className="absolute inset-x-0 top-0 flex items-start gap-3 px-4 pb-6"
-                style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="mt-0.5 shrink-0 rounded-full border border-white/25 bg-black/35 text-white backdrop-blur-md hover:bg-black/45 hover:text-white"
-                  onClick={handleHeaderBack}
-                  aria-label={step > 0 ? "Back" : "Change category"}
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </Button>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">
+          <>
+            <div className="fixed inset-x-0 top-[env(safe-area-inset-top,0px)] z-20 w-full">
+              <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
+                <div className="relative aspect-[16/9] min-h-[5rem] max-h-[7.5rem] w-full overflow-hidden sm:max-h-[8rem]">
+                  <img
+                    src={categoryImageSrc}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/35 to-black/60"
+                    aria-hidden
+                  />
+                  <div className="absolute inset-x-0 top-0 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1 px-2 pb-2 pt-1.5 sm:gap-2 sm:px-3 sm:pb-3">
+                    <div className="flex justify-start">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={mobileHeroBackPillClass}
+                        onClick={handleHeaderBack}
+                        aria-label={step > 0 ? "Back" : "Back to home"}
+                      >
+                        <ChevronLeft className="h-5 w-5 shrink-0" />
+                        Back
+                      </Button>
+                    </div>
+                    <div className="min-w-0 max-w-[min(100%,18rem)] justify-self-center pt-0.5 text-center">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 sm:text-[11px]">
+                        Post availability
+                      </p>
+                      <h1 className="text-lg font-black leading-snug tracking-tight text-white drop-shadow-md sm:text-xl">
+                        {categoryLabel}
+                      </h1>
+                    </div>
+                    <div className="min-w-[3.25rem]" aria-hidden />
+                  </div>
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[min(50%,9rem)] bg-gradient-to-t from-black/95 via-black/55 to-transparent"
+                    aria-hidden
+                  />
+                  <div
+                    className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 sm:px-4 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pt-2"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <p className="mb-1.5 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)] sm:mb-2 sm:text-[11px]">
+                      Step {step + 1} of {STEPS}
+                    </p>
+                    <div className="flex gap-1.5" aria-hidden>
+                      {Array.from({ length: STEPS }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "h-1 flex-1 rounded-full transition-colors",
+                            i <= step ? "bg-emerald-500" : "bg-white/25",
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2"
+              aria-hidden
+            >
+              <div className="aspect-[16/9] min-h-[5rem] max-h-[7.5rem] w-full sm:max-h-[8rem]" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="fixed inset-x-0 top-[env(safe-area-inset-top,0px)] z-20 border-b border-border/50 bg-slate-50/95 backdrop-blur-sm dark:bg-background/95">
+              <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1 px-3 py-2.5 sm:px-4">
+                <div className="flex justify-start">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={mobilePlainBackPillClass}
+                    onClick={handleHeaderBack}
+                    aria-label={step > 0 ? "Back" : "Back to home"}
+                  >
+                    <ChevronLeft className="h-5 w-5 shrink-0" />
+                    Back
+                  </Button>
+                </div>
+                <div className="min-w-0 max-w-[min(100%,18rem)] justify-self-center text-center">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                     Post availability
                   </p>
-                  <h1 className="text-xl font-black leading-snug tracking-tight text-white drop-shadow-md">
+                  <h1 className="text-lg font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
                     {categoryLabel}
                   </h1>
                 </div>
-              </div>
-              {/* Step tip — frosted overlay on image (mobile only) */}
-              {stepTip ? (
-                <div
-                  className="absolute inset-x-0 z-10 px-4 md:hidden"
-                  style={{ bottom: "clamp(5.75rem, 24vw, 7.75rem)" }}
-                >
-                  <div
-                    className="flex gap-2.5 rounded-2xl border border-white/20 bg-black/50 px-3.5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.4)] ring-1 ring-emerald-500/25 backdrop-blur-md"
-                    role="note"
-                  >
-                    <Lightbulb
-                      className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300"
-                      aria-hidden
-                    />
-                    <p className="text-[13px] leading-snug text-white/95 [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
-                      {stepTip}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-              {/* Dark wash behind tip + step strip */}
-              <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[min(68%,17.5rem)] bg-gradient-to-t from-black/95 via-black/60 to-transparent md:hidden"
-                aria-hidden
-              />
-              {/* Step label + green indication — pinned to image bottom (mobile only) */}
-              <div
-                className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
-                role="status"
-                aria-live="polite"
-              >
-                <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-[0.2em] text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-                  Step {step + 1} of {STEPS}
-                </p>
-                <div className="flex gap-1.5" aria-hidden>
-                  {Array.from({ length: STEPS }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "h-1 flex-1 rounded-full transition-colors",
-                        i <= step ? "bg-emerald-500" : "bg-white/25",
-                      )}
-                    />
-                  ))}
-                </div>
+                <div className="min-w-[3.25rem]" aria-hidden />
               </div>
             </div>
-          </div>
-        ) : (
-          <div
-            className="flex items-start gap-3 px-4"
-            style={{ paddingTop: "max(2.625rem, env(safe-area-inset-top))" }}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="mt-0.5 shrink-0 rounded-full"
-              onClick={handleHeaderBack}
-              aria-label={step > 0 ? "Back" : "Change category"}
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                Post availability
-              </p>
-              <h1 className="text-xl font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
-                {categoryLabel}
-              </h1>
-            </div>
-          </div>
+            <div className="h-[5.5rem] shrink-0 sm:h-[5.75rem]" aria-hidden />
+          </>
         )}
       </div>
 
@@ -367,7 +494,7 @@ export default function PostAvailabilityNowPage() {
             size="icon"
             className="mt-0.5 shrink-0 rounded-full"
             onClick={handleHeaderBack}
-            aria-label={step > 0 ? "Back" : "Change category"}
+            aria-label={step > 0 ? "Back" : "Back to home"}
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
@@ -553,22 +680,22 @@ export default function PostAvailabilityNowPage() {
           )}
 
           {step === 3 && (
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="area-tag" className="text-base font-semibold">
-                  Area (optional)
-                </Label>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Neighborhood or area — max 40 characters.
-                </p>
-              </div>
-              <Input
-                id="area-tag"
-                value={areaTag}
-                onChange={(e) => setAreaTag(e.target.value)}
-                placeholder="e.g. North Tel Aviv"
-                maxLength={40}
-                className="h-12 rounded-xl"
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">
+                City (optional)
+              </Label>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Search and choose from the list — you can skip this step.
+              </p>
+              <CreateJobCityAutocomplete
+                confirmedCity={areaCity}
+                isConfirmed={areaCityConfirmed}
+                onPickCity={pickAreaCity}
+                onInvalidateSelection={invalidateAreaCity}
+                gpsLoading={gettingAreaCity}
+                onGpsClick={handleAreaCityGps}
+                variant="optional"
+                inputClassName="rounded-xl"
               />
             </div>
           )}

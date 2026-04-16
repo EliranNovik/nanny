@@ -195,6 +195,28 @@
     padding-top: calc(0.5rem + 2.5rem + 0.5rem);
   }
 
+  /* Create job / post availability: mobile app header hidden — #root safe-area only */
+  @media (max-width: 767.98px) {
+    .app-content-below-fixed-header:has([data-create-job-no-mobile-header]),
+    .app-content-below-fixed-header:has([data-post-availability-no-mobile-header]) {
+      padding-top: 0;
+    }
+
+    /** Discover home: compact — app header hidden; #root already pads safe-area — do not add a second inset. */
+    .app-content-below-fixed-header:has([data-discover-home-compact]) {
+      padding-top: 0;
+    }
+
+    /**
+     * Discover home only: smooth padding when compact toggles (420ms — match DiscoverHomeContent + BottomNav).
+     */
+    @media (prefers-reduced-motion: no-preference) {
+      .app-content-below-fixed-header:has([data-discover-home-page]) {
+        transition: padding-top 420ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+    }
+  }
+
   @media (min-width: 768px) {
     .app-content-below-fixed-header {
       padding-top: 3.5rem;
@@ -257,6 +279,65 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
   /* Chrome, Safari and Opera */
+}
+
+/* Create Job step 3 — Google Places city suggestions (class toggled from CreateJobCityAutocomplete) */
+body.create-job-city-pac .pac-container {
+  z-index: 10050 !important;
+  font-family: inherit !important;
+  margin-top: 6px !important;
+  padding: 8px !important;
+  overflow: hidden !important;
+  border-radius: 1rem !important;
+  border: 1px solid hsl(var(--border)) !important;
+  background: hsl(var(--card)) !important;
+  box-shadow:
+    0 22px 45px -14px rgb(15 23 42 / 0.28),
+    0 0 0 1px hsl(var(--primary) / 0.18) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.dark body.create-job-city-pac .pac-container {
+  box-shadow:
+    0 22px 45px -14px rgb(0 0 0 / 0.55),
+    0 0 0 1px hsl(var(--primary) / 0.25) !important;
+}
+
+body.create-job-city-pac .pac-item {
+  margin: 3px 0 !important;
+  padding: 12px 14px !important;
+  line-height: 1.35 !important;
+  cursor: pointer !important;
+  border: none !important;
+  border-radius: 0.65rem !important;
+  font-size: 0.9375rem !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+body.create-job-city-pac .pac-item:hover,
+body.create-job-city-pac .pac-item-selected {
+  background: hsl(var(--primary) / 0.12) !important;
+}
+
+body.create-job-city-pac .pac-item-query {
+  font-size: inherit !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+body.create-job-city-pac .pac-matched {
+  font-weight: 700 !important;
+  color: hsl(var(--primary)) !important;
+}
+
+body.create-job-city-pac .pac-icon {
+  margin-right: 10px !important;
+}
+
+body.create-job-city-pac .pac-logo {
+  margin: 10px 8px 6px !important;
+  padding-top: 6px !important;
+  opacity: 0.75;
 }
 
 /* Range slider styling */

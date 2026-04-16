@@ -1,26 +1,18 @@
 import { useToast } from "@/components/ui/toast";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarPlus,
-  ChevronLeft,
   ChevronRight,
   Clock,
   HeartHandshake,
   HelpingHand,
   Megaphone,
   Search,
-  Users,
 } from "lucide-react";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { LiveTimer } from "@/components/LiveTimer";
+import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
@@ -35,30 +27,33 @@ import { DiscoverHomeLatestReviews } from "@/components/discover/DiscoverHomeLat
 import { DiscoverHomeLatestPosts } from "@/components/discover/DiscoverHomeLatestPosts";
 import { DiscoverHomeLatestOwnPosts } from "@/components/discover/DiscoverHomeLatestOwnPosts";
 import { DiscoverHomeRecentActivity } from "@/components/discover/DiscoverHomeRecentActivity";
+import { useDiscoverHomeScrollHeader } from "@/context/DiscoverHomeScrollHeaderContext";
 import { useClientRequests } from "@/hooks/data/useClientRequests";
 import { useDiscoverFeed, useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 type DiscoverRole = "client" | "freelancer";
 type DiscoverHomeMode = "hire" | "work";
 const HOME_INTENT_STORAGE_KEY = "mamalama_discover_home_intent_v1";
-
-/** Action-oriented lines on category tiles (hire tab) — real-time / urgent tone */
-const DISCOVER_CATEGORY_ACTION_LINE: Record<string, string> = {
-  cleaning: "Need cleaning now?",
-  cooking: "Find a cook today",
-  pickup_delivery: "Quick delivery",
-  nanny: "Need childcare?",
-  other_help: "Odd jobs & more",
-  all_help: "Browse everything",
+/** Mobile compact header: show full top chrome again only when scroll is within this distance of the top. */
+const DISCOVER_HOME_EXPAND_HEADER_TOP_PX = 32;
+/** Hire tab — short title + supporting line (browse live board). */
+const DISCOVER_CATEGORY_HIRE_CARD: Record<string, { title: string; subtitle: string }> = {
+  cleaning: { title: "Cleaning", subtitle: "See who’s live near you" },
+  cooking: { title: "Cooking", subtitle: "Find cooks available now" },
+  pickup_delivery: { title: "Delivery & errands", subtitle: "Quick runs, live posts" },
+  nanny: { title: "Childcare", subtitle: "Trusted help, available now" },
+  other_help: { title: "Other help", subtitle: "Odd jobs & one-off tasks" },
+  all_help: { title: "All categories", subtitle: "Browse every live post" },
 };
 
-/** Work tab — CTA to post availability per service */
-const DISCOVER_CATEGORY_WORK_LINE: Record<string, string> = {
-  cleaning: "Post cleaning availability",
-  cooking: "Post cooking availability",
-  pickup_delivery: "Post delivery & errands availability",
-  nanny: "Post childcare availability",
-  other_help: "Post availability for odd jobs",
+/** Work tab — short action title + subtitle (post availability). */
+const DISCOVER_CATEGORY_WORK_CARD: Record<string, { title: string; subtitle: string }> = {
+  cleaning: { title: "Post cleaning", subtitle: "Reach nearby clients" },
+  cooking: { title: "Post cooking", subtitle: "Go live in this category" },
+  pickup_delivery: { title: "Post delivery", subtitle: "Reach nearby clients" },
+  nanny: { title: "Post childcare", subtitle: "Go live in this category" },
+  other_help: { title: "Post odd jobs", subtitle: "Reach nearby clients" },
 };
+
 function initials(name: string | null | undefined): string {
   const t = String(name ?? "").trim();
   if (!t) return "??";
@@ -70,6 +65,138 @@ function initials(name: string | null | undefined): string {
       : (parts[0]?.[1] ?? "");
   const s = (first + last).toUpperCase();
   return s || "??";
+}
+
+type DiscoverCategoryAvatar = {
+  id: string;
+  photo_url: string | null;
+  full_name: string | null;
+};
+
+function DiscoverHomeCategoryTile({
+  variant,
+  imageSrc,
+  title,
+  subtitle,
+  liveCountDisplay,
+  statusSuffix,
+  avatars,
+  onClick,
+  ariaLabel,
+}: {
+  variant: "hire" | "work";
+  imageSrc: string;
+  title: string;
+  subtitle: string;
+  liveCountDisplay: string;
+  /** Shown after count in the live pill, e.g. "now" / "live" (sentence case). */
+  statusSuffix: string;
+  avatars?: DiscoverCategoryAvatar[];
+  onClick: () => void;
+  ariaLabel: string;
+}) {
+  const focusRing =
+    variant === "hire"
+      ? "focus-visible:ring-orange-500/65"
+      : "focus-visible:ring-emerald-500/65";
+  const ctaIconClass =
+    variant === "hire" ? "text-orange-600" : "text-emerald-600";
+
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onClick={onClick}
+      className={cn(
+        "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-2xl text-left outline-none",
+        /** Mobile: slightly narrower than half-row so ~2 cards + peek of third imply horizontal scroll */
+        "max-md:basis-[calc((100%-1rem)/2.25)] md:basis-auto md:w-full md:snap-none",
+        "shadow-md ring-1 ring-black/5 transition-[transform,box-shadow] duration-300 ease-out",
+        "hover:-translate-y-1 hover:shadow-xl hover:ring-black/10",
+        "active:translate-y-0 active:scale-[0.98] active:shadow-md motion-reduce:hover:translate-y-0",
+        "dark:ring-white/10 dark:hover:ring-white/15",
+        `focus-visible:ring-2 focus-visible:ring-inset ${focusRing}`,
+      )}
+    >
+      <img
+        src={imageSrc}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out will-change-transform group-hover:scale-[1.06] group-active:scale-[1.02] motion-reduce:group-hover:scale-100"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/15 via-transparent to-transparent transition-opacity duration-300 group-hover:from-black/20"
+        aria-hidden
+      />
+      {avatars?.length ? (
+        <div
+          className="pointer-events-none absolute right-2 top-2 z-[3] flex -space-x-2 sm:right-2.5 sm:top-2.5"
+          aria-hidden
+        >
+          {avatars.slice(0, 3).map((p) => (
+            <Avatar
+              key={p.id}
+              className="h-7 w-7 ring-2 ring-white/40 shadow-md sm:h-8 sm:w-8"
+            >
+              <AvatarImage src={p.photo_url || undefined} className="object-cover" />
+              <AvatarFallback className="bg-white/90 text-[10px] font-bold text-slate-800 dark:bg-zinc-800 dark:text-slate-100">
+                {initials(p.full_name)}
+              </AvatarFallback>
+            </Avatar>
+          ))}
+        </div>
+      ) : null}
+      <div
+        className={cn(
+          "pointer-events-none absolute left-2 top-2 z-[3] sm:left-2.5 sm:top-2.5",
+          "inline-flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-full px-2.5 py-1",
+          "bg-black/55 text-white backdrop-blur-md",
+          "ring-1 ring-white/20 shadow-sm",
+        )}
+        aria-hidden
+      >
+        <span className="text-[13px] font-bold tabular-nums leading-none tracking-tight">
+          {liveCountDisplay}
+        </span>
+        <span className="text-[11px] font-medium leading-none text-white/90">
+          {statusSuffix}
+        </span>
+      </div>
+      {/** Taller, darker bottom scrim so white copy stays readable on bright photos */}
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[78%]",
+          "bg-[linear-gradient(to_top,rgb(0_0_0/0.96)_0%,rgb(0_0_0/0.88)_18%,rgb(0_0_0/0.72)_38%,rgb(0_0_0/0.38)_58%,rgb(0_0_0/0.12)_78%,transparent_100%)]",
+        )}
+        aria-hidden
+      />
+      <div className="absolute inset-x-0 bottom-0 z-[2] flex flex-col justify-end p-2.5 pb-2 sm:p-3 sm:pb-2.5">
+        <p className="line-clamp-2 text-[15px] font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] sm:text-base">
+          {title}
+        </p>
+        <p className="mt-1 line-clamp-2 text-[11px] font-medium leading-snug text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)] sm:text-[12px]">
+          {subtitle}
+        </p>
+        <div className="mt-2.5 flex justify-end">
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white",
+              "shadow-[0_6px_20px_rgba(0,0,0,0.45)] ring-2 ring-white/95",
+              "transition-transform duration-200 ease-out group-hover:scale-110 group-active:scale-95",
+              "motion-reduce:group-hover:scale-100",
+            )}
+            aria-hidden
+          >
+            <ChevronRight
+              className={cn("h-5 w-5", ctaIconClass)}
+              strokeWidth={2.75}
+              aria-hidden
+            />
+          </div>
+        </div>
+      </div>
+    </button>
+  );
 }
 
 /**
@@ -120,17 +247,17 @@ function HelpRequestLiveExpiryRow({ expiresAtIso }: { expiresAtIso: string }) {
       aria-live="polite"
     >
       <Clock
-        className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400"
+        className="h-4 w-4 shrink-0 text-orange-600 sm:h-3.5 sm:w-3.5 dark:text-orange-400"
         aria-hidden
       />
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:text-[10px]">
         Live
       </span>
       <ExpiryCountdown
         expiresAtIso={expiresAtIso}
         compact
         endedLabel="Ended"
-        className="!font-mono text-[11px] font-semibold tabular-nums text-orange-700 dark:text-orange-400"
+        className="!font-mono text-xs font-semibold tabular-nums text-orange-700 sm:text-[11px] dark:text-orange-400"
       />
     </div>
   );
@@ -145,13 +272,13 @@ function HelpRequestLiveElapsedRow({ createdAtIso }: { createdAtIso: string }) {
       aria-live="polite"
     >
       <Clock
-        className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400"
+        className="h-4 w-4 shrink-0 text-orange-600 sm:h-3.5 sm:w-3.5 dark:text-orange-400"
         aria-hidden
       />
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:text-[10px]">
         Live
       </span>
-      <span className="font-mono text-[11px] font-semibold tabular-nums text-orange-700 dark:text-orange-400">
+      <span className="font-mono text-xs font-semibold tabular-nums text-orange-700 sm:text-[11px] dark:text-orange-400">
         <LiveTimer createdAt={createdAtIso} />
       </span>
     </div>
@@ -167,6 +294,8 @@ function readStoredHomeMode(): DiscoverHomeMode | null {
   return null;
 }
 export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
+  const { compact: discoverHeaderCompact, setCompact: setDiscoverHeaderCompact } =
+    useDiscoverHomeScrollHeader();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const isClient = role === "client";
@@ -237,56 +366,63 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
     },
     [livePostsByCategory, livePostsCountLoading],
   );
-  const discoverCategoryScrollRef = useRef<HTMLDivElement>(null);
-  const [discoverCategoryScroll, setDiscoverCategoryScroll] = useState({
-    canScrollLeft: false,
-    canScrollRight: false,
-  });
-  const refreshDiscoverCategoryScroll = useCallback(() => {
-    const el = discoverCategoryScrollRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    const max = scrollWidth - clientWidth;
-    setDiscoverCategoryScroll({
-      canScrollLeft: scrollLeft > 2,
-      canScrollRight: max > 2 && scrollLeft < max - 2,
-    });
-  }, []);
-  useLayoutEffect(() => {
-    if (homeMode !== "hire" && homeMode !== "work") return;
-    const el = discoverCategoryScrollRef.current;
-    if (!el) return;
-    refreshDiscoverCategoryScroll();
-    el.addEventListener("scroll", refreshDiscoverCategoryScroll, {
-      passive: true,
-    });
-    const ro = new ResizeObserver(() => refreshDiscoverCategoryScroll());
-    ro.observe(el);
-    window.addEventListener("resize", refreshDiscoverCategoryScroll);
-    return () => {
-      el.removeEventListener("scroll", refreshDiscoverCategoryScroll);
-      ro.disconnect();
-      window.removeEventListener("resize", refreshDiscoverCategoryScroll);
+  /** Mobile: hide global top chrome on scroll down; restore only when scrolled back to the top. */
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767.98px)");
+    let lastY = window.scrollY ?? document.documentElement.scrollTop;
+
+    const onScroll = () => {
+      if (!mq.matches) return;
+      const y = window.scrollY ?? document.documentElement.scrollTop;
+      const delta = y - lastY;
+      lastY = y;
+      if (y < DISCOVER_HOME_EXPAND_HEADER_TOP_PX) {
+        setDiscoverHeaderCompact(false);
+        return;
+      }
+      if (delta > 6) setDiscoverHeaderCompact(true);
     };
-  }, [homeMode, refreshDiscoverCategoryScroll]);
-  const scrollDiscoverCategories = useCallback((dir: "left" | "right") => {
-    const el = discoverCategoryScrollRef.current;
-    if (!el) return;
-    const step = Math.min(Math.round(el.clientWidth * 0.85), 360);
-    el.scrollBy({
-      left: dir === "left" ? -step : step,
-      behavior: "smooth",
-    });
-  }, []);
+
+    const onMqChange = () => {
+      if (!mq.matches) setDiscoverHeaderCompact(false);
+    };
+
+    mq.addEventListener("change", onMqChange);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      mq.removeEventListener("change", onMqChange);
+      window.removeEventListener("scroll", onScroll);
+      setDiscoverHeaderCompact(false);
+    };
+  }, [setDiscoverHeaderCompact]);
+
   return (
-    <div className="relative min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-12">
+    <div
+      className="relative min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-12"
+      data-discover-home-page=""
+      data-discover-home-compact={discoverHeaderCompact ? "" : undefined}
+    >
+      {/**
+       * Mobile: keep `top:0` + full-width `bg-background` always — animating `top` left a gap where
+       * scroll content showed through. Animate an inner spacer height instead.
+       */}
       <div
         className={cn(
-          "fixed inset-x-0 z-[45] pointer-events-none" /** Directly under fixed BottomNav header — keep in sync with `.app-content-below-fixed-header` in index.css */,
-          "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
-          "bg-background",
+          "fixed inset-x-0 z-[55] pointer-events-none bg-background",
+          "max-md:top-0",
+          "md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
         )}
       >
+        <div
+          aria-hidden
+          className={cn(
+            "shrink-0 bg-background md:hidden",
+            "max-md:transition-[height] max-md:duration-[420ms] max-md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:max-md:transition-none",
+            discoverHeaderCompact
+              ? "h-[env(safe-area-inset-top,0px)]"
+              : "h-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
+          )}
+        />
         <div className="app-desktop-shell pointer-events-auto">
           <div className="w-full px-2 py-2">
             <div role="tablist" aria-label="What are you here for?">
@@ -385,6 +521,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
         className={cn(
           "app-desktop-shell" /** Tab strip: py + full-width themed pill toggle (~62–70px) + border + gap */,
           "pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]",
+          discoverHeaderCompact &&
+            "max-md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem-3.5rem)]",
+          "max-md:transition-[padding-top] max-md:duration-[420ms] max-md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:max-md:transition-none",
         )}
       >
         <div className="flex w-full flex-col gap-6 md:gap-8 lg:gap-10">
@@ -413,8 +552,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                         "group flex w-full min-w-0 items-center gap-2.5 rounded-[20px] p-2 text-left outline-none sm:gap-3",
                         "md:flex-1",
                         "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5",
-                        "shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                        "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+                        "shadow-sm",
+                        INTERACTIVE_CARD_HOVER,
                         "focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       )}
                       aria-label="Post a request for help"
@@ -457,8 +596,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                         "group flex w-full min-w-0 items-center gap-2.5 rounded-[20px] p-2 text-left outline-none sm:gap-3",
                         "md:flex-1",
                         "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5",
-                        "shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                        "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+                        "shadow-sm",
+                        INTERACTIVE_CARD_HOVER,
                         "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       )}
                       aria-label="Find helpers"
@@ -504,8 +643,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     className={cn(
                       "group flex w-full min-w-0 items-center gap-2.5 rounded-[20px] p-2 text-left outline-none sm:gap-3",
                       "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5",
-                      "shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                      "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+                      "shadow-sm",
+                      INTERACTIVE_CARD_HOVER,
                       "focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     )}
                     aria-label="Post availability"
@@ -550,13 +689,13 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                     className={cn(
                       "group flex w-full min-w-0 items-center gap-2.5 rounded-[20px] p-2 text-left outline-none sm:gap-3",
                       "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5",
-                      "shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                      "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+                      "shadow-sm",
+                      INTERACTIVE_CARD_HOVER,
                       "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     )}
                   >
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 border border-slate-200/50 dark:bg-zinc-800 dark:text-slate-300 dark:border-white/5 shadow-sm">
-                      <Users
+                      <ChevronRight
                         className="h-6 w-6"
                         aria-hidden
                         strokeWidth={2.5}
@@ -594,136 +733,39 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             >
               <div className="relative">
                 <div
-                  ref={discoverCategoryScrollRef}
                   className={cn(
                     "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
+                    "max-md:pr-2",
                     "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
                     "touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]",
-                    "md:grid md:grid-cols-6 md:gap-3 md:overflow-visible md:snap-none md:overscroll-auto md:touch-auto md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:auto",
+                    "md:grid md:grid-cols-6 md:gap-3 md:overflow-visible md:snap-none md:overscroll-auto md:touch-auto md:pr-0 md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:auto",
                   )}
                 >
-                  {DISCOVER_HOME_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      aria-label={
-                        livePostsCountLoading
-                          ? `${cat.label}, loading live post count`
-                          : `${cat.label}, ${livePostsByCategory[cat.id] ?? 0} live posts`
-                      }
-                      onClick={() => onCategoryClick(cat.id)}
-                      className={cn(
-                        "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-2xl text-left outline-none",
-                        "basis-[calc((100%-0.5rem)/2)] md:basis-auto md:w-full md:snap-none",
-                        "shadow-md transition-[transform,box-shadow] duration-200 hover:shadow-lg active:scale-[0.97]",
-                        "focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-inset",
-                      )}
-                    >
-                      <img
-                        src={cat.imageSrc}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-200 group-hover:scale-105 group-active:scale-[0.98] group-active:brightness-110"
-                        aria-hidden
+                  {DISCOVER_HOME_CATEGORIES.map((cat) => {
+                    const copy = DISCOVER_CATEGORY_HIRE_CARD[cat.id] ?? {
+                      title: cat.label,
+                      subtitle: "Browse live posts near you",
+                    };
+                    return (
+                      <DiscoverHomeCategoryTile
+                        key={cat.id}
+                        variant="hire"
+                        imageSrc={cat.imageSrc}
+                        title={copy.title}
+                        subtitle={copy.subtitle}
+                        liveCountDisplay={liveCountLabel(cat.id)}
+                        statusSuffix="now"
+                        avatars={categoryAuthorAvatars[cat.id]}
+                        onClick={() => onCategoryClick(cat.id)}
+                        ariaLabel={
+                          livePostsCountLoading
+                            ? `${cat.label}, loading live post count`
+                            : `${copy.title}. ${livePostsByCategory[cat.id] ?? 0} live now. ${copy.subtitle}`
+                        }
                       />
-                      <div
-                        className="pointer-events-none absolute inset-0 z-[1] bg-black/35 transition-opacity duration-200 group-active:bg-black/25"
-                        aria-hidden
-                      />
-                      {categoryAuthorAvatars[cat.id]?.length ? (
-                        <div
-                          className="pointer-events-none absolute right-1.5 top-1.5 z-[2] flex -space-x-2 sm:right-2 sm:top-2"
-                          aria-hidden
-                        >
-                          {categoryAuthorAvatars[cat.id]
-                            .slice(0, 3)
-                            .map((p) => (
-                              <Avatar
-                                key={p.id}
-                                className="h-7 w-7 shadow-sm sm:h-8 sm:w-8"
-                              >
-                                <AvatarImage
-                                  src={p.photo_url || undefined}
-                                  className="object-cover"
-                                />
-                                <AvatarFallback className="bg-white/85 text-[10px] font-black text-slate-800 dark:bg-zinc-800 dark:text-slate-100">
-                                  {initials(p.full_name)}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
-                        </div>
-                      ) : null}
-                      <span
-                        className={cn(
-                          "absolute left-2 top-2 z-[2] rounded-full px-3 py-1 text-xs font-black tabular-nums leading-none sm:left-2.5 sm:top-2.5 md:left-3 md:top-3 md:px-3.5 md:py-1.5 md:text-sm",
-                          "bg-black/45 text-white opacity-95 ring-1 ring-white/15 backdrop-blur-[2px]",
-                          "dark:bg-black/50 dark:text-white",
-                        )}
-                        aria-hidden
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span>{liveCountLabel(cat.id)}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-white/90 sm:text-xs md:text-sm">
-                            now
-                          </span>
-                        </span>
-                      </span>
-                      <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/95 via-black/75 to-transparent pt-28 pb-2 px-1.5 sm:pt-32 sm:pb-2.5 sm:px-2"
-                        aria-hidden
-                      />
-                      <span className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-8 pt-2 text-center text-lg font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:pt-4 md:px-1.5 md:pt-3 md:text-base lg:text-lg md:pb-9">
-                        {DISCOVER_CATEGORY_ACTION_LINE[cat.id] ?? cat.label}
-                      </span>
-                      <ChevronRight
-                        className="pointer-events-none absolute bottom-2 right-2 z-[3] h-5 w-5 text-white/95 drop-shadow-md"
-                        strokeWidth={2.5}
-                        aria-hidden
-                      />
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
-                <button
-                  type="button"
-                  aria-label="Scroll categories left"
-                  disabled={!discoverCategoryScroll.canScrollLeft}
-                  onClick={() => scrollDiscoverCategories("left")}
-                  className={cn(
-                    "md:hidden",
-                    "absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:left-3 sm:h-11 sm:w-11",
-                    "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
-                    "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "dark:border-white/15 dark:bg-black/30 dark:text-white dark:hover:bg-black/45",
-                    "disabled:pointer-events-none disabled:opacity-30",
-                  )}
-                >
-                  <ChevronLeft
-                    className="h-6 w-6 drop-shadow-sm"
-                    strokeWidth={2.5}
-                    aria-hidden
-                  />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Scroll categories right"
-                  disabled={!discoverCategoryScroll.canScrollRight}
-                  onClick={() => scrollDiscoverCategories("right")}
-                  className={cn(
-                    "md:hidden",
-                    "absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:right-3 sm:h-11 sm:w-11",
-                    "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
-                    "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "dark:border-white/15 dark:bg-black/30 dark:text-white dark:hover:bg-black/45",
-                    "disabled:pointer-events-none disabled:opacity-30",
-                  )}
-                >
-                  <ChevronRight
-                    className="h-6 w-6 drop-shadow-sm"
-                    strokeWidth={2.5}
-                    aria-hidden
-                  />
-                </button>
               </div>
             </section>
           )}
@@ -772,8 +814,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                             className={cn(
                               "group relative w-full rounded-xl p-3 text-left bg-white dark:bg-zinc-900",
                               "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
-                              "transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                              "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+                              INTERACTIVE_CARD_HOVER,
                               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50",
                             )}
                           >
@@ -794,7 +835,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                                 count > 0 ? "pr-9" : undefined,
                               )}
                             >
-                              <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                              <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
                                 {formatRequestTitle(r)}
                               </p>
                               <div className="flex shrink-0 items-center">
@@ -832,12 +873,12 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                                 <div className="pointer-events-none absolute inset-0 bg-black/15" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-semibold text-muted-foreground">
+                                <p className="truncate text-base font-semibold text-muted-foreground">
                                   {r.location_city?.trim()
                                     ? r.location_city.trim()
                                     : "No location"}
                                 </p>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                <p className="mt-0.5 text-base text-muted-foreground">
                                   Posted{" "}
                                   {new Date(r.created_at).toLocaleDateString()}
                                 </p>
@@ -876,8 +917,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                             className={cn(
                               "group relative w-full rounded-2xl p-4 text-left bg-white dark:bg-zinc-900",
                               "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
-                              "transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                              "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+                              INTERACTIVE_CARD_HOVER,
                               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50",
                             )}
                           >
@@ -984,8 +1024,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                 className={cn(
                   "group flex w-full items-center gap-3 rounded-[20px] p-2.5 text-left bg-white dark:bg-zinc-900",
                   "border border-slate-200/80 dark:border-white/5 shadow-sm",
-                  "transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                  "hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80",
+                  INTERACTIVE_CARD_HOVER,
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50",
                 )}
               >
@@ -1023,136 +1062,39 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             >
               <div className="relative">
                 <div
-                  ref={discoverCategoryScrollRef}
                   className={cn(
                     "flex w-full snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden",
+                    "max-md:pr-2",
                     "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
                     "touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]",
-                    "md:grid md:grid-cols-6 md:gap-3 md:overflow-visible md:snap-none md:overscroll-auto md:touch-auto md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:auto",
+                    "md:grid md:grid-cols-6 md:gap-3 md:overflow-visible md:snap-none md:overscroll-auto md:touch-auto md:pr-0 md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:auto",
                   )}
                 >
-                  {SERVICE_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      aria-label={
-                        livePostsCountLoading
-                          ? `${cat.label}, loading live post count`
-                          : `${DISCOVER_CATEGORY_WORK_LINE[cat.id] ?? cat.label}, ${livePostsByCategory[cat.id] ?? 0} live posts in category`
-                      }
-                      onClick={() => onWorkCategoryPostAvailability(cat.id)}
-                      className={cn(
-                        "group relative aspect-square shrink-0 grow-0 snap-start overflow-hidden rounded-2xl text-left outline-none",
-                        "basis-[calc((100%-0.5rem)/2)] md:basis-auto md:w-full md:snap-none",
-                        "shadow-md transition-[transform,box-shadow] duration-200 hover:shadow-lg active:scale-[0.97]",
-                        "focus-visible:ring-2 focus-visible:ring-emerald-500/65 focus-visible:ring-inset",
-                      )}
-                    >
-                      <img
-                        src={cat.imageSrc}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-200 group-hover:scale-105 group-active:scale-[0.98] group-active:brightness-110"
-                        aria-hidden
+                  {SERVICE_CATEGORIES.map((cat) => {
+                    const copy = DISCOVER_CATEGORY_WORK_CARD[cat.id] ?? {
+                      title: `Post ${cat.label.toLowerCase()}`,
+                      subtitle: "Go live in this category",
+                    };
+                    return (
+                      <DiscoverHomeCategoryTile
+                        key={cat.id}
+                        variant="work"
+                        imageSrc={cat.imageSrc}
+                        title={copy.title}
+                        subtitle={copy.subtitle}
+                        liveCountDisplay={liveCountLabel(cat.id)}
+                        statusSuffix="live"
+                        avatars={categoryAuthorAvatars[cat.id]}
+                        onClick={() => onWorkCategoryPostAvailability(cat.id)}
+                        ariaLabel={
+                          livePostsCountLoading
+                            ? `${cat.label}, loading live post count`
+                            : `${copy.title}. ${livePostsByCategory[cat.id] ?? 0} live in category. ${copy.subtitle}`
+                        }
                       />
-                      <div
-                        className="pointer-events-none absolute inset-0 z-[1] bg-black/35 transition-opacity duration-200 group-active:bg-black/25"
-                        aria-hidden
-                      />
-                      {categoryAuthorAvatars[cat.id]?.length ? (
-                        <div
-                          className="pointer-events-none absolute right-1.5 top-1.5 z-[2] flex -space-x-2 sm:right-2 sm:top-2"
-                          aria-hidden
-                        >
-                          {categoryAuthorAvatars[cat.id]
-                            .slice(0, 3)
-                            .map((p) => (
-                              <Avatar
-                                key={p.id}
-                                className="h-7 w-7 shadow-sm sm:h-8 sm:w-8"
-                              >
-                                <AvatarImage
-                                  src={p.photo_url || undefined}
-                                  className="object-cover"
-                                />
-                                <AvatarFallback className="bg-white/85 text-[10px] font-black text-slate-800 dark:bg-zinc-800 dark:text-slate-100">
-                                  {initials(p.full_name)}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
-                        </div>
-                      ) : null}
-                      <span
-                        className={cn(
-                          "absolute left-2 top-2 z-[2] rounded-full px-3 py-1 text-xs font-black tabular-nums leading-none sm:left-2.5 sm:top-2.5 md:left-3 md:top-3 md:px-3.5 md:py-1.5 md:text-sm",
-                          "bg-black/45 text-white opacity-95 ring-1 ring-white/15 backdrop-blur-[2px]",
-                          "dark:bg-black/50 dark:text-white",
-                        )}
-                        aria-hidden
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span>{liveCountLabel(cat.id)}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-white/90 sm:text-xs md:text-sm">
-                            live
-                          </span>
-                        </span>
-                      </span>
-                      <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/95 via-black/75 to-transparent pt-28 pb-2 px-1.5 sm:pt-32 sm:pb-2.5 sm:px-2"
-                        aria-hidden
-                      />
-                      <span className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-8 pt-2 text-center text-base font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:pt-4 md:px-1.5 md:pt-3 md:text-base lg:text-lg md:pb-9">
-                        {DISCOVER_CATEGORY_WORK_LINE[cat.id] ?? cat.label}
-                      </span>
-                      <ChevronRight
-                        className="pointer-events-none absolute bottom-2 right-2 z-[3] h-5 w-5 text-white/95 drop-shadow-md"
-                        strokeWidth={2.5}
-                        aria-hidden
-                      />
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
-                <button
-                  type="button"
-                  aria-label="Scroll categories left"
-                  disabled={!discoverCategoryScroll.canScrollLeft}
-                  onClick={() => scrollDiscoverCategories("left")}
-                  className={cn(
-                    "md:hidden",
-                    "absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:left-3 sm:h-11 sm:w-11",
-                    "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
-                    "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "dark:border-white/15 dark:bg-black/30 dark:text-white dark:hover:bg-black/45",
-                    "disabled:pointer-events-none disabled:opacity-30",
-                  )}
-                >
-                  <ChevronLeft
-                    className="h-6 w-6 drop-shadow-sm"
-                    strokeWidth={2.5}
-                    aria-hidden
-                  />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Scroll categories right"
-                  disabled={!discoverCategoryScroll.canScrollRight}
-                  onClick={() => scrollDiscoverCategories("right")}
-                  className={cn(
-                    "md:hidden",
-                    "absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full sm:right-3 sm:h-11 sm:w-11",
-                    "border border-white/55 bg-white/25 text-foreground shadow-lg backdrop-blur-md",
-                    "transition-[opacity,transform] hover:bg-white/40 hover:shadow-xl active:scale-95",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "dark:border-white/15 dark:bg-black/30 dark:text-white dark:hover:bg-black/45",
-                    "disabled:pointer-events-none disabled:opacity-30",
-                  )}
-                >
-                  <ChevronRight
-                    className="h-6 w-6 drop-shadow-sm"
-                    strokeWidth={2.5}
-                    aria-hidden
-                  />
-                </button>
               </div>
             </section>
           )}

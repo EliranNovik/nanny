@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { DiscoverHomeScrollHeaderProvider } from "@/context/DiscoverHomeScrollHeaderContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ReportIssueProvider } from "@/context/ReportIssueContext";
 import { ConfigCheck } from "@/components/ConfigCheck";
@@ -454,12 +455,14 @@ export default function App() {
             <DocumentScrollOverflowGate />
             <ToastProvider>
               <AuthProvider>
-                <ReportIssueProvider>
-                  <NotificationListener />
-                  <AppRoutes />
-                  <BottomNav />
-                  <ReportIssueModal />
-                </ReportIssueProvider>
+                <DiscoverHomeScrollHeaderProvider>
+                  <ReportIssueProvider>
+                    <NotificationListener />
+                    <AppRoutes />
+                    <BottomNav />
+                    <ReportIssueModal />
+                  </ReportIssueProvider>
+                </DiscoverHomeScrollHeaderProvider>
               </AuthProvider>
             </ToastProvider>
           </BrowserRouter>

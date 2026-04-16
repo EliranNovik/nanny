@@ -1,3 +1,4 @@
+import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronRight } from "lucide-react";
@@ -364,9 +365,11 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
       type="button"
       onClick={() => navigate(helpingNowJobsUrl)}
       className={cn(
-        "relative w-full rounded-2xl bg-muted/20 p-4 text-left transition-colors dark:bg-muted/30",
-        "hover:bg-muted/30 active:bg-muted/45 dark:hover:bg-muted/45 dark:active:bg-muted/60",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "group relative w-full text-left bg-white dark:bg-zinc-900",
+        "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
+        INTERACTIVE_CARD_HOVER,
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50",
+        compact ? "rounded-xl p-3" : "rounded-2xl p-4",
         className,
       )}
       aria-label={isWork ? "Open Helping now" : "Open Helping me now"}
@@ -464,13 +467,9 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-            Your matches
+            Your community matches
           </p>
-          <p className="mt-0.5 text-sm font-semibold text-foreground">
-            {isWork
-              ? "Jobs you’re on and Connect matches from your posts"
-              : "Helpers you matched via Connect on live posts"}
-          </p>
+          
         </div>
         <button
           type="button"

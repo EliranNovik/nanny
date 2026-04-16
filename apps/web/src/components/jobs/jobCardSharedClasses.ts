@@ -1,11 +1,24 @@
 import { cn } from "@/lib/utils";
 
 /**
+ * Shared hover for tappable cards (jobs tabs, discover tiles, etc.):
+ * subtle lift, layered shadow, border brighten, crisp active state.
+ */
+export const INTERACTIVE_CARD_HOVER =
+  "transition-[transform,box-shadow,border-color] duration-300 ease-out " +
+  "hover:-translate-y-0.5 hover:border-slate-300/90 hover:shadow-lg hover:shadow-slate-900/[0.09] " +
+  "active:translate-y-0 active:shadow-md active:duration-150 " +
+  "dark:hover:border-white/[0.14] dark:hover:shadow-xl dark:hover:shadow-black/40";
+
+/**
  * Flat chrome on every breakpoint. Overrides `Card` defaults (`sm:bg-card`, `sm:border`, shadows)
  * so job rows stay transparent on desktop — no grey panel.
  */
-export const JOB_CARD_SHELL =
-  "group relative flex min-h-[380px] w-full min-w-0 flex-col overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:shadow-md dark:border-white/5 dark:bg-zinc-900";
+export const JOB_CARD_SHELL = cn(
+  "group relative flex min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm",
+  "dark:border-white/5 dark:bg-zinc-900",
+  INTERACTIVE_CARD_HOVER,
+);
 
 /** Thumb + profile row: scales up on desktop */
 export const JOB_CARD_COMPACT_ROW = "flex gap-3 p-3 md:gap-5 md:p-6";

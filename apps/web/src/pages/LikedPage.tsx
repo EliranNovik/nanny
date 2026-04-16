@@ -21,6 +21,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/BrandIcons";
+import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { StarRating } from "@/components/StarRating";
@@ -57,8 +58,10 @@ type PostWithExtras = PostRow & {
 };
 
 /** Same grey card shell as public profile history rows. */
-const profileCardShellClass =
-  "group border border-slate-200/80 dark:border-white/5 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300/80 rounded-[20px] overflow-hidden bg-white dark:bg-zinc-900 transition-all duration-300";
+const profileCardShellClass = cn(
+  "group overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/5 dark:bg-zinc-900",
+  INTERACTIVE_CARD_HOVER,
+);
 
 /** Newest interest per post for this user (from `community_post_hire_interests`, ordered by created_at desc). */
 type HireInterestState =

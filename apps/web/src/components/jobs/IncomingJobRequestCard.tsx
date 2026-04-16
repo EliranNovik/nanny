@@ -15,10 +15,6 @@ import JobMap from "@/components/JobMap";
 import { StarRating } from "@/components/StarRating";
 import { LiveTimer } from "@/components/LiveTimer";
 import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
-import {
-  JobAttachedPhotosStrip,
-  jobAttachmentImageUrls,
-} from "@/components/JobAttachedPhotosStrip";
 import { jobCardCarouselItemClass } from "@/components/jobs/JobCardsCarousel";
 import {
   JOB_CARD_COMPACT_ROW,
@@ -90,8 +86,6 @@ export function IncomingJobRequestCard({
   onConfirm,
   onOpenPreview,
   onProfileClick,
-  /** When false, hides client-uploaded photos from `service_details.images` (e.g. Discover home). */
-  showUserAttachments = true,
 }: {
   notif: IncomingJobRequestCardNotif;
   isMinMd: boolean;
@@ -106,7 +100,6 @@ export function IncomingJobRequestCard({
     e: React.MouseEvent,
     userId: string | null | undefined,
   ) => void;
-  showUserAttachments?: boolean;
 }) {
   const job = notif.job_requests;
   const isConfirmed = Boolean(notif.isConfirmed);
@@ -229,18 +222,14 @@ export function IncomingJobRequestCard({
           </div>
         </div>
 
-        {showUserAttachments ? (
-          <JobAttachedPhotosStrip images={jobAttachmentImageUrls(job)} />
-        ) : null}
-
         <CardContent
           className={cn(
-            "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-4",
+            "border-t border-slate-100 p-4 dark:border-white/5 md:p-5",
             isMinMd && "md:cursor-pointer",
           )}
           onClick={isMinMd ? () => onOpenPreview(job) : undefined}
         >
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             {!isConfirmed &&
               !isDeclined &&
               job.community_post_id &&
@@ -300,7 +289,7 @@ export function IncomingJobRequestCard({
           )}
 
           {!isConfirmed && !isDeclined && (
-            <div className="mt-auto flex gap-4 border-t border-slate-100 pt-6 max-md:border-t-0 max-md:pt-3 dark:border-white/5">
+            <div className="mt-2 flex gap-4 border-t border-slate-100 pt-4 dark:border-white/5">
               <Button
                 variant="outline"
                 className="h-12 flex-1 rounded-[18px] border-slate-200 font-bold transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.96] dark:border-white/10 dark:hover:bg-red-500/10"

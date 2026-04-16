@@ -4,7 +4,6 @@ import {
   useRef,
   useMemo,
   useCallback,
-  type ReactNode,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -14,19 +13,16 @@ import { getCityFromLocation } from "@/lib/location";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DualLocationPicker } from "@/components/DualLocationPicker";
+import { CreateJobCityAutocomplete } from "@/components/CreateJobCityAutocomplete";
 import {
   Clock,
   MapPin,
   Heart,
-  ArrowLeft,
-  ArrowRight,
-  ChevronLeft,
+  ChevronRight,
   Loader2,
   Lightbulb,
   Sparkles,
-  Navigation,
   Check,
-  Truck,
   Baby,
   Wrench,
   Calendar,
@@ -43,7 +39,7 @@ import {
   Users,
   UserPlus,
   Dumbbell,
-  Soup,
+  ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -53,19 +49,7 @@ import {
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 
-const SERVICE_TYPE_ICONS: Record<ServiceCategoryId, ReactNode> = {
-  cleaning: (
-    <Sparkles className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-  ),
-  cooking: <Soup className="h-8 w-8 text-amber-700 dark:text-amber-400" />,
-  pickup_delivery: <Truck className="h-8 w-8 text-sky-600 dark:text-sky-400" />,
-  nanny: <Baby className="h-8 w-8 text-pink-600 dark:text-pink-400" />,
-  other_help: (
-    <Wrench className="h-8 w-8 text-violet-700 dark:text-violet-400" />
-  ),
-};
-
-/** Step 1 + list tiles — white surfaces, emerald selection (matches availability wizard) */
+/** Step 2+ list tiles — white surfaces, emerald selection (matches availability wizard) */
 const JOB_CHOICE_IDLE =
   "border-2 border-slate-200/90 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/[0.12] dark:bg-white/[0.04] dark:shadow-none";
 const JOB_CHOICE_HOVER =
@@ -73,47 +57,11 @@ const JOB_CHOICE_HOVER =
 const JOB_CHOICE_SELECTED =
   "border-2 border-emerald-500/80 bg-white shadow-[0_12px_40px_-16px_rgba(16,185,129,0.35)] ring-1 ring-emerald-500/25 dark:border-emerald-400/60 dark:bg-white/[0.04] dark:ring-emerald-400/20";
 
-const SERVICE_TYPE_STEP1_STYLE: Record<
-  ServiceCategoryId,
-  { idle: string; selected: string; subtitle: string; arrow: string }
-> = {
-  cleaning: {
-    idle: JOB_CHOICE_IDLE,
-    selected: JOB_CHOICE_SELECTED,
-    subtitle: "text-slate-500 dark:text-slate-400",
-    arrow: "text-emerald-600 dark:text-emerald-400",
-  },
-  cooking: {
-    idle: JOB_CHOICE_IDLE,
-    selected: JOB_CHOICE_SELECTED,
-    subtitle: "text-slate-500 dark:text-slate-400",
-    arrow: "text-emerald-600 dark:text-emerald-400",
-  },
-  pickup_delivery: {
-    idle: JOB_CHOICE_IDLE,
-    selected: JOB_CHOICE_SELECTED,
-    subtitle: "text-slate-500 dark:text-slate-400",
-    arrow: "text-emerald-600 dark:text-emerald-400",
-  },
-  nanny: {
-    idle: JOB_CHOICE_IDLE,
-    selected: JOB_CHOICE_SELECTED,
-    subtitle: "text-slate-500 dark:text-slate-400",
-    arrow: "text-emerald-600 dark:text-emerald-400",
-  },
-  other_help: {
-    idle: JOB_CHOICE_IDLE,
-    selected: JOB_CHOICE_SELECTED,
-    subtitle: "text-slate-500 dark:text-slate-400",
-    arrow: "text-emerald-600 dark:text-emerald-400",
-  },
-};
-
 const SERVICE_TYPES = SERVICE_CATEGORIES.map((c) => ({
   id: c.id,
   label: c.label,
   description: c.description,
-  icon: SERVICE_TYPE_ICONS[c.id],
+  imageSrc: c.imageSrc,
 }));
 
 // Step 2: Care Frequency
@@ -250,7 +198,7 @@ const TOTAL_STEPS = 5;
 const CREATE_JOB_STEP_TIPS: readonly string[] = [
   "Pick the category that best matches what you need — you can post another request anytime.",
   "One-time is for a single visit; part-time and regular suit ongoing or repeating help.",
-  "Helpers match by city — use GPS or type yours so the right people see the job.",
+  "Pick your city from the suggestions (or GPS). Free text alone won’t unlock the next step.",
   "Choose a duration that fits the visit; helpers use it to decide if they can commit.",
   "Specific details get faster, better matches — add anything that clarifies the task.",
 ];
@@ -259,6 +207,8 @@ interface JobData {
   service_type: string;
   care_frequency: string;
   location_city: string;
+  /** Set when city comes from Places/GPS/profile — required to leave step 3 */
+  location_city_confirmed: boolean;
   time_duration: string;
   service_details: {
     // For cleaning
@@ -321,10 +271,15 @@ export default function CreateJobPage() {
             Object.keys(savedJobData.service_details).length > 0);
 
         if (hasData) {
+          const loc = savedJobData.location_city || "";
           return {
             service_type: savedJobData.service_type || "",
             care_frequency: savedJobData.care_frequency || "",
-            location_city: savedJobData.location_city || "",
+            location_city: loc,
+            location_city_confirmed:
+              typeof savedJobData.location_city_confirmed === "boolean"
+                ? savedJobData.location_city_confirmed
+                : !!loc,
             time_duration: savedJobData.time_duration || "",
             service_details: savedJobData.service_details || {},
           } as JobData;
@@ -338,6 +293,7 @@ export default function CreateJobPage() {
       service_type: "",
       care_frequency: "",
       location_city: "",
+      location_city_confirmed: false,
       time_duration: "",
       service_details: {},
     };
@@ -397,8 +353,11 @@ export default function CreateJobPage() {
       !jobData.location_city &&
       !savedLocationDismissed
     ) {
-      // Auto-fill the saved location so the user can see it is already set
-      updateField("location_city", profile.city);
+      setJobData((prev) => ({
+        ...prev,
+        location_city: profile.city!,
+        location_city_confirmed: true,
+      }));
       setSavedLocationShown(true);
     }
   }, [step, profile?.city, savedLocationShown, jobData.location_city, savedLocationDismissed]);
@@ -434,10 +393,48 @@ export default function CreateJobPage() {
       ? (CREATE_JOB_STEP_TIPS[step - 1] ?? "")
       : "";
 
+  const selectLocationCity = useCallback((city: string) => {
+    setJobData((prev) => ({
+      ...prev,
+      location_city: city.trim(),
+      location_city_confirmed: true,
+    }));
+  }, []);
+
+  const invalidateLocationCity = useCallback(() => {
+    setJobData((prev) => ({
+      ...prev,
+      location_city: "",
+      location_city_confirmed: false,
+    }));
+  }, []);
+
   const handleHeaderBack = useCallback(() => {
     if (step > 1) setStep((s: number) => s - 1);
     else navigate("/client/home");
   }, [navigate, step]);
+
+  /** Mobile hero: glass pills — shared by Back / Next / Post now (md:hidden block only) */
+  const mobileHeroPillClass =
+    "mt-0.5 h-10 shrink-0 gap-1.5 rounded-full border border-white/30 bg-white/15 px-4 text-sm font-semibold text-white backdrop-blur-md hover:bg-white/25 disabled:opacity-40 sm:h-11 sm:px-[1.125rem] sm:text-[0.9375rem]";
+
+  /** Mobile plain header (no category image) */
+  const mobilePlainHeaderPillClass =
+    "mt-0.5 h-11 shrink-0 gap-1.5 rounded-full border border-border/70 bg-background/95 px-4 text-base font-semibold shadow-sm backdrop-blur-sm hover:bg-muted/60 dark:border-white/15 dark:bg-background/90";
+
+  /** Post now — high-contrast orange CTA */
+  const postNowOrangeBase =
+    "gap-1.5 border border-orange-400/90 bg-gradient-to-r from-orange-500 to-orange-600 font-bold text-white shadow-lg shadow-orange-950/35 ring-1 ring-orange-300/50 transition hover:from-orange-500 hover:to-orange-500 hover:brightness-105 hover:shadow-orange-900/40 focus-visible:ring-orange-500/60 dark:border-orange-400/70 dark:from-orange-500 dark:to-orange-600 dark:ring-orange-400/30";
+
+  const postNowMobileHeroClass = cn(
+    "mt-0.5 h-10 shrink-0 rounded-full px-4 text-sm sm:h-11 sm:px-[1.125rem] sm:text-[0.9375rem]",
+    postNowOrangeBase,
+  );
+
+  const postNowMobilePlainClass = cn(
+    "mt-0.5 h-11 shrink-0 rounded-full px-4 text-base",
+    postNowOrangeBase,
+  );
 
   function canProceed(): boolean {
     switch (step) {
@@ -446,7 +443,9 @@ export default function CreateJobPage() {
       case 2:
         return !!jobData.care_frequency;
       case 3:
-        return !!jobData.location_city;
+        return (
+          !!jobData.location_city.trim() && jobData.location_city_confirmed
+        );
       case 4:
         return !!jobData.time_duration;
       case 5: {
@@ -490,7 +489,11 @@ export default function CreateJobPage() {
     setGettingLocation(true);
     try {
       const cityName = await getCityFromLocation();
-      updateField("location_city", cityName);
+      setJobData((prev) => ({
+        ...prev,
+        location_city: cityName,
+        location_city_confirmed: true,
+      }));
       addToast({
         title: "Location found",
         description: `Your location has been set to ${cityName}`,
@@ -514,10 +517,11 @@ export default function CreateJobPage() {
 
     try {
       console.log("[CreateJobPage] Submitting job request:", jobData);
+      const { location_city_confirmed: _confirmed, ...jobPayload } = jobData;
       const result = await apiPost<{ job_id: string; confirm_ends_at: string }>(
         "/api/jobs",
         {
-          ...jobData,
+          ...jobPayload,
           confirm_window_seconds: 90,
         },
       );
@@ -546,129 +550,195 @@ export default function CreateJobPage() {
 
   const shellTitle = categoryLabel || "Type of help";
 
+  /** Mobile fixed banner: flush below notch — app chrome hidden on /client/create (see BottomNav + index.css). */
+  const mobileFixedBannerTopClass = "top-[env(safe-area-inset-top,0px)]";
+
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 md:pt-7">
-      {/* Mobile: full-bleed hero when a service category is selected */}
+    <div
+      data-create-job-no-mobile-header=""
+      className="min-h-screen bg-slate-50/50 dark:bg-background pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 md:pt-7"
+    >
+      {/* Mobile: fixed top banner (stays visible while page scrolls) */}
       <div className="md:hidden">
         {categoryImageSrc ? (
-          <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
-            <div className="relative aspect-[5/4] min-h-[12rem] w-full overflow-hidden">
-              <img
-                src={categoryImageSrc}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              <div
-                className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/35 to-black/60"
-                aria-hidden
-              />
-              <div
-                className="absolute inset-x-0 top-0 flex items-start gap-3 px-4 pb-6"
-                style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="mt-0.5 shrink-0 rounded-full border border-white/25 bg-black/35 text-white backdrop-blur-md hover:bg-black/45 hover:text-white"
-                  onClick={handleHeaderBack}
-                  aria-label={step > 1 ? "Back" : "Back to home"}
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </Button>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">
+          <>
+            <div
+              className={cn(
+                "fixed inset-x-0 z-20 w-full",
+                mobileFixedBannerTopClass,
+              )}
+            >
+              <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
+                <div className="relative aspect-[16/9] min-h-[6rem] max-h-[9rem] w-full overflow-hidden sm:max-h-[10rem]">
+                  <img
+                    src={categoryImageSrc}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/35 to-black/60"
+                    aria-hidden
+                  />
+                  <div className="absolute inset-x-0 top-0 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1 px-2 pb-3 pt-2 sm:gap-2 sm:px-3 sm:pb-4">
+                    <div className="flex justify-start">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={mobileHeroPillClass}
+                        onClick={handleHeaderBack}
+                        aria-label="Back"
+                      >
+                        <ChevronLeft className="h-5 w-5 shrink-0" />
+                        Back
+                      </Button>
+                    </div>
+                    <div className="min-w-0 max-w-[min(100%,18rem)] justify-self-center pt-0.5 text-center">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 sm:text-[11px]">
+                        Post your request
+                      </p>
+                      <h1 className="text-lg font-black leading-snug tracking-tight text-white drop-shadow-md sm:text-xl">
+                        {shellTitle}
+                      </h1>
+                    </div>
+                    <div className="flex justify-end">
+                      {step === 3 ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className={mobileHeroPillClass}
+                          onClick={() => setStep(4)}
+                          disabled={!canProceed()}
+                        >
+                          Next
+                          <ChevronRight className="h-5 w-5 shrink-0" />
+                        </Button>
+                      ) : step === 5 ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className={postNowMobileHeroClass}
+                          onClick={handleSubmit}
+                          disabled={loading || !canProceed()}
+                        >
+                          {loading ? (
+                            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-white" />
+                          ) : (
+                            <>
+                              Post now
+                              <Sparkles className="ml-1 h-5 w-5 shrink-0 text-white" />
+                            </>
+                          )}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[min(50%,10rem)] bg-gradient-to-t from-black/95 via-black/60 to-transparent"
+                    aria-hidden
+                  />
+                  <div
+                    className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 sm:px-4 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pt-2"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <p className="mb-1.5 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)] sm:mb-2 sm:text-[11px]">
+                      Step {step} of {TOTAL_STEPS}
+                    </p>
+                    <div className="flex gap-1.5" aria-hidden>
+                      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "h-1 flex-1 rounded-full transition-colors",
+                            i < step ? "bg-emerald-500" : "bg-white/25",
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Reserve space so content starts below fixed banner */}
+            <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2" aria-hidden>
+              <div className="aspect-[16/9] min-h-[6rem] max-h-[9rem] w-full sm:max-h-[10rem]" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              className={cn(
+                "fixed inset-x-0 z-20 border-b border-border/50 bg-slate-50/95 backdrop-blur-sm dark:bg-background/95",
+                mobileFixedBannerTopClass,
+              )}
+            >
+              <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1 px-3 py-2.5 sm:px-4">
+                <div className="flex justify-start">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={mobilePlainHeaderPillClass}
+                    onClick={handleHeaderBack}
+                    aria-label="Back"
+                  >
+                    <ChevronLeft className="h-5 w-5 shrink-0" />
+                    Back
+                  </Button>
+                </div>
+                <div className="min-w-0 max-w-[min(100%,18rem)] justify-self-center text-center">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                     Post your request
                   </p>
-                  <h1 className="text-xl font-black leading-snug tracking-tight text-white drop-shadow-md">
+                  <h1 className="text-lg font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
                     {shellTitle}
                   </h1>
                 </div>
-              </div>
-              {stepTip ? (
-                <div
-                  className="absolute inset-x-0 z-10 px-4 md:hidden"
-                  style={{ bottom: "clamp(5.75rem, 24vw, 7.75rem)" }}
-                >
-                  <div
-                    className="flex gap-2.5 rounded-2xl border border-white/20 bg-black/50 px-3.5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.4)] ring-1 ring-emerald-500/25 backdrop-blur-md"
-                    role="note"
-                  >
-                    <Lightbulb
-                      className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300"
-                      aria-hidden
-                    />
-                    <p className="text-[13px] leading-snug text-white/95 [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
-                      {stepTip}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-              <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[min(68%,17.5rem)] bg-gradient-to-t from-black/95 via-black/60 to-transparent md:hidden"
-                aria-hidden
-              />
-              <div
-                className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
-                role="status"
-                aria-live="polite"
-              >
-                <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-[0.2em] text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-                  Step {step} of {TOTAL_STEPS}
-                </p>
-                <div className="flex gap-1.5" aria-hidden>
-                  {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "h-1 flex-1 rounded-full transition-colors",
-                        i < step ? "bg-emerald-500" : "bg-white/25",
+                <div className="flex justify-end">
+                  {step === 3 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className={mobilePlainHeaderPillClass}
+                      onClick={() => setStep(4)}
+                      disabled={!canProceed()}
+                    >
+                      Next
+                      <ChevronRight className="h-5 w-5 shrink-0" />
+                    </Button>
+                  ) : step === 5 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className={postNowMobilePlainClass}
+                      onClick={handleSubmit}
+                      disabled={loading || !canProceed()}
+                    >
+                      {loading ? (
+                        <Loader2 className="h-5 w-5 shrink-0 animate-spin text-white" />
+                      ) : (
+                        <>
+                          Post now
+                          <Sparkles className="ml-1 h-5 w-5 shrink-0 text-white" />
+                        </>
                       )}
-                    />
-                  ))}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div
-            className="flex items-start gap-3 px-4"
-            style={{ paddingTop: "max(2.625rem, env(safe-area-inset-top))" }}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="mt-0.5 shrink-0 rounded-full"
-              onClick={handleHeaderBack}
-              aria-label="Back to home"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                Post your request
-              </p>
-              <h1 className="text-xl font-black leading-snug tracking-tight text-foreground sm:text-[1.35rem]">
-                {shellTitle}
-              </h1>
-            </div>
-          </div>
+            <div className="h-[5.5rem] shrink-0 sm:h-[5.75rem]" aria-hidden />
+          </>
         )}
       </div>
 
       <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pb-8 pt-5 md:pt-0">
-        <div className="hidden items-start gap-3 md:flex">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="mt-0.5 shrink-0 rounded-full"
-            onClick={handleHeaderBack}
-            aria-label={step > 1 ? "Back" : "Back to home"}
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
+        <div className="hidden items-start justify-between gap-4 md:flex">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
               Post your request
@@ -677,21 +747,57 @@ export default function CreateJobPage() {
               {shellTitle}
             </h1>
           </div>
-          {categoryImageSrc ? (
-            <div
-              className={cn(
-                "relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md sm:h-28 sm:w-28",
-                "dark:border-white/15 dark:bg-white/[0.06]",
-              )}
-              aria-hidden
-            >
-              <img
-                src={categoryImageSrc}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            </div>
-          ) : null}
+          <div className="flex shrink-0 items-start gap-3">
+            {categoryImageSrc ? (
+              <div
+                className={cn(
+                  "relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md sm:h-24 sm:w-24",
+                  "dark:border-white/15 dark:bg-white/[0.06]",
+                )}
+                aria-hidden
+              >
+                <img
+                  src={categoryImageSrc}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : null}
+            {step === 3 ? (
+              <Button
+                type="button"
+                className="mt-0.5 shrink-0 font-semibold"
+                onClick={() => setStep(4)}
+                disabled={!canProceed()}
+              >
+                Next
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            ) : step === 5 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className={cn(
+                  "mt-0.5 shrink-0 rounded-full px-5 py-2.5 text-sm font-bold sm:text-base",
+                  postNowOrangeBase,
+                )}
+                onClick={handleSubmit}
+                disabled={loading || !canProceed()}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-white" />
+                    <span className="text-white">Posting…</span>
+                  </>
+                ) : (
+                  <>
+                    Post now
+                    <Sparkles className="ml-1 h-4 w-4 shrink-0 text-white" />
+                  </>
+                )}
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div
@@ -717,8 +823,8 @@ export default function CreateJobPage() {
         {stepTip ? (
           <div
             className={cn(
-              "gap-3 rounded-2xl border border-slate-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/[0.12] dark:bg-white/[0.04] dark:shadow-none",
-              categoryImageSrc ? "hidden md:flex" : "flex",
+              "hidden gap-3 rounded-2xl border border-slate-200/90 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/[0.12] dark:bg-white/[0.04] dark:shadow-none",
+              "md:flex",
             )}
             role="note"
           >
@@ -733,7 +839,7 @@ export default function CreateJobPage() {
         ) : null}
 
         <div className="animate-fade-in">
-          <h2 className="mb-6 flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground md:mb-6">
             {step === 1 && (
               <>
                 <Sparkles className="w-5 h-5 text-primary shrink-0" /> Type of
@@ -770,59 +876,55 @@ export default function CreateJobPage() {
               </div>
             )}
 
-            {/* Step 1: Service Type */}
+            {/* Step 1: Service Type — image tiles; 2 columns on mobile for larger tap targets */}
             {step === 1 && (
-              <div className="grid gap-3">
-                {SERVICE_TYPES.map((type) => {
-                  const st = SERVICE_TYPE_STEP1_STYLE[type.id];
-                  return (
-                    <button
-                      key={type.id}
-                      type="button"
-                      onClick={() => {
-                        updateField("service_type", type.id);
-                        setStep(2);
-                      }}
-                      className={cn(
-                        "flex items-center gap-4 rounded-2xl p-4 text-left transition-all",
-                        "group relative overflow-hidden",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                        st.idle,
-                        jobData.service_type === type.id
-                          ? st.selected
-                          : cn(
-                              JOB_CHOICE_HOVER,
-                              "active:scale-[0.99] motion-reduce:active:scale-100",
-                            ),
-                      )}
-                    >
-                      <div className="flex-shrink-0 rounded-xl bg-slate-50 p-1 shadow-inner dark:bg-white/10">
-                        {type.icon}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="block text-base font-bold leading-none text-foreground">
-                          {type.label}
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 md:gap-3">
+                {SERVICE_TYPES.map((type) => (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={() => {
+                      updateField("service_type", type.id);
+                      setStep(2);
+                    }}
+                    className={cn(
+                      "group relative aspect-square w-full shrink-0 overflow-hidden rounded-2xl text-left outline-none",
+                      "shadow-md transition-[transform,box-shadow] duration-200 hover:shadow-lg active:scale-[0.97]",
+                      "focus-visible:ring-2 focus-visible:ring-emerald-500/65 focus-visible:ring-inset",
+                      jobData.service_type === type.id &&
+                        "ring-2 ring-emerald-500 ring-offset-1 ring-offset-background md:ring-offset-2",
+                    )}
+                  >
+                    <img
+                      src={type.imageSrc}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-200 group-hover:scale-105 group-active:scale-[0.98] group-active:brightness-110"
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-0 z-[1] bg-black/35 transition-opacity duration-200 group-active:bg-black/25"
+                      aria-hidden
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/95 via-black/75 to-transparent pt-14 pb-1 px-1 sm:pt-24 sm:pb-2 sm:px-2 md:pt-28"
+                      aria-hidden
+                    />
+                    <div className="absolute inset-x-0 bottom-0 z-[2] flex flex-col items-center justify-end px-1.5 pb-4 pt-8 text-center sm:px-2 sm:pb-6 sm:pt-10 md:pb-8 md:pt-12">
+                      <span className="text-base font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:line-clamp-2 sm:text-sm md:text-base lg:text-lg">
+                        {type.label}
+                      </span>
+                      {type.description ? (
+                        <span className="mt-1 max-w-[98%] text-xs font-medium leading-snug text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)] max-md:line-clamp-2 sm:mt-1 sm:text-[10px] md:text-xs">
+                          {type.description}
                         </span>
-                        {type.description && (
-                          <span
-                            className={cn("mt-1 block text-xs", st.subtitle)}
-                          >
-                            {type.description}
-                          </span>
-                        )}
-                      </div>
-                      <ArrowRight
-                        className={cn(
-                          "h-4 w-4 shrink-0 transition-all duration-300",
-                          st.arrow,
-                          jobData.service_type === type.id
-                            ? "translate-x-0 opacity-100"
-                            : "-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100",
-                        )}
-                      />
-                    </button>
-                  );
-                })}
+                      ) : null}
+                    </div>
+                    <ChevronRight
+                      className="pointer-events-none absolute bottom-2 right-2 z-[3] h-4 w-4 text-white/95 drop-shadow-md sm:bottom-2 sm:right-2 sm:h-5 sm:w-5"
+                      strokeWidth={2.5}
+                      aria-hidden
+                    />
+                  </button>
+                ))}
               </div>
             )}
 
@@ -872,7 +974,11 @@ export default function CreateJobPage() {
                       className="shrink-0 text-xs text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-500/20 h-7 px-2"
                       onClick={() => {
                         setSavedLocationDismissed(true);
-                        updateField("location_city", "");
+                        setJobData((prev) => ({
+                          ...prev,
+                          location_city: "",
+                          location_city_confirmed: false,
+                        }));
                       }}
                     >
                       Change
@@ -882,37 +988,14 @@ export default function CreateJobPage() {
 
                 {/* Location input — shown when user chose to change or no profile city */}
                 {(!savedLocationShown || savedLocationDismissed || jobData.location_city !== profile?.city) && (
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter your city"
-                        value={jobData.location_city}
-                        onChange={(e) =>
-                          updateField("location_city", e.target.value)
-                        }
-                        className="h-14 flex-1 border-slate-200/90 bg-white text-lg dark:border-white/[0.12] dark:bg-white/[0.04]"
-                        autoFocus
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={handleGetLocation}
-                        disabled={gettingLocation}
-                        className="h-14 w-14"
-                        title="Get location using GPS"
-                      >
-                        {gettingLocation ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Navigation className="w-5 h-5" />
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      We&apos;ll match you with helpers in your area.
-                    </p>
-                  </div>
+                  <CreateJobCityAutocomplete
+                    confirmedCity={jobData.location_city}
+                    isConfirmed={jobData.location_city_confirmed}
+                    onPickCity={selectLocationCity}
+                    onInvalidateSelection={invalidateLocationCity}
+                    gpsLoading={gettingLocation}
+                    onGpsClick={handleGetLocation}
+                  />
                 )}
               </div>
             )}
@@ -1117,109 +1200,7 @@ export default function CreateJobPage() {
               </div>
             )}
 
-            {/* Navigation — inline on desktop, hidden on mobile (sticky bar handles it) */}
-            <div className="hidden md:flex gap-3 mt-6">
-              {step > 1 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(step - 1)}
-                  className="flex-1"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
-                </Button>
-              )}
-
-              {step < 5 && step !== 1 && step !== 2 && step !== 4 && (
-                <Button
-                  onClick={() => setStep(step + 1)}
-                  disabled={!canProceed()}
-                  className="flex-1"
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              )}
-
-              {step === 5 && (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={loading || !canProceed()}
-                  className="flex-1"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Finding Helpers...
-                    </>
-                  ) : (
-                    <>
-                      Find Helper
-                      <Sparkles className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Sticky mobile CTA bar — always visible at bottom on small screens */}
-      <div className="fixed bottom-0 inset-x-0 z-30 md:hidden bg-background/95 backdrop-blur-sm border-t border-border/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <div className="flex gap-3 max-w-lg mx-auto">
-          {step > 1 && (
-            <Button
-              variant="outline"
-              onClick={() => setStep(step - 1)}
-              className="w-14 shrink-0"
-              aria-label="Back"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          )}
-
-          {/* Primary action */}
-          {step < 5 && step !== 1 && step !== 2 && step !== 4 ? (
-            <Button
-              onClick={() => setStep(step + 1)}
-              disabled={!canProceed()}
-              className="flex-1"
-              size="lg"
-            >
-              Next
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          ) : step === 5 ? (
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !canProceed()}
-              className="flex-1"
-              size="lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Finding Helpers...
-                </>
-              ) : (
-                <>
-                  Find Helper
-                  <Sparkles className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
-          ) : (
-            // Steps 1, 2, 4 auto-advance on selection — show a disabled placeholder
-            <Button
-              disabled
-              className="flex-1 opacity-40"
-              size="lg"
-            >
-              Select an option above
-            </Button>
-          )}
         </div>
       </div>
     </div>

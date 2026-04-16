@@ -8,13 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  CheckCircle2,
-  MessageSquare,
-  Briefcase,
-  Calendar,
-  ChevronRight,
-} from "lucide-react";
+import { CheckCircle2, MessageSquare, Briefcase, ChevronRight } from "lucide-react";
 import JobMap from "@/components/JobMap";
 import JobReviewModal from "@/components/JobReviewModal";
 import { StarRating } from "@/components/StarRating";
@@ -23,10 +17,6 @@ import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { useJobCardEdgeOverlay } from "@/hooks/useJobCardEdgeOverlay";
 import { useIsMinMd } from "@/hooks/useIsMinMd";
 import { JobCardLocationBar } from "@/components/jobs/JobCardLocationBar";
-import {
-  JobAttachedPhotosStrip,
-  jobAttachmentImageUrls,
-} from "@/components/JobAttachedPhotosStrip";
 import {
   JobCardsCarousel,
   jobCardCarouselItemClass,
@@ -123,89 +113,6 @@ export default function JobsTabContent({
     [perspective, activeTab, activeJobs.length, pastJobs.length, loading],
   );
   const clippedCardIds = useJobCardEdgeOverlay(edgeOverlayKey);
-
-  const renderMobileJobDetails = (job: JobRequest) => {
-    const notes = typeof job.notes === "string" ? job.notes.trim() : "";
-    const rows: Array<{ k: string; v: string }> = [];
-
-    /** History of help: no grey meta grid (location / posted / status, etc.) — calendar row stays on the card */
-    if (activeTab !== "past") {
-      const startAt = job.start_at ? new Date(job.start_at) : null;
-      const createdAt = job.created_at ? new Date(job.created_at) : null;
-
-      if (job.location_city?.trim() && activeTab !== "jobs") {
-        rows.push({ k: "Location", v: job.location_city.trim() });
-      }
-      if (startAt) rows.push({ k: "Starts", v: startAt.toLocaleString() });
-      if (job.shift_hours)
-        rows.push({ k: "Shift", v: String(job.shift_hours) });
-      if (job.care_type && activeTab !== "jobs") {
-        rows.push({ k: "Care type", v: String(job.care_type) });
-      }
-      if (job.children_count != null && activeTab !== "jobs") {
-        rows.push({ k: "Children", v: String(job.children_count) });
-      }
-      if (job.children_age_group && activeTab !== "jobs") {
-        rows.push({ k: "Age group", v: String(job.children_age_group) });
-      }
-      if (Array.isArray(job.languages_pref) && job.languages_pref.length > 0) {
-        rows.push({ k: "Languages", v: job.languages_pref.join(", ") });
-      }
-      if (Array.isArray(job.requirements) && job.requirements.length > 0) {
-        rows.push({ k: "Requirements", v: job.requirements.join(", ") });
-      }
-      if (job.budget_min != null || job.budget_max != null) {
-        const min = job.budget_min != null ? String(job.budget_min) : "";
-        const max = job.budget_max != null ? String(job.budget_max) : "";
-        rows.push({
-          k: "Budget",
-          v: [min, max].filter(Boolean).join(" – ") || "Set",
-        });
-      }
-      if (createdAt && activeTab !== "jobs") {
-        rows.push({ k: "Posted", v: createdAt.toLocaleDateString() });
-      }
-      if (job.status && activeTab !== "jobs") {
-        rows.push({ k: "Status", v: String(job.status) });
-      }
-    }
-
-    if (rows.length === 0 && !notes) return null;
-
-    return (
-      <div className="mt-2 md:mt-3">
-        {rows.length > 0 && (
-          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04] md:gap-x-5 md:gap-y-3 md:px-5 md:py-4">
-            {rows.map((r) => (
-              <div key={r.k} className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground md:text-xs">
-                  {r.k}
-                </p>
-                <p className="mt-1 truncate text-[15px] font-semibold text-slate-800 dark:text-slate-100 md:text-base">
-                  {r.v}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-        {notes && (
-          <div
-            className={cn(
-              "rounded-2xl bg-black/[0.02] px-3.5 py-3.5 dark:bg-white/[0.04] md:px-5 md:py-4",
-              rows.length > 0 && "mt-3 md:mt-4",
-            )}
-          >
-            <p className="text-[11px] font-black uppercase tracking-wide text-muted-foreground md:text-xs">
-              Notes
-            </p>
-            <p className="mt-1.5 whitespace-pre-wrap text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-slate-100 md:text-base">
-              {notes}
-            </p>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // 1. Fetch cache on mount
   useEffect(() => {
@@ -411,37 +318,32 @@ export default function JobsTabContent({
             <Skeleton className="h-7 w-44" />
             <Skeleton className="h-4 w-80" />
           </div>
-          {/* Horizontal carousel skeleton — matches the real job cards */}
-          <div className="relative -mx-4">
-            <div className="flex gap-4 px-4 pb-8 overflow-hidden">
-              {[1, 2].map((i) => (
-                <div key={i} className="min-w-[85vw] md:min-w-[420px] shrink-0">
-                  <Card className="border border-slate-200/70 dark:border-white/10 rounded-2xl overflow-hidden">
-                    {/* Location bar */}
-                    <div className="flex items-center gap-2 border-b border-slate-100 dark:border-white/5 px-4 py-2">
-                      <Skeleton className="h-4 w-4 rounded" />
-                      <Skeleton className="h-4 flex-1" />
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                    </div>
-                    {/* Compact row: thumb + person */}
-                    <div className="flex items-center gap-4 px-4 py-4">
-                      <Skeleton className="h-[5.25rem] w-[5.25rem] shrink-0 rounded-2xl" />
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <Skeleton className="h-12 w-12 rounded-full" />
-                        <Skeleton className="h-5 w-32" />
-                        <Skeleton className="h-3 w-20" />
-                      </div>
-                      <Skeleton className="h-8 w-8 rounded-full shrink-0" />
-                    </div>
-                    {/* Action buttons */}
-                    <div className="flex gap-3 px-4 pb-4">
-                      <Skeleton className="h-12 flex-1 rounded-[18px]" />
-                      <Skeleton className="h-12 flex-1 rounded-[18px]" />
-                    </div>
-                  </Card>
+          {/* Vertical list skeleton */}
+          <div className="flex flex-col gap-4 pb-4">
+            {[1, 2].map((i) => (
+              <Card
+                key={i}
+                className="overflow-hidden rounded-[20px] border border-slate-200/70 dark:border-white/10"
+              >
+                <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 dark:border-white/5">
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-6 w-20 rounded-full" />
                 </div>
-              ))}
-            </div>
+                <div className="flex items-center gap-4 px-4 py-4">
+                  <Skeleton className="h-[5.25rem] w-[5.25rem] shrink-0 rounded-2xl" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                </div>
+                <div className="flex gap-3 border-t border-slate-100 px-4 py-4 dark:border-white/5">
+                  <Skeleton className="h-12 flex-1 rounded-[18px]" />
+                  <Skeleton className="h-12 flex-1 rounded-[18px]" />
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
       </div>
@@ -612,20 +514,16 @@ export default function JobsTabContent({
                             />
                           </div>
                         </div>
-                        <JobAttachedPhotosStrip
-                          images={jobAttachmentImageUrls(job)}
-                        />
                         <CardContent
                           className={cn(
-                            "flex flex-1 flex-col gap-5 p-4 pt-2 md:gap-6 md:p-6 md:pt-4",
+                            "border-t border-slate-100 p-4 dark:border-white/5 md:p-5",
                             isMinMd && "md:cursor-pointer",
                           )}
                           onClick={
                             isMinMd ? () => openJobPreview(job) : undefined
                           }
                         >
-                          {renderMobileJobDetails(job)}
-                          <div className="mt-auto flex gap-4 border-t border-slate-100 pt-6 dark:border-white/5 max-md:border-t-0 max-md:pt-3 md:gap-5 md:pt-8">
+                          <div className="flex gap-4 md:gap-5">
                             <Button
                               variant="outline"
                               className="flex-1 h-12 rounded-[18px] border-slate-200 text-[16px] font-bold text-slate-700 transition-all hover:bg-slate-50 active:scale-[0.96] dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5 md:h-14 md:text-[17px]"
@@ -661,7 +559,7 @@ export default function JobsTabContent({
                                 }
                               }}
                             >
-                              <CheckCircle2 className="w-4 h-4 mr-2" /> Done
+                              <CheckCircle2 className="mr-2 h-4 w-4" /> Done
                             </Button>
                           </div>
                         </CardContent>
@@ -673,7 +571,7 @@ export default function JobsTabContent({
             ) : (
               <Card className={JOB_CARD_EMPTY_PANEL}>
                 <CardContent className="p-12 text-center text-muted-foreground">
-                  <Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                  <Briefcase className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
                   <p className="text-lg font-bold">
                     {perspective === "client"
                       ? "Nothing in Helping me now yet."
@@ -828,26 +726,6 @@ export default function JobsTabContent({
                             />
                           </div>
                         </div>
-                        <JobAttachedPhotosStrip
-                          images={jobAttachmentImageUrls(job)}
-                        />
-                        <CardContent
-                          className={cn(
-                            "flex flex-1 flex-col gap-4 p-4 pt-2 md:gap-5 md:p-6 md:pt-4",
-                            isMinMd && "md:cursor-pointer",
-                          )}
-                          onClick={
-                            isMinMd ? () => openJobPreview(job) : undefined
-                          }
-                        >
-                          {renderMobileJobDetails(job)}
-                          <div className="flex items-center gap-3 text-[15px] font-semibold text-slate-600 dark:text-slate-300 md:gap-4 md:text-base">
-                            <Calendar className="h-5 w-5 shrink-0 text-slate-400 md:h-6 md:w-6" />
-                            <span>
-                              {new Date(job.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </CardContent>
                       </div>
                     </Card>
                   );
@@ -856,7 +734,7 @@ export default function JobsTabContent({
             ) : (
               <Card className={JOB_CARD_EMPTY_PANEL}>
                 <CardContent className="p-12 text-center text-muted-foreground">
-                  <CheckCircle2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                  <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
                   <p className="text-lg font-bold">No history of help yet.</p>
                 </CardContent>
               </Card>
