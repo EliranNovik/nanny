@@ -27,14 +27,13 @@ import { DiscoverHomeLatestReviews } from "@/components/discover/DiscoverHomeLat
 import { DiscoverHomeLatestPosts } from "@/components/discover/DiscoverHomeLatestPosts";
 import { DiscoverHomeLatestOwnPosts } from "@/components/discover/DiscoverHomeLatestOwnPosts";
 import { DiscoverHomeRecentActivity } from "@/components/discover/DiscoverHomeRecentActivity";
-import { useDiscoverHomeScrollHeader } from "@/context/DiscoverHomeScrollHeaderContext";
+import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { useClientRequests } from "@/hooks/data/useClientRequests";
 import { useDiscoverFeed, useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 type DiscoverRole = "client" | "freelancer";
 type DiscoverHomeMode = "hire" | "work";
 const HOME_INTENT_STORAGE_KEY = "mamalama_discover_home_intent_v1";
-/** Mobile compact header: show full top chrome again only when scroll is within this distance of the top. */
-const DISCOVER_HOME_EXPAND_HEADER_TOP_PX = 32;
+
 /** Hire tab — short title + supporting line (browse live board). */
 const DISCOVER_CATEGORY_HIRE_CARD: Record<string, { title: string; subtitle: string }> = {
   cleaning: { title: "Cleaning", subtitle: "See who’s live near you" },
@@ -294,8 +293,7 @@ function readStoredHomeMode(): DiscoverHomeMode | null {
   return null;
 }
 export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
-  const { compact: discoverHeaderCompact, setCompact: setDiscoverHeaderCompact } =
-    useDiscoverHomeScrollHeader();
+  useMobileShellScrollCollapse(true);
   const { addToast } = useToast();
   const navigate = useNavigate();
   const isClient = role === "client";
@@ -365,72 +363,37 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
     },
     [livePostsByCategory, livePostsCountLoading],
   );
-  /** Mobile: hide global top chrome on scroll down; restore only when scrolled back to the top. */
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767.98px)");
-    let lastY = window.scrollY ?? document.documentElement.scrollTop;
-
-    const onScroll = () => {
-      if (!mq.matches) return;
-      const y = window.scrollY ?? document.documentElement.scrollTop;
-      const delta = y - lastY;
-      lastY = y;
-      if (y < DISCOVER_HOME_EXPAND_HEADER_TOP_PX) {
-        setDiscoverHeaderCompact(false);
-        return;
-      }
-      if (delta > 6) setDiscoverHeaderCompact(true);
-    };
-
-    const onMqChange = () => {
-      if (!mq.matches) setDiscoverHeaderCompact(false);
-    };
-
-    mq.addEventListener("change", onMqChange);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      mq.removeEventListener("change", onMqChange);
-      window.removeEventListener("scroll", onScroll);
-      setDiscoverHeaderCompact(false);
-    };
-  }, [setDiscoverHeaderCompact]);
-
   return (
     <div
       className="relative min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-12"
       data-discover-home-page=""
-      data-discover-home-compact={discoverHeaderCompact ? "" : undefined}
     >
-      {/**
-       * Mobile: keep `top:0` + full-width `bg-background` always — animating `top` left a gap where
-       * scroll content showed through. Animate an inner spacer height instead.
-       */}
+      {/** Mobile: fixed tab strip — spacer height tracks scroll-driven collapse (no solo CSS animation). */}
       <div
         className={cn(
-          "fixed inset-x-0 z-[55] pointer-events-none bg-background",
+          "fixed inset-x-0 z-[55] pointer-events-none border-b-0 shadow-none",
+          "bg-slate-50/50 dark:bg-background",
           "max-md:top-0",
           "md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
         )}
       >
         <div
           aria-hidden
-          className={cn(
-            "shrink-0 bg-background md:hidden",
-            "max-md:transition-[height] max-md:duration-[420ms] max-md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:max-md:transition-none",
-            discoverHeaderCompact
-              ? "h-[env(safe-area-inset-top,0px)]"
-              : "h-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
-          )}
+          className="shrink-0 bg-slate-50/50 dark:bg-background md:hidden max-md:transition-none"
+          style={{
+            height:
+              "calc(env(safe-area-inset-top, 0px) + (1 - var(--mobile-shell-collapse-progress, 0)) * 3.5rem)",
+          }}
         />
         <div className="app-desktop-shell pointer-events-auto">
           <div className="w-full px-2 py-2">
             <div role="tablist" aria-label="What are you here for?">
-              {/** Track: neutral glass; colored gradient only on the active thumb */}
+              {/** Track: same frosted / see-through treatment as /jobs mobile tab pill */}
               <div
                 className={cn(
-                  "relative mx-auto grid min-h-[56px] w-full max-w-[22rem] grid-cols-2 gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[24rem] sm:min-h-[64px]",
-                  "bg-slate-100/80 border border-slate-200/60 shadow-inner",
-                  "dark:bg-zinc-900/50 dark:border-zinc-800/60 leading-none",
+                  "relative isolate mx-auto grid min-h-[56px] w-full max-w-[22rem] grid-cols-2 gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[24rem] sm:min-h-[64px]",
+                  "bg-slate-100/80 backdrop-blur-md border border-slate-200/60 shadow-inner",
+                  "dark:bg-zinc-900/55 dark:border-zinc-800/60 leading-none",
                 )}
               >
                 <div
@@ -516,15 +479,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
         </div>
       </div>
 
-      <div
-        className={cn(
-          "app-desktop-shell" /** Tab strip: py + full-width themed pill toggle (~62–70px) + border + gap */,
-          "pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]",
-          discoverHeaderCompact &&
-            "max-md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem-3.5rem)]",
-          "max-md:transition-[padding-top] max-md:duration-[420ms] max-md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:max-md:transition-none",
-        )}
-      >
+      {/** Main column pt clears fixed tab row; shell top pad is scroll-linked via CSS var (no extra compact pt — avoids double shift). */}
+      <div className="app-desktop-shell max-md:transition-none pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]">
         <div className="flex w-full flex-col gap-6 md:gap-8 lg:gap-10">
           <div className="flex w-full flex-col gap-4 md:flex-row md:items-start md:gap-4 lg:gap-6">
             <div className="order-2 min-w-0 flex-1 md:order-1">

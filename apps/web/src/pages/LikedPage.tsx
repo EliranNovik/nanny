@@ -23,6 +23,7 @@ import {
 import { WhatsAppIcon } from "@/components/BrandIcons";
 import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
+import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { StarRating } from "@/components/StarRating";
 import { type AvailabilityPayload } from "@/lib/availabilityPosts";
@@ -84,6 +85,7 @@ function mapProfileRowFromDb(p: Record<string, unknown>): ProfileRow {
 }
 
 export default function LikedPage() {
+  useMobileShellScrollCollapse(true);
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -465,12 +467,17 @@ export default function LikedPage() {
   const showSavedTabs = loading || profiles.length > 0 || posts.length > 0;
 
   return (
-    <div className="relative min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <div
+      className="relative min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8"
+      data-liked-page=""
+    >
       {showSavedTabs && (
         <div
           className={cn(
             "fixed inset-x-0 z-[45] pointer-events-none",
-            "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
+            /** Mobile: same scroll-linked top offset as Discover /jobs tab strips (`useMobileShellScrollCollapse`). */
+            "max-md:[top:calc(env(safe-area-inset-top,0px)+(1-var(--mobile-shell-collapse-progress,0))*3.5rem)]",
+            "md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
             "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
             "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]",
           )}
@@ -599,7 +606,7 @@ export default function LikedPage() {
         className={cn(
           "app-desktop-shell px-1",
           showSavedTabs
-            ? "pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]"
+            ? "max-md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem-var(--mobile-shell-collapse-progress,0)*3.5rem)] md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]"
             : "pt-4 md:pt-6",
         )}
       >

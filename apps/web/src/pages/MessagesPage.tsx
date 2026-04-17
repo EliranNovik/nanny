@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
@@ -16,6 +16,8 @@ import {
   persistHiddenChatUserIds,
 } from "@/lib/inboxHiddenChats";
 import { InboxChatSwipeRow } from "@/components/messages/InboxChatSwipeRow";
+import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
+import { useLiveJobConversationBanner } from "@/hooks/useLiveJobConversationBanner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -66,7 +68,10 @@ export default function MessagesPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const conversationId = searchParams.get("conversation");
+  const params = useParams<{ conversationId?: string }>();
+  /** `/messages?conversation=` or `/messages/:conversationId` (both routes render this page) */
+  const conversationId =
+    searchParams.get("conversation") ?? params.conversationId ?? null;
 
   // Try to load cached data immediately
   const getCachedMessagesData = () => {
@@ -130,6 +135,18 @@ export default function MessagesPage() {
     rows.sort((x, y) => y.sortAt - x.sortAt);
     return rows;
   }, [conversations, visibleActivityAlerts, hiddenChatUserIds]);
+
+  const activeConversationForChat = useMemo(() => {
+    if (!conversationId) return null;
+    return conversations.find((c) => c.id === conversationId) ?? null;
+  }, [conversationId, conversations]);
+
+  /** Resolves job from `conversations.id` in DB — inbox row may not match URL conversation id */
+  const liveJobHeaderBanner = useLiveJobConversationBanner(
+    conversationId,
+    user?.id,
+  );
+
   const [mobileView, setMobileView] = useState<"contacts" | "chat">("contacts");
   /** When URL has ?conversation= but list has not loaded that row yet (e.g. new direct chat). */
   const [directChatHeader, setDirectChatHeader] = useState<{
@@ -755,8 +772,8 @@ export default function MessagesPage() {
               </div>
             </div>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-0">
-            <div className="mt-2 w-full min-w-0 max-w-full divide-y space-y-0.5">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] md:pt-0">
+            <div className="w-full min-w-0 max-w-full divide-y space-y-0.5">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="flex w-full items-center gap-3 px-4 py-4">
                   <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
@@ -780,9 +797,12 @@ export default function MessagesPage() {
     );
   }
 
-  /** Mobile fixed inbox header height below safe-area — keep in sync with header block below */
+  /**
+   * Mobile: padding clears fixed headers. Second term = toolbar row (~2.5rem) + bottom padding
+   * (inbox `pb-4` → 3.5rem; chat bar `pb-3` → 3.25rem). Larger values leave a grey strip of page bg.
+   */
   const messagesMobileHeaderInset =
-    "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-0";
+    "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] md:pt-0";
 
   // Show contact panel with conversation list and chat inline
   return (
@@ -998,11 +1018,23 @@ export default function MessagesPage() {
                                     <div className="shrink-0">
                                       {convo.last_message.read_at &&
                                       convo.last_message.read_by ? (
-                                        <CheckCheck className="h-4 w-4 text-blue-500" />
+                                        <CheckCheck
+                                          className="h-4 w-4 shrink-0"
+                                          stroke="#86efac"
+                                          strokeWidth={2.25}
+                                        />
                                       ) : convo.last_message.read_at ? (
-                                        <CheckCheck className="h-4 w-4 text-muted-foreground/60" />
+                                        <CheckCheck
+                                          className="h-4 w-4 shrink-0 text-muted-foreground/60"
+                                          stroke="currentColor"
+                                          strokeWidth={2.25}
+                                        />
                                       ) : (
-                                        <Check className="h-4 w-4 text-muted-foreground/60" />
+                                        <Check
+                                          className="h-4 w-4 shrink-0 text-muted-foreground/60"
+                                          stroke="currentColor"
+                                          strokeWidth={2.25}
+                                        />
                                       )}
                                     </div>
                                   )}
@@ -1047,9 +1079,7 @@ export default function MessagesPage() {
       >
         {conversationId ? (
           (() => {
-            const selectedConvo = conversations.find(
-              (c) => c.id === conversationId,
-            );
+            const selectedConvo = activeConversationForChat;
             const otherUserId =
               selectedConvo?.other_user_id ?? directChatHeader?.otherUserId;
             const otherUserProfile =
@@ -1067,72 +1097,86 @@ export default function MessagesPage() {
                 {/* Mobile chat bar — fixed to viewport top; conversation scrolls underneath */}
                 <div
                   className={cn(
-                    "z-40 flex shrink-0 border-b border-border/30 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
+                    "z-40 flex shrink-0 items-center gap-2 border-b border-border/30 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
                     "fixed left-0 right-0 top-0 md:hidden",
                     "px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleBackToContacts}
+                    className="shrink-0 self-center"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </Button>
+                  <div className="flex min-w-0 flex-1 items-center gap-2 self-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (otherUserId) navigate(`/profile/${otherUserId}`);
+                      }}
+                      disabled={!otherUserId}
+                      className="rounded-full shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                      aria-label={
+                        otherUserId
+                          ? `View ${otherUserProfile?.full_name || "user"} public profile`
+                          : undefined
+                      }
+                    >
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage
+                          src={otherUserProfile?.photo_url || undefined}
+                        />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {otherInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-semibold truncate">
+                        {otherUserProfile?.full_name || "User"}
+                      </h2>
+                    </div>
+                    {liveJobHeaderBanner && (
+                      <LiveJobHeaderPill
+                        categoryLabel={liveJobHeaderBanner.categoryLabel}
+                        href={liveJobHeaderBanner.href}
+                        className="max-w-[min(42vw,9.5rem)] shrink-0 self-center"
+                      />
+                    )}
                     <Button
                       variant="ghost"
-                      size="icon"
-                      onClick={handleBackToContacts}
+                      size="sm"
+                      onClick={() =>
+                        navigate(
+                          profile?.role === "client"
+                            ? "/client/home"
+                            : "/freelancer/home",
+                        )
+                      }
+                      className="hidden shrink-0 items-center gap-2 text-muted-foreground hover:text-primary transition-colors md:flex"
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Back</span>
                     </Button>
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (otherUserId) navigate(`/profile/${otherUserId}`);
-                        }}
-                        disabled={!otherUserId}
-                        className="rounded-full shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                        aria-label={
-                          otherUserId
-                            ? `View ${otherUserProfile?.full_name || "user"} public profile`
-                            : undefined
-                        }
-                      >
-                        <Avatar className="h-10 w-10 flex-shrink-0">
-                          <AvatarImage
-                            src={otherUserProfile?.photo_url || undefined}
-                          />
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {otherInitials}
-                          </AvatarFallback>
-                        </Avatar>
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <h2 className="font-semibold truncate">
-                          {otherUserProfile?.full_name || "User"}
-                        </h2>
-                      </div>
-                      {/* Desktop Back Button */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          navigate(
-                            profile?.role === "client"
-                              ? "/client/home"
-                              : "/freelancer/home",
-                          )
-                        }
-                        className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        <span>Back</span>
-                      </Button>
-                    </div>
                   </div>
                 </div>
 
-                {/* Chat Page area — top inset clears fixed mobile chat header */}
+                {liveJobHeaderBanner && (
+                  <div className="hidden shrink-0 items-center justify-end border-b border-border/30 bg-background/90 px-4 py-2 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 md:flex dark:bg-background/95">
+                    <LiveJobHeaderPill
+                      categoryLabel={liveJobHeaderBanner.categoryLabel}
+                      href={liveJobHeaderBanner.href}
+                    />
+                  </div>
+                )}
+
+                {/* Chat Page area — top inset clears fixed mobile chat header (single row: back + avatar + name + optional pill) */}
                 <div
                   className={cn(
                     "relative min-h-0 flex-1 overflow-hidden",
-                    "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+4.25rem)] md:pt-0",
+                    "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] md:pt-0",
                   )}
                 >
                   <div className="messages-chat-container h-full min-h-0">

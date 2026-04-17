@@ -202,18 +202,16 @@
       padding-top: 0;
     }
 
-    /** Discover home: compact — app header hidden; #root already pads safe-area — do not add a second inset. */
-    .app-content-below-fixed-header:has([data-discover-home-compact]) {
-      padding-top: 0;
-    }
-
     /**
-     * Discover home only: smooth padding when compact toggles (420ms — match DiscoverHomeContent + BottomNav).
+     * Discover home + /jobs + /liked: scroll-linked collapse — `--mobile-shell-collapse-progress` is 0…1 (set on html in JS).
+     * Padding follows scroll (no transition); must match mobile shell height token (0.5+2.5+0.5 rem).
      */
-    @media (prefers-reduced-motion: no-preference) {
-      .app-content-below-fixed-header:has([data-discover-home-page]) {
-        transition: padding-top 420ms cubic-bezier(0.22, 1, 0.36, 1);
-      }
+    .app-content-below-fixed-header:has([data-discover-home-page]),
+    .app-content-below-fixed-header:has([data-unified-jobs-page]),
+    .app-content-below-fixed-header:has([data-liked-page]) {
+      padding-top: calc(
+        (1 - var(--mobile-shell-collapse-progress, 0)) * (0.5rem + 2.5rem + 0.5rem)
+      );
     }
   }
 

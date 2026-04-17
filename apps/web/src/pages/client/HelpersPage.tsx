@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import * as SliderPrimitive from "@radix-ui/react-slider";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
@@ -21,6 +21,7 @@ import {
   Heart,
   UsersRound,
   PlusCircle,
+  Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/StarRating";
@@ -75,6 +76,52 @@ function shouldGeocodeSearchQuery(raw: string): boolean {
 
 /** `distanceKm` is null when the helper has no lat/lng — we still list them if search/city matches. */
 export type HelperResult = FreelancerRow & { distanceKm: number | null };
+
+const RADIUS_MIN = 5;
+const RADIUS_MAX = 100;
+const RADIUS_STEP = 5;
+
+function BigRadiusSlider({
+  value,
+  onChange,
+  id,
+}: {
+  value: number;
+  onChange: (km: number) => void;
+  id?: string;
+}) {
+  return (
+    <SliderPrimitive.Root
+      id={id}
+      className="relative flex h-12 w-full touch-none select-none items-center py-2"
+      value={[value]}
+      onValueChange={(v) => {
+        const next = v[0] ?? value;
+        onChange(
+          Math.min(
+            RADIUS_MAX,
+            Math.max(RADIUS_MIN, Math.round(next / RADIUS_STEP) * RADIUS_STEP),
+          ),
+        );
+      }}
+      min={RADIUS_MIN}
+      max={RADIUS_MAX}
+      step={RADIUS_STEP}
+      aria-label="Search radius in kilometers"
+    >
+      <SliderPrimitive.Track className="relative h-5 w-full grow overflow-hidden rounded-full bg-orange-100/90 shadow-inner dark:bg-orange-950/35">
+        <SliderPrimitive.Range className="absolute h-full bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
+      </SliderPrimitive.Track>
+      <SliderPrimitive.Thumb
+        className={cn(
+          "block h-12 w-12 shrink-0 rounded-full border-[3px] border-white bg-orange-500 shadow-xl",
+          "ring-4 ring-orange-500/25 transition-transform hover:scale-[1.03] active:scale-[0.98]",
+          "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-400/60",
+        )}
+      />
+    </SliderPrimitive.Root>
+  );
+}
 
 type HelpersMapBlockProps = {
   center: { lat: number; lng: number };
@@ -138,7 +185,7 @@ function HelpersMapBlock({
 
   if (loadError || !mapsApiKey) {
     return (
-      <div className="flex h-full min-h-[220px] items-center justify-center bg-muted/40 px-4 text-center text-sm text-muted-foreground">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
         Map unavailable. Set VITE_GOOGLE_MAPS_API_KEY to show the map. You can
         still search helpers by distance from your profile location.
       </div>
@@ -146,7 +193,7 @@ function HelpersMapBlock({
   }
   if (!isLoaded) {
     return (
-      <div className="flex h-full min-h-[220px] items-center justify-center bg-muted/30">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-muted/30">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -177,7 +224,7 @@ function HelpersMapBlock({
     >
       <Marker
         position={center}
-        title="Search center — tap map to move"
+        title="Search center"
         icon={{
           path: google.maps.SymbolPath.CIRCLE,
           scale: 10,
@@ -228,19 +275,20 @@ export default function HelpersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [results, setResults] = useState<HelperResult[]>([]);
   const [loadingFetch, setLoadingFetch] = useState(false);
-  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+  /** True after the user runs a search — helpers list and map pins appear only then. */
+  const [hasSearched, setHasSearched] = useState(false);
   const [locating, setLocating] = useState(false);
   /** True when the current debounced query was resolved as a place — map shows radius for everyone there. */
   const [geocodeMatchedPlace, setGeocodeMatchedPlace] = useState(false);
   const resultsAnchorRef = useRef<HTMLDivElement>(null);
-  const userTriggeredSearchRef = useRef(false);
   /** Apply saved profile search radius once when it loads (does not override after user moves slider). */
   const appliedProfileRadiusRef = useRef(false);
   /** First coords from profile — used when clearing search to restore map center. */
   const profileCenterSnapshotRef = useRef<{ lat: number; lng: number } | null>(
     null,
   );
-  const searchDebounceBootRef = useRef(false);
+  /** When set, profile city coords must not overwrite the map center (GPS or user choice wins). */
+  const gpsLockRef = useRef(false);
   const geocodeRequestIdRef = useRef(0);
 
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
@@ -314,7 +362,7 @@ export default function HelpersPage() {
 
   const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
     if (!e.latLng) return;
-    userTriggeredSearchRef.current = true;
+    gpsLockRef.current = true;
     setCenter({ lat: e.latLng.lat(), lng: e.latLng.lng() });
     setGeocodeMatchedPlace(false);
   }, []);
@@ -333,19 +381,34 @@ export default function HelpersPage() {
       profile?.location_lng != null ? Number(profile.location_lng) : null;
     if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng))
       return;
+    if (gpsLockRef.current) return;
     if (!profileCenterSnapshotRef.current) {
       profileCenterSnapshotRef.current = { lat, lng };
       setCenter({ lat, lng });
     }
   }, [profile?.location_lat, profile?.location_lng]);
 
-  /** Debounce search: first sync, then 400ms (live filter + geocode without Find). */
+  /** Prefer device location when permission is granted; otherwise profile/saved city above applies. */
   useEffect(() => {
-    if (!searchDebounceBootRef.current) {
-      searchDebounceBootRef.current = true;
-      setDebouncedSearch(searchQuery);
-      return;
-    }
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        gpsLockRef.current = true;
+        setCenter({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+        setGeocodeMatchedPlace(false);
+      },
+      () => {
+        /* keep profile or default center */
+      },
+      { enableHighAccuracy: true, timeout: 12000 },
+    );
+  }, []);
+
+  /** Debounce search text for geocoding (does not fetch helpers until Search). */
+  useEffect(() => {
     const id = window.setTimeout(() => setDebouncedSearch(searchQuery), 400);
     return () => window.clearTimeout(id);
   }, [searchQuery]);
@@ -355,56 +418,75 @@ export default function HelpersPage() {
     if (profile?.service_radius == null) return;
     const r = Number(profile.service_radius);
     if (Number.isNaN(r)) return;
-    const clamped = Math.min(100, Math.max(5, Math.round(r)));
+    const clamped = Math.min(
+      RADIUS_MAX,
+      Math.max(RADIUS_MIN, Math.round(r / RADIUS_STEP) * RADIUS_STEP),
+    );
     setRadiusKm(clamped);
     appliedProfileRadiusRef.current = true;
   }, [profile?.service_radius]);
 
-  const fetchProfiles = useCallback(async () => {
-    if (!searchDebounceBootRef.current) return;
-    
-    setLoadingFetch(true);
-    try {
-      const viewerCityNorm = normalizeCityLabel(profile?.city);
-      const { data, error } = await supabase.rpc('get_helpers_near_location', {
-        search_lat: center.lat,
-        search_lng: center.lng,
-        radius_km: radiusKm,
-        search_query: debouncedSearch.trim(),
-        viewer_city_norm: viewerCityNorm || '',
-        geocode_matched_place: geocodeMatchedPlace
-      });
+  const runSearch = useCallback(
+    async (opts?: { radiusKm?: number }) => {
+      const rk = opts?.radiusKm ?? radiusKm;
+      setLoadingFetch(true);
+      try {
+        const viewerCityNorm = normalizeCityLabel(profile?.city);
+        const { data, error } = await supabase.rpc("get_helpers_near_location", {
+          search_lat: center.lat,
+          search_lng: center.lng,
+          radius_km: rk,
+          search_query: searchQuery.trim(),
+          viewer_city_norm: viewerCityNorm || "",
+          geocode_matched_place: geocodeMatchedPlace,
+        });
 
-      if (error) throw error;
-      
-      let rows = data as HelperResult[];
-      if (user?.id) rows = rows.filter((r) => r.id !== user.id);
-      
-      setResults(rows);
-    } catch (e: any) {
-      console.error("HelpersPage fetch:", e);
-      setResults([]);
-      addToast({
-        title: "Error fetching helpers",
-        description: e?.message || "An unexpected error occurred.",
-        variant: "error" as any,
-      });
-    } finally {
-      setLoadingFetch(false);
-      setHasFetchedOnce(true);
-    }
-  }, [center.lat, center.lng, radiusKm, debouncedSearch, geocodeMatchedPlace, user?.id, profile?.city, addToast]);
+        if (error) throw error;
 
-  useEffect(() => {
-    void fetchProfiles();
-  }, [fetchProfiles]);
+        let rows = data as HelperResult[];
+        if (user?.id) rows = rows.filter((r) => r.id !== user.id);
+
+        setResults(rows);
+        setHasSearched(true);
+        window.setTimeout(() => {
+          resultsAnchorRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }, 80);
+      } catch (e: unknown) {
+        console.error("HelpersPage fetch:", e);
+        setResults([]);
+        addToast({
+          title: "Error fetching helpers",
+          description:
+            e && typeof e === "object" && "message" in e
+              ? String((e as { message: string }).message)
+              : "An unexpected error occurred.",
+          variant: "error" as const,
+        });
+      } finally {
+        setLoadingFetch(false);
+      }
+    },
+    [
+      center.lat,
+      center.lng,
+      radiusKm,
+      searchQuery,
+      geocodeMatchedPlace,
+      user?.id,
+      profile?.city,
+      addToast,
+    ],
+  );
 
   /** Geocode city/place queries to move the map + circle; name-like queries keep map and filter by text. */
   useEffect(() => {
     const q = debouncedSearch.trim();
     if (q.length === 0) {
       setGeocodeMatchedPlace(false);
-      if (profileCenterSnapshotRef.current) {
+      if (profileCenterSnapshotRef.current && !gpsLockRef.current) {
         setCenter(profileCenterSnapshotRef.current);
       }
       return;
@@ -427,6 +509,7 @@ export default function HelpersPage() {
           return;
         }
         const loc = geoResults[0].geometry.location;
+        gpsLockRef.current = false;
         setCenter({ lat: loc.lat(), lng: loc.lng() });
         setGeocodeMatchedPlace(true);
       },
@@ -435,10 +518,10 @@ export default function HelpersPage() {
 
   const useMyLocation = () => {
     if (!navigator.geolocation) return;
-    userTriggeredSearchRef.current = true;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        gpsLockRef.current = true;
         setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setGeocodeMatchedPlace(false);
         setLocating(false);
@@ -454,38 +537,70 @@ export default function HelpersPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
-      <div className="app-desktop-shell space-y-6 pt-6 md:pt-8">
-        <div className="mx-auto w-full max-w-5xl px-1 md:max-w-6xl">
+      <div className="app-desktop-shell space-y-8 pt-6 md:pt-8">
+        <div className="mx-auto w-full max-w-lg px-2 text-center md:max-w-2xl">
           <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
-            Helpers near you
+            Find helpers
           </h1>
-          <p className="mt-1 text-[15px] font-medium text-muted-foreground">
-            Type a city to move the map and circle, or a name to filter. Results
-            update as you type.
-          </p>
         </div>
 
-        <Card className="mx-auto w-full max-w-5xl overflow-hidden border border-slate-200/60 shadow-sm dark:border-white/10 md:max-w-6xl">
-          <div className="relative h-[min(42vh,320px)] w-full md:h-[340px]">
-            <HelpersMapBlock
-              center={center}
-              radiusKm={radiusKm}
-              hasSearched={hasFetchedOnce}
-              results={results}
-              isLoaded={isLoaded}
-              loadError={loadError}
-              mapsApiKey={mapsApiKey}
-              onMapClick={onMapClick}
-              onProfileOpen={onProfileOpen}
-            />
-          </div>
-          <CardContent className="space-y-4 p-4 md:p-6">
-            <div className="flex flex-wrap items-center gap-3">
+        <Card className="mx-auto w-full max-w-lg overflow-visible border border-slate-200/70 bg-white/80 shadow-lg shadow-orange-500/5 backdrop-blur-sm dark:border-white/10 dark:bg-zinc-900/80 md:max-w-xl">
+          <CardContent className="space-y-6 p-5 pt-6 md:p-8">
+            <div className="relative mx-auto w-full max-w-md">
+              <div
+                className={cn(
+                  "relative aspect-square w-full overflow-hidden rounded-2xl",
+                  "ring-2 ring-orange-200/80 ring-offset-2 ring-offset-slate-50",
+                  "shadow-lg shadow-orange-500/15 dark:ring-orange-900/50 dark:ring-offset-zinc-950",
+                )}
+              >
+                <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-orange-50/25 to-transparent dark:from-orange-950/20" />
+                <HelpersMapBlock
+                  center={center}
+                  radiusKm={radiusKm}
+                  hasSearched={hasSearched}
+                  results={results}
+                  isLoaded={isLoaded}
+                  loadError={loadError}
+                  mapsApiKey={mapsApiKey}
+                  onMapClick={onMapClick}
+                  onProfileOpen={onProfileOpen}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3 px-0.5">
+                <label
+                  htmlFor="helpers-radius"
+                  className="text-sm font-bold text-slate-800 dark:text-slate-100"
+                >
+                  Radius
+                </label>
+                <span
+                  className="rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-xl font-black tabular-nums text-white shadow-md"
+                  aria-live="polite"
+                >
+                  {radiusKm} km
+                </span>
+              </div>
+              <BigRadiusSlider
+                id="helpers-radius"
+                value={radiusKm}
+                onChange={setRadiusKm}
+              />
+              <div className="flex justify-between px-1 text-xs font-bold text-muted-foreground">
+                <span>{RADIUS_MIN} km</span>
+                <span>{RADIUS_MAX} km</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-2 rounded-full"
+                className="gap-2 rounded-full border-slate-200 bg-white dark:border-white/10 dark:bg-zinc-900"
                 onClick={useMyLocation}
                 disabled={locating}
               >
@@ -494,112 +609,95 @@ export default function HelpersPage() {
                 ) : (
                   <Navigation className="h-4 w-4" />
                 )}
-                My location
+                Use my location
               </Button>
-              {/* Available Now toggle */}
               <button
                 type="button"
                 onClick={() => setAvailableNowFilter((v) => !v)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all border",
+                  "flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition-all border",
                   availableNowFilter
-                    ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
-                    : "bg-white text-slate-600 border-slate-200 dark:bg-zinc-900 dark:text-slate-300 dark:border-white/10 hover:border-emerald-400 hover:text-emerald-600"
+                    ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
+                    : "border-slate-200 bg-white text-slate-600 dark:border-white/10 dark:bg-zinc-900 dark:text-slate-300 hover:border-emerald-400 hover:text-emerald-600",
                 )}
               >
-                <span className={cn(
-                  "h-2 w-2 rounded-full",
-                  availableNowFilter ? "bg-white" : "bg-emerald-400"
-                )} />
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    availableNowFilter ? "bg-white" : "bg-emerald-400",
+                  )}
+                />
                 Available now
               </button>
-              <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:max-w-xs">
-                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Radius (km)
-                </label>
-                <input
-                  type="range"
-                  min={5}
-                  max={100}
-                  step={5}
-                  value={radiusKm}
-                  onChange={(e) => {
-                    userTriggeredSearchRef.current = true;
-                    setRadiusKm(Number(e.target.value));
-                  }}
-                  className="h-2 w-full cursor-pointer accent-orange-500"
-                />
-                <span className="text-sm font-bold tabular-nums text-slate-800 dark:text-slate-100">
-                  {radiusKm} km
-                </span>
-              </div>
             </div>
 
-            <div className="relative flex-1">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              {loadingFetch && (
-                <Loader2 className="absolute right-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 animate-spin text-orange-500" />
-              )}
               <Input
-                placeholder="City (moves map) or name…"
+                placeholder="City or name"
                 value={searchQuery}
-                onChange={(e) => {
-                  userTriggeredSearchRef.current = true;
-                  setSearchQuery(e.target.value);
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void runSearch();
+                  }
                 }}
-                className="h-11 rounded-xl border-slate-200 pl-10 pr-10 dark:border-white/10"
+                className="h-12 rounded-2xl border-slate-200 pl-10 pr-4 text-[15px] dark:border-white/10"
                 aria-busy={loadingFetch}
               />
             </div>
+
+            <Button
+              type="button"
+              size="lg"
+              disabled={loadingFetch}
+              onClick={() => void runSearch()}
+              className="h-14 w-full rounded-2xl text-base font-black shadow-lg shadow-orange-500/25 transition-all hover:scale-[1.01] active:scale-[0.99]"
+            >
+              {loadingFetch ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Searching…
+                </>
+              ) : (
+                <>
+                  <Radar className="mr-2 h-5 w-5" />
+                  Search helpers
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
 
-        <div
-          ref={resultsAnchorRef}
-          className="mx-auto flex w-full max-w-5xl items-center justify-between px-1 md:max-w-6xl"
-        >
-          <h2 className="text-lg font-black text-slate-900 dark:text-white">
-            {hasFetchedOnce ? (
+        {hasSearched && (
+          <div
+            ref={resultsAnchorRef}
+            className="animate-in fade-in slide-in-from-bottom-4 mx-auto flex w-full max-w-5xl items-center justify-between px-2 duration-700 md:max-w-6xl"
+          >
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">
               <>
-                {filteredResults.length} helper{filteredResults.length === 1 ? "" : "s"}
+                {filteredResults.length} helper
+                {filteredResults.length === 1 ? "" : "s"}
                 {availableNowFilter && (
-                  <span className="ml-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">available now</span>
+                  <span className="ml-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                    available now
+                  </span>
                 )}
               </>
-            ) : (
-              "Results"
+            </h2>
+            {filteredResults.length > 0 && (
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                {results.some((r) => r.distanceKm == null)
+                  ? "Mixed match"
+                  : "By distance"}
+              </span>
             )}
-          </h2>
-          {hasFetchedOnce && filteredResults.length > 0 && (
-            <span className="text-xs font-semibold text-muted-foreground">
-              {results.some((r) => r.distanceKm == null)
-                ? "Pinned locations by distance; others match search or your city"
-                : "Sorted by distance"}
-            </span>
-          )}
-        </div>
-
-        {!hasFetchedOnce ? (
-          <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 md:max-w-6xl lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={`skeleton-${i}`} className="flex h-[440px] flex-col overflow-hidden border-slate-200/80 dark:border-white/5 bg-white dark:bg-zinc-900 rounded-[20px]">
-                <Skeleton className="h-[200px] w-full rounded-b-none" />
-                <CardContent className="flex-1 p-5 space-y-4">
-                  <div className="space-y-2">
-                    <Skeleton className="h-6 w-3/4 rounded" />
-                    <Skeleton className="h-4 w-1/2 rounded" />
-                  </div>
-                  <div className="space-y-3 pt-6">
-                    <Skeleton className="h-4 w-full rounded" />
-                    <Skeleton className="h-4 w-full rounded" />
-                    <Skeleton className="h-4 w-2/3 rounded" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
           </div>
-        ) : filteredResults.length === 0 ? (
-          <div className="mx-auto w-full max-w-5xl md:max-w-6xl">
+        )}
+
+        {!hasSearched ? null : filteredResults.length === 0 ? (
+          <div className="animate-in fade-in slide-in-from-bottom-3 mx-auto w-full max-w-5xl px-2 duration-700 md:max-w-6xl">
             <Card className="border border-dashed">
               <CardContent className="py-14 text-center">
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
@@ -610,8 +708,8 @@ export default function HelpersPage() {
                 </p>
                 <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
                   {availableNowFilter
-                    ? "Try removing the 'Available now' filter to see all helpers."
-                    : "Try expanding your search radius or a different city."}
+                    ? "Turn off “Available now” to see everyone."
+                    : "Widen the radius or move the map."}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   {availableNowFilter ? (
@@ -622,8 +720,9 @@ export default function HelpersPage() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        userTriggeredSearchRef.current = true;
-                        setRadiusKm((r) => Math.min(100, r + 10));
+                        const next = Math.min(RADIUS_MAX, radiusKm + 10);
+                        setRadiusKm(next);
+                        void runSearch({ radiusKm: next });
                       }}
                     >
                       <PlusCircle className="h-4 w-4 mr-2" />
@@ -638,7 +737,9 @@ export default function HelpersPage() {
             </Card>
           </div>
         ) : (
-          <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 md:max-w-6xl lg:grid-cols-3">
+          <div
+            className="animate-in fade-in slide-in-from-bottom-3 mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 px-2 duration-700 sm:grid-cols-2 md:max-w-6xl lg:grid-cols-3"
+          >
             {filteredResults.map((h) => (
               <Card
                 key={h.id}

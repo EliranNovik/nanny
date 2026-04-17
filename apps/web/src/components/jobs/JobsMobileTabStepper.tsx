@@ -11,15 +11,7 @@ import {
   defaultTabForPerspective,
   isTabValidForPerspective,
 } from "./jobsPerspective";
-import {
-  JOBS_STEPPER_STRIP_BASE,
-  jobsMobileStepperThemeForTab,
-} from "./jobsMobileStepperTheme";
-
-/** Base strip; theme adds tinted gradient (`jobsMobileStepperTheme.strip`) */
-const STRIP_BASE = JOBS_STEPPER_STRIP_BASE;
-
-const HEADER_OFFSET = "calc(env(safe-area-inset-top, 0px) + 3.5rem)";
+import { jobsMobileStepperThemeForTab } from "./jobsMobileStepperTheme";
 
 /**
  * Fixed under the app header on /jobs: Discover-style segmented pill (mobile only).
@@ -80,9 +72,13 @@ export function JobsMobileTabStepper() {
     <div
       className={cn(
         "md:hidden pointer-events-none fixed inset-x-0 z-[59] transition-[background,box-shadow] duration-300",
-        STRIP_BASE,
+        "border-b-0 shadow-none",
+        "bg-slate-50/50 dark:bg-background",
       )}
-      style={{ top: HEADER_OFFSET }}
+      style={{
+        top:
+          "calc(env(safe-area-inset-top, 0px) + (1 - var(--mobile-shell-collapse-progress, 0)) * 3.5rem)",
+      }}
     >
       <div className="pointer-events-auto app-desktop-shell px-3 py-2.5 sm:px-4">
         <div className="mx-auto w-full max-w-[min(42rem,calc(100vw-1.25rem))]">

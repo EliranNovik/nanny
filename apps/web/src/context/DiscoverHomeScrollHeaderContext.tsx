@@ -1,8 +1,13 @@
 import { createContext, useContext, useMemo, useState } from "react";
 
+/**
+ * Discover home mobile: header/tab strip collapse is driven by scroll position (0 = expanded, 1 = collapsed),
+ * not a discrete toggle — progress moves with the user’s finger.
+ */
 type DiscoverHomeScrollHeaderContextValue = {
-  compact: boolean;
-  setCompact: (v: boolean) => void;
+  /** 0 = full top chrome, 1 = fully collapsed — interpolated from scroll range on mobile discover only */
+  collapseProgress: number;
+  setCollapseProgress: (p: number) => void;
 };
 
 const DiscoverHomeScrollHeaderContext =
@@ -13,10 +18,10 @@ export function DiscoverHomeScrollHeaderProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [compact, setCompact] = useState(false);
+  const [collapseProgress, setCollapseProgress] = useState(0);
   const value = useMemo(
-    () => ({ compact, setCompact }),
-    [compact],
+    () => ({ collapseProgress, setCollapseProgress }),
+    [collapseProgress],
   );
   return (
     <DiscoverHomeScrollHeaderContext.Provider value={value}>
@@ -29,8 +34,8 @@ export function useDiscoverHomeScrollHeader() {
   const ctx = useContext(DiscoverHomeScrollHeaderContext);
   return (
     ctx ?? {
-      compact: false,
-      setCompact: (_v: boolean) => {
+      collapseProgress: 0,
+      setCollapseProgress: (_p: number) => {
         /* no-op outside provider */
       },
     }

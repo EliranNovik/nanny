@@ -15,6 +15,7 @@ import {
 } from "@/components/jobs/jobsPerspective";
 import JobsTabContent from "./JobsTabContent";
 import RequestsTabContent from "./RequestsTabContent";
+import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 
 export default function UnifiedJobsPage() {
   const location = useLocation();
@@ -47,6 +48,16 @@ export default function UnifiedJobsPage() {
       return tabFromUrl;
     return defaultTabForPerspective(resolvedMode);
   }, [resolvedMode, tabFromUrl]);
+
+  const needsPicker = showRolePicker && !resolvedMode;
+  const jobsShellScrollEnabled =
+    !loading &&
+    !!profile &&
+    !needsPicker &&
+    !!resolvedMode &&
+    !!effectiveTab;
+
+  useMobileShellScrollCollapse(jobsShellScrollEnabled);
 
   useEffect(() => {
     const stateTab = (location.state as { tab?: string } | null)?.tab;
@@ -114,8 +125,6 @@ export default function UnifiedJobsPage() {
     );
   }
 
-  const needsPicker = showRolePicker && !resolvedMode;
-
   if (needsPicker) {
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
@@ -150,7 +159,10 @@ export default function UnifiedJobsPage() {
   const isJobsOrPast = effectiveTab === "jobs" || effectiveTab === "past";
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <div
+      className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8"
+      data-unified-jobs-page=""
+    >
       <JobsMobileTabStepper />
       {/** Mobile: strip only — PageLayoutWithHeader already clears the nav (`app-content-below-fixed-header`). */}
       {/** Desktop: fixed directly under the app header (same offset as mobile strip). */}
@@ -160,7 +172,8 @@ export default function UnifiedJobsPage() {
         </div>
       </div>
 
-      <div className="app-desktop-shell pt-[calc(5rem)] md:pt-[calc(env(safe-area-inset-top,0px)+3.5rem+7.25rem)]">
+      {/** Mobile `pt`: tab strip only (~4.625rem); subtract collapsed header height via shell var */}
+      <div className="app-desktop-shell max-md:pt-[calc(4.625rem-var(--mobile-shell-collapse-progress,0)*3.5rem)] md:pt-[calc(env(safe-area-inset-top,0px)+3.5rem+7.25rem)]">
         {showRolePicker && (
           <JobsPerspectiveSwitch current={resolvedMode} className="mb-4 flex" />
         )}

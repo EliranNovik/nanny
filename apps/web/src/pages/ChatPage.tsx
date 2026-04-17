@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import {
   ChevronLeft,
-  Phone,
   Send,
   Loader2,
   Clock,
@@ -62,6 +61,8 @@ import {
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
+import { getLiveJobBannerFromRow } from "@/lib/liveJobConversationBanner";
 
 interface Message {
   id: string;
@@ -104,6 +105,8 @@ interface Profile {
 
 interface Job {
   id: string;
+  client_id: string;
+  selected_freelancer_id: string | null;
   status: string;
   stage: string | null;
   care_type: string;
@@ -406,6 +409,23 @@ export default function ChatPage({
     jobRef.current = job;
   }, [job]);
 
+  const liveJobBanner = useMemo(
+    () =>
+      job && user?.id && job.client_id
+        ? getLiveJobBannerFromRow(
+            {
+              status: job.status,
+              service_type: job.service_type,
+              care_type: job.care_type,
+              client_id: job.client_id,
+              selected_freelancer_id: job.selected_freelancer_id,
+            },
+            user.id,
+          )
+        : null,
+    [job, user?.id],
+  );
+
   useEffect(() => {
     isInitialLoadRef.current = true;
 
@@ -489,7 +509,7 @@ export default function ChatPage({
       }
 
       const jobSelect =
-        "id, status, stage, care_type, children_count, children_age_group, location_city, start_at, created_at, offered_hourly_rate, price_offer_status, schedule_confirmed, service_type, service_details, time_duration, care_frequency, community_post_id, community_post_expires_at, notes";
+        "id, client_id, selected_freelancer_id, status, stage, care_type, children_count, children_age_group, location_city, start_at, created_at, offered_hourly_rate, price_offer_status, schedule_confirmed, service_type, service_details, time_duration, care_frequency, community_post_id, community_post_expires_at, notes";
 
       const [msgPack, profile, jobData] = await Promise.all([
         loadMessages(),
@@ -1223,28 +1243,31 @@ export default function ChatPage({
     jobLocationCity,
   ]);
 
+  /** Explicit stroke — parent message `<p>` uses `text-white`, which otherwise wins via currentColor on Lucide SVGs. */
   function ReadReceipt({ status }: { status: "sent" | "delivered" | "read" }) {
+    const iconClass = "h-[1.125rem] w-[1.125rem] shrink-0";
     if (status === "sent") {
       return (
         <Check
-          className="h-[1.125rem] w-[1.125rem] shrink-0 text-muted-foreground/60"
+          className={cn(iconClass, "text-white/60")}
+          stroke="currentColor"
           strokeWidth={2.25}
         />
       );
     }
+    /** Neon green on gradient bubble — explicit hex so parent `text-white` does not override */
+    const neonGreen = "#39ff14";
     if (status === "delivered") {
       return (
         <CheckCheck
-          className="h-[1.125rem] w-[1.125rem] shrink-0 text-muted-foreground/60"
+          className={iconClass}
+          stroke={neonGreen}
           strokeWidth={2.25}
         />
       );
     }
     return (
-      <CheckCheck
-        className="h-[1.125rem] w-[1.125rem] shrink-0 text-blue-500"
-        strokeWidth={2.25}
-      />
+      <CheckCheck className={iconClass} stroke={neonGreen} strokeWidth={2.25} />
     );
   }
 
@@ -1423,16 +1446,6 @@ export default function ChatPage({
                     <span className="text-sm font-medium leading-tight max-w-[100px] line-clamp-2">
                       {otherUser.full_name || "User"}
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        // Phone call functionality
-                        console.log("Call", otherUser?.full_name);
-                      }}
-                    >
-                      <Phone className="w-5 h-5" />
-                    </Button>
                     {showWhatsApp && (
                       <Button
                         variant="ghost"
@@ -1958,28 +1971,18 @@ export default function ChatPage({
                       : "Support"
                     : otherUser?.full_name || "User"}
                 </h2>
-                {!hideBackButton && (
-                  <p className="text-[13px] font-medium text-black/60 dark:text-white/60">
-                    {otherUser?.id
-                      ? "Tap name for contact info"
-                      : "Tap for contact info"}
-                  </p>
-                )}
               </div>
+
+              {liveJobBanner && (
+                <LiveJobHeaderPill
+                  categoryLabel={liveJobBanner.categoryLabel}
+                  href={liveJobBanner.href}
+                  className="shrink-0"
+                />
+              )}
 
               {!hideBackButton && (
                 <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      // Phone call functionality
-                      console.log("Call", otherUser?.full_name);
-                    }}
-                    className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
-                  >
-                    <Phone className="w-5 h-5" />
-                  </Button>
                   {showWhatsApp && (
                     <Button
                       variant="ghost"
@@ -2075,8 +2078,10 @@ export default function ChatPage({
                           className={cn(
                             "rounded-2xl px-3 py-2 shadow-sm relative group",
                             isOwn
-                              ? "bg-primary text-primary-foreground rounded-br-none"
-                              : "bg-card border border-border/50 rounded-bl-none",
+                              ? /** Match BottomNav FAB (light): orange → red gradient */
+                                "rounded-br-none bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-none"
+                              : /** Light mode: soft grey tint; dark: keep card surface */
+                                "rounded-bl-none border border-slate-200/80 bg-slate-50 dark:border-border/50 dark:bg-card",
                           )}
                         >
                           {/* Attachment Display */}
@@ -2125,9 +2130,7 @@ export default function ChatPage({
                             <p
                               className={cn(
                                 "inline-block max-w-full text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap",
-                                isOwn
-                                  ? "text-primary-foreground"
-                                  : "text-foreground",
+                                isOwn ? "text-white" : "text-foreground",
                               )}
                             >
                               {msg.body}
@@ -2136,7 +2139,7 @@ export default function ChatPage({
                                   "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom",
                                   "text-[11px] font-medium tabular-nums leading-none",
                                   isOwn
-                                    ? "text-primary-foreground/75"
+                                    ? "text-white/80"
                                     : "text-muted-foreground",
                                 )}
                               >
@@ -2159,7 +2162,7 @@ export default function ChatPage({
                                     "inline-flex items-center gap-0.5",
                                     "text-[11px] font-medium tabular-nums leading-none",
                                     isOwn
-                                      ? "text-primary-foreground/75"
+                                      ? "text-white/80"
                                       : "text-muted-foreground",
                                   )}
                                 >
