@@ -26,13 +26,12 @@ import {
   Search,
   X,
   Menu,
-  Send,
   ClipboardList,
-  Megaphone,
-  CalendarPlus,
   UsersRound,
   Radio,
   AlertCircle,
+  Rss,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -90,8 +89,6 @@ export function BottomNav() {
   const [desktopAppMenuOpen, setDesktopAppMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchClusterRef = useRef<HTMLDivElement>(null);
-  const fabMenuRef = useRef<HTMLDivElement>(null);
-  const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const [appMenuHelpOthersOpen, setAppMenuHelpOthersOpen] = useState(false);
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
   const { openReportModal } = useReportIssue();
@@ -205,45 +202,60 @@ export function BottomNav() {
     navigate(headerBackHomeFallback);
   };
 
+  const discoverLocationPersonalPath = pathnameNorm.startsWith("/freelancer")
+    ? "/freelancer/profile/personal"
+    : "/client/profile/personal";
+
+  function renderDiscoverHomeLocationChip(variant: "mobile" | "desktop") {
+    const city = profile?.city?.trim();
+    const primary = city || (loading ? "…" : "Add location");
+    return (
+      <button
+        type="button"
+        onClick={() => navigate(discoverLocationPersonalPath)}
+        className={cn(
+          variant === "mobile"
+            ? "pointer-events-auto flex min-h-11 max-w-[min(13.5rem,calc(100vw-7rem))] items-center gap-1 rounded-xl py-1 pl-1 pr-1.5 text-left text-slate-900 transition-all hover:opacity-90 active:scale-[0.98] dark:text-white"
+            : "flex max-w-[min(16rem,28vw)] min-h-9 items-center gap-1.5 rounded-xl py-1 pl-1 pr-2 text-left text-slate-900 transition hover:opacity-90 dark:text-white",
+        )}
+        aria-label={
+          city
+            ? `Location ${city}, Israel. Change in profile`
+            : "Set your location in profile"
+        }
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+          <MapPin
+            className="h-[1.05rem] w-[1.05rem] text-slate-900 dark:text-white"
+            strokeWidth={2.25}
+            aria-hidden
+          />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[13px] leading-tight sm:text-sm">
+          <span className="font-bold text-slate-900 dark:text-white">
+            {primary}
+          </span>
+          {city ? (
+            <span className="font-normal text-slate-600 dark:text-slate-400">
+              , Israel
+            </span>
+          ) : null}
+        </span>
+        <ChevronDown
+          className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400"
+          strokeWidth={2.25}
+          aria-hidden
+        />
+      </button>
+    );
+  }
+
   useEffect(() => {
     if (previousPathnameRef.current !== location.pathname && mobileSearchOpen) {
       setMobileSearchOpen(false);
     }
-    if (previousPathnameRef.current !== location.pathname && fabMenuOpen) {
-      setFabMenuOpen(false);
-    }
     previousPathnameRef.current = location.pathname;
-  }, [location.pathname, mobileSearchOpen, fabMenuOpen]);
-
-  useEffect(() => {
-    if (!fabMenuOpen) return;
-    const close = (e: MouseEvent) => {
-      if (
-        fabMenuRef.current &&
-        !fabMenuRef.current.contains(e.target as Node)
-      ) {
-        setFabMenuOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFabMenuOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [fabMenuOpen]);
-
-  useEffect(() => {
-    if (!fabMenuOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [fabMenuOpen]);
+  }, [location.pathname, mobileSearchOpen]);
 
   // Nothing on landing, marketing pages, chat, or messages
   const path = location.pathname;
@@ -602,14 +614,18 @@ export function BottomNav() {
     >
       <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
         <div className="flex min-w-0 justify-start items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleHeaderBack}
-            className="flex h-9 w-9 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
-            aria-label="Back"
-          >
-            <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-          </button>
+          {isDiscoverHome ? (
+            renderDiscoverHomeLocationChip("desktop")
+          ) : (
+            <button
+              type="button"
+              onClick={handleHeaderBack}
+              className="flex h-9 w-9 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setProfileMenuOpen(true)}
@@ -814,14 +830,18 @@ export function BottomNav() {
         ...shellScrollMobileChromeOverlayStyle,
       }}
     >
-      <button
-        type="button"
-        onClick={handleHeaderBack}
-        className={mobileUniversalBackBtnClass}
-        aria-label="Back"
-      >
-        <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
-      </button>
+      {isDiscoverHome ? (
+        renderDiscoverHomeLocationChip("mobile")
+      ) : (
+        <button
+          type="button"
+          onClick={handleHeaderBack}
+          className={mobileUniversalBackBtnClass}
+          aria-label="Back"
+        >
+          <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
+        </button>
+      )}
     </div>
   );
 
@@ -899,16 +919,22 @@ export function BottomNav() {
     // Allow nav on freelancer/client pages even without profile
     const allowedPaths = [
       "/freelancer/home",
+      "/freelancer/explore",
+      "/freelancer/jobs/match",
       "/freelancer/dashboard",
       "/freelancer/profile",
       "/freelancer/notifications",
       "/freelancer/active-jobs",
       "/client/home",
+      "/client/explore",
+      "/client/helpers/match",
       "/client/profile",
       "/client/create",
+      "/client/jobs",
       "/client/active-jobs",
       "/posts",
       "/availability",
+      "/freelancer/availability",
       "/public/posts",
       "/liked",
       "/dashboard",
@@ -980,26 +1006,13 @@ export function BottomNav() {
       { path: "/messages", icon: MessageCircle, label: "Inbox" },
     ];
 
-    const fabHelpingNowCount = badgeCountForJobsTab(
-      "jobs",
-      "freelancer",
-      jobsTabCounts,
-    );
-    const fabHelpingMeNowCount = badgeCountForJobsTab(
-      "jobs",
-      "client",
-      jobsTabCounts,
-    );
+    const explorePath = isFreelancer
+      ? "/freelancer/explore"
+      : "/client/explore";
+    const isExploreActive = location.pathname.startsWith(explorePath);
 
     return (
       <>
-        {fabMenuOpen ? (
-          <div
-            className="fixed inset-0 z-[118] bg-black/55 backdrop-blur-sm dark:bg-black/65"
-            aria-hidden
-            onClick={() => setFabMenuOpen(false)}
-          />
-        ) : null}
         {DesktopHeader}
         {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
@@ -1062,202 +1075,29 @@ export function BottomNav() {
                 );
               })}
 
-              {/* Center — quick actions (post, availability, live jobs) */}
-              <div
-                ref={fabMenuRef}
-                className="relative z-10 mx-0.5 flex shrink-0 flex-col items-center justify-center p-1 md:mx-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => setFabMenuOpen((v) => !v)}
-                  className={cn(
-                    "group flex flex-col items-center justify-center p-1 transition-all relative",
-                    "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30",
-                    fabMenuOpen
-                      ? "text-zinc-950 dark:text-white"
-                      : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
-                  )}
-                  aria-label="Open actions menu"
-                  aria-expanded={fabMenuOpen}
-                  aria-haspopup="menu"
-                >
-                  <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
-                    <Send
-                      className={bottomNavTabIconClass(fabMenuOpen)}
-                      aria-hidden
-                    />
-                  </div>
-                </button>
-                {fabMenuOpen && (
-                  <div
-                    role="menu"
-                    aria-label="Actions"
-                    className="absolute bottom-[calc(100%+12px)] left-1/2 z-[140] flex max-h-[min(75vh,30rem)] w-[min(18.5rem,calc(100vw-1.5rem))] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white py-1 text-zinc-950 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.45)] dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:shadow-[0_28px_70px_-12px_rgba(0,0,0,0.85)] animate-in fade-in zoom-in-95 duration-200"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex flex-col overflow-y-auto bg-white dark:bg-zinc-950">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        aria-label="Post your request for help"
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-zinc-100 active:bg-zinc-200/90 dark:hover:bg-zinc-800/90 dark:active:bg-zinc-800"
-                        onClick={() => {
-                          navigate("/client/create");
-                          setFabMenuOpen(false);
-                        }}
-                      >
-                        <span
-                          className={cn(
-                            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-sm",
-                            "bg-gradient-to-br from-orange-400 to-orange-500 text-white",
-                          )}
-                        >
-                          <Megaphone
-                            className="h-[18px] w-[18px] shrink-0"
-                            strokeWidth={2.5}
-                            aria-hidden
-                          />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[15px] font-semibold leading-tight text-zinc-950 dark:text-zinc-50">
-                            Post your request
-                          </span>
-                          <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
-                            Request for help
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        aria-label="Go live — choose a category, then post your availability"
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-zinc-100 active:bg-zinc-200/90 dark:hover:bg-zinc-800/90 dark:active:bg-zinc-800"
-                        onClick={() => {
-                          navigate("/availability/post-now");
-                          setFabMenuOpen(false);
-                        }}
-                      >
-                        <span
-                          className={cn(
-                            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-sm",
-                            "bg-gradient-to-br from-emerald-400 to-emerald-500 text-white",
-                          )}
-                        >
-                          <CalendarPlus
-                            className="h-[18px] w-[18px] shrink-0"
-                            strokeWidth={2.5}
-                            aria-hidden
-                          />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[15px] font-semibold leading-tight text-zinc-950 dark:text-zinc-50">
-                            Go live
-                          </span>
-                          <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
-                            Post your availability to help
-                          </span>
-                        </span>
-                      </button>
-
-                      {(showFreelancerJobNav ||
-                        profile?.role === "client") && (
-                        <>
-                          <div
-                            className="mx-2 border-t border-zinc-200 dark:border-zinc-700"
-                            role="separator"
-                          />
-                          {showFreelancerJobNav && (
-                            <button
-                              type="button"
-                              role="menuitem"
-                              aria-label="Open jobs where you are the helper"
-                              className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-zinc-100 active:bg-zinc-200/90 dark:hover:bg-zinc-800/90 dark:active:bg-zinc-800"
-                              onClick={() => {
-                                navigate(buildJobsUrl("freelancer", "jobs"));
-                                setFabMenuOpen(false);
-                              }}
-                            >
-                              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/12 dark:bg-emerald-400/15">
-                                <HelpingHand
-                                  className="h-[18px] w-[18px] shrink-0 text-emerald-600 dark:text-emerald-400"
-                                  strokeWidth={2}
-                                  aria-hidden
-                                />
-                              </span>
-                              <span className="flex min-w-0 flex-1 items-start justify-between gap-2">
-                                <span className="min-w-0">
-                                  <span className="block text-[15px] font-semibold leading-tight text-zinc-950 dark:text-zinc-50">
-                                    Helping now
-                                  </span>
-                                  <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
-                                    Matched with users that need your help
-                                  </span>
-                                </span>
-                                {fabHelpingNowCount > 0 && (
-                                  <Badge
-                                    variant="secondary"
-                                    className={cn(
-                                      appMenuJobsCountBadgeClassName,
-                                      "mt-0.5 shrink-0 text-xs",
-                                    )}
-                                  >
-                                    {fabHelpingNowCount > 9
-                                      ? "9+"
-                                      : fabHelpingNowCount}
-                                  </Badge>
-                                )}
-                              </span>
-                            </button>
-                          )}
-                          {profile?.role === "client" && (
-                            <button
-                              type="button"
-                              role="menuitem"
-                              aria-label="Open jobs with helpers on your requests"
-                              className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-zinc-100 active:bg-zinc-200/90 dark:hover:bg-zinc-800/90 dark:active:bg-zinc-800"
-                              onClick={() => {
-                                navigate(buildJobsUrl("client", "jobs"));
-                                setFabMenuOpen(false);
-                              }}
-                            >
-                              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/12 dark:bg-orange-400/15">
-                                <HeartHandshake
-                                  className="h-[18px] w-[18px] shrink-0 text-orange-600 dark:text-orange-400"
-                                  strokeWidth={2}
-                                  aria-hidden
-                                />
-                              </span>
-                              <span className="flex min-w-0 flex-1 items-start justify-between gap-2">
-                                <span className="min-w-0">
-                                  <span className="block text-[15px] font-semibold leading-tight text-zinc-950 dark:text-zinc-50">
-                                    Helping me now
-                                  </span>
-                                  <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
-                                    Matched with your helpers
-                                  </span>
-                                </span>
-                                {fabHelpingMeNowCount > 0 && (
-                                  <Badge
-                                    variant="secondary"
-                                    className={cn(
-                                      appMenuJobsCountBadgeClassName,
-                                      "mt-0.5 shrink-0 text-xs",
-                                    )}
-                                  >
-                                    {fabHelpingMeNowCount > 9
-                                      ? "9+"
-                                      : fabHelpingMeNowCount}
-                                  </Badge>
-                                )}
-                              </span>
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
+              {/* Center — Explore */}
+              <Link
+                to={explorePath}
+                className={cn(
+                  "relative z-10 mx-0.5 flex shrink-0 flex-col items-center justify-center p-1 md:mx-2",
+                  "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30 rounded-xl",
+                  isExploreActive
+                    ? "text-zinc-950 dark:text-white"
+                    : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
                 )}
-              </div>
+                aria-current={isExploreActive ? "page" : undefined}
+                aria-label="Explore live feed"
+              >
+                <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
+                  <Rss
+                    className={bottomNavTabIconClass(isExploreActive)}
+                    aria-hidden
+                  />
+                </div>
+                <span className="mt-0.5 hidden text-[10px] font-semibold leading-none text-zinc-950 dark:text-white md:inline">
+                  Explore
+                </span>
+              </Link>
 
               {/* Messages (Jobs tab commented out in userNav for now) */}
               {userNav.slice(2, 3).map((item) => {

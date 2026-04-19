@@ -31,9 +31,10 @@ export function useDiscoverFeed() {
   });
 }
 
-export function useDiscoverLiveAvatars() {
+/** Live helper avatars by category; pass excludeUserId to omit the viewer’s own availability. */
+export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
   return useQuery({
-    queryKey: queryKeys.discoverLiveAvatars(),
+    queryKey: queryKeys.discoverLiveAvatars(excludeUserId ?? undefined),
     queryFn: async () => {
       const nowIso = new Date().toISOString();
       const categoryIds = Array.from(
@@ -53,7 +54,9 @@ export function useDiscoverLiveAvatars() {
           author:profiles!author_id (
             id,
             full_name,
-            photo_url
+            photo_url,
+            average_rating,
+            total_ratings
           )
         `)
         .eq("status", "active")
@@ -66,7 +69,13 @@ export function useDiscoverLiveAvatars() {
 
       const next: Record<
         string,
-        { id: string; full_name: string | null; photo_url: string | null }[]
+        {
+          /** `community_posts.id` — deep link to this availability post */
+          post_id: string;
+          full_name: string | null;
+          photo_url: string | null;
+          average_rating: number | null;
+        }[]
       > = {};
 
       for (const id of categoryIds) next[id] = [];
@@ -78,8 +87,10 @@ export function useDiscoverLiveAvatars() {
 
         const author = row?.author;
         const authorId = String(author?.id ?? row?.author_id ?? "").trim();
+        const postId = String(row?.id ?? "").trim();
 
-        if (!authorId) continue;
+        if (!authorId || !postId) continue;
+        if (excludeUserId && authorId === excludeUserId) continue;
         if (!seen.has(cat)) seen.set(cat, new Set());
 
         const set = seen.get(cat)!;
@@ -88,9 +99,13 @@ export function useDiscoverLiveAvatars() {
 
         set.add(authorId);
         next[cat].push({
-          id: authorId,
+          post_id: postId,
           full_name: (author?.full_name as string | null) ?? null,
           photo_url: (author?.photo_url as string | null) ?? null,
+          average_rating:
+            author?.average_rating != null
+              ? Number(author.average_rating)
+              : null,
         });
       }
 

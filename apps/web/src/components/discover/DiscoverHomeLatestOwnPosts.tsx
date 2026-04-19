@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Fragment, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { ChevronRight, Clock } from "lucide-react";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
@@ -11,6 +11,7 @@ import {
   SERVICE_CATEGORIES,
 } from "@/lib/serviceCategories";
 import { supabase } from "@/lib/supabase";
+import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 
 type LatestOwnPost = {
   id: string;
@@ -89,10 +90,17 @@ function LiveExpiryRow({ expiresAtIso }: { expiresAtIso: string }) {
 }
 
 /**
- * Help others tab: latest active availability posts by the viewer, with Connect (hire) interest
- * counts and client avatars. Tapping a card opens the hires / availability review screen.
+ * Latest active availability posts by the viewer, with hire-interest counts and client avatars.
+ * Strip: embedded on Discover home (max 4). Page: full Explore view with empty state + higher limit.
  */
-export function DiscoverHomeLatestOwnPosts() {
+export function DiscoverHomeLatestOwnPosts({
+  variant = "strip",
+  embeddedInExplore = false,
+}: {
+  variant?: "strip" | "page";
+  /** When true with `page`, hide duplicate section title (Explore provides tab labels). */
+  embeddedInExplore?: boolean;
+}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [posts, setPosts] = useState<LatestOwnPost[]>([]);
@@ -106,12 +114,16 @@ export function DiscoverHomeLatestOwnPosts() {
       { id: string; photo_url: string | null; full_name: string | null }[]
     >
   >({});
+  const [confirmedJobIdByPostId, setConfirmedJobIdByPostId] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     if (!user?.id) {
       setPosts([]);
       setConnectCountByPostId({});
       setConnectAvatarsByPostId({});
+      setConfirmedJobIdByPostId({});
       return;
     }
 
@@ -126,7 +138,7 @@ export function DiscoverHomeLatestOwnPosts() {
         .eq("status", "active")
         .gt("expires_at", nowIso)
         .order("created_at", { ascending: false })
-        .limit(4);
+        .limit(variant === "page" ? 50 : 4);
 
       if (cancelled) return;
       if (postErr) {
@@ -134,6 +146,7 @@ export function DiscoverHomeLatestOwnPosts() {
         setPosts([]);
         setConnectCountByPostId({});
         setConnectAvatarsByPostId({});
+        setConfirmedJobIdByPostId({});
         setLoading(false);
         return;
       }
@@ -144,6 +157,7 @@ export function DiscoverHomeLatestOwnPosts() {
       if (rows.length === 0) {
         setConnectCountByPostId({});
         setConnectAvatarsByPostId({});
+        setConfirmedJobIdByPostId({});
         setLoading(false);
         return;
       }
@@ -151,7 +165,7 @@ export function DiscoverHomeLatestOwnPosts() {
       const postIds = rows.map((p) => p.id);
       const { data: interestRows, error: intErr } = await supabase
         .from("community_post_hire_interests")
-        .select("community_post_id, client_id, created_at, status")
+        .select("community_post_id, client_id, created_at, status, job_request_id")
         .in("community_post_id", postIds)
         .in("status", ["pending", "confirmed"])
         .order("created_at", { ascending: false });
@@ -161,6 +175,7 @@ export function DiscoverHomeLatestOwnPosts() {
         console.warn("[DiscoverHomeLatestOwnPosts] hire interests", intErr);
         setConnectCountByPostId({});
         setConnectAvatarsByPostId({});
+        setConfirmedJobIdByPostId({});
         setLoading(false);
         return;
       }
@@ -169,7 +184,26 @@ export function DiscoverHomeLatestOwnPosts() {
         community_post_id: string;
         client_id: string;
         created_at: string;
+        status: string;
+        job_request_id: string | null;
       }[];
+
+      const sortedInterest = [...raw].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime(),
+      );
+      const confirmedJobByPost: Record<string, string> = {};
+      for (const r of sortedInterest) {
+        const pid = String(r.community_post_id);
+        const st = String(r.status || "").toLowerCase();
+        const jid =
+          r.job_request_id != null ? String(r.job_request_id).trim() : "";
+        if (st === "confirmed" && jid && !confirmedJobByPost[pid]) {
+          confirmedJobByPost[pid] = jid;
+        }
+      }
+      setConfirmedJobIdByPostId(confirmedJobByPost);
 
       const counts: Record<string, number> = {};
       for (const r of raw) {
@@ -239,24 +273,131 @@ export function DiscoverHomeLatestOwnPosts() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, variant]);
 
   if (!user?.id) return null;
-  if (!loading && posts.length === 0) return null;
+  if (variant === "strip" && !loading && posts.length === 0) return null;
 
   const availabilityListUrl = "/availability";
 
+  function openOwnPostCard(postId: string) {
+    const jobId = confirmedJobIdByPostId[postId];
+    if (jobId) {
+      navigate(
+        `${buildJobsUrl("freelancer", "jobs")}&highlightJob=${encodeURIComponent(jobId)}`,
+      );
+      return;
+    }
+    navigate(`/availability/post/${encodeURIComponent(postId)}/hires`);
+  }
+
+  const postCard = (r: LatestOwnPost) => {
+    const count = connectCountByPostId[r.id] || 0;
+    const clients = connectAvatarsByPostId[r.id] || [];
+    const imgSrc = postCategoryImageSrc(r.category);
+    const subtitle =
+      formatCategoryLabel(r.category || "") || "Availability";
+    return (
+      <button
+        type="button"
+        onClick={() => openOwnPostCard(r.id)}
+        className={cn(
+          "group relative w-full rounded-2xl p-4 text-left bg-white dark:bg-zinc-900",
+          "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
+          INTERACTIVE_CARD_HOVER,
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
+        )}
+      >
+        {count > 0 ? (
+          <span className={connectBadgeClass}>{count}</span>
+        ) : null}
+        <div
+          className={cn(
+            "flex items-start justify-between gap-3",
+            count > 0 ? "pr-9" : undefined,
+          )}
+        >
+          <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
+            {formatPostHeading(r)}
+          </p>
+          <div className="flex shrink-0 items-center">
+            <div className="flex -space-x-2.5">
+              {clients.slice(0, 3).map((p) => (
+                <Avatar
+                  key={p.id}
+                  className="h-10 w-10 border-2 border-background shadow-md"
+                >
+                  <AvatarImage
+                    src={p.photo_url || undefined}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="bg-card text-[11px] font-black text-foreground">
+                    {initials(p.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-3">
+          <div
+            className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
+            aria-hidden
+          >
+            {imgSrc ? (
+              <img
+                src={imgSrc}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : null}
+            <div className="pointer-events-none absolute inset-0 bg-black/15" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-muted-foreground">
+              {subtitle}
+            </p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Posted {new Date(r.created_at).toLocaleDateString()}
+            </p>
+            <LiveExpiryRow expiresAtIso={r.expires_at} />
+          </div>
+          <ChevronRight
+            className="h-5 w-5 shrink-0 text-muted-foreground"
+            aria-hidden
+            strokeWidth={2}
+          />
+        </div>
+      </button>
+    );
+  };
+
   return (
     <section
-      className="mt-4 px-1 md:mt-5"
+      className={cn(variant === "page" ? "mt-0" : "mt-4 px-1 md:mt-5")}
       aria-label="Your latest availability posts"
     >
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-            Your latest posts
-          </p>
-        </div>
+      <div
+        className={cn(
+          "mb-2 flex items-center gap-3",
+          embeddedInExplore && variant === "page"
+            ? "justify-end"
+            : "justify-between",
+        )}
+      >
+        {!(embeddedInExplore && variant === "page") ? (
+          <div className="min-w-0">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+              {variant === "page" ? "Your live posts" : "Your latest posts"}
+            </p>
+            {variant === "page" ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Tap a card to see who responded to Hire on that post.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => navigate(availabilityListUrl)}
@@ -272,7 +413,30 @@ export function DiscoverHomeLatestOwnPosts() {
 
       {loading ? (
         <div className="rounded-xl border border-border/60 bg-card/30 px-3 py-4 text-sm text-muted-foreground">
-          Loading your latest posts…
+          {variant === "page"
+            ? "Loading your posts…"
+            : "Loading your latest posts…"}
+        </div>
+      ) : variant === "page" && posts.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/70 bg-card/20 px-4 py-10 text-center">
+          <p className="text-base font-semibold text-foreground">
+            No live availability posts
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Post availability so clients can tap Hire — responses show up here.
+          </p>
+          <Link
+            to="/availability/post-now"
+            className="mt-5 inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+          >
+            Post availability
+          </Link>
+        </div>
+      ) : variant === "page" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {posts.map((r) => (
+            <Fragment key={r.id}>{postCard(r)}</Fragment>
+          ))}
         </div>
       ) : (
         <>
@@ -287,11 +451,7 @@ export function DiscoverHomeLatestOwnPosts() {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() =>
-                    navigate(
-                      `/availability?post=${encodeURIComponent(r.id)}`,
-                    )
-                  }
+                  onClick={() => openOwnPostCard(r.id)}
                   className={cn(
                     "group relative w-full rounded-xl p-3 text-left bg-white dark:bg-zinc-900",
                     "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
@@ -376,11 +536,7 @@ export function DiscoverHomeLatestOwnPosts() {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() =>
-                    navigate(
-                      `/availability?post=${encodeURIComponent(r.id)}`,
-                    )
-                  }
+                  onClick={() => openOwnPostCard(r.id)}
                   className={cn(
                     "group relative w-full rounded-2xl p-4 text-left bg-white dark:bg-zinc-900",
                     "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",

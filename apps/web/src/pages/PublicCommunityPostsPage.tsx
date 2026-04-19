@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -41,6 +41,7 @@ export default function PublicCommunityPostsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryFilter = searchParams.get("category");
+  const focusPostId = searchParams.get("post");
   const isAllHelp = isAllHelpCategory(categoryFilter);
   const validCategory = isAllHelp
     ? null
@@ -79,6 +80,21 @@ export default function PublicCommunityPostsPage() {
 
   // --- Server state via React Query ---
   const { data: posts = [], isLoading: loading } = useCommunityPosts(validCategory);
+
+  /** Deep link (e.g. Discover “Helpers available now”): scroll to the matching card once loaded */
+  useEffect(() => {
+    if (!focusPostId || loading) return;
+    if (!posts.some((p) => p.id === focusPostId)) return;
+    const timer = window.setTimeout(() => {
+      const nodes = document.querySelectorAll<HTMLElement>(
+        `[data-public-feed-anchor="${CSS.escape(focusPostId)}"]`,
+      );
+      const target =
+        [...nodes].find((n) => n.offsetParent !== null) ?? nodes[0] ?? null;
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [focusPostId, loading, posts]);
 
   const postIds = useMemo(() => posts.map((p) => p.id), [posts]);
 
@@ -196,7 +212,7 @@ export default function PublicCommunityPostsPage() {
   return (
     <div
       className={cn(
-        "min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8",
+        "min-h-screen bg-background pb-6 md:pb-8",
         posts.length > 0 && "max-md:overflow-hidden max-md:pb-0",
       )}
       {...(posts.length > 0 ? { "data-public-snap-feed-mobile": "" } : {})}
@@ -290,8 +306,12 @@ export default function PublicCommunityPostsPage() {
             {/* Desktop & tablet: stacked list */}
             <div className="mx-auto hidden w-full max-w-3xl flex-col gap-5 px-1 md:max-w-4xl md:flex">
               {posts.map((post) => (
-                <CommunityPostCard
+                <div
                   key={post.id}
+                  data-public-feed-anchor={post.id}
+                  className="w-full"
+                >
+                <CommunityPostCard
                   post={post}
                   user={user}
                   profile={profile}
@@ -317,6 +337,7 @@ export default function PublicCommunityPostsPage() {
                     });
                   }}
                 />
+                </div>
               ))}
             </div>
 
@@ -334,6 +355,7 @@ export default function PublicCommunityPostsPage() {
                 <div
                   key={post.id}
                   id={`community-post-${post.id}`}
+                  data-public-feed-anchor={post.id}
                   className="box-border flex min-h-full w-full snap-center snap-always flex-col justify-center px-3 py-2"
                 >
                   <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-1 flex-col overflow-y-auto [-webkit-overflow-scrolling:touch]">

@@ -8,12 +8,24 @@ import {
   lazy,
   Suspense,
 } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { apiGet, apiPost } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { useJobRequestsRealtime } from "@/hooks/useJobRequestsRealtime";
+import { fetchRankedHelperStack } from "@/lib/fetchRankedHelperStack";
+import { findOrCreateJobConversation } from "@/lib/findOrCreateJobConversation";
+import { insertMatchIntroMessage } from "@/lib/matchIntroMessage";
+import {
+  isServiceCategoryId,
+  serviceCategoryLabel,
+  type ServiceCategoryId,
+} from "@/lib/serviceCategories";
+import { hasProfileCoords } from "@/lib/discoverMatchPreferences";
+import { trackEvent } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,6 +37,8 @@ import {
   StopCircle,
   X,
   Sparkles,
+  Zap,
+  Radio,
   UploadCloud,
   Plus,
 } from "lucide-react";
@@ -171,6 +185,9 @@ export default function ConfirmedListPage() {
   const [savingDetails, setSavingDetails] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [instantMatching, setInstantMatching] = useState(false);
+
+  const { user, profile } = useAuth();
 
   const fetchInFlight = useRef(false);
   const lastFreelancerSig = useRef<string>("");
@@ -235,6 +252,93 @@ export default function ConfirmedListPage() {
       console.error("Error fetching job directly:", e);
     }
   }
+
+  useJobRequestsRealtime({
+    jobId,
+    onJobUpdate: () => {
+      void fetchConfirmed();
+      void fetchJobDirectly();
+    },
+  });
+
+  const handleInstantMatch = useCallback(async () => {
+    if (!jobId || !user?.id || !job) return;
+    if (!isServiceCategoryId(job.service_type)) {
+      addToast({ title: "Missing category on this request", variant: "error" });
+      return;
+    }
+    if (!profile || !hasProfileCoords(profile)) {
+      addToast({
+        title: "Location needed",
+        description: "Add coordinates in your profile to match helpers.",
+        variant: "default",
+      });
+      return;
+    }
+    const pcoords = profile;
+    setInstantMatching(true);
+    try {
+      const r =
+        pcoords.service_radius != null ? Number(pcoords.service_radius) : 25;
+      const radiusKm = Math.min(
+        100,
+        Math.max(5, Number.isNaN(r) ? 25 : Math.round(r / 5) * 5),
+      );
+      const rows = await fetchRankedHelperStack({
+        category: job.service_type as ServiceCategoryId,
+        searchLat: Number(pcoords.location_lat),
+        searchLng: Number(pcoords.location_lng),
+        radiusKm,
+        viewerCityNorm: (pcoords.city ?? "").trim().toLowerCase(),
+        excludeUserId: user.id,
+      });
+      const best = rows[0];
+      if (!best) {
+        addToast({
+          title: "No helpers available right now",
+          description: "Try the browse list below or widen radius in profile.",
+          variant: "default",
+        });
+        return;
+      }
+      const { conversationId, created } = await findOrCreateJobConversation({
+        jobId,
+        clientId: user.id,
+        freelancerId: best.id,
+      });
+      const catLabel = serviceCategoryLabel(job.service_type as ServiceCategoryId);
+      const loc = job.location_city?.trim() || best.city?.trim() || "Nearby";
+      const timeLabel = (job.time_duration || "flexible").replace(/_/g, " ");
+      if (created) {
+        await insertMatchIntroMessage({
+          conversationId,
+          senderId: user.id,
+          payload: {
+            kind: "helper",
+            category: catLabel,
+            location: loc,
+            time: timeLabel,
+          },
+        });
+      }
+      const nav = new URLSearchParams();
+      nav.set("conversation", conversationId);
+      nav.set("mc", encodeURIComponent(catLabel));
+      nav.set("ml", encodeURIComponent(loc));
+      nav.set("mt", encodeURIComponent(timeLabel));
+      nav.set("mma", "1");
+      trackEvent("request_live_instant_match", { jobId });
+      navigate(`/messages?${nav.toString()}`);
+    } catch (e: unknown) {
+      addToast({
+        title: "Could not match",
+        description: e instanceof Error ? e.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setInstantMatching(false);
+    }
+  }, [jobId, user?.id, profile, job, addToast, navigate]);
 
   const handleSaveDetails = async () => {
     if (!jobId || !customDetails.trim()) return;
@@ -443,6 +547,23 @@ export default function ConfirmedListPage() {
     }
   }
 
+  const liveStatusLine = useMemo(() => {
+    if (!job) return "";
+    if (freelancersLoading && freelancers.length === 0) {
+      return "Searching · matching helpers to your request…";
+    }
+    if (
+      (job.status === "notifying" || job.status === "ready") &&
+      freelancers.length === 0
+    ) {
+      return "Notifying helpers who fit this request…";
+    }
+    if (freelancers.length > 0) {
+      return `${freelancers.length} helper${freelancers.length !== 1 ? "s" : ""} responded`;
+    }
+    return "Waiting for responses…";
+  }, [job, freelancersLoading, freelancers.length]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center">
@@ -457,24 +578,28 @@ export default function ConfirmedListPage() {
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-8">
-        {/* Timer Header */}
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 bg-primary/10">
-            <Clock className="w-5 h-5 text-primary animate-pulse-soft" />
-            <span className="font-mono font-bold text-lg text-primary">
-              <ElapsedTimer createdAt={job?.created_at} startTime={startTime} />
-            </span>
+        {/* Request live — status + timer */}
+        <div className="mb-8 animate-fade-in">
+          <div className="mb-4 flex flex-col gap-2 text-center">
+            <div className="inline-flex items-center justify-center gap-2 self-center rounded-full bg-orange-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-orange-900 dark:text-orange-200">
+              <Radio className="h-3.5 w-3.5 animate-pulse" />
+              Request live
+            </div>
+            <h1 className="text-2xl font-black tracking-tight">
+              Your request is active
+            </h1>
+            <p className="text-sm font-medium text-muted-foreground">
+              {liveStatusLine}
+            </p>
+            <div className="inline-flex items-center justify-center gap-2 rounded-full bg-primary/10 px-4 py-2">
+              <Clock className="h-5 w-5 text-primary animate-pulse-soft" />
+              <span className="font-mono text-lg font-bold text-primary">
+                <ElapsedTimer createdAt={job?.created_at} startTime={startTime} />
+              </span>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold mb-2">
-            Waiting for Confirmations...
-          </h1>
-          <p className="text-muted-foreground">
-            {freelancers.length === 0
-              ? "No freelancers have confirmed availability yet"
-              : `${freelancers.length} freelancer${freelancers.length > 1 ? "s" : ""} available`}
-          </p>
 
-          <div className="flex gap-2 justify-center mt-4">
+          <div className="flex flex-wrap gap-2 justify-center">
             <Button
               variant="default"
               size="sm"
@@ -517,6 +642,133 @@ export default function ConfirmedListPage() {
         {error && (
           <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
             {error}
+          </div>
+        )}
+
+        {/* Request summary — central context (same card body also below for map/details flow) */}
+        {job && (
+          <Card
+            className={cn(
+              "mb-6 w-full overflow-hidden rounded-[32px] border border-slate-300/45 bg-card backdrop-blur-sm shadow-none",
+              "dark:border-zinc-500/35",
+              "md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)]",
+            )}
+          >
+            <CardContent className="p-6 md:p-7">
+              <h3 className="mb-4 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                Request summary
+              </h3>
+              <div className="grid gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <span className="text-xl">
+                      {job.service_type === "cleaning" && "🧹"}
+                      {job.service_type === "cooking" && "👨‍🍳"}
+                      {job.service_type === "pickup_delivery" && "📦"}
+                      {job.service_type === "nanny" && "👶"}
+                      {job.service_type === "other_help" && "🔧"}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium capitalize">
+                      {job.service_type?.replace("_", " & ")}
+                      {job.service_type === "other_help" &&
+                        job.service_details?.other_type &&
+                        ` - ${job.service_details.other_type.replace(/_/g, " ").charAt(0).toUpperCase() + job.service_details.other_type.replace(/_/g, " ").slice(1)}`}
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                      {job.location_city && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{job.location_city}</span>
+                        </div>
+                      )}
+                      {job.time_duration && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span className="capitalize">
+                            {job.time_duration.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {job.service_details?.description && (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                    {job.service_details.description}
+                  </p>
+                )}
+                {job.service_details?.custom && (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                    {job.service_details.custom}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {job && jobId && (
+          <div className="mb-6 space-y-3">
+            {freelancers.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Live interest
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {freelancers.slice(0, 10).map((f) => {
+                    const initials =
+                      f.full_name
+                        ?.split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase() || "?";
+                    return (
+                      <Avatar
+                        key={f.id}
+                        className="h-12 w-12 border-2 border-orange-400/35"
+                      >
+                        <AvatarImage src={f.photo_url || undefined} />
+                        <AvatarFallback className="text-xs font-bold">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <Button
+              type="button"
+              className="h-12 w-full rounded-2xl text-base font-black shadow-lg shadow-orange-500/20"
+              disabled={instantMatching || !hasProfileCoords(profile)}
+              onClick={() => void handleInstantMatch()}
+            >
+              {instantMatching ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <Zap className="mr-2 h-5 w-5" />
+                  Instant match
+                </>
+              )}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Connects chat to the best-ranked helper for{" "}
+              <span className="font-semibold text-foreground">this request</span>{" "}
+              (category + distance + availability).
+            </p>
+            <Button
+              variant="outline"
+              className="h-11 w-full justify-between rounded-2xl border-dashed"
+              asChild
+            >
+              <Link to={`/client/helpers/match?job_id=${jobId}`}>
+                <span>Optional: browse & swipe this request only</span>
+                <span className="text-muted-foreground">→</span>
+              </Link>
+            </Button>
           </div>
         )}
 
@@ -777,196 +1029,116 @@ export default function ConfirmedListPage() {
           </Card>
         )}
 
-        {/* Job Request Summary — matches jobs tab cards */}
+        {/* Structured fields & map — avoids duplicating the summary card above */}
         {job && (
           <Card
             className={cn(
-              "mb-6 w-full overflow-hidden rounded-[32px] border border-slate-300/45 bg-card backdrop-blur-sm shadow-none",
+              "mb-6 w-full overflow-hidden rounded-[32px] border border-slate-300/45 bg-card shadow-none",
               "dark:border-zinc-500/35",
-              "md:shadow-[0_20px_50px_rgba(0,0,0,0.12)] md:dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)]",
             )}
           >
-            <CardContent className="p-6 md:p-7">
-              <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 mb-4">
-                Your Request
+            <CardContent className="space-y-4 p-6 md:p-7">
+              <h3 className="text-lg font-black tracking-tight">
+                More specifics
               </h3>
-              <div className="grid gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xl">
-                      {job.service_type === "cleaning" && "🧹"}
-                      {job.service_type === "cooking" && "👨‍🍳"}
-                      {job.service_type === "pickup_delivery" && "📦"}
-                      {job.service_type === "nanny" && "👶"}
-                      {job.service_type === "other_help" && "🔧"}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium capitalize">
-                      {job.service_type?.replace("_", " & ")}
-                      {job.service_type === "other_help" &&
-                        job.service_details?.other_type &&
-                        ` - ${job.service_details.other_type.replace(/_/g, " ").charAt(0).toUpperCase() + job.service_details.other_type.replace(/_/g, " ").slice(1)}`}
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm text-muted-foreground">
-                      {job.location_city && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          <span>{job.location_city}</span>
-                        </div>
-                      )}
-                      {job.time_duration && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          <span className="capitalize">
-                            {job.time_duration.replace(/_/g, " ")}
-                          </span>
-                        </div>
-                      )}
-                      {job.care_frequency && (
-                        <div>
-                          <span className="capitalize">
-                            {job.care_frequency.replace("_", " ")}
-                          </span>
-                        </div>
-                      )}
-                      {job.service_details?.kids_count && (
-                        <div>
-                          <span>
-                            {job.service_details.kids_count.replace("_", "-")}{" "}
-                            kids
-                          </span>
-                        </div>
-                      )}
-                      {job.service_type === "cleaning" &&
-                        job.service_details?.home_size && (
-                          <div>
-                            <span>
-                              {HOME_SIZES.find(
-                                (s) => s.id === job.service_details.home_size,
-                              )?.label ||
-                                job.service_details.home_size.replace(
-                                  /_/g,
-                                  " ",
-                                )}
-                            </span>
-                          </div>
-                        )}
-                      {job.service_type === "cooking" &&
-                        job.service_details?.who_for && (
-                          <div>
-                            <span>
-                              For:{" "}
-                              {COOKING_WHO_FOR.find(
-                                (w) => w.id === job.service_details.who_for,
-                              )?.label ||
-                                job.service_details.who_for.replace(/_/g, " ")}
-                            </span>
-                          </div>
-                        )}
-                      {job.service_type === "pickup_delivery" &&
-                        job.service_details?.weight && (
-                          <div>
-                            <span>
-                              {DELIVERY_WEIGHTS.find(
-                                (w) => w.id === job.service_details.weight,
-                              )?.label ||
-                                job.service_details.weight.replace(/_/g, " ")}
-                            </span>
-                          </div>
-                        )}
-                      {job.service_type === "nanny" &&
-                        job.service_details?.age_group && (
-                          <div>
-                            <span>
-                              Ages:{" "}
-                              {NANNY_AGE_GROUPS.find(
-                                (g) => g.id === job.service_details.age_group,
-                              )?.label ||
-                                job.service_details.age_group.replace(
-                                  /_/g,
-                                  " ",
-                                )}
-                            </span>
-                          </div>
-                        )}
-                      {job.service_type === "other_help" &&
-                        job.service_details?.mobility_level && (
-                          <div>
-                            <span>
-                              {job.service_details.mobility_level.replace(
-                                /_/g,
-                                " ",
-                              )}
-                            </span>
-                          </div>
-                        )}
-                    </div>
-                  </div>
-                </div>
-
-                {job.service_details?.custom && (
-                  <div
-                    className={cn(
-                      "mt-4 w-full rounded-2xl border border-slate-200/90 bg-muted/40 p-4 sm:p-5",
-                      "dark:border-border/50 dark:bg-muted/25",
-                    )}
-                  >
-                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
-                      Custom notes
-                    </p>
-                    <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
-                      {job.service_details.custom}
-                    </p>
+              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                {job.care_frequency && (
+                  <div className="capitalize">
+                    {job.care_frequency.replace("_", " ")}
                   </div>
                 )}
-
-                {/* Pickup/Delivery Addresses */}
-                {job.service_type === "pickup_delivery" &&
-                  job.service_details?.from_address &&
-                  job.service_details?.to_address && (
-                    <div className="mt-4 mb-2 space-y-2 text-sm border-t pt-4">
-                      <div className="flex items-start gap-2">
-                        <span className="text-green-600 font-semibold min-w-[40px]">
-                          From:
-                        </span>
-                        <span className="flex-1 text-muted-foreground">
-                          {job.service_details.from_address}
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-red-600 font-semibold min-w-[40px]">
-                          To:
-                        </span>
-                        <span className="flex-1 text-muted-foreground">
-                          {job.service_details.to_address}
-                        </span>
-                      </div>
+                {job.service_details?.kids_count && (
+                  <div>
+                    {job.service_details.kids_count.replace("_", "-")} kids
+                  </div>
+                )}
+                {job.service_type === "cleaning" &&
+                  job.service_details?.home_size && (
+                    <div>
+                      {HOME_SIZES.find(
+                        (s) => s.id === job.service_details.home_size,
+                      )?.label ||
+                        job.service_details.home_size.replace(/_/g, " ")}
                     </div>
                   )}
-
-                {/* Job Map — tap opens full map modal */}
-                {(job.service_type === "pickup_delivery" ||
-                  job.location_city) && (
-                  <div className="relative mt-4 h-28 overflow-hidden rounded-2xl border border-slate-200/80 ring-1 ring-black/5 dark:border-border/40 dark:ring-white/10 shadow-sm">
-                    <button
-                      type="button"
-                      className="absolute inset-0 z-10 cursor-pointer rounded-2xl bg-transparent p-0 outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
-                      onClick={() => setMapModalOpen(true)}
-                      aria-label="Open full map"
-                    />
-                    <div className="h-full w-full">
-                      <Suspense
-                        fallback={
-                          <div className="h-full w-full min-h-[7rem] bg-muted animate-pulse" />
-                        }
-                      >
-                        <JobMap job={job} />
-                      </Suspense>
+                {job.service_type === "cooking" &&
+                  job.service_details?.who_for && (
+                    <div>
+                      For:{" "}
+                      {COOKING_WHO_FOR.find(
+                        (w) => w.id === job.service_details.who_for,
+                      )?.label ||
+                        job.service_details.who_for.replace(/_/g, " ")}
+                    </div>
+                  )}
+                {job.service_type === "pickup_delivery" &&
+                  job.service_details?.weight && (
+                    <div>
+                      {DELIVERY_WEIGHTS.find(
+                        (w) => w.id === job.service_details.weight,
+                      )?.label ||
+                        job.service_details.weight.replace(/_/g, " ")}
+                    </div>
+                  )}
+                {job.service_type === "nanny" &&
+                  job.service_details?.age_group && (
+                    <div>
+                      Ages:{" "}
+                      {NANNY_AGE_GROUPS.find(
+                        (g) => g.id === job.service_details.age_group,
+                      )?.label ||
+                        job.service_details.age_group.replace(/_/g, " ")}
+                    </div>
+                  )}
+                {job.service_type === "other_help" &&
+                  job.service_details?.mobility_level && (
+                    <div>
+                      {job.service_details.mobility_level.replace(/_/g, " ")}
+                    </div>
+                  )}
+              </div>
+              {job.service_type === "pickup_delivery" &&
+                job.service_details?.from_address &&
+                job.service_details?.to_address && (
+                  <div className="space-y-2 border-t pt-4 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="min-w-[40px] font-semibold text-green-600">
+                        From:
+                      </span>
+                      <span className="flex-1 text-muted-foreground">
+                        {job.service_details.from_address}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="min-w-[40px] font-semibold text-red-600">
+                        To:
+                      </span>
+                      <span className="flex-1 text-muted-foreground">
+                        {job.service_details.to_address}
+                      </span>
                     </div>
                   </div>
                 )}
-              </div>
+              {(job.service_type === "pickup_delivery" ||
+                job.location_city) && (
+                <div className="relative h-28 overflow-hidden rounded-2xl border border-slate-200/80 ring-1 ring-black/5 dark:border-border/40 dark:ring-white/10">
+                  <button
+                    type="button"
+                    className="absolute inset-0 z-10 cursor-pointer rounded-2xl bg-transparent p-0 outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
+                    onClick={() => setMapModalOpen(true)}
+                    aria-label="Open full map"
+                  />
+                  <div className="h-full w-full">
+                    <Suspense
+                      fallback={
+                        <div className="h-full min-h-[7rem] w-full bg-muted animate-pulse" />
+                      }
+                    >
+                      <JobMap job={job} />
+                    </Suspense>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

@@ -761,7 +761,7 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-slate-50/50 dark:bg-zinc-950">
+      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background dark:bg-zinc-950">
         <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
           <div className="z-40 flex shrink-0 border-b border-border/30 bg-background/95 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:bg-transparent md:pt-4">
             <div className="flex items-center gap-3">
@@ -806,7 +806,7 @@ export default function MessagesPage() {
 
   // Show contact panel with conversation list and chat inline
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-slate-50/50 dark:bg-zinc-950">
+    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background dark:bg-zinc-950">
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
         className={cn(

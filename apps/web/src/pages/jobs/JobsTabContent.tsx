@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -89,6 +89,7 @@ export default function JobsTabContent({
 }: JobsTabContentProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMinMd = useIsMinMd();
 
   const [loading, setLoading] = useState(true);
@@ -113,6 +114,34 @@ export default function JobsTabContent({
     [perspective, activeTab, activeJobs.length, pastJobs.length, loading],
   );
   const clippedCardIds = useJobCardEdgeOverlay(edgeOverlayKey);
+
+  const highlightJobId = searchParams.get("highlightJob");
+
+  useEffect(() => {
+    if (activeTab !== "jobs" || loading || !highlightJobId) return;
+    const hasCard = activeJobs.some((j) => j.id === highlightJobId);
+    if (!hasCard) return;
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById(`card-${highlightJobId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setSearchParams(
+        (prev: URLSearchParams) => {
+          const n = new URLSearchParams(prev);
+          n.delete("highlightJob");
+          return n;
+        },
+        { replace: true },
+      );
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [
+    activeTab,
+    loading,
+    highlightJobId,
+    activeJobs,
+    setSearchParams,
+  ]);
 
   // 1. Fetch cache on mount
   useEffect(() => {

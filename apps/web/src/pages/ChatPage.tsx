@@ -1,5 +1,12 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
+import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -62,7 +69,10 @@ import {
 } from "@/lib/serviceCategories";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
+import { MatchContextBanner } from "@/components/messages/MatchContextBanner";
 import { getLiveJobBannerFromRow } from "@/lib/liveJobConversationBanner";
+import { parseMatchIntroBody } from "@/lib/matchIntroMessage";
+import { trackEvent } from "@/lib/analytics";
 
 interface Message {
   id: string;
@@ -163,6 +173,21 @@ export default function ChatPage({
   const conversationId = propConversationId || paramConversationId;
   const { user, profile: currentUserProfile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const matchBannerActive = searchParams.get("mma") === "1";
+  const matchCatRaw = searchParams.get("mc");
+  const matchLocRaw = searchParams.get("ml");
+  const matchTimeRaw = searchParams.get("mt");
+  const matchCategoryLabel = matchCatRaw
+    ? decodeURIComponent(matchCatRaw)
+    : "";
+  const matchLocationLabel = matchLocRaw
+    ? decodeURIComponent(matchLocRaw)
+    : "";
+  const matchTimeLabel = matchTimeRaw
+    ? decodeURIComponent(matchTimeRaw)
+    : "";
+  const [matchActionBusy, setMatchActionBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const mobileComposerRef = useRef<HTMLTextAreaElement>(null);
@@ -201,7 +226,50 @@ export default function ChatPage({
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  
+
+  const clearMatchUrlParams = useCallback(() => {
+    const n = new URLSearchParams(searchParams);
+    n.delete("mma");
+    n.delete("mc");
+    n.delete("ml");
+    n.delete("mt");
+    setSearchParams(n, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleMatchAccept = useCallback(async () => {
+    if (!conversationId || !user?.id) return;
+    setMatchActionBusy(true);
+    try {
+      await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        body: "✓ Match accepted. Let's coordinate!",
+      });
+      trackEvent("match_accept", {});
+      clearMatchUrlParams();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setMatchActionBusy(false);
+    }
+  }, [conversationId, user?.id, clearMatchUrlParams]);
+
+  const handleMatchDecline = useCallback(async () => {
+    if (!conversationId || !user?.id) return;
+    setMatchActionBusy(true);
+    try {
+      await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        body: "Declined this match for now.",
+      });
+      trackEvent("match_decline", {});
+      clearMatchUrlParams();
+    } finally {
+      setMatchActionBusy(false);
+    }
+  }, [conversationId, user?.id, clearMatchUrlParams]);
+
   const [realtimeConvoIds, setRealtimeConvoIds] = useState<string[]>([]);
   const [realtimeJobId, setRealtimeJobId] = useState<string | null>(null);
 
@@ -2037,9 +2105,22 @@ export default function ChatPage({
         >
           <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
             <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-[max(11rem,min(42vh,18rem))] md:pb-32">
+              {matchBannerActive && matchCategoryLabel && conversationId && (
+                <MatchContextBanner
+                  category={matchCategoryLabel}
+                  location={matchLocationLabel || "—"}
+                  time={matchTimeLabel || "—"}
+                  onAccept={() => void handleMatchAccept()}
+                  onDecline={() => void handleMatchDecline()}
+                  busy={matchActionBusy}
+                />
+              )}
               {messages.map((msg, index) => {
                 const isOwn = msg.sender_id === user?.id;
                 const receiptStatus = getReadReceiptStatus(msg);
+                const matchIntro = msg.body
+                  ? parseMatchIntroBody(msg.body)
+                  : null;
 
                 return (
                   <div key={msg.id} className="space-y-4">
@@ -2126,7 +2207,32 @@ export default function ChatPage({
                             </div>
                           )}
 
-                          {msg.body ? (
+                          {msg.body && matchIntro ? (
+                            <div
+                              className={cn(
+                                "rounded-xl border px-3 py-2 text-sm",
+                                isOwn
+                                  ? "border-white/30 bg-white/10 text-white"
+                                  : "border-border bg-muted/50 text-foreground",
+                              )}
+                            >
+                              <p className="text-[11px] font-bold uppercase tracking-wide opacity-80">
+                                Match
+                              </p>
+                              <p className="mt-1 font-semibold">{matchIntro.category}</p>
+                              <p className="text-xs opacity-90">
+                                {matchIntro.location} · {matchIntro.time}
+                              </p>
+                              <span
+                                className={cn(
+                                  "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom text-[11px] font-medium tabular-nums",
+                                  isOwn ? "text-white/80" : "text-muted-foreground",
+                                )}
+                              >
+                                {formatTime(msg.created_at)}
+                              </span>
+                            </div>
+                          ) : msg.body ? (
                             <p
                               className={cn(
                                 "inline-block max-w-full text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap",

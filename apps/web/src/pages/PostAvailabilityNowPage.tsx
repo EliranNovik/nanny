@@ -252,7 +252,9 @@ export default function PostAvailabilityNowPage() {
         return;
       }
       addToast({ title: "Your availability is live", variant: "success" });
-      navigate("/availability", { replace: true });
+      navigate(`/freelancer/availability/${result.postId}/live`, {
+        replace: true,
+      });
     } catch (e) {
       addToast({
         title: "Could not publish",

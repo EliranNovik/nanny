@@ -44,6 +44,7 @@ import {
   isServiceCategoryId,
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
+import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
@@ -259,14 +260,22 @@ export default function RequestsTabContent({
     return job.service_type === serviceFilter;
   }
 
-  const rawIncoming = inboundNotifications.filter((n) => !n.isConfirmed);
-  const rawPending = inboundNotifications.filter((n) => n.isConfirmed);
-  const incomingItems = rawIncoming.filter((n) =>
-    jobMatchesServiceFilter(n.job_requests),
+  const incomingItems = inboundNotifications.filter((n) =>
+    matchesCommunityRequestsIncoming(n, {
+      serviceFilter: serviceFilter ?? null,
+    }),
   );
-  const pendingItems = rawPending.filter((n) =>
-    jobMatchesServiceFilter(n.job_requests),
+  /** For empty-state copy when category filter hides all rows */
+  const incomingCountIgnoringCategory = inboundNotifications.filter((n) =>
+    matchesCommunityRequestsIncoming(n, {}),
+  ).length;
+  const pendingItems = inboundNotifications.filter(
+    (n) =>
+      Boolean(n.isConfirmed) && jobMatchesServiceFilter(n.job_requests),
   );
+  const pendingCountIgnoringCategory = inboundNotifications.filter((n) =>
+    Boolean(n.isConfirmed),
+  ).length;
   const filteredMyOpenRequests = myOpenRequests.filter(jobMatchesServiceFilter);
 
   const clearServiceFilter = () => {
@@ -379,11 +388,11 @@ export default function RequestsTabContent({
                 <CardContent className="p-6 text-center text-muted-foreground">
                   <Bell className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                   <p className="text-sm">
-                    {serviceFilter && rawIncoming.length > 0
+                    {serviceFilter && incomingCountIgnoringCategory > 0
                       ? "No community requests in this category."
                       : "No new community requests right now."}
                   </p>
-                  {serviceFilter && rawIncoming.length > 0 && (
+                  {serviceFilter && incomingCountIgnoringCategory > 0 && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -580,11 +589,11 @@ export default function RequestsTabContent({
                 <CardContent className="p-6 text-center text-muted-foreground">
                   <Hourglass className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                   <p className="text-sm">
-                    {serviceFilter && rawPending.length > 0
+                    {serviceFilter && pendingCountIgnoringCategory > 0
                       ? "No pending jobs in this category."
                       : "No pending jobs at the moment."}
                   </p>
-                  {serviceFilter && rawPending.length > 0 && (
+                  {serviceFilter && pendingCountIgnoringCategory > 0 && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -624,7 +633,7 @@ export default function RequestsTabContent({
                     const acceptedCount =
                       typeof rawAccepted === "number" ? rawAccepted : null;
                     const goConfirmed = () =>
-                      navigate(`/client/jobs/${job.id}/confirmed`);
+                      navigate(`/client/jobs/${job.id}/live`);
                     return (
                     <Card
                       key={job.id}

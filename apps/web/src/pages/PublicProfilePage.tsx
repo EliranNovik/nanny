@@ -1137,7 +1137,7 @@ export default function PublicProfilePage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <div className="min-h-screen bg-background pb-6 md:pb-8">
       <button
         type="button"
         onClick={() => navigate(-1)}

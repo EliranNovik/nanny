@@ -468,7 +468,7 @@ export default function LikedPage() {
 
   return (
     <div
-      className="relative min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8"
+      className="relative min-h-screen bg-background pb-6 md:pb-8"
       data-liked-page=""
     >
       {showSavedTabs && (

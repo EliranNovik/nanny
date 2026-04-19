@@ -536,7 +536,7 @@ export default function HelpersPage() {
     : results;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <div className="min-h-screen bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell space-y-8 pt-6 md:pt-8">
         <div className="mx-auto w-full max-w-lg px-2 text-center md:max-w-2xl">
           <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">

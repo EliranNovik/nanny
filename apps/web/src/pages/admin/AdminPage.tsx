@@ -494,7 +494,7 @@ export default function AdminPage() {
                         key={job.id}
                         className="p-3 cursor-pointer hover:bg-muted/50"
                         onClick={() =>
-                          navigate(`/client/jobs/${job.id}/confirmed`)
+                          navigate(`/client/jobs/${job.id}/live`)
                         }
                       >
                         <div className="flex items-start gap-2">

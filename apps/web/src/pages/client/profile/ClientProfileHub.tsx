@@ -21,7 +21,7 @@ export default function ClientProfileHub() {
   const { profile, fullName, photoUrl, user } = ctx;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <div className="min-h-screen bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-6 md:pt-8">
         <div className="app-desktop-centered-wide">
           <div className="flex justify-end mb-10">

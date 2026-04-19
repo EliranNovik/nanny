@@ -22,10 +22,10 @@ const JOB_SAFE_FIELDS = [
 
 /** Freelancer profile fields safe to expose to another user (client). */
 const FREELANCER_PROFILE_SAFE_FIELDS =
-  "hourly_rate_min, hourly_rate_max, bio, available_now, languages, categories";
+  "hourly_rate_min, hourly_rate_max, bio, available_now, languages";
 
-/** Profile fields safe to include in confirmations list. */
-const PROFILE_CARD_FIELDS = "id, full_name, photo_url, city";
+/** Profile fields safe to include in confirmations list (categories lives on profiles, not freelancer_profiles). */
+const PROFILE_CARD_FIELDS = "id, full_name, photo_url, city, categories";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -872,6 +872,31 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
     console.error("[JobsAPI] Error deleting notifications:", deleteErr);
   }
 
+  // One conversation per job (idx_conversations_job_unique). Instant match may have
+  // already created this row via findOrCreateJobConversation — reuse if same helper.
+  const { data: existingConvo, error: findConvoErr } = await supabaseAdmin
+    .from("conversations")
+    .select("id, freelancer_id")
+    .eq("job_id", jobId)
+    .maybeSingle();
+
+  if (findConvoErr) {
+    res.status(500).json({ error: findConvoErr.message });
+    return;
+  }
+
+  if (existingConvo) {
+    if (existingConvo.freelancer_id !== freelancer_id) {
+      res.status(409).json({
+        error:
+          "This job already has a chat with another helper. Open that conversation or pick the same helper you matched with.",
+      });
+      return;
+    }
+    res.json({ conversation_id: existingConvo.id });
+    return;
+  }
+
   const { data: convo, error: convoErr } = await supabaseAdmin
     .from("conversations")
     .insert({
@@ -883,6 +908,22 @@ jobsRouter.post("/:jobId/select", async (req: Request, res: Response): Promise<v
     .single();
 
   if (convoErr) {
+    // Race: another tab created the row between our check and insert
+    if (
+      convoErr.code === "23505" ||
+      (typeof convoErr.message === "string" &&
+        convoErr.message.includes("idx_conversations_job_unique"))
+    ) {
+      const { data: raced, error: raceErr } = await supabaseAdmin
+        .from("conversations")
+        .select("id, freelancer_id")
+        .eq("job_id", jobId)
+        .maybeSingle();
+      if (!raceErr && raced?.freelancer_id === freelancer_id) {
+        res.json({ conversation_id: raced.id });
+        return;
+      }
+    }
     res.status(500).json({ error: convoErr.message });
     return;
   }

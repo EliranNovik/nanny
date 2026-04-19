@@ -5,6 +5,7 @@ import {
   Navigate,
   Outlet,
   useNavigationType,
+  useParams,
 } from "react-router-dom";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -35,9 +36,13 @@ import ContactPage from "@/pages/ContactPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
+import FreelancerAvailabilityLivePage from "@/pages/freelancer/FreelancerAvailabilityLivePage";
 import DashboardPage from "@/pages/client/DashboardPage";
 import ClientHomePage from "@/pages/client/ClientHomePage";
 import HelpersPage from "@/pages/client/HelpersPage";
+import HelpersMatchPage from "@/pages/client/HelpersMatchPage";
+import ExplorePage from "@/pages/explore/ExplorePage";
+import FreelancerJobsMatchPage from "@/pages/freelancer/FreelancerJobsMatchPage";
 import ClientProfileLayout from "@/pages/client/profile/ClientProfileLayout";
 import ClientProfileHub from "@/pages/client/profile/ClientProfileHub";
 import ClientProfilePersonalPage from "@/pages/client/profile/ClientProfilePersonalPage";
@@ -126,6 +131,11 @@ function RoleRedirect() {
  * `/` — marketing for everyone when chosen in-app (PUSH).
  * Signed-in users are sent to role home only on direct entry (POP) or redirects (REPLACE), e.g. first load at `/` or `/login` → `/`.
  */
+function RedirectJobConfirmedToLive() {
+  const { jobId } = useParams<{ jobId: string }>();
+  return <Navigate to={`/client/jobs/${jobId}/live`} replace />;
+}
+
 function RootRoute() {
   const { user, loading } = useAuth();
   const navigationType = useNavigationType();
@@ -227,6 +237,38 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/client/helpers/match"
+          element={
+            <ProtectedRoute>
+              <HelpersMatchPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/explore"
+          element={
+            <ProtectedRoute>
+              <ExplorePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/freelancer/explore"
+          element={
+            <ProtectedRoute>
+              <ExplorePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/freelancer/jobs/match"
+          element={
+            <ProtectedRoute>
+              <FreelancerJobsMatchPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/client/create"
           element={
             <ProtectedRoute>
@@ -275,10 +317,18 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/client/jobs/:jobId/confirmed"
+          path="/client/jobs/:jobId/live"
           element={
             <ProtectedRoute>
               <ConfirmedListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/jobs/:jobId/confirmed"
+          element={
+            <ProtectedRoute>
+              <RedirectJobConfirmedToLive />
             </ProtectedRoute>
           }
         />
@@ -303,6 +353,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <FreelancerHomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/freelancer/availability/:postId/live"
+          element={
+            <ProtectedRoute>
+              <FreelancerAvailabilityLivePage />
             </ProtectedRoute>
           }
         />

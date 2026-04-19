@@ -61,7 +61,11 @@ function initials(name: string): string {
 
 export type DiscoverHomeLiveTrackerVariant = "hire" | "work";
 
-type Props = { variant?: DiscoverHomeLiveTrackerVariant };
+type Props = {
+  variant?: DiscoverHomeLiveTrackerVariant;
+  /** Explore page: hide duplicate section title, use full-width card grid. */
+  embeddedInExplore?: boolean;
+};
 
 /** Same rule as `PublicProfilePage` / Jobs “freelancer” mode: clients who receive requests can be selected as helper. */
 function canActAsHelper(
@@ -178,7 +182,10 @@ const JOB_MATCH_SELECT = `
  * receive-requests on) — same rows as Jobs → Helping now: `status` in locked/active and you are
  * `selected_freelancer_id`, plus confirmed Connect jobs from your posts if not already in that set.
  */
-export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
+export function DiscoverHomeLiveTrackerBoard({
+  variant = "hire",
+  embeddedInExplore = false,
+}: Props) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const isWork = variant === "work";
@@ -463,14 +470,25 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
   );
 
   return (
-    <section className="mt-4 px-1 md:mt-5" aria-label="Your matches">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-            Your community matches
-          </p>
-          
-        </div>
+    <section
+      className={cn(
+        embeddedInExplore ? "mt-0 px-0" : "mt-4 px-1 md:mt-5",
+      )}
+      aria-label="Your matches"
+    >
+      <div
+        className={cn(
+          "mb-2 flex items-center gap-3",
+          embeddedInExplore ? "justify-end" : "justify-between",
+        )}
+      >
+        {!embeddedInExplore ? (
+          <div className="min-w-0">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+              Your community matches
+            </p>
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => navigate(helpingNowJobsUrl)}
@@ -491,6 +509,12 @@ export function DiscoverHomeLiveTrackerBoard({ variant = "hire" }: Props) {
       ) : !hasMatches ? (
         <div className="rounded-2xl bg-muted/20 px-4 py-5 text-center text-sm font-medium text-muted-foreground dark:bg-muted/30">
           No matches yet. When a job is paired, it will show here.
+        </div>
+      ) : embeddedInExplore ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {matches.map((row) => (
+            <MatchCard key={row.jobId} row={row} />
+          ))}
         </div>
       ) : (
         <>

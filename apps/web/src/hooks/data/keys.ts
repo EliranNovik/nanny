@@ -16,7 +16,10 @@ export const queryKeys = {
   userInvitations: (userId?: string) => [...queryKeys.invitations, userId] as const,
 
   discoverFeed: () => [...queryKeys.communityFeed, "discover"] as const,
-  discoverLiveAvatars: () => [...queryKeys.communityFeed, "avatars"] as const,
+  discoverLiveAvatars: (excludeUserId?: string | null) =>
+    [...queryKeys.communityFeed, "avatars", excludeUserId ?? "all"] as const,
+  discoverOpenHelpRequests: (excludeUserId?: string | null) =>
+    [...queryKeys.jobs, "discoverOpen", excludeUserId ?? "none"] as const,
 
   communityPosts: (category: string | null) => [...queryKeys.community, "posts", category] as const,
   postFavorites: (userId?: string, postIds?: string[]) => [...queryKeys.community, "favorites", userId, postIds?.sort().join(",")] as const,

@@ -388,6 +388,12 @@ export default function CreateJobPage() {
 
   const categoryLabel = categoryId ? serviceCategoryLabel(categoryId) : "";
 
+  /** Step 1 = choosing category — no hero image or category name in header */
+  const showCategoryHero = Boolean(categoryImageSrc && step > 1);
+
+  const shellTitle =
+    step === 1 ? "Type of help" : categoryLabel || "Type of help";
+
   const stepTip =
     step >= 1 && step <= TOTAL_STEPS
       ? (CREATE_JOB_STEP_TIPS[step - 1] ?? "")
@@ -529,7 +535,7 @@ export default function CreateJobPage() {
       // Clear localStorage after successful submission
       localStorage.removeItem(STORAGE_KEY);
       // Pass job details via state for immediate display
-      navigate(`/client/jobs/${result.job_id}/confirmed`, {
+      navigate(`/client/jobs/${result.job_id}/live`, {
         state: {
           job: {
             id: result.job_id,
@@ -548,8 +554,6 @@ export default function CreateJobPage() {
     }
   }
 
-  const shellTitle = categoryLabel || "Type of help";
-
   /** Mobile fixed banner: flush below notch — app chrome hidden on /client/create (see BottomNav + index.css). */
   const mobileFixedBannerTopClass = "top-[env(safe-area-inset-top,0px)]";
 
@@ -560,7 +564,7 @@ export default function CreateJobPage() {
     >
       {/* Mobile: fixed top banner (stays visible while page scrolls) */}
       <div className="md:hidden">
-        {categoryImageSrc ? (
+        {showCategoryHero ? (
           <>
             <div
               className={cn(
@@ -748,7 +752,7 @@ export default function CreateJobPage() {
             </h1>
           </div>
           <div className="flex shrink-0 items-start gap-3">
-            {categoryImageSrc ? (
+            {showCategoryHero ? (
               <div
                 className={cn(
                   "relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md sm:h-24 sm:w-24",
@@ -757,7 +761,7 @@ export default function CreateJobPage() {
                 aria-hidden
               >
                 <img
-                  src={categoryImageSrc}
+                  src={categoryImageSrc ?? ""}
                   alt=""
                   className="h-full w-full object-cover"
                 />
@@ -803,7 +807,7 @@ export default function CreateJobPage() {
         <div
           className={cn(
             "flex gap-1.5",
-            categoryImageSrc ? "hidden md:flex" : "flex",
+            showCategoryHero ? "hidden md:flex" : "flex",
           )}
           aria-hidden
         >

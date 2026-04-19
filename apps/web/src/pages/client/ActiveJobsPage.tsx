@@ -404,7 +404,7 @@ export default function ActiveJobsPage() {
     if (job.status === "notifying" || job.status === "confirmations_closed") {
       return {
         label: "View Responses",
-        onClick: () => navigate(`/client/jobs/${job.id}/confirmed`),
+        onClick: () => navigate(`/client/jobs/${job.id}/live`),
         icon: CheckCircle2,
       };
     }

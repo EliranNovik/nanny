@@ -756,7 +756,7 @@ export default function CommunityPostsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <div className="min-h-screen bg-background pb-6 md:pb-8">
       <div
         className={cn(
           "app-desktop-shell space-y-6 md:pt-8",
