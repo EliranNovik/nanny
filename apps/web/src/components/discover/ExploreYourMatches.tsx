@@ -138,7 +138,13 @@ function rowToMatch(
 const helpingNowFreelancerUrl = buildJobsUrl("freelancer", "jobs");
 const helpingNowClientUrl = buildJobsUrl("client", "jobs");
 
-type Props = { embeddedInExplore?: boolean };
+export type ExploreMatchPerspective = "all" | "client" | "helper";
+
+type Props = {
+  embeddedInExplore?: boolean;
+  /** Limit which paired jobs appear: client = “helping me now”, helper = from your availability / helping now as helper */
+  matchPerspective?: ExploreMatchPerspective;
+};
 
 function cardLabelText(kind: MatchKind): string {
   if (kind === "client_request") return "Your request";
@@ -148,7 +154,10 @@ function cardLabelText(kind: MatchKind): string {
 /**
  * Explore → Your matches: one list; top-right label per card (request vs availability post).
  */
-export function ExploreYourMatches({ embeddedInExplore = false }: Props) {
+export function ExploreYourMatches({
+  embeddedInExplore = false,
+  matchPerspective = "all",
+}: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -304,11 +313,21 @@ export function ExploreYourMatches({ embeddedInExplore = false }: Props) {
           new Date(a.match.createdAtIso).getTime(),
       );
 
-      setRows(deduped);
+      const filtered =
+        matchPerspective === "client"
+          ? deduped.filter(
+              (r) =>
+                r.kind === "client_request" || r.kind === "client_availability",
+            )
+          : matchPerspective === "helper"
+            ? deduped.filter((r) => r.kind === "helper_availability")
+            : deduped;
+
+      setRows(filtered);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, matchPerspective]);
 
   useEffect(() => {
     void load();
@@ -407,7 +426,11 @@ export function ExploreYourMatches({ embeddedInExplore = false }: Props) {
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-2xl bg-muted/20 px-4 py-5 text-center text-sm text-muted-foreground dark:bg-muted/30">
-          No active matches yet. When a job is paired, it will show here.
+          {matchPerspective === "client"
+            ? "No active “helping me now” jobs yet. When a helper is confirmed on your request, it will show here."
+            : matchPerspective === "helper"
+              ? "No active jobs from your availability yet. When a client confirms a hire on your post, it will show here."
+              : "No active matches yet. When a job is paired, it will show here."}
         </div>
       ) : (
         <div className={gridClass}>

@@ -131,14 +131,19 @@ export function DiscoverHomeLatestOwnPosts({
     setLoading(true);
     void (async () => {
       const nowIso = new Date().toISOString();
-      const { data: postRows, error: postErr } = await supabase
+      let postQuery = supabase
         .from("community_posts")
         .select("id, title, category, created_at, expires_at")
         .eq("author_id", user.id)
         .eq("status", "active")
-        .gt("expires_at", nowIso)
-        .order("created_at", { ascending: false })
-        .limit(variant === "page" ? 50 : 4);
+        .order("created_at", { ascending: false });
+      /** Home strip: only upcoming / live pulses. Explore "Others hire requests": include ended pulses so hire-interest cards stay visible (confirmed or pending). */
+      if (variant !== "page") {
+        postQuery = postQuery.gt("expires_at", nowIso);
+      }
+      const { data: postRows, error: postErr } = await postQuery.limit(
+        variant === "page" ? 50 : 4,
+      );
 
       if (cancelled) return;
       if (postErr) {
@@ -362,6 +367,13 @@ export function DiscoverHomeLatestOwnPosts({
               Posted {new Date(r.created_at).toLocaleDateString()}
             </p>
             <LiveExpiryRow expiresAtIso={r.expires_at} />
+            {embeddedInExplore && variant === "page" ? (
+              <p className="mt-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                {count === 0
+                  ? "No hire requests yet"
+                  : `${count} hire request${count === 1 ? "" : "s"}`}
+              </p>
+            ) : null}
           </div>
           <ChevronRight
             className="h-5 w-5 shrink-0 text-muted-foreground"
@@ -420,10 +432,14 @@ export function DiscoverHomeLatestOwnPosts({
       ) : variant === "page" && posts.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 bg-card/20 px-4 py-10 text-center">
           <p className="text-base font-semibold text-foreground">
-            No live availability posts
+            {embeddedInExplore
+              ? "No availability posts yet"
+              : "No live availability posts"}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Post availability so clients can tap Hire — responses show up here.
+            {embeddedInExplore
+              ? "Post availability so clients can tap Hire — hire request counts show on each card here."
+              : "Post availability so clients can tap Hire — responses show up here."}
           </p>
           <Link
             to="/availability/post-now"

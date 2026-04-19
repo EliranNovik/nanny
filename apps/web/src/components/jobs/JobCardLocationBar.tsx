@@ -3,14 +3,14 @@ import { cn } from "@/lib/utils";
 
 interface JobCardLocationBarProps {
   location: string | null | undefined;
-  /** Status badge — aligned to the right, same row as location */
+  /** Optional trailing content — aligned to the right, same row as location */
   trailing?: ReactNode;
   className?: string;
 }
 
 /**
- * Top row on job cards: city + optional status badge.
- * Transparent strip + bottom divider only (no grey fill on desktop). Badge stays in normal flex flow so it stays inside the card.
+ * Top row on job cards: city (+ optional trailing slot).
+ * Transparent strip + bottom divider only (no grey fill on desktop).
  */
 export function JobCardLocationBar({
   location,

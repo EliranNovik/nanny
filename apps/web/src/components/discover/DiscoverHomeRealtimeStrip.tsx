@@ -209,6 +209,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       name: string;
       href: string;
       average_rating: number | null;
+      /** Area / city from the availability post */
+      locationLine: string;
     }[] = [];
     for (const cat of DISCOVER_HOME_CATEGORIES) {
       if (cat.id === ALL_HELP_CATEGORY_ID) continue;
@@ -223,6 +225,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
         name: first.full_name || "?",
         href: `/public/posts?post=${encodeURIComponent(postId)}&category=${encodeURIComponent(cat.id)}`,
         average_rating: first.average_rating ?? null,
+        locationLine: first.location_line ?? "—",
       });
       if (out.length >= MAX) break;
     }
@@ -557,8 +560,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500 dark:text-zinc-400">
                 {it.label}
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-400 dark:text-zinc-500">
-                Nearby
+              <p className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-zinc-500">
+                {it.locationLine}
               </p>
             </div>
           </Link>

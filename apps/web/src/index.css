@@ -202,12 +202,19 @@
       padding-top: 0;
     }
 
+    /* Discover home: fixed top padding — tab toggle does not collapse on scroll */
+    .app-content-below-fixed-header:has([data-discover-home-page]) {
+      padding-top: calc(0.5rem + 2.5rem + 0.5rem);
+    }
+
+    /* /jobs: fixed top padding — tab strip does not collapse on scroll */
+    .app-content-below-fixed-header:has([data-unified-jobs-page]) {
+      padding-top: calc(0.5rem + 2.5rem + 0.5rem);
+    }
+
     /**
-     * Discover home + /jobs + /liked: scroll-linked collapse — `--mobile-shell-collapse-progress` is 0…1 (set on html in JS).
-     * Padding follows scroll (no transition); must match mobile shell height token (0.5+2.5+0.5 rem).
+     * /liked: scroll-linked collapse — `--mobile-shell-collapse-progress` is 0…1 (set on html in JS).
      */
-    .app-content-below-fixed-header:has([data-discover-home-page]),
-    .app-content-below-fixed-header:has([data-unified-jobs-page]),
     .app-content-below-fixed-header:has([data-liked-page]) {
       padding-top: calc(
         (1 - var(--mobile-shell-collapse-progress, 0)) * (0.5rem + 2.5rem + 0.5rem)

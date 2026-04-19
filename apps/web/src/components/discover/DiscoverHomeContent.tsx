@@ -24,7 +24,8 @@ function readStoredHomeMode(): DiscoverHomeMode | null {
 }
 
 export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
-  useMobileShellScrollCollapse(true);
+  /** Keep `--mobile-shell-collapse-progress` at 0 on Discover — tab strip stays fixed (no scroll-linked collapse). */
+  useMobileShellScrollCollapse(false);
   const { addToast } = useToast();
   const isClient = role === "client";
   const [homeMode, setHomeMode] = useState<DiscoverHomeMode>(() => {
@@ -72,8 +73,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             "bg-white",
           )}
           style={{
-            height:
-              "calc(env(safe-area-inset-top, 0px) + (1 - var(--mobile-shell-collapse-progress, 0)) * 3.5rem)",
+            /* Fixed offset under app header (was scroll-linked via --mobile-shell-collapse-progress) */
+            height: "calc(env(safe-area-inset-top, 0px) + 3.5rem)",
           }}
         />
         <div className="app-desktop-shell pointer-events-auto max-md:px-2.5">

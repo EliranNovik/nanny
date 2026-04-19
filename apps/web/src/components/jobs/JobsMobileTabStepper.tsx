@@ -76,8 +76,7 @@ export function JobsMobileTabStepper() {
         "bg-slate-50/50 dark:bg-background",
       )}
       style={{
-        top:
-          "calc(env(safe-area-inset-top, 0px) + (1 - var(--mobile-shell-collapse-progress, 0)) * 3.5rem)",
+        top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)",
       }}
     >
       <div className="pointer-events-auto app-desktop-shell px-3 py-2.5 sm:px-4">

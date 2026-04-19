@@ -50,14 +50,8 @@ export default function UnifiedJobsPage() {
   }, [resolvedMode, tabFromUrl]);
 
   const needsPicker = showRolePicker && !resolvedMode;
-  const jobsShellScrollEnabled =
-    !loading &&
-    !!profile &&
-    !needsPicker &&
-    !!resolvedMode &&
-    !!effectiveTab;
-
-  useMobileShellScrollCollapse(jobsShellScrollEnabled);
+  /** Scroll-linked header/tab collapse disabled on /jobs — fixed tab strip like Discover home. */
+  useMobileShellScrollCollapse(false);
 
   useEffect(() => {
     const stateTab = (location.state as { tab?: string } | null)?.tab;
@@ -173,7 +167,7 @@ export default function UnifiedJobsPage() {
       </div>
 
       {/** Mobile `pt`: tab strip only (~4.625rem); subtract collapsed header height via shell var */}
-      <div className="app-desktop-shell max-md:pt-[calc(4.625rem-var(--mobile-shell-collapse-progress,0)*3.5rem)] md:pt-[calc(env(safe-area-inset-top,0px)+3.5rem+7.25rem)]">
+      <div className="app-desktop-shell max-md:pt-[4.625rem] md:pt-[calc(env(safe-area-inset-top,0px)+3.5rem+7.25rem)]">
         {showRolePicker && (
           <JobsPerspectiveSwitch current={resolvedMode} className="mb-4 flex" />
         )}

@@ -69,6 +69,10 @@ function bottomNavTabIconClass(isActive: boolean) {
   );
 }
 
+/** Label under each bottom tab icon (mobile + desktop). */
+const bottomNavTabLabelClass =
+  "mt-0.5 inline-block max-w-[4.5rem] truncate text-center text-[9px] font-semibold leading-tight text-zinc-950 dark:text-white sm:max-w-none sm:text-[10px]";
+
 /** App menu — job tab counts: dark frosted glass (light) / light frosted glass (dark). */
 const appMenuJobsCountBadgeClassName = cn(
   "shrink-0 min-w-[1.75rem] justify-center rounded-full border px-2 py-0.5 text-xs font-bold tabular-nums",
@@ -105,10 +109,8 @@ export function BottomNav() {
     useDiscoverHomeScrollHeader();
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
-  const isUnifiedJobsPage = pathnameNorm === "/jobs";
   const isLikedPage = pathnameNorm === "/liked";
-  const isShellScrollCollapseRoute =
-    isDiscoverHome || isUnifiedJobsPage || isLikedPage;
+  const isShellScrollCollapseRoute = isDiscoverHome || isLikedPage;
   const shellCollapseChromeP = isShellScrollCollapseRoute
     ? discoverHeaderCollapseProgress
     : 0;
@@ -301,15 +303,37 @@ export function BottomNav() {
             "pt-4 max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
           )}
         >
-          <div className="flex items-start justify-between gap-3">
-            <p className="pt-0.5 text-lg font-semibold tracking-tight text-foreground md:text-[15px]">
-              Quick navigation
-            </p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
+              <p className="text-lg font-semibold tracking-tight text-foreground md:text-[15px]">
+                Quick navigation
+              </p>
+              <Button
+                type="button"
+                className={cn(
+                  "shrink-0 gap-1.5 rounded-xl border-0 px-3 py-1.5 text-sm font-semibold text-white shadow-md",
+                  "bg-gradient-to-r from-orange-500 to-red-600",
+                  "hover:from-orange-600 hover:to-red-700 active:scale-[0.98]",
+                  "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  "md:gap-2 md:py-2 md:text-sm",
+                )}
+                onClick={() => {
+                  openReportModal();
+                  setDesktopAppMenuOpen(false);
+                }}
+              >
+                <AlertCircle
+                  className="h-4 w-4 shrink-0 text-white md:h-4 md:w-4"
+                  aria-hidden
+                />
+                Report
+              </Button>
+            </div>
             <DialogClose asChild>
               <button
                 type="button"
                 className={cn(
-                  "inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground md:h-9 md:w-9",
+                  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground md:h-9 md:w-9",
                   "transition-colors hover:bg-muted/50 hover:text-foreground active:bg-muted/60",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
@@ -532,7 +556,7 @@ export function BottomNav() {
 
         <div
           className={cn(
-            "flex shrink-0 items-end justify-between gap-3 border-t border-border/30 bg-background px-4 pt-3",
+            "flex shrink-0 items-center justify-between gap-3 border-t border-border/30 bg-background px-4 pt-3",
             "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]",
           )}
         >
@@ -557,50 +581,26 @@ export function BottomNav() {
               {appMenuUserLabel}
             </span>
           </button>
-          <div className="flex shrink-0 flex-col items-end gap-0.5">
-            <Button
-              type="button"
-              className={cn(
-                "h-auto gap-2 rounded-xl border-0 px-4 py-2.5 text-base font-semibold text-white shadow-md",
-                "bg-gradient-to-r from-orange-500 to-red-600",
-                "hover:from-orange-600 hover:to-red-700 active:scale-[0.98]",
-                "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                "md:text-sm md:py-2",
-              )}
-              onClick={() => {
-                openReportModal();
-                setDesktopAppMenuOpen(false);
-              }}
-            >
-              <AlertCircle
-                className="h-5 w-5 shrink-0 text-white md:h-4 md:w-4"
-                aria-hidden
-              />
-              Report
-            </Button>
-            <button
-              type="button"
-              onClick={() => {
-                void signOut();
-                setDesktopAppMenuOpen(false);
-              }}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-2 py-2 text-destructive transition-colors",
-                "hover:bg-destructive/10 active:bg-destructive/15",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              )}
-              aria-label="Log out"
-            >
-              <LogOut
-                className="h-6 w-6 shrink-0 md:h-5 md:w-5"
-                strokeWidth={2}
-                aria-hidden
-              />
-              <span className="text-base font-semibold md:text-sm">
-                Log out
-              </span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void signOut();
+              setDesktopAppMenuOpen(false);
+            }}
+            className={cn(
+              "flex shrink-0 items-center gap-2 rounded-lg px-2 py-2 text-destructive transition-colors",
+              "hover:bg-destructive/10 active:bg-destructive/15",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            )}
+            aria-label="Log out"
+          >
+            <LogOut
+              className="h-6 w-6 shrink-0 md:h-5 md:w-5"
+              strokeWidth={2}
+              aria-hidden
+            />
+            <span className="text-base font-semibold md:text-sm">Log out</span>
+          </button>
         </div>
       </DialogContent>
     </Dialog>
@@ -965,13 +965,14 @@ export function BottomNav() {
           >
             <div className="flex items-center justify-center px-6 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-[env(safe-area-inset-bottom,0px)]">
               <div
-                className="flex shrink-0 items-center justify-center"
+                className="flex shrink-0 flex-col items-center justify-center"
                 title="Getting Started"
               >
                 <BottomNavHomeIcon
                   active
                   className="text-zinc-950 dark:text-white"
                 />
+                <span className={bottomNavTabLabelClass}>Home</span>
               </div>
             </div>
           </div>
@@ -1068,9 +1069,7 @@ export function BottomNav() {
                         </Badge>
                       )}
                     </div>
-                    <span className="mt-0.5 hidden text-[10px] font-semibold leading-none text-zinc-950 dark:text-white md:inline">
-                      {item.label}
-                    </span>
+                    <span className={bottomNavTabLabelClass}>{item.label}</span>
                   </Link>
                 );
               })}
@@ -1094,9 +1093,7 @@ export function BottomNav() {
                     aria-hidden
                   />
                 </div>
-                <span className="mt-0.5 hidden text-[10px] font-semibold leading-none text-zinc-950 dark:text-white md:inline">
-                  Explore
-                </span>
+                <span className={bottomNavTabLabelClass}>Explore</span>
               </Link>
 
               {/* Messages (Jobs tab commented out in userNav for now) */}
@@ -1122,9 +1119,7 @@ export function BottomNav() {
                     <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
                       <Icon className={bottomNavTabIconClass(isActive)} />
                     </div>
-                    <span className="mt-0.5 hidden text-[10px] font-semibold leading-none text-zinc-950 dark:text-white md:inline">
-                      {item.label}
-                    </span>
+                    <span className={bottomNavTabLabelClass}>{item.label}</span>
 
                     {showMessageBadge && (
                       <Badge
@@ -1167,9 +1162,7 @@ export function BottomNav() {
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <span className="mt-0.5 hidden text-[10px] font-semibold leading-none text-zinc-950 dark:text-white md:inline">
-                        Profile
-                      </span>
+                      <span className={bottomNavTabLabelClass}>Profile</span>
                     </button>
 
                     <Link
@@ -1201,9 +1194,7 @@ export function BottomNav() {
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <span className="mt-0.5 text-[10px] font-semibold leading-none text-zinc-950 dark:text-white">
-                        Profile
-                      </span>
+                      <span className={bottomNavTabLabelClass}>Profile</span>
                     </Link>
                   </>
                 );

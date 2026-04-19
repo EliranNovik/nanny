@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Clock } from "lucide-react";
+import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -99,10 +100,17 @@ function statusPillClass(status: string): string {
   return "bg-amber-500/12 text-amber-900 dark:text-amber-200";
 }
 
+type HireInterestsProps = {
+  /** Only hires still waiting on the helper (pending). */
+  pendingOnly?: boolean;
+};
+
 /**
  * Explore (client): hire interests the viewer sent on helpers’ availability posts.
  */
-export function ExploreClientHireInterests() {
+export function ExploreClientHireInterests({
+  pendingOnly = false,
+}: HireInterestsProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [rows, setRows] = useState<
@@ -134,7 +142,12 @@ export function ExploreClientHireInterests() {
         return;
       }
 
-      const hires = (hireData ?? []) as HireRow[];
+      let hires = (hireData ?? []) as HireRow[];
+      if (pendingOnly) {
+        hires = hires.filter(
+          (h) => String(h.status || "").toLowerCase() === "pending",
+        );
+      }
       const postIds = [...new Set(hires.map((h) => h.community_post_id))];
       if (postIds.length === 0) {
         setRows([]);
@@ -211,7 +224,7 @@ export function ExploreClientHireInterests() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, pendingOnly]);
 
   useEffect(() => {
     void load();
@@ -222,7 +235,11 @@ export function ExploreClientHireInterests() {
   return (
     <section
       className="space-y-4"
-      aria-label="Your hire interest on availability posts"
+      aria-label={
+        pendingOnly
+          ? "Availability posts where your hire is pending a response"
+          : "Your hire interest on availability posts"
+      }
     >
       {loading ? (
         <div className="rounded-2xl border border-border/60 bg-card/30 px-4 py-6 text-sm text-muted-foreground">
@@ -231,10 +248,14 @@ export function ExploreClientHireInterests() {
       ) : rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 bg-card/20 px-4 py-10 text-center">
           <p className="text-base font-semibold text-foreground">
-            No hire responses yet
+            {pendingOnly
+              ? "No pending hires"
+              : "No hire responses yet"}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            When you tap Hire on a helper’s availability post, it shows up here.
+            {pendingOnly
+              ? "When you tap Hire on a helper’s availability and they haven’t confirmed yet, it shows here."
+              : "When you tap Hire on a helper’s availability post, it shows up here."}
           </p>
           <Link
             to="/client/home"
@@ -328,6 +349,27 @@ export function ExploreClientHireInterests() {
                       You tapped Hire{" "}
                       {new Date(hire.created_at).toLocaleDateString()}
                     </p>
+                    {post?.expires_at ? (
+                      <div
+                        className="mt-1 flex min-w-0 items-center gap-1.5"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <Clock
+                          className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                          aria-hidden
+                        />
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Post
+                        </span>
+                        <ExpiryCountdown
+                          expiresAtIso={post.expires_at}
+                          compact
+                          endedLabel="Ended"
+                          className="!font-mono text-[11px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400"
+                        />
+                      </div>
+                    ) : null}
                   </div>
                   <ChevronRight
                     className="h-5 w-5 shrink-0 text-muted-foreground"

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "./keys";
 import { ALL_HELP_CATEGORY_ID, DISCOVER_HOME_CATEGORIES, SERVICE_CATEGORIES } from "@/lib/serviceCategories";
+import { formatAvailabilityLocationLine } from "@/lib/availabilityPosts";
 
 export function useDiscoverFeed() {
   return useQuery({
@@ -51,12 +52,14 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
           category,
           author_id,
           created_at,
+          availability_payload,
           author:profiles!author_id (
             id,
             full_name,
             photo_url,
             average_rating,
-            total_ratings
+            total_ratings,
+            city
           )
         `)
         .eq("status", "active")
@@ -75,6 +78,8 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
           full_name: string | null;
           photo_url: string | null;
           average_rating: number | null;
+          /** Area from availability payload or author city */
+          location_line: string;
         }[]
       > = {};
 
@@ -88,6 +93,10 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
         const author = row?.author;
         const authorId = String(author?.id ?? row?.author_id ?? "").trim();
         const postId = String(row?.id ?? "").trim();
+        const authorCity =
+          author && typeof author === "object" && "city" in author
+            ? ((author as { city?: string | null }).city ?? null)
+            : null;
 
         if (!authorId || !postId) continue;
         if (excludeUserId && authorId === excludeUserId) continue;
@@ -106,6 +115,10 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
             author?.average_rating != null
               ? Number(author.average_rating)
               : null,
+          location_line: formatAvailabilityLocationLine(
+            row?.availability_payload,
+            authorCity,
+          ),
         });
       }
 

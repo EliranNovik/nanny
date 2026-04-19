@@ -7,7 +7,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -122,27 +121,7 @@ export function IncomingJobRequestCard({
         className={cn(isMinMd && "cursor-pointer")}
         onClick={isMinMd ? () => onOpenPreview(job) : undefined}
       >
-        <JobCardLocationBar
-          location={job.location_city}
-          trailing={
-            <Badge
-              className={cn(
-                "h-7 min-h-7 shrink-0 rounded-full border-none px-2.5 shadow-sm sm:px-3",
-                isDeclined
-                  ? "text-[9px] font-black uppercase leading-tight tracking-wide bg-slate-100/80 text-slate-500 dark:bg-white/5 dark:text-slate-400"
-                  : isConfirmed
-                    ? "text-[9px] font-black uppercase leading-tight tracking-wide bg-emerald-50/80 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 sm:text-[10px]"
-                    : "bg-rose-500 text-[10px] font-bold leading-tight tracking-tight text-white shadow-md shadow-rose-500/25 dark:bg-rose-600 sm:px-3 sm:text-[11px]",
-              )}
-            >
-              {isDeclined
-                ? "Declined"
-                : isConfirmed
-                  ? "Confirmed"
-                  : "Action required"}
-            </Badge>
-          }
-        />
+        <JobCardLocationBar location={job.location_city} />
       </div>
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div

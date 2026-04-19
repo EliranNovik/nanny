@@ -4,7 +4,6 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -193,42 +192,6 @@ export default function RequestsTabContent({
     }
   }
 
-  function getJobStatusBadge(status: string) {
-    const map: Record<string, { label: string; className: string }> = {
-      ready: {
-        label: "Waiting",
-        className: "bg-amber-500 text-white shadow-amber-500/20",
-      },
-      notifying: {
-        label: "In Progress",
-        className:
-          "bg-slate-200 text-slate-700 shadow-sm border border-slate-300/70 dark:bg-zinc-600 dark:text-zinc-100 dark:border-zinc-500/40",
-      },
-      confirmations_closed: {
-        label: "Waiting",
-        className: "bg-amber-500 text-white shadow-amber-500/20",
-      },
-      confirmed: {
-        label: "Confirmed",
-        className: "bg-emerald-500 text-white shadow-emerald-500/20",
-      },
-    };
-    const config = map[status] || {
-      label: status,
-      className: "bg-slate-400 text-white",
-    };
-    return (
-      <Badge
-        className={cn(
-          "h-7 px-3 rounded-full text-[11px] uppercase font-black tracking-wide border-none shadow-md transition-transform hover:scale-105",
-          config.className,
-        )}
-      >
-        {config.label}
-      </Badge>
-    );
-  }
-
   function formatJobTitle(job: { service_type?: string }) {
     if (job.service_type === "cleaning") return "Cleaning";
     if (job.service_type === "cooking") return "Cooking";
@@ -304,7 +267,6 @@ export default function RequestsTabContent({
                   <div className="flex items-center gap-2 border-b border-slate-100 dark:border-white/5 px-4 py-2">
                     <Skeleton className="h-4 w-4 rounded" />
                     <Skeleton className="h-4 flex-1" />
-                    <Skeleton className="h-6 w-20 rounded-full" />
                   </div>
                   <div className="flex items-center gap-4 px-4 py-4">
                     <Skeleton className="h-[5.25rem] w-[5.25rem] shrink-0 rounded-2xl" />
@@ -448,14 +410,7 @@ export default function RequestsTabContent({
                             isMinMd ? () => openJobPreview(job) : undefined
                           }
                         >
-                          <JobCardLocationBar
-                            location={job.location_city}
-                            trailing={
-                              <Badge className="h-7 shrink-0 rounded-full border-none bg-amber-400 text-[10px] font-black uppercase leading-tight tracking-wide text-white shadow-md shadow-amber-400/25 sm:px-3 sm:text-[10px] dark:bg-amber-500">
-                                Pending
-                              </Badge>
-                            }
-                          />
+                          <JobCardLocationBar location={job.location_city} />
                         </div>
                         <div className="relative flex min-h-0 flex-1 flex-col">
                           {/* Smart Mobile Scroll Overlay */}
@@ -668,10 +623,7 @@ export default function RequestsTabContent({
                         </span>
                       ) : null}
                       <div>
-                        <JobCardLocationBar
-                          location={job.location_city}
-                          trailing={getJobStatusBadge(job.status)}
-                        />
+                        <JobCardLocationBar location={job.location_city} />
                       </div>
                       <div className="relative flex min-h-0 flex-1 flex-col">
                         {/* Smart Scroll Overlay */}

@@ -113,3 +113,18 @@ export const AVAILABILITY_DURATION_PRESETS_LEGACY = [
 export function getDurationPresetLegacy(id: string) {
   return AVAILABILITY_DURATION_PRESETS_LEGACY.find((p) => p.id === id) ?? null;
 }
+
+/**
+ * Location line for an availability pulse: `area_tag` from the post payload, else author city.
+ */
+export function formatAvailabilityLocationLine(
+  payload: AvailabilityPayload | Record<string, unknown> | null | undefined,
+  authorCity: string | null | undefined,
+): string {
+  const p = payload as AvailabilityPayload | null | undefined;
+  const area = (p?.area_tag ?? "").trim();
+  if (area) return area;
+  const city = (authorCity ?? "").trim();
+  if (city) return city;
+  return "—";
+}

@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -275,42 +274,6 @@ export default function JobsTabContent({
     loadJobs();
   }, [user, perspective]);
 
-  function getJobStatusBadge(status: string) {
-    const map: Record<string, { label: string; className: string }> = {
-      locked: {
-        label: "Confirmed",
-        className: "bg-emerald-500 text-white shadow-md shadow-emerald-500/25",
-      },
-      active: {
-        label: "Confirmed",
-        className: "bg-emerald-500 text-white shadow-md shadow-emerald-500/25",
-      },
-      confirmed: {
-        label: "Confirmed",
-        className: "bg-emerald-500 text-white shadow-md shadow-emerald-500/25",
-      },
-      completed: {
-        label: "Completed",
-        className: "bg-blue-500 text-white shadow-md shadow-blue-500/25 dark:bg-blue-600",
-      },
-      cancelled: {
-        label: "Cancelled",
-        className: "bg-slate-400 text-white shadow-md shadow-slate-400/20 dark:bg-slate-500",
-      },
-    };
-    const config = map[status] || {
-      label: status,
-      className: "bg-slate-400 text-white",
-    };
-    return {
-      label: config.label,
-      className: cn(
-        "h-7 px-3 rounded-full text-[11px] uppercase font-black tracking-wide border-none shadow-md transition-transform hover:scale-105",
-        config.className,
-      ),
-    };
-  }
-
   function formatJobTitle(job: JobRequest) {
     if (job.service_type === "cleaning") return "Cleaning";
     if (job.service_type === "cooking") return "Cooking";
@@ -356,7 +319,6 @@ export default function JobsTabContent({
               >
                 <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 dark:border-white/5">
                   <Skeleton className="h-4 flex-1" />
-                  <Skeleton className="h-6 w-20 rounded-full" />
                 </div>
                 <div className="flex items-center gap-4 px-4 py-4">
                   <Skeleton className="h-[5.25rem] w-[5.25rem] shrink-0 rounded-2xl" />
@@ -427,8 +389,6 @@ export default function JobsTabContent({
                   const otherParty = otherPartyId
                     ? profiles[otherPartyId]
                     : null;
-                  const statusBadge = getJobStatusBadge(job.status);
-
                   return (
                     <Card
                       key={job.id}
@@ -448,14 +408,7 @@ export default function JobsTabContent({
                           isMinMd ? () => openJobPreview(job) : undefined
                         }
                       >
-                        <JobCardLocationBar
-                          location={job.location_city}
-                          trailing={
-                            <Badge className={statusBadge.className}>
-                              {statusBadge.label}
-                            </Badge>
-                          }
-                        />
+                        <JobCardLocationBar location={job.location_city} />
                       </div>
                       <div className="relative flex min-h-0 flex-1 flex-col">
                         {/* Smart Scroll Overlay */}
@@ -641,7 +594,6 @@ export default function JobsTabContent({
                   const otherParty = otherPartyId
                     ? profiles[otherPartyId]
                     : null;
-                  const statusBadge = getJobStatusBadge(job.status);
                   return (
                     <Card
                       key={job.id}
@@ -661,14 +613,7 @@ export default function JobsTabContent({
                           isMinMd ? () => openJobPreview(job) : undefined
                         }
                       >
-                        <JobCardLocationBar
-                          location={job.location_city}
-                          trailing={
-                            <Badge className={statusBadge.className}>
-                              {statusBadge.label}
-                            </Badge>
-                          }
-                        />
+                        <JobCardLocationBar location={job.location_city} />
                       </div>
                       <div className="relative flex min-h-0 flex-1 flex-col">
                         <div
