@@ -66,6 +66,8 @@ import {
   type AvailabilityPayload,
 } from "@/lib/availabilityPosts";
 import { cn } from "@/lib/utils";
+import { PageFrame, PageHeader } from "@/components/page-frame";
+import { trackCtaClick } from "@/lib/sessionConversionAnalytics";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import type { NavigateFunction } from "react-router-dom";
 
@@ -756,14 +758,14 @@ export default function CommunityPostsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-6 md:pb-8">
+    <PageFrame variant="fullBleed" className="bg-background pb-6 md:pb-8">
       <div
         className={cn(
           "app-desktop-shell space-y-6 md:pt-8",
           postsBasePath === "/availability" ? "pt-[2.625rem]" : "pt-[3.5rem]",
         )}
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-1 md:max-w-4xl xl:mx-0 xl:max-w-none">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-1 md:max-w-4xl xl:mx-0 xl:max-w-none">
           {(categoryFilter || isAllHelp) && (
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -786,39 +788,39 @@ export default function CommunityPostsPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
-                {isAllHelp
-                  ? "Your availability"
-                  : categoryFilter
-                    ? `Your ${serviceCategoryLabel(categoryFilter)} availability`
-                    : "Your availability"}
-              </h1>
-              <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                Short-lived pulses — they disappear from the public board when
-                time is up.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-full"
-                asChild
-              >
-                <Link to="/public/posts">See who’s available</Link>
-              </Button>
+          <PageHeader
+            title={
+              isAllHelp
+                ? "Your availability"
+                : categoryFilter
+                  ? `Your ${serviceCategoryLabel(categoryFilter)} availability`
+                  : "Your availability"
+            }
+            description="Short-lived pulses — they disappear from the public board when time is up."
+            realtimeSlot={
+              <span className="text-xs font-semibold text-muted-foreground">
+                {posts.length} active pulse{posts.length === 1 ? "" : "s"}
+              </span>
+            }
+            primaryAction={
               <Button
                 type="button"
                 className="gap-2 rounded-full"
-                onClick={() => setDialogOpen(true)}
+                onClick={() => {
+                  trackCtaClick("availability_set", "availability", profile?.role);
+                  setDialogOpen(true);
+                }}
               >
                 <Plus className="h-4 w-4" />
                 Set availability
               </Button>
-            </div>
-          </div>
+            }
+            secondaryActions={
+              <Button variant="outline" className="rounded-full" asChild>
+                <Link to="/public/posts">See who’s available</Link>
+              </Button>
+            }
+          />
         </div>
 
         {loading ? (
@@ -1111,6 +1113,6 @@ export default function CommunityPostsPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageFrame>
   );
 }

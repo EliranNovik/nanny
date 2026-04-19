@@ -167,7 +167,7 @@ export default function UnifiedJobsPage() {
       </div>
 
       {/** Mobile `pt`: tab strip only (~4.625rem); subtract collapsed header height via shell var */}
-      <div className="app-desktop-shell max-md:pt-[4.625rem] md:pt-[calc(env(safe-area-inset-top,0px)+3.5rem+7.25rem)]">
+      <div className="app-desktop-shell app-scroll-below-jobs-unified">
         {showRolePicker && (
           <JobsPerspectiveSwitch current={resolvedMode} className="mb-4 flex" />
         )}

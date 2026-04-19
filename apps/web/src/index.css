@@ -21,6 +21,28 @@
 
 @layer base {
   :root {
+    /**
+     * Top Layout System — spacing under fixed app chrome (see components/page-frame).
+     * --app-nav-clearance: matches md `.app-content-below-fixed-header` (3.5rem) for subheaders fixed below BottomNav.
+     */
+    --app-nav-clearance: 3.5rem;
+    --app-explore-mode-toggle-block: 4.5rem;
+    --app-explore-underline-tabs: 2.75rem;
+    --app-explore-stack-gap: 0.5rem;
+    --app-offset-below-explore-double-strip: calc(
+      env(safe-area-inset-top, 0px) + var(--app-nav-clearance) +
+        var(--app-explore-stack-gap) + var(--app-explore-mode-toggle-block) +
+        var(--app-explore-stack-gap) + var(--app-explore-underline-tabs) +
+        var(--app-explore-stack-gap)
+    );
+    --app-offset-below-explore-double-strip-md: calc(
+      var(--app-explore-stack-gap) + var(--app-explore-mode-toggle-block) +
+        var(--app-explore-stack-gap) + var(--app-explore-underline-tabs) +
+        var(--app-explore-stack-gap)
+    );
+    --app-jobs-mobile-tab-strip-height: 4.625rem;
+    --app-jobs-desktop-subheader-stack: 7.25rem;
+
     --background: 0 0% 100%;
     --foreground: 20 15% 15%;
     /* Surfaces: light grey boxes on white page */
@@ -251,6 +273,32 @@
     .bottom-nav-mobile-shell {
       border-radius: 1rem;
       background-color: hsl(var(--background));
+    }
+  }
+
+  /** Scroll content offset when fixed strips match Explore (mode toggle + underline tabs). */
+  .app-scroll-below-explore-fixed {
+    padding-top: var(--app-offset-below-explore-double-strip);
+  }
+  @media (min-width: 768px) {
+    .app-scroll-below-explore-fixed {
+      padding-top: var(--app-offset-below-explore-double-strip-md);
+    }
+  }
+
+  /**
+   * Unified /jobs: scroll content below fixed tab chrome.
+   * Mobile: stepper only (shell already clears BottomNav). Desktop: safe area + nav + JobsTabBar.
+   */
+  .app-scroll-below-jobs-unified {
+    padding-top: var(--app-jobs-mobile-tab-strip-height);
+  }
+  @media (min-width: 768px) {
+    .app-scroll-below-jobs-unified {
+      padding-top: calc(
+        env(safe-area-inset-top, 0px) + var(--app-nav-clearance) +
+          var(--app-jobs-desktop-subheader-stack)
+      );
     }
   }
 }

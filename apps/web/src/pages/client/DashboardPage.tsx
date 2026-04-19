@@ -18,7 +18,6 @@ import {
   ChevronRight,
   Clock,
   ClipboardList,
-  Star,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +26,11 @@ import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { LiveTimer } from "@/components/LiveTimer";
 import DashboardLiveJobCard from "@/components/DashboardLiveJobCard";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { PageFrame, PageHeader, PageRealtimeChip } from "@/components/page-frame";
+import {
+  recordFirstMeaningfulAction,
+  trackCtaClick,
+} from "@/lib/sessionConversionAnalytics";
 
 interface JobRequest {
   id: string;
@@ -442,6 +446,45 @@ export default function DashboardPage() {
     );
   }
 
+  const dashboardPrimary = useMemo(() => {
+    if (incomingKpiCount > 0) {
+      return {
+        label: "Review community requests",
+        onClick: () => {
+          recordFirstMeaningfulAction("dashboard_primary", {
+            kind: "community",
+          });
+          trackCtaClick("dashboard_primary_community", "dashboard", profile?.role);
+          navigate(buildJobsUrl("freelancer", "requests"));
+        },
+      };
+    }
+    if (myRequests.length > 0) {
+      return {
+        label: "View my requests",
+        onClick: () => {
+          recordFirstMeaningfulAction("dashboard_primary", {
+            kind: "my_requests",
+          });
+          trackCtaClick(
+            "dashboard_primary_my_requests",
+            "dashboard",
+            profile?.role,
+          );
+          navigate(buildJobsUrl("client", "my_requests"));
+        },
+      };
+    }
+    return {
+      label: "Post a request",
+      onClick: () => {
+        recordFirstMeaningfulAction("dashboard_primary", { kind: "create" });
+        trackCtaClick("dashboard_primary_post", "dashboard", profile?.role);
+        navigate("/client/create");
+      },
+    };
+  }, [incomingKpiCount, myRequests.length, navigate, profile?.role]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
@@ -450,8 +493,8 @@ export default function DashboardPage() {
             <Skeleton className="h-10 w-60 mb-2" />
             <Skeleton className="h-5 w-44" />
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
               <Card key={i} className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl">
                 <CardContent className="p-4 flex flex-col gap-2 h-[120px]">
                   <Skeleton className="h-3 w-20" />
@@ -508,20 +551,71 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <PageFrame>
       <div className="app-desktop-shell pt-8 space-y-6">
-        {/* Welcome Section */}
-        <div className="mb-4 px-1">
-          <h1 className="text-[32px] font-bold text-slate-900 dark:text-white leading-tight">
-            Welcome back, {profile?.full_name?.split(" ")[0] || "User"}
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-[16px] font-medium mt-1">
-            Overview of your activity today
-          </p>
-        </div>
+        <PageHeader
+          title={`Welcome back, ${profile?.full_name?.split(" ")[0] || "User"}`}
+          description={`Overview of your activity today${
+            profile?.average_rating != null
+              ? ` · ${profile.average_rating.toFixed(1)}★ (${profile.total_ratings ?? 0} reviews)`
+              : ""
+          }`}
+          realtimeSlot={
+            <>
+              <PageRealtimeChip label="Active jobs" value={activeJobs.length} />
+              <PageRealtimeChip
+                label="My requests"
+                value={myRequests.length}
+              />
+              <PageRealtimeChip
+                label="Community new"
+                value={incomingKpiCount}
+                live={incomingKpiCount > 0}
+              />
+            </>
+          }
+          primaryAction={
+            <Button
+              type="button"
+              size="lg"
+              className="w-full rounded-xl font-bold shadow-md sm:w-auto"
+              onClick={dashboardPrimary.onClick}
+            >
+              {dashboardPrimary.label}
+            </Button>
+          }
+          secondaryActions={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full font-semibold"
+                onClick={() => {
+                  trackCtaClick("dashboard_find_helpers", "dashboard", profile?.role);
+                  navigate("/client/helpers");
+                }}
+              >
+                Find helpers
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-full font-semibold"
+                onClick={() => {
+                  trackCtaClick("dashboard_messages", "dashboard", profile?.role);
+                  navigate("/messages");
+                }}
+              >
+                Messages
+              </Button>
+            </>
+          }
+        />
 
-        {/* KPI Cards Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI Cards Row — supporting metrics (3 max) */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <Card
             className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
             onClick={() => navigate(buildJobsUrl("client", "jobs"))}
@@ -594,36 +688,6 @@ export default function DashboardPage() {
               </p>
               <span className="text-[11px] font-medium text-slate-400 mt-auto">
                 New responses
-              </span>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl overflow-hidden hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer active:scale-[0.98]"
-            onClick={() => navigate("/client/profile")}
-          >
-            <CardContent className="p-4 flex flex-col h-full">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Rating
-                </span>
-                <Star
-                  className="hidden md:block h-5 w-5 shrink-0 text-primary"
-                  aria-hidden
-                />
-              </div>
-              <div className="flex items-baseline gap-1.5 mb-2 leading-none">
-                <p className="text-[32px] font-bold text-slate-900 dark:text-white">
-                  {profile?.average_rating
-                    ? profile.average_rating.toFixed(1)
-                    : "5.0"}
-                </p>
-                <span className="text-[14px] font-bold text-slate-400">
-                  / 5.0
-                </span>
-              </div>
-              <span className="text-[11px] font-medium text-slate-400 mt-auto">
-                Based on {profile?.total_ratings || 0} reviews
               </span>
             </CardContent>
           </Card>
@@ -1148,6 +1212,6 @@ export default function DashboardPage() {
           onClose={() => setSelectedMapJob(null)}
         />
       </div>
-    </div>
+    </PageFrame>
   );
 }

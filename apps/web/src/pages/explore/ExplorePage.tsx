@@ -328,9 +328,7 @@ export default function ExplorePage() {
       {/* Scroll area: offset = mobile header spacer + primary toggle + underline tab row */}
       <div
         className={cn(
-          "app-desktop-shell max-md:px-2.5",
-          "pt-[calc(env(safe-area-inset-top,0px)+3.5rem+0.5rem+4.5rem+0.5rem+2.75rem+0.5rem)]",
-          "md:pt-[calc(0.5rem+4.5rem+0.5rem+2.75rem+0.5rem)]",
+          "app-desktop-shell app-scroll-below-explore-fixed max-md:px-2.5",
         )}
       >
         <div className="mb-5 px-1 pt-1">

@@ -31,29 +31,17 @@ export default function FreelancerProfileHub() {
     <div className="min-h-screen bg-background pb-6 md:pb-8">
       <div className="app-desktop-shell pt-6 md:pt-8">
         <div className="app-desktop-centered-wide">
-          <div className="flex items-start justify-end gap-1 mb-10">
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="gap-2 text-muted-foreground"
-                onClick={() => navigate("/jobs")}
-              >
-                <BellRing className="w-4 h-4" />
-                Alerts
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="gap-2 text-muted-foreground"
-                onClick={openReportModal}
-              >
-                <AlertCircle className="w-4 h-4" />
-                Report
-              </Button>
-            </div>
+          <div className="mb-6 flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground"
+              onClick={() => navigate("/jobs")}
+            >
+              <BellRing className="w-4 h-4" />
+              Alerts
+            </Button>
           </div>
 
           <div className="flex flex-col items-center text-center mb-12">
@@ -91,10 +79,13 @@ export default function FreelancerProfileHub() {
               />
               {profile?.city || "Complete your details"}
             </p>
+            <Button className="mt-6 rounded-full px-8 font-bold" asChild>
+              <Link to="/freelancer/profile/personal">Edit profile</Link>
+            </Button>
             {user?.id && (
               <Link
                 to={`/profile/${user.id}`}
-                className="mt-8 inline-flex items-center justify-center gap-2 text-base font-semibold text-foreground/90 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm"
+                className="mt-4 inline-flex items-center justify-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm"
               >
                 <ExternalLink
                   className="h-4 w-4 shrink-0 opacity-80"
@@ -160,6 +151,19 @@ export default function FreelancerProfileHub() {
               label="Appearance"
               description="Light and dark theme"
             />
+          </div>
+
+          <div className="mt-10 flex justify-center pb-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground"
+              onClick={openReportModal}
+            >
+              <AlertCircle className="w-4 h-4" />
+              Report an issue
+            </Button>
           </div>
         </div>
       </div>

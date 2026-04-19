@@ -17,6 +17,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { ToastProvider } from "@/components/ui/toast";
 import { NotificationListener } from "@/components/NotificationListener";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
+import { SessionAnalyticsInit } from "@/components/SessionAnalyticsInit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
@@ -513,6 +514,7 @@ export default function App() {
             <DocumentScrollOverflowGate />
             <ToastProvider>
               <AuthProvider>
+                <SessionAnalyticsInit />
                 <DiscoverHomeScrollHeaderProvider>
                   <ReportIssueProvider>
                     <NotificationListener />

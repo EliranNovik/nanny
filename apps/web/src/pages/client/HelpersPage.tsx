@@ -26,6 +26,12 @@ import {
 import { cn } from "@/lib/utils";
 import { StarRating } from "@/components/StarRating";
 import { useToast } from "@/components/ui/toast";
+import { navigateToHelpersMatch } from "@/lib/discoverBrowseNavigate";
+import {
+  recordFirstMeaningfulAction,
+  trackCtaClick,
+  trackMatchInitiation,
+} from "@/lib/sessionConversionAnalytics";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
 const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
@@ -542,6 +548,31 @@ export default function HelpersPage() {
           <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
             Find helpers
           </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Map search below, or jump straight into ranked swipe matching.
+          </p>
+        </div>
+
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-2 px-2 md:max-w-2xl">
+          <Button
+            type="button"
+            size="lg"
+            className="h-12 w-full rounded-2xl text-base font-black shadow-lg shadow-orange-500/25"
+            onClick={() => {
+              trackMatchInitiation("helpers_page_swipe", {});
+              trackCtaClick("helpers_instant_match", "helpers", profile?.role);
+              recordFirstMeaningfulAction("helpers_swipe_entry");
+              navigateToHelpersMatch(navigate, profile);
+            }}
+          >
+            Instant match (swipe)
+          </Button>
+          {hasSearched ? (
+            <p className="text-center text-xs font-semibold text-muted-foreground">
+              {filteredResults.length} helper
+              {filteredResults.length === 1 ? "" : "s"} in map search
+            </p>
+          ) : null}
         </div>
 
         <Card className="mx-auto w-full max-w-lg overflow-visible border border-slate-200/70 bg-white/80 shadow-lg shadow-orange-500/5 backdrop-blur-sm dark:border-white/10 dark:bg-zinc-900/80 md:max-w-xl">

@@ -68,11 +68,14 @@ import {
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { ChatJobContextStrip } from "@/components/messages/ChatJobContextStrip";
 import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
 import { MatchContextBanner } from "@/components/messages/MatchContextBanner";
+import { isLikelySystemMessage, jobCategoryLabel } from "@/lib/chatJobContext";
 import { getLiveJobBannerFromRow } from "@/lib/liveJobConversationBanner";
 import { parseMatchIntroBody } from "@/lib/matchIntroMessage";
 import { trackEvent } from "@/lib/analytics";
+import { consumePendingChatOpen } from "@/lib/sessionConversionAnalytics";
 
 interface Message {
   id: string;
@@ -188,6 +191,10 @@ export default function ChatPage({
     ? decodeURIComponent(matchTimeRaw)
     : "";
   const [matchActionBusy, setMatchActionBusy] = useState(false);
+
+  useEffect(() => {
+    if (conversationId) consumePendingChatOpen(conversationId);
+  }, [conversationId]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const mobileComposerRef = useRef<HTMLTextAreaElement>(null);
@@ -202,6 +209,28 @@ export default function ChatPage({
       else mobileComposerRef.current?.focus();
     });
   }
+
+  const coordinationQuickReplies = useMemo(
+    () =>
+      matchBannerActive
+        ? [
+            "What time works best for you?",
+            "Happy to proceed — let's confirm details.",
+            "Quick question about the location.",
+          ]
+        : [
+            "I'm on my way",
+            "Available now",
+            "Can you share a few more details?",
+          ],
+    [matchBannerActive],
+  );
+
+  const handleQuickReply = useCallback((text: string) => {
+    setNewMessage((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text));
+    focusComposer();
+    trackEvent("chat_quick_reply", { len: text.length });
+  }, []);
 
   function adjustComposerHeight() {
     const maxPx =
@@ -2105,6 +2134,13 @@ export default function ChatPage({
         >
           <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
             <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-[max(11rem,min(42vh,18rem))] md:pb-32">
+              {job && hideBackButton && otherUser ? (
+                <ChatJobContextStrip
+                  job={job}
+                  participantName={otherUser.full_name || "Partner"}
+                  jobHref={liveJobBanner?.href ?? null}
+                />
+              ) : null}
               {matchBannerActive && matchCategoryLabel && conversationId && (
                 <MatchContextBanner
                   category={matchCategoryLabel}
@@ -2121,6 +2157,32 @@ export default function ChatPage({
                 const matchIntro = msg.body
                   ? parseMatchIntroBody(msg.body)
                   : null;
+
+                if (
+                  !matchIntro &&
+                  !msg.attachment_url &&
+                  isLikelySystemMessage(msg.body)
+                ) {
+                  return (
+                    <div key={msg.id} className="space-y-4">
+                      {shouldShowDateHeader(index) && (
+                        <div className="my-4 flex justify-center">
+                          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                            {formatDate(msg.created_at)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-center px-2">
+                        <div className="max-w-md rounded-lg border border-border/60 bg-muted/45 px-3 py-2 text-center text-[13px] leading-snug text-muted-foreground dark:bg-muted/25">
+                          {msg.body}
+                          <span className="mt-1 block text-[10px] font-medium tabular-nums opacity-80">
+                            {formatTime(msg.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div key={msg.id} className="space-y-4">
@@ -2159,10 +2221,8 @@ export default function ChatPage({
                           className={cn(
                             "rounded-2xl px-3 py-2 shadow-sm relative group",
                             isOwn
-                              ? /** Match BottomNav FAB (light): orange → red gradient */
-                                "rounded-br-none bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-none"
-                              : /** Light mode: soft grey tint; dark: keep card surface */
-                                "rounded-bl-none border border-slate-200/80 bg-slate-50 dark:border-border/50 dark:bg-card",
+                              ? "rounded-br-none bg-primary text-primary-foreground shadow-sm"
+                              : "rounded-bl-none border border-border/80 bg-muted/30 dark:border-border/50 dark:bg-card",
                           )}
                         >
                           {/* Attachment Display */}
@@ -2212,7 +2272,7 @@ export default function ChatPage({
                               className={cn(
                                 "rounded-xl border px-3 py-2 text-sm",
                                 isOwn
-                                  ? "border-white/30 bg-white/10 text-white"
+                                  ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground"
                                   : "border-border bg-muted/50 text-foreground",
                               )}
                             >
@@ -2226,7 +2286,9 @@ export default function ChatPage({
                               <span
                                 className={cn(
                                   "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom text-[11px] font-medium tabular-nums",
-                                  isOwn ? "text-white/80" : "text-muted-foreground",
+                                  isOwn
+                                    ? "text-primary-foreground/80"
+                                    : "text-muted-foreground",
                                 )}
                               >
                                 {formatTime(msg.created_at)}
@@ -2236,7 +2298,9 @@ export default function ChatPage({
                             <p
                               className={cn(
                                 "inline-block max-w-full text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap",
-                                isOwn ? "text-white" : "text-foreground",
+                                isOwn
+                                  ? "text-primary-foreground"
+                                  : "text-foreground",
                               )}
                             >
                               {msg.body}
@@ -2245,7 +2309,7 @@ export default function ChatPage({
                                   "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom",
                                   "text-[11px] font-medium tabular-nums leading-none",
                                   isOwn
-                                    ? "text-white/80"
+                                    ? "text-primary-foreground/85"
                                     : "text-muted-foreground",
                                 )}
                               >
@@ -2268,7 +2332,7 @@ export default function ChatPage({
                                     "inline-flex items-center gap-0.5",
                                     "text-[11px] font-medium tabular-nums leading-none",
                                     isOwn
-                                      ? "text-white/80"
+                                      ? "text-primary-foreground/85"
                                       : "text-muted-foreground",
                                   )}
                                 >
@@ -2289,12 +2353,22 @@ export default function ChatPage({
 
               {/* Empty State */}
               {messages.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                    <Send className="w-8 h-8 text-muted-foreground" />
+                <div className="px-2 py-10 text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                    <Send className="h-7 w-7 text-muted-foreground" />
                   </div>
-                  <p className="text-muted-foreground">
-                    No messages yet. Say hello!
+                  <p className="text-sm font-medium text-foreground">
+                    {job
+                      ? `Coordinate ${jobCategoryLabel(job)}${
+                          job.location_city
+                            ? ` in ${job.location_city}`
+                            : ""
+                        }.`
+                      : "Start the conversation — say when you're available."}
+                  </p>
+                  <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">
+                    Messages appear instantly. Use a quick reply below to
+                    respond in seconds.
                   </p>
                 </div>
               )}
@@ -2316,6 +2390,8 @@ export default function ChatPage({
           desktopComposerRef={desktopComposerRef}
           hideBackButton={hideBackButton}
           mobileView={mobileView}
+          quickReplies={coordinationQuickReplies}
+          onQuickReply={handleQuickReply}
         />
       </div>
 

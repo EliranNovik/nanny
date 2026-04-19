@@ -18,6 +18,9 @@ interface ChatComposerProps {
   desktopComposerRef: React.RefObject<HTMLTextAreaElement>;
   hideBackButton?: boolean;
   mobileView?: "steps" | "chat";
+  /** Shown above the input (e.g. coordination shortcuts) */
+  quickReplies?: string[];
+  onQuickReply?: (text: string) => void;
 }
 
 export function ChatComposer({
@@ -34,6 +37,8 @@ export function ChatComposer({
   desktopComposerRef,
   hideBackButton,
   mobileView,
+  quickReplies = [],
+  onQuickReply,
 }: ChatComposerProps) {
   function getFileType(fileName: string): string {
     const ext = fileName.split(".").pop()?.toLowerCase() || "";
@@ -74,6 +79,21 @@ export function ChatComposer({
         )}
       >
         {filePreview}
+        {quickReplies.length > 0 && onQuickReply && (
+          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
+            {quickReplies.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={sending || uploading}
+                onClick={() => onQuickReply(q)}
+                className="shrink-0 rounded-full border border-border/60 bg-muted/40 px-3 py-1.5 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50 dark:bg-muted/20 dark:hover:bg-muted/35"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
         <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
           <input
             ref={fileInputRef}
@@ -140,6 +160,21 @@ export function ChatComposer({
         )}
       >
         {filePreview}
+        {quickReplies.length > 0 && onQuickReply && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {quickReplies.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={sending || uploading}
+                onClick={() => onQuickReply(q)}
+                className="rounded-full border border-border/60 bg-muted/40 px-3 py-1.5 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50 dark:bg-muted/20 dark:hover:bg-muted/35"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
         <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
           <Button
             type="button"

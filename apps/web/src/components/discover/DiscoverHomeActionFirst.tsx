@@ -20,6 +20,11 @@ import {
   discoverIcon,
 } from "@/components/discover/discoverHomeIcons";
 import { DISCOVER_PRIMARY_HERO_IMAGES } from "@/components/discover/discoverHomeHeroImages";
+import {
+  getLastCategory,
+  hasProfileCoords,
+} from "@/lib/discoverMatchPreferences";
+import { recordFirstMeaningfulAction } from "@/lib/sessionConversionAnalytics";
 
 type HomeMode = "hire" | "work";
 
@@ -79,10 +84,17 @@ export function DiscoverHomeActionFirst({
   function onStartRequest() {
     trackEvent("discover_primary_cta", { mode: homeMode });
     if (isHire) {
+      if (hasProfileCoords(profile) && getLastCategory("hire")) {
+        navigateToHelpersMatch(navigate, profile);
+        recordFirstMeaningfulAction("home_primary_swipe_path");
+        return;
+      }
       navigate(createRequestPath);
+      recordFirstMeaningfulAction("home_primary_create_request");
       return;
     }
     navigate(workPrimaryPath);
+    recordFirstMeaningfulAction("home_primary_work");
   }
 
   function onMatchInstant() {

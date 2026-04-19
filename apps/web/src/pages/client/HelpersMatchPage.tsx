@@ -35,6 +35,10 @@ import { findOrCreateDirectConversation } from "@/lib/findOrCreateDirectConversa
 import { findOrCreateJobConversation } from "@/lib/findOrCreateJobConversation";
 import { insertMatchIntroMessage } from "@/lib/matchIntroMessage";
 import { trackEvent } from "@/lib/analytics";
+import {
+  setPendingChatAfterAction,
+  trackMatchInitiation,
+} from "@/lib/sessionConversionAnalytics";
 import { formatPriceHintFromPayload } from "@/lib/availabilityPosts";
 import type { AvailabilityPayload } from "@/lib/availabilityPosts";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
@@ -349,6 +353,11 @@ export default function HelpersMatchPage() {
       nav.set("ml", encodeURIComponent(loc));
       nav.set("mt", encodeURIComponent(timeLabel));
       nav.set("mma", "1");
+      trackMatchInitiation("instant_match", {
+        helperId: freelancerId,
+        jobId: activeParams.jobId ?? "",
+      });
+      setPendingChatAfterAction("swipe_match");
       trackEvent("chat_open_match", { kind: "helper" });
       navigate(`/messages?${nav.toString()}`);
     } catch (e: unknown) {

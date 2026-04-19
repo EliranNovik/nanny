@@ -17,6 +17,7 @@ import {
 } from "@/lib/inboxHiddenChats";
 import { InboxChatSwipeRow } from "@/components/messages/InboxChatSwipeRow";
 import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
+import { jobCategoryLabel, type JobSummaryRow } from "@/lib/chatJobContext";
 import { useLiveJobConversationBanner } from "@/hooks/useLiveJobConversationBanner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,8 +25,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   MessageCircle,
   ChevronLeft,
-  Check,
-  CheckCheck,
   Bell,
   Briefcase,
   MessageSquare,
@@ -34,6 +33,27 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
+
+/** One muted line under the name: category · city · Done when relevant */
+function inboxRowSubtitle(job: JobSummaryRow | null | undefined): string | null {
+  if (!job) return null;
+  const cat = jobCategoryLabel(job);
+  const loc = job.location_city?.trim();
+  const stage = (job.stage || "").trim();
+  const done =
+    stage === "Completed" ||
+    stage === "Job Ended" ||
+    job.status === "completed";
+  const parts = [cat, loc].filter(Boolean);
+  const line = parts.join(" · ");
+  if (!line) return done ? "Completed" : null;
+  return done ? `${line} · Done` : line;
+}
+
+function trimPreviewNoise(body: string | null | undefined): string {
+  if (!body) return "";
+  return body.trim().replace(/^✓+\s*/u, "").trimStart();
+}
 
 interface Conversation {
   id: string;
@@ -46,6 +66,8 @@ interface Conversation {
     full_name: string | null;
     photo_url: string | null;
   };
+  /** Joined from job_requests for status + preview */
+  job_summary?: JobSummaryRow | null;
   last_message?:
     | {
         body: string | null;
@@ -135,6 +157,11 @@ export default function MessagesPage() {
     rows.sort((x, y) => y.sortAt - x.sortAt);
     return rows;
   }, [conversations, visibleActivityAlerts, hiddenChatUserIds]);
+
+  const inboxUnreadTotal = useMemo(
+    () => conversations.reduce((s, c) => s + (c.unread_count || 0), 0),
+    [conversations],
+  );
 
   const activeConversationForChat = useMemo(() => {
     if (!conversationId) return null;
@@ -328,7 +355,32 @@ export default function MessagesPage() {
           return timeB - timeA; // Most recent first
         });
 
-        setConversations(sortedConversations);
+        const jobIds = [
+          ...new Set(
+            sortedConversations
+              .map((c) => c.job_id)
+              .filter((id): id is string => !!id),
+          ),
+        ];
+        let withJobRows = sortedConversations;
+        if (jobIds.length > 0) {
+          const { data: jobRows } = await supabase
+            .from("job_requests")
+            .select(
+              "id, status, stage, service_type, care_type, location_city, start_at",
+            )
+            .in("id", jobIds);
+          const jm = new Map(
+            (jobRows ?? []).map((j) => [j.id as string, j as JobSummaryRow]),
+          );
+          withJobRows = sortedConversations.map((c) =>
+            c.job_id && jm.has(c.job_id)
+              ? { ...c, job_summary: jm.get(c.job_id)! }
+              : c,
+          );
+        }
+
+        setConversations(withJobRows);
 
         // Cache the data for instant loading next time
         if (user && profile) {
@@ -338,7 +390,7 @@ export default function MessagesPage() {
               JSON.stringify({
                 timestamp: Date.now(),
                 data: {
-                  conversations: sortedConversations,
+                  conversations: withJobRows,
                 },
               }),
             );
@@ -772,7 +824,7 @@ export default function MessagesPage() {
               </div>
             </div>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] md:pt-0">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:pt-0">
             <div className="w-full min-w-0 max-w-full divide-y space-y-0.5">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="flex w-full items-center gap-3 px-4 py-4">
@@ -797,13 +849,6 @@ export default function MessagesPage() {
     );
   }
 
-  /**
-   * Mobile: padding clears fixed headers. Second term = toolbar row (~2.5rem) + bottom padding
-   * (inbox `pb-4` → 3.5rem; chat bar `pb-3` → 3.25rem). Larger values leave a grey strip of page bg.
-   */
-  const messagesMobileHeaderInset =
-    "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] md:pt-0";
-
   // Show contact panel with conversation list and chat inline
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background dark:bg-zinc-950">
@@ -815,16 +860,15 @@ export default function MessagesPage() {
           mobileView === "contacts" ? "flex" : "hidden md:flex",
         )}
       >
-        {/* Header — fixed on mobile so list scrolls underneath; static in sidebar on md+ */}
+        {/* Header — in document flow (no fixed + duplicate pt — avoids double safe-area gap on mobile) */}
         <div
           className={cn(
-            "z-40 flex shrink-0 border-b border-border/30 bg-background/95 px-4 pb-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
-            "fixed left-0 right-0 top-0 md:static md:z-auto",
+            "z-40 flex shrink-0 border-b border-border/30 bg-background/95 px-4 pb-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
             "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
             "md:bg-transparent md:backdrop-blur-none",
           )}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-2 sm:gap-3">
             <Button
               variant="ghost"
               size="icon"
@@ -835,37 +879,91 @@ export default function MessagesPage() {
                     : "/freelancer/home",
                 )
               }
-              className="md:hidden"
+              className="mt-0.5 shrink-0 md:hidden"
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold leading-tight">Inbox</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Chats, job invites, responses, and updates
-              </p>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
+                Messages
+              </h2>
+              {(inboxUnreadTotal > 0 || visibleActivityAlerts.length > 0) && (
+                <p
+                  className="mt-1 text-xs text-muted-foreground"
+                  role="status"
+                >
+                  {inboxUnreadTotal > 0 ? (
+                    <span className="font-medium text-foreground">
+                      {inboxUnreadTotal} unread
+                    </span>
+                  ) : (
+                    <span>All read</span>
+                  )}
+                  {visibleActivityAlerts.length > 0 ? (
+                    <>
+                      <span className="text-muted-foreground/60"> · </span>
+                      <span>
+                        {visibleActivityAlerts.length} update
+                        {visibleActivityAlerts.length === 1 ? "" : "s"}
+                      </span>
+                    </>
+                  ) : null}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Unified inbox: active chats + job / hire activity — inset clears fixed header on mobile */}
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col overflow-hidden",
-            messagesMobileHeaderInset,
-          )}
-        >
+        {/* Unified inbox: active chats + job / hire activity */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <ScrollArea className="min-h-0 flex-1 bg-transparent [&_[data-radix-scroll-area-viewport]]:min-w-0 [&_[data-radix-scroll-area-viewport]]:max-w-full [&_[data-radix-scroll-area-viewport]]:bg-transparent">
             {inboxRows.length === 0 ? (
-              <div className="p-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                  <MessageCircle className="w-8 h-8 text-muted-foreground" />
+              <div className="flex flex-col items-center px-6 py-12 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <MessageCircle className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-semibold text-lg mb-2">Nothing here yet</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your chats and job updates will show here. Start a
-                  conversation from a profile or job to see it in this list.
+                <h3 className="mb-2 text-lg font-semibold text-foreground">
+                  No conversations yet
+                </h3>
+                <p className="mb-6 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                  When you message a helper or respond to a request, it appears
+                  here with job context so you can act quickly.
                 </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    className="font-semibold"
+                    onClick={() =>
+                      navigate(
+                        profile?.role === "client"
+                          ? "/client/explore"
+                          : profile?.role === "freelancer"
+                            ? "/freelancer/explore"
+                            : "/client/home",
+                      )
+                    }
+                  >
+                    {profile?.role === "client"
+                      ? "Browse helpers"
+                      : profile?.role === "freelancer"
+                        ? "Browse jobs"
+                        : "Go to home"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="font-semibold"
+                    onClick={() =>
+                      navigate(
+                        profile?.role === "client"
+                          ? "/client/home"
+                          : "/freelancer/home",
+                      )
+                    }
+                  >
+                    Start a request
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="w-full min-w-0 max-w-full divide-y space-y-0.5 overflow-x-hidden">
@@ -884,7 +982,7 @@ export default function MessagesPage() {
                         key={row.key}
                         role="button"
                         tabIndex={0}
-                        className="cursor-pointer px-4 py-4 pr-[max(1rem,env(safe-area-inset-right,0px))] hover:bg-white dark:hover:bg-zinc-900/40 transition-colors text-left w-full"
+                        className="cursor-pointer px-4 py-3 pr-[max(1rem,env(safe-area-inset-right,0px))] text-left transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 w-full"
                         onClick={() => handleActivityClick(a)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -927,10 +1025,10 @@ export default function MessagesPage() {
                               </span>
                             )}
                             <div className="min-w-0 max-w-full pr-24">
-                              <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate">
+                              <p className="mb-0.5 truncate text-[11px] font-medium text-muted-foreground">
                                 {kind}
-                              </div>
-                              <p className="truncate text-[15px] font-bold text-slate-900 dark:text-slate-100">
+                              </p>
+                              <p className="truncate text-[15px] font-semibold text-foreground">
                                 {a.title}
                               </p>
                               {a.description && (
@@ -954,6 +1052,7 @@ export default function MessagesPage() {
                       .toUpperCase() || "?";
 
                   const isActive = conversationId === convo.id;
+                  const subtitle = inboxRowSubtitle(convo.job_summary ?? null);
 
                   return (
                     <InboxChatSwipeRow
@@ -965,14 +1064,17 @@ export default function MessagesPage() {
                     >
                       <div
                         className={cn(
-                          "cursor-pointer px-4 py-4 pr-[max(1rem,env(safe-area-inset-right,0px))] hover:bg-white dark:hover:bg-zinc-900/40 transition-colors relative border-l-[3px] border-transparent md:bg-transparent",
-                          isActive && "bg-white dark:bg-zinc-900/60 border-orange-500",
+                          "cursor-pointer px-4 py-3 pr-[max(1rem,env(safe-area-inset-right,0px))] transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 relative border-l-2 border-transparent md:bg-transparent",
+                          isActive && "bg-muted/50 dark:bg-zinc-900/70 border-l-primary",
+                          convo.unread_count > 0 &&
+                            !isActive &&
+                            "bg-muted/20 dark:bg-muted/10",
                         )}
                         onClick={() => handleConversationClick(convo.id)}
                       >
                         <div className="flex min-w-0 items-start gap-3">
-                          <div className="relative shrink-0">
-                            <Avatar className="h-10 w-10 flex-shrink-0">
+                          <div className="relative shrink-0 pt-0.5">
+                            <Avatar className="h-11 w-11 flex-shrink-0">
                               <AvatarImage
                                 src={
                                   convo.other_user_profile?.photo_url ||
@@ -984,8 +1086,8 @@ export default function MessagesPage() {
                               </AvatarFallback>
                             </Avatar>
                             {convo.unread_count > 0 && (
-                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-background">
-                                <span className="text-[10px] font-bold text-primary-foreground">
+                              <div className="absolute -right-0.5 -top-0.5 h-4 min-w-[1rem] rounded-full bg-primary px-1 flex items-center justify-center ring-2 ring-background">
+                                <span className="text-[10px] font-semibold tabular-nums leading-none text-primary-foreground">
                                   {convo.unread_count > 9
                                     ? "9+"
                                     : convo.unread_count}
@@ -995,67 +1097,45 @@ export default function MessagesPage() {
                           </div>
                           <div className="relative min-w-0 flex-1">
                             {convo.last_message && (
-                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6rem] whitespace-nowrap text-right text-[10px] font-semibold tabular-nums text-muted-foreground/80">
+                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[5.5rem] whitespace-nowrap text-right text-[11px] tabular-nums text-muted-foreground">
                                 {formatTime(convo.last_message.created_at)}
                               </span>
                             )}
-                            <div className="min-w-0 max-w-full pr-24">
-                              <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate">
-                                Chat
-                              </div>
+                            <div className="min-w-0 max-w-full pr-16">
                               <p
                                 className={cn(
-                                  "mb-1 truncate text-[16px] font-bold text-slate-900 dark:text-slate-100",
-                                  convo.unread_count > 0 && "font-black",
+                                  "truncate text-[15px] font-semibold text-foreground",
+                                  convo.unread_count > 0 && "text-foreground",
                                 )}
                               >
                                 {convo.other_user_profile?.full_name || "User"}
                               </p>
+                              {subtitle ? (
+                                <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                                  {subtitle}
+                                </p>
+                              ) : null}
                               {convo.last_message && (
-                                <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                                  {convo.last_message.sender_id ===
-                                    user?.id && (
-                                    <div className="shrink-0">
-                                      {convo.last_message.read_at &&
-                                      convo.last_message.read_by ? (
-                                        <CheckCheck
-                                          className="h-4 w-4 shrink-0"
-                                          stroke="#86efac"
-                                          strokeWidth={2.25}
-                                        />
-                                      ) : convo.last_message.read_at ? (
-                                        <CheckCheck
-                                          className="h-4 w-4 shrink-0 text-muted-foreground/60"
-                                          stroke="currentColor"
-                                          strokeWidth={2.25}
-                                        />
-                                      ) : (
-                                        <Check
-                                          className="h-4 w-4 shrink-0 text-muted-foreground/60"
-                                          stroke="currentColor"
-                                          strokeWidth={2.25}
-                                        />
-                                      )}
-                                    </div>
+                                <p
+                                  className={cn(
+                                    "mt-1 line-clamp-2 text-[13px] leading-snug text-muted-foreground",
+                                    convo.unread_count > 0 &&
+                                      "font-medium text-foreground/90",
                                   )}
-                                  <p
-                                    className={cn(
-                                      "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] leading-tight",
-                                      convo.unread_count > 0
-                                        ? "font-bold text-foreground"
-                                        : "font-medium text-muted-foreground",
-                                    )}
-                                  >
-                                    {convo.last_message.sender_id ===
-                                      user?.id && "You: "}
-                                    {convo.last_message.attachment_type
-                                      ? convo.last_message.attachment_type ===
-                                        "image"
-                                        ? "📷 Image"
-                                        : `📎 ${convo.last_message.attachment_name || "File"}`
-                                      : convo.last_message.body || ""}
-                                  </p>
-                                </div>
+                                >
+                                  {convo.last_message.sender_id === user?.id
+                                    ? "You · "
+                                    : ""}
+                                  {convo.last_message.attachment_type
+                                    ? convo.last_message.attachment_type ===
+                                      "image"
+                                      ? "Photo"
+                                      : convo.last_message.attachment_name ||
+                                        "File"
+                                    : trimPreviewNoise(
+                                        convo.last_message.body,
+                                      )}
+                                </p>
                               )}
                             </div>
                           </div>

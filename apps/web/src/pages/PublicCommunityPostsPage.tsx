@@ -28,9 +28,9 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
 
-/** Mobile snap: directly under fixed category bar (~3.5rem header + ~3.25rem tabs) + small gap */
+/** Mobile snap: directly under fixed header + horizontal category chips */
 const MOBILE_SNAP_TOP_LOGGED_IN =
-  "top-[calc(env(safe-area-inset-top,0px)+7.25rem)]";
+  "top-[calc(env(safe-area-inset-top,0px)+8.25rem)]";
 /** Guest: app header + back/title block (approx) */
 const MOBILE_SNAP_TOP_GUEST =
   "top-[calc(env(safe-area-inset-top,0px)+3.5rem+5.75rem)]";

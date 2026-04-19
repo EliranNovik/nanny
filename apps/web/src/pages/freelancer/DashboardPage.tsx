@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Clock,
   ClipboardList,
-  Star,
 } from "lucide-react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +27,11 @@ import { useActiveJobs } from "@/hooks/data/useActiveJobs";
 import { useInvitations } from "@/hooks/data/useInvitations";
 import { useClientRequests } from "@/hooks/data/useClientRequests";
 import { useRecentMessages } from "@/hooks/data/useRecentMessages";
+import { PageFrame, PageHeader, PageRealtimeChip } from "@/components/page-frame";
+import {
+  recordFirstMeaningfulAction,
+  trackCtaClick,
+} from "@/lib/sessionConversionAnalytics";
 
 interface JobRequest {
   id: string;
@@ -96,6 +100,46 @@ export default function FreelancerDashboardPage() {
     return "Service Request";
   }
 
+  const dashboardPrimary = useMemo(() => {
+    if (incomingInvitationsOnly.length > 0) {
+      return {
+        label: "Review invitations",
+        onClick: () => {
+          recordFirstMeaningfulAction("dashboard_primary", {
+            kind: "invitations",
+          });
+          trackCtaClick("dashboard_primary_invites", "dashboard", profile?.role);
+          navigate(buildJobsUrl("freelancer", "pending"));
+        },
+      };
+    }
+    if (incomingKpiCount > 0) {
+      return {
+        label: "Review community requests",
+        onClick: () => {
+          recordFirstMeaningfulAction("dashboard_primary", {
+            kind: "community",
+          });
+          trackCtaClick("dashboard_primary_community", "dashboard", profile?.role);
+          navigate(buildJobsUrl("freelancer", "requests"));
+        },
+      };
+    }
+    return {
+      label: "Go live now",
+      onClick: () => {
+        recordFirstMeaningfulAction("dashboard_primary", { kind: "post_now" });
+        trackCtaClick("dashboard_primary_post_now", "dashboard", profile?.role);
+        navigate("/availability/post-now");
+      },
+    };
+  }, [
+    incomingInvitationsOnly.length,
+    incomingKpiCount,
+    navigate,
+    profile?.role,
+  ]);
+
   function renderRequestThumb(job: JobRequest) {
     return (
       <div
@@ -126,8 +170,7 @@ export default function FreelancerDashboardPage() {
             <Skeleton className="h-10 w-64 mb-2" />
             <Skeleton className="h-5 w-48" />
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Skeleton className="h-32 rounded-xl" />
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <Skeleton className="h-32 rounded-xl" />
             <Skeleton className="h-32 rounded-xl" />
             <Skeleton className="h-32 rounded-xl" />
@@ -144,20 +187,71 @@ export default function FreelancerDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <PageFrame>
       <div className="app-desktop-shell pt-8 space-y-6">
-        {/* Welcome Section */}
-        <div className="mb-4 px-1">
-          <h1 className="text-[32px] font-bold text-slate-900 dark:text-white leading-tight">
-            Welcome back, {profile?.full_name?.split(" ")[0] || "User"}
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-[16px] font-medium mt-1">
-            Overview of your activity today
-          </p>
-        </div>
+        <PageHeader
+          title={`Welcome back, ${profile?.full_name?.split(" ")[0] || "User"}`}
+          description={`Overview of your activity today${
+            profile?.average_rating != null
+              ? ` · ${profile.average_rating.toFixed(1)}★ (${profile.total_ratings ?? 0} reviews)`
+              : ""
+          }`}
+          realtimeSlot={
+            <>
+              <PageRealtimeChip label="Helping now" value={activeJobs.length} />
+              <PageRealtimeChip
+                label="Invites pending"
+                value={incomingInvitationsOnly.length}
+                live={incomingInvitationsOnly.length > 0}
+              />
+              <PageRealtimeChip
+                label="Community"
+                value={incomingKpiCount}
+                live={incomingKpiCount > 0}
+              />
+            </>
+          }
+          primaryAction={
+            <Button
+              type="button"
+              size="lg"
+              className="w-full rounded-xl font-bold shadow-md sm:w-auto"
+              onClick={dashboardPrimary.onClick}
+            >
+              {dashboardPrimary.label}
+            </Button>
+          }
+          secondaryActions={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full font-semibold"
+                onClick={() => {
+                  trackCtaClick("dashboard_jobs", "dashboard", profile?.role);
+                  navigate(buildJobsUrl("freelancer", "jobs"));
+                }}
+              >
+                Jobs
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-full font-semibold"
+                onClick={() => {
+                  trackCtaClick("dashboard_messages", "dashboard", profile?.role);
+                  navigate("/messages");
+                }}
+              >
+                Messages
+              </Button>
+            </>
+          }
+        />
 
-        {/* KPI Cards Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <Card
             className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-[0.98]"
             onClick={() => navigate(buildJobsUrl("freelancer", "jobs"))}
@@ -230,36 +324,6 @@ export default function FreelancerDashboardPage() {
               </p>
               <span className="text-[11px] font-medium text-slate-400 mt-auto">
                 New invitations
-              </span>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="border border-slate-200/50 dark:border-white/5 shadow-sm rounded-xl overflow-hidden hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer active:scale-[0.98]"
-            onClick={() => navigate("/freelancer/profile")}
-          >
-            <CardContent className="p-4 flex flex-col h-full">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Avg Rating
-                </span>
-                <Star
-                  className="hidden md:block h-5 w-5 shrink-0 text-primary"
-                  aria-hidden
-                />
-              </div>
-              <div className="flex items-baseline gap-1.5 mb-2 leading-none">
-                <p className="text-[32px] font-bold text-slate-900 dark:text-white">
-                  {profile?.average_rating
-                    ? profile.average_rating.toFixed(1)
-                    : "0.0"}
-                </p>
-                <span className="text-[14px] font-bold text-slate-400">
-                  / 5.0
-                </span>
-              </div>
-              <span className="text-[11px] font-medium text-slate-400 mt-auto">
-                Based on {profile?.total_ratings || 0} reviews
               </span>
             </CardContent>
           </Card>
@@ -686,6 +750,6 @@ export default function FreelancerDashboardPage() {
           onClose={() => setSelectedMapJob(null)}
         />
       </div>
-    </div>
+    </PageFrame>
   );
 }
