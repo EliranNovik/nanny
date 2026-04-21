@@ -78,45 +78,7 @@ function categoryImageSrc(
   return SERVICE_CATEGORIES[0]?.imageSrc ?? "/nanny-mar22.png";
 }
 
-function calendarDayKey(d: Date): string {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-}
-
-function relativeDayLabel(iso: string | null | undefined): string {
-  if (!iso) return "Recently";
-  const then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return "Recently";
-  const now = new Date();
-  if (calendarDayKey(then) === calendarDayKey(now)) return "Today";
-  const y = new Date(now);
-  y.setDate(y.getDate() - 1);
-  if (calendarDayKey(then) === calendarDayKey(y)) return "Yesterday";
-  return then.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function pickBadge(
-  createdAt: string | null | undefined,
-  startAt: string | null | undefined,
-): "NOW" | "NEW" {
-  const start = startAt ? new Date(startAt) : null;
-  const now = new Date();
-  if (
-    start &&
-    !Number.isNaN(start.getTime()) &&
-    calendarDayKey(start) === calendarDayKey(now)
-  ) {
-    return "NOW";
-  }
-  const created = createdAt ? new Date(createdAt) : null;
-  if (created && !Number.isNaN(created.getTime())) {
-    const h = (now.getTime() - created.getTime()) / 36e5;
-    if (h <= 48) return "NEW";
-  }
-  return "NOW";
-}
+// (relativeDayLabel / pickBadge were used by the old vertical list UI; removed)
 
 function mapJobLikeToWorkRow(opts: {
   key: string;
