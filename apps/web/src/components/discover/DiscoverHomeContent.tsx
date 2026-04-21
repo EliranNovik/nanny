@@ -53,7 +53,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   return (
     <div
       className={cn(
-        "relative min-h-screen bg-white pb-6 md:pb-12 dark:bg-background",
+        "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-background",
+        "max-md:h-full max-md:pb-0",
+        "md:min-h-screen md:flex-none md:overflow-visible md:pb-12",
       )}
       data-discover-home-page=""
       data-discover-home-mode={homeMode}
@@ -188,8 +190,8 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
         </div>
       </div>
 
-      <div className="app-desktop-shell max-md:transition-none max-md:px-2.5 pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]">
-        <div className="mx-auto w-full max-w-[26rem] sm:max-w-[28rem] md:max-w-[30rem]">
+      <div className="app-desktop-shell flex min-h-0 flex-1 flex-col overflow-hidden max-md:px-2.5 max-md:transition-none pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]">
+        <div className="mx-auto flex min-h-0 w-full max-w-[26rem] flex-1 flex-col overflow-hidden sm:max-w-[28rem] md:max-w-[30rem]">
           <DiscoverHomeActionFirst
             homeMode={homeMode}
             explorePath={explorePath}

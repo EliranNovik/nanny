@@ -2,19 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronRight,
+  ClipboardList,
+  Radio,
   Search,
+  UsersRound,
   Wifi,
   Zap,
-  Clock,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { trackEvent } from "@/lib/analytics";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { supabase } from "@/lib/supabase";
-import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
-import { LiveTimer } from "@/components/LiveTimer";
 import {
   navigateToHelpersBrowse,
   navigateToWorkBrowseRequests,
@@ -25,8 +24,6 @@ import {
   discoverIcon,
 } from "@/components/discover/discoverHomeIcons";
 import { DISCOVER_PRIMARY_HERO_IMAGES } from "@/components/discover/discoverHomeHeroImages";
-import {
-} from "@/lib/discoverMatchPreferences";
 import { recordFirstMeaningfulAction } from "@/lib/sessionConversionAnalytics";
 
 type HomeMode = "hire" | "work";
@@ -54,7 +51,7 @@ const WORK = {
 
 /** Same stack + padding for both hire/work heroes; modest min-height keeps imagery balanced. */
 const heroInnerClassName =
-  "relative flex min-h-[14.5rem] flex-col sm:min-h-[15.5rem] md:min-h-[16rem]";
+  "relative flex min-h-[12.75rem] flex-col sm:min-h-[15.5rem] md:min-h-[16rem]";
 
 const heroStackClassName =
   "relative z-10 flex min-h-0 flex-1 flex-col justify-between px-5 pb-6 pt-6 sm:px-6 sm:pb-7 sm:pt-6 md:px-7 md:pb-7 md:pt-7";
@@ -62,26 +59,32 @@ const heroStackClassName =
 const heroTopBlockClassName = "flex max-w-xl flex-col gap-3 md:gap-3.5";
 
 const heroPrimaryCtaRowClassName =
-  "mt-auto flex w-full shrink-0 justify-start pt-5 sm:pt-6";
+  "mt-auto flex w-full shrink-0 justify-start pr-[6.75rem] pt-5 sm:pr-[7.25rem] sm:pt-6";
 
-/** Primary CTA: intentionally narrower than the card; sits toward the bottom via heroPrimaryCtaRowClassName. */
-const heroPrimaryButtonClassName = cn(
-  "h-11 w-fit max-w-[min(100%,15rem)] rounded-xl border-0 px-5 text-[14px] font-bold sm:h-12 sm:max-w-[min(100%,16rem)] sm:rounded-2xl sm:px-6 sm:text-[15px]",
-  "shadow-md transition-[transform,box-shadow] hover:bg-white hover:shadow-lg active:scale-[0.99]",
+/** Primary hero CTAs — calm, product-grade (avoid loud “SaaS gradient” chrome). */
+const heroCtaBaseClassName = cn(
+  "group inline-flex h-11 w-fit min-w-[10.5rem] max-w-[min(100%,17rem)] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-[14px] font-semibold tracking-normal sm:h-12 sm:min-w-[11.5rem] sm:px-6 sm:text-[15px]",
+  "border shadow-sm transition-[transform,box-shadow,background-color,border-color] motion-reduce:transition-none",
+  "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+);
+
+/** Hire: deep violet solid — mirrors “Go live” weight; pairs with purple hero. */
+const heroCtaStartRequestClassName = cn(
+  heroCtaBaseClassName,
+  "border-violet-900/45 bg-violet-950 text-white",
+  "hover:border-violet-700/55 hover:bg-violet-900 hover:shadow-md",
+  "focus-visible:ring-violet-300/70",
+);
+
+/** Work: deep emerald solid — distinct from hire, still native to the green hero. */
+const heroCtaGoLiveClassName = cn(
+  heroCtaBaseClassName,
+  "border-emerald-800/40 bg-emerald-950 text-white",
+  "hover:border-emerald-700/50 hover:bg-emerald-900 hover:shadow-md",
+  "focus-visible:ring-emerald-300/70",
 );
 
 const heroTitleBlockClassName = "max-w-[17rem] space-y-1.5 pr-1 sm:max-w-[19rem]";
-
-function formatRequestTitle(serviceType: string | null | undefined): string {
-  const st = String(serviceType ?? "").trim();
-  if (!st) return "Help request";
-  if (st === "cleaning") return "Cleaning";
-  if (st === "cooking") return "Cooking";
-  if (st === "pickup_delivery") return "Pickup & Delivery";
-  if (st === "nanny") return "Nanny";
-  if (st === "other_help") return "Other Help";
-  return st.replace(/_/g, " ");
-}
 
 export function DiscoverHomeActionFirst({
   homeMode,
@@ -90,17 +93,9 @@ export function DiscoverHomeActionFirst({
   createRequestPath,
 }: Props) {
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const isHire = homeMode === "hire";
   const viewerId = profile?.id ?? null;
-  const { data: requestsData } = useFreelancerRequests(user?.id);
-  const myOpenRequests = (requestsData?.myOpenRequests ?? []) as {
-    id: string;
-    service_type?: string | null;
-    location_city?: string | null;
-    created_at: string;
-  }[];
-  const latestRequest = myOpenRequests[0] ?? null;
   const [freelancerLiveUntil, setFreelancerLiveUntil] = useState<string | null>(
     null,
   );
@@ -157,6 +152,48 @@ export function DiscoverHomeActionFirst({
     return `${minutes}:${ss}`;
   }, [isWorkLive, liveRemainingMs, liveUntilMs]);
 
+  function renderHeroBrowseShortcut(hire: boolean) {
+    const label = hire ? "Browse helpers" : "Find people in need";
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onBrowseRow();
+        }}
+        className={cn(
+          "absolute bottom-3 right-3 z-20 flex max-w-[8.5rem] flex-col items-center gap-1.5 bg-transparent p-0 shadow-none sm:bottom-4 sm:right-4",
+          "transition active:scale-[0.97] motion-reduce:transition-none",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/90 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+        )}
+        aria-label={label}
+      >
+        <span
+          className={cn(
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-lg ring-2 ring-white/60",
+            hire
+              ? "bg-white text-[#5B3DD9]"
+              : "bg-emerald-50 text-emerald-900 ring-emerald-100",
+          )}
+        >
+          {hire ? (
+            <Search className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+          ) : (
+            <UsersRound className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+          )}
+        </span>
+        <span
+          className={cn(
+            "max-w-[7.5rem] text-center text-[11px] font-extrabold leading-snug tracking-tight text-white sm:max-w-[8rem] sm:text-[12px]",
+            "[text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_0_14px_rgba(0,0,0,0.75)]",
+          )}
+        >
+          {label}
+        </span>
+      </button>
+    );
+  }
+
   function onStartRequest() {
     trackEvent("discover_primary_cta", { mode: homeMode });
     if (isHire) {
@@ -182,13 +219,13 @@ export function DiscoverHomeActionFirst({
   return (
     <div
       className={cn(
-        "flex w-full flex-col gap-5",
+        "flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden md:gap-5",
       )}
     >
       {isHire ? (
         <section
           className={cn(
-            "relative overflow-hidden rounded-[28px] text-left",
+            "relative shrink-0 overflow-hidden rounded-[28px] text-left",
             "shadow-[0_12px_40px_-12px_rgba(91,61,232,0.35),0_2px_8px_rgba(15,23,42,0.08)]",
             "ring-1 ring-black/[0.06] ring-inset",
           )}
@@ -201,6 +238,8 @@ export function DiscoverHomeActionFirst({
               decoding="async"
               {...{ fetchpriority: "high" }}
             />
+
+            {renderHeroBrowseShortcut(true)}
 
             <div className={heroStackClassName}>
               <div className={heroTopBlockClassName}>
@@ -236,69 +275,27 @@ export function DiscoverHomeActionFirst({
 
               </div>
               <div className={heroPrimaryCtaRowClassName}>
-                <div className="flex w-full items-end justify-between gap-3">
-                  <Button
+                <div className="flex w-full items-end justify-start gap-3">
+                  <button
                     type="button"
                     onClick={onStartRequest}
-                    className={cn(heroPrimaryButtonClassName, "bg-white text-[#7B61FF]")}
+                    className={heroCtaStartRequestClassName}
                   >
-                    <span className="flex items-center justify-center gap-1">
-                      {HIRE.primary}
-                      <ChevronRight
-                        className={cn(discoverIcon.md, "opacity-90")}
-                        strokeWidth={DISCOVER_STROKE}
-                      />
-                    </span>
-                  </Button>
-
-                  {latestRequest ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          `/client/jobs/${encodeURIComponent(latestRequest.id)}/live`,
-                        )
-                      }
+                    <ClipboardList
+                      className="h-[1.05rem] w-[1.05rem] shrink-0 text-violet-100/95 sm:h-[1.125rem] sm:w-[1.125rem]"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{HIRE.primary}</span>
+                    <ChevronRight
                       className={cn(
-                        "group shrink-0 rounded-2xl px-2.5 py-2 text-left",
-                        "w-[10.75rem] sm:w-[12rem]",
-                        "bg-white/40 text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/55",
-                        "transition hover:bg-white/50 active:scale-[0.99]",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
+                        discoverIcon.sm,
+                        "shrink-0 text-violet-100/70 transition group-hover:translate-x-px group-hover:text-violet-50",
                       )}
-                      aria-label="Open your latest request"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[12px] font-black tracking-tight text-white">
-                            {formatRequestTitle(latestRequest.service_type)}
-                            <span className="mx-1 text-white/70">·</span>
-                            <span className="font-semibold text-white/85">
-                              {(latestRequest.location_city || "").trim() || "—"}
-                            </span>
-                          </p>
-                        </div>
-                        <ChevronRight
-                          className={cn(
-                            "h-5 w-5 shrink-0 text-white/75 transition group-hover:text-white/90",
-                          )}
-                          strokeWidth={2.25}
-                          aria-hidden
-                        />
-                      </div>
-                      <div className="mt-2 flex items-center gap-2 text-white/85">
-                        <Clock className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-                        <LiveTimer
-                          createdAt={latestRequest.created_at}
-                          render={({ time }) => (
-                            <span className="text-[12px] font-semibold tabular-nums">
-                              {time}
-                            </span>
-                          )}
-                        />
-                      </div>
-                    </button>
-                  ) : null}
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -307,7 +304,7 @@ export function DiscoverHomeActionFirst({
       ) : (
         <section
           className={cn(
-            "relative overflow-hidden rounded-[28px] text-left",
+            "relative shrink-0 overflow-hidden rounded-[28px] text-left",
             "shadow-[0_12px_40px_-12px_rgba(5,95,72,0.35),0_2px_8px_rgba(15,23,42,0.08)]",
             "ring-1 ring-black/[0.06] ring-inset",
           )}
@@ -320,6 +317,8 @@ export function DiscoverHomeActionFirst({
               decoding="async"
               {...{ fetchpriority: "high" }}
             />
+
+            {renderHeroBrowseShortcut(false)}
 
             <div className={heroStackClassName}>
               <div className={heroTopBlockClassName}>
@@ -384,38 +383,29 @@ export function DiscoverHomeActionFirst({
                       >
                         You are live right now.
                       </div>
-                      <button
-                        type="button"
-                        onClick={onBrowseRow}
-                        className={cn(
-                          "mt-1 inline-flex items-center gap-1 text-[12px] font-bold tracking-tight text-white/95",
-                          "underline decoration-white/35 underline-offset-[3px] transition hover:text-white hover:decoration-white/70",
-                        )}
-                      >
-                        Find people in need
-                        <ChevronRight
-                          className={cn(discoverIcon.sm, "opacity-90")}
-                          strokeWidth={DISCOVER_STROKE}
-                          aria-hidden
-                        />
-                      </button>
                     </div>
                   </div>
                 ) : (
-                  <Button
+                  <button
                     type="button"
                     onClick={onStartRequest}
-                    className={cn(heroPrimaryButtonClassName, "bg-white text-[#047857]")}
+                    className={heroCtaGoLiveClassName}
                   >
-                    <span className="flex items-center justify-center gap-1">
-                      {workTheme.primary}
-                      <ChevronRight
-                        className={cn(discoverIcon.md, "opacity-90")}
-                        strokeWidth={DISCOVER_STROKE}
-                        aria-hidden
-                      />
-                    </span>
-                  </Button>
+                    <Radio
+                      className="h-[1.05rem] w-[1.05rem] shrink-0 text-emerald-100/95 sm:h-[1.125rem] sm:w-[1.125rem]"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{workTheme.primary}</span>
+                    <ChevronRight
+                      className={cn(
+                        discoverIcon.sm,
+                        "shrink-0 text-emerald-100/70 transition group-hover:translate-x-px group-hover:text-emerald-50",
+                      )}
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                  </button>
                 )}
               </div>
             </div>
@@ -423,73 +413,9 @@ export function DiscoverHomeActionFirst({
         </section>
       )}
 
-      <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
-
-      {isHire ? (
-        <button
-          type="button"
-          onClick={onBrowseRow}
-          className={cn(
-            "flex w-full items-center gap-4 rounded-2xl bg-white p-[1.125rem] text-left",
-            "shadow-[0_1px_3px_rgba(15,23,42,0.06),0_4px_12px_-2px_rgba(15,23,42,0.08)]",
-            "ring-1 ring-slate-200/90 transition-[box-shadow,transform] hover:shadow-[0_4px_16px_-4px_rgba(123,97,255,0.18)]",
-            "hover:ring-[#7B61FF]/20 active:scale-[0.99] dark:bg-zinc-900/90 dark:ring-zinc-700/80",
-          )}
-        >
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#7B61FF]/10 text-[#7B61FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:bg-[#7B61FF]/15">
-            <Search
-              className={discoverIcon.hero}
-              strokeWidth={DISCOVER_STROKE}
-              aria-hidden
-            />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-semibold leading-tight tracking-tight text-foreground">
-              Browse helpers
-            </span>
-            <span className="mt-0.5 block text-[13px] leading-snug text-muted-foreground">
-              See profiles, availability & reviews
-            </span>
-          </span>
-          <ChevronRight
-            className={cn(discoverIcon.md, "shrink-0 text-slate-400")}
-            strokeWidth={DISCOVER_STROKE}
-            aria-hidden
-          />
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={onBrowseRow}
-          className={cn(
-            "flex w-full items-center gap-4 rounded-2xl bg-white p-[1.125rem] text-left",
-            "shadow-[0_1px_3px_rgba(15,23,42,0.06),0_4px_12px_-2px_rgba(15,23,42,0.08)]",
-            "ring-1 ring-slate-200/90 transition-[box-shadow,transform] hover:shadow-[0_4px_16px_-4px_rgba(5,95,70,0.18)]",
-            "hover:ring-[#065f46]/20 active:scale-[0.99] dark:bg-zinc-900/90 dark:ring-zinc-700/80",
-          )}
-        >
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#065f46]/10 text-[#065f46] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:bg-emerald-950/50 dark:text-emerald-300">
-            <Search
-              className={discoverIcon.hero}
-              strokeWidth={DISCOVER_STROKE}
-              aria-hidden
-            />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-bold leading-tight text-foreground">
-              Find people in need
-            </span>
-            <span className="mt-0.5 block text-sm text-muted-foreground">
-              Open requests near you, filtered for you
-            </span>
-          </span>
-          <ChevronRight
-            className={cn(discoverIcon.md, "shrink-0 text-muted-foreground")}
-            strokeWidth={DISCOVER_STROKE}
-            aria-hidden
-          />
-        </button>
-      )}
+      <div className="min-h-0 flex-1 overflow-hidden pt-0.5">
+        <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
+      </div>
     </div>
   );
 }

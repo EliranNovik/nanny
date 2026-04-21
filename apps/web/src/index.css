@@ -206,6 +206,28 @@
     .app-main-scroll-pad:has([data-public-snap-feed-mobile]) {
       padding-bottom: 0;
     }
+
+    /**
+     * Discover home (client/freelancer): single screen — no vertical scroll on the main column.
+     * Content fills between fixed app header + BottomNav padding (see .app-main-scroll-pad).
+     */
+    .app-main-scroll-pad:has([data-discover-home-page]) {
+      height: 100dvh;
+      max-height: 100dvh;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .app-main-scroll-pad:has([data-discover-home-page]) {
+      height: auto;
+      max-height: none;
+      overflow: visible;
+      display: block;
+    }
   }
 
   /**
