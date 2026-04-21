@@ -15,6 +15,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
+import { T, chipBadgeClassName } from "@/lib/typography";
 
 type ExploreMode = "hire" | "work";
 
@@ -118,7 +119,7 @@ function ExploreSecondaryUnderlineTabs({
               aria-selected={selected}
               onClick={() => onTabChange(id)}
               className={cn(
-                "shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-left text-xs font-semibold transition-colors sm:px-4 sm:text-sm",
+                "shrink-0 whitespace-nowrap border-b-2 px-3 py-3 text-left text-[13px] font-semibold transition-colors sm:px-4 sm:text-sm",
                 selected
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
@@ -128,12 +129,7 @@ function ExploreSecondaryUnderlineTabs({
                 <span>{label}</span>
                 {typeof c === "number" ? (
                   <span
-                    className={cn(
-                      "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black tabular-nums",
-                      selected
-                        ? "bg-primary/10 text-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
+                    className={chipBadgeClassName(selected)}
                     aria-label={`${c} items`}
                   >
                     {c > 99 ? "99+" : c}
@@ -316,10 +312,13 @@ export default function ExplorePage() {
                   className={cn(
                     "pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 z-[5] rounded-[22px]",
                     "w-[calc((100%-1rem)/2)] will-change-transform",
-                    "bg-white shadow-[0_2px_8px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)]",
-                    "ring-1 ring-black/[0.05]",
-                    "dark:bg-zinc-100 dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] dark:ring-white/10",
+                    "bg-gradient-to-r shadow-[0_6px_18px_rgba(15,23,42,0.18),0_1px_2px_rgba(15,23,42,0.08)]",
+                    "ring-1 ring-inset ring-white/25",
+                    "dark:shadow-[0_8px_22px_rgba(0,0,0,0.45)] dark:ring-white/20",
                     "transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+                    mode === "hire"
+                      ? "from-[#7B61FF] to-[#A855F7]"
+                      : "from-[#065f46] to-[#047857]",
                     mode === "hire"
                       ? "translate-x-0"
                       : "translate-x-[calc(100%+0.25rem)]",
@@ -336,7 +335,7 @@ export default function ExplorePage() {
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     mode === "hire"
-                      ? "text-[#7B61FF]"
+                      ? "text-white"
                       : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
                   )}
                 >
@@ -345,7 +344,7 @@ export default function ExplorePage() {
                       discoverIcon.md,
                       "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
                       mode === "hire"
-                        ? "text-[#7B61FF]"
+                        ? "text-white"
                         : "text-slate-400 dark:text-zinc-500",
                     )}
                     strokeWidth={DISCOVER_STROKE}
@@ -355,7 +354,7 @@ export default function ExplorePage() {
                     className={cn(
                       "min-w-0 flex-1 text-center text-[13px] font-bold leading-tight tracking-tight sm:text-[16px]",
                       mode === "hire"
-                        ? "text-[#7B61FF]"
+                        ? "text-white"
                         : "text-slate-500 dark:text-zinc-400",
                     )}
                   >
@@ -373,7 +372,7 @@ export default function ExplorePage() {
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#065f46]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     mode === "work"
-                      ? "text-[#065f46]"
+                      ? "text-white"
                       : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
                   )}
                 >
@@ -382,7 +381,7 @@ export default function ExplorePage() {
                       discoverIcon.md,
                       "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
                       mode === "work"
-                        ? "text-[#065f46]"
+                        ? "text-white"
                         : "text-slate-400 dark:text-zinc-500",
                     )}
                     strokeWidth={DISCOVER_STROKE}
@@ -392,7 +391,7 @@ export default function ExplorePage() {
                     className={cn(
                       "min-w-0 flex-1 text-center text-[13px] font-bold leading-tight tracking-tight sm:text-[16px]",
                       mode === "work"
-                        ? "text-[#065f46]"
+                        ? "text-white"
                         : "text-slate-500 dark:text-zinc-400",
                     )}
                   >
@@ -419,10 +418,10 @@ export default function ExplorePage() {
         )}
       >
         <div className="mb-5 px-1 pt-1">
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white md:text-3xl">
+          <h1 className={cn(T.h1, "text-slate-900 dark:text-white")}>
             Explore
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          <p className={cn("mt-2 max-w-2xl", T.sub)}>
             {summary}
           </p>
         </div>

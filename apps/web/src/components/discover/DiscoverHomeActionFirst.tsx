@@ -215,7 +215,7 @@ export function DiscoverHomeActionFirst({
                       {HIRE.badge}
                     </div>
                   </div>
-                  <div className={heroTitleBlockClassName}>
+                  <div className={cn(heroTitleBlockClassName, "mt-2")}>
                     <h2
                       className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
                       style={{

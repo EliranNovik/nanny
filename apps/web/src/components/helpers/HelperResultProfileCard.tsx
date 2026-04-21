@@ -27,7 +27,7 @@ export type PublicProfileGalleryRow = {
 type Slide = { key: string; kind: "image" | "video"; src: string };
 
 const glassRoundBtn = cn(
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+  "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
   "bg-black/30 text-white shadow-lg backdrop-blur-2xl transition-colors",
   "hover:bg-black/40",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400",
@@ -294,17 +294,16 @@ export function HelperResultProfileCard({
   return (
     <Card
       className={cn(
-        "group relative cursor-pointer overflow-visible rounded-[22px] border border-white/10",
-        "bg-zinc-950 shadow-2xl shadow-black/40 ring-1 ring-inset ring-white/[0.06]",
+        "group relative cursor-pointer overflow-visible rounded-[22px]",
+        "bg-zinc-950 shadow-2xl shadow-black/40",
         "transition-all duration-500 ease-out",
-        "max-md:snap-start max-md:scroll-mb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] max-md:scroll-mt-2",
-        "hover:-translate-y-1 hover:border-orange-400/25 hover:shadow-orange-500/15 hover:shadow-2xl",
+        "hover:-translate-y-1 hover:shadow-orange-500/15 hover:shadow-2xl",
       )}
       data-helper-snap-card=""
       onClick={() => onOpenProfile(h.id)}
     >
       <CardContent className="relative aspect-[4/5] min-h-[17.5rem] w-full overflow-visible p-0 sm:min-h-[19rem]">
-        <div className="absolute inset-0 z-0 overflow-hidden rounded-[22px]">
+        <div className="absolute inset-0 z-0 overflow-hidden rounded-[22px] bg-black">
         {slides.length === 0 ? (
           <Avatar className="absolute inset-0 z-0 h-full w-full rounded-none border-0 shadow-none">
             <AvatarFallback className="rounded-none bg-gradient-to-br from-zinc-800 via-zinc-900 to-black text-6xl font-black tracking-tight text-white/25">
@@ -335,7 +334,7 @@ export function HelperResultProfileCard({
                   >
                     <video
                       src={slide.src}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover object-[50%_30%]"
                       muted
                       playsInline
                       controls
@@ -347,7 +346,7 @@ export function HelperResultProfileCard({
                   <img
                     src={slide.src}
                     alt=""
-                    className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.05]"
+                    className="h-full w-full object-cover object-[50%_30%]"
                     draggable={false}
                   />
                 )}
@@ -364,7 +363,7 @@ export function HelperResultProfileCard({
               >
                 <video
                   src={slides[0]!.src}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover object-[50%_30%]"
                   muted
                   playsInline
                   controls
@@ -376,7 +375,7 @@ export function HelperResultProfileCard({
               <img
                 src={slides[0]!.src}
                 alt=""
-                className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.05]"
+                className="h-full w-full object-cover object-[50%_30%]"
                 draggable={false}
               />
             )}
@@ -463,11 +462,11 @@ export function HelperResultProfileCard({
               className={glassRoundBtn}
             >
               {favoriteBusyId === h.id ? (
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
               ) : (
                 <Heart
                   className={cn(
-                    "h-5 w-5 text-white drop-shadow-md",
+                    "h-6 w-6 text-white drop-shadow-md",
                     favoriteIds.has(h.id) && "fill-red-500 text-red-500",
                   )}
                   strokeWidth={favoriteIds.has(h.id) ? 0 : 2.25}
@@ -483,9 +482,9 @@ export function HelperResultProfileCard({
               onClick={(e) => void openDirectChat(e)}
             >
               {chatOpening ? (
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
               ) : (
-                <MessageCircle className="h-5 w-5" strokeWidth={2} aria-hidden />
+                <MessageCircle className="h-6 w-6" strokeWidth={2} aria-hidden />
               )}
             </button>
 
@@ -497,9 +496,9 @@ export function HelperResultProfileCard({
               onClick={(e) => void openWhatsApp(e)}
             >
               {socialBusy === "wa" ? (
-                <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
               ) : (
-                <WhatsAppIcon size={20} className="text-white" />
+                <WhatsAppIcon size={24} className="text-white" />
               )}
             </button>
 
@@ -511,9 +510,9 @@ export function HelperResultProfileCard({
               onClick={(e) => void openTelegram(e)}
             >
               {socialBusy === "tg" ? (
-                <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
               ) : (
-                <TelegramIcon size={20} className="text-white" />
+                <TelegramIcon size={24} className="text-white" />
               )}
             </button>
 
@@ -534,19 +533,19 @@ export function HelperResultProfileCard({
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] flex flex-col gap-2 px-4 pb-4 pt-14">
           <div className="space-y-1.5">
-            <p className="line-clamp-2 text-2xl font-black leading-[1.05] tracking-tight text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.55)]">
+            <p className="line-clamp-2 text-[28px] font-black leading-[1.05] tracking-tight text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.55)]">
               {h.full_name || "Helper"}
             </p>
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px] font-semibold text-white">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[15px] font-semibold text-white">
               <span className="inline-flex min-w-0 items-center gap-1 text-white">
                 <MapPin
-                  className="h-3.5 w-3.5 shrink-0 text-orange-300"
+                  className="h-4 w-4 shrink-0 text-orange-300"
                   aria-hidden
                 />
                 <span className="line-clamp-1 text-white">{h.city || "—"}</span>
               </span>
               {h.distanceKm != null ? (
-                <span className="shrink-0 text-xs font-bold tabular-nums text-white">
+                <span className="shrink-0 text-[13px] font-bold tabular-nums text-white">
                   {h.distanceKm < 1
                     ? `${Math.round(h.distanceKm * 1000)} m`
                     : `${h.distanceKm.toFixed(1)} km`}
@@ -570,20 +569,20 @@ export function HelperResultProfileCard({
                   countClassName="text-white/55"
                 />
               ) : (
-                <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/55">
+                <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/55">
                   New helper
                 </span>
               )}
             </div>
             {rateLabel ? (
-              <p className="max-w-[55%] text-right text-sm font-black tabular-nums leading-tight text-orange-100 [text-shadow:0_1px_12px_rgba(0,0,0,0.45)]">
+              <p className="max-w-[55%] text-right text-[15px] font-black tabular-nums leading-tight text-orange-100 [text-shadow:0_1px_12px_rgba(0,0,0,0.45)]">
                 {rateLabel}
               </p>
             ) : null}
           </div>
 
           {h.freelancer_profiles?.bio ? (
-            <p className="line-clamp-2 text-xs leading-relaxed text-white/75 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]">
+            <p className="line-clamp-2 text-[13px] leading-relaxed text-white/75 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]">
               {h.freelancer_profiles.bio}
             </p>
           ) : null}

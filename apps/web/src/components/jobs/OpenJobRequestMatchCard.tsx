@@ -67,7 +67,7 @@ const glassDeclineCta = cn(
 );
 
 const glassRoundBtn = cn(
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+  "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
   "bg-black/30 text-white shadow-lg backdrop-blur-2xl transition-colors",
   "hover:bg-black/40",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400",
@@ -317,17 +317,16 @@ export function OpenJobRequestMatchCard({
   return (
     <div
       className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-[22px] border border-white/10",
-        "bg-zinc-950 shadow-2xl shadow-black/40 ring-1 ring-inset ring-white/[0.06]",
+        "group relative cursor-pointer overflow-hidden rounded-[22px]",
+        "bg-zinc-950 shadow-2xl shadow-black/40",
         "transition-all duration-500 ease-out",
-        "max-md:snap-start max-md:scroll-mb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] max-md:scroll-mt-2",
-        "hover:-translate-y-1 hover:border-emerald-400/25 hover:shadow-emerald-500/15 hover:shadow-2xl",
+        "hover:-translate-y-1 hover:shadow-emerald-500/15 hover:shadow-2xl",
       )}
       role="article"
       aria-label="Open request"
       onClick={() => onOpenProfile(row.client_id)}
     >
-      <div className="relative aspect-[4/5] min-h-[17.5rem] w-full sm:min-h-[19rem]">
+      <div className="relative aspect-[4/5] min-h-[17.5rem] w-full bg-black sm:min-h-[19rem]">
         {slides.length === 0 ? (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
         ) : showStrip ? (
@@ -344,7 +343,7 @@ export function OpenJobRequestMatchCard({
                 {s.kind === "video" ? (
                   <video
                     src={s.src}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover object-[50%_30%]"
                     muted
                     playsInline
                     preload="metadata"
@@ -357,7 +356,7 @@ export function OpenJobRequestMatchCard({
                   <img
                     src={s.src}
                     alt=""
-                    className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.05]"
+                    className="h-full w-full object-cover object-[50%_30%]"
                     draggable={false}
                   />
                 )}
@@ -368,7 +367,7 @@ export function OpenJobRequestMatchCard({
           <img
             src={slides[0]!.src}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.05]"
+            className="absolute inset-0 h-full w-full object-cover object-[50%_30%]"
             draggable={false}
           />
         )}
@@ -412,9 +411,9 @@ export function OpenJobRequestMatchCard({
               onClick={(e) => void openDirectChat(e)}
             >
               {chatOpening ? (
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
               ) : (
-                <MessageCircle className="h-5 w-5" strokeWidth={2} aria-hidden />
+                <MessageCircle className="h-6 w-6" strokeWidth={2} aria-hidden />
               )}
             </button>
 
@@ -426,9 +425,9 @@ export function OpenJobRequestMatchCard({
               onClick={(e) => void openWhatsApp(e)}
             >
               {socialBusy === "wa" ? (
-                <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
               ) : (
-                <WhatsAppIcon size={20} className="text-white" />
+                <WhatsAppIcon size={24} className="text-white" />
               )}
             </button>
 
@@ -440,9 +439,9 @@ export function OpenJobRequestMatchCard({
               onClick={(e) => void openTelegram(e)}
             >
               {socialBusy === "tg" ? (
-                <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
               ) : (
-                <TelegramIcon size={20} className="text-white" />
+                <TelegramIcon size={24} className="text-white" />
               )}
             </button>
           </div>

@@ -82,7 +82,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             <div role="tablist" aria-label="What are you here for?">
               <div
                 className={cn(
-                  "relative isolate mx-auto grid min-h-[56px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-[28px] p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[64px]",
+                  "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-[26px] p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
                   "border border-slate-200/90 bg-slate-100/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]",
                   "dark:border-zinc-700/80 dark:bg-zinc-800/90 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
                   "leading-none",
@@ -94,10 +94,13 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   className={cn(
                     "pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 z-[5] rounded-[22px]",
                     "w-[calc((100%-1rem)/2)] will-change-transform",
-                    "bg-white shadow-[0_2px_8px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)]",
-                    "ring-1 ring-black/[0.05]",
-                    "dark:bg-zinc-100 dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] dark:ring-white/10",
+                    "bg-gradient-to-r shadow-[0_6px_18px_rgba(15,23,42,0.18),0_1px_2px_rgba(15,23,42,0.08)]",
+                    "ring-1 ring-inset ring-white/25",
+                    "dark:shadow-[0_8px_22px_rgba(0,0,0,0.45)] dark:ring-white/20",
                     "transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+                    homeMode === "hire"
+                      ? "from-[#7B61FF] to-[#A855F7]"
+                      : "from-[#065f46] to-[#047857]",
                     homeMode === "hire"
                       ? "translate-x-0"
                       : "translate-x-[calc(100%+0.25rem)]",
@@ -110,12 +113,12 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   aria-label={homeMode === "hire" ? undefined : "I need help"}
                   onClick={() => setHomeMode("hire")}
                   className={cn(
-                    "relative z-10 flex h-full min-h-[54px] w-full min-w-0 items-center justify-center gap-1 rounded-[22px] px-2 py-2.5 sm:min-h-[62px] sm:gap-1.5 sm:px-3",
+                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[20px] px-2 py-2 sm:min-h-[54px] sm:px-3",
                     "transition-[color,transform] duration-300 ease-out",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "hire"
-                      ? "text-[#7B61FF]"
+                      ? "text-white"
                       : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
                   )}
                 >
@@ -124,7 +127,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       discoverIcon.md,
                       "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
                       homeMode === "hire"
-                        ? "text-[#7B61FF]"
+                        ? "text-white"
                         : "text-slate-400 dark:text-zinc-500",
                     )}
                     strokeWidth={DISCOVER_STROKE}
@@ -132,9 +135,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   />
                   <span
                     className={cn(
-                      "min-w-0 flex-1 text-center text-[13px] font-bold leading-tight tracking-tight sm:text-[16px]",
+                      "min-w-0 text-[14px] font-bold leading-tight tracking-tight sm:text-[16px]",
                       homeMode === "hire"
-                        ? "text-[#7B61FF]"
+                        ? "text-white"
                         : "text-slate-500 dark:text-zinc-400",
                     )}
                   >
@@ -148,12 +151,12 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   aria-label={homeMode === "work" ? undefined : "Help others"}
                   onClick={() => setHomeMode("work")}
                   className={cn(
-                    "relative z-10 flex h-full min-h-[54px] w-full min-w-0 items-center justify-center gap-1 rounded-[22px] px-2 py-2.5 sm:min-h-[62px] sm:gap-1.5 sm:px-3",
+                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[20px] px-2 py-2 sm:min-h-[54px] sm:px-3",
                     "transition-[color,transform] duration-300 ease-out",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#065f46]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "work"
-                      ? "text-[#065f46]"
+                      ? "text-white"
                       : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
                   )}
                 >
@@ -162,7 +165,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                       discoverIcon.md,
                       "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
                       homeMode === "work"
-                        ? "text-[#065f46]"
+                        ? "text-white"
                         : "text-slate-400 dark:text-zinc-500",
                     )}
                     strokeWidth={DISCOVER_STROKE}
@@ -170,9 +173,9 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   />
                   <span
                     className={cn(
-                      "min-w-0 flex-1 text-center text-[13px] font-bold leading-tight tracking-tight sm:text-[16px]",
+                      "min-w-0 text-[14px] font-bold leading-tight tracking-tight sm:text-[16px]",
                       homeMode === "work"
-                        ? "text-[#065f46]"
+                        ? "text-white"
                         : "text-slate-500 dark:text-zinc-400",
                     )}
                   >

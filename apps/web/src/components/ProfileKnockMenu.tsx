@@ -113,7 +113,7 @@ export function ProfileKnockMenu({
       : variant === "contact"
         ? "h-12 w-12 shrink-0 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
         : variant === "glass"
-          ? "h-10 w-10 shrink-0 rounded-full bg-black/30 text-white shadow-lg backdrop-blur-2xl transition-colors hover:bg-black/40"
+          ? "h-12 w-12 shrink-0 rounded-full bg-black/30 text-white shadow-lg backdrop-blur-2xl transition-colors hover:bg-black/40"
           : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
 
   return (
@@ -135,7 +135,7 @@ export function ProfileKnockMenu({
             className={
               variant === "hero"
                 ? "h-6 w-6 animate-spin"
-                : "h-5 w-5 animate-spin"
+                : "h-6 w-6 animate-spin"
             }
             aria-hidden
           />
@@ -145,7 +145,7 @@ export function ProfileKnockMenu({
               variant === "hero"
                 ? "h-7 w-7"
                 : variant === "contact" || variant === "glass"
-                  ? "h-5 w-5"
+                  ? "h-6 w-6"
                   : "h-6 w-6"
             }
             strokeWidth={2}

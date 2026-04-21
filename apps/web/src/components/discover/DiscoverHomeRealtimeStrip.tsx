@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LiveTimer } from "@/components/LiveTimer";
+import { T } from "@/lib/typography";
 import {
   ChevronRight,
   ClipboardList,
@@ -65,7 +66,6 @@ type WorkRowItem = {
   detailLine: string | null;
   thumbUrl: string;
   name: string;
-  average_rating: number | null;
 };
 
 function categoryImageSrc(
@@ -91,7 +91,6 @@ function mapJobLikeToWorkRow(opts: {
   time_duration?: string | null;
   photo: string | null | undefined;
   name: string | null | undefined;
-  average_rating: number | null | undefined;
 }): WorkRowItem {
   const cat = opts.serviceType;
   const title =
@@ -115,7 +114,6 @@ function mapJobLikeToWorkRow(opts: {
     detailLine,
     thumbUrl: thumb,
     name: (opts.name || "?").trim() || "?",
-    average_rating: opts.average_rating ?? null,
   };
 }
 
@@ -212,7 +210,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           time_duration: r.time_duration,
           photo: r.client_photo_url,
           name: r.client_display_name,
-          average_rating: null,
         }),
       );
 
@@ -250,7 +247,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             time_duration: jr.time_duration,
             photo: jr.profiles?.photo_url,
             name: jr.profiles?.full_name,
-            average_rating: (jr.profiles as any)?.average_rating ?? null,
           });
         },
       );
@@ -386,14 +382,18 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.22)]"
               aria-hidden
             />
-            <h3 className="text-[15px] font-semibold leading-tight tracking-tight text-slate-900 dark:text-zinc-50">
+            <h3 className={cn(T.h2, "text-slate-900 dark:text-zinc-50")}>
               {title}
             </h3>
           </div>
           <button
             type="button"
             onClick={onBrowseTap}
-            className="flex shrink-0 items-center gap-0.5 text-[13px] font-medium tracking-wide text-[#065f46] transition-opacity hover:opacity-90 dark:text-emerald-400"
+            className={cn(
+              "flex shrink-0 items-center gap-0.5 transition-opacity hover:opacity-90",
+              "text-[#065f46] dark:text-emerald-400",
+              "text-[14px] font-semibold",
+            )}
           >
             View all
             <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -423,25 +423,19 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-slate-100 ring-1 ring-black/[0.04] dark:bg-zinc-800 dark:ring-white/10">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-slate-100 ring-1 ring-black/[0.04] dark:bg-zinc-800 dark:ring-white/10">
                     <img
                       src={row.thumbUrl}
                       alt=""
                       className="h-full w-full object-cover"
                       loading="lazy"
                     />
-                    <span className="absolute -bottom-1 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-white px-1.5 py-px text-[10px] font-medium tabular-nums text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.08)] ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/50">
-                      <span className="text-slate-900 dark:text-zinc-100" aria-hidden>
-                        ★
-                      </span>
-                      {ratingLabel(row.average_rating)}
-                    </span>
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-[13px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+                    <p className={cn("truncate", T.h2, "text-slate-900 dark:text-zinc-50")}>
                       {shortDisplayName(row.name)}
                     </p>
-                    <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500 dark:text-zinc-400">
+                    <p className={cn("mt-0.5 truncate", T.meta, "text-slate-500 dark:text-zinc-400")}>
                       {row.cityLine}
                     </p>
                   </div>
@@ -450,12 +444,12 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               </div>
 
               <div className="min-w-0">
-                <p className="truncate text-[13px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+                <p className={cn("truncate text-[13px] font-semibold leading-tight", "text-slate-900 dark:text-zinc-50")}>
                   {row.title}
                 </p>
                 {row.createdAt ? (
-                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-zinc-500">
-                    <span className="font-semibold uppercase tracking-wide">
+                  <div className={cn("mt-1 flex items-center gap-2", T.meta, "text-slate-400 dark:text-zinc-500")}>
+                    <span className={cn(T.label, "text-slate-400 dark:text-zinc-500")}>
                       Posted
                     </span>
                     <LiveTimer createdAt={row.createdAt} />
