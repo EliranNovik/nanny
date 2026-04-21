@@ -119,42 +119,12 @@ export function OpenJobRequestMatchCard({
     setActiveIndex(Math.max(0, Math.min(slides.length - 1, next)));
   }, [slides.length]);
 
-  const slidesRef = useRef(slides);
-  slidesRef.current = slides;
-  const scrollStartLeftRef = useRef<number | null>(null);
-  const swipeRef = useRef<{
-    active: boolean;
-    startX: number;
-    startY: number;
-    startLeft: number;
-    isHorizontal: boolean;
-  } | null>(null);
-
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ left: 0, behavior: "auto" });
     setActiveIndex(0);
   }, [row.id, row.client_photo_url, slides.map((s) => s.key).join("|")]);
-
-  const snapToNearestSlide = useCallback(() => {
-    const el = scrollRef.current;
-    const list = slidesRef.current;
-    if (!el || list.length < 2) return;
-    const w = el.clientWidth;
-    if (w <= 0) return;
-    const idx = Math.min(
-      list.length - 1,
-      Math.max(0, Math.round(el.scrollLeft / w)),
-    );
-    el.scrollTo({ left: idx * w, behavior: "smooth" });
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      swipeRef.current = null;
-    };
-  }, []);
 
   const accept = useCallback(async () => {
     if (busy) return;
@@ -369,107 +339,40 @@ export function OpenJobRequestMatchCard({
         ) : showStrip ? (
           <div
             ref={scrollRef}
-            onPointerDownCapture={(e) => {
-              const el = scrollRef.current;
-              if (!el) return;
-              scrollStartLeftRef.current = el.scrollLeft;
-              swipeRef.current = {
-                active: true,
-                startX: e.clientX,
-                startY: e.clientY,
-                startLeft: el.scrollLeft,
-                isHorizontal: false,
-              };
-              try {
-                el.setPointerCapture(e.pointerId);
-              } catch {
-                /* ignore */
-              }
-            }}
-            onPointerMoveCapture={(e) => {
-              const el = scrollRef.current;
-              const s = swipeRef.current;
-              if (!el || !s?.active) return;
-              const dx = e.clientX - s.startX;
-              const dy = e.clientY - s.startY;
-              if (!s.isHorizontal) {
-                if (Math.abs(dx) < 6) return;
-                if (Math.abs(dx) <= Math.abs(dy)) return;
-                s.isHorizontal = true;
-              }
-              e.preventDefault();
-              el.scrollLeft = s.startLeft - dx;
-            }}
-            onPointerUpCapture={(e) => {
-              const el = scrollRef.current;
-              const list = slidesRef.current;
-              const s = swipeRef.current;
-              swipeRef.current = null;
-              if (!el || !s) return;
-              if (!s.isHorizontal) {
-                snapToNearestSlide();
-                return;
-              }
-              const w = el.clientWidth;
-              if (w <= 0 || list.length < 2) return;
-              const startIdx = Math.min(
-                list.length - 1,
-                Math.max(0, Math.round(s.startLeft / w)),
-              );
-              const dx = el.scrollLeft - s.startLeft;
-              const THRESH = Math.max(18, Math.round(w * 0.08));
-              let nextIdx = startIdx;
-              if (Math.abs(dx) >= THRESH) {
-                nextIdx =
-                  dx > 0
-                    ? Math.min(list.length - 1, startIdx + 1)
-                    : Math.max(0, startIdx - 1);
-              } else {
-                nextIdx = Math.min(
-                  list.length - 1,
-                  Math.max(0, Math.round(el.scrollLeft / w)),
-                );
-              }
-              el.scrollTo({ left: nextIdx * w, behavior: "smooth" });
-              try {
-                el.releasePointerCapture(e.pointerId);
-              } catch {
-                /* ignore */
-              }
-            }}
-            onPointerCancelCapture={() => {
-              swipeRef.current = null;
-              snapToNearestSlide();
-            }}
             onScroll={() => {
               window.requestAnimationFrame(syncIndex);
             }}
             className={cn(
               "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
               "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-              "overscroll-x-contain",
-              "touch-pan-y",
+              "overscroll-x-contain [-webkit-overflow-scrolling:touch]",
             )}
           >
             {slides.map((s) => (
-              <div key={s.key} className="relative h-full min-w-full shrink-0 snap-start snap-always">
+              <div
+                key={s.key}
+                className="relative h-full w-full min-w-full max-w-full shrink-0 snap-start snap-always overflow-hidden"
+              >
                 {s.kind === "video" ? (
-                  <video
-                    src={s.src}
-                    className="h-full w-full bg-black object-cover object-center"
-                    muted
-                    playsInline
-                    preload="metadata"
-                    controls
-                    controlsList="nodownload"
+                  <div
+                    className="relative h-full w-full overflow-hidden"
                     onClick={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                  />
+                  >
+                    <video
+                      src={s.src}
+                      className="absolute inset-0 h-full w-full bg-black object-cover object-center"
+                      muted
+                      playsInline
+                      preload="metadata"
+                      controls
+                      controlsList="nodownload"
+                    />
+                  </div>
                 ) : (
                   <img
                     src={s.src}
                     alt=""
-                    className="h-full w-full bg-black object-cover object-center"
+                    className="pointer-events-none absolute inset-0 h-full w-full bg-black object-cover object-center select-none"
                     draggable={false}
                   />
                 )}
@@ -480,7 +383,7 @@ export function OpenJobRequestMatchCard({
           <img
             src={slides[0]!.src}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-[50%_30%]"
+            className="pointer-events-none absolute inset-0 h-full w-full bg-black object-cover object-center select-none"
             draggable={false}
           />
         )}
