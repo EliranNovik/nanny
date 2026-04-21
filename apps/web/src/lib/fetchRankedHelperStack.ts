@@ -15,6 +15,8 @@ export type HelperRpcRow = {
     hourly_rate_max: number | null;
     bio: string | null;
     available_now: boolean | null;
+    live_until?: string | null;
+    live_categories?: string[] | null;
   } | null;
 };
 
@@ -68,6 +70,16 @@ export async function fetchRankedHelperStack(opts: {
     const cats = catMap.get(r.id) || [];
     if (cats.length === 0) return true;
     return cats.includes(catId);
+  });
+
+  rows = rows.filter((r) => {
+    const fp = r.freelancer_profiles;
+    if (!fp?.live_until) return true;
+    const t = new Date(fp.live_until).getTime();
+    if (Number.isNaN(t) || t <= Date.now()) return true;
+    const lc = fp.live_categories;
+    if (!lc?.length) return true;
+    return lc.includes(catId);
   });
 
   const ranked = rankHelperRows(

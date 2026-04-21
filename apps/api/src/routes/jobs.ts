@@ -638,6 +638,177 @@ jobsRouter.post("/:jobId/confirm", async (req: Request, res: Response): Promise<
   res.json({ ok: true });
 });
 
+// POST /:jobId/freelancer-confirm-open — Freelancer confirms availability for an open request (no notification gate)
+jobsRouter.post("/:jobId/freelancer-confirm-open", async (req: Request, res: Response): Promise<void> => {
+  const user = (req as AuthenticatedRequest).user;
+  const { jobId } = req.params;
+
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
+  const { data: job, error: jobErr } = await supabaseAdmin
+    .from("job_requests")
+    .select("id, status, selected_freelancer_id, community_post_id")
+    .eq("id", jobId)
+    .single();
+
+  if (jobErr || !job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  if ((job as any).community_post_id) {
+    res.status(400).json({ error: "Not an open request" });
+    return;
+  }
+
+  const st = String((job as any).status ?? "");
+  if (!["ready", "notifying", "confirmations_closed"].includes(st)) {
+    res.status(400).json({ error: "This job is not open for confirmations" });
+    return;
+  }
+
+  if ((job as any).status === "locked" || (job as any).selected_freelancer_id) {
+    res.status(400).json({ error: "This job has already been assigned" });
+    return;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("job_confirmations")
+    .upsert({ job_id: jobId, freelancer_id: user.id, status: "available" });
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.json({ ok: true });
+});
+
+// POST /:jobId/freelancer-decline-open — Freelancer declines an open request (persisted)
+jobsRouter.post("/:jobId/freelancer-decline-open", async (req: Request, res: Response): Promise<void> => {
+  const user = (req as AuthenticatedRequest).user;
+  const { jobId } = req.params;
+
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
+  const { data: job, error: jobErr } = await supabaseAdmin
+    .from("job_requests")
+    .select("id, status, selected_freelancer_id, community_post_id")
+    .eq("id", jobId)
+    .single();
+
+  if (jobErr || !job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  if ((job as any).community_post_id) {
+    res.status(400).json({ error: "Not an open request" });
+    return;
+  }
+
+  if ((job as any).status === "locked" || (job as any).selected_freelancer_id) {
+    res.status(400).json({ error: "This job has already been assigned" });
+    return;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("job_confirmations")
+    .upsert({ job_id: jobId, freelancer_id: user.id, status: "declined" });
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.json({ ok: true });
+});
+
+// POST /:jobId/freelancer-decline — Freelancer declines an invitation (persisted)
+jobsRouter.post("/:jobId/freelancer-decline", async (req: Request, res: Response): Promise<void> => {
+  const user = (req as AuthenticatedRequest).user;
+  const { jobId } = req.params;
+
+  if (!z.string().uuid().safeParse(jobId).success) {
+    res.status(400).json({ error: "Invalid job id" });
+    return;
+  }
+
+  const schema = z.object({ notifId: z.string().uuid() });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(parsed.error);
+    return;
+  }
+  const { notifId } = parsed.data;
+
+  // SECURITY: verify this freelancer was actually invited via this notification
+  const { data: notification, error: notifErr } = await supabaseAdmin
+    .from("job_candidate_notifications")
+    .select("id, status")
+    .eq("id", notifId)
+    .eq("job_id", jobId)
+    .eq("freelancer_id", user.id)
+    .maybeSingle();
+
+  if (notifErr) {
+    res.status(500).json({ error: notifErr.message });
+    return;
+  }
+  if (!notification) {
+    res.status(403).json({ error: "You were not invited to this job" });
+    return;
+  }
+
+  // INTEGRITY: cannot decline once assigned
+  const { data: job, error: jobErr } = await supabaseAdmin
+    .from("job_requests")
+    .select("id, status, selected_freelancer_id")
+    .eq("id", jobId)
+    .single();
+
+  if (jobErr || !job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  if ((job as any).status === "locked" || (job as any).selected_freelancer_id) {
+    res.status(400).json({ error: "This job has already been assigned" });
+    return;
+  }
+
+  // Persist a declined confirmation for auditability
+  const { error: confErr } = await supabaseAdmin
+    .from("job_confirmations")
+    .upsert({ job_id: jobId, freelancer_id: user.id, status: "declined" });
+
+  if (confErr) {
+    res.status(500).json({ error: confErr.message });
+    return;
+  }
+
+  // Remove from active inbox without deleting the record
+  const { error: updErr } = await supabaseAdmin
+    .from("job_candidate_notifications")
+    .update({ status: "withdrawn" })
+    .eq("id", notifId)
+    .eq("job_id", jobId)
+    .eq("freelancer_id", user.id)
+    .in("status", ["pending", "opened"]); // atomic guard
+
+  if (updErr) {
+    res.status(500).json({ error: updErr.message });
+    return;
+  }
+
+  res.json({ ok: true });
+});
+
 // POST /:jobId/accept-open-job — Freelancer accepts an open (expired-window) job
 jobsRouter.post("/:jobId/accept-open-job", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;

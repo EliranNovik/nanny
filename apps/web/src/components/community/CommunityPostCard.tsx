@@ -240,7 +240,9 @@ export function CommunityPostCard({
         id={compact ? undefined : `community-post-${post.id}`}
         {...(compact ? { "data-job-card": true as const } : {})}
         className={cn(
-          plain
+          // `plain` is used on Discover/home where the card should sit on the page background.
+          // For the public feed (plain + iconOnlyActions), we still want a real "white box" surface.
+          plain && !publicFeedCard
             ? "border-0 bg-transparent shadow-none dark:bg-transparent"
             : "overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/5 dark:bg-zinc-900",
           compact &&

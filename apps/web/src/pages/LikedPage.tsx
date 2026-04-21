@@ -86,6 +86,10 @@ function mapProfileRowFromDb(p: Record<string, unknown>): ProfileRow {
 
 export default function LikedPage() {
   useMobileShellScrollCollapse(true);
+  return <SavedContent dataLikedPage />;
+}
+
+export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -469,7 +473,7 @@ export default function LikedPage() {
   return (
     <div
       className="relative min-h-screen bg-background pb-6 md:pb-8"
-      data-liked-page=""
+      data-liked-page={dataLikedPage ? "" : undefined}
     >
       {showSavedTabs && (
         <div

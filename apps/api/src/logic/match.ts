@@ -21,6 +21,18 @@ interface FreelancerProfile {
   hourly_rate_min: number | null;
   hourly_rate_max: number | null;
   languages: string[];
+  available_now?: boolean;
+  live_until?: string | null;
+}
+
+function isFreelancerLiveForMatch(fp: FreelancerProfile): boolean {
+  const until = fp.live_until;
+  if (until != null && String(until).trim() !== "") {
+    const t = new Date(until).getTime();
+    if (Number.isNaN(t)) return fp.available_now === true;
+    return t > Date.now();
+  }
+  return fp.available_now === true;
 }
 
 interface ProfileWithFreelancer {
@@ -39,7 +51,6 @@ export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
     .select("id, city, role, is_available_for_jobs, categories, freelancer_profiles!inner(*)")
     .or("role.eq.freelancer,is_available_for_jobs.eq.true")
     .eq("city", job.location_city)
-    .eq("freelancer_profiles.available_now", true)
     .limit(limit);
 
   if (error) throw error;
@@ -52,6 +63,10 @@ export async function findCandidates(job: Job, limit = 30): Promise<string[]> {
 
     if (!fp) {
       console.log("[Match] Skipping", row.id, "- no freelancer_profiles");
+      return false;
+    }
+
+    if (!isFreelancerLiveForMatch(fp)) {
       return false;
     }
 

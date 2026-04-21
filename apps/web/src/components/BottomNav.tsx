@@ -24,6 +24,7 @@ import {
   LogOut,
   Pencil,
   Search,
+  Plus,
   X,
   Menu,
   ClipboardList,
@@ -37,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationsModal } from "@/components/NotificationsModal";
+import { LiveTimer } from "@/components/LiveTimer";
 import {
   Dialog,
   DialogClose,
@@ -55,9 +57,10 @@ import { CommunityPostsCategoryNativeSelect } from "@/components/community/Commu
 import { ALL_HELP_CATEGORY_ID } from "@/lib/serviceCategories";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import {
-  BottomNavHeartIcon,
   BottomNavHomeIcon,
 } from "@/components/nav/BottomNavTabGlyphs";
+import { supabase } from "@/lib/supabase";
+import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 
 /** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
 function bottomNavTabIconClass(isActive: boolean) {
@@ -95,8 +98,14 @@ export function BottomNav() {
   const mobileSearchClusterRef = useRef<HTMLDivElement>(null);
   const [appMenuHelpOthersOpen, setAppMenuHelpOthersOpen] = useState(false);
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
   const { openReportModal } = useReportIssue();
   const previousPathnameRef = useRef(location.pathname);
+  const viewerId = profile?.id ?? null;
+  const [freelancerLiveUntil, setFreelancerLiveUntil] = useState<string | null>(
+    null,
+  );
   const profilePath =
     profile?.role === "freelancer"
       ? "/freelancer/profile"
@@ -145,10 +154,16 @@ export function BottomNav() {
         : "/client/profile"
       : null;
   const showProfileBack = profileBackTarget !== null;
+  /** Find helpers: hide app header strips (mobile + desktop) — page is full-bleed */
+  const isHelpersFindPage = pathnameNorm === "/client/helpers";
+  /** Find jobs match: full-bleed search chrome — hide floating mobile header row */
+  const isFreelancerJobsMatch = pathnameNorm === "/freelancer/jobs/match";
   /** Create job + post availability: own hero — hide floating mobile header row */
   const hideMobileAppHeaderChrome =
     pathnameNorm === "/client/create" ||
-    pathnameNorm === "/availability/post-now";
+    pathnameNorm === "/availability/post-now" ||
+    isHelpersFindPage ||
+    isFreelancerJobsMatch;
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
     pathnameNorm === "/availability" ||
@@ -203,6 +218,51 @@ export function BottomNav() {
     }
     navigate(headerBackHomeFallback);
   };
+
+  useEffect(() => {
+    if (previousPathnameRef.current !== location.pathname) {
+      setPlusMenuOpen(false);
+      previousPathnameRef.current = location.pathname;
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    function onDocPointerDown(e: PointerEvent) {
+      if (!plusMenuOpen) return;
+      const el = plusMenuRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setPlusMenuOpen(false);
+    }
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+  }, [plusMenuOpen]);
+
+  useEffect(() => {
+    if (!viewerId) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("freelancer_profiles")
+        .select("live_until")
+        .eq("user_id", viewerId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.warn("[BottomNav] live_until:", error);
+        setFreelancerLiveUntil(null);
+        return;
+      }
+      setFreelancerLiveUntil(data?.live_until ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewerId]);
+
+  const isLiveNow =
+    profile?.role === "freelancer" &&
+    isFreelancerInActive24hLiveWindow({ live_until: freelancerLiveUntil });
 
   const discoverLocationPersonalPath = pathnameNorm.startsWith("/freelancer")
     ? "/freelancer/profile/personal"
@@ -997,15 +1057,7 @@ export function BottomNav() {
     const profileTabPath = isFreelancer
       ? "/freelancer/profile"
       : "/client/profile";
-    const userNav = [
-      {
-        path: isFreelancer ? "/freelancer/home" : "/client/home",
-        label: "Home",
-      },
-      { path: "/liked", label: "Liked" },
-      // { path: "/jobs", icon: Briefcase, label: "Jobs" }, // hidden for now — re-add Briefcase import when restoring
-      { path: "/messages", icon: MessageCircle, label: "Inbox" },
-    ];
+    const homePath = isFreelancer ? "/freelancer/home" : "/client/home";
 
     const explorePath = isFreelancer
       ? "/freelancer/explore"
@@ -1014,7 +1066,7 @@ export function BottomNav() {
 
     return (
       <>
-        {DesktopHeader}
+        {!isHelpersFindPage ? DesktopHeader : null}
         {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
@@ -1026,60 +1078,33 @@ export function BottomNav() {
             )}
           >
             <div className="mx-0 flex w-full max-w-none items-center justify-evenly overflow-visible px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12">
-              {/* Home + Liked */}
-              {userNav.slice(0, 2).map((item) => {
-                const isActive =
-                  item.path === "/liked"
-                    ? location.pathname.startsWith("/liked")
-                    : location.pathname.startsWith(item.path);
-
-                const jobsBadgeCount =
-                  item.path === "/jobs"
-                    ? scheduleChanges + activityInboxCount
-                    : 0;
-
+              {/* Home */}
+              {(() => {
+                const isActive = location.pathname.startsWith(homePath);
                 return (
                   <Link
-                    key={item.path}
-                    to={item.path}
+                    to={homePath}
                     className={cn(
                       "group flex flex-col items-center justify-center p-1 transition-all relative",
                       isActive
                         ? "text-zinc-950 dark:text-white"
                         : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
                     )}
+                    aria-current={isActive ? "page" : undefined}
                   >
-                    <div
-                      data-nav-liked-anchor={
-                        item.path === "/liked" ? "" : undefined
-                      }
-                      className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]"
-                    >
-                      {item.path === "/liked" ? (
-                        <BottomNavHeartIcon active={isActive} />
-                      ) : (
-                        <BottomNavHomeIcon active={isActive} />
-                      )}
-                      {jobsBadgeCount > 0 && (
-                        <Badge
-                          variant="destructive"
-                          className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 sm:h-7 sm:min-w-7 sm:px-1.5 sm:text-xs"
-                        >
-                          {jobsBadgeCount > 9 ? "9+" : jobsBadgeCount}
-                        </Badge>
-                      )}
+                    <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
+                      <BottomNavHomeIcon active={isActive} />
                     </div>
-                    <span className={bottomNavTabLabelClass}>{item.label}</span>
+                    <span className={bottomNavTabLabelClass}>Home</span>
                   </Link>
                 );
-              })}
+              })()}
 
-              {/* Center — Explore */}
+              {/* Explore (moved into old Liked slot) */}
               <Link
                 to={explorePath}
                 className={cn(
-                  "relative z-10 mx-0.5 flex shrink-0 flex-col items-center justify-center p-1 md:mx-2",
-                  "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30 rounded-xl",
+                  "group flex flex-col items-center justify-center p-1 transition-all relative",
                   isExploreActive
                     ? "text-zinc-950 dark:text-white"
                     : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
@@ -1096,30 +1121,110 @@ export function BottomNav() {
                 <span className={bottomNavTabLabelClass}>Explore</span>
               </Link>
 
-              {/* Messages (Jobs tab commented out in userNav for now) */}
-              {userNav.slice(2, 3).map((item) => {
-                const Icon =
-                  "icon" in item && item.icon ? item.icon : MessageCircle;
-                const isActive = location.pathname.startsWith(item.path);
-                const inboxBadgeCount = unreadMessages;
-                const showMessageBadge =
-                  item.path === "/messages" && inboxBadgeCount > 0;
+              {/* Center — + dropdown */}
+              <div ref={plusMenuRef} className="relative z-20 flex flex-col items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => setPlusMenuOpen((v) => !v)}
+                  className={cn(
+                    "group flex flex-col items-center justify-center p-1 transition-all relative",
+                    "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30 rounded-xl",
+                    plusMenuOpen
+                      ? "text-zinc-950 dark:text-white"
+                      : "text-zinc-950/70 hover:text-zinc-950 dark:text-white/75 dark:hover:text-white",
+                  )}
+                  aria-expanded={plusMenuOpen}
+                  aria-label="Open quick actions"
+                >
+                  <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
+                    <div
+                      className={cn(
+                        "flex h-11 w-11 items-center justify-center rounded-full",
+                        "bg-orange-600 text-white ring-1 ring-inset ring-white/20",
+                        "transition-[transform,filter] duration-200 ease-out",
+                        "group-hover:brightness-110 group-active:scale-[0.98]",
+                        plusMenuOpen && "brightness-110",
+                      )}
+                    >
+                      <Plus className="h-6 w-6" strokeWidth={2.75} aria-hidden />
+                    </div>
+                  </div>
+                  <span className={bottomNavTabLabelClass}>New</span>
+                </button>
 
+                {plusMenuOpen ? (
+                  <div
+                    role="menu"
+                    className={cn(
+                      "absolute bottom-[68px] left-1/2 -translate-x-1/2",
+                      "w-[14.5rem] overflow-hidden rounded-2xl border shadow-xl",
+                      "border-white/15 bg-black/55 text-white backdrop-blur-2xl ring-1 ring-inset ring-white/10",
+                      "dark:border-white/20 dark:bg-zinc-950/55 dark:ring-white/10",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-white/10 active:bg-white/15"
+                      onClick={() => {
+                        setPlusMenuOpen(false);
+                        navigate("/client/create");
+                      }}
+                    >
+                      <ClipboardList className="h-5 w-5 shrink-0 text-white/90" aria-hidden />
+                      <span>Start request</span>
+                    </button>
+                    <div className="h-px w-full bg-white/10" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={isLiveNow}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold",
+                        isLiveNow
+                          ? "opacity-60 cursor-not-allowed"
+                          : "hover:bg-white/10 active:bg-white/15",
+                      )}
+                      onClick={() => {
+                        if (isLiveNow) return;
+                        setPlusMenuOpen(false);
+                        navigate("/availability/post-now");
+                      }}
+                    >
+                      <UsersRound className="h-5 w-5 shrink-0 text-white/90" aria-hidden />
+                      <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                        <span>Go live</span>
+                        {isLiveNow && freelancerLiveUntil ? (
+                          <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-bold tabular-nums">
+                            <LiveTimer createdAt={freelancerLiveUntil} />
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Messages */}
+              {(() => {
+                const isActive = location.pathname.startsWith("/messages");
+                const inboxBadgeCount = unreadMessages;
+                const showMessageBadge = inboxBadgeCount > 0;
                 return (
                   <Link
-                    key={item.path}
-                    to={item.path}
+                    to="/messages"
                     className={cn(
                       "group flex flex-col items-center justify-center p-1 transition-all relative",
                       isActive
                         ? "text-zinc-950 dark:text-white"
                         : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
                     )}
+                    aria-current={isActive ? "page" : undefined}
                   >
                     <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
-                      <Icon className={bottomNavTabIconClass(isActive)} />
+                      <MessageCircle className={bottomNavTabIconClass(isActive)} />
                     </div>
-                    <span className={bottomNavTabLabelClass}>{item.label}</span>
+                    <span className={bottomNavTabLabelClass}>Inbox</span>
 
                     {showMessageBadge && (
                       <Badge
@@ -1131,7 +1236,7 @@ export function BottomNav() {
                     )}
                   </Link>
                 );
-              })}
+              })()}
 
               {/* Profile: mobile = avatar opens menu; desktop = user icon link */}
               {(() => {

@@ -37,18 +37,20 @@ import ContactPage from "@/pages/ContactPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
-import FreelancerAvailabilityLivePage from "@/pages/freelancer/FreelancerAvailabilityLivePage";
+import FreelancerAvailabilityLivePage from "./pages/freelancer/FreelancerAvailabilityLivePage";
 import DashboardPage from "@/pages/client/DashboardPage";
 import ClientHomePage from "@/pages/client/ClientHomePage";
 import HelpersPage from "@/pages/client/HelpersPage";
 import HelpersMatchPage from "@/pages/client/HelpersMatchPage";
 import ExplorePage from "@/pages/explore/ExplorePage";
 import FreelancerJobsMatchPage from "@/pages/freelancer/FreelancerJobsMatchPage";
+import LikedRedirectPage from "@/pages/LikedRedirectPage";
 import ClientProfileLayout from "@/pages/client/profile/ClientProfileLayout";
 import ClientProfileHub from "@/pages/client/profile/ClientProfileHub";
 import ClientProfilePersonalPage from "@/pages/client/profile/ClientProfilePersonalPage";
 import ClientProfileServicesPage from "@/pages/client/profile/ClientProfileServicesPage";
 import ClientProfileAppearancePage from "@/pages/client/profile/ClientProfileAppearancePage";
+import ClientProfileSavedPage from "@/pages/client/profile/ClientProfileSavedPage";
 import PublicProfileMediaManagePage from "@/pages/profile/PublicProfileMediaManagePage";
 import MessagesPage from "@/pages/MessagesPage";
 import FreelancerProfileLayout from "@/pages/freelancer/profile/FreelancerProfileLayout";
@@ -61,6 +63,7 @@ import FreelancerProfileLanguagesPage from "@/pages/freelancer/profile/Freelance
 import FreelancerProfileExperiencePage from "@/pages/freelancer/profile/FreelancerProfileExperiencePage";
 import FreelancerProfileRatesPage from "@/pages/freelancer/profile/FreelancerProfileRatesPage";
 import FreelancerProfileAppearancePage from "@/pages/freelancer/profile/FreelancerProfileAppearancePage";
+import FreelancerProfileSavedPage from "@/pages/freelancer/profile/FreelancerProfileSavedPage";
 import FreelancerDashboardPage from "@/pages/freelancer/DashboardPage";
 import FreelancerHomePage from "@/pages/freelancer/FreelancerHomePage";
 import UnifiedJobsPage from "@/pages/jobs/UnifiedJobsPage";
@@ -68,7 +71,6 @@ import CommunityPostsPage from "@/pages/CommunityPostsPage";
 import PostAvailabilityNowPage from "@/pages/PostAvailabilityNowPage";
 import CommunityPostHireInterestsPage from "@/pages/CommunityPostHireInterestsPage";
 import PublicCommunityPostsPage from "@/pages/PublicCommunityPostsPage";
-import LikedPage from "@/pages/LikedPage";
 import ChatPage from "@/pages/ChatPage";
 import CalendarPage from "@/pages/CalendarPage";
 import AdminPage from "@/pages/admin/AdminPage";
@@ -313,7 +315,7 @@ function AppRoutes() {
           path="/liked"
           element={
             <ProtectedRoute>
-              <LikedPage />
+              <LikedRedirectPage />
             </ProtectedRoute>
           }
         />
@@ -342,6 +344,7 @@ function AppRoutes() {
           }
         >
           <Route index element={<ClientProfileHub />} />
+          <Route path="saved" element={<ClientProfileSavedPage />} />
           <Route path="gallery" element={<PublicProfileMediaManagePage />} />
           <Route path="personal" element={<ClientProfilePersonalPage />} />
           <Route path="services" element={<ClientProfileServicesPage />} />
@@ -382,6 +385,7 @@ function AppRoutes() {
           }
         >
           <Route index element={<FreelancerProfileHub />} />
+          <Route path="saved" element={<FreelancerProfileSavedPage />} />
           <Route path="gallery" element={<PublicProfileMediaManagePage />} />
           <Route path="personal" element={<FreelancerProfilePersonalPage />} />
           <Route

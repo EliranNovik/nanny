@@ -26,8 +26,10 @@ type ProfileKnockMenuProps = {
   viewerName: string | null;
   disabled?: boolean;
   className?: string;
-  /** hero = cover image; inline = compact; contact = same size as public profile chat/WA/TG row */
-  variant?: "hero" | "inline" | "contact";
+  /** hero = cover image; inline = compact; contact = same size as public profile chat/WA/TG row; glass = frosted black pill (e.g. Find helpers cards) */
+  variant?: "hero" | "inline" | "contact" | "glass";
+  /** When `up`, menu opens above the button (avoids overflow clip at bottom of cards). */
+  dropdownOpens?: "up" | "down";
 };
 
 export function ProfileKnockMenu({
@@ -40,6 +42,7 @@ export function ProfileKnockMenu({
   disabled = false,
   className,
   variant = "inline",
+  dropdownOpens = "down",
 }: ProfileKnockMenuProps) {
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -109,7 +112,9 @@ export function ProfileKnockMenu({
       ? "h-14 w-14 rounded-full border-2 border-white/90 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg dark:border-zinc-900"
       : variant === "contact"
         ? "h-12 w-12 shrink-0 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
-        : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
+        : variant === "glass"
+          ? "h-10 w-10 shrink-0 rounded-full bg-black/30 text-white shadow-lg backdrop-blur-2xl transition-colors hover:bg-black/40"
+          : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -139,7 +144,7 @@ export function ProfileKnockMenu({
             className={
               variant === "hero"
                 ? "h-7 w-7"
-                : variant === "contact"
+                : variant === "contact" || variant === "glass"
                   ? "h-5 w-5"
                   : "h-6 w-6"
             }
@@ -151,7 +156,12 @@ export function ProfileKnockMenu({
 
       {open && !sending && (
         <div
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-[80] min-w-[12rem] overflow-hidden rounded-2xl border border-border/80 bg-card py-1.5 text-left shadow-xl"
+          className={cn(
+            "absolute right-0 z-[80] min-w-[12rem] overflow-hidden rounded-2xl border border-border/80 bg-card py-1.5 text-left shadow-xl",
+            dropdownOpens === "up"
+              ? "bottom-[calc(100%+0.35rem)] top-auto"
+              : "top-[calc(100%+0.35rem)]",
+          )}
           role="menu"
         >
           <p className="text-center px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

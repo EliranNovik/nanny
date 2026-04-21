@@ -1,59 +1,54 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
+import { supabase } from "@/lib/supabase";
+import { apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Banknote,
-  Calendar,
   Loader2,
-  MapPin,
   Navigation,
-  StickyNote,
+  Radar,
+  Search,
 } from "lucide-react";
-import { SwipeDecisionLayer } from "@/components/discover/SwipeDecisionLayer";
-import { SERVICE_CATEGORIES, serviceCategoryLabel } from "@/lib/serviceCategories";
+import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { isServiceCategoryId } from "@/lib/serviceCategories";
 import {
   getLastCategory,
   setLastCategory,
-  hasProfileCoords,
 } from "@/lib/discoverMatchPreferences";
-import { findOrCreateJobConversation } from "@/lib/findOrCreateJobConversation";
-import { insertMatchIntroMessage } from "@/lib/matchIntroMessage";
-import { trackEvent } from "@/lib/analytics";
 import { useToast } from "@/components/ui/toast";
-import { matchSwipeCardShell, matchSwipeSectionLabel } from "@/components/discover/matchSwipeCardStyles";
+import {
+  OpenJobRequestMatchCard,
+  type OpenJobRequestMatchRow,
+} from "@/components/jobs/OpenJobRequestMatchCard";
+import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
+import {
+  GOOGLE_MAPS_LIBRARIES,
+  GOOGLE_MAPS_SCRIPT_ID,
+} from "@/lib/googleMapsLoader";
 
-type JobRow = {
-  id: string;
-  notifId: string;
-  job: {
-    id: string;
-    client_id: string;
-    service_type?: string;
-    location_city?: string;
-    created_at?: string;
-    shift_hours?: string | null;
-    time_duration?: string | null;
-    notes?: string | null;
-    requirements?: string | null;
-    start_at?: string | null;
-    service_details?: string | null;
-    budget_min?: number | null;
-    budget_max?: number | null;
-    profiles?: { full_name?: string | null; photo_url?: string | null };
-  };
+function canActAsHelper(p: { role?: string; is_available_for_jobs?: boolean } | null | undefined) {
+  if (!p?.role) return false;
+  if (p.role === "freelancer") return true;
+  if (p.role === "client" && p.is_available_for_jobs === true) return true;
+  return false;
+}
+
+const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
+const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
+const SEARCH_CIRCLE_STYLE: google.maps.CircleOptions = {
+  fillColor: "#10b981",
+  fillOpacity: 0.18,
+  strokeColor: "#059669",
+  strokeOpacity: 1,
+  strokeWeight: 3,
+  clickable: false,
+  zIndex: 1,
 };
 
 const R_MIN = 5;
@@ -64,116 +59,287 @@ function formatJobTitle(serviceType?: string) {
   return s ? s.slice(0, 1).toUpperCase() + s.slice(1) : "Request";
 }
 
-/** job_requests text columns may be non-strings from PostgREST (json / numbers). */
-function safeJobTrim(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string") return v.trim();
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  return "";
+type JobRequestsMapBlockProps = {
+  center: { lat: number; lng: number };
+  radiusKm: number;
+  hasSearched: boolean;
+  results: OpenJobRequestMatchRow[];
+  isLoaded: boolean;
+  loadError: Error | undefined;
+  mapsApiKey: string;
+  onMapClick: (e: google.maps.MapMouseEvent) => void;
+};
+
+function JobRequestsMapBlock({
+  center,
+  radiusKm,
+  hasSearched,
+  results,
+  isLoaded,
+  loadError,
+  mapsApiKey,
+  onMapClick,
+}: JobRequestsMapBlockProps) {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const searchCircleRef = useRef<google.maps.Circle | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    let circle = searchCircleRef.current;
+    if (!circle) {
+      circle = new google.maps.Circle({
+        ...SEARCH_CIRCLE_STYLE,
+        map,
+        center,
+        radius: radiusKm * 1000,
+      });
+      searchCircleRef.current = circle;
+    } else {
+      circle.setCenter(center);
+      circle.setRadius(radiusKm * 1000);
+      circle.setMap(map);
+    }
+
+    const bounds = circle.getBounds();
+    if (bounds) map.fitBounds(bounds, 48);
+  }, [mapReady, center.lat, center.lng, radiusKm]);
+
+  useEffect(() => {
+    return () => {
+      searchCircleRef.current?.setMap(null);
+      searchCircleRef.current = null;
+    };
+  }, []);
+
+  if (loadError || !mapsApiKey) {
+    return (
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
+        Map unavailable. Set VITE_GOOGLE_MAPS_API_KEY to show the map.
+      </div>
+    );
+  }
+  if (!isLoaded) {
+    return (
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-muted/30">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <GoogleMap
+      mapContainerStyle={MAP_CONTAINER_STYLE}
+      center={center}
+      zoom={11}
+      onLoad={(map) => {
+        mapRef.current = map;
+        setMapReady(true);
+      }}
+      onUnmount={() => {
+        searchCircleRef.current?.setMap(null);
+        searchCircleRef.current = null;
+        mapRef.current = null;
+        setMapReady(false);
+      }}
+      onClick={onMapClick}
+      options={{
+        fullscreenControl: true,
+        streetViewControl: false,
+        mapTypeControl: false,
+        clickableIcons: false,
+      }}
+    >
+      <Marker
+        position={center}
+        title="Search center"
+        icon={{
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: "#10b981",
+          fillOpacity: 1,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+        }}
+      />
+      {hasSearched &&
+        results.map((r) => {
+          const lat = Number(r.location_lat);
+          const lng = Number(r.location_lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+          return (
+            <Marker
+              key={r.id}
+              position={{ lat, lng }}
+              title={r.location_city || "Request"}
+            />
+          );
+        })}
+    </GoogleMap>
+  );
 }
 
 export default function FreelancerJobsMatchPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { addToast } = useToast();
-  const { data: frData, isLoading: frLoading } = useFreelancerRequests(user?.id);
+  const allowedToAct = canActAsHelper(profile);
+  const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: mapsApiKey,
+    id: GOOGLE_MAPS_SCRIPT_ID,
+    libraries: GOOGLE_MAPS_LIBRARIES,
+  });
 
-  const [gateCategory, setGateCategory] = useState<ServiceCategoryId | "">(
-    () => getLastCategory("work") ?? "",
-  );
-  const [gateRadius, setGateRadius] = useState(25);
+  const [selectedCategories, setSelectedCategories] = useState<
+    Set<ServiceCategoryId>
+  >(() => {
+    const last = getLastCategory("work");
+    return last && isServiceCategoryId(last) ? new Set([last]) : new Set();
+  });
+  const [center, setCenter] = useState<{ lat: number; lng: number }>(() => {
+    const lat =
+      profile?.location_lat != null ? Number(profile.location_lat) : NaN;
+    const lng =
+      profile?.location_lng != null ? Number(profile.location_lng) : NaN;
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+    return DEFAULT_CENTER;
+  });
+  const [radiusKm, setRadiusKm] = useState(25);
+  const [searchQuery, setSearchQuery] = useState("");
   const [locating, setLocating] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<OpenJobRequestMatchRow[]>([]);
+  const [galleryByUserId, setGalleryByUserId] = useState<
+    Record<string, PublicProfileGalleryRow[]>
+  >({});
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchChromeCollapsed, setSearchChromeCollapsed] = useState(false);
+  const resultsAnchorRef = useRef<HTMLDivElement>(null);
 
-  const category = searchParams.get("category");
-  const latS = searchParams.get("lat");
-  const lngS = searchParams.get("lng");
-
-  const activeParams = useMemo(() => {
-    if (!category || !latS || !lngS) return null;
-    if (!isServiceCategoryId(category)) return null;
-    const lat = Number(latS);
-    const lng = Number(lngS);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return { category, lat, lng };
-  }, [category, latS, lngS]);
-
-  const stack = useMemo(() => {
-    if (!activeParams || !frData?.inboundNotifications) return [];
-    const cat = activeParams.category;
-    const rows: JobRow[] = [];
-    for (const n of frData.inboundNotifications as any[]) {
-      const jr = n.job_requests;
-      if (!jr?.id || jr.community_post_id) continue;
-      if (jr.service_type && jr.service_type !== cat) continue;
-      rows.push({
-        id: jr.id,
-        notifId: n.id,
-        job: {
-          id: jr.id,
-          client_id: jr.client_id,
-          service_type: jr.service_type,
-          location_city: jr.location_city,
-          created_at: jr.created_at,
-          shift_hours: jr.shift_hours ?? null,
-          time_duration: jr.time_duration ?? null,
-          notes: jr.notes ?? null,
-          requirements: jr.requirements ?? null,
-          start_at: jr.start_at ?? null,
-          service_details: jr.service_details ?? null,
-          budget_min: jr.budget_min ?? null,
-          budget_max: jr.budget_max ?? null,
-          profiles: jr.profiles,
-        },
-      });
-    }
-    rows.sort((a, b) => {
-      const ta = new Date(a.job.created_at || 0).getTime();
-      const tb = new Date(b.job.created_at || 0).getTime();
-      return tb - ta;
+  const filteredRows = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => {
+      const city = (r.location_city || "").toLowerCase();
+      const name = (r.client_display_name || "").toLowerCase();
+      return city.includes(q) || name.includes(q);
     });
-    return rows;
-  }, [activeParams, frData]);
+  }, [rows, searchQuery]);
 
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    setIdx(0);
-  }, [activeParams, stack.length]);
+  const showSearchChrome = !hasSearched || !searchChromeCollapsed;
 
-  const current = stack[idx] ?? null;
+  const toggleCategory = useCallback((id: ServiceCategoryId) => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
-  function applyGate() {
-    if (!gateCategory || !profile || !hasProfileCoords(profile)) {
-      addToast({
-        title: "Location needed",
-        description: "Set your location in profile first.",
-        variant: "default",
-      });
+  const renderSearchRequestsButton = () => (
+    <Button
+      type="button"
+      size="lg"
+      disabled={loading || selectedCategories.size === 0}
+      onClick={() => void runSearch()}
+      className="h-14 w-full rounded-2xl text-base font-black shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+    >
+      {loading ? (
+        <>
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Searching…
+        </>
+      ) : (
+        <>
+          <Radar className="mr-2 h-5 w-5" />
+          Search requests
+        </>
+      )}
+    </Button>
+  );
+
+  const runSearch = useCallback(async () => {
+    if (!user?.id) return;
+    if (selectedCategories.size === 0) {
+      addToast({ title: "Pick at least one category", variant: "default" });
       return;
     }
-    setLastCategory("work", gateCategory);
-    const lat = Number(profile.location_lat);
-    const lng = Number(profile.location_lng);
-    const p = new URLSearchParams();
-    p.set("category", gateCategory);
-    p.set("lat", String(lat));
-    p.set("lng", String(lng));
-    p.set("radius", String(gateRadius));
-    setSearchParams(p, { replace: true });
-    trackEvent("jobs_match_gate", { category: gateCategory });
-  }
+    setLastCategory("work", [...selectedCategories][0] ?? "other_help");
+    setLoading(true);
+    try {
+      const filters = [...selectedCategories];
+      const { data, error } = await supabase.rpc("get_job_requests_near_location", {
+        search_lat: center.lat,
+        search_lng: center.lng,
+        radius_km: radiusKm,
+        service_filters: filters,
+        viewer_id: user.id,
+        p_limit: 200,
+      });
+      if (error) throw error;
+      // Safety: never show the viewer's own requests, even if RPC hasn't been redeployed yet.
+      const fetched = (data ?? []) as OpenJobRequestMatchRow[];
+      setRows(fetched.filter((r) => r.client_id !== user.id));
+      // Fetch media for clients (profile photo + gallery)
+      const clientIds = Array.from(
+        new Set(fetched.map((r) => r.client_id).filter((id) => id !== user.id)),
+      ).filter(Boolean);
+      if (clientIds.length > 0) {
+        const { data: mediaRows, error: mediaErr } = await supabase
+          .from("public_profile_media")
+          .select("id, user_id, media_type, storage_path, sort_order, created_at")
+          .in("user_id", clientIds);
+        if (!mediaErr) {
+          const by: Record<string, PublicProfileGalleryRow[]> = {};
+          for (const id of clientIds) by[id] = [];
+          for (const row of (mediaRows ?? []) as PublicProfileGalleryRow[]) {
+            const uid = row.user_id;
+            if (!by[uid]) by[uid] = [];
+            by[uid].push(row);
+          }
+          for (const uid of clientIds) {
+            by[uid].sort(
+              (a, b) =>
+                a.sort_order - b.sort_order ||
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            );
+          }
+          setGalleryByUserId(by);
+        }
+      }
+      setHasSearched(true);
+      setSearchChromeCollapsed(true);
+      const p = new URLSearchParams();
+      p.set("category", filters[0] ?? "other_help");
+      p.set("lat", String(center.lat));
+      p.set("lng", String(center.lng));
+      p.set("radius", String(radiusKm));
+      setSearchParams(p, { replace: true });
+      window.requestAnimationFrame(() => {
+        resultsAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } catch (e: unknown) {
+      addToast({
+        title: "Search failed",
+        description: e instanceof Error ? e.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, selectedCategories, center.lat, center.lng, radiusKm, addToast, setSearchParams]);
 
   function useMyLocation() {
     if (!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const p = new URLSearchParams(searchParams);
-        if (gateCategory) p.set("category", gateCategory);
-        p.set("lat", String(pos.coords.latitude));
-        p.set("lng", String(pos.coords.longitude));
-        p.set("radius", String(gateRadius));
-        setSearchParams(p, { replace: true });
+        setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocating(false);
       },
       () => setLocating(false),
@@ -181,300 +347,313 @@ export default function FreelancerJobsMatchPage() {
     );
   }
 
-  const onInstantMatch = useCallback(
-    async (row: JobRow) => {
-      if (!user?.id || profile?.role !== "freelancer") return;
-      trackEvent("instant_match_job", { jobId: row.id });
-      const job = row.job;
-      const clientId = job.client_id;
-      const freelancerId = user.id;
-      try {
-        const { conversationId, created } = await findOrCreateJobConversation({
-          jobId: job.id,
-          clientId,
-          freelancerId,
-        });
-        const catLabel = serviceCategoryLabel(
-          (job.service_type as ServiceCategoryId) || "other_help",
-        );
-        const loc = job.location_city?.trim() || "—";
-        const timeLabel = job.created_at
-          ? new Date(job.created_at).toLocaleString()
-          : new Date().toLocaleString();
-        if (created) {
-          await insertMatchIntroMessage({
-            conversationId,
-            senderId: user.id,
-            payload: {
-              kind: "job",
-              category: catLabel,
-              location: loc,
-              time: timeLabel,
-            },
-          });
-        }
-        const nav = new URLSearchParams();
-        nav.set("conversation", conversationId);
-        nav.set("mc", encodeURIComponent(catLabel));
-        nav.set("ml", encodeURIComponent(loc));
-        nav.set("mt", encodeURIComponent(timeLabel));
-        nav.set("mma", "1");
-        trackEvent("chat_open_match", { kind: "job" });
-        navigate(`/messages?${nav.toString()}`);
-      } catch (e: unknown) {
-        addToast({
-          title: "Could not open chat",
-          description: e instanceof Error ? e.message : "Try again.",
-          variant: "error",
-        });
+  const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
+    if (e.latLng) setCenter({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+  }, []);
+
+  const acceptJob = useCallback(
+    async (jobId: string, row: OpenJobRequestMatchRow) => {
+      if (!user?.id || !allowedToAct) {
+        throw new Error("Enable a helper profile to accept requests.");
       }
+      await apiPost(`/api/jobs/${jobId}/freelancer-confirm-open`, {});
+      addToast({
+        title: "Accepted",
+        description: `Waiting for ${(row.client_display_name || "the client").trim()}.`,
+        variant: "success",
+      });
+      // Mark card as accepted (keep it visible)
+      setRows((prev) =>
+        prev.map((r) => (r.id === jobId ? { ...r, __accepted: true } : r)),
+      );
     },
-    [user?.id, profile?.role, navigate, addToast],
+    [user?.id, allowedToAct, addToast],
   );
 
-  if (!activeParams) {
-    return (
-      <div className="min-h-screen bg-background pb-8">
-        <div className="app-desktop-shell max-w-md space-y-6 pt-8">
-          <h1 className="text-2xl font-black tracking-tight">Find jobs</h1>
-          <p className="text-sm text-muted-foreground">
-            Choose your service category and confirm location context.
-          </p>
-          <Card>
-            <CardContent className="space-y-4 p-5">
-              <Select
-                value={gateCategory || undefined}
-                onValueChange={(v) =>
-                  setGateCategory(isServiceCategoryId(v) ? v : "")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SERVICE_CATEGORIES.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">
-                  Prefer radius context: {gateRadius} km
-                </label>
-                <input
-                  type="range"
-                  min={R_MIN}
-                  max={R_MAX}
-                  step={5}
-                  value={gateRadius}
-                  onChange={(e) => setGateRadius(Number(e.target.value))}
-                  className="w-full accent-emerald-500"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full gap-2"
-                onClick={useMyLocation}
-                disabled={locating}
-              >
-                {locating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Navigation className="h-4 w-4" />
-                )}
-                Use my location
-              </Button>
-              <Button
-                type="button"
-                className="w-full"
-                disabled={!gateCategory || !hasProfileCoords(profile)}
-                onClick={applyGate}
-              >
-                Start
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (frLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
-      </div>
-    );
-  }
-
-  if (!frLoading && stack.length === 0) {
-    return (
-      <div className="app-desktop-shell max-w-md space-y-6 pt-10">
-        <h1 className="text-xl font-black">No requests in this category</h1>
-        <div className="flex flex-col gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setSearchParams(new URLSearchParams(), { replace: true })}
-          >
-            Change category
-          </Button>
-          <Button type="button" variant="ghost" asChild>
-            <Link to="/freelancer/explore">Go to Explore</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!current) {
-    return (
-      <div className="app-desktop-shell py-10 text-center">
-        <p className="text-muted-foreground">You&apos;re caught up.</p>
-        <Button className="mt-4" asChild variant="outline">
-          <Link to="/freelancer/explore">Explore</Link>
-        </Button>
-      </div>
-    );
-  }
-
-  const job = current.job;
-  const radiusS = searchParams.get("radius");
-  const radiusKm = radiusS ? Number(radiusS) : null;
-  const budgetLine =
-    job.budget_min != null &&
-    job.budget_max != null &&
-    job.budget_min <= job.budget_max
-      ? `₪${job.budget_min} – ₪${job.budget_max}`
-      : null;
-  const scheduleLine = (() => {
-    const parts: string[] = [];
-    if (job.start_at) {
-      try {
-        const d = new Date(job.start_at);
-        if (!Number.isNaN(d.getTime())) {
-          parts.push(
-            d.toLocaleString(undefined, {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          );
-        }
-      } catch {
-        /* ignore */
+  const declineJob = useCallback(
+    async (jobId: string) => {
+      if (!user?.id || !allowedToAct) {
+        throw new Error("Enable a helper profile to decline requests.");
       }
-    }
-    const sh = safeJobTrim(job.shift_hours);
-    const td = safeJobTrim(job.time_duration);
-    if (sh) parts.push(sh);
-    if (td) parts.push(td);
-    return parts.length ? parts.join(" · ") : null;
-  })();
+      await apiPost(`/api/jobs/${jobId}/freelancer-decline-open`, {});
+      setRows((prev) => prev.filter((r) => r.id !== jobId));
+    },
+    [user?.id, allowedToAct],
+  );
 
   return (
-    <div className="min-h-screen bg-background pb-10">
-      <div className="app-desktop-shell max-w-md pt-6">
-        <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
-          {serviceCategoryLabel(activeParams.category as ServiceCategoryId)}
-          {radiusKm != null && Number.isFinite(radiusKm)
-            ? ` · ${radiusKm} km`
-            : ""}
-        </p>
-        <SwipeDecisionLayer
-          onSwipeLeft={() => {
-            trackEvent("jobs_swipe", { dir: "left" });
-            setIdx((i) => i + 1);
-          }}
-          onSwipeRight={() => {
-            trackEvent("jobs_swipe", { dir: "right" });
-            void onInstantMatch(current);
-          }}
-          leftStamp="SKIP"
-          rightStamp="CHAT"
-        >
-          <div className={matchSwipeCardShell}>
-            <div className="flex gap-4 border-b border-slate-100 p-5 dark:border-zinc-800">
-              <div className="relative shrink-0">
-                <Avatar className="h-20 w-20 shadow-md ring-0">
-                  <AvatarImage
-                    src={job.profiles?.photo_url || undefined}
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="bg-gradient-to-br from-emerald-50 to-teal-50 text-2xl font-bold text-emerald-700 dark:from-zinc-800 dark:to-zinc-900 dark:text-emerald-300">
-                    {(job.profiles?.full_name || "C").charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <span
-                  className="absolute right-0.5 top-0.5 z-10 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900"
-                  aria-hidden
-                />
-              </div>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <p className="truncate text-lg font-bold leading-tight text-slate-900 dark:text-white">
-                  {job.profiles?.full_name || "Client"}
-                </p>
-                <p className="mt-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                  {formatJobTitle(job.service_type)}
-                </p>
-              </div>
+    <div
+      data-freelancer-jobs-match-no-app-header=""
+      className={cn(
+        "min-h-screen bg-background",
+        "max-md:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] md:pb-8",
+      )}
+    >
+      <div className={cn("app-desktop-shell space-y-8 pt-6 md:pt-8")}>
+        {showSearchChrome ? (
+          <div className="mx-auto w-full max-w-lg space-y-6 px-2 md:max-w-2xl">
+            <div className="text-center">
+              <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
+                Find people in need
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Browse open requests near your location.
+              </p>
             </div>
-            <div className="space-y-4 p-5">
-              <div>
-                <p className={matchSwipeSectionLabel}>Request details</p>
-                <div className="mt-2 space-y-2.5 text-sm text-slate-700 dark:text-zinc-200">
-                  <div className="flex gap-2">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>{job.location_city || "Location not set"}</span>
+
+            <Card>
+              <CardContent className="space-y-4 p-5">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 px-0.5">
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                      Categories
+                    </span>
+                    {selectedCategories.size > 0 ? (
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
+                        onClick={() => setSelectedCategories(new Set())}
+                      >
+                        Clear all
+                      </button>
+                    ) : null}
                   </div>
-                  {scheduleLine ? (
-                    <div className="flex gap-2">
-                      <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                      <span className="leading-snug">{scheduleLine}</span>
-                    </div>
-                  ) : null}
-                  {budgetLine ? (
-                    <div className="flex gap-2">
-                      <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                      <span>{budgetLine}</span>
-                    </div>
-                  ) : null}
-                  {safeJobTrim(job.service_details) ? (
-                    <p className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-sm leading-relaxed text-slate-800 shadow-sm dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-100">
-                      {safeJobTrim(job.service_details)}
-                    </p>
-                  ) : null}
-                  {safeJobTrim(job.requirements) ? (
-                    <div>
-                      <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
-                        Requirements
-                      </span>
-                      <p className="mt-1 leading-relaxed text-slate-700 dark:text-zinc-200">
-                        {safeJobTrim(job.requirements)}
-                      </p>
-                    </div>
-                  ) : null}
-                  {safeJobTrim(job.notes) ? (
-                    <div className="flex gap-2">
-                      <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-slate-500 dark:text-zinc-400" />
-                      <p className="leading-relaxed text-slate-600 dark:text-zinc-300">
-                        {safeJobTrim(job.notes)}
-                      </p>
-                    </div>
-                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    {SERVICE_CATEGORIES.map((cat) => {
+                      const on = selectedCategories.has(cat.id);
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => toggleCategory(cat.id)}
+                          aria-pressed={on}
+                          className={cn(
+                            "rounded-full border px-3 py-1.5 text-left text-xs font-semibold transition-colors",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2",
+                            on
+                              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 dark:border-white/10 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-emerald-900/50",
+                          )}
+                        >
+                          {cat.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                <div className="relative mx-auto w-full max-w-md">
+                  <div
+                    className={cn(
+                      "relative aspect-square w-full overflow-hidden rounded-2xl",
+                      "shadow-md shadow-black/10 dark:shadow-black/30",
+                    )}
+                  >
+                    <JobRequestsMapBlock
+                      center={center}
+                      radiusKm={radiusKm}
+                      hasSearched={hasSearched}
+                      results={filteredRows}
+                      isLoaded={isLoaded}
+                      loadError={loadError}
+                      mapsApiKey={mapsApiKey}
+                      onMapClick={onMapClick}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={useMyLocation}
+                      disabled={locating}
+                      aria-label="Use my location"
+                      className={cn(
+                        "absolute left-2.5 top-2.5 z-[12] flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-full border border-white/55",
+                        "bg-white/35 px-2.5 py-1.5 text-left shadow-sm backdrop-blur-xl",
+                        "text-[10px] font-bold uppercase leading-none tracking-[0.12em] text-slate-900",
+                        "ring-1 ring-inset ring-white/50 transition-colors",
+                        "hover:bg-white/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                        "disabled:pointer-events-none disabled:opacity-60",
+                      )}
+                    >
+                      {locating ? (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                      ) : (
+                        <Navigation className="h-3.5 w-3.5 shrink-0" />
+                      )}
+                      <span className="min-w-0 truncate">My location</span>
+                    </button>
+
+                    <div className="pointer-events-auto absolute inset-x-2.5 bottom-2.5 z-[12]">
+                      <div className="relative">
+                        <Search
+                          className="pointer-events-none absolute left-3 top-1/2 z-[2] h-4 w-4 -translate-y-1/2 text-slate-600/90 dark:text-slate-800/80"
+                          aria-hidden
+                        />
+                        <Input
+                          placeholder="City or name"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void runSearch();
+                            }
+                          }}
+                          aria-busy={loading}
+                          className={cn(
+                            "h-11 rounded-2xl border border-white/55 bg-white/35 pl-10 pr-3 text-[15px] text-slate-900 shadow-sm backdrop-blur-xl",
+                            "placeholder:text-slate-600/80 ring-1 ring-inset ring-white/50",
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">
+                    Prefer radius context: {radiusKm} km
+                  </label>
+                  <input
+                    type="range"
+                    min={R_MIN}
+                    max={R_MAX}
+                    step={5}
+                    value={radiusKm}
+                    onChange={(e) => setRadiusKm(Number(e.target.value))}
+                    className="w-full accent-emerald-500"
+                  />
+                </div>
+
+                {/* md+: primary CTA in flow. Mobile uses fixed dock below. */}
+                <div className="hidden md:block">{renderSearchRequestsButton()}</div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="max-md:hidden">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="h-14 w-full rounded-2xl text-base font-black"
+              onClick={() => setSearchChromeCollapsed(false)}
+            >
+              <Radar className="mr-2 h-5 w-5" />
+              Map & search
+            </Button>
+          </div>
+        )}
+
+        <div ref={resultsAnchorRef} />
+
+        {!hasSearched ? null : filteredRows.length === 0 ? (
+          <div className="mx-auto w-full max-w-5xl px-2 md:max-w-6xl">
+            <Card className="border border-dashed">
+              <CardContent className="py-14 text-center">
+                <p className="text-base font-semibold text-foreground mb-1">
+                  No requests match this search
+                </p>
+                <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
+                  Try increasing radius or changing category.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "animate-in fade-in slide-in-from-bottom-3 mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 px-2 duration-700 sm:grid-cols-2 md:max-w-6xl lg:grid-cols-3",
+              "max-md:-mt-1 max-md:scroll-mt-0 max-md:gap-4",
+            )}
+          >
+            {filteredRows.map((r) => (
+              <OpenJobRequestMatchCard
+                key={r.id}
+                row={r}
+                gallery={galleryByUserId[r.client_id] ?? []}
+                formatTitle={(st) => formatJobTitle(st || undefined)}
+                onOpenProfile={(userId) => navigate(`/profile/${encodeURIComponent(userId)}`)}
+                onAccept={async (jobId) => {
+                  try {
+                    await acceptJob(jobId, r);
+                  } catch (e: unknown) {
+                    addToast({
+                      title: "Could not accept",
+                      description: e instanceof Error ? e.message : "Try again.",
+                      variant: "error",
+                    });
+                  }
+                }}
+                onDecline={async (jobId) => {
+                  try {
+                    await declineJob(jobId);
+                  } catch (e: unknown) {
+                    addToast({
+                      title: "Could not decline",
+                      description: e instanceof Error ? e.message : "Try again.",
+                      variant: "error",
+                    });
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {hasSearched && searchChromeCollapsed ? (
+          <div
+            className={cn(
+              "pointer-events-none fixed inset-x-0 z-[130] md:hidden",
+              "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]",
+            )}
+          >
+            <div
+              className={cn(
+                "pointer-events-auto border-t border-slate-200/80 bg-background/95 px-4 pb-2 pt-3",
+                "shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10",
+              )}
+            >
+              <div className="mx-auto w-full max-w-lg">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-14 w-full rounded-2xl border-emerald-500/30 text-base font-black"
+                  onClick={() => {
+                    setSearchChromeCollapsed(false);
+                    window.requestAnimationFrame(() => {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    });
+                  }}
+                >
+                  <Radar className="mr-2 h-5 w-5" />
+                  Map & search
+                </Button>
               </div>
             </div>
           </div>
-        </SwipeDecisionLayer>
-        <p className="mt-4 text-center text-xs text-slate-500 dark:text-zinc-500">
-          Swipe right to open chat · left to skip
-        </p>
+        ) : null}
+
+        {/* Mobile: full-width Search requests fixed above BottomNav while panel is open */}
+        {showSearchChrome ? (
+          <div
+            className={cn(
+              "pointer-events-none fixed inset-x-0 z-[130] md:hidden",
+              "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]",
+            )}
+          >
+            <div
+              className={cn(
+                "pointer-events-auto border-t border-slate-200/80 bg-background/95 px-4 pb-2 pt-3",
+                "shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10",
+              )}
+            >
+              <div className="mx-auto w-full max-w-lg">
+                {renderSearchRequestsButton()}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

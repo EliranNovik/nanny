@@ -213,6 +213,8 @@ export default function PublicCommunityPostsPage() {
     <div
       className={cn(
         "min-h-screen bg-background pb-6 md:pb-8",
+        // Desktop/tablet: light grey canvas with white cards (more pro / SaaS).
+        "md:bg-slate-50/80 dark:md:bg-background",
         posts.length > 0 && "max-md:overflow-hidden max-md:pb-0",
       )}
       {...(posts.length > 0 ? { "data-public-snap-feed-mobile": "" } : {})}
@@ -232,12 +234,12 @@ export default function PublicCommunityPostsPage() {
             className={cn(
               "fixed inset-x-0 z-[45] pointer-events-none",
               "top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
-              "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
-              "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]",
+              // Keep layout/position only — no extra "bar" surface behind the pill.
+              "bg-transparent",
             )}
           >
             <div className="app-desktop-shell pointer-events-auto">
-              <div className="mx-auto w-full px-0 py-2">
+              <div className="mx-auto w-full px-0 py-1">
                 <PublicPostsCategoryStepper
                   activeId={activeCategoryId}
                   onSelect={selectCategory}

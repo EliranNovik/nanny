@@ -4,6 +4,15 @@ import { queryKeys } from "./keys";
 import { ALL_HELP_CATEGORY_ID, DISCOVER_HOME_CATEGORIES, SERVICE_CATEGORIES } from "@/lib/serviceCategories";
 import { formatAvailabilityLocationLine } from "@/lib/availabilityPosts";
 
+/** Discover “Helpers available now” strip — one entry per helper per category (from `freelancer_profiles` live window). */
+export type DiscoverLiveAvatarEntry = {
+  helper_user_id: string;
+  full_name: string | null;
+  photo_url: string | null;
+  average_rating: number | null;
+  location_line: string;
+};
+
 export function useDiscoverFeed() {
   return useQuery({
     queryKey: queryKeys.discoverFeed(),
@@ -32,7 +41,7 @@ export function useDiscoverFeed() {
   });
 }
 
-/** Live helper avatars by category; pass excludeUserId to omit the viewer’s own availability. */
+/** Live helper avatars by category from `freelancer_profiles.live_until` + `live_categories` (24h go-live). */
 export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
   return useQuery({
     queryKey: queryKeys.discoverLiveAvatars(excludeUserId ?? undefined),
@@ -46,83 +55,91 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
       ).filter((id) => id && id !== ALL_HELP_CATEGORY_ID);
 
       const { data, error } = await supabase
-        .from("community_posts")
-        .select(`
-          id,
-          category,
-          author_id,
-          created_at,
-          availability_payload,
-          author:profiles!author_id (
+        .from("freelancer_profiles")
+        .select(
+          `
+          user_id,
+          live_until,
+          live_categories,
+          profiles!inner (
             id,
             full_name,
             photo_url,
+            city,
             average_rating,
-            total_ratings,
-            city
+            total_ratings
           )
-        `)
-        .eq("status", "active")
-        .gt("expires_at", nowIso)
-        .in("category", categoryIds)
-        .order("created_at", { ascending: false })
-        .limit(220);
+        `,
+        )
+        .not("live_until", "is", null)
+        .gt("live_until", nowIso)
+        .limit(300);
 
       if (error) throw error;
 
-      const next: Record<
-        string,
-        {
-          /** `community_posts.id` — deep link to this availability post */
-          post_id: string;
-          full_name: string | null;
-          photo_url: string | null;
-          average_rating: number | null;
-          /** Area from availability payload or author city */
-          location_line: string;
-        }[]
-      > = {};
+      const next: Record<string, DiscoverLiveAvatarEntry[]> = {};
 
       for (const id of categoryIds) next[id] = [];
       const seen = new Map<string, Set<string>>();
 
-      for (const row of (data || []) as any[]) {
-        const cat = String(row?.category ?? "").trim();
-        if (!cat || !(cat in next)) continue;
-
-        const author = row?.author;
-        const authorId = String(author?.id ?? row?.author_id ?? "").trim();
-        const postId = String(row?.id ?? "").trim();
-        const authorCity =
-          author && typeof author === "object" && "city" in author
-            ? ((author as { city?: string | null }).city ?? null)
-            : null;
-
-        if (!authorId || !postId) continue;
+      for (const row of (data || []) as {
+        user_id?: string;
+        live_categories?: string[] | null;
+        profiles?:
+          | {
+              id: string;
+              full_name: string | null;
+              photo_url: string | null;
+              city: string | null;
+              average_rating?: number | null;
+              total_ratings?: number | null;
+            }[]
+          | {
+              id: string;
+              full_name: string | null;
+              photo_url: string | null;
+              city: string | null;
+              average_rating?: number | null;
+              total_ratings?: number | null;
+            }
+          | null;
+      }[]) {
+        const profRaw = row.profiles;
+        const prof = Array.isArray(profRaw) ? profRaw[0] : profRaw;
+        const authorId = String(prof?.id ?? row.user_id ?? "").trim();
+        if (!authorId) continue;
         if (excludeUserId && authorId === excludeUserId) continue;
-        if (!seen.has(cat)) seen.set(cat, new Set());
 
-        const set = seen.get(cat)!;
-        if (set.has(authorId)) continue;
-        if (next[cat].length >= 3) continue;
+        const authorCity = prof?.city ?? null;
+        const location_line = formatAvailabilityLocationLine(
+          null,
+          authorCity,
+        );
 
-        set.add(authorId);
-        next[cat].push({
-          post_id: postId,
-          full_name: (author?.full_name as string | null) ?? null,
-          photo_url: (author?.photo_url as string | null) ?? null,
-          average_rating:
-            author?.average_rating != null
-              ? Number(author.average_rating)
-              : null,
-          location_line: formatAvailabilityLocationLine(
-            row?.availability_payload,
-            authorCity,
-          ),
-        });
+        const cats = Array.isArray(row.live_categories)
+          ? row.live_categories
+          : [];
+        for (const cat of cats) {
+          const c = String(cat ?? "").trim();
+          if (!c || !(c in next)) continue;
+          if (!seen.has(c)) seen.set(c, new Set());
+          const set = seen.get(c)!;
+          if (set.has(authorId)) continue;
+          if (next[c].length >= 3) continue;
+          set.add(authorId);
+          next[c].push({
+            helper_user_id: authorId,
+            full_name: prof?.full_name ?? null,
+            photo_url: prof?.photo_url ?? null,
+            average_rating:
+              prof?.average_rating != null
+                ? Number(prof.average_rating)
+                : null,
+            location_line,
+          });
+        }
       }
 
-      // Ensure keys exist for tiles even if empty.
       const allTileIds = Array.from(
         new Set([
           ...DISCOVER_HOME_CATEGORIES.map((c) => c.id),

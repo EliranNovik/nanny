@@ -220,7 +220,9 @@
   /* Create job / post availability: mobile app header hidden — #root safe-area only */
   @media (max-width: 767.98px) {
     .app-content-below-fixed-header:has([data-create-job-no-mobile-header]),
-    .app-content-below-fixed-header:has([data-post-availability-no-mobile-header]) {
+    .app-content-below-fixed-header:has([data-post-availability-no-mobile-header]),
+    .app-content-below-fixed-header:has([data-find-helpers-no-app-header]),
+    .app-content-below-fixed-header:has([data-freelancer-jobs-match-no-app-header]) {
       padding-top: 0;
     }
 
@@ -247,6 +249,12 @@
   @media (min-width: 768px) {
     .app-content-below-fixed-header {
       padding-top: 3.5rem;
+    }
+
+    /* Find helpers: BottomNav desktop header hidden — no reserved top bar */
+    .app-content-below-fixed-header:has([data-find-helpers-no-app-header]),
+    .app-content-below-fixed-header:has([data-freelancer-jobs-match-no-app-header]) {
+      padding-top: 0;
     }
   }
 

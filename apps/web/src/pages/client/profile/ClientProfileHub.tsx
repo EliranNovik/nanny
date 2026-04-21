@@ -13,6 +13,7 @@ import {
   MapPin,
   Image as ImageIcon,
   ExternalLink,
+  Heart,
 } from "lucide-react";
 
 export default function ClientProfileHub() {
@@ -73,6 +74,12 @@ export default function ClientProfileHub() {
           </div>
 
           <div className="rounded-[24px] border border-slate-200/80 dark:border-white/5 bg-white dark:bg-zinc-900 divide-y divide-slate-100 dark:divide-white/5 overflow-hidden shadow-sm">
+            <ProfileMenuRow
+              to="/client/profile/saved"
+              icon={Heart}
+              label="Saved"
+              description="Profiles and posts you liked"
+            />
             <ProfileMenuRow
               to="/client/profile/gallery"
               icon={ImageIcon}

@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Baby,
@@ -14,10 +21,8 @@ import {
   type DiscoverHomeCategoryId,
   SERVICE_CATEGORIES,
 } from "@/lib/serviceCategories";
-import { JOBS_STEPPER_STRIP_BASE } from "@/components/jobs/jobsMobileStepperTheme";
 
 type Theme = {
-  /** Gradient used only on the active sliding thumb. */
   pillGradient: string;
 };
 
@@ -66,7 +71,7 @@ export interface PublicPostsCategoryStepperProps {
   className?: string;
 }
 
-/** Desktop: full-width segmented bar. Mobile: horizontal scroll chips (no squeezed labels). */
+/** Desktop: full-width segmented bar with gradient thumb. Mobile: Stripe/iOS single-track + sliding white indicator. */
 export function PublicPostsCategoryStepper({
   activeId,
   onSelect,
@@ -84,7 +89,39 @@ export function PublicPostsCategoryStepper({
       : false,
   );
 
-  const activeMobileBtnRef = useRef<HTMLButtonElement | null>(null);
+  /** Mobile segmented: scrollport + thumb position (viewport-relative px) */
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const mobileBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [mobileThumb, setMobileThumb] = useState({ left: 0, width: 0 });
+  const [mobileThumbVisible, setMobileThumbVisible] = useState(false);
+
+  const measureMobileThumb = useCallback(() => {
+    const sc = mobileScrollRef.current;
+    const btn = mobileBtnRefs.current[index];
+    if (!sc || !btn) {
+      setMobileThumbVisible(false);
+      return;
+    }
+    // Anchor the thumb to the scroll content (not viewport-relative).
+    // That way it moves with the pills while you drag-scroll.
+    const left = btn.offsetLeft;
+    const width = btn.offsetWidth;
+    setMobileThumb({ left, width });
+    setMobileThumbVisible(true);
+  }, [index]);
+
+  const ensureActiveVisible = useCallback(() => {
+    const sc = mobileScrollRef.current;
+    const btn = mobileBtnRefs.current[index];
+    if (!sc || !btn) return;
+    // Minimal, predictable scroll adjustment (no centering).
+    // scrollIntoView inline:"nearest" avoids the "random jump" feeling.
+    btn.scrollIntoView({
+      behavior: "smooth",
+      inline: "nearest",
+      block: "nearest",
+    });
+  }, [index]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -94,16 +131,37 @@ export function PublicPostsCategoryStepper({
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
+  useLayoutEffect(() => {
+    if (isMdUp) return;
+    measureMobileThumb();
+  }, [isMdUp, measureMobileThumb, activeId]);
+
   useEffect(() => {
     if (isMdUp) return;
-    const el = activeMobileBtnRef.current;
-    if (!el) return;
-    el.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
+    const sc = mobileScrollRef.current;
+    if (!sc) return;
+    const btn = mobileBtnRefs.current[index];
+    const ro = new ResizeObserver(() => measureMobileThumb());
+    ro.observe(sc);
+    if (btn) ro.observe(btn);
+    window.addEventListener("resize", measureMobileThumb);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measureMobileThumb);
+    };
+  }, [isMdUp, measureMobileThumb, index]);
+
+  useEffect(() => {
+    if (isMdUp) return;
+    // Keep it predictable: bring active into view (nearest) and re-measure
+    // after scroll starts so the thumb doesn't end up offscreen.
+    const t = window.setTimeout(() => measureMobileThumb(), 260);
+    requestAnimationFrame(() => {
+      ensureActiveVisible();
+      measureMobileThumb();
     });
-  }, [activeId, isMdUp]);
+    return () => window.clearTimeout(t);
+  }, [activeId, index, isMdUp, ensureActiveVisible, measureMobileThumb]);
 
   const thumbGapRem = (n - 1) * 0.125;
   const thumbPad = 0.75;
@@ -121,67 +179,86 @@ export function PublicPostsCategoryStepper({
     return (
       <div className={cn("w-full", className)}>
         <div
-          className="w-full px-3 py-1.5 md:px-5 md:py-4"
+          className="w-full px-3 py-1 md:px-5 md:py-3"
           role="tablist"
           aria-label="Availability categories"
         >
           <div className="mx-auto w-full max-w-[min(70rem,calc(100vw-2rem))]">
             <div
+              ref={mobileScrollRef}
               className={cn(
-                "flex w-full gap-2 overflow-x-auto overscroll-x-contain py-1",
-                "scroll-pl-3 scroll-pr-3 [-webkit-overflow-scrolling:touch]",
-                "[scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5",
-                "[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/80",
-                "dark:[&::-webkit-scrollbar-thumb]:bg-zinc-600",
+                "relative max-w-full overflow-x-auto overscroll-x-contain rounded-full",
+                "border border-border/50 bg-muted/50 p-1",
+                "dark:border-zinc-700/70 dark:bg-zinc-900/75",
+                "snap-x snap-mandatory scroll-pl-1 scroll-pr-1 [-webkit-overflow-scrolling:touch]",
+                "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
               )}
             >
-              {TABS.map((t) => {
-                const selected = t.id === activeId;
-                const Icon = t.Icon;
-                const tabTheme = THEMES[t.id] ?? THEMES[ALL_HELP_CATEGORY_ID];
-                return (
-                  <button
-                    key={t.id}
-                    ref={selected ? activeMobileBtnRef : undefined}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    aria-label={t.label}
-                    title={t.label}
-                    onClick={() => onSelect(t.id)}
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2.5",
-                      "min-h-[44px] text-left text-sm font-semibold tracking-tight",
-                      "whitespace-nowrap [-webkit-tap-highlight-color:transparent]",
-                      "transition-[box-shadow,transform,background-color,border-color,color] duration-200",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                      "active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
-                      selected
-                        ? cn(
-                            "border-transparent bg-white text-slate-900 shadow-md shadow-black/10 ring-1 ring-slate-900/10",
-                            "dark:bg-zinc-800 dark:text-white dark:shadow-black/40 dark:ring-white/10",
-                          )
-                        : cn(
-                            "border-slate-200/90 bg-white/70 text-slate-600 shadow-sm",
-                            "hover:border-slate-300 hover:bg-white hover:text-slate-800",
-                            "dark:border-zinc-700/90 dark:bg-zinc-900/50 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
-                          ),
-                    )}
-                  >
-                    <span
+              {/* Single sliding surface — only primary state; no per-segment borders */}
+              <div
+                aria-hidden
+                className={cn(
+                  "pointer-events-none absolute top-1 bottom-1 z-0 rounded-full",
+                  "bg-background shadow-sm ring-1 ring-black/[0.07] overflow-hidden",
+                  "transition-[left,width,opacity] duration-300 [transition-timing-function:cubic-bezier(0.33,1,0.68,1)]",
+                  "dark:bg-zinc-950 dark:ring-white/[0.08]",
+                  !mobileThumbVisible && "opacity-0",
+                )}
+                style={{
+                  left: mobileThumb.left,
+                  width: mobileThumb.width,
+                }}
+              >
+                {/* Subtle category tint so active state is clearly “colored”, not just white. */}
+                <div
+                  className={cn(
+                    "absolute inset-0 opacity-[0.12] dark:opacity-[0.16]",
+                    theme.pillGradient,
+                  )}
+                />
+              </div>
+              <div className="relative z-10 flex w-max min-w-0 items-stretch gap-0">
+                {TABS.map((t, i) => {
+                  const selected = t.id === activeId;
+                  const Icon = t.Icon;
+                  return (
+                    <button
+                      key={t.id}
+                      ref={(el) => {
+                        mobileBtnRefs.current[i] = el;
+                      }}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      aria-label={t.label}
+                      title={t.label}
+                      onClick={() => onSelect(t.id)}
                       className={cn(
-                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                        "inline-flex h-9 min-h-9 max-h-10 shrink-0 snap-center items-center gap-1.5 rounded-full px-2.5 sm:px-3",
+                        "whitespace-nowrap text-left text-[13px] [-webkit-tap-highlight-color:transparent]",
+                        "transition-colors duration-200",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        "active:opacity-90",
                         selected
-                          ? cn("text-white shadow-inner", tabTheme.pillGradient)
-                          : "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300",
+                          ? "font-semibold text-foreground"
+                          : "font-medium text-muted-foreground hover:text-foreground/90",
                       )}
                     >
-                      <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-                    </span>
-                    <span>{t.label}</span>
-                  </button>
-                );
-              })}
+                      <Icon
+                        className={cn(
+                          "shrink-0 transition-[width,height,opacity] duration-200",
+                          selected
+                            ? "h-4 w-4 text-foreground"
+                            : "h-3.5 w-3.5 text-muted-foreground/70",
+                        )}
+                        strokeWidth={selected ? 2.25 : 2}
+                        aria-hidden
+                      />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -193,15 +270,14 @@ export function PublicPostsCategoryStepper({
     <div className={cn("w-full", className)}>
       <div
         className={cn(
-          "w-full px-3 py-3 md:px-5 md:py-4",
-          JOBS_STEPPER_STRIP_BASE,
+          "w-full px-3 py-2 md:px-5 md:py-3",
         )}
       >
         <div className="mx-auto w-full max-w-[min(70rem,calc(100vw-2rem))]">
           <div
             className={cn(
-              "relative isolate w-full min-w-0 overflow-hidden rounded-full p-2",
-              "min-h-[80px]",
+              "relative isolate w-full min-w-0 overflow-hidden rounded-full p-1.5",
+              "min-h-[60px]",
               "border border-slate-200/90 bg-slate-100/85 shadow-sm shadow-black/5 transition-[box-shadow,background] duration-300 dark:border-border/50 dark:bg-zinc-900/55 dark:shadow-black/25",
             )}
             role="tablist"
@@ -245,7 +321,7 @@ export function PublicPostsCategoryStepper({
                   >
                     <Icon
                       className={cn(
-                        "h-6 w-6 shrink-0 transition-all duration-300",
+                        "h-5 w-5 shrink-0 transition-all duration-300",
                         selected && "scale-105",
                         !selected && "opacity-90 grayscale-[0.2]",
                       )}
@@ -254,8 +330,8 @@ export function PublicPostsCategoryStepper({
                     />
                     <span
                       className={cn(
-                        "max-w-full px-0.5 text-center text-[11px] font-bold leading-tight tracking-tight",
-                        "line-clamp-2 break-words [overflow-wrap:anywhere]",
+                        "max-w-full px-0.5 text-center text-[10px] font-bold leading-tight tracking-tight",
+                        "line-clamp-1 break-words [overflow-wrap:anywhere]",
                       )}
                     >
                       {t.label}

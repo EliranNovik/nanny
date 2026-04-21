@@ -19,6 +19,7 @@ import {
 } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LiveTimer } from "@/components/LiveTimer";
 import {
   ChevronRight,
   ClipboardList,
@@ -59,12 +60,12 @@ type WorkRowItem = {
   title: string;
   /** City / area only */
   cityLine: string;
-  /** Relative date (Today, Yesterday, or short date) */
-  dateLine: string;
+  createdAt: string | null;
   /** Shift / duration / time — only when present */
   detailLine: string | null;
   thumbUrl: string;
-  badge: "NOW" | "NEW";
+  name: string;
+  average_rating: number | null;
 };
 
 function categoryImageSrc(
@@ -127,6 +128,8 @@ function mapJobLikeToWorkRow(opts: {
   shift_hours?: string | null;
   time_duration?: string | null;
   photo: string | null | undefined;
+  name: string | null | undefined;
+  average_rating: number | null | undefined;
 }): WorkRowItem {
   const cat = opts.serviceType;
   const title =
@@ -134,7 +137,6 @@ function mapJobLikeToWorkRow(opts: {
       ? serviceCategoryLabel(cat as ServiceCategoryId)
       : (cat || "Request").replace(/_/g, " ");
   const city = (opts.location_city || "").trim() || "—";
-  const dateLine = relativeDayLabel(opts.start_at || opts.created_at);
   const rawDetail = formatJobDetailLine({
     shift_hours: opts.shift_hours,
     time_duration: opts.time_duration,
@@ -142,16 +144,16 @@ function mapJobLikeToWorkRow(opts: {
   });
   const detailLine = rawDetail === "—" ? null : rawDetail;
   const thumb = opts.photo?.trim() || categoryImageSrc(cat ?? null);
-  const badge = pickBadge(opts.created_at ?? null, opts.start_at ?? null);
   return {
     key: opts.key,
     href: opts.href,
     title,
     cityLine: city,
-    dateLine,
+    createdAt: opts.created_at ?? null,
     detailLine,
     thumbUrl: thumb,
-    badge,
+    name: (opts.name || "?").trim() || "?",
+    average_rating: opts.average_rating ?? null,
   };
 }
 
@@ -209,7 +211,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       name: string;
       href: string;
       average_rating: number | null;
-      /** Area / city from the availability post */
+      /** Area / city (profile city) */
       locationLine: string;
     }[] = [];
     for (const cat of DISCOVER_HOME_CATEGORIES) {
@@ -217,13 +219,13 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       const avs = categoryAvatars[cat.id];
       const first = avs?.[0];
       if (!first) continue;
-      const postId = first.post_id;
+      const helperId = first.helper_user_id;
       out.push({
-        key: `${cat.id}-${postId}`,
+        key: `${cat.id}-${helperId}`,
         label: cat.label,
         photo: first.photo_url,
         name: first.full_name || "?",
-        href: `/public/posts?post=${encodeURIComponent(postId)}&category=${encodeURIComponent(cat.id)}`,
+        href: `/profile/${encodeURIComponent(helperId)}?category=${encodeURIComponent(cat.id)}`,
         average_rating: first.average_rating ?? null,
         locationLine: first.location_line ?? "—",
       });
@@ -247,6 +249,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           shift_hours: r.shift_hours,
           time_duration: r.time_duration,
           photo: r.client_photo_url,
+          name: r.client_display_name,
+          average_rating: null,
         }),
       );
 
@@ -283,6 +287,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             shift_hours: jr.shift_hours,
             time_duration: jr.time_duration,
             photo: jr.profiles?.photo_url,
+            name: jr.profiles?.full_name,
+            average_rating: (jr.profiles as any)?.average_rating ?? null,
           });
         },
       );
@@ -411,83 +417,92 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   if (variant === "work") {
     const rows = items as WorkRowItem[];
     return (
-      <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-zinc-800">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="space-y-3.5">
+        <div className="flex items-baseline justify-between gap-3 px-0.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <span
-              className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+              className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.22)]"
               aria-hidden
             />
-            <h3 className="text-[15px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
+            <h3 className="text-[15px] font-semibold leading-tight tracking-tight text-slate-900 dark:text-zinc-50">
               {title}
             </h3>
-            <span
-              className="flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-50 px-1.5 text-xs font-bold tabular-nums text-[#065f46] dark:bg-emerald-950/50 dark:text-emerald-300"
-              aria-label={`${rows.length} requests`}
-            >
-              {rows.length}
-            </span>
           </div>
           <button
             type="button"
             onClick={onBrowseTap}
-            className="shrink-0 text-sm font-semibold text-[#065f46] underline-offset-4 hover:underline dark:text-emerald-400"
+            className="flex shrink-0 items-center gap-0.5 text-[13px] font-medium tracking-wide text-[#065f46] transition-opacity hover:opacity-90 dark:text-emerald-400"
           >
             View all
+            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           </button>
         </div>
-        <ul className="divide-y divide-slate-100 dark:divide-zinc-800" role="list">
+
+        <div
+          className={cn(
+            "-mx-1 flex gap-3 overflow-x-auto px-1 pb-0.5",
+            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "snap-x snap-mandatory",
+          )}
+          role="list"
+          aria-label="Requests now near you"
+        >
           {rows.map((row) => (
-            <li key={row.key}>
-              <Link
-                to={row.href}
-                className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50/80 active:bg-slate-100/80 dark:hover:bg-zinc-800/50 dark:active:bg-zinc-800"
-              >
-                <div className="relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-black/[0.04] dark:bg-zinc-800 dark:ring-white/10">
-                  <img
-                    src={row.thumbUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-bold leading-snug text-slate-900 dark:text-white">
-                    {row.title}
-                  </p>
-                  <p className="mt-0.5 text-[13px] text-slate-500 dark:text-zinc-400">
-                    {row.cityLine}
-                  </p>
-                  <p className="mt-0.5 text-[12px] text-slate-500 dark:text-zinc-400">
-                    {row.dateLine}
-                  </p>
-                  {row.detailLine ? (
-                    <p className="mt-0.5 text-[12px] text-slate-500 dark:text-zinc-400">
-                      {row.detailLine}
+            <Link
+              key={row.key}
+              to={row.href}
+              role="listitem"
+              className={cn(
+                "flex w-[10.25rem] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-slate-200/80 bg-white p-2.5",
+                "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.08)]",
+                "transition-[box-shadow,transform,border-color] hover:border-slate-300/90 hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)]",
+                "active:scale-[0.99] dark:border-zinc-700/70 dark:bg-zinc-900",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-slate-100 ring-1 ring-black/[0.04] dark:bg-zinc-800 dark:ring-white/10">
+                    <img
+                      src={row.thumbUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                    <span className="absolute -bottom-1 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-white px-1.5 py-px text-[10px] font-medium tabular-nums text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.08)] ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/50">
+                      <span className="text-slate-900 dark:text-zinc-100" aria-hidden>
+                        ★
+                      </span>
+                      {ratingLabel(row.average_rating)}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+                      {shortDisplayName(row.name)}
                     </p>
-                  ) : null}
+                    <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500 dark:text-zinc-400">
+                      {row.cityLine}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                      row.badge === "NOW"
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
-                        : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
-                    )}
-                  >
-                    {row.badge}
-                  </span>
-                  <ChevronRight
-                    className="h-5 w-5 text-slate-300 dark:text-zinc-500"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                </div>
-              </Link>
-            </li>
+                {/* removed NEW/NOW badge */}
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+                  {row.title}
+                </p>
+                {row.createdAt ? (
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-zinc-500">
+                    <span className="font-semibold uppercase tracking-wide">
+                      Posted
+                    </span>
+                    <LiveTimer createdAt={row.createdAt} />
+                  </div>
+                ) : null}
+              </div>
+            </Link>
           ))}
-        </ul>
+        </div>
       </div>
     );
   }

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,10 +34,11 @@ import {
   JOB_CARD_THUMB,
   JOB_CARD_THUMB_BUTTON,
 } from "@/components/jobs/jobCardSharedClasses";
+import type { IncomingJobRequestCardJob } from "@/components/jobs/IncomingJobRequestCard";
 import {
-  IncomingJobRequestCard,
-  type IncomingJobRequestCardJob,
-} from "@/components/jobs/IncomingJobRequestCard";
+  BrowseIncomingRequestCard,
+  type BrowseIncomingRequestCardNotif,
+} from "@/components/jobs/BrowseIncomingRequestCard";
 import {
   isServiceCategoryId,
   serviceCategoryLabel,
@@ -164,23 +164,19 @@ export default function RequestsTabContent({
     }
   }
 
-  async function handleDecline(notifId: string): Promise<boolean> {
+  async function handleDecline(jobId: string, notifId: string): Promise<boolean> {
     setDeleting(notifId);
     try {
-      const { error } = await supabase
-        .from("job_candidate_notifications")
-        .delete()
-        .eq("id", notifId);
-      if (error) throw error;
+      await apiPost(`/api/jobs/${jobId}/freelancer-decline`, { notifId });
       void queryClient.invalidateQueries({ queryKey: queryKeys.freelancerRequests(user?.id) });
       addToast({
         title: "Request Declined",
-        description: "The job request has been removed.",
+        description: "We’ll stop showing you this request.",
         variant: "success",
       });
       return true;
     } catch (err: any) {
-      console.error("Error deleting notification:", err);
+      console.error("Error declining notification:", err);
       addToast({
         title: "Failed to decline",
         description: "Could not decline the request. Please try again.",
@@ -326,25 +322,31 @@ export default function RequestsTabContent({
               </p>
             </div>
             {incomingItems.length > 0 ? (
-              <>
-                <JobCardsCarousel className="mt-3">
-                  {incomingItems.map((notif) => (
-                    <IncomingJobRequestCard
+              <div
+                className={cn(
+                  "animate-in fade-in slide-in-from-bottom-3 mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 duration-700 md:max-w-6xl lg:grid-cols-3",
+                  "px-0 sm:grid-cols-2",
+                  "max-md:-mx-2 max-md:px-2 max-md:gap-4",
+                )}
+              >
+                {incomingItems.map((n) => {
+                  const notif = n as unknown as BrowseIncomingRequestCardNotif;
+                  return (
+                    <BrowseIncomingRequestCard
                       key={notif.id}
                       notif={notif}
-                      isMinMd={isMinMd}
-                      clippedCardIds={clippedCardIds}
-                      deleting={deleting}
                       confirming={confirming}
+                      declining={deleting}
                       formatJobTitle={formatJobTitle}
-                      onDecline={handleDecline}
                       onConfirm={handleConfirm}
+                      onDecline={(_jobId, notifId) => {
+                        void handleDecline(notif.job_id, notifId);
+                      }}
                       onOpenPreview={openJobPreview}
-                      onProfileClick={goToPublicProfile}
                     />
-                  ))}
-                </JobCardsCarousel>
-              </>
+                  );
+                })}
+              </div>
             ) : (
               <Card className={JOB_CARD_EMPTY_PANEL}>
                 <CardContent className="p-6 text-center text-muted-foreground">
@@ -784,7 +786,7 @@ export default function RequestsTabContent({
                   (n) => n.job_id === selectedJobDetails.id,
                 );
                 if (!notif) return;
-                const ok = await handleDecline(notif.id);
+                const ok = await handleDecline(notif.job_id, notif.id);
                 if (ok) setSelectedJobDetails(null);
               }
             : undefined

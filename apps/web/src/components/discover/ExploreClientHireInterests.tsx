@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronRight, Clock } from "lucide-react";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
-import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
+import {
+  EXPLORE_PAGE_CARD_SURFACE,
+  INTERACTIVE_CARD_HOVER,
+} from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -307,8 +310,8 @@ export function ExploreClientHireInterests({
                   navigate(publicPostHref);
                 }}
                 className={cn(
-                  "group relative w-full rounded-2xl p-4 text-left bg-white dark:bg-zinc-900",
-                  "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
+                  "group relative w-full rounded-2xl p-4 text-left",
+                  EXPLORE_PAGE_CARD_SURFACE,
                   INTERACTIVE_CARD_HOVER,
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                 )}

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
+import {
+  EXPLORE_PAGE_AVATAR_RING,
+  EXPLORE_PAGE_CARD_SURFACE,
+  INTERACTIVE_CARD_HOVER,
+} from "@/components/jobs/jobCardSharedClasses";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -347,8 +351,8 @@ export function ExploreYourMatches({
         type="button"
         onClick={open}
         className={cn(
-          "group relative w-full rounded-2xl p-4 text-left bg-white dark:bg-zinc-900",
-          "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
+          "group relative w-full rounded-2xl p-4 text-left",
+          EXPLORE_PAGE_CARD_SURFACE,
           INTERACTIVE_CARD_HOVER,
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50",
         )}
@@ -377,13 +381,13 @@ export function ExploreYourMatches({
 
         <div className="mt-3 flex items-center gap-3">
           <div className="relative flex shrink-0 -space-x-2" aria-hidden>
-            <Avatar className="h-11 w-11 border-2 border-background">
+            <Avatar className={cn("h-11 w-11", EXPLORE_PAGE_AVATAR_RING)}>
               <AvatarImage src={row.helperPhoto || undefined} />
               <AvatarFallback className="text-[10px] font-black">
                 {initials(row.helper)}
               </AvatarFallback>
             </Avatar>
-            <Avatar className="h-11 w-11 border-2 border-background">
+            <Avatar className={cn("h-11 w-11", EXPLORE_PAGE_AVATAR_RING)}>
               <AvatarImage src={row.clientPhoto || undefined} />
               <AvatarFallback className="text-[10px] font-black">
                 {initials(row.client)}
