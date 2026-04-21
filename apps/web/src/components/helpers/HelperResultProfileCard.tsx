@@ -127,13 +127,58 @@ export function HelperResultProfileCard({
     setActiveIndex(idx);
   }, [slides.length]);
 
+  const slidesRef = useRef(slides);
+  slidesRef.current = slides;
+  const scrollEndTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
     syncIndex();
   }, [slides, syncIndex]);
 
+  /** New helper / gallery change: jump back to first slide. */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: 0, behavior: "auto" });
+    setActiveIndex(0);
+  }, [h.id, h.photo_url, slides.map((s) => s.key).join("|")]);
+
   // (Used to render "N more" previously; keep only what we need for the bar indicator.)
 
   const showStrip = slides.length > 1;
+
+  const snapToNearestSlide = useCallback(() => {
+    const el = scrollRef.current;
+    const list = slidesRef.current;
+    if (!el || list.length < 2) return;
+    const w = el.clientWidth;
+    if (w <= 0) return;
+    const idx = Math.min(
+      list.length - 1,
+      Math.max(0, Math.round(el.scrollLeft / w)),
+    );
+    el.scrollTo({ left: idx * w, behavior: "smooth" });
+  }, []);
+
+  const scheduleSnapAfterScroll = useCallback(() => {
+    if (scrollEndTimerRef.current) {
+      window.clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = null;
+    }
+    scrollEndTimerRef.current = window.setTimeout(() => {
+      scrollEndTimerRef.current = null;
+      snapToNearestSlide();
+    }, 110);
+  }, [snapToNearestSlide]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollEndTimerRef.current) {
+        window.clearTimeout(scrollEndTimerRef.current);
+        scrollEndTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const openDirectChat = useCallback(
     async (e: React.MouseEvent) => {
@@ -294,16 +339,18 @@ export function HelperResultProfileCard({
   return (
     <Card
       className={cn(
-        "group relative cursor-pointer overflow-visible rounded-[22px]",
+        "group relative cursor-pointer select-none overflow-hidden rounded-[22px] outline-none",
+        "touch-manipulation [-webkit-tap-highlight-color:transparent]",
         "bg-zinc-950 shadow-2xl shadow-black/40",
         "transition-all duration-500 ease-out",
         "hover:-translate-y-1 hover:shadow-orange-500/15 hover:shadow-2xl",
+        "active:scale-[0.995]",
       )}
       data-helper-snap-card=""
       onClick={() => onOpenProfile(h.id)}
     >
-      <CardContent className="relative aspect-[4/5] min-h-[17.5rem] w-full overflow-visible p-0 sm:min-h-[19rem]">
-        <div className="absolute inset-0 z-0 overflow-hidden rounded-[22px] bg-black">
+      <CardContent className="relative aspect-[4/5] min-h-[17.5rem] w-full p-0 sm:min-h-[19rem]">
+        <div className="absolute inset-0 z-0 bg-black transform-gpu">
         {slides.length === 0 ? (
           <Avatar className="absolute inset-0 z-0 h-full w-full rounded-none border-0 shadow-none">
             <AvatarFallback className="rounded-none bg-gradient-to-br from-zinc-800 via-zinc-900 to-black text-6xl font-black tracking-tight text-white/25">
@@ -315,16 +362,18 @@ export function HelperResultProfileCard({
             ref={scrollRef}
             onScroll={() => {
               window.requestAnimationFrame(syncIndex);
+              scheduleSnapAfterScroll();
             }}
             className={cn(
               "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
               "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+              "overscroll-x-contain",
             )}
           >
             {slides.map((slide) => (
               <div
                 key={slide.key}
-                className="relative h-full min-w-full shrink-0 snap-start"
+                className="relative h-full min-w-full shrink-0 snap-start snap-always"
               >
                 {slide.kind === "video" ? (
                   <div
@@ -334,7 +383,7 @@ export function HelperResultProfileCard({
                   >
                     <video
                       src={slide.src}
-                      className="h-full w-full object-cover object-[50%_30%]"
+                      className="h-full w-full bg-black object-cover object-center"
                       muted
                       playsInline
                       controls
@@ -346,7 +395,7 @@ export function HelperResultProfileCard({
                   <img
                     src={slide.src}
                     alt=""
-                    className="h-full w-full object-cover object-[50%_30%]"
+                    className="h-full w-full bg-black object-cover object-center"
                     draggable={false}
                   />
                 )}
@@ -363,7 +412,7 @@ export function HelperResultProfileCard({
               >
                 <video
                   src={slides[0]!.src}
-                  className="h-full w-full object-cover object-[50%_30%]"
+                  className="h-full w-full bg-black object-cover object-[50%_30%] max-md:object-contain max-md:object-center"
                   muted
                   playsInline
                   controls
@@ -375,7 +424,7 @@ export function HelperResultProfileCard({
               <img
                 src={slides[0]!.src}
                 alt=""
-                className="h-full w-full object-cover object-[50%_30%]"
+                className="h-full w-full bg-black object-cover object-[50%_30%] max-md:object-contain max-md:object-center"
                 draggable={false}
               />
             )}

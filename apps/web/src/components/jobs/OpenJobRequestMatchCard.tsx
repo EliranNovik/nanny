@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronRight, Clock, MapPin, MessageCircle, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LiveTimer } from "@/components/LiveTimer";
@@ -118,6 +118,50 @@ export function OpenJobRequestMatchCard({
     const next = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
     setActiveIndex(Math.max(0, Math.min(slides.length - 1, next)));
   }, [slides.length]);
+
+  const slidesRef = useRef(slides);
+  slidesRef.current = slides;
+  const scrollEndTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: 0, behavior: "auto" });
+    setActiveIndex(0);
+  }, [row.id, row.client_photo_url, slides.map((s) => s.key).join("|")]);
+
+  const snapToNearestSlide = useCallback(() => {
+    const el = scrollRef.current;
+    const list = slidesRef.current;
+    if (!el || list.length < 2) return;
+    const w = el.clientWidth;
+    if (w <= 0) return;
+    const idx = Math.min(
+      list.length - 1,
+      Math.max(0, Math.round(el.scrollLeft / w)),
+    );
+    el.scrollTo({ left: idx * w, behavior: "smooth" });
+  }, []);
+
+  const scheduleSnapAfterScroll = useCallback(() => {
+    if (scrollEndTimerRef.current) {
+      window.clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = null;
+    }
+    scrollEndTimerRef.current = window.setTimeout(() => {
+      scrollEndTimerRef.current = null;
+      snapToNearestSlide();
+    }, 110);
+  }, [snapToNearestSlide]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollEndTimerRef.current) {
+        window.clearTimeout(scrollEndTimerRef.current);
+        scrollEndTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const accept = useCallback(async () => {
     if (busy) return;
@@ -332,18 +376,22 @@ export function OpenJobRequestMatchCard({
         ) : showStrip ? (
           <div
             ref={scrollRef}
-            onScroll={() => window.requestAnimationFrame(syncIndex)}
+            onScroll={() => {
+              window.requestAnimationFrame(syncIndex);
+              scheduleSnapAfterScroll();
+            }}
             className={cn(
               "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
               "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+              "overscroll-x-contain",
             )}
           >
             {slides.map((s) => (
-              <div key={s.key} className="relative h-full min-w-full shrink-0 snap-start">
+              <div key={s.key} className="relative h-full min-w-full shrink-0 snap-start snap-always">
                 {s.kind === "video" ? (
                   <video
                     src={s.src}
-                    className="h-full w-full object-cover object-[50%_30%]"
+                    className="h-full w-full bg-black object-cover object-center"
                     muted
                     playsInline
                     preload="metadata"
@@ -356,7 +404,7 @@ export function OpenJobRequestMatchCard({
                   <img
                     src={s.src}
                     alt=""
-                    className="h-full w-full object-cover object-[50%_30%]"
+                    className="h-full w-full bg-black object-cover object-center"
                     draggable={false}
                   />
                 )}

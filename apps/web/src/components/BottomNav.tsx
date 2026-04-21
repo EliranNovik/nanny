@@ -1157,7 +1157,7 @@ export function BottomNav() {
                     role="menu"
                     className={cn(
                       "absolute bottom-[68px] left-1/2 -translate-x-1/2",
-                      "w-[14.5rem] overflow-hidden rounded-2xl border shadow-xl",
+                      "w-[18rem] overflow-hidden rounded-3xl border shadow-2xl",
                       "border-white/15 bg-black/55 text-white backdrop-blur-2xl ring-1 ring-inset ring-white/10",
                       "dark:border-white/20 dark:bg-zinc-950/55 dark:ring-white/10",
                     )}
@@ -1165,13 +1165,13 @@ export function BottomNav() {
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-white/10 active:bg-white/15"
+                      className="flex w-full items-center gap-3 px-5 py-4 text-left text-[15px] font-bold hover:bg-white/10 active:bg-white/15"
                       onClick={() => {
                         setPlusMenuOpen(false);
                         navigate("/client/create");
                       }}
                     >
-                      <ClipboardList className="h-5 w-5 shrink-0 text-white/90" aria-hidden />
+                      <ClipboardList className="h-6 w-6 shrink-0 text-white/90" aria-hidden />
                       <span>Start request</span>
                     </button>
                     <div className="h-px w-full bg-white/10" />
@@ -1180,7 +1180,7 @@ export function BottomNav() {
                       role="menuitem"
                       disabled={isLiveNow}
                       className={cn(
-                        "flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold",
+                        "flex w-full items-center gap-3 px-5 py-4 text-left text-[15px] font-bold",
                         isLiveNow
                           ? "opacity-60 cursor-not-allowed"
                           : "hover:bg-white/10 active:bg-white/15",
@@ -1191,11 +1191,11 @@ export function BottomNav() {
                         navigate("/availability/post-now");
                       }}
                     >
-                      <UsersRound className="h-5 w-5 shrink-0 text-white/90" aria-hidden />
+                      <UsersRound className="h-6 w-6 shrink-0 text-white/90" aria-hidden />
                       <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
                         <span>Go live</span>
                         {isLiveNow && freelancerLiveUntil ? (
-                          <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-bold tabular-nums">
+                          <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[12px] font-bold tabular-nums">
                             <LiveTimer createdAt={freelancerLiveUntil} />
                           </span>
                         ) : null}
