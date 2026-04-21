@@ -121,7 +121,14 @@ export function OpenJobRequestMatchCard({
 
   const slidesRef = useRef(slides);
   slidesRef.current = slides;
-  const scrollEndTimerRef = useRef<number | null>(null);
+  const scrollStartLeftRef = useRef<number | null>(null);
+  const swipeRef = useRef<{
+    active: boolean;
+    startX: number;
+    startY: number;
+    startLeft: number;
+    isHorizontal: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -143,23 +150,9 @@ export function OpenJobRequestMatchCard({
     el.scrollTo({ left: idx * w, behavior: "smooth" });
   }, []);
 
-  const scheduleSnapAfterScroll = useCallback(() => {
-    if (scrollEndTimerRef.current) {
-      window.clearTimeout(scrollEndTimerRef.current);
-      scrollEndTimerRef.current = null;
-    }
-    scrollEndTimerRef.current = window.setTimeout(() => {
-      scrollEndTimerRef.current = null;
-      snapToNearestSlide();
-    }, 110);
-  }, [snapToNearestSlide]);
-
   useEffect(() => {
     return () => {
-      if (scrollEndTimerRef.current) {
-        window.clearTimeout(scrollEndTimerRef.current);
-        scrollEndTimerRef.current = null;
-      }
+      swipeRef.current = null;
     };
   }, []);
 
@@ -376,14 +369,86 @@ export function OpenJobRequestMatchCard({
         ) : showStrip ? (
           <div
             ref={scrollRef}
+            onPointerDownCapture={(e) => {
+              const el = scrollRef.current;
+              if (!el) return;
+              scrollStartLeftRef.current = el.scrollLeft;
+              swipeRef.current = {
+                active: true,
+                startX: e.clientX,
+                startY: e.clientY,
+                startLeft: el.scrollLeft,
+                isHorizontal: false,
+              };
+              try {
+                el.setPointerCapture(e.pointerId);
+              } catch {
+                /* ignore */
+              }
+            }}
+            onPointerMoveCapture={(e) => {
+              const el = scrollRef.current;
+              const s = swipeRef.current;
+              if (!el || !s?.active) return;
+              const dx = e.clientX - s.startX;
+              const dy = e.clientY - s.startY;
+              if (!s.isHorizontal) {
+                if (Math.abs(dx) < 6) return;
+                if (Math.abs(dx) <= Math.abs(dy)) return;
+                s.isHorizontal = true;
+              }
+              e.preventDefault();
+              el.scrollLeft = s.startLeft - dx;
+            }}
+            onPointerUpCapture={(e) => {
+              const el = scrollRef.current;
+              const list = slidesRef.current;
+              const s = swipeRef.current;
+              swipeRef.current = null;
+              if (!el || !s) return;
+              if (!s.isHorizontal) {
+                snapToNearestSlide();
+                return;
+              }
+              const w = el.clientWidth;
+              if (w <= 0 || list.length < 2) return;
+              const startIdx = Math.min(
+                list.length - 1,
+                Math.max(0, Math.round(s.startLeft / w)),
+              );
+              const dx = el.scrollLeft - s.startLeft;
+              const THRESH = Math.max(18, Math.round(w * 0.08));
+              let nextIdx = startIdx;
+              if (Math.abs(dx) >= THRESH) {
+                nextIdx =
+                  dx > 0
+                    ? Math.min(list.length - 1, startIdx + 1)
+                    : Math.max(0, startIdx - 1);
+              } else {
+                nextIdx = Math.min(
+                  list.length - 1,
+                  Math.max(0, Math.round(el.scrollLeft / w)),
+                );
+              }
+              el.scrollTo({ left: nextIdx * w, behavior: "smooth" });
+              try {
+                el.releasePointerCapture(e.pointerId);
+              } catch {
+                /* ignore */
+              }
+            }}
+            onPointerCancelCapture={() => {
+              swipeRef.current = null;
+              snapToNearestSlide();
+            }}
             onScroll={() => {
               window.requestAnimationFrame(syncIndex);
-              scheduleSnapAfterScroll();
             }}
             className={cn(
               "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
               "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
               "overscroll-x-contain",
+              "touch-pan-y",
             )}
           >
             {slides.map((s) => (
