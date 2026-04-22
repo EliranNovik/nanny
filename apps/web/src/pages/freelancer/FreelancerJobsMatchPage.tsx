@@ -555,18 +555,27 @@ export default function FreelancerJobsMatchPage() {
     >
       <div className={cn("app-desktop-shell space-y-8 pt-6 md:pt-8")}>
         {showSearchChrome ? (
-          <div className="mx-auto w-full max-w-lg space-y-6 px-2 md:max-w-2xl">
-            <div className="text-center">
+          <>
+            <div className="mx-auto w-full max-w-lg px-2 text-center md:max-w-2xl animate-in fade-in slide-in-from-top-2 duration-300">
               <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
-                Find people in need
+                Browse users requests
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 Browse open requests near your location.
               </p>
             </div>
 
-            <Card>
-              <CardContent className="space-y-4 p-5">
+            {hasSearched ? (
+              <div className="mx-auto w-full max-w-lg px-2 md:max-w-2xl">
+                <p className="text-center text-xs font-semibold text-muted-foreground">
+                  {filteredRows.length} request{filteredRows.length === 1 ? "" : "s"} match
+                  {selectedCategories.size > 0 ? " your filters" : " this search"}
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mx-auto w-full max-w-lg md:max-w-xl animate-in fade-in zoom-in-95 duration-300">
+              <div className="space-y-6 px-1 pt-2 md:px-0 md:pt-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2 px-0.5">
                     <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
@@ -613,6 +622,7 @@ export default function FreelancerJobsMatchPage() {
                       "shadow-md shadow-black/10 dark:shadow-black/30",
                     )}
                   >
+                    <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-emerald-50/25 to-transparent dark:from-emerald-950/20" />
                     <JobRequestsMapBlock
                       center={center}
                       radiusKm={radiusKm}
@@ -690,19 +700,19 @@ export default function FreelancerJobsMatchPage() {
 
                 {/* md+: primary CTA in flow. Mobile uses fixed dock below. */}
                 <div className="hidden md:block">{renderSearchRequestsButton()}</div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </div>
+          </>
         ) : (
-          <div className="max-md:hidden">
+          <div className="max-md:hidden sticky top-[80px] z-40 -mt-4 mb-4 flex justify-center pointer-events-none">
             <Button
               type="button"
               variant="outline"
-              size="lg"
-              className="h-14 w-full rounded-2xl text-base font-black"
+              size="sm"
+              className="rounded-full bg-white/90 backdrop-blur-md shadow-sm pointer-events-auto dark:bg-zinc-900/90 dark:border-white/10"
               onClick={() => setSearchChromeCollapsed(false)}
             >
-              <Radar className="mr-2 h-5 w-5" />
+              <Search className="mr-2 h-4 w-4" />
               Map & search
             </Button>
           </div>

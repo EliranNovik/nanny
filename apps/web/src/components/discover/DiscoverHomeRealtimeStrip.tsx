@@ -35,9 +35,10 @@ import {
   discoverIcon,
 } from "@/components/discover/discoverHomeIcons";
 
-const MAX = 4;
-/** Align with Jobs → Community's requests: fewer rows than the old strip of 4. */
-const MAX_WORK_REQUEST_ROWS = 3;
+/** One full row of cards on desktop (md:grid-cols-5); mobile strip stays compact. */
+const MAX = 5;
+/** Same row count as hire strip on Discover home desktop. */
+const MAX_WORK_REQUEST_ROWS = 5;
 
 function ageLabel(createdAt: string | null | undefined): string | null {
   if (!createdAt) return null;
@@ -85,6 +86,10 @@ type WorkRowItem = {
   createdAt: string | null;
   /** Shift / duration / time — only when present */
   detailLine: string | null;
+  /** care_type + care_frequency from job_requests (footer) */
+  helpTypeLine: string | null;
+  /** job_requests.time_duration only */
+  durationLine: string | null;
   thumbUrl: string;
   name: string;
   average_rating?: number | null;
@@ -112,6 +117,23 @@ function categoryImageSrc(
 
 // (relativeDayLabel / pickBadge were used by the old vertical list UI; removed)
 
+function humanizeSnakeField(raw: string | null | undefined): string | null {
+  const t = (raw || "").trim();
+  if (!t) return null;
+  return t.replace(/_/g, " ");
+}
+
+function buildHelpTypeFromCareFields(
+  careType: string | null | undefined,
+  careFrequency: string | null | undefined,
+): string | null {
+  const ct = humanizeSnakeField(careType);
+  const cf = humanizeSnakeField(careFrequency);
+  const parts = [ct, cf].filter((p): p is string => Boolean(p));
+  if (parts.length === 0) return null;
+  return parts.join(" · ");
+}
+
 function mapJobLikeToWorkRow(opts: {
   key: string;
   jobId: string;
@@ -122,6 +144,8 @@ function mapJobLikeToWorkRow(opts: {
   start_at?: string | null;
   shift_hours?: string | null;
   time_duration?: string | null;
+  care_type?: string | null;
+  care_frequency?: string | null;
   photo: string | null | undefined;
   name: string | null | undefined;
   average_rating?: number | null | undefined;
@@ -140,6 +164,11 @@ function mapJobLikeToWorkRow(opts: {
     start_at: opts.start_at ?? null,
   });
   const detailLine = rawDetail === "—" ? null : rawDetail;
+  const helpTypeLine = buildHelpTypeFromCareFields(
+    opts.care_type,
+    opts.care_frequency,
+  );
+  const durationLine = (opts.time_duration || "").trim() || null;
   const thumb = opts.photo?.trim() || categoryImageSrc(cat ?? null);
   return {
     key: opts.key,
@@ -150,6 +179,8 @@ function mapJobLikeToWorkRow(opts: {
     cityLine: city,
     createdAt: opts.created_at ?? null,
     detailLine,
+    helpTypeLine,
+    durationLine,
     thumbUrl: thumb,
     name: (opts.name || "?").trim() || "?",
     average_rating: opts.average_rating ?? null,
@@ -255,6 +286,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           start_at: r.start_at,
           shift_hours: r.shift_hours,
           time_duration: r.time_duration,
+          care_type: r.care_type ?? null,
+          care_frequency: r.care_frequency ?? null,
           photo: r.client_photo_url,
           name: r.client_display_name,
           average_rating: r.client_average_rating ?? null,
@@ -276,6 +309,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           job_requests: {
             id: string;
             service_type?: string;
+            care_type?: string | null;
+            care_frequency?: string | null;
             location_city?: string;
             created_at?: string;
             start_at?: string | null;
@@ -295,6 +330,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             start_at: jr.start_at,
             shift_hours: jr.shift_hours,
             time_duration: jr.time_duration,
+            care_type: jr.care_type ?? null,
+            care_frequency: jr.care_frequency ?? null,
             photo: jr.profiles?.photo_url,
             name: jr.profiles?.full_name,
             average_rating:
@@ -448,9 +485,9 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
         <div
           className={cn(
-            "-mx-1 flex gap-3 overflow-x-auto px-1 pb-0.5",
-            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-            "snap-x snap-mandatory",
+            "-mx-1 gap-3 px-1 pb-0.5",
+            "flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "md:mx-0 md:grid md:grid-cols-5 md:grid-rows-1 md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none lg:gap-3",
           )}
           role="list"
           aria-label="Requests now near you"
@@ -465,64 +502,148 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.08)]",
                 "transition-[box-shadow,transform,border-color] hover:border-slate-300/90 hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)]",
                 "active:scale-[0.99] dark:border-zinc-700/70 dark:bg-zinc-900",
+                "md:w-full md:min-w-0 md:max-w-none md:overflow-hidden md:p-0 md:shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-8px_rgba(15,23,42,0.1)]",
+                "md:rounded-2xl md:hover:shadow-[0_8px_28px_-10px_rgba(15,23,42,0.14)]",
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-slate-100 ring-1 ring-black/[0.04] dark:bg-zinc-800 dark:ring-white/10">
-                    <img
-                      src={row.thumbUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400">
-                      <Star className="h-4 w-4 text-emerald-600" strokeWidth={2.5} aria-hidden />
-                      <span className="text-slate-700 dark:text-zinc-200">
-                        {ratingLabel(row.average_rating)}
-                      </span>
-                      {row.total_ratings ? (
-                        <span className="text-slate-400 dark:text-zinc-500">
-                          ({row.total_ratings})
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className={cn("truncate", T.h2, "text-slate-900 dark:text-zinc-50")}>
-                      {shortDisplayName(row.name)}
-                    </p>
-                    <p className={cn("mt-0.5 truncate", T.meta, "text-slate-500 dark:text-zinc-400")}>
-                      {row.cityLine}
-                    </p>
-                  </div>
-                </div>
-                {/* removed NEW/NOW badge */}
-              </div>
-
-              <div className="min-w-0">
-                <p
-                  className={cn(
-                    "flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight",
-                    "text-slate-900 dark:text-zinc-50",
-                  )}
-                >
-                  <span className="text-slate-500 dark:text-zinc-400">
-                    {row.categoryIcon}
+              <div className="relative hidden aspect-square w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-zinc-800 md:block">
+                <img
+                  src={row.thumbUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+                <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+                  <span className="relative flex h-2 w-2" aria-hidden>
+                    <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                   </span>
-                  {row.title}
-                </p>
-                {row.createdAt ? (
-                  <div
+                  Live
+                </span>
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black/80 via-black/50 to-transparent"
+                  aria-hidden
+                />
+                <div className="absolute inset-x-0 bottom-0 z-[2] px-3 pb-2.5 pt-10">
+                  <p
                     className={cn(
-                      "mt-1 flex items-center gap-2",
-                      T.meta,
-                      "text-slate-400 dark:text-zinc-500",
+                      "truncate text-lg font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]",
                     )}
                   >
-                    <span>{ageLabel(row.createdAt)}</span>
+                    {shortDisplayName(row.name)}
+                  </p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[12px] font-semibold tabular-nums text-white/95">
+                    <Star
+                      className="h-3.5 w-3.5 shrink-0 text-emerald-300"
+                      strokeWidth={2.5}
+                      aria-hidden
+                    />
+                    <span>{ratingLabel(row.average_rating)}</span>
+                    {row.total_ratings ? (
+                      <span className="text-white/75">({row.total_ratings})</span>
+                    ) : null}
                   </div>
-                ) : null}
+                </div>
+              </div>
+
+              <div className="flex min-w-0 flex-1 flex-col gap-2 md:gap-2.5 md:p-4">
+                <div className="flex items-start justify-between gap-2 md:hidden">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-slate-100 ring-1 ring-black/[0.04] dark:bg-zinc-800 dark:ring-white/10">
+                      <img
+                        src={row.thumbUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400">
+                        <Star className="h-4 w-4 text-emerald-600" strokeWidth={2.5} aria-hidden />
+                        <span className="text-slate-700 dark:text-zinc-200">
+                          {ratingLabel(row.average_rating)}
+                        </span>
+                        {row.total_ratings ? (
+                          <span className="text-slate-400 dark:text-zinc-500">
+                            ({row.total_ratings})
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className={cn("truncate", T.h2, "text-slate-900 dark:text-zinc-50")}>
+                        {shortDisplayName(row.name)}
+                      </p>
+                      <p className={cn("mt-0.5 truncate", T.meta, "text-slate-500 dark:text-zinc-400")}>
+                        {row.cityLine}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <p
+                  className={cn(
+                    "hidden truncate text-sm font-medium text-slate-500 dark:text-zinc-400 md:block",
+                  )}
+                >
+                  {row.cityLine}
+                </p>
+
+                <div className="min-w-0">
+                  <p
+                    className={cn(
+                      "flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight md:text-[15px]",
+                      "text-slate-900 dark:text-zinc-50",
+                    )}
+                  >
+                    <span className="text-slate-500 dark:text-zinc-400">{row.categoryIcon}</span>
+                    {row.title}
+                  </p>
+                  {row.createdAt ? (
+                    <div
+                      className={cn(
+                        "mt-1 flex items-center gap-2 md:mt-1.5",
+                        T.meta,
+                        "text-slate-400 dark:text-zinc-500 md:text-[13px]",
+                      )}
+                    >
+                      <span>{ageLabel(row.createdAt)}</span>
+                    </div>
+                  ) : null}
+
+                  <div
+                    className={cn(
+                      "hidden md:block",
+                      "mt-2.5 space-y-2 border-t border-slate-200/70 pt-2.5 dark:border-zinc-700/70",
+                      "md:mt-3 md:pt-3",
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p
+                        className={cn(
+                          T.meta,
+                          "text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500",
+                        )}
+                      >
+                        Care
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-[12px] font-semibold leading-snug text-slate-800 dark:text-zinc-200 md:text-[13px]">
+                        {row.helpTypeLine ?? "Not specified"}
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        className={cn(
+                          T.meta,
+                          "text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500",
+                        )}
+                      >
+                        Duration
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-snug text-slate-600 dark:text-zinc-300 md:text-[13px]">
+                        {row.durationLine ?? "Not specified"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </Link>
           ))}
@@ -548,9 +669,9 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       </div>
       <div
         className={cn(
-          "-mx-1 flex gap-3 overflow-x-auto px-1 pb-0.5",
-          "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "snap-x snap-mandatory",
+          "-mx-1 gap-3 px-1 pb-0.5",
+          "flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "md:mx-0 md:grid md:grid-cols-5 md:grid-rows-1 md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none lg:gap-3",
         )}
         role="list"
       >
@@ -564,9 +685,53 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.08)]",
               "transition-[box-shadow,transform,border-color] hover:border-slate-300/90 hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)]",
               "active:scale-[0.99] dark:border-zinc-700/70 dark:bg-zinc-900",
+              "md:w-full md:min-w-0 md:max-w-none md:overflow-hidden md:p-0 md:shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-8px_rgba(15,23,42,0.1)]",
+              "md:rounded-2xl md:hover:shadow-[0_8px_28px_-10px_rgba(15,23,42,0.14)]",
             )}
           >
-            <div className="relative mx-auto w-fit">
+            <div className="relative hidden aspect-square w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-zinc-800 md:block">
+              {it.photo ? (
+                <img
+                  src={it.photo}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-4xl font-semibold text-slate-400 dark:text-zinc-500">
+                  {it.name.charAt(0)}
+                </div>
+              )}
+              <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+                <span className="relative flex h-2 w-2" aria-hidden>
+                  <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                </span>
+                Live
+              </span>
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black/80 via-black/50 to-transparent"
+                aria-hidden
+              />
+              <div className="absolute inset-x-0 bottom-0 z-[2] px-3 pb-2.5 pt-10">
+                <p className="truncate text-lg font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
+                  {shortDisplayName(it.name)}
+                </p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[12px] font-semibold tabular-nums text-white/95">
+                  <Star
+                    className="h-3.5 w-3.5 shrink-0 text-violet-200"
+                    strokeWidth={2.5}
+                    aria-hidden
+                  />
+                  <span>{ratingLabel(it.average_rating)}</span>
+                  {it.total_ratings ? (
+                    <span className="text-white/75">({it.total_ratings})</span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="relative mx-auto w-fit md:hidden">
               <Avatar className="h-20 w-20 shadow-[0_2px_8px_rgba(15,23,42,0.1)]">
                 <AvatarImage src={it.photo || undefined} className="object-cover" />
                 <AvatarFallback className="text-lg font-semibold">
@@ -581,20 +746,21 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 Live
               </span>
             </div>
-            <div className="min-w-0 pt-1 text-left">
-              <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+
+            <div className="min-w-0 text-left md:p-4 md:pt-3">
+              <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50 md:hidden">
                 {shortDisplayName(it.name)}
               </p>
-              <p className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-zinc-400">
+              <p className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
                 {it.locationLine}
               </p>
-              <p className="mt-1 flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight text-slate-700 dark:text-zinc-200">
+              <p className="mt-1 flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight text-slate-700 dark:text-zinc-200 md:mt-2 md:text-[15px]">
                 <span className="text-slate-500 dark:text-zinc-400">
                   {categoryIconNode(it.categoryId)}
                 </span>
                 {it.label}
               </p>
-              <div className="mt-1 flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400">
+              <div className="mt-1 flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400 md:hidden">
                 <Star className="h-4 w-4 text-[#7B61FF]" strokeWidth={2.5} aria-hidden />
                 <span className="text-slate-700 dark:text-zinc-200">
                   {ratingLabel(it.average_rating)}

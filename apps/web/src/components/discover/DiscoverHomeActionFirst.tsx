@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronRight,
-  ClipboardList,
-  Radio,
+  PlayCircle,
+  PlusCircle,
   Search,
   UsersRound,
   Wifi,
@@ -19,12 +19,22 @@ import {
   navigateToWorkBrowseRequests,
 } from "@/lib/discoverBrowseNavigate";
 import { DiscoverHomeRealtimeStrip } from "@/components/discover/DiscoverHomeRealtimeStrip";
+import { DiscoverHomeHeroDesktopLiveColumn } from "@/components/discover/DiscoverHomeHeroDesktopLiveColumn";
 import {
   DISCOVER_STROKE,
   discoverIcon,
 } from "@/components/discover/discoverHomeIcons";
 import { DISCOVER_PRIMARY_HERO_IMAGES } from "@/components/discover/discoverHomeHeroImages";
 import { recordFirstMeaningfulAction } from "@/lib/sessionConversionAnalytics";
+import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
+import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
+import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
+import { useDiscoverOpenHelpRequests } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import {
+  ALL_HELP_CATEGORY_ID,
+  DISCOVER_HOME_CATEGORIES,
+  isServiceCategoryId,
+} from "@/lib/serviceCategories";
 
 type HomeMode = "hire" | "work";
 
@@ -39,7 +49,7 @@ const HIRE = {
   badge: "FAST & EASY",
   title: "Find someone in minutes.",
   sub: "Post what you need and get matched with helpers nearby — fast.",
-  primary: "Start a request",
+  primary: "Post a request",
 } as const;
 
 const WORK = {
@@ -51,15 +61,12 @@ const WORK = {
 
 /** Same stack + padding for both hire/work heroes; modest min-height keeps imagery balanced. */
 const heroInnerClassName =
-  "relative flex min-h-[11.5rem] flex-col sm:min-h-[14.25rem] md:min-h-[14.75rem]";
+  "relative flex min-h-[10rem] flex-col sm:min-h-[12.5rem] md:min-h-[13rem]";
 
 const heroStackClassName =
-  "relative z-10 flex min-h-0 flex-1 flex-col justify-between px-5 pb-6 pt-6 sm:px-6 sm:pb-7 sm:pt-6 md:px-7 md:pb-7 md:pt-7";
+  "relative z-10 flex min-h-0 flex-1 flex-col justify-start px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:px-7 md:pb-4 md:pt-6";
 
 const heroTopBlockClassName = "flex max-w-xl flex-col gap-3 md:gap-3.5";
-
-const heroPrimaryCtaRowClassName =
-  "mt-auto flex w-full shrink-0 justify-start pt-5 sm:pt-6";
 
 /** Primary hero CTAs — calm, product-grade (avoid loud “SaaS gradient” chrome). */
 const heroCtaBaseClassName = cn(
@@ -77,8 +84,18 @@ export function DiscoverHomeActionFirst({
   createRequestPath,
 }: Props) {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const isHire = homeMode === "hire";
+  const { data: categoryAvatars = {} } = useDiscoverLiveAvatars(user?.id);
+  const { data: frData } = useFreelancerRequests(
+    !isHire && user?.id ? user.id : undefined,
+  );
+  const fetchOpenHelpPool =
+    !isHire && !!user?.id && profile?.role !== "freelancer";
+  const { data: openHelpRows = [] } = useDiscoverOpenHelpRequests(
+    fetchOpenHelpPool,
+    user?.id,
+  );
   const viewerId = profile?.id ?? null;
   const [freelancerLiveUntil, setFreelancerLiveUntil] = useState<string | null>(
     null,
@@ -136,92 +153,246 @@ export function DiscoverHomeActionFirst({
     return `${minutes}:${ss}`;
   }, [isWorkLive, liveRemainingMs, liveUntilMs]);
 
+  /** Total live helper slots across Discover home categories (same pool as the strip). */
+  const hireLiveHelperCount = useMemo(() => {
+    let n = 0;
+    for (const cat of DISCOVER_HOME_CATEGORIES) {
+      if (cat.id === ALL_HELP_CATEGORY_ID) continue;
+      if (!isServiceCategoryId(cat.id)) continue;
+      const avs = categoryAvatars[cat.id];
+      if (Array.isArray(avs)) n += avs.length;
+    }
+    return n;
+  }, [categoryAvatars]);
+
+  /** Live requests: freelancer inbox count or client open-help RPC rows (same rules as the strip). */
+  const workLivePostCount = useMemo(() => {
+    if (!user?.id) return 0;
+    if (profile?.role === "freelancer") {
+      return (frData?.inboundNotifications ?? []).filter((n) =>
+        matchesCommunityRequestsIncoming(n, {
+          excludeClientId: user.id,
+        }),
+      ).length;
+    }
+    return openHelpRows.length;
+  }, [frData, openHelpRows, profile?.role, user?.id]);
+
   function renderFixedBottomBrowseDock() {
+    const bottomOffset = "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]";
+    const pillBtn = cn(
+      "group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4",
+      "border shadow-md transition-[transform,box-shadow,background-color,border-color] active:scale-[0.99] motion-reduce:transition-none",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    );
+
     return (
-      <div
-        className={cn(
-          "pointer-events-none fixed inset-x-0 z-[140]",
-          "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]",
-        )}
-        aria-hidden
-      >
+      <>
+        {/* Mobile: full-width dock bar */}
         <div
           className={cn(
-            "pointer-events-auto border-t border-slate-200/80 bg-background/95 px-4 pb-2 pt-3",
-            "shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10",
+            "pointer-events-none fixed inset-x-0 z-[140] md:hidden",
+            bottomOffset,
           )}
+          aria-hidden
         >
-          <div className="mx-auto w-full max-w-lg">
-            {isHire ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
-                  navigateToHelpersBrowse(navigate);
-                }}
-                className={cn(
-                  // Secondary action: smaller, quieter, never competes with hero CTA
-                  "group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full",
-                  "border border-slate-200/80 bg-slate-100 text-slate-800",
-                  "shadow-sm transition-[transform,box-shadow,background-color,border-color] active:scale-[0.995] motion-reduce:transition-none",
-                  "hover:bg-slate-100/80 hover:shadow-md",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                )}
-                aria-label="Browse helpers"
-              >
-                <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-                <span className="text-[14px] font-extrabold tracking-tight">
-                  Browse helpers
-                </span>
-                <ChevronRight
-                  className={cn(
-                    discoverIcon.sm,
-                    "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600",
-                    "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
-                  )}
-                  strokeWidth={2.25}
-                  aria-hidden
-                />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  trackEvent("discover_bottom_find_people_in_need", {
-                    mode: homeMode,
-                  });
-                  navigateToWorkBrowseRequests(navigate, profile);
-                }}
-                className={cn(
-                  // Secondary action: smaller, quieter, never competes with hero CTA
-                  "group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full",
-                  "border border-slate-200/80 bg-slate-100 text-slate-800",
-                  "shadow-sm transition-[transform,box-shadow,background-color,border-color] active:scale-[0.995] motion-reduce:transition-none",
-                  "hover:bg-slate-100/80 hover:shadow-md",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                )}
-                aria-label="Find people in need"
-              >
-                <UsersRound className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-                <span className="text-[14px] font-extrabold tracking-tight">
-                  Find people in need
-                </span>
-                <ChevronRight
-                  className={cn(
-                    discoverIcon.sm,
-                    "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600",
-                    "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
-                  )}
-                  strokeWidth={2.25}
-                  aria-hidden
-                />
-              </button>
+          <div
+            className={cn(
+              "pointer-events-auto border-t border-slate-200/80 bg-background/95 px-4 pb-2 pt-3",
+              "shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10",
             )}
+          >
+            <div className="mx-auto w-full max-w-lg">
+              {isHire ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
+                    navigateToHelpersBrowse(navigate);
+                  }}
+                  className={cn(
+                    pillBtn,
+                    "h-12 w-full justify-between",
+                    "border-slate-200/80 bg-slate-100 text-slate-800",
+                    "hover:bg-slate-100/80 hover:shadow-lg",
+                    "focus-visible:ring-[#7B61FF]/35",
+                  )}
+                  aria-label="Browse helpers"
+                >
+                  <Search className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+                  <span className="inline-flex min-w-0 max-w-[min(100%,12rem)] flex-1 items-center justify-center gap-1.5">
+                    <span className="truncate text-[14px] font-extrabold tracking-tight">
+                      Browse helpers
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums",
+                        hireLiveHelperCount > 0
+                          ? "bg-[#7B61FF]/15 text-[#4c1d95] dark:bg-[#7B61FF]/25 dark:text-violet-100"
+                          : "bg-slate-900/5 text-slate-500 dark:bg-white/10 dark:text-slate-400",
+                      )}
+                      aria-label={`${hireLiveHelperCount} live helpers`}
+                    >
+                      {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
+                    </span>
+                  </span>
+                  <ChevronRight
+                    className={cn(
+                      discoverIcon.sm,
+                      "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600",
+                      "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
+                    )}
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    trackEvent("discover_bottom_find_people_in_need", {
+                      mode: homeMode,
+                    });
+                    navigateToWorkBrowseRequests(navigate, profile);
+                  }}
+                  className={cn(
+                    pillBtn,
+                    "h-12 w-full justify-between",
+                    "border-slate-200/80 bg-slate-100 text-slate-800",
+                    "hover:bg-slate-100/80 hover:shadow-lg",
+                    "focus-visible:ring-emerald-400/35",
+                  )}
+                  aria-label="Browse users requests"
+                >
+                  <UsersRound className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+                  <span className="inline-flex min-w-0 max-w-[min(100%,14rem)] flex-1 items-center justify-center gap-1.5">
+                    <span className="truncate text-[14px] font-extrabold tracking-tight">
+                      Browse users requests
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums",
+                        workLivePostCount > 0
+                          ? "bg-emerald-600/15 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
+                          : "bg-slate-900/5 text-slate-500 dark:bg-white/10 dark:text-slate-400",
+                      )}
+                      aria-label={`${workLivePostCount} live posts`}
+                    >
+                      {workLivePostCount > 99 ? "99+" : workLivePostCount}
+                    </span>
+                  </span>
+                  <ChevronRight
+                    className={cn(
+                      discoverIcon.sm,
+                      "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600",
+                      "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
+                    )}
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* Desktop: single pill, bottom-right — aligned with bottom nav row, no backing bar */}
+        <div
+          className={cn(
+            "pointer-events-auto fixed z-[140] hidden md:block",
+            bottomOffset,
+            "right-[max(1rem,env(safe-area-inset-right,0px))]",
+          )}
+        >
+          {isHire ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
+                navigateToHelpersBrowse(navigate);
+              }}
+              className={cn(
+                pillBtn,
+                "border-[#5b49c4]/90 bg-[#7B61FF] text-white shadow-sm",
+                "hover:bg-[#6d56ea] hover:border-[#4f3eb0] hover:shadow-md",
+                "dark:border-violet-300/35 dark:bg-[#7B61FF] dark:text-white dark:hover:bg-[#6d56ea]",
+                "focus-visible:ring-[#7B61FF]/55",
+              )}
+              aria-label="Browse helpers"
+            >
+              <Search className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+              <span className="inline-flex min-w-0 max-w-[10rem] items-center gap-1.5 sm:max-w-none">
+                <span className="truncate text-[13px] font-extrabold tracking-tight text-white sm:text-[14px]">
+                  Browse helpers
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white",
+                    hireLiveHelperCount > 0 ? "bg-white/25" : "bg-white/15 text-white/80",
+                  )}
+                  aria-label={`${hireLiveHelperCount} live helpers`}
+                >
+                  {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
+                </span>
+              </span>
+              <ChevronRight
+                className={cn(
+                  discoverIcon.sm,
+                  "shrink-0 text-white/85 transition group-hover:translate-x-0.5 group-hover:text-white",
+                )}
+                strokeWidth={2.25}
+                aria-hidden
+              />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                trackEvent("discover_bottom_find_people_in_need", {
+                  mode: homeMode,
+                });
+                navigateToWorkBrowseRequests(navigate, profile);
+              }}
+              className={cn(
+                pillBtn,
+                "border-emerald-700/60 bg-emerald-600 text-white shadow-sm",
+                "hover:bg-emerald-500 hover:border-emerald-600 hover:shadow-md",
+                "dark:border-emerald-400/35 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500",
+                "focus-visible:ring-emerald-400/55",
+              )}
+              aria-label="Browse users requests"
+            >
+              <UsersRound className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+              <span className="inline-flex min-w-0 max-w-[14rem] items-center gap-1.5 sm:max-w-none">
+                <span className="truncate text-[13px] font-extrabold tracking-tight text-white sm:text-[14px]">
+                  Browse users requests
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white",
+                    workLivePostCount > 0 ? "bg-emerald-950/30" : "bg-emerald-950/20 text-emerald-100/90",
+                  )}
+                  aria-label={`${workLivePostCount} live posts`}
+                >
+                  {workLivePostCount > 99 ? "99+" : workLivePostCount}
+                </span>
+              </span>
+              <ChevronRight
+                className={cn(
+                  discoverIcon.sm,
+                  "shrink-0 text-emerald-100/90 transition group-hover:translate-x-0.5 group-hover:text-white",
+                )}
+                strokeWidth={2.25}
+                aria-hidden
+              />
+            </button>
+          )}
+        </div>
+      </>
     );
   }
 
@@ -244,11 +415,17 @@ export function DiscoverHomeActionFirst({
         "flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden md:gap-5",
       )}
     >
+      <div
+        className={cn(
+          "grid shrink-0 grid-cols-1 gap-4 md:gap-5 lg:gap-6",
+          user?.id &&
+            "md:grid-cols-[minmax(0,1fr)_min(19rem,32%)] md:items-stretch",
+        )}
+      >
       {isHire ? (
         <section
           className={cn(
-            "relative shrink-0 overflow-hidden rounded-[28px] text-left",
-            "shadow-[0_12px_40px_-12px_rgba(91,61,232,0.35),0_2px_8px_rgba(15,23,42,0.08)]",
+            "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
             "ring-1 ring-black/[0.06] ring-inset",
           )}
         >
@@ -292,7 +469,7 @@ export function DiscoverHomeActionFirst({
                       {HIRE.sub}
                     </p>
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <button
                       type="button"
                       onClick={onStartRequest}
@@ -306,7 +483,7 @@ export function DiscoverHomeActionFirst({
                         "focus-visible:ring-white/80",
                       )}
                     >
-                      <ClipboardList
+                      <PlusCircle
                         className="h-[1.05rem] w-[1.05rem] shrink-0 text-violet-800"
                         strokeWidth={2}
                         aria-hidden
@@ -327,15 +504,13 @@ export function DiscoverHomeActionFirst({
                 </div>
 
               </div>
-              <div className={heroPrimaryCtaRowClassName} />
             </div>
           </div>
         </section>
       ) : (
         <section
           className={cn(
-            "relative shrink-0 overflow-hidden rounded-[28px] text-left",
-            "shadow-[0_12px_40px_-12px_rgba(5,95,72,0.35),0_2px_8px_rgba(15,23,42,0.08)]",
+            "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
             "ring-1 ring-black/[0.06] ring-inset",
           )}
         >
@@ -378,7 +553,7 @@ export function DiscoverHomeActionFirst({
                       {workTheme.sub}
                     </p>
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-3">
                     {isWorkLive ? (
                       <div className="flex w-full items-center gap-3">
                         <div
@@ -429,7 +604,7 @@ export function DiscoverHomeActionFirst({
                           "focus-visible:ring-white/80",
                         )}
                       >
-                        <Radio
+                        <PlayCircle
                           className="h-[1.05rem] w-[1.05rem] shrink-0 text-emerald-800"
                           strokeWidth={2}
                           aria-hidden
@@ -448,11 +623,12 @@ export function DiscoverHomeActionFirst({
                   </div>
                 </div>
               </div>
-              <div className={heroPrimaryCtaRowClassName} />
             </div>
           </div>
         </section>
       )}
+      <DiscoverHomeHeroDesktopLiveColumn />
+      </div>
 
       <div className="min-h-0 flex-1 overflow-hidden pt-0.5">
         <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />

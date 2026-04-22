@@ -61,8 +61,12 @@ import {
 } from "@/components/nav/BottomNavTabGlyphs";
 import { supabase } from "@/lib/supabase";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
-
-const DISCOVER_HOME_INTENT_STORAGE_KEY = "mamalama_discover_home_intent_v1";
+import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
+import {
+  readDiscoverHomeIntent,
+  subscribeDiscoverHomeIntent,
+  writeDiscoverHomeIntent,
+} from "@/lib/discoverHomeIntent";
 
 /** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
 function bottomNavTabIconClass(isActive: boolean) {
@@ -97,6 +101,8 @@ export function BottomNav() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [desktopAppMenuOpen, setDesktopAppMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [desktopDiscoverSearchOpen, setDesktopDiscoverSearchOpen] =
+    useState(false);
   const mobileSearchClusterRef = useRef<HTMLDivElement>(null);
   const [appMenuHelpOthersOpen, setAppMenuHelpOthersOpen] = useState(false);
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
@@ -120,10 +126,9 @@ export function BottomNav() {
     useDiscoverHomeScrollHeader();
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
-  const [discoverHomeMode, setDiscoverHomeMode] = useState<"hire" | "work">(() => {
-    const v = localStorage.getItem(DISCOVER_HOME_INTENT_STORAGE_KEY);
-    return v === "work" ? "work" : "hire";
-  });
+  const [discoverHomeMode, setDiscoverHomeMode] = useState<
+    "hire" | "work"
+  >(() => readDiscoverHomeIntent());
   const isLikedPage = pathnameNorm === "/liked";
   const isShellScrollCollapseRoute = isDiscoverHome || isLikedPage;
   const shellCollapseChromeP = isShellScrollCollapseRoute
@@ -232,25 +237,13 @@ export function BottomNav() {
     }
   }, [location.pathname]);
 
-  /** Keep + button color in sync with Discover home tab (hire/work). */
   useEffect(() => {
-    if (!isDiscoverHome) return;
-    const readMode = () => {
-      const v = localStorage.getItem(DISCOVER_HOME_INTENT_STORAGE_KEY);
-      setDiscoverHomeMode(v === "work" ? "work" : "hire");
-    };
-    readMode();
-    // DiscoverHomeContent writes localStorage on tab change; observe it without relying on a route change.
-    const obs = new MutationObserver(readMode);
-    const el = document.querySelector("[data-discover-home-page]");
-    if (el) {
-      obs.observe(el, { attributes: true, attributeFilter: ["data-discover-home-mode"] });
-    } else {
-      // Fallback: poll lightly while on Discover home.
-      const id = window.setInterval(readMode, 500);
-      return () => window.clearInterval(id);
-    }
-    return () => obs.disconnect();
+    return subscribeDiscoverHomeIntent(setDiscoverHomeMode);
+  }, []);
+
+  useEffect(() => {
+    if (isDiscoverHome) setDiscoverHomeMode(readDiscoverHomeIntent());
+    else setDesktopDiscoverSearchOpen(false);
   }, [isDiscoverHome]);
 
   useEffect(() => {
@@ -340,8 +333,9 @@ export function BottomNav() {
   }
 
   useEffect(() => {
-    if (previousPathnameRef.current !== location.pathname && mobileSearchOpen) {
-      setMobileSearchOpen(false);
+    if (previousPathnameRef.current !== location.pathname) {
+      if (mobileSearchOpen) setMobileSearchOpen(false);
+      setDesktopDiscoverSearchOpen(false);
     }
     previousPathnameRef.current = location.pathname;
   }, [location.pathname, mobileSearchOpen]);
@@ -737,20 +731,57 @@ export function BottomNav() {
         </div>
 
         <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
-          <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-3">
-            {showCommunityHeaderCategoryDropdown && (
-              <div className="hidden min-w-0 shrink-0 md:block md:w-[min(8.75rem,22vw)] lg:w-36">
-                <CommunityPostsCategoryNativeSelect
-                  variant="header"
-                  basePath={location.pathname}
-                  categoryParam={communityCategoryParam}
+          {isDiscoverHome && desktopDiscoverSearchOpen ? (
+            <div className="flex w-full min-w-0 items-center gap-2 md:gap-2.5">
+              <div className="min-w-0 flex-1 md:max-w-md lg:max-w-xl">
+                <UserSearch
+                  autoFocus
+                  onResultSelect={() => setDesktopDiscoverSearchOpen(false)}
                 />
               </div>
-            )}
-            <div className="min-w-0 flex-1 md:max-w-md lg:max-w-xl">
-              <UserSearch />
+              <button
+                type="button"
+                onClick={() => setDesktopDiscoverSearchOpen(false)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                aria-label="Close search"
+              >
+                <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+              </button>
             </div>
-          </div>
+          ) : isDiscoverHome ? (
+            <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-2.5">
+              <DiscoverHomeModeSegmentedControl
+                mode={discoverHomeMode}
+                onModeChange={(m) => {
+                  void writeDiscoverHomeIntent(m);
+                }}
+                variant="header"
+              />
+              <button
+                type="button"
+                onClick={() => setDesktopDiscoverSearchOpen(true)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                aria-label="Open search"
+              >
+                <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+              </button>
+            </div>
+          ) : (
+            <div className="flex w-full min-w-0 items-center justify-center gap-2 md:gap-3">
+              {showCommunityHeaderCategoryDropdown && (
+                <div className="hidden min-w-0 shrink-0 md:block md:w-[min(8.75rem,22vw)] lg:w-36">
+                  <CommunityPostsCategoryNativeSelect
+                    variant="header"
+                    basePath={location.pathname}
+                    categoryParam={communityCategoryParam}
+                  />
+                </div>
+              )}
+              <div className="min-w-0 flex-1 md:max-w-md lg:max-w-xl">
+                <UserSearch />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-1 min-w-0">
@@ -1093,11 +1124,17 @@ export function BottomNav() {
 
     return (
       <>
-        {!isHelpersFindPage ? DesktopHeader : null}
+        {!isHelpersFindPage && !isFreelancerJobsMatch ? DesktopHeader : null}
         {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0">
+        <nav
+          className={cn(
+            "fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0",
+            // Discover home browse dock uses z-[140]; lift nav (+ quick menu) above it while open.
+            plusMenuOpen ? "z-[160]" : "z-[120]",
+          )}
+        >
           <div
             className={cn(
               // Desktop: keep it pinned to the viewport bottom (no floating gap).

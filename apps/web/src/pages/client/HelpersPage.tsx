@@ -1017,7 +1017,25 @@ export default function HelpersPage() {
           </div>
         </div>
           </>
-        ) : null}
+        ) : (
+          <div className="max-md:hidden sticky top-[80px] z-40 -mt-4 mb-4 flex justify-center pointer-events-none">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full shadow-lg pointer-events-auto border-orange-500/20 bg-white/95 backdrop-blur-sm px-6 h-10 font-bold text-slate-800 dark:bg-zinc-900/95 dark:text-slate-200"
+              onClick={() => {
+                setSearchChromeCollapsed(false);
+                window.requestAnimationFrame(() => {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+              }}
+            >
+              <Radar className="mr-2 h-4 w-4 text-orange-500" />
+              Map & search
+            </Button>
+          </div>
+        )}
 
         {hasSearched && helpersInLiveWindow.length > 0 && (
           <div

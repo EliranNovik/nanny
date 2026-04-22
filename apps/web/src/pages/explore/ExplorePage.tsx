@@ -112,7 +112,7 @@ function ExploreSecondaryUnderlineTabs({
               aria-selected={selected}
               onClick={() => onTabChange(id)}
               className={cn(
-                "shrink-0 whitespace-nowrap border-b-2 px-3 py-3 text-left text-[13px] font-semibold transition-colors sm:px-4 sm:text-sm",
+                "shrink-0 whitespace-nowrap border-b-2 px-3 py-3 text-left text-sm font-semibold transition-colors sm:px-4 sm:text-[15px]",
                 selected
                   ? isHire
                     ? "border-[#7B61FF] text-[#4c1d95] dark:border-[#A78BFA] dark:text-[#E9D5FF]"
@@ -297,7 +297,7 @@ export default function ExplorePage() {
               <div
                 className={cn(
                   // Match Discover home primary segmented control (DiscoverHomeContent).
-                  "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-[18px] p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
+                  "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
                   "border border-slate-300/70 bg-slate-100 shadow-sm",
                   "dark:border-zinc-700/80 dark:bg-zinc-900",
                   "leading-none",
@@ -307,15 +307,16 @@ export default function ExplorePage() {
                   type="button"
                   role="tab"
                   aria-selected={mode === "hire"}
+                  aria-label={mode === "hire" ? undefined : "I need help"}
                   onClick={() => setMode("hire")}
                   className={cn(
-                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[14px] px-2 py-2 sm:min-h-[54px] sm:px-3",
-                    "transition-[color,transform] duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 sm:min-h-[54px] sm:px-3",
+                    "transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     mode === "hire"
-                      ? "bg-[#7B61FF] text-white shadow-[0_10px_22px_-14px_rgba(15,23,42,0.35)] ring-1 ring-inset ring-white/15"
-                      : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
+                      ? "bg-white text-neutral-900 shadow-sm ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/80"
+                      : "bg-transparent text-neutral-900 hover:bg-white/60 dark:hover:bg-zinc-800/50",
                   )}
                 >
                   <HeartHandshake
@@ -323,20 +324,13 @@ export default function ExplorePage() {
                       discoverIcon.md,
                       "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
                       mode === "hire"
-                        ? "text-white"
+                        ? "text-[#7B61FF]"
                         : "text-slate-400 dark:text-zinc-500",
                     )}
                     strokeWidth={DISCOVER_STROKE}
                     aria-hidden
                   />
-                  <span
-                    className={cn(
-                      "min-w-0 flex-1 text-center text-[14px] font-bold leading-tight tracking-tight sm:text-[16px]",
-                      mode === "hire"
-                        ? "text-white"
-                        : "text-slate-500 dark:text-zinc-400",
-                    )}
-                  >
+                  <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-tight text-neutral-900 sm:text-[16px] dark:text-zinc-100">
                     I need help
                   </span>
                 </button>
@@ -344,15 +338,16 @@ export default function ExplorePage() {
                   type="button"
                   role="tab"
                   aria-selected={mode === "work"}
+                  aria-label={mode === "work" ? undefined : "Help others"}
                   onClick={() => setMode("work")}
                   className={cn(
-                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[14px] px-2 py-2 sm:min-h-[54px] sm:px-3",
-                    "transition-[color,transform] duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#065f46]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 sm:min-h-[54px] sm:px-3",
+                    "transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     mode === "work"
-                      ? "bg-emerald-700 text-white shadow-[0_10px_22px_-14px_rgba(15,23,42,0.35)] ring-1 ring-inset ring-white/15"
-                      : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
+                      ? "bg-white text-neutral-900 shadow-sm ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/80"
+                      : "bg-transparent text-neutral-900 hover:bg-white/60 dark:hover:bg-zinc-800/50",
                   )}
                 >
                   <HelpingHand
@@ -360,20 +355,13 @@ export default function ExplorePage() {
                       discoverIcon.md,
                       "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
                       mode === "work"
-                        ? "text-white"
+                        ? "text-emerald-700 dark:text-emerald-400"
                         : "text-slate-400 dark:text-zinc-500",
                     )}
                     strokeWidth={DISCOVER_STROKE}
                     aria-hidden
                   />
-                  <span
-                    className={cn(
-                      "min-w-0 flex-1 text-center text-[14px] font-bold leading-tight tracking-tight sm:text-[16px]",
-                      mode === "work"
-                        ? "text-white"
-                        : "text-slate-500 dark:text-zinc-400",
-                    )}
-                  >
+                  <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-tight text-neutral-900 sm:text-[16px] dark:text-zinc-100">
                     Help others
                   </span>
                 </button>
@@ -397,7 +385,7 @@ export default function ExplorePage() {
           "bg-slate-100 dark:bg-zinc-950",
         )}
       >
-        <div className="px-1 pt-1">
+        <div className="px-1 pt-2 md:pt-5">
           {mode === "hire" ? (
             <>
               {tab === "live_help" ? (

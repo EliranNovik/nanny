@@ -14,6 +14,8 @@ export type DiscoverOpenHelpRequestRow = {
   created_at: string | null;
   shift_hours: string | null;
   time_duration: string | null;
+  care_type: string | null;
+  care_frequency: string | null;
   client_photo_url: string | null;
   client_display_name: string | null;
   /** Present when RPC returns it — used to hide the viewer’s own requests client-side. */

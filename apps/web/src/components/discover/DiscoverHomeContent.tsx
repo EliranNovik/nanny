@@ -1,43 +1,35 @@
 import { useToast } from "@/components/ui/toast";
 import { useEffect, useState } from "react";
-import { HeartHandshake, HelpingHand } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { DiscoverHomeActionFirst } from "@/components/discover/DiscoverHomeActionFirst";
+import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
 import {
-  DISCOVER_STROKE,
-  discoverIcon,
-} from "@/components/discover/discoverHomeIcons";
+  readDiscoverHomeIntent,
+  subscribeDiscoverHomeIntent,
+  writeDiscoverHomeIntent,
+  type DiscoverHomeIntent,
+} from "@/lib/discoverHomeIntent";
 
 type DiscoverRole = "client" | "freelancer";
-type DiscoverHomeMode = "hire" | "work";
-const HOME_INTENT_STORAGE_KEY = "mamalama_discover_home_intent_v1";
-
-function readStoredHomeMode(): DiscoverHomeMode | null {
-  try {
-    const v = localStorage.getItem(HOME_INTENT_STORAGE_KEY);
-    if (v === "hire" || v === "work") return v;
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
   /** Keep `--mobile-shell-collapse-progress` at 0 on Discover — tab strip stays fixed (no scroll-linked collapse). */
   useMobileShellScrollCollapse(false);
   const { addToast } = useToast();
   const isClient = role === "client";
-  const [homeMode, setHomeMode] = useState<DiscoverHomeMode>(() => {
-    const stored = readStoredHomeMode();
-    if (stored) return stored;
-    return "hire";
-  });
+  const [homeMode, setHomeMode] = useState<DiscoverHomeIntent>(() =>
+    readDiscoverHomeIntent(),
+  );
 
   useEffect(() => {
-    try {
-      localStorage.setItem(HOME_INTENT_STORAGE_KEY, homeMode);
-    } catch {
+    return subscribeDiscoverHomeIntent((m) => {
+      setHomeMode((prev) => (prev === m ? prev : m));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!writeDiscoverHomeIntent(homeMode)) {
       addToast({
         title: "Error",
         description: "An unexpected error occurred.",
@@ -60,121 +52,44 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
       data-discover-home-page=""
       data-discover-home-mode={homeMode}
     >
+      {/* Mobile only: fixed tab strip under status bar (desktop uses header toggle in BottomNav). */}
       <div
+        data-discover-toggle-strip=""
         className={cn(
-          "fixed inset-x-0 z-[55] pointer-events-none border-b-0 shadow-none",
+          "fixed inset-x-0 z-[55] pointer-events-none md:hidden",
           "bg-white dark:bg-background",
-          "max-md:top-0",
-          "md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
+          "top-0",
         )}
       >
         <div
           aria-hidden
           className={cn(
-            "shrink-0 md:hidden max-md:transition-none dark:bg-background",
+            "shrink-0 max-md:transition-none dark:bg-background",
             "bg-white",
           )}
           style={{
-            /* Fixed offset under app header (was scroll-linked via --mobile-shell-collapse-progress) */
             height: "calc(env(safe-area-inset-top, 0px) + 3.5rem)",
           }}
         />
-        <div className="app-desktop-shell pointer-events-auto max-md:px-2.5">
-          <div className="w-full px-2 py-2">
-            <div role="tablist" aria-label="What are you here for?">
-              <div
-                className={cn(
-                  // Premium segmented control: higher contrast, sharper edges, no blur.
-                  "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-[18px] p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
-                  "border border-slate-300/70 bg-slate-100 shadow-sm",
-                  "dark:border-zinc-700/80 dark:bg-zinc-900",
-                  "leading-none",
-                )}
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={homeMode === "hire"}
-                  aria-label={homeMode === "hire" ? undefined : "I need help"}
-                  onClick={() => setHomeMode("hire")}
-                  className={cn(
-                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[14px] px-2 py-2 sm:min-h-[54px] sm:px-3",
-                    "transition-[color,transform] duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "active:scale-[0.98] motion-reduce:transition-none",
-                    homeMode === "hire"
-                      ? "bg-[#7B61FF] text-white shadow-[0_10px_22px_-14px_rgba(15,23,42,0.35)] ring-1 ring-inset ring-white/15"
-                      : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
-                  )}
-                >
-                  <HeartHandshake
-                    className={cn(
-                      discoverIcon.md,
-                      "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                      homeMode === "hire"
-                        ? "text-white"
-                        : "text-slate-400 dark:text-zinc-500",
-                    )}
-                    strokeWidth={DISCOVER_STROKE}
-                    aria-hidden
-                  />
-                  <span
-                    className={cn(
-                      "min-w-0 text-[14px] font-bold leading-tight tracking-tight sm:text-[16px]",
-                      homeMode === "hire"
-                        ? "text-white"
-                        : "text-slate-500 dark:text-zinc-400",
-                    )}
-                  >
-                    I need help
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={homeMode === "work"}
-                  aria-label={homeMode === "work" ? undefined : "Help others"}
-                  onClick={() => setHomeMode("work")}
-                  className={cn(
-                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[14px] px-2 py-2 sm:min-h-[54px] sm:px-3",
-                    "transition-[color,transform] duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#065f46]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "active:scale-[0.98] motion-reduce:transition-none",
-                    homeMode === "work"
-                      ? "bg-emerald-700 text-white shadow-[0_10px_22px_-14px_rgba(15,23,42,0.35)] ring-1 ring-inset ring-white/15"
-                      : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
-                  )}
-                >
-                  <HelpingHand
-                    className={cn(
-                      discoverIcon.md,
-                      "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                      homeMode === "work"
-                        ? "text-white"
-                        : "text-slate-400 dark:text-zinc-500",
-                    )}
-                    strokeWidth={DISCOVER_STROKE}
-                    aria-hidden
-                  />
-                  <span
-                    className={cn(
-                      "min-w-0 text-[14px] font-bold leading-tight tracking-tight sm:text-[16px]",
-                      homeMode === "work"
-                        ? "text-white"
-                        : "text-slate-500 dark:text-zinc-400",
-                    )}
-                  >
-                    Help others
-                  </span>
-                </button>
-              </div>
-            </div>
+        <div className="app-desktop-shell pointer-events-none flex max-md:justify-stretch max-md:px-2.5">
+          <div className="pointer-events-auto w-full max-w-[26rem] px-2 py-2 sm:max-w-[28rem]">
+            <DiscoverHomeModeSegmentedControl
+              mode={homeMode}
+              onModeChange={setHomeMode}
+              variant="page"
+            />
           </div>
         </div>
       </div>
 
-      <div className="app-desktop-shell flex min-h-0 flex-1 flex-col overflow-hidden max-md:px-2.5 max-md:transition-none pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]">
-        <div className="mx-auto flex min-h-0 w-full max-w-[26rem] flex-1 flex-col overflow-hidden sm:max-w-[28rem] md:max-w-[30rem]">
+      <div
+        className={cn(
+          "app-desktop-shell flex min-h-0 flex-1 flex-col overflow-hidden max-md:px-2.5 max-md:transition-none",
+          "max-md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]",
+          "md:pt-3",
+        )}
+      >
+        <div className="mx-auto flex min-h-0 w-full max-w-[26rem] flex-1 flex-col overflow-hidden sm:max-w-[28rem] md:mx-0 md:max-w-none">
           <DiscoverHomeActionFirst
             homeMode={homeMode}
             explorePath={explorePath}
