@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronRight, Clock, MapPin, MessageCircle, Loader2, X } from "lucide-react";
+import { Check, Clock, MapPin, MessageCircle, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LiveTimer } from "@/components/LiveTimer";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
