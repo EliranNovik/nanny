@@ -75,6 +75,7 @@ type HelperResultProfileCardProps = {
   favoriteBusyId: string | null;
   onToggleFavorite: (userId: string, e: React.MouseEvent) => void;
   onOpenProfile: (userId: string) => void;
+  variant?: "grid" | "fullscreen";
 };
 
 export function HelperResultProfileCard({
@@ -85,6 +86,7 @@ export function HelperResultProfileCard({
   favoriteBusyId,
   onToggleFavorite,
   onOpenProfile,
+  variant = "grid",
 }: HelperResultProfileCardProps) {
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -302,17 +304,25 @@ export function HelperResultProfileCard({
   return (
     <Card
       className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-[22px] outline-none",
+        "group relative cursor-pointer overflow-hidden outline-none",
         "touch-manipulation [-webkit-tap-highlight-color:transparent]",
         "bg-zinc-950 shadow-2xl shadow-black/40",
         "transition-all duration-500 ease-out",
-        "hover:-translate-y-1 hover:shadow-orange-500/15 hover:shadow-2xl",
-        "active:scale-[0.995]",
+        variant === "fullscreen"
+          ? "h-full rounded-none shadow-none"
+          : "rounded-[22px] hover:-translate-y-1 hover:shadow-orange-500/15 hover:shadow-2xl active:scale-[0.995]",
       )}
       data-helper-snap-card=""
       onClick={() => onOpenProfile(h.id)}
     >
-      <CardContent className="relative aspect-[4/5] min-h-[17.5rem] w-full p-0 sm:min-h-[19rem]">
+      <CardContent
+        className={cn(
+          "relative w-full p-0",
+          variant === "fullscreen"
+            ? "h-full min-h-0"
+            : "aspect-[4/5] min-h-[17.5rem] sm:min-h-[19rem]",
+        )}
+      >
         <div className="absolute inset-0 z-0 bg-black transform-gpu">
         {slides.length === 0 ? (
           <Avatar className="absolute inset-0 z-0 h-full w-full rounded-none border-0 shadow-none">

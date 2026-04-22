@@ -152,45 +152,63 @@ export function DiscoverHomeActionFirst({
     return `${minutes}:${ss}`;
   }, [isWorkLive, liveRemainingMs, liveUntilMs]);
 
-  function renderHeroBrowseShortcut(hire: boolean) {
+  function renderFixedBrowseShortcut(hire: boolean) {
     const label = hire ? "Browse helpers" : "Find people in need";
     return (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onBrowseRow();
-        }}
+      <div
         className={cn(
-          "absolute bottom-3 right-3 z-20 flex max-w-[8.5rem] flex-col items-center gap-1.5 bg-transparent p-0 shadow-none sm:bottom-4 sm:right-4",
-          "transition active:scale-[0.97] motion-reduce:transition-none",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/90 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+          "fixed right-3 z-[140] md:hidden",
+          "bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+0.75rem)]",
         )}
-        aria-label={label}
       >
-        <span
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onBrowseRow();
+          }}
           className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-lg ring-2 ring-white/60",
-            hire
-              ? "bg-white text-[#5B3DD9]"
-              : "bg-emerald-50 text-emerald-900 ring-emerald-100",
+            // Glass + subtle bevel (works on light content area)
+            "group flex items-center gap-2 rounded-full",
+            "border border-slate-200/70 bg-white/92 text-slate-900",
+            "shadow-[0_14px_34px_-18px_rgba(15,23,42,0.45),0_6px_14px_-10px_rgba(15,23,42,0.22)]",
+            "backdrop-blur-xl",
+            "px-3.5 py-2.5",
+            "transition-[transform,box-shadow,background-color,border-color] active:scale-[0.98] motion-reduce:transition-none",
+            "hover:bg-white hover:border-slate-200/90 hover:shadow-[0_18px_40px_-18px_rgba(15,23,42,0.5),0_8px_18px_-12px_rgba(15,23,42,0.26)]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
           )}
+          aria-label={label}
         >
-          {hire ? (
-            <Search className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-          ) : (
-            <UsersRound className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-          )}
-        </span>
-        <span
-          className={cn(
-            "max-w-[7.5rem] text-center text-[11px] font-extrabold leading-snug tracking-tight text-white sm:max-w-[8rem] sm:text-[12px]",
-            "[text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_0_14px_rgba(0,0,0,0.75)]",
-          )}
-        >
-          {label}
-        </span>
-      </button>
+          <span
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+              "shadow-sm ring-1 ring-inset",
+              hire
+                ? "bg-violet-950 text-white ring-violet-900/35"
+                : "bg-emerald-950 text-white ring-emerald-900/35",
+            )}
+          >
+            {hire ? (
+              <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            ) : (
+              <UsersRound className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            )}
+          </span>
+          <span className="text-[12px] font-extrabold tracking-tight">
+            {label}
+          </span>
+          <ChevronRight
+            className={cn(
+              discoverIcon.sm,
+              "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-500",
+              "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
+            )}
+            strokeWidth={2.25}
+            aria-hidden
+          />
+        </button>
+      </div>
     );
   }
 
@@ -239,7 +257,7 @@ export function DiscoverHomeActionFirst({
               {...{ fetchpriority: "high" }}
             />
 
-            {renderHeroBrowseShortcut(true)}
+            {renderFixedBrowseShortcut(true)}
 
             <div className={heroStackClassName}>
               <div className={heroTopBlockClassName}>
@@ -318,7 +336,7 @@ export function DiscoverHomeActionFirst({
               {...{ fetchpriority: "high" }}
             />
 
-            {renderHeroBrowseShortcut(false)}
+            {renderFixedBrowseShortcut(false)}
 
             <div className={heroStackClassName}>
               <div className={heroTopBlockClassName}>

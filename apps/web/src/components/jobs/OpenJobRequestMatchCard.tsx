@@ -90,6 +90,7 @@ export function OpenJobRequestMatchCard({
   onAccept,
   onDecline,
   onOpenProfile,
+  variant = "grid",
 }: {
   row: OpenJobRequestMatchRow;
   gallery: PublicProfileGalleryRow[];
@@ -97,6 +98,7 @@ export function OpenJobRequestMatchCard({
   onAccept: (jobId: string) => Promise<void> | void;
   onDecline: (jobId: string) => Promise<void> | void;
   onOpenProfile: (userId: string) => void;
+  variant?: "grid" | "fullscreen";
 }) {
   const { user: currentUser } = useAuth();
   const viewerId = currentUser?.id;
@@ -324,16 +326,25 @@ export function OpenJobRequestMatchCard({
   return (
     <div
       className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-[22px]",
+        "group relative cursor-pointer overflow-hidden",
         "bg-zinc-950 shadow-2xl shadow-black/40",
         "transition-all duration-500 ease-out",
-        "hover:-translate-y-1 hover:shadow-emerald-500/15 hover:shadow-2xl",
+        variant === "fullscreen"
+          ? "h-full rounded-none shadow-none"
+          : "rounded-[22px] hover:-translate-y-1 hover:shadow-emerald-500/15 hover:shadow-2xl",
       )}
       role="article"
       aria-label="Open request"
       onClick={() => onOpenProfile(row.client_id)}
     >
-      <div className="relative aspect-[4/5] min-h-[17.5rem] w-full bg-black sm:min-h-[19rem]">
+      <div
+        className={cn(
+          "relative w-full bg-black",
+          variant === "fullscreen"
+            ? "h-full min-h-0"
+            : "aspect-[4/5] min-h-[17.5rem] sm:min-h-[19rem]",
+        )}
+      >
         {slides.length === 0 ? (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
         ) : showStrip ? (

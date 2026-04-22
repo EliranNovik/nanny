@@ -18,6 +18,7 @@ import {
   UsersRound,
   PlusCircle,
   Radar,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -29,6 +30,7 @@ import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import {
   SERVICE_CATEGORIES,
   type ServiceCategoryId,
+  isServiceCategoryId,
 } from "@/lib/serviceCategories";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
@@ -43,6 +45,8 @@ const SEARCH_CIRCLE_STYLE: google.maps.CircleOptions = {
   clickable: false,
   zIndex: 1,
 };
+
+const HELPERS_PAGE_STATE_KEY = "helpers_page_state:v1";
 
 type FreelancerRow = {
   id: string;
@@ -649,43 +653,152 @@ export default function HelpersPage() {
     };
   }, [galleryFetchKey]);
 
-  /** Mobile: snap vertical scroll so each helper card can land flush under the top edge. */
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767.98px)");
-    const apply = () => {
-      const el = document.documentElement;
-      const enable =
-        mq.matches &&
-        hasSearched &&
-        searchChromeCollapsed &&
-        helpersMatchingCategories.length > 0;
-      if (!enable) {
-        el.style.scrollSnapType = "";
-        el.style.scrollPaddingBottom = "";
-        el.style.scrollPaddingTop = "";
-        return;
-      }
-      el.style.scrollSnapType = "y mandatory";
-      el.style.scrollPaddingBottom =
-        "calc(5.25rem + env(safe-area-inset-bottom, 0px))";
-      el.style.scrollPaddingTop = "max(0.35rem, env(safe-area-inset-top, 0px))";
-    };
-    apply();
-    mq.addEventListener("change", apply);
-    return () => {
-      mq.removeEventListener("change", apply);
-      document.documentElement.style.scrollSnapType = "";
-      document.documentElement.style.scrollPaddingBottom = "";
-      document.documentElement.style.scrollPaddingTop = "";
-    };
-  }, [
-    hasSearched,
-    searchChromeCollapsed,
-    helpersMatchingCategories.length,
-  ]);
-
   /** Full search UI until the first successful search; after that, hide when collapsed to FAB. */
   const showSearchChrome = !hasSearched || !searchChromeCollapsed;
+  const mobileSnapRef = useRef<HTMLDivElement | null>(null);
+  const [mobileSnapIndex, setMobileSnapIndex] = useState(0);
+  const pendingRestoreScrollTopRef = useRef<number | null>(null);
+  const restoringRef = useRef(false);
+
+  /** Mobile: keep an index for "X more" indicator. */
+  const syncMobileSnapIndex = useCallback(() => {
+    const el = mobileSnapRef.current;
+    if (!el) return;
+    const h = el.clientHeight;
+    if (h <= 0) return;
+    const next = Math.round(el.scrollTop / h);
+    setMobileSnapIndex(
+      Math.max(0, Math.min(helpersMatchingCategories.length - 1, next)),
+    );
+  }, [helpersMatchingCategories.length]);
+
+  useEffect(() => {
+    // If we have a pending restore scroll position, do NOT reset to top.
+    if (pendingRestoreScrollTopRef.current != null) return;
+    setMobileSnapIndex(0);
+    const el = mobileSnapRef.current;
+    if (el) el.scrollTo({ top: 0, behavior: "auto" });
+  }, [helpersMatchingCategories.map((h) => h.id).join("|")]);
+
+  /** Restore previous state (Back navigation / revisit). */
+  useEffect(() => {
+    if (restoringRef.current) return;
+    restoringRef.current = true;
+    try {
+      const raw = sessionStorage.getItem(HELPERS_PAGE_STATE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        userId: string | null;
+        center?: { lat: number; lng: number };
+        radiusKm?: number;
+        searchQuery?: string;
+        geocodeMatchedPlace?: boolean;
+        selectedCategories?: string[];
+        hasSearched?: boolean;
+        searchChromeCollapsed?: boolean;
+        mobileSnapIndex?: number;
+        mobileSnapScrollTop?: number;
+      };
+      const currentId = user?.id ?? null;
+      if (parsed.userId !== currentId) return;
+
+      if (
+        parsed.center &&
+        Number.isFinite(parsed.center.lat) &&
+        Number.isFinite(parsed.center.lng)
+      ) {
+        setCenter(parsed.center);
+      }
+      if (typeof parsed.radiusKm === "number" && Number.isFinite(parsed.radiusKm)) {
+        setRadiusKm(parsed.radiusKm);
+        // Prevent profile radius from overwriting a restored radius.
+        appliedProfileRadiusRef.current = true;
+      }
+      if (typeof parsed.searchQuery === "string") setSearchQuery(parsed.searchQuery);
+      if (typeof parsed.geocodeMatchedPlace === "boolean")
+        setGeocodeMatchedPlace(parsed.geocodeMatchedPlace);
+      if (Array.isArray(parsed.selectedCategories)) {
+        setSelectedCategories(
+          new Set(
+            parsed.selectedCategories.filter(
+              (x): x is ServiceCategoryId => isServiceCategoryId(x),
+            ),
+          ),
+        );
+      }
+      if (typeof parsed.hasSearched === "boolean") setHasSearched(parsed.hasSearched);
+      if (typeof parsed.searchChromeCollapsed === "boolean")
+        setSearchChromeCollapsed(parsed.searchChromeCollapsed);
+      if (typeof parsed.mobileSnapIndex === "number" && Number.isFinite(parsed.mobileSnapIndex)) {
+        setMobileSnapIndex(Math.max(0, parsed.mobileSnapIndex));
+      }
+      if (
+        typeof parsed.mobileSnapScrollTop === "number" &&
+        Number.isFinite(parsed.mobileSnapScrollTop)
+      ) {
+        pendingRestoreScrollTopRef.current = Math.max(0, parsed.mobileSnapScrollTop);
+      }
+    } catch {
+      // ignore corrupted session state
+    }
+  }, [user?.id]);
+
+  /** If restored state says we already searched, refetch results once. */
+  useEffect(() => {
+    if (!restoringRef.current) return;
+    if (!hasSearched) return;
+    void runSearch({ radiusKm });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSearched]);
+
+  /** Restore the scroll position after results render. */
+  useEffect(() => {
+    const v = pendingRestoreScrollTopRef.current;
+    const el = mobileSnapRef.current;
+    if (v == null || !el) return;
+    if (helpersMatchingCategories.length === 0) return;
+    el.scrollTo({ top: v, behavior: "auto" });
+    pendingRestoreScrollTopRef.current = null;
+    window.requestAnimationFrame(syncMobileSnapIndex);
+  }, [helpersMatchingCategories.length]);
+
+  /** Persist current state when navigating away. */
+  useEffect(() => {
+    const save = () => {
+      try {
+        const payload = {
+          userId: user?.id ?? null,
+          center,
+          radiusKm,
+          searchQuery,
+          geocodeMatchedPlace,
+          selectedCategories: [...selectedCategories],
+          hasSearched,
+          searchChromeCollapsed,
+          mobileSnapIndex,
+          mobileSnapScrollTop: mobileSnapRef.current?.scrollTop ?? 0,
+        };
+        sessionStorage.setItem(HELPERS_PAGE_STATE_KEY, JSON.stringify(payload));
+      } catch {
+        // ignore storage errors
+      }
+    };
+    window.addEventListener("pagehide", save);
+    return () => {
+      save();
+      window.removeEventListener("pagehide", save);
+    };
+  }, [
+    user?.id,
+    center,
+    radiusKm,
+    searchQuery,
+    geocodeMatchedPlace,
+    selectedCategories,
+    hasSearched,
+    searchChromeCollapsed,
+    mobileSnapIndex,
+  ]);
 
   const renderSearchHelpersButton = () => (
     <Button
@@ -1038,27 +1151,98 @@ export default function HelpersPage() {
             </Card>
           </div>
         ) : (
-          <div
-            ref={resultsAnchorRef}
-            className={cn(
-              "animate-in fade-in slide-in-from-bottom-3 mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 px-2 duration-700 sm:grid-cols-2 md:max-w-6xl lg:grid-cols-3",
-              /* Mobile: pull first card up so it starts near the top of the viewport */
-              "max-md:-mt-1 max-md:scroll-mt-0 max-md:gap-4",
-            )}
-          >
-            {helpersMatchingCategories.map((h) => (
-              <HelperResultProfileCard
-                key={h.id}
-                helper={h}
-                gallery={galleryByUserId[h.id] ?? []}
-                viewerId={user?.id}
-                favoriteIds={favoriteIds}
-                favoriteBusyId={favoriteBusyId}
-                onToggleFavorite={toggleFavorite}
-                onOpenProfile={(id) => navigate(`/profile/${id}`)}
-              />
-            ))}
-          </div>
+          <>
+            {/* Mobile: full-screen fixed snap scroller above bottom dock */}
+            {!showSearchChrome ? (
+              <div
+                className={cn(
+                  "fixed inset-x-0 z-[50] md:hidden",
+                  "top-[max(0px,env(safe-area-inset-top,0px))]",
+                  // Leave room for BottomNav + the fixed dock panel
+                  "bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+5.25rem)]",
+                  "overflow-y-auto overscroll-y-contain",
+                  "snap-y snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+                  "bg-background",
+                )}
+                aria-label="Helpers"
+                ref={mobileSnapRef}
+                onScroll={() => {
+                  window.requestAnimationFrame(syncMobileSnapIndex);
+                }}
+              >
+                {helpersMatchingCategories.map((h) => (
+                  <div
+                    key={h.id}
+                    className="relative h-full w-full snap-start snap-always px-2 py-2"
+                  >
+                    <div className="h-full w-full overflow-hidden rounded-[22px]">
+                      <HelperResultProfileCard
+                        helper={h}
+                        gallery={galleryByUserId[h.id] ?? []}
+                        viewerId={user?.id}
+                        favoriteIds={favoriteIds}
+                        favoriteBusyId={favoriteBusyId}
+                        onToggleFavorite={toggleFavorite}
+                        onOpenProfile={(id) => navigate(`/profile/${id}`)}
+                        variant="fullscreen"
+                      />
+                    </div>
+
+                    {(() => {
+                      const remaining = Math.max(
+                        0,
+                        helpersMatchingCategories.length - (mobileSnapIndex + 1),
+                      );
+                      if (remaining <= 0) return null;
+                      const badge = remaining > 10 ? "10+" : String(remaining);
+                      return (
+                        <div
+                          className={cn(
+                            "pointer-events-none absolute inset-x-0 bottom-3 z-[60] flex items-center justify-center",
+                            "px-3",
+                          )}
+                          aria-hidden
+                        >
+                          <div className="inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/15">
+                            <ChevronDown
+                              className="h-4 w-4 text-white/85 motion-reduce:animate-none animate-bounce"
+                              strokeWidth={2.5}
+                              aria-hidden
+                            />
+                            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-black tabular-nums">
+                              {badge}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {/* Desktop/tablet: keep grid */}
+            <div
+              ref={resultsAnchorRef}
+              className={cn(
+                "animate-in fade-in slide-in-from-bottom-3 mx-auto hidden w-full max-w-5xl grid-cols-1 gap-5 px-2 duration-700 sm:grid-cols-2 md:grid md:max-w-6xl lg:grid-cols-3",
+                "max-md:-mt-1 max-md:scroll-mt-0 max-md:gap-4",
+              )}
+            >
+              {helpersMatchingCategories.map((h) => (
+                <HelperResultProfileCard
+                  key={h.id}
+                  helper={h}
+                  gallery={galleryByUserId[h.id] ?? []}
+                  viewerId={user?.id}
+                  favoriteIds={favoriteIds}
+                  favoriteBusyId={favoriteBusyId}
+                  onToggleFavorite={toggleFavorite}
+                  onOpenProfile={(id) => navigate(`/profile/${id}`)}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {/* Mobile: full-width Search helpers fixed above BottomNav while panel is open */}

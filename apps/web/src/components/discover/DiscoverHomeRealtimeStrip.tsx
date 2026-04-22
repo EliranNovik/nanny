@@ -58,6 +58,7 @@ type Props = {
 type WorkRowItem = {
   key: string;
   href: string;
+  jobId: string;
   title: string;
   /** City / area only */
   cityLine: string;
@@ -82,6 +83,7 @@ function categoryImageSrc(
 
 function mapJobLikeToWorkRow(opts: {
   key: string;
+  jobId: string;
   href: string;
   serviceType: string | null | undefined;
   location_city: string | null | undefined;
@@ -108,6 +110,7 @@ function mapJobLikeToWorkRow(opts: {
   return {
     key: opts.key,
     href: opts.href,
+    jobId: opts.jobId,
     title,
     cityLine: city,
     createdAt: opts.created_at ?? null,
@@ -195,13 +198,15 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   }, [categoryAvatars]);
 
   const workListRows = useMemo((): WorkRowItem[] => {
-    const requestsTabHref = `/jobs?mode=freelancer&tab=requests`;
+    const focusHref = (jobId: string) =>
+      `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(jobId)}`;
 
     const fromOpenHelpRpc = (rows: DiscoverOpenHelpRequestRow[]) =>
       rows.slice(0, MAX_WORK_REQUEST_ROWS).map((r) =>
         mapJobLikeToWorkRow({
           key: r.id,
-          href: requestsTabHref,
+          jobId: r.id,
+          href: focusHref(r.id),
           serviceType: r.service_type,
           location_city: r.location_city,
           created_at: r.created_at,
@@ -238,7 +243,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           const jr = n.job_requests;
           return mapJobLikeToWorkRow({
             key: n.id,
-            href: requestsTabHref,
+            jobId: jr.id,
+            href: focusHref(jr.id),
             serviceType: jr.service_type,
             location_city: jr.location_city,
             created_at: jr.created_at,

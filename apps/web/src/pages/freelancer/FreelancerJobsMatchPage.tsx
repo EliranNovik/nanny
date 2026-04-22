@@ -13,6 +13,7 @@ import {
   Navigation,
   Radar,
   Search,
+  ChevronDown,
 } from "lucide-react";
 import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
@@ -50,6 +51,8 @@ const SEARCH_CIRCLE_STYLE: google.maps.CircleOptions = {
   clickable: false,
   zIndex: 1,
 };
+
+const JOBS_MATCH_PAGE_STATE_KEY = "jobs_match_page_state:v1";
 
 const R_MIN = 5;
 const R_MAX = 100;
@@ -183,10 +186,11 @@ function JobRequestsMapBlock({
 
 export default function FreelancerJobsMatchPage() {
   const navigate = useNavigate();
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { addToast } = useToast();
   const allowedToAct = canActAsHelper(profile);
+  const focusJobId = (searchParams.get("focus_job_id") || "").trim() || null;
   const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: mapsApiKey,
@@ -231,6 +235,166 @@ export default function FreelancerJobsMatchPage() {
   }, [rows, searchQuery]);
 
   const showSearchChrome = !hasSearched || !searchChromeCollapsed;
+  const mobileSnapRef = useRef<HTMLDivElement | null>(null);
+  const [mobileSnapIndex, setMobileSnapIndex] = useState(0);
+  const pendingRestoreScrollTopRef = useRef<number | null>(null);
+  const restoringRef = useRef(false);
+
+  /** Mobile: keep an index for "X more" indicator. */
+  const syncMobileSnapIndex = useCallback(() => {
+    const el = mobileSnapRef.current;
+    if (!el) return;
+    const h = el.clientHeight;
+    if (h <= 0) return;
+    const next = Math.round(el.scrollTop / h);
+    setMobileSnapIndex(Math.max(0, Math.min(filteredRows.length - 1, next)));
+  }, [filteredRows.length]);
+
+  useEffect(() => {
+    // If we have a pending restore scroll position, do NOT reset to top.
+    if (pendingRestoreScrollTopRef.current != null) return;
+    setMobileSnapIndex(0);
+    const el = mobileSnapRef.current;
+    if (el) el.scrollTo({ top: 0, behavior: "auto" });
+  }, [filteredRows.map((r) => r.id).join("|")]);
+
+  /** Restore previous state (Back navigation / revisit). */
+  useEffect(() => {
+    if (restoringRef.current) return;
+    restoringRef.current = true;
+    try {
+      const raw = sessionStorage.getItem(JOBS_MATCH_PAGE_STATE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        userId: string | null;
+        center?: { lat: number; lng: number };
+        radiusKm?: number;
+        searchQuery?: string;
+        selectedCategories?: string[];
+        hasSearched?: boolean;
+        searchChromeCollapsed?: boolean;
+        mobileSnapIndex?: number;
+        mobileSnapScrollTop?: number;
+      };
+      const currentId = user?.id ?? null;
+      if (parsed.userId !== currentId) return;
+
+      if (
+        parsed.center &&
+        Number.isFinite(parsed.center.lat) &&
+        Number.isFinite(parsed.center.lng)
+      ) {
+        setCenter(parsed.center);
+      }
+      if (typeof parsed.radiusKm === "number" && Number.isFinite(parsed.radiusKm)) {
+        setRadiusKm(parsed.radiusKm);
+      }
+      if (typeof parsed.searchQuery === "string") setSearchQuery(parsed.searchQuery);
+      if (Array.isArray(parsed.selectedCategories)) {
+        const restored = parsed.selectedCategories.filter(
+          (x): x is ServiceCategoryId => isServiceCategoryId(x),
+        );
+        setSelectedCategories(new Set(restored));
+      }
+      if (typeof parsed.hasSearched === "boolean") setHasSearched(parsed.hasSearched);
+      if (typeof parsed.searchChromeCollapsed === "boolean")
+        setSearchChromeCollapsed(parsed.searchChromeCollapsed);
+      if (typeof parsed.mobileSnapIndex === "number" && Number.isFinite(parsed.mobileSnapIndex)) {
+        setMobileSnapIndex(Math.max(0, parsed.mobileSnapIndex));
+      }
+      if (
+        typeof parsed.mobileSnapScrollTop === "number" &&
+        Number.isFinite(parsed.mobileSnapScrollTop)
+      ) {
+        pendingRestoreScrollTopRef.current = Math.max(0, parsed.mobileSnapScrollTop);
+      }
+    } catch {
+      // ignore corrupted session state
+    }
+  }, [user?.id]);
+
+  /** Deep link from Discover home: auto-run search and show cards, then focus the request card. */
+  useEffect(() => {
+    if (!focusJobId) return;
+    if (!user?.id) return;
+    // Show cards view
+    setHasSearched(true);
+    setSearchChromeCollapsed(true);
+    // Kick off search (uses current filters / category selection)
+    void runSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusJobId, user?.id]);
+
+  /** If restored state says we already searched, refetch results once. */
+  useEffect(() => {
+    if (!restoringRef.current) return;
+    if (!hasSearched) return;
+    void runSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSearched]);
+
+  /** Restore the scroll position after results render. */
+  useEffect(() => {
+    const v = pendingRestoreScrollTopRef.current;
+    const el = mobileSnapRef.current;
+    if (v == null || !el) return;
+    if (filteredRows.length === 0) return;
+    el.scrollTo({ top: v, behavior: "auto" });
+    pendingRestoreScrollTopRef.current = null;
+    window.requestAnimationFrame(syncMobileSnapIndex);
+  }, [filteredRows.length]);
+
+  /** After search, focus a specific job card (Discover home deep link). */
+  useEffect(() => {
+    if (!focusJobId) return;
+    if (!filteredRows.length) return;
+    const el = mobileSnapRef.current;
+    if (!el) return;
+    const idx = filteredRows.findIndex((r) => r.id === focusJobId);
+    if (idx < 0) return;
+    const h = el.clientHeight;
+    if (h > 0) {
+      el.scrollTo({ top: idx * h, behavior: "auto" });
+      setMobileSnapIndex(idx);
+      window.requestAnimationFrame(syncMobileSnapIndex);
+    }
+  }, [focusJobId, filteredRows, syncMobileSnapIndex]);
+
+  /** Persist current state when navigating away. */
+  useEffect(() => {
+    const save = () => {
+      try {
+        const payload = {
+          userId: user?.id ?? null,
+          center,
+          radiusKm,
+          searchQuery,
+          selectedCategories: [...selectedCategories],
+          hasSearched,
+          searchChromeCollapsed,
+          mobileSnapIndex,
+          mobileSnapScrollTop: mobileSnapRef.current?.scrollTop ?? 0,
+        };
+        sessionStorage.setItem(JOBS_MATCH_PAGE_STATE_KEY, JSON.stringify(payload));
+      } catch {
+        // ignore storage errors
+      }
+    };
+    window.addEventListener("pagehide", save);
+    return () => {
+      save();
+      window.removeEventListener("pagehide", save);
+    };
+  }, [
+    user?.id,
+    center,
+    radiusKm,
+    searchQuery,
+    selectedCategories,
+    hasSearched,
+    searchChromeCollapsed,
+    mobileSnapIndex,
+  ]);
 
   const toggleCategory = useCallback((id: ServiceCategoryId) => {
     setSelectedCategories((prev) => {
@@ -560,44 +724,140 @@ export default function FreelancerJobsMatchPage() {
             </Card>
           </div>
         ) : (
-          <div
-            className={cn(
-              "animate-in fade-in slide-in-from-bottom-3 mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 px-2 duration-700 sm:grid-cols-2 md:max-w-6xl lg:grid-cols-3",
-              "max-md:-mt-1 max-md:scroll-mt-0 max-md:gap-4",
-            )}
-          >
-            {filteredRows.map((r) => (
-              <OpenJobRequestMatchCard
-                key={r.id}
-                row={r}
-                gallery={galleryByUserId[r.client_id] ?? []}
-                formatTitle={(st) => formatJobTitle(st || undefined)}
-                onOpenProfile={(userId) => navigate(`/profile/${encodeURIComponent(userId)}`)}
-                onAccept={async (jobId) => {
-                  try {
-                    await acceptJob(jobId, r);
-                  } catch (e: unknown) {
-                    addToast({
-                      title: "Could not accept",
-                      description: e instanceof Error ? e.message : "Try again.",
-                      variant: "error",
-                    });
-                  }
+          <>
+            {/* Mobile: full-screen fixed snap scroller above bottom dock */}
+            {!showSearchChrome ? (
+              <div
+                className={cn(
+                  "fixed inset-x-0 z-[50] md:hidden",
+                  "top-[max(0px,env(safe-area-inset-top,0px))]",
+                  "bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+5.25rem)]",
+                  "overflow-y-auto overscroll-y-contain",
+                  "snap-y snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+                  "bg-background",
+                )}
+                aria-label="Requests"
+                ref={mobileSnapRef}
+                onScroll={() => {
+                  window.requestAnimationFrame(syncMobileSnapIndex);
                 }}
-                onDecline={async (jobId) => {
-                  try {
-                    await declineJob(jobId);
-                  } catch (e: unknown) {
-                    addToast({
-                      title: "Could not decline",
-                      description: e instanceof Error ? e.message : "Try again.",
-                      variant: "error",
-                    });
+              >
+                {filteredRows.map((r) => (
+                  <div
+                    key={r.id}
+                    className="relative h-full w-full snap-start snap-always px-2 py-2"
+                  >
+                    <div className="h-full w-full overflow-hidden rounded-[22px]">
+                      <OpenJobRequestMatchCard
+                        row={r}
+                        gallery={galleryByUserId[r.client_id] ?? []}
+                        formatTitle={(st) => formatJobTitle(st || undefined)}
+                        onOpenProfile={(userId) =>
+                          navigate(`/profile/${encodeURIComponent(userId)}`)
+                        }
+                        onAccept={async (jobId) => {
+                          try {
+                            await acceptJob(jobId, r);
+                          } catch (e: unknown) {
+                            addToast({
+                              title: "Could not accept",
+                              description:
+                                e instanceof Error ? e.message : "Try again.",
+                              variant: "error",
+                            });
+                          }
+                        }}
+                        onDecline={async (jobId) => {
+                          try {
+                            await declineJob(jobId);
+                          } catch (e: unknown) {
+                            addToast({
+                              title: "Could not decline",
+                              description:
+                                e instanceof Error ? e.message : "Try again.",
+                              variant: "error",
+                            });
+                          }
+                        }}
+                        variant="fullscreen"
+                      />
+                    </div>
+
+                    {(() => {
+                      const remaining = Math.max(
+                        0,
+                        filteredRows.length - (mobileSnapIndex + 1),
+                      );
+                      if (remaining <= 0) return null;
+                      const badge = remaining > 10 ? "10+" : String(remaining);
+                      return (
+                        <div
+                          className={cn(
+                            "pointer-events-none absolute inset-x-0 bottom-3 z-[60] flex items-center justify-center",
+                            "px-3",
+                          )}
+                          aria-hidden
+                        >
+                          <div className="inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/15">
+                            <ChevronDown
+                              className="h-4 w-4 text-white/85 motion-reduce:animate-none animate-bounce"
+                              strokeWidth={2.5}
+                              aria-hidden
+                            />
+                            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-black tabular-nums">
+                              {badge}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {/* Desktop/tablet: keep grid */}
+            <div
+              className={cn(
+                "animate-in fade-in slide-in-from-bottom-3 mx-auto hidden w-full max-w-5xl grid-cols-1 gap-5 px-2 duration-700 sm:grid-cols-2 md:grid md:max-w-6xl lg:grid-cols-3",
+                "max-md:-mt-1 max-md:scroll-mt-0 max-md:gap-4",
+              )}
+            >
+              {filteredRows.map((r) => (
+                <OpenJobRequestMatchCard
+                  key={r.id}
+                  row={r}
+                  gallery={galleryByUserId[r.client_id] ?? []}
+                  formatTitle={(st) => formatJobTitle(st || undefined)}
+                  onOpenProfile={(userId) =>
+                    navigate(`/profile/${encodeURIComponent(userId)}`)
                   }
-                }}
-              />
-            ))}
-          </div>
+                  onAccept={async (jobId) => {
+                    try {
+                      await acceptJob(jobId, r);
+                    } catch (e: unknown) {
+                      addToast({
+                        title: "Could not accept",
+                        description: e instanceof Error ? e.message : "Try again.",
+                        variant: "error",
+                      });
+                    }
+                  }}
+                  onDecline={async (jobId) => {
+                    try {
+                      await declineJob(jobId);
+                    } catch (e: unknown) {
+                      addToast({
+                        title: "Could not decline",
+                        description: e instanceof Error ? e.message : "Try again.",
+                        variant: "error",
+                      });
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {hasSearched && searchChromeCollapsed ? (
