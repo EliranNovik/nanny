@@ -37,10 +37,10 @@ export function DiscoverHomeModeSegmentedControl({
           "[box-shadow:inset_0_1px_0_rgba(255,255,255,0.75),inset_0_-1px_0_rgba(15,23,42,0.06)]",
           "dark:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-1px_0_rgba(0,0,0,0.45)]",
           isHeader
-            ? "min-h-[44px] max-w-[19rem] gap-0.5 p-1 md:rounded-2xl"
+            ? "min-h-[44px] max-w-[19rem] gap-0.5 p-1"
             : cn(
                 "mx-auto min-h-[50px] max-w-[26rem] sm:max-w-[28rem] sm:min-h-[58px]",
-                "md:max-w-[19rem] md:min-h-[48px] md:gap-0.5 md:p-1 md:rounded-2xl",
+                "md:max-w-[19rem] md:min-h-[48px] md:gap-0.5 md:p-1",
               ),
         )}
       >

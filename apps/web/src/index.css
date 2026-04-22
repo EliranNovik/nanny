@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Full-width page content on desktop (no centered narrow column). */
+/* Full-width page content on desktop bounded to a spacious max width and centered. */
 @layer components {
   .app-desktop-shell {
-    @apply w-full max-w-none mx-0 px-4 sm:px-6 lg:px-8 xl:px-12;
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12;
   }
 
   /** Narrow centered column on md+ (onboarding, auth-style flows). */

@@ -86,7 +86,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
         className={cn(
           "app-desktop-shell flex min-h-0 flex-1 flex-col overflow-hidden max-md:px-2.5 max-md:transition-none",
           "max-md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]",
-          "md:pt-3",
+          "md:pt-7",
         )}
       >
         <div className="mx-auto flex min-h-0 w-full max-w-[26rem] flex-1 flex-col overflow-hidden sm:max-w-[28rem] md:mx-0 md:max-w-none">
