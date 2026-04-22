@@ -38,13 +38,12 @@ export const JOB_CARD_EMPTY_PANEL = cn(
 );
 
 /**
- * Explore page tab cards (Matches, My requests, Pending hires, My availability):
- * very light grey surface — calmer than pure white on `bg-background`.
+ * Explore page tab cards: white tiles on the grey Explore scroll area.
  */
 export const EXPLORE_PAGE_CARD_SURFACE = cn(
-  "bg-slate-50/90 dark:bg-zinc-900",
-  "border border-slate-200/70 dark:border-white/5",
-  "shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
+  "bg-white dark:bg-zinc-900",
+  "border border-slate-200/80 dark:border-white/5",
+  "shadow-[0_1px_2px_rgba(15,23,42,0.06)]",
 );
 
 /** Stacked avatars on Explore cards — separation on grey card */

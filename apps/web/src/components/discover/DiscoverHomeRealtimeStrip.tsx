@@ -19,12 +19,15 @@ import {
 } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LiveTimer } from "@/components/LiveTimer";
 import { T } from "@/lib/typography";
 import {
-  ChevronRight,
   ClipboardList,
   Compass,
+  CookingPot,
+  Sparkles,
+  Star,
+  Truck,
+  Wrench,
   UsersRound,
 } from "lucide-react";
 import {
@@ -35,6 +38,22 @@ import {
 const MAX = 4;
 /** Align with Jobs → Community's requests: fewer rows than the old strip of 4. */
 const MAX_WORK_REQUEST_ROWS = 3;
+
+function ageLabel(createdAt: string | null | undefined): string | null {
+  if (!createdAt) return null;
+  try {
+    const t = new Date(createdAt).getTime();
+    if (Number.isNaN(t)) return null;
+    const diffMs = Date.now() - t;
+    const hoursTotal = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
+    const days = Math.floor(hoursTotal / 24);
+    const hours = hoursTotal % 24;
+    if (days > 0) return `Posted ${days}d ${hours}h ago`;
+    return `Posted ${hoursTotal}h ago`;
+  } catch {
+    return null;
+  }
+}
 
 function shortDisplayName(full: string | null | undefined): string {
   const t = (full || "?").trim();
@@ -60,6 +79,7 @@ type WorkRowItem = {
   href: string;
   jobId: string;
   title: string;
+  categoryIcon: React.ReactNode;
   /** City / area only */
   cityLine: string;
   createdAt: string | null;
@@ -67,7 +87,18 @@ type WorkRowItem = {
   detailLine: string | null;
   thumbUrl: string;
   name: string;
+  average_rating?: number | null;
+  total_ratings?: number | null;
 };
+
+function categoryIconNode(serviceType: string | null | undefined): React.ReactNode {
+  // Keep these simple + recognizable on tiny sizes.
+  if (serviceType === "cleaning") return <Sparkles className="h-4 w-4 shrink-0" aria-hidden />;
+  if (serviceType === "cooking") return <CookingPot className="h-4 w-4 shrink-0" aria-hidden />;
+  if (serviceType === "pickup_delivery") return <Truck className="h-4 w-4 shrink-0" aria-hidden />;
+  if (serviceType === "nanny") return <UsersRound className="h-4 w-4 shrink-0" aria-hidden />;
+  return <Wrench className="h-4 w-4 shrink-0" aria-hidden />;
+}
 
 function categoryImageSrc(
   serviceType: string | null | undefined,
@@ -93,12 +124,15 @@ function mapJobLikeToWorkRow(opts: {
   time_duration?: string | null;
   photo: string | null | undefined;
   name: string | null | undefined;
+  average_rating?: number | null | undefined;
+  total_ratings?: number | null | undefined;
 }): WorkRowItem {
   const cat = opts.serviceType;
   const title =
     cat && isServiceCategoryId(cat)
       ? serviceCategoryLabel(cat as ServiceCategoryId)
       : (cat || "Request").replace(/_/g, " ");
+  const categoryIcon = categoryIconNode(cat);
   const city = (opts.location_city || "").trim() || "—";
   const rawDetail = formatJobDetailLine({
     shift_hours: opts.shift_hours,
@@ -112,11 +146,14 @@ function mapJobLikeToWorkRow(opts: {
     href: opts.href,
     jobId: opts.jobId,
     title,
+    categoryIcon,
     cityLine: city,
     createdAt: opts.created_at ?? null,
     detailLine,
     thumbUrl: thumb,
     name: (opts.name || "?").trim() || "?",
+    average_rating: opts.average_rating ?? null,
+    total_ratings: opts.total_ratings ?? null,
   };
 }
 
@@ -169,27 +206,32 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   const hireItems = useMemo(() => {
     const out: {
       key: string;
+      categoryId: ServiceCategoryId;
       label: string;
       photo: string | null;
       name: string;
       href: string;
       average_rating: number | null;
+      total_ratings: number | null;
       /** Area / city (profile city) */
       locationLine: string;
     }[] = [];
     for (const cat of DISCOVER_HOME_CATEGORIES) {
       if (cat.id === ALL_HELP_CATEGORY_ID) continue;
+      if (!isServiceCategoryId(cat.id)) continue;
       const avs = categoryAvatars[cat.id];
       const first = avs?.[0];
       if (!first) continue;
       const helperId = first.helper_user_id;
       out.push({
         key: `${cat.id}-${helperId}`,
+        categoryId: cat.id,
         label: cat.label,
         photo: first.photo_url,
         name: first.full_name || "?",
         href: `/profile/${encodeURIComponent(helperId)}?category=${encodeURIComponent(cat.id)}`,
         average_rating: first.average_rating ?? null,
+        total_ratings: (first as { total_ratings?: number | null }).total_ratings ?? null,
         locationLine: first.location_line ?? "—",
       });
       if (out.length >= MAX) break;
@@ -215,6 +257,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           time_duration: r.time_duration,
           photo: r.client_photo_url,
           name: r.client_display_name,
+          average_rating: r.client_average_rating ?? null,
+          total_ratings: r.client_total_ratings ?? null,
         }),
       );
 
@@ -253,6 +297,16 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             time_duration: jr.time_duration,
             photo: jr.profiles?.photo_url,
             name: jr.profiles?.full_name,
+            average_rating:
+              jr.profiles &&
+              (jr.profiles as { average_rating?: number | null }).average_rating != null
+                ? Number((jr.profiles as { average_rating?: number | null }).average_rating)
+                : null,
+            total_ratings:
+              jr.profiles &&
+              (jr.profiles as { total_ratings?: number | null }).total_ratings != null
+                ? Number((jr.profiles as { total_ratings?: number | null }).total_ratings)
+                : null,
           });
         },
       );
@@ -264,19 +318,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   const title =
     variant === "hire"
       ? "Helpers available now"
-      : "Requests now near you";
+      : "Live requests near you";
   const items = variant === "hire" ? hireItems : workListRows;
 
   function onBrowseTap() {
     if (variant === "hire") {
       trackEvent("discover_strip_view_all", { variant: "hire_live_posts" });
-      navigate(
-        `/public/posts?category=${encodeURIComponent(ALL_HELP_CATEGORY_ID)}`,
-      );
+      navigate("/client/helpers");
       return;
     }
     trackEvent("discover_strip_view_all", { variant: "work_community_requests" });
-    navigate("/jobs?mode=freelancer&tab=requests");
+    navigate("/freelancer/jobs/match");
   }
 
   const browseLabel =
@@ -392,18 +444,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               {title}
             </h3>
           </div>
-          <button
-            type="button"
-            onClick={onBrowseTap}
-            className={cn(
-              "flex shrink-0 items-center gap-0.5 transition-opacity hover:opacity-90",
-              "text-[#065f46] dark:text-emerald-400",
-              "text-[14px] font-semibold",
-            )}
-          >
-            View all
-            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </button>
         </div>
 
         <div
@@ -438,6 +478,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                     />
                   </div>
                   <div className="min-w-0">
+                    <div className="flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400">
+                      <Star className="h-4 w-4 text-emerald-600" strokeWidth={2.5} aria-hidden />
+                      <span className="text-slate-700 dark:text-zinc-200">
+                        {ratingLabel(row.average_rating)}
+                      </span>
+                      {row.total_ratings ? (
+                        <span className="text-slate-400 dark:text-zinc-500">
+                          ({row.total_ratings})
+                        </span>
+                      ) : null}
+                    </div>
                     <p className={cn("truncate", T.h2, "text-slate-900 dark:text-zinc-50")}>
                       {shortDisplayName(row.name)}
                     </p>
@@ -450,15 +501,26 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               </div>
 
               <div className="min-w-0">
-                <p className={cn("truncate text-[13px] font-semibold leading-tight", "text-slate-900 dark:text-zinc-50")}>
+                <p
+                  className={cn(
+                    "flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight",
+                    "text-slate-900 dark:text-zinc-50",
+                  )}
+                >
+                  <span className="text-slate-500 dark:text-zinc-400">
+                    {row.categoryIcon}
+                  </span>
                   {row.title}
                 </p>
                 {row.createdAt ? (
-                  <div className={cn("mt-1 flex items-center gap-2", T.meta, "text-slate-400 dark:text-zinc-500")}>
-                    <span className={cn(T.label, "text-slate-400 dark:text-zinc-500")}>
-                      Posted
-                    </span>
-                    <LiveTimer createdAt={row.createdAt} />
+                  <div
+                    className={cn(
+                      "mt-1 flex items-center gap-2",
+                      T.meta,
+                      "text-slate-400 dark:text-zinc-500",
+                    )}
+                  >
+                    <span>{ageLabel(row.createdAt)}</span>
                   </div>
                 ) : null}
               </div>
@@ -483,14 +545,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             {title}
           </h3>
         </div>
-        <button
-          type="button"
-          onClick={onBrowseTap}
-          className="flex shrink-0 items-center gap-0.5 text-[13px] font-medium tracking-wide text-[#7B61FF] transition-opacity hover:opacity-90"
-        >
-          View all
-          <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-        </button>
       </div>
       <div
         className={cn(
@@ -519,27 +573,38 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   {it.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span
-                className="absolute right-[10%] top-[10%] z-10 h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-sm ring-2 ring-white dark:ring-zinc-900"
-                aria-hidden
-              />
-              <span className="absolute -bottom-1 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-white px-1.5 py-px text-[10px] font-medium tabular-nums text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.08)] ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/50">
-                <span className="text-slate-900 dark:text-zinc-100" aria-hidden>
-                  ★
+              <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-1 translate-y-1 items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+                <span className="relative flex h-2 w-2" aria-hidden>
+                  <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                 </span>
-                {ratingLabel(it.average_rating)}
+                Live
               </span>
             </div>
-            <div className="min-w-0 pt-1 text-center">
-              <p className="truncate text-[13px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+            <div className="min-w-0 pt-1 text-left">
+              <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
                 {shortDisplayName(it.name)}
               </p>
-              <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500 dark:text-zinc-400">
-                {it.label}
-              </p>
-              <p className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-zinc-500">
+              <p className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-zinc-400">
                 {it.locationLine}
               </p>
+              <p className="mt-1 flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight text-slate-700 dark:text-zinc-200">
+                <span className="text-slate-500 dark:text-zinc-400">
+                  {categoryIconNode(it.categoryId)}
+                </span>
+                {it.label}
+              </p>
+              <div className="mt-1 flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400">
+                <Star className="h-4 w-4 text-[#7B61FF]" strokeWidth={2.5} aria-hidden />
+                <span className="text-slate-700 dark:text-zinc-200">
+                  {ratingLabel(it.average_rating)}
+                </span>
+                {it.total_ratings ? (
+                  <span className="text-slate-400 dark:text-zinc-500">
+                    ({it.total_ratings})
+                  </span>
+                ) : null}
+              </div>
             </div>
           </Link>
         ))}

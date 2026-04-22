@@ -37,21 +37,21 @@ type Props = {
 
 const HIRE = {
   badge: "FAST & EASY",
-  title: "Get help, fast.",
-  sub: "Post a request and connect\nwith available helpers near you.",
+  title: "Find someone in minutes.",
+  sub: "Post what you need and get matched with helpers nearby — fast.",
   primary: "Start a request",
 } as const;
 
 const WORK = {
   badge: "JOBS NEAR YOU",
-  title: "Get hired today.",
-  sub: "Find people who need help right now in your area.",
+  title: "People need help right now.",
+  sub: "Go live and get requests instantly in your area.",
   primary: "Go live now",
 } as const;
 
 /** Same stack + padding for both hire/work heroes; modest min-height keeps imagery balanced. */
 const heroInnerClassName =
-  "relative flex min-h-[12.75rem] flex-col sm:min-h-[15.5rem] md:min-h-[16rem]";
+  "relative flex min-h-[11.5rem] flex-col sm:min-h-[14.25rem] md:min-h-[14.75rem]";
 
 const heroStackClassName =
   "relative z-10 flex min-h-0 flex-1 flex-col justify-between px-5 pb-6 pt-6 sm:px-6 sm:pb-7 sm:pt-6 md:px-7 md:pb-7 md:pt-7";
@@ -59,29 +59,13 @@ const heroStackClassName =
 const heroTopBlockClassName = "flex max-w-xl flex-col gap-3 md:gap-3.5";
 
 const heroPrimaryCtaRowClassName =
-  "mt-auto flex w-full shrink-0 justify-start pr-[6.75rem] pt-5 sm:pr-[7.25rem] sm:pt-6";
+  "mt-auto flex w-full shrink-0 justify-start pt-5 sm:pt-6";
 
 /** Primary hero CTAs — calm, product-grade (avoid loud “SaaS gradient” chrome). */
 const heroCtaBaseClassName = cn(
   "group inline-flex h-11 w-fit min-w-[10.5rem] max-w-[min(100%,17rem)] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-[14px] font-semibold tracking-normal sm:h-12 sm:min-w-[11.5rem] sm:px-6 sm:text-[15px]",
   "border shadow-sm transition-[transform,box-shadow,background-color,border-color] motion-reduce:transition-none",
   "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-);
-
-/** Hire: deep violet solid — mirrors “Go live” weight; pairs with purple hero. */
-const heroCtaStartRequestClassName = cn(
-  heroCtaBaseClassName,
-  "border-violet-900/45 bg-violet-950 text-white",
-  "hover:border-violet-700/55 hover:bg-violet-900 hover:shadow-md",
-  "focus-visible:ring-violet-300/70",
-);
-
-/** Work: deep emerald solid — distinct from hire, still native to the green hero. */
-const heroCtaGoLiveClassName = cn(
-  heroCtaBaseClassName,
-  "border-emerald-800/40 bg-emerald-950 text-white",
-  "hover:border-emerald-700/50 hover:bg-emerald-900 hover:shadow-md",
-  "focus-visible:ring-emerald-300/70",
 );
 
 const heroTitleBlockClassName = "max-w-[17rem] space-y-1.5 pr-1 sm:max-w-[19rem]";
@@ -152,62 +136,91 @@ export function DiscoverHomeActionFirst({
     return `${minutes}:${ss}`;
   }, [isWorkLive, liveRemainingMs, liveUntilMs]);
 
-  function renderFixedBrowseShortcut(hire: boolean) {
-    const label = hire ? "Browse helpers" : "Find people in need";
+  function renderFixedBottomBrowseDock() {
     return (
       <div
         className={cn(
-          "fixed right-3 z-[140] md:hidden",
-          "bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+0.75rem)]",
+          "pointer-events-none fixed inset-x-0 z-[140]",
+          "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]",
         )}
+        aria-hidden
       >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onBrowseRow();
-          }}
+        <div
           className={cn(
-            // Glass + subtle bevel (works on light content area)
-            "group flex items-center gap-2 rounded-full",
-            "border border-slate-200/70 bg-white/92 text-slate-900",
-            "shadow-[0_14px_34px_-18px_rgba(15,23,42,0.45),0_6px_14px_-10px_rgba(15,23,42,0.22)]",
-            "backdrop-blur-xl",
-            "px-3.5 py-2.5",
-            "transition-[transform,box-shadow,background-color,border-color] active:scale-[0.98] motion-reduce:transition-none",
-            "hover:bg-white hover:border-slate-200/90 hover:shadow-[0_18px_40px_-18px_rgba(15,23,42,0.5),0_8px_18px_-12px_rgba(15,23,42,0.26)]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+            "pointer-events-auto border-t border-slate-200/80 bg-background/95 px-4 pb-2 pt-3",
+            "shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10",
           )}
-          aria-label={label}
         >
-          <span
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-              "shadow-sm ring-1 ring-inset",
-              hire
-                ? "bg-violet-950 text-white ring-violet-900/35"
-                : "bg-emerald-950 text-white ring-emerald-900/35",
-            )}
-          >
-            {hire ? (
-              <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          <div className="mx-auto w-full max-w-lg">
+            {isHire ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
+                  navigateToHelpersBrowse(navigate);
+                }}
+                className={cn(
+                  // Secondary action: smaller, quieter, never competes with hero CTA
+                  "group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full",
+                  "border border-slate-200/80 bg-slate-100 text-slate-800",
+                  "shadow-sm transition-[transform,box-shadow,background-color,border-color] active:scale-[0.995] motion-reduce:transition-none",
+                  "hover:bg-slate-100/80 hover:shadow-md",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                )}
+                aria-label="Browse helpers"
+              >
+                <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+                <span className="text-[14px] font-extrabold tracking-tight">
+                  Browse helpers
+                </span>
+                <ChevronRight
+                  className={cn(
+                    discoverIcon.sm,
+                    "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600",
+                    "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
+                  )}
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
+              </button>
             ) : (
-              <UsersRound className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("discover_bottom_find_people_in_need", {
+                    mode: homeMode,
+                  });
+                  navigateToWorkBrowseRequests(navigate, profile);
+                }}
+                className={cn(
+                  // Secondary action: smaller, quieter, never competes with hero CTA
+                  "group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full",
+                  "border border-slate-200/80 bg-slate-100 text-slate-800",
+                  "shadow-sm transition-[transform,box-shadow,background-color,border-color] active:scale-[0.995] motion-reduce:transition-none",
+                  "hover:bg-slate-100/80 hover:shadow-md",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                )}
+                aria-label="Find people in need"
+              >
+                <UsersRound className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+                <span className="text-[14px] font-extrabold tracking-tight">
+                  Find people in need
+                </span>
+                <ChevronRight
+                  className={cn(
+                    discoverIcon.sm,
+                    "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600",
+                    "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
+                  )}
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
+              </button>
             )}
-          </span>
-          <span className="text-[12px] font-extrabold tracking-tight">
-            {label}
-          </span>
-          <ChevronRight
-            className={cn(
-              discoverIcon.sm,
-              "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-500",
-              "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
-            )}
-            strokeWidth={2.25}
-            aria-hidden
-          />
-        </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -221,15 +234,6 @@ export function DiscoverHomeActionFirst({
     }
     navigate(workPrimaryPath);
     recordFirstMeaningfulAction("home_primary_work");
-  }
-
-  function onBrowseRow() {
-    trackEvent("discover_browse_row", { mode: homeMode });
-    if (isHire) {
-      navigateToHelpersBrowse(navigate);
-      return;
-    }
-    navigateToWorkBrowseRequests(navigate, profile);
   }
 
   const workTheme = WORK;
@@ -256,14 +260,13 @@ export function DiscoverHomeActionFirst({
               decoding="async"
               {...{ fetchpriority: "high" }}
             />
-
-            {renderFixedBrowseShortcut(true)}
+            {renderFixedBottomBrowseDock()}
 
             <div className={heroStackClassName}>
               <div className={heroTopBlockClassName}>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7B61FF] shadow-sm sm:px-3 sm:py-1.5">
+                    <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
                       <Zap
                         className={cn(discoverIcon.sm, "shrink-0")}
                         strokeWidth={DISCOVER_STROKE}
@@ -272,7 +275,7 @@ export function DiscoverHomeActionFirst({
                       {HIRE.badge}
                     </div>
                   </div>
-                  <div className={cn(heroTitleBlockClassName, "mt-2")}>
+                  <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
                     <h2
                       className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
                       style={{
@@ -289,33 +292,42 @@ export function DiscoverHomeActionFirst({
                       {HIRE.sub}
                     </p>
                   </div>
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={onStartRequest}
+                      className={cn(
+                        heroCtaBaseClassName,
+                        "h-11 w-fit min-w-[12.75rem] max-w-full justify-between px-4",
+                        // Solid white (no glass blur)
+                        "border-white/70 bg-white text-violet-950",
+                        "shadow-[0_12px_34px_-20px_rgba(0,0,0,0.55)]",
+                        "hover:bg-white hover:shadow-[0_16px_40px_-22px_rgba(0,0,0,0.6)]",
+                        "focus-visible:ring-white/80",
+                      )}
+                    >
+                      <ClipboardList
+                        className="h-[1.05rem] w-[1.05rem] shrink-0 text-violet-800"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      <span>{HIRE.primary}</span>
+                      <ChevronRight
+                        className={cn(
+                          discoverIcon.sm,
+                          "shrink-0 text-slate-400 transition group-hover:translate-x-px group-hover:text-slate-600",
+                        )}
+                        strokeWidth={2.25}
+                        aria-hidden
+                      />
+                    </button>
+                  </div>
+
+                  {/* Trust chips removed per UX direction (keep hero focused). */}
                 </div>
 
               </div>
-              <div className={heroPrimaryCtaRowClassName}>
-                <div className="flex w-full items-end justify-start gap-3">
-                  <button
-                    type="button"
-                    onClick={onStartRequest}
-                    className={heroCtaStartRequestClassName}
-                  >
-                    <ClipboardList
-                      className="h-[1.05rem] w-[1.05rem] shrink-0 text-violet-100/95 sm:h-[1.125rem] sm:w-[1.125rem]"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span>{HIRE.primary}</span>
-                    <ChevronRight
-                      className={cn(
-                        discoverIcon.sm,
-                        "shrink-0 text-violet-100/70 transition group-hover:translate-x-px group-hover:text-violet-50",
-                      )}
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                  </button>
-                </div>
-              </div>
+              <div className={heroPrimaryCtaRowClassName} />
             </div>
           </div>
         </section>
@@ -336,96 +348,107 @@ export function DiscoverHomeActionFirst({
               {...{ fetchpriority: "high" }}
             />
 
-            {renderFixedBrowseShortcut(false)}
+            {renderFixedBottomBrowseDock()}
 
             <div className={heroStackClassName}>
               <div className={heroTopBlockClassName}>
-                <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#059669] shadow-sm sm:px-3 sm:py-1.5">
-                  <Wifi
-                    className={cn(discoverIcon.sm, "shrink-0")}
-                    strokeWidth={DISCOVER_STROKE}
-                    aria-hidden
-                  />
-                  {workTheme.badge}
-                </div>
-                <div className={heroTitleBlockClassName}>
-                  <h2
-                    className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
-                    style={{
-                      textShadow:
-                        "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
-                    }}
-                  >
-                    {workTheme.title}
-                  </h2>
-                  <p
-                    className="text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
-                    style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
-                  >
-                    {workTheme.sub}
-                  </p>
-                </div>
-              </div>
-              <div className={heroPrimaryCtaRowClassName}>
-                {isWorkLive ? (
-                  <div className="flex w-full max-w-[min(100%,24rem)] items-center gap-3">
-                    <div
-                      className={cn(
-                        "inline-flex shrink-0 items-center gap-2 rounded-full",
-                        "bg-black/25 px-3 py-2 text-white shadow-lg backdrop-blur-xl",
-                        "ring-1 ring-inset ring-white/15",
-                      )}
-                      aria-label={
-                        liveRemainingLabel
-                          ? `Live time remaining ${liveRemainingLabel}`
-                          : "Live"
-                      }
-                    >
-                      <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.85)]" />
-                      </span>
-                      <span className="text-[11px] font-black uppercase tracking-[0.18em]">
-                        Live
-                      </span>
-                      {liveRemainingLabel ? (
-                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
-                          {liveRemainingLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="min-w-0">
-                      <div
-                        className="text-[13px] font-semibold leading-snug text-white"
-                        style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
-                      >
-                        You are live right now.
-                      </div>
-                    </div>
+                <div className="min-w-0">
+                  <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
+                    <Wifi
+                      className={cn(discoverIcon.sm, "shrink-0")}
+                      strokeWidth={DISCOVER_STROKE}
+                      aria-hidden
+                    />
+                    {workTheme.badge}
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onStartRequest}
-                    className={heroCtaGoLiveClassName}
-                  >
-                    <Radio
-                      className="h-[1.05rem] w-[1.05rem] shrink-0 text-emerald-100/95 sm:h-[1.125rem] sm:w-[1.125rem]"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span>{workTheme.primary}</span>
-                    <ChevronRight
-                      className={cn(
-                        discoverIcon.sm,
-                        "shrink-0 text-emerald-100/70 transition group-hover:translate-x-px group-hover:text-emerald-50",
-                      )}
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                  </button>
-                )}
+                  <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
+                    <h2
+                      className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
+                      style={{
+                        textShadow:
+                          "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
+                      }}
+                    >
+                      {workTheme.title}
+                    </h2>
+                    <p
+                      className="text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
+                      style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                    >
+                      {workTheme.sub}
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    {isWorkLive ? (
+                      <div className="flex w-full items-center gap-3">
+                        <div
+                          className={cn(
+                            "inline-flex shrink-0 items-center gap-2 rounded-full",
+                            "bg-emerald-950 px-3 py-2 text-white shadow-sm",
+                            "ring-1 ring-inset ring-emerald-900/40",
+                          )}
+                          aria-label={
+                            liveRemainingLabel
+                              ? `Live time remaining ${liveRemainingLabel}`
+                              : "Live"
+                          }
+                        >
+                          <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.85)]" />
+                          </span>
+                          <span className="text-[11px] font-black uppercase tracking-[0.18em]">
+                            Live
+                          </span>
+                          {liveRemainingLabel ? (
+                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
+                              {liveRemainingLabel}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="min-w-0">
+                          <div
+                            className="text-[13px] font-semibold leading-snug text-white"
+                            style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                          >
+                            You are live right now.
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={onStartRequest}
+                        className={cn(
+                          heroCtaBaseClassName,
+                          "h-11 w-fit min-w-[12.75rem] max-w-full justify-between px-4",
+                          // White badge-style CTA (to match request)
+                          "border-white/70 bg-white text-emerald-950",
+                          "shadow-[0_12px_34px_-20px_rgba(0,0,0,0.55)]",
+                          "hover:bg-white hover:shadow-[0_16px_40px_-22px_rgba(0,0,0,0.6)]",
+                          "focus-visible:ring-white/80",
+                        )}
+                      >
+                        <Radio
+                          className="h-[1.05rem] w-[1.05rem] shrink-0 text-emerald-800"
+                          strokeWidth={2}
+                          aria-hidden
+                        />
+                        <span>{workTheme.primary}</span>
+                        <ChevronRight
+                          className={cn(
+                            discoverIcon.sm,
+                            "shrink-0 text-slate-400 transition group-hover:translate-x-px group-hover:text-slate-600",
+                          )}
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
+              <div className={heroPrimaryCtaRowClassName} />
             </div>
           </div>
         </section>

@@ -10,6 +10,7 @@ export type DiscoverLiveAvatarEntry = {
   full_name: string | null;
   photo_url: string | null;
   average_rating: number | null;
+  total_ratings: number | null;
   location_line: string;
 };
 
@@ -135,6 +136,8 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
               prof?.average_rating != null
                 ? Number(prof.average_rating)
                 : null,
+            total_ratings:
+              prof?.total_ratings != null ? Number(prof.total_ratings) : null,
             location_line,
           });
         }

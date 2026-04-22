@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useMemo, useState } from "react";
 import { ChevronRight, Clock } from "lucide-react";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
@@ -7,9 +6,11 @@ import {
 } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
 import { LiveTimer } from "@/components/LiveTimer";
-import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
 
 type InboundNotif = {
   id: string;
@@ -44,45 +45,54 @@ function serviceHeroImageSrc(job: { service_type?: string | null }) {
 }
 
 export function ExplorePendingResponses() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { data, isLoading } = useFreelancerRequests(user?.id);
   const inbound = (data?.inboundNotifications ?? []) as InboundNotif[];
+  const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any | null>(null);
 
   const pending = useMemo(
     () => inbound.filter((n) => Boolean(n.isConfirmed)),
     [inbound],
   );
 
-  const viewAllHref = useMemo(
-    () => buildJobsUrl("freelancer", "pending"),
-    [],
-  );
+  const formatModalJobTitle = useCallback((job: any) => formatJobTitle(job), []);
+
+  const openJobById = useCallback(async (jobId: string) => {
+    const { data: job } = await supabase
+      .from("job_requests")
+      .select("*")
+      .eq("id", jobId)
+      .single();
+    if (!job) return;
+    if (job.service_type === "pickup_delivery") setSelectedMapJob(job);
+    else setSelectedJobDetails(job);
+  }, []);
 
   if (!user?.id) return null;
 
   return (
     <section className="space-y-4" aria-label="Pending response">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => navigate(viewAllHref)}
-          className={cn(
-            "shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground transition-colors",
-            "hover:bg-muted/60 hover:text-foreground active:bg-muted/80",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          )}
-        >
-          View all
-        </button>
-      </div>
-
+      <FullscreenMapModal
+        job={selectedMapJob}
+        isOpen={!!selectedMapJob}
+        sheetPresentation
+        onClose={() => setSelectedMapJob(null)}
+      />
+      <JobDetailsModal
+        job={selectedJobDetails}
+        isOpen={!!selectedJobDetails}
+        onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+        formatJobTitle={formatModalJobTitle}
+        sheetPresentation
+        isOwnRequest={selectedJobDetails?.client_id === user?.id}
+      />
       {isLoading ? (
-        <div className="rounded-2xl border border-border/60 bg-card/30 px-4 py-6 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           Loading pending…
         </div>
       ) : pending.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/20 px-4 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white px-4 py-10 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <p className="text-base font-semibold text-foreground">
             No pending responses
           </p>
@@ -105,7 +115,7 @@ export function ExplorePendingResponses() {
               <button
                 key={n.id}
                 type="button"
-                onClick={() => navigate(viewAllHref)}
+                onClick={() => void openJobById(String(job.id))}
                 className={cn(
                   "group relative w-full rounded-2xl p-4 text-left",
                   EXPLORE_PAGE_CARD_SURFACE,

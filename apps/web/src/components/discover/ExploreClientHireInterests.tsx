@@ -245,11 +245,11 @@ export function ExploreClientHireInterests({
       }
     >
       {loading ? (
-        <div className="rounded-2xl border border-border/60 bg-card/30 px-4 py-6 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           Loading your hire responses…
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/20 px-4 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white px-4 py-10 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <p className="text-base font-semibold text-foreground">
             {pendingOnly
               ? "No pending hires"

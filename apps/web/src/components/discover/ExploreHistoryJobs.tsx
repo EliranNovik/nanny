@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronRight, Clock, UserRound } from "lucide-react";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
@@ -8,7 +7,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
 
 type Mode = "hire" | "work";
 
@@ -73,11 +73,12 @@ async function fetchProfileMap(ids: string[]): Promise<Map<string, ProfileMini>>
 }
 
 export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileMini>>(new Map());
+  const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any | null>(null);
 
   const otherPartyLabel = mode === "hire" ? "Helper" : "Client";
   const emptyTitle = "No past jobs yet";
@@ -85,12 +86,6 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
     mode === "hire"
       ? "Completed or cancelled jobs from your requests will show here."
       : "Completed or cancelled jobs you worked on will show here.";
-
-  const viewAllHref = useMemo(() => {
-    return mode === "hire"
-      ? buildJobsUrl("client", "past")
-      : buildJobsUrl("freelancer", "past");
-  }, [mode]);
 
   const load = useCallback(async () => {
     if (!user?.id) {
@@ -144,26 +139,26 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
 
   return (
     <section className="space-y-4" aria-label="History">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => navigate(viewAllHref)}
-          className={cn(
-            "shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground transition-colors",
-            "hover:bg-muted/60 hover:text-foreground active:bg-muted/80",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          )}
-        >
-          View all
-        </button>
-      </div>
-
+      <FullscreenMapModal
+        job={selectedMapJob}
+        isOpen={!!selectedMapJob}
+        sheetPresentation
+        onClose={() => setSelectedMapJob(null)}
+      />
+      <JobDetailsModal
+        job={selectedJobDetails}
+        isOpen={!!selectedJobDetails}
+        onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+        formatJobTitle={formatJobTitle}
+        sheetPresentation
+        isOwnRequest={selectedJobDetails?.client_id === user?.id}
+      />
       {loading ? (
-        <div className="rounded-2xl border border-border/60 bg-card/30 px-4 py-6 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           Loading history…
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/20 px-4 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white px-4 py-10 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <p className="text-base font-semibold text-foreground">{emptyTitle}</p>
           <p className="mt-2 text-sm text-muted-foreground">{emptySub}</p>
         </div>
@@ -186,9 +181,10 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
               <button
                 key={job.id}
                 type="button"
-                onClick={() =>
-                  navigate(`/jobs/${encodeURIComponent(job.id)}/details`)
-                }
+                onClick={() => {
+                  if (job.service_type === "pickup_delivery") setSelectedMapJob(job);
+                  else setSelectedJobDetails(job);
+                }}
                 className={cn(
                   "group relative w-full rounded-2xl p-4 text-left",
                   EXPLORE_PAGE_CARD_SURFACE,

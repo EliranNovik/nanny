@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Clock, UserRound } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock, MessageSquare, UserRound } from "lucide-react";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
@@ -10,6 +10,8 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { LiveTimer } from "@/components/LiveTimer";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { Button } from "@/components/ui/button";
+import JobReviewModal from "@/components/JobReviewModal";
 
 type Mode = "hire" | "work";
 
@@ -73,6 +75,11 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileMini>>(new Map());
+  const [reviewJob, setReviewJob] = useState<{
+    jobId: string;
+    reviewee: ProfileMini;
+    revieweeRole: "client" | "freelancer";
+  } | null>(null);
 
   const otherPartyLabel = mode === "hire" ? "Helper" : "Client";
   const emptyTitle = mode === "hire" ? "Nothing in Helping me now yet." : "Nothing in Helping now yet.";
@@ -140,26 +147,25 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
 
   return (
     <section className="space-y-4" aria-label="Live help now">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => navigate(openAllHref)}
-          className={cn(
-            "shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground transition-colors",
-            "hover:bg-muted/60 hover:text-foreground active:bg-muted/80",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          )}
-        >
-          View all
-        </button>
-      </div>
-
+      {reviewJob ? (
+        <JobReviewModal
+          open={!!reviewJob}
+          jobId={reviewJob.jobId}
+          reviewee={reviewJob.reviewee}
+          revieweeRole={reviewJob.revieweeRole}
+          onClose={() => setReviewJob(null)}
+          onConfirmed={() => {
+            setReviewJob(null);
+            void load();
+          }}
+        />
+      ) : null}
       {loading ? (
-        <div className="rounded-2xl border border-border/60 bg-card/30 px-4 py-6 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           Loading live help…
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/20 px-4 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white px-4 py-10 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <p className="text-base font-semibold text-foreground">{emptyTitle}</p>
           <p className="mt-2 text-sm text-muted-foreground">{emptySub}</p>
         </div>
@@ -178,16 +184,8 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
               String(other?.full_name ?? otherPartyLabel).trim() || otherPartyLabel;
 
             return (
-              <button
+              <div
                 key={job.id}
-                type="button"
-                onClick={() => {
-                  if (mode === "hire") {
-                    navigate(`/client/jobs/${encodeURIComponent(job.id)}/live`);
-                  } else {
-                    navigate(openAllHref);
-                  }
-                }}
                 className={cn(
                   "group relative w-full rounded-2xl p-4 text-left",
                   EXPLORE_PAGE_CARD_SURFACE,
@@ -195,68 +193,121 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                 )}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
-                    {title}
-                  </p>
-                  <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
-                    Live
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mode === "hire") {
+                      navigate(`/client/jobs/${encodeURIComponent(job.id)}/live`);
+                    } else {
+                      navigate(openAllHref);
+                    }
+                  }}
+                  className="w-full text-left focus-visible:outline-none"
+                  aria-label="Open live help details"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
+                      {title}
+                    </p>
+                    <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+                      Live
+                    </span>
+                  </div>
 
-                <div className="mt-3 flex items-center gap-3">
-                  <div
-                    className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
-                    aria-hidden
-                  >
-                    {imgSrc ? (
-                      <img src={imgSrc} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-muted/50">
+                  <div className="mt-3 flex items-center gap-3">
+                    <div
+                      className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
+                      aria-hidden
+                    >
+                      {imgSrc ? (
+                        <img src={imgSrc} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-muted/50">
+                          <Clock
+                            className="h-8 w-8 text-emerald-600/45 dark:text-emerald-400/50"
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                        </div>
+                      )}
+                      <div className="pointer-events-none absolute inset-0 bg-black/15" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-muted-foreground">
+                        {loc}
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <UserRound className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                        <span className="truncate">{otherName}</span>
+                      </p>
+                      <div className="mt-1 flex min-w-0 items-center gap-1.5" role="status" aria-live="polite">
                         <Clock
-                          className="h-8 w-8 text-emerald-600/45 dark:text-emerald-400/50"
-                          strokeWidth={2}
+                          className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
                           aria-hidden
                         />
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Started
+                        </span>
+                        <LiveTimer
+                          createdAt={job.created_at}
+                          render={({ time }) => (
+                            <span className="!font-mono text-[11px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                              {time}
+                            </span>
+                          )}
+                        />
                       </div>
-                    )}
-                    <div className="pointer-events-none absolute inset-0 bg-black/15" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-muted-foreground">
-                      {loc}
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <UserRound className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-                      <span className="truncate">{otherName}</span>
-                    </p>
-                    <div className="mt-1 flex min-w-0 items-center gap-1.5" role="status" aria-live="polite">
-                      <Clock
-                        className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                        aria-hidden
-                      />
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Started
-                      </span>
-                      <LiveTimer
-                        createdAt={job.created_at}
-                        render={({ time }) => (
-                          <span className="!font-mono text-[11px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                            {time}
-                          </span>
-                        )}
-                      />
                     </div>
-                  </div>
 
-                  <ChevronRight
-                    className="h-5 w-5 shrink-0 text-muted-foreground"
-                    aria-hidden
-                    strokeWidth={2}
-                  />
+                    <ChevronRight
+                      className="h-5 w-5 shrink-0 text-muted-foreground"
+                      aria-hidden
+                      strokeWidth={2}
+                    />
+                  </div>
+                </button>
+
+                <div className="mt-4 flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 flex-1 rounded-[18px] border-border/70 text-[14px] font-bold text-foreground transition-all hover:bg-muted/50 active:scale-[0.98]"
+                    onClick={() => {
+                      if (mode === "hire") {
+                        navigate(`/client/jobs/${encodeURIComponent(job.id)}/live`);
+                      } else {
+                        navigate(openAllHref);
+                      }
+                    }}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" aria-hidden />
+                    Message
+                  </Button>
+                  <Button
+                    type="button"
+                    className="h-11 flex-1 rounded-[18px] bg-emerald-600 text-[14px] font-bold text-white shadow-[0_8px_20px_rgba(22,163,74,0.25)] transition-all hover:bg-emerald-700 active:scale-[0.98]"
+                    onClick={async () => {
+                      if (otherId && other) {
+                        setReviewJob({
+                          jobId: job.id,
+                          reviewee: other,
+                          revieweeRole: mode === "hire" ? "freelancer" : "client",
+                        });
+                        return;
+                      }
+                      await supabase
+                        .from("job_requests")
+                        .update({ status: "completed" })
+                        .eq("id", job.id);
+                      void load();
+                    }}
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+                    Done
+                  </Button>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

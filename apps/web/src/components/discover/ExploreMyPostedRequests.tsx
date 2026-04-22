@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ChevronRight, Clock } from "lucide-react";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
@@ -8,7 +8,10 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
 import { LiveTimer } from "@/components/LiveTimer";
-import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+import { supabase } from "@/lib/supabase";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
+import { useCallback, useState } from "react";
 
 function formatJobTitle(job: { service_type?: string }) {
   if (job.service_type === "cleaning") return "Cleaning";
@@ -39,36 +42,49 @@ function acceptedPillClass(accepted: number): string {
  * Card chrome matches {@link ExploreClientHireInterests}.
  */
 export function ExploreMyPostedRequests() {
-  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { data, isLoading } = useFreelancerRequests(user?.id);
   const jobs = data?.myOpenRequests ?? [];
+  const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any | null>(null);
 
-  const viewAllHref = buildJobsUrl("client", "my_requests");
+  const formatModalJobTitle = useCallback((job: any) => formatJobTitle(job), []);
+
+  const openJobById = useCallback(async (jobId: string) => {
+    const { data: job } = await supabase
+      .from("job_requests")
+      .select("*")
+      .eq("id", jobId)
+      .single();
+    if (!job) return;
+    if (job.service_type === "pickup_delivery") setSelectedMapJob(job);
+    else setSelectedJobDetails(job);
+  }, []);
 
   if (!user?.id) return null;
 
   return (
     <section className="space-y-4" aria-label="Your posted requests for help">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Link
-          to={viewAllHref}
-          className={cn(
-            "shrink-0 rounded-full px-3 py-1 text-xs font-bold text-muted-foreground transition-colors",
-            "hover:bg-muted/60 hover:text-foreground active:bg-muted/80",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          )}
-        >
-          View all
-        </Link>
-      </div>
-
+      <FullscreenMapModal
+        job={selectedMapJob}
+        isOpen={!!selectedMapJob}
+        sheetPresentation
+        onClose={() => setSelectedMapJob(null)}
+      />
+      <JobDetailsModal
+        job={selectedJobDetails}
+        isOpen={!!selectedJobDetails}
+        onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+        formatJobTitle={formatModalJobTitle}
+        sheetPresentation
+        isOwnRequest={selectedJobDetails?.client_id === user?.id}
+      />
       {isLoading ? (
-        <div className="rounded-2xl border border-border/60 bg-card/30 px-4 py-6 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           Loading your requests…
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/20 px-4 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white px-4 py-10 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <p className="text-base font-semibold text-foreground">
             No open requests
           </p>
@@ -106,9 +122,7 @@ export function ExploreMyPostedRequests() {
                 <button
                   key={job.id}
                   type="button"
-                  onClick={() =>
-                    navigate(`/client/jobs/${encodeURIComponent(job.id)}/live`)
-                  }
+                  onClick={() => void openJobById(String(job.id))}
                   className={cn(
                     "group relative w-full rounded-2xl p-4 text-left",
                     EXPLORE_PAGE_CARD_SURFACE,

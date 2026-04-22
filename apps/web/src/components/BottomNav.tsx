@@ -62,6 +62,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 
+const DISCOVER_HOME_INTENT_STORAGE_KEY = "mamalama_discover_home_intent_v1";
+
 /** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
 function bottomNavTabIconClass(isActive: boolean) {
   return cn(
@@ -118,6 +120,10 @@ export function BottomNav() {
     useDiscoverHomeScrollHeader();
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
+  const [discoverHomeMode, setDiscoverHomeMode] = useState<"hire" | "work">(() => {
+    const v = localStorage.getItem(DISCOVER_HOME_INTENT_STORAGE_KEY);
+    return v === "work" ? "work" : "hire";
+  });
   const isLikedPage = pathnameNorm === "/liked";
   const isShellScrollCollapseRoute = isDiscoverHome || isLikedPage;
   const shellCollapseChromeP = isShellScrollCollapseRoute
@@ -225,6 +231,27 @@ export function BottomNav() {
       previousPathnameRef.current = location.pathname;
     }
   }, [location.pathname]);
+
+  /** Keep + button color in sync with Discover home tab (hire/work). */
+  useEffect(() => {
+    if (!isDiscoverHome) return;
+    const readMode = () => {
+      const v = localStorage.getItem(DISCOVER_HOME_INTENT_STORAGE_KEY);
+      setDiscoverHomeMode(v === "work" ? "work" : "hire");
+    };
+    readMode();
+    // DiscoverHomeContent writes localStorage on tab change; observe it without relying on a route change.
+    const obs = new MutationObserver(readMode);
+    const el = document.querySelector("[data-discover-home-page]");
+    if (el) {
+      obs.observe(el, { attributes: true, attributeFilter: ["data-discover-home-mode"] });
+    } else {
+      // Fallback: poll lightly while on Discover home.
+      const id = window.setInterval(readMode, 500);
+      return () => window.clearInterval(id);
+    }
+    return () => obs.disconnect();
+  }, [isDiscoverHome]);
 
   useEffect(() => {
     function onDocPointerDown(e: PointerEvent) {
@@ -1140,7 +1167,11 @@ export function BottomNav() {
                     <div
                       className={cn(
                         "flex h-11 w-11 items-center justify-center rounded-full",
-                        "bg-orange-600 text-white ring-1 ring-inset ring-white/20",
+                        isDiscoverHome
+                          ? discoverHomeMode === "work"
+                            ? "bg-emerald-800 text-white ring-1 ring-inset ring-white/25"
+                            : "bg-[#7B61FF] text-white ring-1 ring-inset ring-white/25"
+                          : "bg-orange-600 text-white ring-1 ring-inset ring-white/20",
                         "transition-[transform,filter] duration-200 ease-out",
                         "group-hover:brightness-110 group-active:scale-[0.98]",
                         plusMenuOpen && "brightness-110",

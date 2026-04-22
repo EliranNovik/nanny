@@ -18,6 +18,10 @@ export type DiscoverOpenHelpRequestRow = {
   client_display_name: string | null;
   /** Present when RPC returns it — used to hide the viewer’s own requests client-side. */
   client_id?: string | null;
+  /** Enriched client rating (fetched from profiles when client_id exists). */
+  client_average_rating?: number | null;
+  /** Enriched client reviews count (fetched from profiles when client_id exists). */
+  client_total_ratings?: number | null;
   /** job_requests.status — filter to open-only when present. */
   status?: string | null;
 };
@@ -50,6 +54,49 @@ export function useDiscoverOpenHelpRequests(
         rows = rows.filter(
           (r) => !r.client_id || r.client_id !== excludeUserId,
         );
+      }
+
+      const clientIds = Array.from(
+        new Set(
+          rows
+            .map((r) => (r.client_id || "").trim())
+            .filter(Boolean),
+        ),
+      );
+      if (clientIds.length > 0) {
+        const { data: profs, error: profErr } = await supabase
+          .from("profiles")
+          .select("id, average_rating, total_ratings")
+          .in("id", clientIds);
+        if (!profErr && profs && profs.length > 0) {
+          const map = new Map<
+            string,
+            { average_rating: number | null; total_ratings: number | null }
+          >();
+          for (const p of profs as Array<{
+            id: string;
+            average_rating: number | null;
+            total_ratings: number | null;
+          }>) {
+            map.set(p.id, {
+              average_rating:
+                p.average_rating != null ? Number(p.average_rating) : null,
+              total_ratings:
+                p.total_ratings != null ? Number(p.total_ratings) : null,
+            });
+          }
+          rows = rows.map((r) => {
+            const id = (r.client_id || "").trim();
+            if (!id) return r;
+            const hit = map.get(id);
+            if (!hit) return r;
+            return {
+              ...r,
+              client_average_rating: hit.average_rating,
+              client_total_ratings: hit.total_ratings,
+            };
+          });
+        }
       }
       return rows;
     },

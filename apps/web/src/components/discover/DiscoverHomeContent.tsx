@@ -84,30 +84,13 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
             <div role="tablist" aria-label="What are you here for?">
               <div
                 className={cn(
-                  "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-[26px] p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
-                  "border border-slate-200/90 bg-slate-100/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]",
-                  "dark:border-zinc-700/80 dark:bg-zinc-800/90 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+                  // Premium segmented control: higher contrast, sharper edges, no blur.
+                  "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-[18px] p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
+                  "border border-slate-300/70 bg-slate-100 shadow-sm",
+                  "dark:border-zinc-700/80 dark:bg-zinc-900",
                   "leading-none",
                 )}
               >
-                {/* Sliding white “pill” — iOS-style thumb; labels stay purple / green when active */}
-                <div
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 z-[5] rounded-[22px]",
-                    "w-[calc((100%-1rem)/2)] will-change-transform",
-                    "bg-gradient-to-r shadow-[0_6px_18px_rgba(15,23,42,0.18),0_1px_2px_rgba(15,23,42,0.08)]",
-                    "ring-1 ring-inset ring-white/25",
-                    "dark:shadow-[0_8px_22px_rgba(0,0,0,0.45)] dark:ring-white/20",
-                    "transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                    homeMode === "hire"
-                      ? "from-[#7B61FF] to-[#A855F7]"
-                      : "from-[#065f46] to-[#047857]",
-                    homeMode === "hire"
-                      ? "translate-x-0"
-                      : "translate-x-[calc(100%+0.25rem)]",
-                  )}
-                />
                 <button
                   type="button"
                   role="tab"
@@ -115,12 +98,12 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   aria-label={homeMode === "hire" ? undefined : "I need help"}
                   onClick={() => setHomeMode("hire")}
                   className={cn(
-                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[20px] px-2 py-2 sm:min-h-[54px] sm:px-3",
+                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[14px] px-2 py-2 sm:min-h-[54px] sm:px-3",
                     "transition-[color,transform] duration-300 ease-out",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B61FF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "hire"
-                      ? "text-white"
+                      ? "bg-[#7B61FF] text-white shadow-[0_10px_22px_-14px_rgba(15,23,42,0.35)] ring-1 ring-inset ring-white/15"
                       : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
                   )}
                 >
@@ -153,12 +136,12 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
                   aria-label={homeMode === "work" ? undefined : "Help others"}
                   onClick={() => setHomeMode("work")}
                   className={cn(
-                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[20px] px-2 py-2 sm:min-h-[54px] sm:px-3",
+                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-[14px] px-2 py-2 sm:min-h-[54px] sm:px-3",
                     "transition-[color,transform] duration-300 ease-out",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#065f46]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "active:scale-[0.98] motion-reduce:transition-none",
                     homeMode === "work"
-                      ? "text-white"
+                      ? "bg-emerald-700 text-white shadow-[0_10px_22px_-14px_rgba(15,23,42,0.35)] ring-1 ring-inset ring-white/15"
                       : "text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200",
                   )}
                 >

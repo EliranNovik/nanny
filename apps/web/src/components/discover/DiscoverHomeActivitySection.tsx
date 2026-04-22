@@ -17,8 +17,7 @@ import { openCommunityContact } from "@/lib/communityContact";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Bell, ChevronRight, Loader2, Radio } from "lucide-react";
+import { Bell, Loader2, Radio } from "lucide-react";
 
 type JobRequestRow = {
   id: string;
@@ -459,55 +458,8 @@ export function DiscoverHomeActivitySection({
     else setSelectedJobDetails(job as JobRequestRow);
   }
 
-  const seeMoreLinkClassName = cn(
-    "group flex w-[5.5rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 text-center outline-none",
-    "transition-transform active:scale-[0.97]",
-    "focus-visible:ring-2 focus-visible:ring-slate-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl",
-    "dark:focus-visible:ring-slate-500/50",
-  );
-
-  const seeMoreCircleClassName = cn(
-    "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/40 shadow-sm",
-    "transition-colors duration-200 group-hover:bg-muted/70 dark:group-hover:bg-muted/30",
-  );
-
-  const hireSeeMoreLink = (
-    <Link
-      to="/public/posts"
-      className={seeMoreLinkClassName}
-      role="listitem"
-      aria-label="View all availability posts"
-    >
-      <div className={seeMoreCircleClassName} aria-hidden>
-        <ChevronRight
-          className="h-6 w-6 text-muted-foreground"
-          strokeWidth={2.5}
-        />
-      </div>
-      <span className="text-[10px] font-bold leading-tight text-muted-foreground">
-        View all
-      </span>
-    </Link>
-  );
-
-  const workSeeMoreLink = (
-    <Link
-      to={incomingJobsUrl}
-      className={seeMoreLinkClassName}
-      role="listitem"
-      aria-label="View all open requests"
-    >
-      <div className={seeMoreCircleClassName} aria-hidden>
-        <ChevronRight
-          className="h-6 w-6 text-muted-foreground"
-          strokeWidth={2.5}
-        />
-      </div>
-      <span className="text-[10px] font-bold leading-tight text-muted-foreground">
-        View all
-      </span>
-    </Link>
-  );
+  const hireSeeMoreLink = null;
+  const workSeeMoreLink = null;
 
   const hireSection = (
     <>

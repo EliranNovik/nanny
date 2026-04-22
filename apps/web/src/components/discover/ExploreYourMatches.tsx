@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   EXPLORE_PAGE_AVATAR_RING,
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
 } from "@/components/jobs/jobCardSharedClasses";
-import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +13,8 @@ import {
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import { ChevronRight } from "lucide-react";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
 
 const HELPING_NOW = ["locked", "active"] as const;
 
@@ -139,9 +139,6 @@ function rowToMatch(
   };
 }
 
-const helpingNowFreelancerUrl = buildJobsUrl("freelancer", "jobs");
-const helpingNowClientUrl = buildJobsUrl("client", "jobs");
-
 export type ExploreMatchPerspective = "all" | "client" | "helper";
 
 type Props = {
@@ -162,8 +159,9 @@ export function ExploreYourMatches({
   embeddedInExplore = false,
   matchPerspective = "all",
 }: Props) {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<ExploreRow[]>([]);
 
@@ -343,8 +341,16 @@ export function ExploreYourMatches({
   const MatchCard = ({ item }: { item: ExploreRow }) => {
     const { match: row, kind } = item;
     const isHelper = kind === "helper_availability";
-    const open = () =>
-      navigate(isHelper ? helpingNowFreelancerUrl : helpingNowClientUrl);
+    const open = async () => {
+      const { data: job } = await supabase
+        .from("job_requests")
+        .select("*")
+        .eq("id", row.jobId)
+        .single();
+      if (!job) return;
+      if (job.service_type === "pickup_delivery") setSelectedMapJob(job);
+      else setSelectedJobDetails(job);
+    };
 
     return (
       <button
@@ -424,12 +430,26 @@ export function ExploreYourMatches({
 
   return (
     <div className={cn(embeddedInExplore ? "mt-0 px-0" : "")}>
+      <FullscreenMapModal
+        job={selectedMapJob}
+        isOpen={!!selectedMapJob}
+        sheetPresentation
+        onClose={() => setSelectedMapJob(null)}
+      />
+      <JobDetailsModal
+        job={selectedJobDetails}
+        isOpen={!!selectedJobDetails}
+        onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+        formatJobTitle={serviceLabel}
+        sheetPresentation
+        isOwnRequest={selectedJobDetails?.client_id === user?.id}
+      />
       {loading ? (
-        <div className="rounded-xl border border-border/60 bg-card/30 px-3 py-4 text-sm text-muted-foreground">
+        <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-4 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           Loading your matches…
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl bg-muted/20 px-4 py-5 text-center text-sm text-muted-foreground dark:bg-muted/30">
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-5 text-center text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           {matchPerspective === "client"
             ? "No active “helping me now” jobs yet. When a helper is confirmed on your request, it will show here."
             : matchPerspective === "helper"
