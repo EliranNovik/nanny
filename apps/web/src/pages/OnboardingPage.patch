@@ -1,0 +1,55 @@
+--- /Users/elirannovik/Desktop/newProject/apps/web/src/pages/OnboardingPage.tsx
++++ /Users/elirannovik/Desktop/newProject/apps/web/src/pages/OnboardingPage.tsx
+@@ -10,2 +10,3 @@
+ import { getLocationDataFromGps } from "@/lib/location";
+ import { cn } from "@/lib/utils";
++import { GoogleIcon } from "@/components/BrandIcons";
+@@ -236,2 +237,21 @@
+ 
++  async function handleGoogleSignUp() {
++    setLoading(true);
++    setError("");
++    const pendingProfile: Record<string, unknown> = {
++      role,
++      fullName: fullName.trim(),
++      city: city.trim(),
++    };
++    if (locationLat != null && locationLng != null) {
++      pendingProfile.location_lat = locationLat;
++      pendingProfile.location_lng = locationLng;
++    }
++    localStorage.setItem("pendingProfile", JSON.stringify(pendingProfile));
++
++    const { error: oAuthError } = await supabase.auth.signInWithOAuth({
++      provider: "google",
++      options: { redirectTo: `${window.location.origin}/login` },
++    });
++    if (oAuthError) {
++      setError(oAuthError.message || "Failed to connect to Google.");
++      setLoading(false);
++    }
++  }
++
+   async function handleRegister() {
+@@ -744,2 +764,20 @@
+             {step === 2 && (
+               <div className="space-y-4">
++                <Button
++                  type="button"
++                  variant="outline"
++                  className="w-full mb-2 font-semibold"
++                  onClick={handleGoogleSignUp}
++                  disabled={loading}
++                >
++                  <GoogleIcon className="mr-2 w-5 h-5" />
++                  Continue with Google
++                </Button>
++                <div className="relative mb-6">
++                  <div className="absolute inset-0 flex items-center">
++                    <span className="w-full border-t border-border/60" />
++                  </div>
++                  <div className="relative flex justify-center text-xs uppercase">
++                    <span className="bg-card px-2 text-muted-foreground">Or sign up with email</span>
++                  </div>
++                </div>
+                 <div className="space-y-2">

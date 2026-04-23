@@ -95,18 +95,18 @@ function humanizeSnakeLabel(s: string): string {
   return s.trim().replace(/_/g, " ");
 }
 
-/** Flatten service_details JSON into short readable lines for the match card. */
-function linesFromServiceDetails(raw: unknown): string[] {
+/** Flatten service_details JSON into short readable lines and extracts notes. */
+function parseServiceDetails(raw: unknown): { badges: string[]; notes: string[] } {
   if (typeof raw === "string") {
     const t = raw.trim();
-    if (!t) return [];
+    if (!t) return { badges: [], notes: [] };
     try {
-      return linesFromServiceDetails(JSON.parse(t) as unknown);
+      return parseServiceDetails(JSON.parse(t) as unknown);
     } catch {
-      return [];
+      return { badges: [], notes: [] };
     }
   }
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return [];
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return { badges: [], notes: [] };
   const o = raw as Record<string, unknown>;
   const skipKeys = new Set([
     "from_lat",
@@ -118,19 +118,40 @@ function linesFromServiceDetails(raw: unknown): string[] {
     "dropoff_lat",
     "dropoff_lng",
   ]);
-  const lines: string[] = [];
+  const noteKeys = new Set([
+    "custom",
+    "note",
+    "notes",
+    "details",
+    "description",
+    "message",
+    "extra_info",
+    "special_requests"
+  ]);
+
+  const badges: string[] = [];
+  const notes: string[] = [];
+
   for (const [k, v] of Object.entries(o)) {
-    if (skipKeys.has(k)) continue;
+    if (skipKeys.has(k) || k.includes("address")) continue; // hide lat/lng fields completely
     if (v == null || v === "") continue;
     if (Array.isArray(v) && v.length === 0) continue;
+
     const label = humanizeSnakeLabel(k);
     if (typeof v === "string" || typeof v === "number") {
-      lines.push(`${label}: ${humanizeSnakeLabel(String(v))}`);
+      const stringVal = String(v).trim();
+      const isNote = noteKeys.has(k.toLowerCase()) || stringVal.length > 40;
+      
+      if (isNote) {
+        notes.push(stringVal); // Don't prepend the generic dictionary key to long notes
+      } else {
+        badges.push(`${label}: ${humanizeSnakeLabel(stringVal)}`);
+      }
     } else if (typeof v === "boolean") {
-      lines.push(`${label}: ${v ? "Yes" : "No"}`);
+      badges.push(`${label}: ${v ? "Yes" : "No"}`);
     }
   }
-  return lines.slice(0, 8);
+  return { badges: badges.slice(0, 8), notes: notes.slice(0, 3) };
 }
 
 export function OpenJobRequestMatchCard({
@@ -230,23 +251,20 @@ export function OpenJobRequestMatchCard({
   }, [row.care_frequency]);
 
   const timeDurationLine = useMemo(() => {
-    const t = (row.time_duration || "").trim();
+    let t = (row.time_duration || "").trim();
+    // Safely reformat strings like "3_4_hours" to "3-4_hours" so humanize keeps the dash
+    t = t.replace(/(\d)_+(\d)/g, "$1-$2");
     return t ? humanizeSnakeLabel(t) : null;
   }, [row.time_duration]);
 
-  const serviceDetailLines = useMemo(
-    () => linesFromServiceDetails(row.service_details ?? null),
+  const parsedDetails = useMemo(
+    () => parseServiceDetails(row.service_details ?? null),
     [row.service_details],
   );
+  
+  const serviceDetailLines = parsedDetails.badges;
 
-  const serviceDetailsColumns = useMemo(() => {
-    if (serviceDetailLines.length === 0) return { left: [] as string[], right: [] as string[] };
-    const mid = Math.ceil(serviceDetailLines.length / 2);
-    return {
-      left: serviceDetailLines.slice(0, mid),
-      right: serviceDetailLines.slice(mid),
-    };
-  }, [serviceDetailLines]);
+
 
   const budgetLine = useMemo(() => {
     if (row.budget_min != null && row.budget_max != null) {
@@ -258,10 +276,14 @@ export function OpenJobRequestMatchCard({
   }, [row.budget_min, row.budget_max]);
 
   const notesLine = useMemo(() => {
-    const t = (row.notes || "").trim();
+    let t = (row.notes || "").trim();
+    if (parsedDetails.notes.length > 0) {
+      const merged = parsedDetails.notes.join("\n\n");
+      t = t ? `${merged}\n\n${t}` : merged;
+    }
     if (!t) return null;
-    return t.length > 88 ? `${t.slice(0, 88).trim()}…` : t;
-  }, [row.notes]);
+    return t.length > 200 ? `${t.slice(0, 200).trim()}…` : t;
+  }, [row.notes, parsedDetails.notes]);
 
   const accepted = row.__accepted === true;
 
@@ -603,65 +625,39 @@ export function OpenJobRequestMatchCard({
         {careFrequencyLine || timeDurationLine || serviceDetailLines.length > 0 ? (
           <div className="mt-1 space-y-3">
             {careFrequencyLine || timeDurationLine ? (
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-500">
-                    Frequency
-                  </p>
-                  <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900 dark:text-zinc-900">
-                    {careFrequencyLine ?? "—"}
-                  </p>
-                </div>
-                <div className="min-w-0 border-l border-slate-200/70 pl-4 dark:border-zinc-300">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-500">
-                    Duration
-                  </p>
-                  <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900 dark:text-zinc-900">
-                    {timeDurationLine ?? "—"}
-                  </p>
-                </div>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                {careFrequencyLine ? (
+                  <div className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-100 px-3 py-1.5 dark:bg-zinc-800/50 dark:border-zinc-700/50">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-zinc-400 mr-2 border-r border-slate-200 dark:border-zinc-700 pr-2">Freq</span>
+                    <span className="text-[13px] font-bold text-slate-800 dark:text-zinc-200">{careFrequencyLine}</span>
+                  </div>
+                ) : null}
+                {timeDurationLine ? (
+                  <div className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-100 px-3 py-1.5 dark:bg-zinc-800/50 dark:border-zinc-700/50">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-zinc-400 mr-2 border-r border-slate-200 dark:border-zinc-700 pr-2">Dur</span>
+                    <span className="text-[13px] font-bold text-slate-800 dark:text-zinc-200">{timeDurationLine}</span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
             {serviceDetailLines.length > 0 ? (
               <div
                 className={cn(
-                  "text-[14px] leading-snug text-slate-800 dark:text-zinc-800",
-                  careFrequencyLine || timeDurationLine ? "border-t border-slate-200/80 pt-3 dark:border-zinc-300" : "",
+                  "text-[14px] leading-snug text-slate-800 dark:text-zinc-300",
+                  careFrequencyLine || timeDurationLine ? "pt-1" : "pt-2",
                 )}
               >
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-500">
-                  Details
-                </p>
-                <div className="mt-1.5 grid max-h-[6rem] grid-cols-2 gap-x-3 gap-y-1 overflow-hidden">
-                  <ul className="min-w-0 list-none space-y-1.5 pl-0">
-                    {serviceDetailsColumns.left.map((line, idx) => (
-                      <li
-                        key={`dl-${idx}-${line.slice(0, 40)}`}
-                        className="flex gap-1.5 text-[14px] font-medium leading-snug text-slate-700 dark:text-zinc-700"
-                      >
-                        <span
-                          className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-emerald-500"
-                          aria-hidden
-                        />
-                        <span className="min-w-0 flex-1 line-clamp-3">{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <ul className="min-w-0 list-none space-y-1.5 border-l border-slate-200/70 pl-3 dark:border-zinc-300">
-                    {serviceDetailsColumns.right.map((line, idx) => (
-                      <li
-                        key={`dr-${idx}-${line.slice(0, 40)}`}
-                        className="flex gap-1.5 text-[14px] font-medium leading-snug text-slate-700 dark:text-zinc-700"
-                      >
-                        <span
-                          className="mt-[0.4rem] h-1 w-1 shrink-0 rounded-full bg-emerald-500"
-                          aria-hidden
-                        />
-                        <span className="min-w-0 flex-1 line-clamp-3">{line}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="flex flex-wrap gap-1.5">
+                  {serviceDetailLines.map((line, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-600 shadow-sm transition-colors dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400"
+                    >
+                      <Check className="h-3 w-3 text-emerald-500 shrink-0" strokeWidth={3.5} />
+                      {line}
+                    </span>
+                  ))}
                 </div>
               </div>
             ) : null}
@@ -681,9 +677,14 @@ export function OpenJobRequestMatchCard({
         ) : null}
 
         {notesLine ? (
-          <p className="mt-2 text-[15px] leading-snug text-slate-600 dark:text-zinc-600">
-            {notesLine}
-          </p>
+          <div className="mt-3 rounded-xl bg-orange-50/50 p-3 ring-1 ring-orange-100/50 dark:bg-orange-950/20 dark:ring-orange-900/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-orange-600/80 dark:text-orange-500/80 mb-1">
+              Notes & Requirements
+            </p>
+            <p className="text-[14px] font-medium leading-relaxed text-slate-700 dark:text-zinc-300 whitespace-pre-wrap">
+              {notesLine}
+            </p>
+          </div>
         ) : null}
 
         {accepted ? (

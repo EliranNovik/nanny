@@ -9,6 +9,7 @@ import { ArrowRight, Mail, MapPin, Loader2, Users, Heart, Check } from "lucide-r
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import { getLocationDataFromGps } from "@/lib/location";
 import { cn } from "@/lib/utils";
+import { GoogleIcon } from "@/components/BrandIcons";
 
 type Role = "client" | "freelancer";
 
@@ -234,6 +235,30 @@ export default function OnboardingPage() {
 
     // If user is logged in, proceed to create profile
     await createProfile();
+  }
+
+  async function handleGoogleSignUp() {
+    setLoading(true);
+    setError("");
+    const pendingProfile: Record<string, unknown> = {
+      role,
+      fullName: fullName.trim(),
+      city: city.trim(),
+    };
+    if (locationLat != null && locationLng != null) {
+      pendingProfile.location_lat = locationLat;
+      pendingProfile.location_lng = locationLng;
+    }
+    localStorage.setItem("pendingProfile", JSON.stringify(pendingProfile));
+
+    const { error: oAuthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/login` },
+    });
+    if (oAuthError) {
+      setError(oAuthError.message || "Failed to connect to Google.");
+      setLoading(false);
+    }
   }
 
   async function handleRegister() {
@@ -542,10 +567,50 @@ export default function OnboardingPage() {
   const progressStep = step; // 1, 2, or 3
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-      <LandingSiteHeader />
-      <main className="flex w-full flex-1 flex-col items-center justify-center px-4 pb-16 pt-28 md:px-8 md:pb-20 md:pt-36">
-        <div className="animate-fade-in w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-[40rem] mx-auto">
+    <div className="min-h-[100dvh] flex bg-white dark:bg-background">
+      {/* LEFT COLUMN - Visual Experience (Desktop Only) */}
+      <div className="hidden lg:flex lg:w-[45%] relative flex-col justify-end p-16 overflow-hidden bg-slate-900 shrink-0">
+        <img
+          src="/pexels-rdne-6646861.jpg"
+          alt="Trusted professionals connecting locally"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/90 pointer-events-none" />
+        
+        <div className="relative z-10 animate-fade-up pointer-events-none">
+          <img
+            src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+            alt="MamaLama Logo"
+            className="h-[4.5rem] w-auto rounded-xl mb-10 shadow-2xl saturate-150"
+          />
+          <h1 className="text-[3.25rem] font-black text-white leading-[1.05] tracking-tight mb-5 drop-shadow-xl text-balance">
+            Join the MamaLama <br /> community.
+          </h1>
+          <p className="text-xl text-white/90 font-medium max-w-md leading-snug drop-shadow-md text-balance">
+            Register your profile to connect with trusted locals instantly.
+          </p>
+        </div>
+      </div>
+
+      {/* RIGHT COLUMN - Auth Form */}
+      <div className="flex flex-col flex-1 relative min-w-0">
+        <div className="absolute top-0 right-0 left-0 z-20 pointer-events-none">
+          <div className="pointer-events-auto">
+            <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
+          </div>
+        </div>
+
+        <main className="flex-1 flex flex-col items-center justify-center p-6 pt-32 pb-12 overflow-y-auto">
+          <div className="w-full max-w-[460px] animate-fade-in relative z-10 mx-auto">
+            
+            {/* Mobile Branding (Hidden on Desktop) */}
+            <div className="lg:hidden text-center mb-10">
+              <img
+                src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+                alt="MamaLama Logo"
+                className="h-[4.5rem] w-auto mx-auto rounded-2xl shadow-xl mb-4"
+              />
+            </div>
 
           {/* Step progress indicator */}
           {step !== 3 && (
@@ -744,6 +809,25 @@ export default function OnboardingPage() {
 
             {step === 2 && (
               <div className="space-y-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mb-2 font-semibold"
+                  onClick={handleGoogleSignUp}
+                  disabled={loading}
+                >
+                  <GoogleIcon className="mr-2 w-5 h-5" />
+                  Continue with Google
+                </Button>
+                <div className="relative mb-6 mt-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border/60" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or sign up with email</span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -830,7 +914,8 @@ export default function OnboardingPage() {
             )}
           </div>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

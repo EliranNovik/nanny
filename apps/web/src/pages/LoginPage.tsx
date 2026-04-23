@@ -5,15 +5,9 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
-import { Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
+import { GoogleIcon } from "@/components/BrandIcons";
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -186,6 +180,21 @@ export default function LoginPage() {
     setLoading(false);
   }
 
+  async function handleGoogleLogin() {
+    setError("");
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/login`,
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  }
+
   // Show loading if auth is loading
   if (authLoading) {
     console.log("[LoginPage] Showing loading spinner", {
@@ -214,97 +223,167 @@ export default function LoginPage() {
   console.log("[LoginPage] Rendering login form");
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-      <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
-      <main className="flex flex-1 flex-col items-center justify-center p-4 pt-28 md:pt-36 pb-12">
-        <div className="w-full max-w-md animate-fade-in">
-          {/* Logo/Brand */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center mb-4">
+    <div className="min-h-[100dvh] flex bg-white dark:bg-background">
+      {/* LEFT COLUMN - Visual Experience (Desktop Only) */}
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-end p-16 overflow-hidden bg-slate-900 shrink-0">
+        <img
+          src="/pexels-rdne-6646861.jpg"
+          alt="Trusted professionals connecting locally"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        {/* Gradient overlays to make text brilliant and readable */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/90 pointer-events-none" />
+        
+        {/* Animated Brand Content */}
+        <div className="relative z-10 animate-fade-up pointer-events-none">
+          <img
+            src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+            alt="MamaLama Logo"
+            className="h-[4.5rem] w-auto rounded-xl mb-10 shadow-2xl saturate-150"
+          />
+          <h1 className="text-[3.25rem] font-black text-white leading-[1.05] tracking-tight mb-5 drop-shadow-xl text-balance">
+            Find the perfect <br /> helper in minutes.
+          </h1>
+          <p className="text-xl text-white/90 font-medium max-w-md leading-snug drop-shadow-md text-balance">
+            Join thousands of families and trusted professionals connecting locally every single day.
+          </p>
+        </div>
+      </div>
+
+      {/* RIGHT COLUMN - Auth Form */}
+      <div className="flex flex-col flex-1 relative min-w-0">
+        <div className="absolute top-0 right-0 left-0 z-20 pointer-events-none">
+          <div className="pointer-events-auto">
+            <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
+          </div>
+        </div>
+
+        <main className="flex-1 flex flex-col items-center justify-center p-6 pt-32 pb-12 overflow-y-auto">
+          <div className="w-full max-w-[380px] animate-fade-in relative z-10 mx-auto">
+            
+            {/* Mobile Branding (Hidden on Desktop) */}
+            <div className="lg:hidden text-center mb-10">
               <img
                 src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
                 alt="MamaLama Logo"
-                className="h-28 w-auto max-w-xs rounded-lg"
+                className="h-[5rem] w-auto mx-auto rounded-2xl shadow-xl mb-5"
               />
+              <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1.5 font-medium tracking-tight">
+                <Sparkles className="w-4 h-4 text-orange-500" />
+                Find a helper in minutes
+              </p>
             </div>
-            <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1">
-              <Sparkles className="w-4 h-4" />
-              Find a helper in minutes
-            </p>
-          </div>
 
-          <Card className="border-0 shadow-xl">
-            <CardHeader className="text-center">
-              <CardTitle>
-                {isSignUp ? "Create Account" : "Welcome Back"}
-              </CardTitle>
-              <CardDescription>
+            <div className="mb-8">
+              <h2 className="text-[1.75rem] font-black tracking-tight text-slate-950 dark:text-white">
+                {isSignUp ? "Create an account" : "Welcome back"}
+              </h2>
+              <p className="text-[0.95rem] font-medium text-slate-500 dark:text-slate-400 mt-2">
                 {isSignUp
-                  ? "Start finding helpers or help others today"
-                  : "Sign in to continue"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                  <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm whitespace-pre-line">
-                    {error}
-                  </div>
-                )}
+                  ? "Enter your details below to get started"
+                  : "Sign in with your email or social account"}
+              </p>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 mb-7 text-[0.95rem] font-semibold bg-white hover:bg-slate-50 border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-all dark:bg-zinc-900 dark:border-white/10 dark:hover:bg-zinc-800 rounded-xl"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+            >
+              <GoogleIcon className="mr-3 w-5 h-5" />
+              Continue with Google
+            </Button>
+
+            <div className="relative mb-7">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-slate-200 dark:border-white/10" />
+              </div>
+              <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                <span className="bg-white dark:bg-background px-3">
+                  Or continue with email
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="p-3.5 rounded-xl bg-red-50 text-red-600 text-[0.9rem] font-medium leading-snug border border-red-100 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/40 whitespace-pre-line animate-in fade-in slide-in-from-top-1">
+                  {error}
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="font-semibold text-slate-700 dark:text-slate-300">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-12 rounded-xl border-slate-200 shadow-sm focus-visible:ring-offset-0 focus-visible:ring-primary/50 text-base dark:border-white/10 dark:bg-zinc-900/50"
+                  disabled={loading}
+                />
+              </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="font-semibold text-slate-700 dark:text-slate-300">
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="h-12 rounded-xl border-slate-200 shadow-sm focus-visible:ring-offset-0 focus-visible:ring-primary/50 text-base dark:border-white/10 dark:bg-zinc-900/50"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="pt-2">
                 <Button
                   type="submit"
-                  className="w-full"
-                  size="lg"
+                  className="w-full h-12 rounded-xl text-base font-bold shadow-md hover:shadow-lg transition-all"
                   disabled={loading}
                 >
-                  {loading
-                    ? "Please wait..."
-                    : isSignUp
-                      ? "Create Account"
-                      : "Sign In"}
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Please wait...
+                    </>
+                  ) : isSignUp ? (
+                    "Create Account"
+                  ) : (
+                    "Sign In"
+                  )}
                 </Button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  {isSignUp
-                    ? "Already have an account? Sign in"
-                    : "Don't have an account? Sign up"}
-                </button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+            </form>
+
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
+                disabled={loading}
+              >
+                {isSignUp ? (
+                  <>Already have an account? <span className="text-primary hover:underline underline-offset-4">Sign in</span></>
+                ) : (
+                  <>Don't have an account? <span className="text-primary hover:underline underline-offset-4">Sign up</span></>
+                )}
+              </button>
+            </div>
+            
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

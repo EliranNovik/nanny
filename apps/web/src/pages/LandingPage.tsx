@@ -428,19 +428,19 @@ export default function LandingPage() {
                           className={cn(
                             "relative transition-all duration-700 cursor-pointer flex-shrink-0 group",
                             isActive
-                              ? "w-full md:w-[50%] z-20"
-                              : "hidden md:block w-[18%] z-10 opacity-40 grayscale hover:opacity-100 hover:grayscale-0",
+                              ? "w-full md:w-[45%] lg:w-[40%] z-20"
+                              : "hidden md:block w-[15%] lg:w-[14%] z-10 opacity-40 grayscale hover:opacity-100 hover:grayscale-0",
                             isActive
-                              ? "md:scale-105 scale-100"
+                              ? "scale-100"
                               : "scale-90 translate-y-4",
                           )}
                         >
                           <div
                             className={cn(
-                              "relative overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] transition-all duration-700",
+                              "relative overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] transition-all duration-700 bg-slate-100",
                               isActive
-                                ? "rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] aspect-[4/3] min-h-[260px] sm:min-h-[300px] md:min-h-[420px] lg:min-h-[500px]"
-                                : "rounded-[2.5rem] aspect-[4/5]",
+                                ? "rounded-2xl sm:rounded-[2rem] md:rounded-[2.5rem] aspect-[16/9] w-full"
+                                : "rounded-2xl sm:rounded-[2rem] aspect-[4/5] w-full",
                             )}
                           >
                             <div className="relative w-full h-full">
