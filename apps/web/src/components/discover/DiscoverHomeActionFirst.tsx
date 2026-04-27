@@ -203,7 +203,7 @@ export function DiscoverHomeActionFirst({
 
   function renderFixedBottomBrowseDock() {
     const bottomOffset = "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]";
-    
+
     /**
      * Round Icon Button style:
      * - h-14 w-14 (mobile) / h-16 w-16 (desktop)
@@ -362,72 +362,84 @@ export function DiscoverHomeActionFirst({
         </div>
 
         <div className="flex-1 mt-3 flex flex-col">
-        {isHire ? (
-          <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[18rem]">
-            <img src="/pexels-rdne-6646861.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
-            {/* Split gradient: one for top text, one for bottom button */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-80" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-            
-            <div className="relative flex flex-col justify-end flex-1 w-full p-6 pt-12 pb-6">
-              <div className="min-w-0 mb-6">
-                <div className={mobileHeroBadgeClass}>
-                  <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
-                  <span className="truncate">{HIRE.badge}</span>
-                </div>
-                <h2 className={cn(mobileHeroTitleClass, "mt-3")}>
-                  {HIRE.title}
-                </h2>
-              </div>
-              <button 
-                onClick={onStartRequest} 
-                type="button" 
-                className="group inline-flex h-12 w-fit mx-auto items-center justify-center gap-2 rounded-full px-10 text-[15px] font-black shadow-lg transition-all bg-white text-violet-950 hover:bg-slate-50 active:scale-[0.98]"
-              >
-                <PlusCircle className="h-5 w-5 shrink-0 text-violet-800" strokeWidth={2.5} aria-hidden />
-                <span>{HIRE.primary}</span>
-              </button>
-            </div>
-          </section>
-        ) : (
-          <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[18rem]">
-            <img src="/pexels-tima-miroshnichenko-6197046.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
-            {/* Split gradient */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-80" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-            
-            <div className="relative flex flex-col justify-end flex-1 w-full p-6 pt-12 pb-6">
-              <div className="min-w-0 mb-6">
-                <div className={mobileHeroBadgeClass}>
-                  <Wifi className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
-                  <span className="truncate">{workTheme.badge}</span>
-                </div>
-                <h2 className={cn(mobileHeroTitleClass, "mt-3")}>
-                  {workTheme.title}
-                </h2>
-              </div>
-              <div className="flex flex-col gap-4">
-                {isWorkLive && (
-                  <div className="inline-flex items-center gap-2 self-center text-[13px] font-black uppercase tracking-wider text-white drop-shadow-md pb-1">
-                     <span className="relative flex h-2.5 w-2.5 shrink-0">
-                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 motion-reduce:animate-none" />
-                        <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                     </span>
-                     Active now
+          {isHire ? (
+            <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[22rem]">
+              <img src="/pexels-rdne-6646861.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
+              {/* Split gradient: one for top text, one for bottom button */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-80" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+              <div className="relative flex flex-col justify-end flex-1 w-full p-6 pb-24">
+                {/* Section Badge - Top Left Corner */}
+                <div className="absolute top-4 left-4 z-[10]">
+                  <div className={cn(mobileHeroBadgeClass, "mb-0")}>
+                    <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
+                    <span className="truncate">{HIRE.badge}</span>
                   </div>
-                )}
-                <button 
-                  onClick={onStartRequest} 
-                  type="button" 
-                  className="group inline-flex h-12 w-fit mx-auto items-center justify-center gap-2 rounded-full px-10 text-[15px] font-black shadow-lg transition-all bg-white text-emerald-950 hover:bg-slate-50 active:scale-[0.98]"
+                </div>
+
+                {/* Primary Action - Top Right Corner */}
+                <button
+                  onClick={onStartRequest}
+                  type="button"
+                  className="absolute top-4 right-4 z-[10] group inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-black shadow-lg transition-all bg-white text-violet-950 hover:bg-slate-50 active:scale-[0.98]"
                 >
-                  <PlayCircle className="h-5 w-5 shrink-0 text-emerald-800" strokeWidth={2.5} aria-hidden />
-                  <span>{workTheme.primary}</span>
+                  <PlusCircle className="h-5 w-5 shrink-0 text-violet-800" strokeWidth={3} aria-hidden />
+                  <span>{HIRE.primary}</span>
                 </button>
+
+                <div className="min-w-0">
+                  <h2 className={mobileHeroTitleClass}>
+                    {HIRE.title}
+                  </h2>
+                </div>
               </div>
-            </div>
-          </section>
-        )}
+            </section>
+          ) : (
+            <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[22rem]">
+              <img src="/pexels-tima-miroshnichenko-6197046.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
+              {/* Split gradient */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-80" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+              <div className="relative flex flex-col justify-end flex-1 w-full p-6 pb-24">
+                {/* Section Badge - Top Left Corner */}
+                <div className="absolute top-4 left-4 z-[10]">
+                  <div className={cn(mobileHeroBadgeClass, "mb-0")}>
+                    <Wifi className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
+                    <span className="truncate">{workTheme.badge}</span>
+                  </div>
+                </div>
+
+                {/* Primary Action - Top Right Corner */}
+                <div className="absolute top-4 right-4 z-[10] flex flex-col items-end gap-2">
+                  <button
+                    onClick={onStartRequest}
+                    type="button"
+                    className="group inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-black shadow-lg transition-all bg-white text-emerald-950 hover:bg-slate-50 active:scale-[0.98]"
+                  >
+                    <PlayCircle className="h-5 w-5 shrink-0 text-emerald-800" strokeWidth={3} aria-hidden />
+                    <span>{workTheme.primary}</span>
+                  </button>
+                  {isWorkLive && (
+                    <div className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-white drop-shadow-md bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                       <span className="relative flex h-2 w-2 shrink-0">
+                          <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 motion-reduce:animate-none" />
+                          <span className="relative block h-2 w-2 rounded-full bg-emerald-400" />
+                       </span>
+                       Active
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <h2 className={mobileHeroTitleClass}>
+                    {workTheme.title}
+                  </h2>
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       </div>
 
