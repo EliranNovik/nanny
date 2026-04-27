@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, ChevronRight, Clock, MessageSquare, UserRound, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock, MessageSquare, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
@@ -9,10 +9,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { LiveTimer } from "@/components/LiveTimer";
-import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
-import { Button } from "@/components/ui/button";
 import JobReviewModal from "@/components/JobReviewModal";
+import { Button } from "@/components/ui/button";
 
 type Mode = "hire" | "work";
 
@@ -118,11 +116,6 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
       ? "When a helper is confirmed on your request, it will show up here."
       : "When you’re assigned to a job, it will appear here.";
 
-  const openAllHref = useMemo(() => {
-    return mode === "hire"
-      ? buildJobsUrl("client", "jobs")
-      : buildJobsUrl("freelancer", "jobs");
-  }, [mode]);
 
   const load = useCallback(async () => {
     if (!user?.id) {

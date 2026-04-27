@@ -7,9 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
-import { LiveTimer } from "@/components/LiveTimer";
-import { supabase } from "@/lib/supabase";
-import { useCallback, useState } from "react";
+
 
 function formatJobTitle(job: { service_type?: string }) {
   if (job.service_type === "cleaning") return "Cleaning";
