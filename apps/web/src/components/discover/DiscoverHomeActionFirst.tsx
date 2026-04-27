@@ -369,15 +369,7 @@ export function DiscoverHomeActionFirst({
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-80" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-              <div className="relative flex flex-col justify-end flex-1 w-full p-6 pb-24">
-                {/* Section Badge - Top Left Corner */}
-                <div className="absolute top-4 left-4 z-[10]">
-                  <div className={cn(mobileHeroBadgeClass, "mb-0")}>
-                    <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
-                    <span className="truncate">{HIRE.badge}</span>
-                  </div>
-                </div>
-
+              <div className="relative flex flex-col justify-end flex-1 w-full p-6 pb-32">
                 {/* Primary Action - Top Right Corner */}
                 <button
                   onClick={onStartRequest}
@@ -389,6 +381,10 @@ export function DiscoverHomeActionFirst({
                 </button>
 
                 <div className="min-w-0">
+                  <div className={cn(mobileHeroBadgeClass, "mb-3")}>
+                    <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
+                    <span className="truncate">{HIRE.badge}</span>
+                  </div>
                   <h2 className={mobileHeroTitleClass}>
                     {HIRE.title}
                   </h2>
@@ -402,15 +398,7 @@ export function DiscoverHomeActionFirst({
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-80" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-              <div className="relative flex flex-col justify-end flex-1 w-full p-6 pb-24">
-                {/* Section Badge - Top Left Corner */}
-                <div className="absolute top-4 left-4 z-[10]">
-                  <div className={cn(mobileHeroBadgeClass, "mb-0")}>
-                    <Wifi className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
-                    <span className="truncate">{workTheme.badge}</span>
-                  </div>
-                </div>
-
+              <div className="relative flex flex-col justify-end flex-1 w-full p-6 pb-32">
                 {/* Primary Action - Top Right Corner */}
                 <div className="absolute top-4 right-4 z-[10] flex flex-col items-end gap-2">
                   <button
@@ -433,6 +421,10 @@ export function DiscoverHomeActionFirst({
                 </div>
 
                 <div className="min-w-0">
+                  <div className={cn(mobileHeroBadgeClass, "mb-3")}>
+                    <Wifi className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
+                    <span className="truncate">{workTheme.badge}</span>
+                  </div>
                   <h2 className={mobileHeroTitleClass}>
                     {workTheme.title}
                   </h2>
