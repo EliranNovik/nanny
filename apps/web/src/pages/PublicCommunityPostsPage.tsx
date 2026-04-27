@@ -213,8 +213,6 @@ export default function PublicCommunityPostsPage() {
     <div
       className={cn(
         "min-h-screen bg-background pb-6 md:pb-8",
-        // Desktop/tablet: light grey canvas with white cards (more pro / SaaS).
-        "md:bg-slate-50/80 dark:md:bg-background",
         posts.length > 0 && "max-md:overflow-hidden max-md:pb-0",
       )}
       {...(posts.length > 0 ? { "data-public-snap-feed-mobile": "" } : {})}
@@ -324,7 +322,7 @@ export default function PublicCommunityPostsPage() {
                   pendingHirePostIds={pendingHirePostIds}
                   onHireFromPost={handleHireFromPost}
                   plain
-                      cardClassName="h-full overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm ring-0 dark:border-white/5 dark:bg-zinc-900"
+                  cardClassName="overflow-hidden rounded-[20px] border-0 bg-transparent shadow-none dark:bg-zinc-800"
                   iconOnlyActions
                   onOpenChat={() => {
                     if (!user || !profile) return;
@@ -372,7 +370,7 @@ export default function PublicCommunityPostsPage() {
                       pendingHirePostIds={pendingHirePostIds}
                       onHireFromPost={handleHireFromPost}
                       plain
-                          cardClassName="h-full overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm ring-0 dark:border-white/5 dark:bg-zinc-900"
+                      cardClassName="h-full overflow-hidden rounded-[20px] border-0 bg-transparent shadow-none dark:bg-zinc-800"
                       iconOnlyActions
                       onOpenChat={() => {
                         if (!user || !profile) return;

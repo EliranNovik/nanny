@@ -141,10 +141,10 @@ export function BottomNav() {
   const shellScrollMobileChromeOverlayStyle: CSSProperties | undefined =
     isShellScrollCollapseRoute && shellCollapseChromeP > 0
       ? {
-          transform: `translateY(calc(-1 * ${shellCollapseChromeP * 130}%))`,
-          opacity: Math.max(0, 1 - shellCollapseChromeP),
-          transition: "none",
-        }
+        transform: `translateY(calc(-1 * ${shellCollapseChromeP * 130}%))`,
+        opacity: Math.max(0, 1 - shellCollapseChromeP),
+        transition: "none",
+      }
       : undefined;
   /** `/profile/:userId` ships its own fixed back button — hide nav duplicate */
   const isPublicUserProfilePage = /^\/profile\/[^/]+$/.test(pathnameNorm);
@@ -808,7 +808,7 @@ export function BottomNav() {
         "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] translate-y-0 opacity-100",
         "border-none bg-background shadow-none backdrop-blur-none dark:bg-background",
         !isShellScrollCollapseRoute &&
-          "transition-[transform,opacity,background-color] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "transition-[transform,opacity,background-color] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
       )}
       style={{
         paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
@@ -830,7 +830,7 @@ export function BottomNav() {
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
           : "right-[max(0.75rem,env(safe-area-inset-right))]",
         !isShellScrollCollapseRoute &&
-          "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
       )}
       style={{
         top: "max(0.75rem, env(safe-area-inset-top))",
@@ -865,8 +865,8 @@ export function BottomNav() {
           className={cn(
             "relative shrink-0",
             (!isCommunityPostsFilterPage || isPublicPostsPage) &&
-              !mobileSearchOpen &&
-              "ml-auto",
+            !mobileSearchOpen &&
+            "ml-auto",
           )}
         >
           <button
@@ -915,7 +915,7 @@ export function BottomNav() {
       className={cn(
         "md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1",
         !isShellScrollCollapseRoute &&
-          "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
       )}
       style={{
         top: "max(0.75rem, env(safe-area-inset-top))",

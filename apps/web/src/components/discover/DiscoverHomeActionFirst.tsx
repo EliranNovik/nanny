@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronRight,
+  ClipboardList,
+  Clock,
   PlayCircle,
   PlusCircle,
   Search,
@@ -9,6 +11,14 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { trackEvent } from "@/lib/analytics";
@@ -36,6 +46,8 @@ import {
   DISCOVER_HOME_CATEGORIES,
   isServiceCategoryId,
 } from "@/lib/serviceCategories";
+import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
+import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
 
 type HomeMode = "hire" | "work";
 
@@ -88,9 +100,9 @@ export function DiscoverHomeActionFirst({
   const { user, profile } = useAuth();
   const isHire = homeMode === "hire";
   const { data: categoryAvatars = {} } = useDiscoverLiveAvatars(user?.id);
-  const { data: frData } = useFreelancerRequests(
-    !isHire && user?.id ? user.id : undefined,
-  );
+  const { data: frData } = useFreelancerRequests(user?.id);
+  const [myRequestsOpen, setMyRequestsOpen] = useState(false);
+  const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
   const fetchOpenHelpPool =
     !isHire && !!user?.id && profile?.role !== "freelancer";
   const { data: openHelpRows = [] } = useDiscoverOpenHelpRequests(
@@ -179,221 +191,142 @@ export function DiscoverHomeActionFirst({
     return openHelpRows.length;
   }, [frData, openHelpRows, profile?.role, user?.id]);
 
+  const myRequestsCount = useMemo(() => {
+    return (frData?.myOpenRequests ?? []).length;
+  }, [frData]);
+
+  const pendingWorkRequestsCount = useMemo(() => {
+    return (frData?.inboundNotifications ?? []).filter((n) =>
+      Boolean(n.isConfirmed),
+    ).length;
+  }, [frData]);
+
   function renderFixedBottomBrowseDock() {
     const bottomOffset = "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]";
-    const pillBtn = cn(
-      "group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4",
-      "border shadow-md transition-[transform,box-shadow,background-color,border-color] active:scale-[0.99] motion-reduce:transition-none",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    
+    /**
+     * Round Icon Button style:
+     * - h-14 w-14 (mobile) / h-16 w-16 (desktop)
+     * - High-end shadow and blur
+     */
+    const roundBtnBase = cn(
+      "group relative flex h-16 w-16 items-center justify-center rounded-full border shadow-xl transition-all duration-300",
+      "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      "md:h-[4.5rem] md:w-[4.5rem]"
+    );
+
+    const countBadge = cn(
+      "absolute -right-0.5 -top-0.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full border-2 border-white px-1.5 text-[11px] font-black tabular-nums text-white shadow-sm dark:border-zinc-950",
     );
 
     return (
-      <>
-        {/* Mobile: full-width dock bar */}
-        <div
-          className={cn(
-            "pointer-events-none fixed inset-x-0 z-[140] md:hidden",
-            bottomOffset,
-          )}
-          aria-hidden
-        >
-          <div
-            className={cn(
-              "pointer-events-auto border-t border-slate-200/80 bg-background/95 px-4 pb-2 pt-3",
-              "shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10",
-            )}
-          >
-            <div className="mx-auto w-full max-w-lg">
-              {isHire ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
-                    navigateToHelpersBrowse(navigate);
-                  }}
-                  className={cn(
-                    pillBtn,
-                    "h-12 w-full justify-between",
-                    "border-slate-200/80 bg-slate-100 text-slate-800",
-                    "hover:bg-slate-100/80 hover:shadow-lg",
-                    "focus-visible:ring-[#7B61FF]/35",
-                  )}
-                  aria-label="Browse helpers"
-                >
-                  <Search className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-                  <span className="inline-flex min-w-0 max-w-[min(100%,12rem)] flex-1 items-center justify-center gap-1.5">
-                    <span className="truncate text-[14px] font-extrabold tracking-tight">
-                      Browse helpers
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums",
-                        hireLiveHelperCount > 0
-                          ? "bg-[#7B61FF]/15 text-[#4c1d95] dark:bg-[#7B61FF]/25 dark:text-violet-100"
-                          : "bg-slate-900/5 text-slate-500 dark:bg-white/10 dark:text-slate-400",
-                      )}
-                      aria-label={`${hireLiveHelperCount} live helpers`}
-                    >
-                      {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    className={cn(
-                      discoverIcon.sm,
-                      "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600",
-                      "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
-                    )}
-                    strokeWidth={2.25}
-                    aria-hidden
-                  />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    trackEvent("discover_bottom_find_people_in_need", {
-                      mode: homeMode,
-                    });
-                    navigateToWorkBrowseRequests(navigate, profile);
-                  }}
-                  className={cn(
-                    pillBtn,
-                    "h-12 w-full justify-between",
-                    "border-slate-200/80 bg-slate-100 text-slate-800",
-                    "hover:bg-slate-100/80 hover:shadow-lg",
-                    "focus-visible:ring-emerald-400/35",
-                  )}
-                  aria-label="Browse users requests"
-                >
-                  <UsersRound className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-                  <span className="inline-flex min-w-0 max-w-[min(100%,14rem)] flex-1 items-center justify-center gap-1.5">
-                    <span className="truncate text-[14px] font-extrabold tracking-tight">
-                      Browse users requests
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums",
-                        workLivePostCount > 0
-                          ? "bg-emerald-600/15 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
-                          : "bg-slate-900/5 text-slate-500 dark:bg-white/10 dark:text-slate-400",
-                      )}
-                      aria-label={`${workLivePostCount} live posts`}
-                    >
-                      {workLivePostCount > 99 ? "99+" : workLivePostCount}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    className={cn(
-                      discoverIcon.sm,
-                      "shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600",
-                      "group-hover:animate-bounce motion-reduce:group-hover:animate-none",
-                    )}
-                    strokeWidth={2.25}
-                    aria-hidden
-                  />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop: single pill, bottom-right — aligned with bottom nav row, no backing bar */}
-        <div
-          className={cn(
-            "pointer-events-auto fixed z-[140] hidden md:block",
-            bottomOffset,
-            "right-[max(1rem,env(safe-area-inset-right,0px))]",
-          )}
-        >
+      <div
+        className={cn(
+          "pointer-events-auto fixed inset-x-0 z-[140]",
+          bottomOffset,
+          "flex justify-center"
+        )}
+      >
+        <div className="flex items-center gap-4 px-4 pb-2">
           {isHire ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
-                navigateToHelpersBrowse(navigate);
-              }}
-              className={cn(
-                pillBtn,
-                "border-[#5b49c4]/90 bg-[#7B61FF] text-white shadow-sm",
-                "hover:bg-[#6d56ea] hover:border-[#4f3eb0] hover:shadow-md",
-                "dark:border-violet-300/35 dark:bg-[#7B61FF] dark:text-white dark:hover:bg-[#6d56ea]",
-                "focus-visible:ring-[#7B61FF]/55",
-              )}
-              aria-label="Browse helpers"
-            >
-              <Search className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
-              <span className="inline-flex min-w-0 max-w-[10rem] items-center gap-1.5 sm:max-w-none">
-                <span className="truncate text-[13px] font-extrabold tracking-tight text-white sm:text-[14px]">
-                  Browse helpers
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white",
-                    hireLiveHelperCount > 0 ? "bg-white/25" : "bg-white/15 text-white/80",
-                  )}
-                  aria-label={`${hireLiveHelperCount} live helpers`}
-                >
-                  {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
-                </span>
-              </span>
-              <ChevronRight
+            <>
+              {/* Browse Helpers */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
+                  navigateToHelpersBrowse(navigate);
+                }}
                 className={cn(
-                  discoverIcon.sm,
-                  "shrink-0 text-white/85 transition group-hover:translate-x-0.5 group-hover:text-white",
+                  roundBtnBase,
+                  "border-indigo-500/20 bg-indigo-600 text-white hover:bg-indigo-500 hover:shadow-indigo-500/25",
+                  "dark:border-indigo-400/30 dark:bg-indigo-600"
                 )}
-                strokeWidth={2.25}
-                aria-hidden
-              />
-            </button>
+                aria-label="Browse helpers"
+              >
+                <Search className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2.5} aria-hidden />
+                {hireLiveHelperCount > 0 && (
+                  <span className={cn(countBadge, "bg-indigo-500 shadow-indigo-600/50")}>
+                    {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
+                  </span>
+                )}
+              </button>
+
+              {/* My Requests (only for clients) */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMyRequestsOpen(true);
+                }}
+                className={cn(
+                  roundBtnBase,
+                  "border-slate-200/80 bg-white text-slate-800 hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:text-white",
+                  "shadow-lg"
+                )}
+                aria-label="My Requests"
+              >
+                <ClipboardList className="h-7 w-7 md:h-8 md:w-8 text-slate-700 dark:text-slate-300" strokeWidth={2} aria-hidden />
+                {myRequestsCount > 0 && (
+                  <span className={cn(countBadge, "bg-orange-500 border-white dark:border-zinc-900")}>
+                    {myRequestsCount > 9 ? "9+" : myRequestsCount}
+                  </span>
+                )}
+              </button>
+            </>
           ) : (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                trackEvent("discover_bottom_find_people_in_need", {
-                  mode: homeMode,
-                });
-                navigateToWorkBrowseRequests(navigate, profile);
-              }}
-              className={cn(
-                pillBtn,
-                "border-emerald-700/60 bg-emerald-600 text-white shadow-sm",
-                "hover:bg-emerald-500 hover:border-emerald-600 hover:shadow-md",
-                "dark:border-emerald-400/35 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500",
-                "focus-visible:ring-emerald-400/55",
-              )}
-              aria-label="Browse users requests"
-            >
-              <UsersRound className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
-              <span className="inline-flex min-w-0 max-w-[14rem] items-center gap-1.5 sm:max-w-none">
-                <span className="truncate text-[13px] font-extrabold tracking-tight text-white sm:text-[14px]">
-                  Browse users requests
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white",
-                    workLivePostCount > 0 ? "bg-emerald-950/30" : "bg-emerald-950/20 text-emerald-100/90",
-                  )}
-                  aria-label={`${workLivePostCount} live posts`}
-                >
-                  {workLivePostCount > 99 ? "99+" : workLivePostCount}
-                </span>
-              </span>
-              <ChevronRight
+            <>
+              {/* Browse Jobs */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("discover_bottom_find_people_in_need", {
+                    mode: homeMode,
+                  });
+                  navigateToWorkBrowseRequests(navigate, profile);
+                }}
                 className={cn(
-                  discoverIcon.sm,
-                  "shrink-0 text-emerald-100/90 transition group-hover:translate-x-0.5 group-hover:text-white",
+                  roundBtnBase,
+                  "border-emerald-500/20 bg-emerald-600 text-white hover:bg-emerald-500 hover:shadow-emerald-500/25",
+                  "dark:border-emerald-400/30 dark:bg-emerald-600"
                 )}
-                strokeWidth={2.25}
-                aria-hidden
-              />
-            </button>
+                aria-label="Browse users requests"
+              >
+                <UsersRound className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2.5} aria-hidden />
+                {workLivePostCount > 0 && (
+                  <span className={cn(countBadge, "bg-emerald-500 shadow-emerald-500/50")}>
+                    {workLivePostCount > 99 ? "99+" : workLivePostCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Pending Requests (for freelancers) */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingWorkRequestsOpen(true);
+                }}
+                className={cn(
+                  roundBtnBase,
+                  "border-slate-200/80 bg-white text-slate-800 hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:text-white",
+                  "shadow-lg"
+                )}
+                aria-label="Pending Requests"
+              >
+                <Clock className="h-7 w-7 md:h-8 md:w-8 text-slate-700 dark:text-slate-300" strokeWidth={2.5} aria-hidden />
+                {pendingWorkRequestsCount > 0 && (
+                  <span className={cn(countBadge, "bg-emerald-500 border-white dark:border-zinc-900")}>
+                    {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
+                  </span>
+                )}
+              </button>
+            </>
           )}
         </div>
-      </>
+      </div>
     );
   }
 
@@ -409,6 +342,10 @@ export function DiscoverHomeActionFirst({
   }
 
   const workTheme = WORK;
+
+  // Shared font sizes/weights for mobile hero
+  const mobileHeroTitleClass = "text-[1.375rem] font-black leading-[1.2] tracking-tight text-white drop-shadow-md";
+  const mobileHeroBadgeClass = "inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm mb-2";
 
   return (
     <div
@@ -426,51 +363,65 @@ export function DiscoverHomeActionFirst({
 
         <div className="flex-1 mt-3 flex flex-col">
         {isHire ? (
-          <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[12.5rem]">
+          <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[18rem]">
             <img src="/pexels-rdne-6646861.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-            <div className="relative flex flex-col justify-end flex-1 gap-4 sm:flex-row sm:items-end w-full p-5 sm:p-6 pt-12">
-              <div className="min-w-0 pr-2">
-                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm mb-2">
-                  <Zap className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
+            {/* Split gradient: one for top text, one for bottom button */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-80" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            
+            <div className="relative flex flex-col justify-end flex-1 w-full p-6 pt-12 pb-6">
+              <div className="min-w-0 mb-6">
+                <div className={mobileHeroBadgeClass}>
+                  <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
                   <span className="truncate">{HIRE.badge}</span>
                 </div>
-                <h2 className="text-[1.125rem] font-bold leading-tight tracking-tight text-white sm:text-[1.25rem] drop-shadow-md">
+                <h2 className={cn(mobileHeroTitleClass, "mt-3")}>
                   {HIRE.title}
                 </h2>
               </div>
-              <button onClick={onStartRequest} type="button" className="group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 text-[14px] font-bold shadow-md transition-all bg-white text-violet-950 hover:bg-slate-50 active:scale-[0.98] sm:h-12 w-full sm:w-auto">
-                <PlusCircle className="h-[1.05rem] w-[1.05rem] shrink-0 text-violet-800" strokeWidth={2.5} aria-hidden />
+              <button 
+                onClick={onStartRequest} 
+                type="button" 
+                className="group inline-flex h-12 w-fit mx-auto items-center justify-center gap-2 rounded-full px-10 text-[15px] font-black shadow-lg transition-all bg-white text-violet-950 hover:bg-slate-50 active:scale-[0.98]"
+              >
+                <PlusCircle className="h-5 w-5 shrink-0 text-violet-800" strokeWidth={2.5} aria-hidden />
                 <span>{HIRE.primary}</span>
               </button>
             </div>
           </section>
         ) : (
-          <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[12.5rem]">
+          <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[18rem]">
             <img src="/pexels-tima-miroshnichenko-6197046.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-            <div className="relative flex flex-col justify-end flex-1 gap-4 sm:flex-row sm:items-end w-full p-5 sm:p-6 pt-12">
-              <div className="min-w-0 pr-2">
-                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm mb-2">
-                  <Wifi className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
+            {/* Split gradient */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-80" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            
+            <div className="relative flex flex-col justify-end flex-1 w-full p-6 pt-12 pb-6">
+              <div className="min-w-0 mb-6">
+                <div className={mobileHeroBadgeClass}>
+                  <Wifi className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
                   <span className="truncate">{workTheme.badge}</span>
                 </div>
-                <h2 className="text-[1.125rem] font-bold leading-tight tracking-tight text-white sm:text-[1.25rem] drop-shadow-md">
+                <h2 className={cn(mobileHeroTitleClass, "mt-3")}>
                   {workTheme.title}
                 </h2>
               </div>
-              <div className="flex flex-col gap-2 w-full sm:w-auto">
+              <div className="flex flex-col gap-4">
                 {isWorkLive && (
-                  <div className="inline-flex items-center gap-1.5 self-start sm:self-center text-[12px] font-semibold text-white drop-shadow-sm">
-                     <span className="relative flex h-2 w-2 shrink-0">
+                  <div className="inline-flex items-center gap-2 self-center text-[13px] font-black uppercase tracking-wider text-white drop-shadow-md pb-1">
+                     <span className="relative flex h-2.5 w-2.5 shrink-0">
                         <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 motion-reduce:animate-none" />
-                        <span className="relative block h-2 w-2 rounded-full bg-emerald-400" />
+                        <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                      </span>
                      Active now
                   </div>
                 )}
-                <button onClick={onStartRequest} type="button" className="group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 text-[14px] font-bold shadow-md transition-all bg-white text-emerald-950 hover:bg-slate-50 active:scale-[0.98] sm:h-12 w-full sm:w-auto">
-                  <PlayCircle className="h-[1.05rem] w-[1.05rem] shrink-0 text-emerald-800" strokeWidth={2.5} aria-hidden />
+                <button 
+                  onClick={onStartRequest} 
+                  type="button" 
+                  className="group inline-flex h-12 w-fit mx-auto items-center justify-center gap-2 rounded-full px-10 text-[15px] font-black shadow-lg transition-all bg-white text-emerald-950 hover:bg-slate-50 active:scale-[0.98]"
+                >
+                  <PlayCircle className="h-5 w-5 shrink-0 text-emerald-800" strokeWidth={2.5} aria-hidden />
                   <span>{workTheme.primary}</span>
                 </button>
               </div>
@@ -694,6 +645,48 @@ export function DiscoverHomeActionFirst({
           <DiscoverHomeRecentActivity viewerRole={isHire ? "client" : "freelancer"} />
         </div>
       </div>
+
+      {/* My Requests Modal */}
+      <Dialog open={myRequestsOpen} onOpenChange={setMyRequestsOpen}>
+        <DialogContent className={cn(
+          "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
+          "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:h-[85vh] max-md:w-full max-md:translate-y-0",
+          "md:max-h-[min(90vh,40rem)] md:max-w-2xl"
+        )}>
+          <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl font-black tracking-tight">Your requests</DialogTitle>
+              <DialogClose className="rounded-full p-2 text-muted-foreground hover:bg-muted active:scale-95">
+                <X className="h-6 w-6" strokeWidth={2.5} />
+              </DialogClose>
+            </div>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-zinc-950 p-4">
+            <ExploreMyPostedRequests />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pending Work Requests Modal */}
+      <Dialog open={pendingWorkRequestsOpen} onOpenChange={setPendingWorkRequestsOpen}>
+        <DialogContent className={cn(
+          "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
+          "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:h-[85vh] max-md:w-full max-md:translate-y-0",
+          "md:max-h-[min(90vh,40rem)] md:max-w-2xl"
+        )}>
+          <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl font-black tracking-tight">Pending responses</DialogTitle>
+              <DialogClose className="rounded-full p-2 text-muted-foreground hover:bg-muted active:scale-95">
+                <X className="h-6 w-6" strokeWidth={2.5} />
+              </DialogClose>
+            </div>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-zinc-950 p-4">
+            <ExplorePendingResponses />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

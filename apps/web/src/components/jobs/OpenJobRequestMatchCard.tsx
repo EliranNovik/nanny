@@ -163,7 +163,7 @@ function parseServiceDetails(raw: unknown): { badges: string[]; notes: string[] 
     if (typeof v === "string" || typeof v === "number") {
       const stringVal = String(v).trim();
       const isNote = noteKeys.has(k.toLowerCase()) || stringVal.length > 40;
-      
+
       if (isNote) {
         notes.push(stringVal); // Don't prepend the generic dictionary key to long notes
       } else {
@@ -283,7 +283,7 @@ export function OpenJobRequestMatchCard({
     () => parseServiceDetails(row.service_details ?? null),
     [row.service_details],
   );
-  
+
   const serviceDetailLines = parsedDetails.badges;
 
   // Images uploaded to the job request (stored as public URLs in service_details.images)
@@ -451,7 +451,7 @@ export function OpenJobRequestMatchCard({
       className={cn(
         "group relative flex flex-col overflow-hidden",
         "bg-white shadow-2xl shadow-black/12 ring-1 ring-black/[0.06]",
-        "transition-all duration-500 ease-out dark:bg-zinc-900 dark:ring-white/10",
+        "transition-all duration-500 ease-out dark:bg-zinc-900 dark:ring-white/5",
         variant === "fullscreen"
           ? "h-full rounded-none shadow-none ring-0"
           : "rounded-[22px] hover:-translate-y-1 hover:shadow-xl",
@@ -639,7 +639,7 @@ export function OpenJobRequestMatchCard({
       <div
         className={cn(
           "relative z-[6] flex min-h-0 flex-1 flex-col border-t border-slate-200/90 bg-white px-4 pb-5 pt-4",
-          "dark:border-zinc-700 dark:bg-zinc-50",
+          "dark:border-zinc-800/80 dark:bg-zinc-900",
           variant === "fullscreen" && "max-h-[min(52vh,24rem)] overflow-y-auto",
         )}
         onClick={(e) => e.stopPropagation()}
@@ -680,13 +680,13 @@ export function OpenJobRequestMatchCard({
         ) : null}
 
         {scheduleLine ? (
-          <p className={cn("mt-3 font-semibold text-slate-800 dark:text-zinc-800", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
+          <p className={cn("mt-3 font-semibold text-slate-800 dark:text-zinc-100", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
             {scheduleLine}
           </p>
         ) : null}
 
         {budgetLine ? (
-          <p className={cn("mt-1.5 font-bold text-emerald-700 dark:text-emerald-600", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
+          <p className={cn("mt-1.5 font-bold text-emerald-700 dark:text-emerald-500", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
             {budgetLine}
           </p>
         ) : null}

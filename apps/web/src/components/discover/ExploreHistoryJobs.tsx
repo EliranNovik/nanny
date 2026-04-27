@@ -168,12 +168,12 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
   return (
     <section className="space-y-4" aria-label="History">
       {loading ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
+        <div className="rounded-2xl border-0 bg-transparent px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
           Loading history…
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white px-4 py-10 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
-          <p className="text-base font-semibold text-foreground">{emptyTitle}</p>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-transparent px-4 py-10 text-center shadow-none dark:border-zinc-800 dark:bg-zinc-900/40">
+          <p className="text-lg font-bold text-foreground">{emptyTitle}</p>
           <p className="mt-2 text-sm text-muted-foreground">{emptySub}</p>
         </div>
       ) : (
@@ -245,10 +245,10 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-muted-foreground">
+                    <p className="truncate text-[15px] font-semibold text-slate-800 sm:text-sm dark:text-zinc-300">
                       {loc}
                     </p>
-                    <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-muted-foreground/90">
+                    <p className="mt-0.5 flex items-center gap-2 text-[15px] font-medium text-slate-600 sm:text-sm dark:text-zinc-200">
                       <Avatar className="h-6 w-6 shrink-0 border border-slate-200/50 dark:border-white/10">
                         <AvatarImage src={other?.photo_url || ""} />
                         <AvatarFallback className="text-[8px] font-bold">
@@ -257,7 +257,7 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
                       </Avatar>
                       <span className="truncate">{otherName}</span>
                     </p>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground/80">
+                    <p className="mt-1 flex items-center gap-1.5 text-[15px] font-medium text-slate-500 sm:text-sm dark:text-zinc-400">
                       <Clock className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
                       <span>{timeAgo(job.created_at)}</span>
                     </p>

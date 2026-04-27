@@ -336,12 +336,12 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             name: jr.profiles?.full_name,
             average_rating:
               jr.profiles &&
-              (jr.profiles as { average_rating?: number | null }).average_rating != null
+                (jr.profiles as { average_rating?: number | null }).average_rating != null
                 ? Number((jr.profiles as { average_rating?: number | null }).average_rating)
                 : null,
             total_ratings:
               jr.profiles &&
-              (jr.profiles as { total_ratings?: number | null }).total_ratings != null
+                (jr.profiles as { total_ratings?: number | null }).total_ratings != null
                 ? Number((jr.profiles as { total_ratings?: number | null }).total_ratings)
                 : null,
           });
@@ -422,15 +422,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-1 flex-col items-center gap-2 text-center text-sm text-muted-foreground sm:items-start sm:text-left">
-            <span
-              className={cn(
-                "mx-auto h-2 w-2 rounded-full shadow-[0_0_0_3px_rgba(0,0,0,0.06)] sm:mx-0",
-                variant === "hire"
-                  ? "bg-[#7B61FF] shadow-[0_0_0_3px_rgba(123,97,255,0.22)]"
-                  : "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.25)]",
-              )}
-              aria-hidden
-            />
             {variant === "hire" ? (
               <p>
                 No helpers showing as available right now — try{" "}
@@ -471,17 +462,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     const rows = items as WorkRowItem[];
     return (
       <div className="space-y-3.5">
-        <div className="flex items-baseline justify-between gap-3 px-0.5">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <span
-              className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.22)]"
-              aria-hidden
-            />
-            <h3 className={cn(T.h2, "text-slate-900 dark:text-zinc-50")}>
-              {title}
-            </h3>
-          </div>
-        </div>
 
         <div
           className={cn(
@@ -498,12 +478,12 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               to={row.href}
               role="listitem"
               className={cn(
-                "flex w-[8rem] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-slate-200/80 bg-white p-2.5",
-                "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.08)]",
-                "transition-[box-shadow,transform,border-color] hover:border-slate-300/90 hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)]",
-                "active:scale-[0.99] dark:border-zinc-700/70 dark:bg-zinc-900",
-                "md:w-full md:min-w-0 md:max-w-none md:overflow-hidden md:p-0 md:shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-8px_rgba(15,23,42,0.1)]",
-                "md:rounded-2xl md:hover:shadow-[0_8px_28px_-10px_rgba(15,23,42,0.14)]",
+                "flex w-[8rem] shrink-0 snap-start flex-col gap-2 rounded-[14px] p-2.5 transition-all duration-300",
+                "bg-transparent border-transparent shadow-none",
+                "dark:bg-zinc-800/80 dark:border-transparent dark:shadow-md",
+                "active:scale-[0.99]",
+                "md:w-full md:min-w-0 md:max-w-none md:overflow-hidden md:p-0",
+                "md:rounded-2xl md:hover:shadow-lg",
               )}
             >
               {/* DESKTOP SQUARE IMAGE (Preserved) */}
@@ -549,13 +529,13 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
               {/* MOBILE BIG AVATAR (Like Hire cards) */}
               <div className="relative mx-auto w-fit md:hidden pt-1">
-                <Avatar className="h-20 w-20 shadow-[0_2px_8px_rgba(15,23,42,0.1)]">
+                <Avatar className="h-24 w-24 shadow-[0_4px_12px_rgba(15,23,42,0.12)] border-2 border-white dark:border-zinc-800">
                   <AvatarImage src={row.thumbUrl || undefined} className="object-cover" />
-                  <AvatarFallback className="text-lg font-semibold">
+                  <AvatarFallback className="text-xl font-bold">
                     {row.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-4 translate-y-2 items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+                <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-2 translate-y-2 items-center gap-1 rounded-full bg-black/65 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
                   <span className="relative flex h-2 w-2" aria-hidden>
                     <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -569,18 +549,18 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50 md:hidden">
                   {shortDisplayName(row.name)}
                 </p>
-                
+
                 <p className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
                   {row.cityLine}
                 </p>
-                
+
                 <p className="mt-1 flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight text-slate-700 dark:text-zinc-200 md:mt-2 md:text-[15px]">
                   <span className="text-slate-500 dark:text-zinc-400">
                     {row.categoryIcon}
                   </span>
                   {row.title}
                 </p>
-                
+
                 {/* Mobile Rating Details */}
                 <div className="mt-1 flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400 md:hidden">
                   <Star className="h-4 w-4 text-emerald-600" strokeWidth={2.5} aria-hidden />
@@ -645,17 +625,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   const hireStrip = items as typeof hireItems;
   return (
     <div className="space-y-3.5">
-      <div className="flex items-baseline justify-between gap-3 px-0.5">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span
-            className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-[#7B61FF] shadow-[0_0_0_3px_rgba(123,97,255,0.2)]"
-            aria-hidden
-          />
-          <h3 className="text-[15px] font-semibold leading-tight tracking-tight text-slate-900 dark:text-zinc-50">
-            {title}
-          </h3>
-        </div>
-      </div>
       <div
         className={cn(
           "-mx-1 gap-3 px-1 pb-0.5",
@@ -670,12 +639,12 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             to={it.href}
             role="listitem"
             className={cn(
-              "flex w-[8rem] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-slate-200/80 bg-white p-2.5",
-              "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.08)]",
-              "transition-[box-shadow,transform,border-color] hover:border-slate-300/90 hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)]",
-              "active:scale-[0.99] dark:border-zinc-700/70 dark:bg-zinc-900",
-              "md:w-full md:min-w-0 md:max-w-none md:overflow-hidden md:p-0 md:shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-8px_rgba(15,23,42,0.1)]",
-              "md:rounded-2xl md:hover:shadow-[0_8px_28px_-10px_rgba(15,23,42,0.14)]",
+              "flex w-[8rem] shrink-0 snap-start flex-col gap-2 rounded-[14px] p-2.5 transition-all duration-300",
+              "bg-transparent border-transparent shadow-none",
+              "dark:bg-zinc-800/80 dark:border-transparent dark:shadow-md",
+              "active:scale-[0.99]",
+              "md:w-full md:min-w-0 md:max-w-none md:overflow-hidden md:p-0",
+              "md:rounded-2xl md:hover:shadow-lg",
             )}
           >
             <div className="relative hidden aspect-square w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-zinc-800 md:block">
@@ -721,13 +690,13 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             </div>
 
             <div className="relative mx-auto w-fit md:hidden">
-              <Avatar className="h-20 w-20 shadow-[0_2px_8px_rgba(15,23,42,0.1)]">
+              <Avatar className="h-24 w-24 shadow-[0_4px_12px_rgba(15,23,42,0.12)] border-2 border-white dark:border-zinc-800">
                 <AvatarImage src={it.photo || undefined} className="object-cover" />
-                <AvatarFallback className="text-lg font-semibold">
+                <AvatarFallback className="text-xl font-bold">
                   {it.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-4 translate-y-2 items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+              <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-2 translate-y-2 items-center gap-1 rounded-full bg-black/65 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
                 <span className="relative flex h-2 w-2" aria-hidden>
                   <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />

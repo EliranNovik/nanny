@@ -244,7 +244,7 @@ export function CommunityPostCard({
           // For the public feed (plain + iconOnlyActions), we still want a real "white box" surface.
           plain && !publicFeedCard
             ? "border-0 bg-transparent shadow-none dark:bg-transparent"
-            : "overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/5 dark:bg-zinc-900",
+            : "overflow-hidden rounded-[20px] border-0 bg-transparent shadow-none dark:bg-zinc-800",
           compact &&
             "min-w-[min(88vw,320px)] max-w-[320px] shrink-0 snap-start",
           plain && compact && "rounded-none",
@@ -632,7 +632,7 @@ export function CommunityPostCard({
                 <p
                   className={cn(
                     "text-lg font-semibold leading-snug text-foreground",
-                    sheetComfort && "max-md:text-xl max-md:leading-snug",
+                    (sheetComfort || publicFeedCard) && "max-md:text-xl max-md:leading-snug",
                   )}
                 >
                   {post.title}
@@ -660,7 +660,7 @@ export function CommunityPostCard({
                   <p
                     className={cn(
                       "whitespace-pre-wrap text-base leading-relaxed text-foreground/90",
-                      sheetComfort &&
+                      (sheetComfort || publicFeedCard) &&
                         "max-md:text-[17px] max-md:leading-relaxed",
                     )}
                   >

@@ -77,12 +77,12 @@ export function ExploreMyPostedRequests() {
   return (
     <section className="space-y-4" aria-label="Your posted requests for help">
       {isLoading ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
+        <div className="rounded-2xl border-0 bg-transparent px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
           Loading your requests…
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white px-4 py-10 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
-          <p className="text-base font-semibold text-foreground">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-transparent px-4 py-10 text-center shadow-none dark:border-zinc-800 dark:bg-zinc-900/40">
+          <p className="text-lg font-bold text-foreground">
             No open requests
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -170,16 +170,16 @@ export function ExploreMyPostedRequests() {
                       <div className="pointer-events-none absolute inset-0 bg-black/15" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-muted-foreground">
+                      <p className="truncate text-[15px] font-semibold text-slate-800 sm:text-sm dark:text-zinc-300">
                         {loc}
                       </p>
                       <div
-                        className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground/80"
+                        className="mt-1.5 flex items-center gap-1.5 text-[15px] font-medium text-slate-500 sm:text-sm dark:text-zinc-400"
                         role="status"
                         aria-live="polite"
                       >
                         <Clock
-                          className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                          className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
                           aria-hidden
                         />
                         <span>Posted {timeAgo(job.created_at)}</span>

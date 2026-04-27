@@ -271,7 +271,7 @@ export default function ExplorePage() {
 
   return (
     <div
-      className="relative min-h-screen bg-slate-100 pb-8 md:pb-10 dark:bg-zinc-950"
+      className="relative min-h-screen bg-white pb-8 md:pb-10 dark:bg-zinc-950"
       style={{ "--app-explore-stack-gap": "0.03125rem" } as React.CSSProperties}
       data-explore-page=""
       data-explore-mode={mode}
@@ -279,7 +279,7 @@ export default function ExplorePage() {
       {/* Fixed under BottomNav header — same shell as Discover home primary toggle */}
       <div
         className={cn(
-          "fixed inset-x-0 z-[55] pointer-events-none border-b border-border/40 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:border-border/30 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)]",
+          "fixed inset-x-0 z-[55] pointer-events-none border-b border-border/40 dark:border-border/30",
           "bg-white dark:bg-background",
           "max-md:top-0",
           "md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
@@ -383,7 +383,7 @@ export default function ExplorePage() {
       <div
         className={cn(
           "app-desktop-shell app-scroll-below-explore-fixed max-md:px-2.5",
-          "bg-slate-100 dark:bg-zinc-950",
+          "bg-white dark:bg-zinc-950",
         )}
       >
         <div className="px-1 pt-0 md:pt-5">

@@ -17,19 +17,29 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const getAutoThemeByTime = (): Theme => {
+    const hour = new Date().getHours();
+    // Daytime is 6 AM to 6 PM (18:00)
+    return hour >= 6 && hour < 18 ? "light" : "dark";
+  };
+
   const [theme, setThemeState] = useState<Theme>(() => {
-    // Check localStorage first
-    const stored = localStorage.getItem("theme") as Theme | null;
-    if (stored) {
-      return stored;
-    }
-    // Check system preference
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "dark";
-    }
-    return "light";
+    // We now prioritize the automatic time-based theme globally on startup
+    return getAutoThemeByTime();
   });
 
+  // Automatically update theme when time passes significant thresholds
+  useEffect(() => {
+    const checkTheme = () => {
+      // Always sync with the clock to fulfill the "automatic" requirement
+      setThemeState(getAutoThemeByTime());
+    };
+
+    const interval = setInterval(checkTheme, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update the DOM class whenever the theme state changes
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") {
@@ -37,15 +47,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("theme", theme);
   }, [theme]);
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setThemeState(next);
+    // Persist as a hard manual preference
+    localStorage.setItem("theme", next);
+  };
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-  };
-
-  const toggleTheme = () => {
-    setThemeState((prev) => (prev === "light" ? "dark" : "light"));
+    // Persist as a hard manual preference
+    localStorage.setItem("theme", newTheme);
   };
 
   return (
