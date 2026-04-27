@@ -19,7 +19,6 @@ import {
 } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { T } from "@/lib/typography";
 import {
   ClipboardList,
   Compass,
@@ -352,10 +351,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     return fromOpenHelpRpc(openHelpRows);
   }, [frData, profile?.role, openHelpRows, user?.id, fetchOpenHelpPool]);
 
-  const title =
-    variant === "hire"
-      ? "Helpers available now"
-      : "Live requests near you";
   const items = variant === "hire" ? hireItems : workListRows;
 
   function onBrowseTap() {
