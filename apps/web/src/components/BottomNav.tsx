@@ -67,6 +67,8 @@ import {
   subscribeDiscoverHomeIntent,
   writeDiscoverHomeIntent,
 } from "@/lib/discoverHomeIntent";
+import { useActiveLocation } from "@/hooks/useActiveLocation";
+import { LocationPickerSheet } from "@/components/LocationPickerSheet";
 
 /** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
 function bottomNavTabIconClass(isActive: boolean) {
@@ -109,6 +111,8 @@ export function BottomNav() {
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const { openReportModal } = useReportIssue();
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  const activeLocation = useActiveLocation();
   const previousPathnameRef = useRef(location.pathname);
   const viewerId = profile?.id ?? null;
   const [freelancerLiveUntil, setFreelancerLiveUntil] = useState<string | null>(
@@ -284,51 +288,48 @@ export function BottomNav() {
     profile?.role === "freelancer" &&
     isFreelancerInActive24hLiveWindow({ live_until: freelancerLiveUntil });
 
-  const discoverLocationPersonalPath = pathnameNorm.startsWith("/freelancer")
-    ? "/freelancer/profile/personal"
-    : "/client/profile/personal";
+
 
   function renderDiscoverHomeLocationChip(variant: "mobile" | "desktop") {
-    const city = profile?.city?.trim();
-    const primary = city || (loading ? "…" : "Add location");
+    const { displayCity, displayCountry, gpsLoading } = activeLocation;
+    const primary = displayCity ?? (gpsLoading ? "Detecting…" : "Add location");
     return (
-      <button
-        type="button"
-        onClick={() => navigate(discoverLocationPersonalPath)}
-        className={cn(
-          variant === "mobile"
-            ? "pointer-events-auto flex min-h-11 max-w-[min(13.5rem,calc(100vw-7rem))] items-center gap-1 rounded-xl py-1 pl-1 pr-1.5 text-left text-slate-900 transition-all hover:opacity-90 active:scale-[0.98] dark:text-white"
-            : "flex max-w-[min(16rem,28vw)] min-h-9 items-center gap-1.5 rounded-xl py-1 pl-1 pr-2 text-left text-slate-900 transition hover:opacity-90 dark:text-white",
-        )}
-        aria-label={
-          city
-            ? `Location ${city}, Israel. Change in profile`
-            : "Set your location in profile"
-        }
-      >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center">
-          <MapPin
-            className="h-[1.05rem] w-[1.05rem] text-slate-900 dark:text-white"
+      <>
+        <button
+          type="button"
+          onClick={() => setLocationPickerOpen(true)}
+          className={cn(
+            variant === "mobile"
+              ? "pointer-events-auto flex min-h-11 max-w-[min(13.5rem,calc(100vw-7rem))] items-center gap-1 rounded-xl py-1 pl-1 pr-1.5 text-left text-slate-900 transition-all hover:opacity-90 active:scale-[0.98] dark:text-white"
+              : "flex max-w-[min(16rem,28vw)] min-h-9 items-center gap-1.5 rounded-xl py-1 pl-1 pr-2 text-left text-slate-900 transition hover:opacity-90 dark:text-white",
+          )}
+          aria-label={displayCity ? `Current location: ${displayCity}. Tap to change.` : "Set your location"}
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center relative">
+            <MapPin
+              className="h-[1.05rem] w-[1.05rem] text-slate-900 dark:text-white"
+              strokeWidth={2.25}
+              aria-hidden
+            />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[13px] leading-tight sm:text-sm">
+            <span className="font-bold text-slate-900 dark:text-white">{primary}</span>
+            {displayCountry && (
+              <span className="font-normal text-slate-600 dark:text-slate-400">, {displayCountry}</span>
+            )}
+          </span>
+          <ChevronDown
+            className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400"
             strokeWidth={2.25}
             aria-hidden
           />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[13px] leading-tight sm:text-sm">
-          <span className="font-bold text-slate-900 dark:text-white">
-            {primary}
-          </span>
-          {city ? (
-            <span className="font-normal text-slate-600 dark:text-slate-400">
-              , Israel
-            </span>
-          ) : null}
-        </span>
-        <ChevronDown
-          className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400"
-          strokeWidth={2.25}
-          aria-hidden
+        </button>
+        <LocationPickerSheet
+          open={locationPickerOpen}
+          onOpenChange={setLocationPickerOpen}
+          location={activeLocation}
         />
-      </button>
+      </>
     );
   }
 
@@ -707,27 +708,6 @@ export function BottomNav() {
               <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setProfileMenuOpen(true)}
-            className="flex items-center gap-3 min-w-0 group"
-            aria-label="Open profile menu"
-          >
-            <Avatar className="h-9 w-9 flex-shrink-0 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-active:scale-95">
-              <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
-              <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
-                {(profile?.full_name ?? user?.email ?? "User")
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col text-left min-w-0">
-              <span className="text-[14px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
-                {profile?.full_name?.split(" ")[0] ?? "User"}
-                <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
-              </span>
-            </div>
-          </button>
         </div>
 
         <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
@@ -804,11 +784,16 @@ export function BottomNav() {
           {user && (
             <button
               type="button"
-              onClick={() => setDesktopAppMenuOpen(true)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-black/5 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white transition-colors md:h-10 md:w-10"
-              aria-label="Open app menu"
+              onClick={() => setProfileMenuOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center group"
+              aria-label="Open profile"
             >
-              <Menu className="h-5 w-5 md:h-6 md:w-6" />
+              <Avatar className="h-9 w-9 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-hover:scale-105 group-active:scale-95">
+                <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+                <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
+                  {(profile?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
             </button>
           )}
         </div>
@@ -917,16 +902,7 @@ export function BottomNav() {
             )}
           </button>
         )}
-        {user && (
-          <button
-            type="button"
-            onClick={() => setDesktopAppMenuOpen(true)}
-            className="shrink-0 p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
-            aria-label="Open app menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        )}
+
       </div>
     </div>
   );

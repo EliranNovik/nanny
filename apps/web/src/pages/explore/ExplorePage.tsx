@@ -112,7 +112,7 @@ function ExploreSecondaryUnderlineTabs({
               aria-selected={selected}
               onClick={() => onTabChange(id)}
               className={cn(
-                "shrink-0 whitespace-nowrap border-b-2 px-3 py-3 text-left text-sm font-semibold transition-colors sm:px-4 sm:text-[15px]",
+                "shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-left text-sm font-semibold transition-colors sm:px-4 sm:text-[15px]",
                 selected
                   ? isHire
                     ? "border-[#7B61FF] text-[#4c1d95] dark:border-[#A78BFA] dark:text-[#E9D5FF]"
@@ -272,6 +272,7 @@ export default function ExplorePage() {
   return (
     <div
       className="relative min-h-screen bg-slate-100 pb-8 md:pb-10 dark:bg-zinc-950"
+      style={{ "--app-explore-stack-gap": "0.03125rem" } as React.CSSProperties}
       data-explore-page=""
       data-explore-mode={mode}
     >
@@ -292,7 +293,7 @@ export default function ExplorePage() {
           }}
         />
         <div className="app-desktop-shell pointer-events-auto max-md:px-2.5">
-          <div className="w-full space-y-2 px-2 py-2">
+          <div className="w-full space-y-0.5 px-2 pb-0.5 pt-2">
             <div role="tablist" aria-label="Explore: what are you here for?">
               <div
                 className={cn(
@@ -385,7 +386,7 @@ export default function ExplorePage() {
           "bg-slate-100 dark:bg-zinc-950",
         )}
       >
-        <div className="px-1 pt-2 md:pt-5">
+        <div className="px-1 pt-0 md:pt-5">
           {mode === "hire" ? (
             <>
               {tab === "live_help" ? (

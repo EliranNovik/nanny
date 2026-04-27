@@ -28,12 +28,11 @@
     --app-nav-clearance: 3.5rem;
     --app-explore-mode-toggle-block: 4.5rem;
     --app-explore-underline-tabs: 2.75rem;
-    --app-explore-stack-gap: 0.5rem;
+    --app-explore-stack-gap: 0px;
     --app-offset-below-explore-double-strip: calc(
       env(safe-area-inset-top, 0px) + var(--app-nav-clearance) +
         var(--app-explore-stack-gap) + var(--app-explore-mode-toggle-block) +
-        var(--app-explore-stack-gap) + var(--app-explore-underline-tabs) +
-        var(--app-explore-stack-gap)
+        var(--app-explore-stack-gap) + var(--app-explore-underline-tabs)
     );
     --app-offset-below-explore-double-strip-md: calc(
       var(--app-explore-stack-gap) + var(--app-explore-mode-toggle-block) +

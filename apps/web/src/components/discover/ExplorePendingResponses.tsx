@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { ChevronRight, Clock } from "lucide-react";
+import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
@@ -22,7 +23,7 @@ type InboundNotif = {
     service_type?: string | null;
     location_city?: string | null;
     created_at: string;
-    profiles?: { full_name?: string | null } | null;
+    profiles?: { full_name?: string | null; photo_url?: string | null } | null;
   };
 };
 
@@ -33,6 +34,35 @@ function formatJobTitle(job: { service_type?: string | null }) {
   if (job.service_type === "nanny") return "Nanny";
   if (job.service_type === "other_help") return "Other Help";
   return "Help request";
+}
+
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  cleaning: Sparkles,
+  cooking: UtensilsCrossed,
+  pickup_delivery: Truck,
+  nanny: Baby,
+  other_help: Wrench,
+};
+
+function CategoryIcon({
+  serviceType,
+  className,
+}: {
+  serviceType: string | null | undefined;
+  className?: string;
+}) {
+  const Icon = CATEGORY_ICONS[(serviceType ?? "").toLowerCase()] ?? Sparkles;
+  return <Icon className={className} aria-hidden />;
+}
+
+function timeAgo(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return mins <= 1 ? "Just now" : `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function serviceHeroImageSrc(job: { service_type?: string | null }) {
@@ -117,16 +147,22 @@ export function ExplorePendingResponses() {
                 type="button"
                 onClick={() => void openJobById(String(job.id))}
                 className={cn(
-                  "group relative w-full rounded-2xl p-4 text-left",
+                  "group relative w-full rounded-2xl pt-2 px-4 pb-4 text-left",
                   EXPLORE_PAGE_CARD_SURFACE,
                   INTERACTIVE_CARD_HOVER,
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
-                    {title}
-                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/20">
+                      <CategoryIcon
+                        serviceType={job.service_type}
+                        className="h-3 w-3 shrink-0 text-white/90"
+                      />
+                      {title}
+                    </span>
+                  </div>
                   <span className="shrink-0 rounded-full bg-amber-500/12 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-amber-900 dark:text-amber-200">
                     Pending
                   </span>
@@ -151,25 +187,25 @@ export function ExplorePendingResponses() {
                     <p className="truncate text-sm font-semibold text-muted-foreground">
                       {loc}
                     </p>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      With {clientName}
+                    <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-muted-foreground/90">
+                      <Avatar className="h-6 w-6 shrink-0 border border-slate-200/50 dark:border-white/10">
+                        <AvatarImage src={job.profiles?.photo_url || ""} />
+                        <AvatarFallback className="text-[8px] font-bold">
+                          {clientName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">With {clientName}</span>
                     </p>
-                    <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                    <div
+                      className="mt-1.5 flex items-center gap-1.5 text-sm font-medium text-muted-foreground/80"
+                      role="status"
+                      aria-live="polite"
+                    >
                       <Clock
                         className="h-3.5 w-3.5 shrink-0 text-amber-700/70 dark:text-amber-300/70"
                         aria-hidden
                       />
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Waiting
-                      </span>
-                      <LiveTimer
-                        createdAt={n.created_at || job.created_at}
-                        render={({ time }) => (
-                          <span className="!font-mono text-[11px] font-semibold tabular-nums text-amber-900 dark:text-amber-200">
-                            {time}
-                          </span>
-                        )}
-                      />
+                      <span>Waiting {timeAgo(n.created_at || job.created_at)}</span>
                     </div>
                   </div>
 

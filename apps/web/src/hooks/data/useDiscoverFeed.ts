@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "./keys";
 import { ALL_HELP_CATEGORY_ID, DISCOVER_HOME_CATEGORIES, SERVICE_CATEGORIES } from "@/lib/serviceCategories";
@@ -44,8 +45,18 @@ export function useDiscoverFeed() {
 
 /** Live helper avatars by category from `freelancer_profiles.live_until` + `live_categories` (24h go-live). */
 export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
+  const queryClient = useQueryClient();
+  const qk = queryKeys.discoverLiveAvatars(excludeUserId ?? undefined);
+
+  useRealtimeSubscription(
+    { table: "freelancer_profiles", event: "*" },
+    () => {
+      void queryClient.invalidateQueries({ queryKey: qk });
+    }
+  );
+
   return useQuery({
-    queryKey: queryKeys.discoverLiveAvatars(excludeUserId ?? undefined),
+    queryKey: qk,
     queryFn: async () => {
       const nowIso = new Date().toISOString();
       const categoryIds = Array.from(

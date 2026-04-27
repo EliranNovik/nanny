@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "./keys";
@@ -36,8 +37,18 @@ export function useDiscoverOpenHelpRequests(
   enabled: boolean,
   excludeUserId?: string | null,
 ) {
+  const queryClient = useQueryClient();
+  const qk = queryKeys.discoverOpenHelpRequests(excludeUserId ?? undefined);
+
+  useRealtimeSubscription(
+    { table: "job_requests", event: "*", enabled },
+    () => {
+      void queryClient.invalidateQueries({ queryKey: qk });
+    }
+  );
+
   return useQuery({
-    queryKey: queryKeys.discoverOpenHelpRequests(excludeUserId ?? undefined),
+    queryKey: qk,
     enabled,
     staleTime: 60 * 1000,
     queryFn: async (): Promise<DiscoverOpenHelpRequestRow[]> => {

@@ -498,7 +498,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               to={row.href}
               role="listitem"
               className={cn(
-                "flex w-[10.25rem] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-slate-200/80 bg-white p-2.5",
+                "flex w-[8rem] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-slate-200/80 bg-white p-2.5",
                 "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_-4px_rgba(15,23,42,0.08)]",
                 "transition-[box-shadow,transform,border-color] hover:border-slate-300/90 hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)]",
                 "active:scale-[0.99] dark:border-zinc-700/70 dark:bg-zinc-900",
@@ -506,6 +506,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 "md:rounded-2xl md:hover:shadow-[0_8px_28px_-10px_rgba(15,23,42,0.14)]",
               )}
             >
+              {/* DESKTOP SQUARE IMAGE (Preserved) */}
               <div className="relative hidden aspect-square w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-zinc-800 md:block">
                 <img
                   src={row.thumbUrl}
@@ -546,102 +547,90 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 </div>
               </div>
 
-              <div className="flex min-w-0 flex-1 flex-col gap-2 md:gap-2.5 md:p-4">
-                <div className="flex items-start justify-between gap-2 md:hidden">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-slate-100 ring-1 ring-black/[0.04] dark:bg-zinc-800 dark:ring-white/10">
-                      <img
-                        src={row.thumbUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400">
-                        <Star className="h-4 w-4 text-emerald-600" strokeWidth={2.5} aria-hidden />
-                        <span className="text-slate-700 dark:text-zinc-200">
-                          {ratingLabel(row.average_rating)}
-                        </span>
-                        {row.total_ratings ? (
-                          <span className="text-slate-400 dark:text-zinc-500">
-                            ({row.total_ratings})
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className={cn("truncate", T.h2, "text-slate-900 dark:text-zinc-50")}>
-                        {shortDisplayName(row.name)}
-                      </p>
-                      <p className={cn("mt-0.5 truncate", T.meta, "text-slate-500 dark:text-zinc-400")}>
-                        {row.cityLine}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              {/* MOBILE BIG AVATAR (Like Hire cards) */}
+              <div className="relative mx-auto w-fit md:hidden pt-1">
+                <Avatar className="h-20 w-20 shadow-[0_2px_8px_rgba(15,23,42,0.1)]">
+                  <AvatarImage src={row.thumbUrl || undefined} className="object-cover" />
+                  <AvatarFallback className="text-lg font-semibold">
+                    {row.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-4 translate-y-2 items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+                  <span className="relative flex h-2 w-2" aria-hidden>
+                    <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                  </span>
+                  Live
+                </span>
+              </div>
 
-                <p
-                  className={cn(
-                    "hidden truncate text-sm font-medium text-slate-500 dark:text-zinc-400 md:block",
-                  )}
-                >
+              {/* TEXT CONTENT (Aligned to match Hire cards on mobile) */}
+              <div className="min-w-0 text-left md:p-4 md:pt-3">
+                <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50 md:hidden">
+                  {shortDisplayName(row.name)}
+                </p>
+                
+                <p className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
                   {row.cityLine}
                 </p>
+                
+                <p className="mt-1 flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight text-slate-700 dark:text-zinc-200 md:mt-2 md:text-[15px]">
+                  <span className="text-slate-500 dark:text-zinc-400">
+                    {row.categoryIcon}
+                  </span>
+                  {row.title}
+                </p>
+                
+                {/* Mobile Rating Details */}
+                <div className="mt-1 flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400 md:hidden">
+                  <Star className="h-4 w-4 text-emerald-600" strokeWidth={2.5} aria-hidden />
+                  <span className="text-slate-700 dark:text-zinc-200">
+                    {ratingLabel(row.average_rating)}
+                  </span>
+                  {row.total_ratings ? (
+                    <span className="text-slate-400 dark:text-zinc-500">
+                      ({row.total_ratings})
+                    </span>
+                  ) : null}
+                </div>
 
-                <div className="min-w-0">
-                  <p
-                    className={cn(
-                      "flex items-center gap-1.5 truncate text-[13px] font-semibold leading-tight md:text-[15px]",
-                      "text-slate-900 dark:text-zinc-50",
-                    )}
-                  >
-                    <span className="text-slate-500 dark:text-zinc-400">{row.categoryIcon}</span>
-                    {row.title}
-                  </p>
-                  {row.createdAt ? (
-                    <div
+                {/* DESKTOP ONLY EXTRAS (Restored from old Work template) */}
+                {row.createdAt ? (
+                  <div className="hidden md:flex mt-1 items-center gap-2 md:mt-1.5 text-[10px] font-medium tracking-wide text-slate-400 dark:text-zinc-500 md:text-[13px]">
+                    <span>{ageLabel(row.createdAt)}</span>
+                  </div>
+                ) : null}
+
+                <div
+                  className={cn(
+                    "hidden md:block",
+                    "mt-2.5 space-y-2 border-t border-slate-200/70 pt-2.5 dark:border-zinc-700/70",
+                    "md:mt-3 md:pt-3",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p
                       className={cn(
-                        "mt-1 flex items-center gap-2 md:mt-1.5",
-                        T.meta,
-                        "text-slate-400 dark:text-zinc-500 md:text-[13px]",
+                        "text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500",
                       )}
                     >
-                      <span>{ageLabel(row.createdAt)}</span>
-                    </div>
-                  ) : null}
-
-                  <div
-                    className={cn(
-                      "hidden md:block",
-                      "mt-2.5 space-y-2 border-t border-slate-200/70 pt-2.5 dark:border-zinc-700/70",
-                      "md:mt-3 md:pt-3",
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <p
-                        className={cn(
-                          T.meta,
-                          "text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500",
-                        )}
-                      >
-                        Care
-                      </p>
-                      <p className="mt-0.5 line-clamp-2 text-[12px] font-semibold leading-snug text-slate-800 dark:text-zinc-200 md:text-[13px]">
-                        {row.helpTypeLine ?? "Not specified"}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p
-                        className={cn(
-                          T.meta,
-                          "text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500",
-                        )}
-                      >
-                        Duration
-                      </p>
-                      <p className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-snug text-slate-600 dark:text-zinc-300 md:text-[13px]">
-                        {row.durationLine ?? "Not specified"}
-                      </p>
-                    </div>
+                      Care
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-[12px] font-semibold leading-snug text-slate-800 dark:text-zinc-200 md:text-[13px]">
+                      {row.helpTypeLine ?? "Not specified"}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p
+                      className={cn(
+                        "text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500",
+                      )}
+                    >
+                      Duration
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-snug text-slate-600 dark:text-zinc-300 md:text-[13px]">
+                      {row.durationLine ?? "Not specified"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -738,7 +727,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   {it.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-1 translate-y-1 items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+              <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-4 translate-y-2 items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
                 <span className="relative flex h-2 w-2" aria-hidden>
                   <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />

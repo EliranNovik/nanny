@@ -84,12 +84,12 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
 
       <div
         className={cn(
-          "app-desktop-shell flex min-h-0 flex-1 flex-col overflow-hidden max-md:px-2.5 max-md:transition-none",
+          "app-desktop-shell flex min-h-0 flex-1 flex-col overflow-hidden max-md:!px-0 max-md:transition-none",
           "max-md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]",
           "md:pt-7",
         )}
       >
-        <div className="mx-auto flex min-h-0 w-full max-w-[26rem] flex-1 flex-col overflow-hidden sm:max-w-[28rem] md:mx-0 md:max-w-none">
+        <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden md:mx-0 md:max-w-none">
           <DiscoverHomeActionFirst
             homeMode={homeMode}
             explorePath={explorePath}

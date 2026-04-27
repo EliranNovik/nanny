@@ -416,201 +416,144 @@ export function DiscoverHomeActionFirst({
         "flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden md:gap-5",
       )}
     >
-      <div
-        className={cn(
-          "grid shrink-0 grid-cols-1 gap-4 md:gap-5 lg:gap-6",
-          user?.id &&
-          "md:grid-cols-[minmax(0,1fr)_min(19rem,32%)] md:items-stretch",
-        )}
-      >
+      {renderFixedBottomBrowseDock()}
+
+      {/* ===== MOBILE ONLY LAYOUT ===== */}
+      <div className="flex flex-1 md:hidden flex-col gap-0 pb-[5rem]">
+        <div className="shrink-0 pt-0 px-1">
+          <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
+        </div>
+
+        <div className="flex-1 mt-3 flex flex-col">
         {isHire ? (
-          <section
-            className={cn(
-              "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
-              "ring-1 ring-black/[0.06] ring-inset",
-            )}
-          >
-            <div className={heroInnerClassName}>
-              <img
-                src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
-                alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-                decoding="async"
-                {...{ fetchpriority: "high" }}
-              />
-              {renderFixedBottomBrowseDock()}
-
-              <div className={heroStackClassName}>
-                <div className={heroTopBlockClassName}>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
-                        <Zap
-                          className={cn(discoverIcon.sm, "shrink-0")}
-                          strokeWidth={DISCOVER_STROKE}
-                          aria-hidden
-                        />
-                        {HIRE.badge}
-                      </div>
-                    </div>
-                    <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
-                      <h2
-                        className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
-                        style={{
-                          textShadow:
-                            "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
-                        }}
-                      >
-                        {HIRE.title}
-                      </h2>
-                      <p
-                        className="whitespace-pre-line text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
-                        style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
-                      >
-                        {HIRE.sub}
-                      </p>
-                    </div>
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        onClick={onStartRequest}
-                        className={cn(
-                          heroCtaBaseClassName,
-                          "h-11 w-fit min-w-[12.75rem] max-w-full justify-between px-4",
-                          // Solid white (no glass blur)
-                          "border-white/70 bg-white text-violet-950",
-                          "shadow-[0_12px_34px_-20px_rgba(0,0,0,0.55)]",
-                          "hover:bg-white hover:shadow-[0_16px_40px_-22px_rgba(0,0,0,0.6)]",
-                          "focus-visible:ring-white/80",
-                        )}
-                      >
-                        <PlusCircle
-                          className="h-[1.05rem] w-[1.05rem] shrink-0 text-violet-800"
-                          strokeWidth={2}
-                          aria-hidden
-                        />
-                        <span>{HIRE.primary}</span>
-                        <ChevronRight
-                          className={cn(
-                            discoverIcon.sm,
-                            "shrink-0 text-slate-400 transition group-hover:translate-x-px group-hover:text-slate-600",
-                          )}
-                          strokeWidth={2.25}
-                          aria-hidden
-                        />
-                      </button>
-                    </div>
-
-                    {/* Trust chips removed per UX direction (keep hero focused). */}
-                  </div>
-
+          <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[12.5rem]">
+            <img src="/pexels-rdne-6646861.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+            <div className="relative flex flex-col justify-end flex-1 gap-4 sm:flex-row sm:items-end w-full p-5 sm:p-6 pt-12">
+              <div className="min-w-0 pr-2">
+                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm mb-2">
+                  <Zap className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
+                  <span className="truncate">{HIRE.badge}</span>
                 </div>
+                <h2 className="text-[1.125rem] font-bold leading-tight tracking-tight text-white sm:text-[1.25rem] drop-shadow-md">
+                  {HIRE.title}
+                </h2>
               </div>
+              <button onClick={onStartRequest} type="button" className="group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 text-[14px] font-bold shadow-md transition-all bg-white text-violet-950 hover:bg-slate-50 active:scale-[0.98] sm:h-12 w-full sm:w-auto">
+                <PlusCircle className="h-[1.05rem] w-[1.05rem] shrink-0 text-violet-800" strokeWidth={2.5} aria-hidden />
+                <span>{HIRE.primary}</span>
+              </button>
             </div>
           </section>
         ) : (
-          <section
-            className={cn(
-              "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
-              "ring-1 ring-black/[0.06] ring-inset",
-            )}
-          >
-            <div className={heroInnerClassName}>
-              <img
-                src={DISCOVER_PRIMARY_HERO_IMAGES.work}
-                alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-                decoding="async"
-                {...{ fetchpriority: "high" }}
-              />
+          <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[12.5rem]">
+            <img src="/pexels-tima-miroshnichenko-6197046.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+            <div className="relative flex flex-col justify-end flex-1 gap-4 sm:flex-row sm:items-end w-full p-5 sm:p-6 pt-12">
+              <div className="min-w-0 pr-2">
+                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm mb-2">
+                  <Wifi className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
+                  <span className="truncate">{workTheme.badge}</span>
+                </div>
+                <h2 className="text-[1.125rem] font-bold leading-tight tracking-tight text-white sm:text-[1.25rem] drop-shadow-md">
+                  {workTheme.title}
+                </h2>
+              </div>
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
+                {isWorkLive && (
+                  <div className="inline-flex items-center gap-1.5 self-start sm:self-center text-[12px] font-semibold text-white drop-shadow-sm">
+                     <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 motion-reduce:animate-none" />
+                        <span className="relative block h-2 w-2 rounded-full bg-emerald-400" />
+                     </span>
+                     Active now
+                  </div>
+                )}
+                <button onClick={onStartRequest} type="button" className="group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 text-[14px] font-bold shadow-md transition-all bg-white text-emerald-950 hover:bg-slate-50 active:scale-[0.98] sm:h-12 w-full sm:w-auto">
+                  <PlayCircle className="h-[1.05rem] w-[1.05rem] shrink-0 text-emerald-800" strokeWidth={2.5} aria-hidden />
+                  <span>{workTheme.primary}</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+        </div>
+      </div>
 
-              {renderFixedBottomBrowseDock()}
+      {/* ===== DESKTOP ONLY LAYOUT ===== */}
+      <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-hidden gap-5">
+        <div
+          className={cn(
+            "grid shrink-0 grid-cols-1 gap-4 md:gap-5 lg:gap-6",
+            user?.id &&
+            "md:grid-cols-[minmax(0,1fr)_min(19rem,32%)] md:items-stretch",
+          )}
+        >
+          {isHire ? (
+            <section
+              className={cn(
+                "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
+                "ring-1 ring-black/[0.06] ring-inset",
+              )}
+            >
+              <div className={heroInnerClassName}>
+                <img
+                  src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
+                  alt=""
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+                  decoding="async"
+                  {...{ fetchpriority: "high" }}
+                />
 
-              <div className={heroStackClassName}>
-                <div className={heroTopBlockClassName}>
-                  <div className="min-w-0">
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
-                      <Wifi
-                        className={cn(discoverIcon.sm, "shrink-0")}
-                        strokeWidth={DISCOVER_STROKE}
-                        aria-hidden
-                      />
-                      {workTheme.badge}
-                    </div>
-                    <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
-                      <h2
-                        className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
-                        style={{
-                          textShadow:
-                            "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
-                        }}
-                      >
-                        {workTheme.title}
-                      </h2>
-                      <p
-                        className="text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
-                        style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
-                      >
-                        {workTheme.sub}
-                      </p>
-                    </div>
-                    <div className="mt-3">
-                      {isWorkLive ? (
-                        <div className="flex w-full items-center gap-3">
-                          <div
-                            className={cn(
-                              "inline-flex shrink-0 items-center gap-2 rounded-full",
-                              "bg-emerald-950 px-3 py-2 text-white shadow-sm",
-                              "ring-1 ring-inset ring-emerald-900/40",
-                            )}
-                            aria-label={
-                              liveRemainingLabel
-                                ? `Live time remaining ${liveRemainingLabel}`
-                                : "Live"
-                            }
-                          >
-                            <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
-                              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.85)]" />
-                            </span>
-                            <span className="text-[11px] font-black uppercase tracking-[0.18em]">
-                              Live
-                            </span>
-                            {liveRemainingLabel ? (
-                              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
-                                {liveRemainingLabel}
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="min-w-0">
-                            <div
-                              className="text-[13px] font-semibold leading-snug text-white"
-                              style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
-                            >
-                              You are live right now.
-                            </div>
-                          </div>
+                <div className={heroStackClassName}>
+                  <div className={heroTopBlockClassName}>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
+                          <Zap
+                            className={cn(discoverIcon.sm, "shrink-0")}
+                            strokeWidth={DISCOVER_STROKE}
+                            aria-hidden
+                          />
+                          {HIRE.badge}
                         </div>
-                      ) : (
+                      </div>
+                      <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
+                        <h2
+                          className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
+                          style={{
+                            textShadow:
+                              "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
+                          }}
+                        >
+                          {HIRE.title}
+                        </h2>
+                        <p
+                          className="whitespace-pre-line text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
+                          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                        >
+                          {HIRE.sub}
+                        </p>
+                      </div>
+                      <div className="mt-3">
                         <button
                           type="button"
                           onClick={onStartRequest}
                           className={cn(
                             heroCtaBaseClassName,
                             "h-11 w-fit min-w-[12.75rem] max-w-full justify-between px-4",
-                            // White badge-style CTA (to match request)
-                            "border-white/70 bg-white text-emerald-950",
+                            "border-white/70 bg-white text-violet-950",
                             "shadow-[0_12px_34px_-20px_rgba(0,0,0,0.55)]",
                             "hover:bg-white hover:shadow-[0_16px_40px_-22px_rgba(0,0,0,0.6)]",
                             "focus-visible:ring-white/80",
                           )}
                         >
-                          <PlayCircle
-                            className="h-[1.05rem] w-[1.05rem] shrink-0 text-emerald-800"
+                          <PlusCircle
+                            className="h-[1.05rem] w-[1.05rem] shrink-0 text-violet-800"
                             strokeWidth={2}
                             aria-hidden
                           />
-                          <span>{workTheme.primary}</span>
+                          <span>{HIRE.primary}</span>
                           <ChevronRight
                             className={cn(
                               discoverIcon.sm,
@@ -620,20 +563,136 @@ export function DiscoverHomeActionFirst({
                             aria-hidden
                           />
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
-        )}
-        <DiscoverHomeHeroDesktopLiveColumn />
-      </div>
+            </section>
+          ) : (
+            <section
+              className={cn(
+                "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
+                "ring-1 ring-black/[0.06] ring-inset",
+              )}
+            >
+              <div className={heroInnerClassName}>
+                <img
+                  src={DISCOVER_PRIMARY_HERO_IMAGES.work}
+                  alt=""
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+                  decoding="async"
+                  {...{ fetchpriority: "high" }}
+                />
 
-      <div className="min-h-0 flex-1 overflow-hidden pt-2 flex flex-col gap-2">
-        <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
-        <DiscoverHomeRecentActivity viewerRole={isHire ? "client" : "freelancer"} />
+                <div className={heroStackClassName}>
+                  <div className={heroTopBlockClassName}>
+                    <div className="min-w-0">
+                      <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
+                        <Wifi
+                          className={cn(discoverIcon.sm, "shrink-0")}
+                          strokeWidth={DISCOVER_STROKE}
+                          aria-hidden
+                        />
+                        {workTheme.badge}
+                      </div>
+                      <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
+                        <h2
+                          className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
+                          style={{
+                            textShadow:
+                              "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
+                          }}
+                        >
+                          {workTheme.title}
+                        </h2>
+                        <p
+                          className="text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
+                          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                        >
+                          {workTheme.sub}
+                        </p>
+                      </div>
+                      <div className="mt-3">
+                        {isWorkLive ? (
+                          <div className="flex w-full items-center gap-3">
+                            <div
+                              className={cn(
+                                "inline-flex shrink-0 items-center gap-2 rounded-full",
+                                "bg-emerald-950 px-3 py-2 text-white shadow-sm",
+                                "ring-1 ring-inset ring-emerald-900/40",
+                              )}
+                              aria-label={
+                                liveRemainingLabel
+                                  ? `Live time remaining ${liveRemainingLabel}`
+                                  : "Live"
+                              }
+                            >
+                              <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                                <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.85)]" />
+                              </span>
+                              <span className="text-[11px] font-black uppercase tracking-[0.18em]">
+                                Live
+                              </span>
+                              {liveRemainingLabel ? (
+                                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
+                                  {liveRemainingLabel}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="min-w-0">
+                              <div
+                                className="text-[13px] font-semibold leading-snug text-white"
+                                style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                              >
+                                You are live right now.
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={onStartRequest}
+                            className={cn(
+                              heroCtaBaseClassName,
+                              "h-11 w-fit min-w-[12.75rem] max-w-full justify-between px-4",
+                              "border-white/70 bg-white text-emerald-950",
+                              "shadow-[0_12px_34px_-20px_rgba(0,0,0,0.55)]",
+                              "hover:bg-white hover:shadow-[0_16px_40px_-22px_rgba(0,0,0,0.6)]",
+                              "focus-visible:ring-white/80",
+                            )}
+                          >
+                            <PlayCircle
+                              className="h-[1.05rem] w-[1.05rem] shrink-0 text-emerald-800"
+                              strokeWidth={2}
+                              aria-hidden
+                            />
+                            <span>{workTheme.primary}</span>
+                            <ChevronRight
+                              className={cn(
+                                discoverIcon.sm,
+                                "shrink-0 text-slate-400 transition group-hover:translate-x-px group-hover:text-slate-600",
+                              )}
+                              strokeWidth={2.25}
+                              aria-hidden
+                            />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+          <DiscoverHomeHeroDesktopLiveColumn />
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-hidden pt-2 flex flex-col gap-2">
+          <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
+          <DiscoverHomeRecentActivity viewerRole={isHire ? "client" : "freelancer"} />
+        </div>
       </div>
     </div>
   );

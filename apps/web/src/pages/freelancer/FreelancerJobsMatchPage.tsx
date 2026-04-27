@@ -803,8 +803,8 @@ export default function FreelancerJobsMatchPage() {
                       return (
                         <div
                           className={cn(
-                            "pointer-events-none absolute inset-x-0 bottom-3 z-[60] flex items-center justify-center",
-                            "px-3",
+                            "pointer-events-none absolute inset-x-0 z-[60] flex items-center justify-center",
+                            "bottom-[5.75rem] px-3",
                           )}
                           aria-hidden
                         >

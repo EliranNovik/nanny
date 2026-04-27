@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Clock, MapPin, MessageCircle, Loader2, X } from "lucide-react";
+import { Check, Clock, MapPin, MessageCircle, Loader2, X, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LiveTimer } from "@/components/LiveTimer";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import { useAuth } from "@/context/AuthContext";
@@ -93,6 +92,29 @@ function getTelegramLink(username: string) {
 
 function humanizeSnakeLabel(s: string): string {
   return s.trim().replace(/_/g, " ");
+}
+
+function timeAgo(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return mins <= 1 ? "Just now" : `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  cleaning: Sparkles,
+  cooking: UtensilsCrossed,
+  pickup_delivery: Truck,
+  nanny: Baby,
+  other_help: Wrench,
+};
+
+function CategoryIcon({ serviceType, className }: { serviceType: string | null | undefined; className?: string }) {
+  const Icon = CATEGORY_ICONS[(serviceType ?? "").toLowerCase()] ?? Sparkles;
+  return <Icon className={className} aria-hidden />;
 }
 
 /** Flatten service_details JSON into short readable lines and extracts notes. */
@@ -264,7 +286,14 @@ export function OpenJobRequestMatchCard({
   
   const serviceDetailLines = parsedDetails.badges;
 
+  // Images uploaded to the job request (stored as public URLs in service_details.images)
+  const jobImages = useMemo(() => {
+    const imgs = (row.service_details as Record<string, unknown> | null)?.images;
+    if (!Array.isArray(imgs)) return [] as string[];
+    return (imgs as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0);
+  }, [row.service_details]);
 
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const budgetLine = useMemo(() => {
     if (row.budget_min != null && row.budget_max != null) {
@@ -526,8 +555,9 @@ export function OpenJobRequestMatchCard({
         ) : null}
 
         {/* Category — top left */}
-        <div className="pointer-events-none absolute left-0 top-0 z-[12] max-w-[min(100%,calc(100%-3.5rem))] pt-2.5 pl-2.5">
-          <span className="inline-flex items-center rounded-full bg-emerald-50/95 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-900 ring-1 ring-emerald-200/90 shadow-sm backdrop-blur-sm dark:bg-emerald-950/80 dark:text-emerald-100 dark:ring-emerald-800/60">
+        <div className="pointer-events-none absolute left-0 top-0 z-[12] max-w-[min(100%,calc(100%-3.5rem))] pt-3 pl-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/20">
+            <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 shrink-0 text-white/90" />
             {formatTitle(row.service_type)}
           </span>
         </div>
@@ -597,17 +627,9 @@ export function OpenJobRequestMatchCard({
           {row.created_at ? (
             <div className="flex shrink-0 items-center gap-1 text-white/90 drop-shadow-[0_1px_6px_rgba(0,0,0,0.75)] mb-0.5">
               <Clock className="h-3.5 w-3.5 shrink-0 text-white/90" strokeWidth={2.5} aria-hidden />
-              <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/90">
-                Posted
+              <span className="text-[11px] font-semibold text-white/90">
+                Posted {timeAgo(row.created_at)}
               </span>
-              <LiveTimer
-                createdAt={row.created_at}
-                render={({ time }) => (
-                  <span className="text-[11px] font-semibold tabular-nums text-white">
-                    {time}
-                  </span>
-                )}
-              />
             </div>
           ) : null}
         </div>
@@ -616,72 +638,111 @@ export function OpenJobRequestMatchCard({
       {/* Details + actions */}
       <div
         className={cn(
-          "relative z-[6] flex min-h-0 flex-1 flex-col border-t border-slate-200/90 bg-white px-4 pb-4 pt-3",
+          "relative z-[6] flex min-h-0 flex-1 flex-col border-t border-slate-200/90 bg-white px-4 pb-5 pt-4",
           "dark:border-zinc-700 dark:bg-zinc-50",
           variant === "fullscreen" && "max-h-[min(52vh,24rem)] overflow-y-auto",
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {careFrequencyLine || timeDurationLine || serviceDetailLines.length > 0 ? (
-          <div className="mt-1 space-y-3">
-            {careFrequencyLine || timeDurationLine ? (
-              <div className="flex flex-wrap items-center gap-2 mb-1">
+          <div className="mt-2 space-y-1.5">
+            {(careFrequencyLine || timeDurationLine) ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 {careFrequencyLine ? (
-                  <div className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-100 px-3 py-1.5 dark:bg-zinc-800/50 dark:border-zinc-700/50">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-zinc-400 mr-2 border-r border-slate-200 dark:border-zinc-700 pr-2">Freq</span>
-                    <span className="text-[13px] font-bold text-slate-800 dark:text-zinc-200">{careFrequencyLine}</span>
-                  </div>
+                  <span className={cn("text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[15px]" : "text-[13px]")}>
+                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">Freq</span>
+                    <span className="font-semibold">{careFrequencyLine}</span>
+                  </span>
                 ) : null}
                 {timeDurationLine ? (
-                  <div className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-100 px-3 py-1.5 dark:bg-zinc-800/50 dark:border-zinc-700/50">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-zinc-400 mr-2 border-r border-slate-200 dark:border-zinc-700 pr-2">Dur</span>
-                    <span className="text-[13px] font-bold text-slate-800 dark:text-zinc-200">{timeDurationLine}</span>
-                  </div>
+                  <span className={cn("text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[15px]" : "text-[13px]")}>
+                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">Dur</span>
+                    <span className="font-semibold">{timeDurationLine}</span>
+                  </span>
                 ) : null}
               </div>
             ) : null}
 
             {serviceDetailLines.length > 0 ? (
-              <div
-                className={cn(
-                  "text-[14px] leading-snug text-slate-800 dark:text-zinc-300",
-                  careFrequencyLine || timeDurationLine ? "pt-1" : "pt-2",
-                )}
-              >
-                <div className="flex flex-wrap gap-1.5">
-                  {serviceDetailLines.map((line, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-600 shadow-sm transition-colors dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400"
-                    >
-                      <Check className="h-3 w-3 text-emerald-500 shrink-0" strokeWidth={3.5} />
-                      {line}
-                    </span>
-                  ))}
-                </div>
+              <div className="flex flex-col gap-0.5">
+                {serviceDetailLines.map((line, idx) => (
+                  <span
+                    key={idx}
+                    className={cn("flex items-center gap-1.5 text-slate-600 dark:text-zinc-400", variant === "fullscreen" ? "text-[14px]" : "text-[12px]")}
+                  >
+                    <Check className="h-3 w-3 text-emerald-500 shrink-0" strokeWidth={3.5} />
+                    {line}
+                  </span>
+                ))}
               </div>
             ) : null}
           </div>
         ) : null}
 
         {scheduleLine ? (
-          <p className="mt-2.5 text-[15px] font-semibold text-slate-800 dark:text-zinc-800">
+          <p className={cn("mt-3 font-semibold text-slate-800 dark:text-zinc-800", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
             {scheduleLine}
           </p>
         ) : null}
 
         {budgetLine ? (
-          <p className="mt-1 text-[15px] font-semibold text-slate-700 dark:text-zinc-700">
+          <p className={cn("mt-1.5 font-bold text-emerald-700 dark:text-emerald-600", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
             {budgetLine}
           </p>
         ) : null}
 
+        {jobImages.length > 0 ? (
+          <>
+            <div className={cn("flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", variant === "fullscreen" ? "mt-3" : "mt-2")}>
+              {jobImages.map((src, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className="relative shrink-0 overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+                  style={{ width: variant === "fullscreen" ? "6.5rem" : "5rem", height: variant === "fullscreen" ? "6.5rem" : "5rem" }}
+                  onClick={(e) => { e.stopPropagation(); setLightboxSrc(src); }}
+                  aria-label={`View image ${idx + 1}`}
+                >
+                  <img
+                    src={src}
+                    alt={`Request image ${idx + 1}`}
+                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                    loading="lazy"
+                  />
+                </button>
+              ))}
+            </div>
+            {/* Lightbox */}
+            {lightboxSrc ? (
+              <div
+                className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm"
+                onClick={() => setLightboxSrc(null)}
+              >
+                <img
+                  src={lightboxSrc}
+                  alt=""
+                  className="max-h-[90dvh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  type="button"
+                  className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md ring-1 ring-white/20 transition hover:bg-black/60"
+                  onClick={() => setLightboxSrc(null)}
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" strokeWidth={2.25} />
+                </button>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
         {notesLine ? (
-          <div className="mt-3 rounded-xl bg-orange-50/50 p-3 ring-1 ring-orange-100/50 dark:bg-orange-950/20 dark:ring-orange-900/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-orange-600/80 dark:text-orange-500/80 mb-1">
+          <div className={cn("rounded-xl bg-orange-50/60 p-3.5 ring-1 ring-orange-100/60 dark:bg-orange-950/20 dark:ring-orange-900/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]", variant === "fullscreen" ? "mt-4" : "mt-3")}>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-orange-600/80 dark:text-orange-500/80 mb-1.5">
               Notes & Requirements
             </p>
-            <p className="text-[14px] font-medium leading-relaxed text-slate-700 dark:text-zinc-300 whitespace-pre-wrap">
+            <p className={cn("font-medium leading-relaxed text-slate-700 dark:text-zinc-300 whitespace-pre-wrap", variant === "fullscreen" ? "text-[15px]" : "text-[14px]")}>
               {notesLine}
             </p>
           </div>
@@ -692,7 +753,7 @@ export function OpenJobRequestMatchCard({
             Accepted · waiting
           </div>
         ) : (
-          <div className="mt-auto grid grid-cols-2 gap-3 pt-4">
+          <div className="mt-auto grid grid-cols-2 gap-3 pt-5">
             <button
               type="button"
               className={panelDeclineBtn}

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, Clock, UserRound } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ChevronRight, Clock, UserRound, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
@@ -7,8 +9,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { FullscreenMapModal } from "@/components/FullscreenMapModal";
-import { JobDetailsModal } from "@/components/JobDetailsModal";
 
 type Mode = "hire" | "work";
 
@@ -37,6 +37,35 @@ function formatJobTitle(job: { service_type?: string | null }) {
   if (job.service_type === "nanny") return "Nanny";
   if (job.service_type === "other_help") return "Other Help";
   return "Help request";
+}
+
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  cleaning: Sparkles,
+  cooking: UtensilsCrossed,
+  pickup_delivery: Truck,
+  nanny: Baby,
+  other_help: Wrench,
+};
+
+function CategoryIcon({
+  serviceType,
+  className,
+}: {
+  serviceType: string | null | undefined;
+  className?: string;
+}) {
+  const Icon = CATEGORY_ICONS[(serviceType ?? "").toLowerCase()] ?? Sparkles;
+  return <Icon className={className} aria-hidden />;
+}
+
+function timeAgo(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return mins <= 1 ? "Just now" : `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function serviceHeroImageSrc(job: { service_type?: string | null }) {
@@ -74,11 +103,10 @@ async function fetchProfileMap(ids: string[]): Promise<Map<string, ProfileMini>>
 
 export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [profiles, setProfiles] = useState<Map<string, ProfileMini>>(new Map());
-  const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
-  const [selectedJobDetails, setSelectedJobDetails] = useState<any | null>(null);
 
   const otherPartyLabel = mode === "hire" ? "Helper" : "Client";
   const emptyTitle = "No past jobs yet";
@@ -139,20 +167,6 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
 
   return (
     <section className="space-y-4" aria-label="History">
-      <FullscreenMapModal
-        job={selectedMapJob}
-        isOpen={!!selectedMapJob}
-        sheetPresentation
-        onClose={() => setSelectedMapJob(null)}
-      />
-      <JobDetailsModal
-        job={selectedJobDetails}
-        isOpen={!!selectedJobDetails}
-        onOpenChange={(open) => !open && setSelectedJobDetails(null)}
-        formatJobTitle={formatJobTitle}
-        sheetPresentation
-        isOwnRequest={selectedJobDetails?.client_id === user?.id}
-      />
       {loading ? (
         <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           Loading history…
@@ -182,20 +196,25 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
                 key={job.id}
                 type="button"
                 onClick={() => {
-                  if (job.service_type === "pickup_delivery") setSelectedMapJob(job);
-                  else setSelectedJobDetails(job);
+                  navigate(`/jobs/${job.id}/details`);
                 }}
                 className={cn(
-                  "group relative w-full rounded-2xl p-4 text-left",
+                  "group relative w-full rounded-2xl pt-2 px-4 pb-4 text-left",
                   EXPLORE_PAGE_CARD_SURFACE,
                   INTERACTIVE_CARD_HOVER,
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
-                    {title}
-                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/20">
+                      <CategoryIcon
+                        serviceType={job.service_type}
+                        className="h-3 w-3 shrink-0 text-white/90"
+                      />
+                      {title}
+                    </span>
+                  </div>
                   <span
                     className={cn(
                       "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wide",
@@ -229,13 +248,18 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
                     <p className="truncate text-sm font-semibold text-muted-foreground">
                       {loc}
                     </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <UserRound className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                    <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-muted-foreground/90">
+                      <Avatar className="h-6 w-6 shrink-0 border border-slate-200/50 dark:border-white/10">
+                        <AvatarImage src={other?.photo_url || ""} />
+                        <AvatarFallback className="text-[8px] font-bold">
+                          {otherName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <span className="truncate">{otherName}</span>
                     </p>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground/80">
                       <Clock className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-                      <span>{new Date(job.created_at).toLocaleDateString()}</span>
+                      <span>{timeAgo(job.created_at)}</span>
                     </p>
                   </div>
 

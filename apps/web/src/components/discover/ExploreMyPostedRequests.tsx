@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { ChevronRight, Clock } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
@@ -9,8 +9,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
 import { LiveTimer } from "@/components/LiveTimer";
 import { supabase } from "@/lib/supabase";
-import { FullscreenMapModal } from "@/components/FullscreenMapModal";
-import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { useCallback, useState } from "react";
 
 function formatJobTitle(job: { service_type?: string }) {
@@ -37,48 +35,49 @@ function acceptedPillClass(accepted: number): string {
   return "bg-muted text-muted-foreground";
 }
 
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  cleaning: Sparkles,
+  cooking: UtensilsCrossed,
+  pickup_delivery: Truck,
+  nanny: Baby,
+  other_help: Wrench,
+};
+
+function CategoryIcon({
+  serviceType,
+  className,
+}: {
+  serviceType: string | null | undefined;
+  className?: string;
+}) {
+  const Icon = CATEGORY_ICONS[(serviceType ?? "").toLowerCase()] ?? Sparkles;
+  return <Icon className={className} aria-hidden />;
+}
+
+function timeAgo(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return mins <= 1 ? "Just now" : `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 /**
  * Explore → **My requests**: open client job requests with elapsed timer + accepted-helper count.
  * Card chrome matches {@link ExploreClientHireInterests}.
  */
 export function ExploreMyPostedRequests() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const { data, isLoading } = useFreelancerRequests(user?.id);
   const jobs = data?.myOpenRequests ?? [];
-  const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
-  const [selectedJobDetails, setSelectedJobDetails] = useState<any | null>(null);
-
-  const formatModalJobTitle = useCallback((job: any) => formatJobTitle(job), []);
-
-  const openJobById = useCallback(async (jobId: string) => {
-    const { data: job } = await supabase
-      .from("job_requests")
-      .select("*")
-      .eq("id", jobId)
-      .single();
-    if (!job) return;
-    if (job.service_type === "pickup_delivery") setSelectedMapJob(job);
-    else setSelectedJobDetails(job);
-  }, []);
 
   if (!user?.id) return null;
 
   return (
     <section className="space-y-4" aria-label="Your posted requests for help">
-      <FullscreenMapModal
-        job={selectedMapJob}
-        isOpen={!!selectedMapJob}
-        sheetPresentation
-        onClose={() => setSelectedMapJob(null)}
-      />
-      <JobDetailsModal
-        job={selectedJobDetails}
-        isOpen={!!selectedJobDetails}
-        onOpenChange={(open) => !open && setSelectedJobDetails(null)}
-        formatJobTitle={formatModalJobTitle}
-        sheetPresentation
-        isOwnRequest={selectedJobDetails?.client_id === user?.id}
-      />
       {isLoading ? (
         <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
           Loading your requests…
@@ -122,18 +121,24 @@ export function ExploreMyPostedRequests() {
                 <button
                   key={job.id}
                   type="button"
-                  onClick={() => void openJobById(String(job.id))}
+                  onClick={() => navigate(`/client/jobs/${job.id}/live`)}
                   className={cn(
-                    "group relative w-full rounded-2xl p-4 text-left",
+                    "group relative w-full rounded-2xl pt-2 px-4 pb-4 text-left",
                     EXPLORE_PAGE_CARD_SURFACE,
                     INTERACTIVE_CARD_HOVER,
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <p className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
-                      {title}
-                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/20">
+                        <CategoryIcon
+                          serviceType={job.service_type}
+                          className="h-3 w-3 shrink-0 text-white/90"
+                        />
+                        {title}
+                      </span>
+                    </div>
                     <span
                       className={cn(
                         "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wide",
@@ -170,12 +175,8 @@ export function ExploreMyPostedRequests() {
                       <p className="truncate text-sm font-semibold text-muted-foreground">
                         {loc}
                       </p>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
-                        Posted{" "}
-                        {new Date(job.created_at).toLocaleDateString()}
-                      </p>
                       <div
-                        className="mt-1 flex min-w-0 items-center gap-1.5"
+                        className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground/80"
                         role="status"
                         aria-live="polite"
                       >
@@ -183,17 +184,7 @@ export function ExploreMyPostedRequests() {
                           className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
                           aria-hidden
                         />
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Open
-                        </span>
-                        <LiveTimer
-                          createdAt={job.created_at}
-                          render={({ time }) => (
-                            <span className="!font-mono text-[11px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                              {time}
-                            </span>
-                          )}
-                        />
+                        <span>Posted {timeAgo(job.created_at)}</span>
                       </div>
                     </div>
                     <ChevronRight
