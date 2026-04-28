@@ -159,8 +159,7 @@ export function BottomNav() {
         transition: "none",
       }
       : undefined;
-  /** `/profile/:userId` ships its own fixed back button — hide nav duplicate */
-  const isPublicUserProfilePage = /^\/profile\/[^/]+$/.test(pathnameNorm);
+
   const receiveRequestsOn = profile?.is_available_for_jobs === true;
   const showFreelancerJobNav =
     profile?.role === "freelancer" ||

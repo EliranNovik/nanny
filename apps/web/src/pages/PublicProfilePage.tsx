@@ -4,11 +4,8 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import {
   MessageSquare,
-  ChevronLeft,
   ChevronRight,
-  CheckCircle2,
   ShieldCheck,
-  Clock,
   Star,
   Phone,
   Send,
