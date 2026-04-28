@@ -482,7 +482,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               )}
             >
               {/* DESKTOP SQUARE IMAGE (Preserved) */}
-              <div className="relative hidden aspect-square w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-zinc-800 md:block">
+              <div className="relative hidden aspect-[4/5] w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-zinc-800 md:block">
                 <img
                   src={row.thumbUrl}
                   alt=""
@@ -647,7 +647,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               "md:rounded-2xl md:hover:shadow-lg",
             )}
           >
-            <div className="relative hidden aspect-square w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-zinc-800 md:block">
+            <div className="relative hidden aspect-[4/5] w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-zinc-800 md:block">
               {it.photo ? (
                 <img
                   src={it.photo}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ChevronRight,
   ClipboardList,
   Clock,
   PlayCircle,
@@ -18,6 +19,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { trackEvent } from "@/lib/analytics";
@@ -66,7 +68,7 @@ const HIRE = {
 } as const;
 
 const WORK = {
-  badge: "JOBS NEAR YOU",
+  badge: "POSTS NEAR YOU",
   title: "People need help right now.",
   sub: "Go live and get requests instantly in your area.",
   primary: "Go live now",
@@ -74,7 +76,7 @@ const WORK = {
 
 /** Same stack + padding for both hire/work heroes; modest min-height keeps imagery balanced. */
 const heroInnerClassName =
-  "relative flex min-h-[10rem] flex-col sm:min-h-[12.5rem] md:min-h-[13rem]";
+  "relative flex min-h-[10rem] flex-col sm:min-h-[12.5rem] md:min-h-[16rem]";
 
 const heroStackClassName =
   "relative z-10 flex min-h-0 flex-1 flex-col justify-start px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:px-7 md:pb-4 md:pt-6";
@@ -82,6 +84,15 @@ const heroStackClassName =
 const heroTopBlockClassName = "flex max-w-xl flex-col gap-3 md:gap-3.5";
 
 const heroTitleBlockClassName = "max-w-[17rem] space-y-1.5 pr-1 sm:max-w-[19rem]";
+
+function formatJobTitle(job: { service_type?: string }) {
+  if (job.service_type === "cleaning") return "Cleaning";
+  if (job.service_type === "cooking") return "Cooking";
+  if (job.service_type === "pickup_delivery") return "Pickup & Delivery";
+  if (job.service_type === "nanny") return "Nanny";
+  if (job.service_type === "other_help") return "Other Help";
+  return "Help request";
+}
 
 export function DiscoverHomeActionFirst({
   homeMode,
@@ -95,6 +106,65 @@ export function DiscoverHomeActionFirst({
   const { data: categoryAvatars = {} } = useDiscoverLiveAvatars(user?.id);
   const { data: frData } = useFreelancerRequests(user?.id);
   const [myRequestsOpen, setMyRequestsOpen] = useState(false);
+
+  const acceptedRequests = useMemo(() => {
+    const jobs = frData?.myOpenRequests ?? [];
+    return jobs.filter((j: any) => (j.acceptedCount || 0) > 0).slice(0, 1);
+  }, [frData]);
+
+  const [liveHelpingJobs, setLiveHelpingJobs] = useState<any[]>([]);
+  const [liveHelpingProfiles, setLiveHelpingProfiles] = useState<Map<string, any>>(new Map());
+  const [dismissedLiveJobIds, setDismissedLiveJobIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!user?.id || isHire) {
+      setLiveHelpingJobs([]);
+      setLiveHelpingProfiles(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("job_requests")
+        .select("id, created_at, service_type, location_city, client_id, selected_freelancer_id, status")
+        .in("status", ["locked", "active"])
+        .eq("selected_freelancer_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(2);
+      
+      if (cancelled) return;
+      if (error) {
+        console.warn("[DiscoverHomeActionFirst] live helping jobs:", error);
+        return;
+      }
+      
+      const rows = data || [];
+      setLiveHelpingJobs(rows);
+      
+      const clientIds = rows.map((r: any) => r.client_id).filter(Boolean);
+      if (clientIds.length > 0) {
+        const { data: profs, error: profError } = await supabase
+          .from("profiles")
+          .select("id, full_name, photo_url")
+          .in("id", clientIds);
+        
+        if (cancelled) return;
+        if (profError) {
+          console.warn("[DiscoverHomeActionFirst] live helping profiles:", profError);
+          return;
+        }
+        
+        const m = new Map<string, any>();
+        for (const p of profs || []) {
+          m.set(p.id, p);
+        }
+        setLiveHelpingProfiles(m);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, isHire]);
   const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
   const fetchOpenHelpPool =
     !isHire && !!user?.id && profile?.role !== "freelancer";
@@ -209,28 +279,30 @@ export function DiscoverHomeActionFirst({
 
   function renderFixedBottomBrowseDock() {
     const bottomOffset =
-      "bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+0.75rem)]";
+      "bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))]";
 
-    /**
-     * Round Icon Button style:
-     * - h-20 w-20 (mobile)
-     * - High-end shadow and blur
-     */
-    const roundBtnBase = cn(
-      "group relative flex h-20 w-20 items-center justify-center rounded-full border shadow-xl transition-all duration-300",
-      "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-      "md:h-[4.5rem] md:w-[4.5rem]",
+    const cardBtnBase = cn(
+      "group relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border transition-all duration-300",
+      "w-[9rem] h-[4.75rem]",
+      "active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      "shadow-[0_12px_30px_rgba(0,0,0,0.15)] backdrop-blur-xl",
+    );
+
+    const hireCard = cn(
+      "border-[#7B61FF]/30 bg-white/90 text-slate-900",
+      "dark:border-transparent dark:bg-zinc-800/80 dark:text-zinc-100",
+      "hover:border-[#7B61FF]/60 dark:hover:border-transparent",
+    );
+
+    const workCard = cn(
+      "border-emerald-500/30 bg-white/90 text-slate-900",
+      "dark:border-transparent dark:bg-zinc-800/80 dark:text-zinc-100",
+      "hover:border-emerald-500/60 dark:hover:border-transparent",
     );
 
     const countBadge = cn(
-      "absolute -right-1 -top-1 z-10 flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border-2 border-white px-1.5 text-[12px] font-black tabular-nums text-white shadow-sm dark:border-zinc-950",
-    );
-
-    const whiteBtn = cn(
-      "border-white/70 bg-white text-slate-900 shadow-2xl",
-      "backdrop-blur-2xl ring-1 ring-inset ring-white/30",
-      "hover:bg-white/95 hover:shadow-black/10",
-      "dark:border-white/25 dark:bg-white/15 dark:text-white dark:ring-white/20 dark:hover:bg-white/20",
+      "absolute -right-1.5 -top-1.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1 text-[11px] font-black tabular-nums text-white shadow-sm",
+      "bg-red-500",
     );
 
     return (
@@ -241,110 +313,90 @@ export function DiscoverHomeActionFirst({
           "flex justify-center",
         )}
       >
-        <div className="flex items-end gap-5 px-4 pb-2">
+        <div className="flex items-center gap-4 px-4 pb-2">
           {isHire ? (
             <>
               {/* Browse Helpers */}
-              <div className="flex flex-col items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
-                    navigateToHelpersBrowse(navigate);
-                  }}
-                  className={cn(
-                    roundBtnBase,
-                    whiteBtn,
-                  )}
-                  aria-label="Browse helpers"
-                >
-                  <Search className="h-8 w-8 md:h-8 md:w-8" strokeWidth={2.5} aria-hidden />
-                  {hireLiveHelperCount > 0 && (
-                    <span className={cn(countBadge, "bg-red-500 shadow-red-600/40")}>
-                      {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
-                    </span>
-                  )}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("discover_bottom_browse_helpers", { mode: homeMode });
+                  navigateToHelpersBrowse(navigate);
+                }}
+                className={cn(cardBtnBase, hireCard)}
+                aria-label="Browse helpers"
+              >
+                <Search className="h-6 w-6 text-[#7B61FF] dark:text-[#A78BFA]" strokeWidth={2.5} aria-hidden />
+                <span className="text-[13px] font-bold tracking-tight">Browse Helpers</span>
+                {hireLiveHelperCount > 0 && (
+                  <span className={countBadge}>
+                    {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
+                  </span>
+                )}
+              </button>
 
-              {/* My Requests (only for clients) */}
-              <div className="flex flex-col items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMyRequestsOpen(true);
-                  }}
-                  className={cn(
-                    roundBtnBase,
-                    whiteBtn,
-                  )}
-                  aria-label="My Requests"
-                >
-                  <ClipboardList
-                    className="h-8 w-8 md:h-8 md:w-8 text-slate-800 dark:text-white/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  {myRequestsCount > 0 && (
-                    <span className={cn(countBadge, "bg-red-500 shadow-red-600/40")}>
-                      {myRequestsCount > 9 ? "9+" : myRequestsCount}
-                    </span>
-                  )}
-                </button>
-              </div>
+              {/* My Requests */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMyRequestsOpen(true);
+                }}
+                className={cn(cardBtnBase, hireCard)}
+                aria-label="My Requests"
+              >
+                <ClipboardList className="h-6 w-6 text-[#7B61FF] dark:text-[#A78BFA]" strokeWidth={2.5} aria-hidden />
+                <span className="text-[13px] font-bold tracking-tight">My Requests</span>
+                {myRequestsCount > 0 && (
+                  <span className={countBadge}>
+                    {myRequestsCount > 9 ? "9+" : myRequestsCount}
+                  </span>
+                )}
+              </button>
             </>
           ) : (
             <>
               {/* Browse Jobs */}
-              <div className="flex flex-col items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    trackEvent("discover_bottom_find_people_in_need", {
-                      mode: homeMode,
-                    });
-                    navigateToWorkBrowseRequests(navigate, profile);
-                  }}
-                  className={cn(
-                    roundBtnBase,
-                    whiteBtn,
-                  )}
-                  aria-label="Browse user requests"
-                >
-                  <UsersRound className="h-8 w-8 md:h-8 md:w-8" strokeWidth={2.5} aria-hidden />
-                  {workLivePostCount > 0 && (
-                    <span className={cn(countBadge, "bg-red-500 shadow-red-600/40")}>
-                      {workLivePostCount > 99 ? "99+" : workLivePostCount}
-                    </span>
-                  )}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("discover_bottom_find_people_in_need", {
+                    mode: homeMode,
+                  });
+                  navigateToWorkBrowseRequests(navigate, profile);
+                }}
+                className={cn(cardBtnBase, workCard)}
+                aria-label="Browse user requests"
+              >
+                <UsersRound className="h-6 w-6 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} aria-hidden />
+                <span className="text-[13px] font-bold tracking-tight">Browse Posts</span>
+                {workLivePostCount > 0 && (
+                  <span className={countBadge}>
+                    {workLivePostCount > 99 ? "99+" : workLivePostCount}
+                  </span>
+                )}
+              </button>
 
-              {/* Pending Requests (for freelancers) */}
-              <div className="flex flex-col items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPendingWorkRequestsOpen(true);
-                  }}
-                  className={cn(
-                    roundBtnBase,
-                    whiteBtn,
-                  )}
-                  aria-label="Pending Requests"
-                >
-                  <Clock className="h-8 w-8 md:h-8 md:w-8 text-slate-800 dark:text-white/90" strokeWidth={2.5} aria-hidden />
-                  {pendingWorkRequestsCount > 0 && (
-                    <span className={cn(countBadge, "bg-red-500 shadow-red-600/40")}>
-                      {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
-                    </span>
-                  )}
-                </button>
-              </div>
+              {/* Pending Requests */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingWorkRequestsOpen(true);
+                }}
+                className={cn(cardBtnBase, workCard)}
+                aria-label="Pending Requests"
+              >
+                <Clock className="h-6 w-6 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} aria-hidden />
+                <span className="text-[13px] font-bold tracking-tight">Pending</span>
+                {pendingWorkRequestsCount > 0 && (
+                  <span className={countBadge}>
+                    {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
+                  </span>
+                )}
+              </button>
             </>
           )}
         </div>
@@ -387,9 +439,6 @@ export function DiscoverHomeActionFirst({
 
               {/* Primary action (middle button) — top right */}
               <div className="pointer-events-auto absolute right-4 top-4 z-[10] flex flex-col items-center gap-1.5">
-                <div className="text-[12px] font-black tracking-tight text-white drop-shadow-sm">
-                  Post request
-                </div>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -400,14 +449,14 @@ export function DiscoverHomeActionFirst({
                     recordFirstMeaningfulAction("home_primary_create_request");
                   }}
                   className={cn(
-                    "group flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full border shadow-2xl transition-all duration-300",
+                    "group flex h-12 w-12 items-center justify-center rounded-full border shadow-2xl transition-all duration-300",
                     "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "border-white/45 bg-white/25 text-white backdrop-blur-2xl ring-1 ring-inset ring-white/30",
                     "hover:bg-white/30",
                   )}
                   aria-label="Post a request"
                 >
-                  <PlusCircle className="h-9 w-9 text-white" strokeWidth={2.5} aria-hidden />
+                  <PlusCircle className="h-7 w-7 text-white" strokeWidth={2.5} aria-hidden />
                 </button>
               </div>
 
@@ -419,6 +468,60 @@ export function DiscoverHomeActionFirst({
                     <span className="truncate">{HIRE.badge}</span>
                   </div>
                   <h2 className={mobileHeroTitleClass}>{HIRE.title}</h2>
+                  
+                  {acceptedRequests.length > 0 && (
+                    <div className="mt-10 flex flex-col gap-2">
+                      {acceptedRequests.map((job: any) => {
+                        const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
+                        const title = formatJobTitle(job);
+                        const loc = (job.location_city ?? "").trim() || "Location not set";
+                        
+                        return (
+                          <button
+                            key={job.id}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/client/jobs/${job.id}/live`);
+                            }}
+                            className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl bg-black/40 p-3 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20 text-left transition-all hover:bg-black/50 active:scale-[0.98]"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[13px] font-bold text-white truncate">{title}</span>
+                                <span className="text-[11px] font-medium text-white/60">•</span>
+                                <span className="text-[12px] font-semibold text-white/80 truncate">{loc}</span>
+                              </div>
+                              
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                                  {job.acceptedCount} accepted
+                                </span>
+                                
+                                {/* Avatars */}
+                                {avatars.length > 0 && (
+                                  <div className="flex -space-x-1.5 overflow-hidden">
+                                    {avatars.slice(0, 3).map((avatar: any, idx: number) => (
+                                      <Avatar key={avatar.id || idx} className="h-6 w-6 border-none shadow-sm">
+                                        {avatar.photo_url ? (
+                                          <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
+                                        ) : null}
+                                        <AvatarFallback className="bg-zinc-800 text-[10px] font-bold text-white">
+                                          {(avatar.full_name || "H").charAt(0)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <ChevronRight className="h-5 w-5 shrink-0 text-white/60" aria-hidden />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -453,9 +556,6 @@ export function DiscoverHomeActionFirst({
                   </div>
                 ) : (
                   <>
-                    <div className="text-[12px] font-black tracking-tight text-white drop-shadow-sm">
-                      Go live
-                    </div>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -466,14 +566,14 @@ export function DiscoverHomeActionFirst({
                       recordFirstMeaningfulAction("home_primary_work");
                     }}
                     className={cn(
-                      "group flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full border shadow-2xl transition-all duration-300",
+                      "group flex h-12 w-12 items-center justify-center rounded-full border shadow-2xl transition-all duration-300",
                       "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                       "border-white/45 bg-white/25 text-white backdrop-blur-2xl ring-1 ring-inset ring-white/30",
                       "hover:bg-white/30",
                     )}
                     aria-label="Go live"
                   >
-                    <PlayCircle className="h-9 w-9 text-white" strokeWidth={2.5} aria-hidden />
+                    <PlayCircle className="h-7 w-7 text-white" strokeWidth={2.5} aria-hidden />
                   </button>
                   </>
                 )}
@@ -487,22 +587,75 @@ export function DiscoverHomeActionFirst({
                     <span className="truncate">{workTheme.badge}</span>
                   </div>
                   <h2 className={mobileHeroTitleClass}>{workTheme.title}</h2>
-                  {isWorkLive ? (
-                    <div className="mt-3 flex flex-col items-start gap-1.5">
-                      <div className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-white drop-shadow-md bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                        <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                          <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 motion-reduce:animate-none" />
-                          <span className="relative block h-2 w-2 rounded-full bg-emerald-400" />
-                        </span>
-                        Active
-                      </div>
-                      {liveCategoriesLabel ? (
-                        <div className="text-[11px] font-bold text-white/90 drop-shadow-md">
-                          {liveCategoriesLabel}
-                        </div>
-                      ) : null}
+
+                  
+                  {liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 && (
+                    <div className="mt-10 flex flex-col gap-2">
+                      {liveHelpingJobs
+                        .filter(j => !dismissedLiveJobIds.includes(j.id))
+                        .slice(0, 1)
+                        .map((job: any) => {
+                          const client = liveHelpingProfiles.get(job.client_id);
+                          const title = formatJobTitle(job);
+                          const loc = (job.location_city ?? "").trim() || "Location not set";
+                          const clientName = client?.full_name || "Client";
+                          
+                          return (
+                            <div
+                              key={job.id}
+                              className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl bg-black/40 p-3 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20 text-left"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`${explorePath}?mode=work&tab=live_help`);
+                                }}
+                                className="min-w-0 flex-1 flex items-center justify-between gap-3 text-left"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[13px] font-bold text-white truncate">{title}</span>
+                                    <span className="text-[11px] font-medium text-white/60">•</span>
+                                    <span className="text-[12px] font-semibold text-white/80 truncate">{loc}</span>
+                                  </div>
+                                  
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                                      Helping {clientName}
+                                    </span>
+                                    
+                                    {client?.photo_url && (
+                                      <Avatar className="h-6 w-6 border-none shadow-sm">
+                                        <AvatarImage src={client.photo_url} alt={clientName} />
+                                        <AvatarFallback className="bg-zinc-800 text-[10px] font-bold text-white">
+                                          {clientName.charAt(0)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <ChevronRight className="h-5 w-5 shrink-0 text-white/60" aria-hidden />
+                              </button>
+                              
+                              {/* Remove Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDismissedLiveJobIds(prev => [...prev, job.id]);
+                                }}
+                                className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                                aria-label="Dismiss"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </div>
 

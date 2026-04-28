@@ -843,19 +843,12 @@ export default function ChatPage({
 
   // Smooth scroll function
   const scrollToBottom = (smooth = true) => {
-    // Try mobile scroll ref first (native div)
-    if (mobileScrollRef.current) {
-      mobileScrollRef.current.scrollTo({
-        top: mobileScrollRef.current.scrollHeight,
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
         behavior: smooth ? "smooth" : "auto",
       });
-      return;
-    }
 
-    // Desktop: ScrollArea from Radix UI
-    if (scrollRef.current) {
-      // ScrollArea from Radix UI wraps content, need to find the viewport element
-      // The viewport is the first child div inside the ScrollArea
       const viewport = scrollRef.current.querySelector(
         "[data-radix-scroll-area-viewport]",
       ) as HTMLElement;
@@ -864,17 +857,6 @@ export default function ChatPage({
           top: viewport.scrollHeight,
           behavior: smooth ? "smooth" : "auto",
         });
-      } else {
-        // Fallback: try to find viewport by class or direct access
-        const viewportElement = scrollRef.current.querySelector(
-          ".h-full.w-full",
-        ) as HTMLElement;
-        if (viewportElement) {
-          viewportElement.scrollTo({
-            top: viewportElement.scrollHeight,
-            behavior: smooth ? "smooth" : "auto",
-          });
-        }
       }
     }
   };
@@ -2131,8 +2113,9 @@ export default function ChatPage({
             touchAction: "pan-y",
             overscrollBehavior: "contain",
           }}
+          ref={scrollRef}
         >
-          <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
+          <div>
             <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-[max(11rem,min(42vh,18rem))] md:pb-32">
               {job && hideBackButton && otherUser ? (
                 <ChatJobContextStrip
@@ -2173,7 +2156,7 @@ export default function ChatPage({
                         </div>
                       )}
                       <div className="flex justify-center px-2">
-                        <div className="max-w-md rounded-lg border border-border/60 bg-muted/45 px-3 py-2 text-center text-[13px] leading-snug text-muted-foreground dark:bg-muted/25">
+                        <div className="max-w-md rounded-lg bg-muted/45 px-3 py-2 text-center text-[13px] leading-snug text-muted-foreground dark:bg-muted/25 border-none">
                           {msg.body}
                           <span className="mt-1 block text-[10px] font-medium tabular-nums opacity-80">
                             {formatTime(msg.created_at)}
@@ -2184,8 +2167,104 @@ export default function ChatPage({
                   );
                 }
 
+                const isMedia = msg.attachment_url && (msg.attachment_type === "image" || msg.attachment_type === "video");
+
+                if (isMedia && msg.attachment_url) {
+                  return (
+                    <div key={msg.id} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      {shouldShowDateHeader(index) && (
+                        <div className="flex justify-center my-4">
+                          <span className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded-full">
+                            {formatDate(msg.created_at)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div
+                        className={cn(
+                          "flex items-end gap-2",
+                          isOwn ? "flex-row-reverse" : "flex-row",
+                        )}
+                      >
+                        {!isOwn && (
+                          <Avatar className="w-8 h-8 flex-shrink-0 mb-1">
+                            <AvatarImage
+                              src={otherUser?.photo_url || undefined}
+                            />
+                            <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                              {otherInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+
+                        <div
+                          className={cn(
+                            "max-w-[85%] md:max-w-[70%] flex flex-col",
+                            isOwn ? "items-end" : "items-start",
+                          )}
+                        >
+                          {/* Plain Media */}
+                          {msg.attachment_type === "image" ? (
+                            <div
+                              className="relative cursor-pointer group/image transition-transform active:scale-[0.98]"
+                              onClick={() => {
+                                setSelectedImage(msg);
+                                setIsImageModalOpen(true);
+                              }}
+                            >
+                              <img
+                                src={msg.attachment_url}
+                                alt={msg.attachment_name || "Attachment"}
+                                className="max-w-full rounded-2xl border-none shadow-sm max-h-[320px] object-cover"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity bg-black/10 rounded-2xl">
+                                <ImageIcon className="w-8 h-8 text-white drop-shadow-md" />
+                              </div>
+                            </div>
+                          ) : (
+                            <video
+                              src={msg.attachment_url}
+                              controls
+                              className="max-w-full rounded-2xl border-none shadow-sm max-h-[320px] object-cover"
+                            />
+                          )}
+
+                          {/* Text Bubble (if there is text) */}
+                          {msg.body && (
+                            <div
+                              className={cn(
+                                "rounded-2xl px-3 py-2 shadow-sm relative mt-1",
+                                isOwn
+                                  ? "rounded-br-none bg-primary text-primary-foreground"
+                                  : "rounded-bl-none bg-muted/30 dark:bg-card border-none",
+                              )}
+                            >
+                              <p className="inline-block max-w-full text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap">
+                                {msg.body}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Metadata outside */}
+                          <div
+                            className={cn(
+                              "mt-1 flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground",
+                              isOwn ? "justify-end" : "justify-start",
+                            )}
+                          >
+                            <span>{formatTime(msg.created_at)}</span>
+                            {isOwn && receiptStatus && (
+                              <ReadReceipt status={receiptStatus} />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
-                  <div key={msg.id} className="space-y-4">
+                  <div key={msg.id} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {shouldShowDateHeader(index) && (
                       <div className="flex justify-center my-4">
                         <span className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded-full">
@@ -2222,48 +2301,23 @@ export default function ChatPage({
                             "rounded-2xl px-3 py-2 shadow-sm relative group",
                             isOwn
                               ? "rounded-br-none bg-primary text-primary-foreground shadow-sm"
-                              : "rounded-bl-none border border-border/80 bg-muted/30 dark:border-border/50 dark:bg-card",
+                              : "rounded-bl-none bg-muted/30 dark:bg-card border-none",
                           )}
                         >
                           {/* Attachment Display */}
                           {msg.attachment_url && (
                             <div className="mb-2">
-                              {msg.attachment_type === "image" ? (
-                                <div
-                                  className="relative cursor-pointer group/image transition-transform active:scale-[0.98]"
-                                  onClick={() => {
-                                    setSelectedImage(msg);
-                                    setIsImageModalOpen(true);
-                                  }}
-                                >
-                                  <img
-                                    src={msg.attachment_url}
-                                    alt={msg.attachment_name || "Attachment"}
-                                    className="max-w-full rounded-lg hover:brightness-90 transition-all border border-black/5"
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity bg-black/10 rounded-lg">
-                                    <ImageIcon className="w-8 h-8 text-white drop-shadow-md" />
-                                  </div>
-                                </div>
-                              ) : msg.attachment_type === "video" ? (
-                                <video
-                                  src={msg.attachment_url}
-                                  controls
-                                  className="max-w-full rounded-lg border border-border"
-                                />
-                              ) : (
-                                <a
-                                  href={msg.attachment_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg hover:bg-muted transition-colors border border-dashed border-primary/20"
-                                >
-                                  <File className="w-4 h-4 text-primary" />
-                                  <span className="text-sm font-medium underline truncate max-w-[150px]">
-                                    {msg.attachment_name || "Download File"}
-                                  </span>
-                                </a>
-                              )}
+                              <a
+                                href={msg.attachment_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg hover:bg-muted transition-colors border border-dashed border-primary/20"
+                              >
+                                <File className="w-4 h-4 text-primary" />
+                                <span className="text-sm font-medium underline truncate max-w-[150px]">
+                                  {msg.attachment_name || "Download File"}
+                                </span>
+                              </a>
                             </div>
                           )}
 
@@ -2273,7 +2327,7 @@ export default function ChatPage({
                                 "rounded-xl border px-3 py-2 text-sm",
                                 isOwn
                                   ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground"
-                                  : "border-border bg-muted/50 text-foreground",
+                                  : "bg-muted/50 text-foreground border-none",
                               )}
                             >
                               <p className="text-[11px] font-bold uppercase tracking-wide opacity-80">

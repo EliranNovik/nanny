@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Paperclip, Send, Loader2, X, File, Image as ImageIcon } from "lucide-react";
+import { Paperclip, Send, Loader2, X, File, Image as ImageIcon, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatComposerProps {
@@ -40,6 +40,21 @@ export function ChatComposer({
   quickReplies = [],
   onQuickReply,
 }: ChatComposerProps) {
+  const [showPhrases, setShowPhrases] = React.useState(false);
+
+  const phrases = [
+    "I'm on my way",
+    "Available now",
+    "Can you share a few more details?",
+    "Let's coordinate a time",
+    "What's the exact location?",
+    "How much is the hourly rate?",
+    "Thank you, that works for me",
+    "I might be a bit late",
+    "Can we do this tomorrow instead?",
+    "Sounds good! See you soon",
+  ];
+
   function getFileType(fileName: string): string {
     const ext = fileName.split(".").pop()?.toLowerCase() || "";
     if (["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) return "image";
@@ -69,6 +84,13 @@ export function ChatComposer({
 
   return (
     <>
+      {showPhrases && (
+        <div 
+          className="fixed inset-0 z-30 bg-transparent" 
+          onClick={() => setShowPhrases(false)} 
+        />
+      )}
+
       {/* Mobile Composer */}
       <div
         className={cn(
@@ -79,22 +101,26 @@ export function ChatComposer({
         )}
       >
         {filePreview}
-        {quickReplies.length > 0 && onQuickReply && (
-          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
-            {quickReplies.map((q) => (
+        
+        {showPhrases && (
+          <div className="absolute bottom-[calc(100%+8px)] left-3 z-40 w-64 max-h-60 overflow-y-auto rounded-2xl border border-border/50 bg-background/95 p-1 shadow-lg backdrop-blur-lg dark:bg-zinc-900/95">
+            {phrases.map((p) => (
               <button
-                key={q}
+                key={p}
                 type="button"
-                disabled={sending || uploading}
-                onClick={() => onQuickReply(q)}
-                className="shrink-0 rounded-full border border-border/60 bg-muted/40 px-3 py-1.5 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50 dark:bg-muted/20 dark:hover:bg-muted/35"
+                onClick={() => {
+                  onQuickReply?.(p);
+                  setShowPhrases(false);
+                }}
+                className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80 dark:hover:bg-zinc-800/80"
               >
-                {q}
+                {p}
               </button>
             ))}
           </div>
         )}
-        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
+
+        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1">
           <input
             ref={fileInputRef}
             type="file"
@@ -114,6 +140,18 @@ export function ChatComposer({
           >
             <Paperclip className="h-[22px] w-[22px]" strokeWidth={1.75} />
           </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 shrink-0 self-end rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95"
+            onClick={() => setShowPhrases(!showPhrases)}
+            disabled={sending || uploading}
+          >
+            <MessageSquarePlus className="h-[22px] w-[22px]" strokeWidth={1.75} />
+          </Button>
+
           <Textarea
             ref={mobileComposerRef}
             rows={1}
@@ -156,26 +194,30 @@ export function ChatComposer({
           "hidden lg:flex lg:flex-col fixed z-30 bottom-0 right-0",
           "border-t border-border/30 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
           "px-5 pt-2.5 pb-4",
-          hideBackButton ? "left-0" : "left-[400px]"
+          hideBackButton ? "md:left-80 lg:left-96 left-0" : "left-[400px]"
         )}
       >
         {filePreview}
-        {quickReplies.length > 0 && onQuickReply && (
-          <div className="mb-2 flex flex-wrap gap-2">
-            {quickReplies.map((q) => (
+
+        {showPhrases && (
+          <div className="absolute bottom-[calc(100%+8px)] left-5 z-40 w-64 max-h-60 overflow-y-auto rounded-2xl border border-border/50 bg-background/95 p-1 shadow-lg backdrop-blur-lg dark:bg-zinc-900/95">
+            {phrases.map((p) => (
               <button
-                key={q}
+                key={p}
                 type="button"
-                disabled={sending || uploading}
-                onClick={() => onQuickReply(q)}
-                className="rounded-full border border-border/60 bg-muted/40 px-3 py-1.5 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50 dark:bg-muted/20 dark:hover:bg-muted/35"
+                onClick={() => {
+                  onQuickReply?.(p);
+                  setShowPhrases(false);
+                }}
+                className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80 dark:hover:bg-zinc-800/80"
               >
-                {q}
+                {p}
               </button>
             ))}
           </div>
         )}
-        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
+
+        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1">
           <Button
             type="button"
             variant="ghost"
@@ -186,6 +228,18 @@ export function ChatComposer({
           >
             <Paperclip className="h-[22px] w-[22px]" strokeWidth={1.75} />
           </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 shrink-0 self-end rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95"
+            onClick={() => setShowPhrases(!showPhrases)}
+            disabled={sending || uploading}
+          >
+            <MessageSquarePlus className="h-[22px] w-[22px]" strokeWidth={1.75} />
+          </Button>
+
           <Textarea
             ref={desktopComposerRef}
             rows={1}

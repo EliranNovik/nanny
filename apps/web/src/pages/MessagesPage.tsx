@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
@@ -28,26 +28,35 @@ import {
   Bell,
   Briefcase,
   MessageSquare,
+  Home,
+  Rss,
+  User,
+  PlusSquare,
+  Trash2,
+  X,
+  Heart,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
 
 /** One muted line under the name: category · city · Done when relevant */
-function inboxRowSubtitle(job: JobSummaryRow | null | undefined): string | null {
-  if (!job) return null;
-  const cat = jobCategoryLabel(job);
-  const loc = job.location_city?.trim();
-  const stage = (job.stage || "").trim();
-  const done =
-    stage === "Completed" ||
-    stage === "Job Ended" ||
-    job.status === "completed";
-  const parts = [cat, loc].filter(Boolean);
-  const line = parts.join(" · ");
-  if (!line) return done ? "Completed" : null;
-  return done ? `${line} · Done` : line;
+function inboxRowSubtitle(convo: Conversation): string | null {
+  const profile = convo.other_user_profile;
+  const job = convo.job_summary;
+  
+  const loc = (job?.location_city || profile?.city || "").trim();
+  const rating = profile?.average_rating;
+  const count = (profile as any)?.total_ratings;
+  
+  const ratingStr = rating && Number(rating) > 0 
+    ? `${Number(rating).toFixed(1)}${count ? ` (${count})` : ""}` 
+    : "New";
+    
+  if (loc) return `${loc} · ${ratingStr}`;
+  return loc || null;
 }
 
 function trimPreviewNoise(body: string | null | undefined): string {
@@ -65,6 +74,9 @@ interface Conversation {
   other_user_profile?: {
     full_name: string | null;
     photo_url: string | null;
+    average_rating?: number | null;
+    total_ratings?: number | null;
+    city?: string | null;
   };
   /** Joined from job_requests for status + preview */
   job_summary?: JobSummaryRow | null;
@@ -124,16 +136,129 @@ export default function MessagesPage() {
   );
   const [loading, setLoading] = useState(!cachedData);
   const loadConversationsRef = useRef<(() => void) | null>(null);
+  const [isManageMode, setIsManageMode] = useState(false);
+  const [newChatOpen, setNewChatOpen] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
+  const [favoriteUserIds, setFavoriteUserIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user?.id) {
-      setDismissedActivityIds(new Set());
-      setHiddenChatUserIds(new Set());
+      setFavoriteUserIds(new Set());
       return;
     }
-    setDismissedActivityIds(loadDismissedActivityIds(user.id));
-    setHiddenChatUserIds(loadHiddenChatUserIds(user.id));
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", user.id);
+      if (!cancelled && data) {
+        setFavoriteUserIds(new Set(data.map((r: any) => r.favorite_user_id)));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
+
+  const toggleProfileFavorite = async (targetUserId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!user?.id) return;
+
+    const isCurrentlyFav = favoriteUserIds.has(targetUserId);
+    try {
+      if (isCurrentlyFav) {
+        const { error } = await supabase
+          .from("profile_favorites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("favorite_user_id", targetUserId);
+        if (error) throw error;
+        setFavoriteUserIds((prev) => {
+          const next = new Set(prev);
+          next.delete(targetUserId);
+          return next;
+        });
+        addToast({ title: "Removed from saved profiles", variant: "success" });
+      } else {
+        const { error } = await supabase
+          .from("profile_favorites")
+          .insert({ user_id: user.id, favorite_user_id: targetUserId });
+        if (error) throw error;
+        setFavoriteUserIds((prev) => {
+          const next = new Set(prev);
+          next.add(targetUserId);
+          return next;
+        });
+        addToast({ title: "Saved to profiles", variant: "success" });
+      }
+    } catch (err) {
+      console.error("[MessagesPage] toggleProfileFavorite:", err);
+      addToast({ title: "Could not update", variant: "error" });
+    }
+  };
+
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setUserSearchResults([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, photo_url, role")
+        .ilike("full_name", `%${userSearchQuery}%`)
+        .neq("id", user?.id || "")
+        .limit(10);
+      if (!cancelled && data) {
+        setUserSearchResults(data);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userSearchQuery, user?.id]);
+
+  const handleCreateChat = async (selectedUserId: string) => {
+    if (!user) return;
+    setNewChatOpen(false);
+    setUserSearchQuery("");
+
+    try {
+      const { data: existing } = await supabase
+        .from("conversations")
+        .select("id")
+        .or(`and(client_id.eq.${user.id},freelancer_id.eq.${selectedUserId}),and(client_id.eq.${selectedUserId},freelancer_id.eq.${user.id})`)
+        .maybeSingle();
+
+      if (existing) {
+        handleConversationClick(existing.id);
+      } else {
+        const { data: selectedProf } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", selectedUserId)
+          .single();
+
+        const client_id = profile?.role === "client" ? user.id : selectedUserId;
+        const freelancer_id = profile?.role === "freelancer" ? user.id : selectedUserId;
+
+        const { data: created } = await supabase
+          .from("conversations")
+          .insert({ client_id, freelancer_id })
+          .select("id")
+          .single();
+
+        if (created) {
+          handleConversationClick(created.id);
+        }
+      }
+    } catch (err) {
+      console.error("[MessagesPage] Error starting chat:", err);
+    }
+  };
 
   const visibleActivityAlerts = useMemo(
     () => activityAlerts.filter((a) => !dismissedActivityIds.has(a.id)),
@@ -215,7 +340,7 @@ export default function MessagesPage() {
         convo.client_id === user.id ? convo.freelancer_id : convo.client_id;
       const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, photo_url")
+        .select("full_name, photo_url, average_rating, total_ratings, city")
         .eq("id", otherId)
         .single();
       if (!cancelled) {
@@ -273,7 +398,7 @@ export default function MessagesPage() {
         const uniqueOtherIds = Array.from(conversationsByUser.keys());
         const { data: profilesRows } = await supabase
           .from("profiles")
-          .select("id, full_name, photo_url")
+          .select("id, full_name, photo_url, average_rating, total_ratings, city")
           .in("id", uniqueOtherIds);
 
         const profileById = new Map((profilesRows ?? []).map((p) => [p.id, p]));
@@ -336,6 +461,9 @@ export default function MessagesPage() {
                 other_user_profile: {
                   full_name: otherProfile?.full_name || null,
                   photo_url: otherProfile?.photo_url || null,
+                  average_rating: otherProfile?.average_rating ?? null,
+                  total_ratings: (otherProfile as any)?.total_ratings ?? null,
+                  city: otherProfile?.city || null,
                 },
                 last_message,
                 unread_count: totalUnread,
@@ -454,109 +582,29 @@ export default function MessagesPage() {
           },
           async (payload) => {
             const newMsg = payload.new as any;
-
-            // Fetch the conversation to determine the other user ID
             const { data: convoData } = await supabase
               .from("conversations")
               .select("client_id, freelancer_id")
               .eq("id", newMsg.conversation_id)
-              .single();
+              .maybeSingle();
 
-            if (!convoData) {
-              // If conversation not found, reload
-              if (loadConversationsRef.current) {
-                loadConversationsRef.current();
-              }
-              return;
-            }
+            if (convoData && user?.id) {
+              const otherUserId =
+                convoData.client_id === user.id
+                  ? convoData.freelancer_id
+                  : convoData.client_id;
 
-            // Identify the other user ID correctly regardless of current profile role
-            const otherUserId =
-              convoData.client_id === user.id
-                ? convoData.freelancer_id
-                : convoData.client_id;
-
-            const isFromOtherUser = newMsg.sender_id === otherUserId;
-            const newMessageTime = new Date(newMsg.created_at).getTime();
-
-            if (isFromOtherUser && user?.id) {
-              setHiddenChatUserIds((prev) => {
-                if (!prev.has(otherUserId)) return prev;
-                const next = new Set(prev);
-                next.delete(otherUserId);
-                persistHiddenChatUserIds(user.id, next);
-                return next;
-              });
-            }
-
-            // Update the conversation's last message and unread count
-            setConversations((prev) => {
-              // Find conversation with the same otherUserId (deduplicated)
-              const convo = prev.find((c) => {
-                const cOtherUserId =
-                  profile.role === "client" ? c.freelancer_id : c.client_id;
-                return cOtherUserId === otherUserId;
-              });
-
-              // If not found, reload to get grouped version
-              if (!convo) {
-                if (loadConversationsRef.current) {
-                  loadConversationsRef.current();
-                }
-                return prev;
-              }
-
-              // Check if this message is more recent than the current last_message
-              const currentLastMessageTime = convo.last_message?.created_at
-                ? new Date(convo.last_message.created_at).getTime()
-                : 0;
-
-              // Update the matching conversation
-              return prev
-                .map((c) => {
-                  const cOtherUserId =
-                    profile.role === "client" ? c.freelancer_id : c.client_id;
-
-                  // Update if it's a conversation with the same otherUserId
-                  if (cOtherUserId === otherUserId) {
-                    const newUnreadCount =
-                      isFromOtherUser && !newMsg.read_at
-                        ? (c.unread_count || 0) + 1
-                        : c.unread_count;
-
-                    // Only update last_message if this message is more recent
-                    const shouldUpdateLastMessage =
-                      newMessageTime > currentLastMessageTime;
-
-                    return {
-                      ...c,
-                      last_message: shouldUpdateLastMessage
-                        ? {
-                            body: newMsg.body || "",
-                            created_at: newMsg.created_at,
-                            sender_id: newMsg.sender_id,
-                            read_at: newMsg.read_at,
-                            read_by: newMsg.read_by,
-                            attachment_type: newMsg.attachment_type,
-                            attachment_name: newMsg.attachment_name,
-                          }
-                        : c.last_message,
-                      unread_count: newUnreadCount,
-                    };
-                  }
-                  return c;
-                })
-                .sort((a, b) => {
-                  // Sort by last message time (most recent first)
-                  const timeA = a.last_message?.created_at
-                    ? new Date(a.last_message.created_at).getTime()
-                    : 0;
-                  const timeB = b.last_message?.created_at
-                    ? new Date(b.last_message.created_at).getTime()
-                    : 0;
-                  return timeB - timeA;
+              if (newMsg.sender_id === otherUserId) {
+                setHiddenChatUserIds((prev) => {
+                  if (!prev.has(otherUserId)) return prev;
+                  const next = new Set(prev);
+                  next.delete(otherUserId);
+                  persistHiddenChatUserIds(user.id, next);
+                  return next;
                 });
-            });
+              }
+            }
+            void refreshInbox(false);
           },
         )
         .on(
@@ -566,74 +614,19 @@ export default function MessagesPage() {
             schema: "public",
             table: "messages",
           },
-          async (payload) => {
-            const updatedMsg = payload.new as {
-              read_at?: string | null;
-              conversation_id?: string;
-              sender_id?: string;
-              created_at?: string;
-              read_by?: string | null;
-            };
-            if (!updatedMsg.read_at || !user?.id || !updatedMsg.conversation_id)
-              return;
-
-            const { data: convoData } = await supabase
-              .from("conversations")
-              .select("client_id, freelancer_id")
-              .eq("id", updatedMsg.conversation_id)
-              .single();
-
-            if (!convoData) return;
-
-            const otherUserId =
-              convoData.client_id === user.id
-                ? convoData.freelancer_id
-                : convoData.client_id;
-
-            const pairOr = `and(client_id.eq.${user.id},freelancer_id.eq.${otherUserId}),and(client_id.eq.${otherUserId},freelancer_id.eq.${user.id})`;
-            const { data: pairConvos } = await supabase
-              .from("conversations")
-              .select("id")
-              .or(pairOr);
-
-            const convoIds = (pairConvos ?? []).map((c) => c.id as string);
-            if (convoIds.length === 0) return;
-
-            const { count } = await supabase
-              .from("messages")
-              .select("*", { count: "exact", head: true })
-              .in("conversation_id", convoIds)
-              .eq("sender_id", otherUserId)
-              .is("read_at", null);
-
-            const unread = count ?? 0;
-
-            setConversations((prev) =>
-              prev.map((convo) => {
-                const cOther =
-                  convo.client_id === user.id
-                    ? convo.freelancer_id
-                    : convo.client_id;
-                if (cOther !== otherUserId) return convo;
-
-                const updatedLastMessage =
-                  convo.last_message?.created_at === updatedMsg.created_at
-                    ? convo.last_message
-                      ? {
-                          ...convo.last_message,
-                          read_at: updatedMsg.read_at ?? null,
-                          read_by: updatedMsg.read_by ?? null,
-                        }
-                      : undefined
-                    : convo.last_message;
-
-                return {
-                  ...convo,
-                  unread_count: unread,
-                  last_message: updatedLastMessage,
-                };
-              }),
-            );
+          () => {
+            void refreshInbox(false);
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "conversations",
+          },
+          () => {
+            void refreshInbox(false);
           },
         )
         .subscribe();
@@ -825,10 +818,10 @@ export default function MessagesPage() {
             </div>
           </div>
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:pt-0">
-            <div className="w-full min-w-0 max-w-full divide-y space-y-0.5">
+            <div className="w-full min-w-0 max-w-full space-y-0.5">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="flex w-full items-center gap-3 px-4 py-4">
-                  <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                  <Skeleton className="h-14 w-14 shrink-0 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-1/3" />
                     <Skeleton className="h-3 w-2/3" />
@@ -966,7 +959,7 @@ export default function MessagesPage() {
                 </div>
               </div>
             ) : (
-              <div className="w-full min-w-0 max-w-full divide-y space-y-0.5 overflow-x-hidden">
+              <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
                 {inboxRows.map((row) => {
                   if (row.kind === "activity") {
                     const a = row.alert;
@@ -994,16 +987,16 @@ export default function MessagesPage() {
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="relative shrink-0">
                             {a.sender_photo ? (
-                              <Avatar className="h-10 w-10 flex-shrink-0">
+                              <Avatar className="h-14 w-14 flex-shrink-0">
                                 <AvatarImage src={a.sender_photo} />
-                                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                                <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
                                   {a.title.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
                             ) : (
                               <div
                                 className={cn(
-                                  "h-10 w-10 rounded-full flex items-center justify-center",
+                                  "h-14 w-14 rounded-full flex items-center justify-center",
                                   a.type === "job_request" &&
                                     "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
                                   a.type === "confirmation" &&
@@ -1014,25 +1007,25 @@ export default function MessagesPage() {
                                     "bg-blue-500/15 text-blue-700 dark:text-blue-400",
                                 )}
                               >
-                                <ActivityIcon className="w-5 h-5" />
+                                <ActivityIcon className="w-6 h-6" />
                               </div>
                             )}
                           </div>
                           <div className="relative min-w-0 flex-1">
                             {a.created_at && (
-                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6rem] whitespace-nowrap text-right text-[10px] font-semibold tabular-nums text-muted-foreground/80">
+                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6rem] whitespace-nowrap text-right text-[12px] font-semibold tabular-nums text-muted-foreground/80">
                                 {formatTime(a.created_at)}
                               </span>
                             )}
                             <div className="min-w-0 max-w-full pr-24">
-                              <p className="mb-0.5 truncate text-[11px] font-medium text-muted-foreground">
+                              <p className="mb-0.5 truncate text-[12px] font-medium text-muted-foreground">
                                 {kind}
                               </p>
-                              <p className="truncate text-[15px] font-semibold text-foreground">
+                              <p className="truncate text-[17px] font-semibold text-foreground">
                                 {a.title}
                               </p>
                               {a.description && (
-                                <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                                <p className="mt-0.5 truncate text-[14px] text-muted-foreground">
                                   {a.description}
                                 </p>
                               )}
@@ -1052,29 +1045,23 @@ export default function MessagesPage() {
                       .toUpperCase() || "?";
 
                   const isActive = conversationId === convo.id;
-                  const subtitle = inboxRowSubtitle(convo.job_summary ?? null);
+                  const subtitle = inboxRowSubtitle(convo);
 
                   return (
-                    <InboxChatSwipeRow
+                    <div
                       key={row.key}
-                      onHide={() => {
-                        const oid = convo.other_user_id;
-                        if (oid) hideChatForUser(oid);
-                      }}
+                      className={cn(
+                        "cursor-pointer px-4 py-3 pr-[max(1rem,env(safe-area-inset-right,0px))] transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 relative border-l-2 border-transparent md:bg-transparent",
+                        isActive && "bg-muted/50 dark:bg-zinc-900/70 border-l-primary",
+                        convo.unread_count > 0 &&
+                          !isActive &&
+                          "bg-muted/20 dark:bg-muted/10",
+                      )}
+                      onClick={() => handleConversationClick(convo.id)}
                     >
-                      <div
-                        className={cn(
-                          "cursor-pointer px-4 py-3 pr-[max(1rem,env(safe-area-inset-right,0px))] transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 relative border-l-2 border-transparent md:bg-transparent",
-                          isActive && "bg-muted/50 dark:bg-zinc-900/70 border-l-primary",
-                          convo.unread_count > 0 &&
-                            !isActive &&
-                            "bg-muted/20 dark:bg-muted/10",
-                        )}
-                        onClick={() => handleConversationClick(convo.id)}
-                      >
                         <div className="flex min-w-0 items-start gap-3">
                           <div className="relative shrink-0 pt-0.5">
-                            <Avatar className="h-11 w-11 flex-shrink-0">
+                            <Avatar className="h-14 w-14 flex-shrink-0">
                               <AvatarImage
                                 src={
                                   convo.other_user_profile?.photo_url ||
@@ -1086,7 +1073,7 @@ export default function MessagesPage() {
                               </AvatarFallback>
                             </Avatar>
                             {convo.unread_count > 0 && (
-                              <div className="absolute -right-0.5 -top-0.5 h-4 min-w-[1rem] rounded-full bg-primary px-1 flex items-center justify-center ring-2 ring-background">
+                              <div className="absolute -right-0.5 -top-0.5 h-4 min-w-[1rem] rounded-full bg-primary px-1 flex items-center justify-center">
                                 <span className="text-[10px] font-semibold tabular-nums leading-none text-primary-foreground">
                                   {convo.unread_count > 9
                                     ? "9+"
@@ -1097,28 +1084,44 @@ export default function MessagesPage() {
                           </div>
                           <div className="relative min-w-0 flex-1">
                             {convo.last_message && (
-                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[5.5rem] whitespace-nowrap text-right text-[11px] tabular-nums text-muted-foreground">
+                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[5.5rem] whitespace-nowrap text-right text-[13px] tabular-nums text-muted-foreground">
                                 {formatTime(convo.last_message.created_at)}
                               </span>
                             )}
                             <div className="min-w-0 max-w-full pr-16">
                               <p
                                 className={cn(
-                                  "truncate text-[15px] font-semibold text-foreground",
+                                  "truncate text-[17px] font-semibold text-foreground flex items-center gap-1.5",
                                   convo.unread_count > 0 && "text-foreground",
                                 )}
                               >
-                                {convo.other_user_profile?.full_name || "User"}
+                                <span>{convo.other_user_profile?.full_name || "User"}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    if (convo.other_user_id) toggleProfileFavorite(convo.other_user_id, e);
+                                  }}
+                                  className="p-0.5 rounded-full hover:bg-muted/50 transition-colors z-10"
+                                >
+                                  <Heart
+                                    className={cn(
+                                      "h-4 w-4 transition-all",
+                                      convo.other_user_id && favoriteUserIds.has(convo.other_user_id)
+                                        ? "fill-rose-500 text-rose-500 scale-110"
+                                        : "text-muted-foreground/60 hover:text-rose-500"
+                                    )}
+                                  />
+                                </button>
                               </p>
                               {subtitle ? (
-                                <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                                <p className="mt-0.5 truncate text-[14px] text-muted-foreground">
                                   {subtitle}
                                 </p>
                               ) : null}
                               {convo.last_message && (
                                 <p
                                   className={cn(
-                                    "mt-1 line-clamp-2 text-[13px] leading-snug text-muted-foreground",
+                                    "mt-1 line-clamp-2 text-[14px] leading-snug text-muted-foreground",
                                     convo.unread_count > 0 &&
                                       "font-medium text-foreground/90",
                                   )}
@@ -1138,15 +1141,124 @@ export default function MessagesPage() {
                                 </p>
                               )}
                             </div>
+                            {isManageMode && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (convo.other_user_id) {
+                                    hideChatForUser(convo.other_user_id);
+                                  }
+                                }}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 shadow-md transition-colors"
+                                aria-label="Remove conversation"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </InboxChatSwipeRow>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
           </ScrollArea>
+        </div>
+
+        {/* Mobile Action Box */}
+        <div className="flex md:hidden shrink-0 items-center justify-around border-t border-border/30 bg-background/95 px-4 pt-2.5 pb-4 h-[71px]">
+          <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
+            <DialogTrigger asChild>
+              <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground">
+                <PlusSquare className="h-6 w-6" />
+                <span className="text-[11px] font-medium">New Chat</span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md p-6">
+              <DialogHeader>
+                <DialogTitle>Start a New Chat</DialogTitle>
+              </DialogHeader>
+              <input
+                type="text"
+                placeholder="Search users..."
+                className="w-full mt-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+              />
+              <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+                {userSearchResults.map((u) => (
+                  <button
+                    key={u.id}
+                    className="flex w-full items-center gap-3 rounded-lg p-2 hover:bg-muted/50 text-left"
+                    onClick={() => handleCreateChat(u.id)}
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={u.photo_url || ""} />
+                      <AvatarFallback>{u.full_name?.[0] || "?"}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{u.full_name || "User"}</p>
+                      <p className="text-xs text-muted-foreground uppercase">{u.role || ""}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <button
+            onClick={() => setIsManageMode(!isManageMode)}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 transition-colors",
+              isManageMode ? "text-red-500" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Trash2 className="h-6 w-6" />
+            <span className="text-[11px] font-medium">{isManageMode ? "Done" : "Remove"}</span>
+          </button>
+        </div>
+
+        {/* Desktop Tab Bar */}
+        <div className="hidden md:flex shrink-0 items-center justify-around border-t border-border/30 bg-background/95 px-4 pt-2.5 pb-4 h-[71px]">
+          <Link
+            to={profile?.role === "freelancer" ? "/freelancer/home" : "/client/home"}
+            className={cn(
+              "flex flex-col items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground",
+              (location.pathname.startsWith("/freelancer/home") || location.pathname.startsWith("/client/home")) && "text-primary hover:text-primary"
+            )}
+          >
+            <Home className="h-6 w-6" />
+          </Link>
+
+          <Link
+            to={profile?.role === "freelancer" ? "/freelancer/explore" : "/client/explore"}
+            className={cn(
+              "flex flex-col items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground",
+              (location.pathname.startsWith("/freelancer/explore") || location.pathname.startsWith("/client/explore")) && "text-primary hover:text-primary"
+            )}
+          >
+            <Rss className="h-6 w-6" />
+          </Link>
+
+          <Link
+            to="/messages"
+            className={cn(
+              "flex flex-col items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground",
+              location.pathname.startsWith("/messages") && "text-primary hover:text-primary"
+            )}
+          >
+            <MessageCircle className="h-6 w-6" />
+          </Link>
+
+          <Link
+            to={profile?.role === "freelancer" ? "/freelancer/profile" : "/client/profile"}
+            className={cn(
+              "flex flex-col items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground",
+              (location.pathname.startsWith("/freelancer/profile") || location.pathname.startsWith("/client/profile")) && "text-primary hover:text-primary"
+            )}
+          >
+            <User className="h-6 w-6" />
+          </Link>
         </div>
       </div>
 
@@ -1214,8 +1326,24 @@ export default function MessagesPage() {
                       </Avatar>
                     </button>
                     <div className="min-w-0 flex-1">
-                      <h2 className="font-semibold truncate">
+                      <h2 className="font-semibold truncate flex items-center gap-1.5">
                         {otherUserProfile?.full_name || "User"}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            if (otherUserId) toggleProfileFavorite(otherUserId, e);
+                          }}
+                          className="p-0.5 rounded-full hover:bg-muted/50 transition-colors"
+                        >
+                          <Heart
+                            className={cn(
+                              "h-4 w-4 transition-all",
+                              otherUserId && favoriteUserIds.has(otherUserId)
+                                ? "fill-rose-500 text-rose-500 scale-110"
+                                : "text-muted-foreground/60 hover:text-rose-500"
+                            )}
+                          />
+                        </button>
                       </h2>
                     </div>
                     {liveJobHeaderBanner && (

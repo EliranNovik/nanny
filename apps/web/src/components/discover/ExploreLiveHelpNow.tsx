@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import JobReviewModal from "@/components/JobReviewModal";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { Button } from "@/components/ui/button";
 
 type Mode = "hire" | "work";
@@ -108,6 +110,14 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
     reviewee: ProfileMini;
     revieweeRole: "client" | "freelancer";
   } | null>(null);
+
+  const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any | null>(null);
+
+  function openJobPreview(job: any) {
+    if (job.service_type === "pickup_delivery") setSelectedMapJob(job);
+    else setSelectedJobDetails(job);
+  }
 
   const otherPartyLabel = mode === "hire" ? "Helper" : "Client";
   const emptyTitle = mode === "hire" ? "Nothing in Helping me now yet." : "Nothing in Helping now yet.";
@@ -219,7 +229,7 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
                 <button
                   type="button"
                   onClick={() => {
-                    navigate(`/client/jobs/${encodeURIComponent(job.id)}/live`);
+                    openJobPreview(job);
                   }}
                   className="w-full text-left focus-visible:outline-none"
                   aria-label="Open live help details"
@@ -332,6 +342,22 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
           })}
         </div>
       )}
+
+      <FullscreenMapModal
+        job={selectedMapJob}
+        isOpen={!!selectedMapJob}
+        sheetPresentation
+        onClose={() => setSelectedMapJob(null)}
+      />
+
+      <JobDetailsModal
+        job={selectedJobDetails}
+        isOpen={!!selectedJobDetails}
+        onOpenChange={(open) => !open && setSelectedJobDetails(null)}
+        formatJobTitle={formatJobTitle}
+        sheetPresentation
+        isOwnRequest={selectedJobDetails?.client_id === user?.id}
+      />
     </section>
   );
 }

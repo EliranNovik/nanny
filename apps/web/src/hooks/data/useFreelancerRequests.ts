@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "./keys";
 
@@ -23,8 +24,32 @@ export type FreelancerRequestsData = {
 };
 
 export function useFreelancerRequests(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  const qk = queryKeys.freelancerRequests(userId);
+
+  useRealtimeSubscription(
+    { table: "job_requests", event: "*", enabled: !!userId },
+    () => {
+      void queryClient.invalidateQueries({ queryKey: qk });
+    }
+  );
+
+  useRealtimeSubscription(
+    { table: "job_candidate_notifications", event: "*", enabled: !!userId },
+    () => {
+      void queryClient.invalidateQueries({ queryKey: qk });
+    }
+  );
+
+  useRealtimeSubscription(
+    { table: "job_confirmations", event: "*", enabled: !!userId },
+    () => {
+      void queryClient.invalidateQueries({ queryKey: qk });
+    }
+  );
+
   return useQuery<FreelancerRequestsData>({
-    queryKey: queryKeys.freelancerRequests(userId),
+    queryKey: qk,
     enabled: !!userId,
     staleTime: 2 * 60 * 1000, // 2 minutes — requests change frequently
     queryFn: async () => {
