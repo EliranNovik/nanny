@@ -29,7 +29,7 @@ import { useToast } from "@/components/ui/toast";
 import { StarRating } from "@/components/StarRating";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
+
 import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
   publicProfileMediaPublicUrl,
@@ -72,18 +72,7 @@ type PostedHelpEngagement =
   | "not_invited"
   | "hidden";
 
-function canActAsHelper(
-  profile: {
-    role?: string | null;
-    is_available_for_jobs?: boolean | null;
-  } | null,
-): boolean {
-  if (!profile?.role) return false;
-  if (profile.role === "freelancer") return true;
-  if (profile.role === "client" && profile.is_available_for_jobs === true)
-    return true;
-  return false;
-}
+
 
 function livePostCategoryLabel(category: string): string {
   return isServiceCategoryId(category)
@@ -130,16 +119,7 @@ function jobServiceLabel(serviceType: string | undefined): string {
     : serviceType.replace(/_/g, " ");
 }
 
-function jobRequestStatusBadgeClass(status: string): string {
-  const s = status.toLowerCase();
-  if (s === "completed")
-    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
-  if (s === "cancelled")
-    return "bg-slate-500/10 text-slate-600 dark:text-slate-400";
-  if (s === "confirmed" || s === "active")
-    return "bg-orange-500/10 text-orange-700 dark:text-orange-400";
-  return "bg-amber-500/10 text-amber-800 dark:text-amber-300";
-}
+
 
 function jobRequestStatusLabel(status: string): string {
   const s = status.toLowerCase();
@@ -210,19 +190,7 @@ interface SharedJob {
   selected_freelancer_id: string | null;
 }
 
-/** True when this job is strictly between two users (one client, the other selected helper). */
-function jobIsBetweenUsers(
-  job: SharedJob,
-  userA: string,
-  userB: string,
-): boolean {
-  const sf = job.selected_freelancer_id;
-  if (!sf) return false;
-  return (
-    (job.client_id === userA && sf === userB) ||
-    (job.client_id === userB && sf === userA)
-  );
-}
+
 
 interface PublicProfileMediaRow {
   id: string;
