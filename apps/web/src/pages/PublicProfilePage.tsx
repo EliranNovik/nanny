@@ -228,9 +228,7 @@ export default function PublicProfilePage() {
   > | null>(null);
   const [postedHelpEngagement, setPostedHelpEngagement] =
     useState<PostedHelpEngagement>("idle");
-  const [postedHelpNotifId, setPostedHelpNotifId] = useState<string | null>(
-    null,
-  );
+
   const [postedHelpConfirming, setPostedHelpConfirming] = useState(false);
   const [postedHelpDeclining, setPostedHelpDeclining] = useState(false);
   const [loadingPostedHelpPreviewId, setLoadingPostedHelpPreviewId] = useState<
@@ -763,8 +761,6 @@ export default function PublicProfilePage() {
       : postedHelpEngagement === "declined"
         ? "You declined this request."
         : null;
-
-  const profileDisplayName = profile?.full_name?.split(" ")[0] || "This user";
 
   function renderPostedHelpRow(job: ProfilePostedHelpRequest) {
     return (
