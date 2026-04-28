@@ -1,13 +1,11 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, LayoutGrid, Plus, Filter, Search, X, SortDesc, SortAsc } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Plus, Search, X, SortDesc, SortAsc } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();

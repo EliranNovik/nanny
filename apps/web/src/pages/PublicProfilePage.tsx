@@ -121,24 +121,6 @@ function jobServiceLabel(serviceType: string | undefined): string {
 
 
 
-function jobRequestStatusLabel(status: string): string {
-  const s = status.toLowerCase();
-  if (
-    [
-      "pending",
-      "opened",
-      "ready",
-      "notifying",
-      "confirmations_closed",
-    ].includes(s)
-  ) {
-    return "In progress";
-  }
-  if (s === "confirmed" || s === "active" || s === "locked") return "Active";
-  if (s === "completed") return "Completed";
-  return status.replace(/_/g, " ");
-}
-
 function formatJobTitleForModal(job: { service_type?: string }) {
   if (job.service_type === "cleaning") return "Cleaning";
   if (job.service_type === "cooking") return "Cooking";
@@ -228,6 +210,7 @@ export default function PublicProfilePage() {
   > | null>(null);
   const [postedHelpEngagement, setPostedHelpEngagement] =
     useState<PostedHelpEngagement>("idle");
+  const [, setPostedHelpNotifId] = useState<string | null>(null);
 
   const [postedHelpConfirming, setPostedHelpConfirming] = useState(false);
   const [postedHelpDeclining, setPostedHelpDeclining] = useState(false);
@@ -410,10 +393,8 @@ export default function PublicProfilePage() {
 
     const viewerId = currentUser.id;
     const cached = readPublicProfileCache(viewerId, userId);
-    let fromCache = false;
 
     if (cached) {
-      fromCache = true;
       setProfile(cached.profile as PublicProfile);
       setSharedJobs(cached.sharedJobs as SharedJob[]);
       setReviews(cached.reviews as UserReview[]);
@@ -673,12 +654,6 @@ export default function PublicProfilePage() {
     (j) => j.status === "completed" && j.client_id === userId,
   ).length;
 
-  const pastJobs = sharedJobs.filter((j) => j.status === "completed");
-  const activeJobs = sharedJobs.filter(
-    (j) => j.status === "confirmed" || j.status === "active",
-  );
-  const pendingJobs = sharedJobs.filter((j) => j.status === "pending");
-
   const imageRows = mediaItems.filter((m) => m.media_type === "image");
   const videoRows = mediaItems.filter((m) => m.media_type === "video");
   const galleryImageUrls = imageRows.map((r) =>
@@ -719,11 +694,11 @@ export default function PublicProfilePage() {
     if (!postedHelpPreviewJob?.id || !currentUser?.id) return;
     setPostedHelpConfirming(true);
     try {
-      const { error } = await apiPost("/api/jobs/respond", {
+      const res = (await apiPost("/api/jobs/respond", {
         jobId: postedHelpPreviewJob.id,
         action: "accept",
-      });
-      if (error) throw new Error(error);
+      })) as { error?: string | null };
+      if (res?.error) throw new Error(res.error);
       addToast({ title: "Response sent", variant: "success" });
       setPostedHelpEngagement("accepted");
     } catch (e) {
@@ -741,11 +716,11 @@ export default function PublicProfilePage() {
     if (!postedHelpPreviewJob?.id || !currentUser?.id) return;
     setPostedHelpDeclining(true);
     try {
-      const { error } = await apiPost("/api/jobs/respond", {
+      const res = (await apiPost("/api/jobs/respond", {
         jobId: postedHelpPreviewJob.id,
         action: "decline",
-      });
-      if (error) throw new Error(error);
+      })) as { error?: string | null };
+      if (res?.error) throw new Error(res.error);
       setPostedHelpEngagement("declined");
     } catch (e) {
       console.error(e);
@@ -805,10 +780,6 @@ export default function PublicProfilePage() {
       </button>
     );
   }
-
-  const profileHistoryCardClass =
-    "bg-white/60 shadow-sm backdrop-blur-sm transition-all hover:shadow-md active:scale-[0.99] dark:bg-white/[0.02]";
-  const historyRowChevronClass = "h-4 w-4 text-slate-300 dark:text-slate-600";
 
   if (loading) {
     return (
