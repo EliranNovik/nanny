@@ -378,7 +378,9 @@ export function DiscoverHomeActionFirst({
                 src="/pexels-rdne-6646861.jpg"
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover object-top"
-                loading="lazy"
+                loading="eager"
+                decoding="async"
+                {...{ fetchpriority: "high" }}
               />
               {/* Dark overlay on top for badge + title */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/35 to-transparent" />
@@ -427,7 +429,9 @@ export function DiscoverHomeActionFirst({
                 src="/pexels-tima-miroshnichenko-6197046.jpg"
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover object-top"
-                loading="lazy"
+                loading="eager"
+                decoding="async"
+                {...{ fetchpriority: "high" }}
               />
               {/* Dark overlay on top for badge + title */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/35 to-transparent" />

@@ -706,6 +706,10 @@ function PostCard({
   const [videoLightboxOpen, setVideoLightboxOpen] = useState(false);
   const [showAllTagged, setShowAllTagged] = useState(false);
   const [videoUnmutedByUser, setVideoUnmutedByUser] = useState(false);
+  const [mediaOrientation, setMediaOrientation] = useState<
+    "unknown" | "portrait" | "landscape"
+  >("unknown");
+  const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const videoModalRef = useRef<HTMLVideoElement | null>(null);
 
@@ -713,6 +717,29 @@ function PostCard({
     post.media_type && post.storage_path
       ? publicProfileMediaPublicUrl(post.storage_path)
       : null;
+
+  const isLandscape = mediaOrientation === "landscape";
+  // Mobile media sizing:
+  // - Portrait: near full screen (Instagram-like)
+  // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
+  const mobileMediaBoxClass = isLandscape
+    ? "max-md:w-full"
+    : "max-md:h-[min(88dvh,54rem)]";
+  const mobileMediaStyle: React.CSSProperties | undefined =
+    isLandscape && mediaAspectRatio
+      ? { aspectRatio: String(mediaAspectRatio) }
+      : undefined;
+
+  // Desktop media sizing:
+  // - Portrait: tall and immersive (but still capped)
+  // - Landscape: size to the media's real aspect ratio
+  const desktopMediaBoxClass = isLandscape
+    ? "md:w-full"
+    : "md:h-[min(78vh,46rem)]";
+  const desktopMediaStyle: React.CSSProperties | undefined =
+    isLandscape && mediaAspectRatio
+      ? { aspectRatio: String(mediaAspectRatio) }
+      : undefined;
 
   async function toggleLike() {
     if (!currentUserId) {
@@ -884,18 +911,35 @@ function PostCard({
 
       {/* Media */}
       {mediaUrl && post.media_type === "image" && (
-        <div className="relative mt-0 md:mt-2 overflow-hidden">
+        <div
+          className={cn(
+            "relative mt-0 md:mt-2 overflow-hidden",
+            "bg-muted/40 dark:bg-neutral-900/50",
+            mobileMediaBoxClass,
+            desktopMediaBoxClass,
+          )}
+          style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
+        >
           <button
             type="button"
             onClick={() => setLightboxOpen(true)}
-            className="block w-full overflow-hidden focus-visible:outline-none"
+            className="block h-full w-full overflow-hidden focus-visible:outline-none"
             aria-label="View image full screen"
           >
             <img
               src={mediaUrl}
               alt=""
-              className="w-full max-h-[360px] object-cover"
+              className={cn("h-full w-full", isLandscape ? "object-contain" : "object-cover")}
               loading="lazy"
+              onLoad={(e) => {
+                const el = e.currentTarget;
+                const w = el.naturalWidth || 0;
+                const h = el.naturalHeight || 0;
+                if (!w || !h) return;
+                const ratio = w / h;
+                setMediaAspectRatio(ratio);
+                setMediaOrientation(ratio >= 1.05 ? "landscape" : "portrait");
+              }}
             />
           </button>
           <div
@@ -989,7 +1033,14 @@ function PostCard({
         </div>
       )}
       {mediaUrl && post.media_type === "video" && (
-        <div className="relative mt-0 md:mt-2 overflow-hidden bg-muted/40 dark:bg-neutral-900/50">
+        <div
+          className={cn(
+            "relative mt-0 md:mt-2 overflow-hidden bg-muted/40 dark:bg-neutral-900/50",
+            mobileMediaBoxClass,
+            desktopMediaBoxClass,
+          )}
+          style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
+        >
           <video
             ref={videoRef}
             src={mediaUrl}
@@ -997,7 +1048,20 @@ function PostCard({
             playsInline
             muted={!videoUnmutedByUser}
             preload="metadata"
-            className="w-full aspect-[4/3] object-cover"
+            className={cn(
+              "h-full w-full",
+              isLandscape ? "object-contain" : "object-cover",
+              "md:h-full md:w-full",
+            )}
+            onLoadedMetadata={(e) => {
+              const el = e.currentTarget;
+              const w = el.videoWidth || 0;
+              const h = el.videoHeight || 0;
+              if (!w || !h) return;
+              const ratio = w / h;
+              setMediaAspectRatio(ratio);
+              setMediaOrientation(ratio >= 1.05 ? "landscape" : "portrait");
+            }}
             onClick={(e) => {
               // Tap video to open full-size modal.
               e.stopPropagation();
@@ -1702,7 +1766,7 @@ export function ProfilePostsFeed({
                 <div className="h-2 w-16 bg-slate-50 dark:bg-white/5 rounded" />
               </div>
             </div>
-            <div className="aspect-[4/3] w-full bg-slate-50 dark:bg-white/5 rounded-xl" />
+            <div className="w-full bg-slate-50 dark:bg-white/5 rounded-xl max-md:h-[calc(100dvh-5rem-env(safe-area-inset-bottom,0px))] md:h-[min(78vh,46rem)]" />
             <div className="space-y-2">
               <div className="h-3 w-full bg-slate-50 dark:bg-white/5 rounded" />
               <div className="h-3 w-2/3 bg-slate-50 dark:bg-white/5 rounded" />

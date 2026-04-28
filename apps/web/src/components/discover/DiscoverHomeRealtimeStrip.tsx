@@ -525,7 +525,12 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               {/* MOBILE BIG AVATAR (Like Hire cards) */}
               <div className="relative mx-auto w-fit md:hidden pt-1">
                 <Avatar className="h-24 w-24 shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
-                  <AvatarImage src={row.thumbUrl || undefined} className="object-cover" />
+                  <AvatarImage
+                    src={row.thumbUrl || undefined}
+                    className="object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
                   <AvatarFallback className="text-xl font-bold">
                     {row.name.charAt(0)}
                   </AvatarFallback>
@@ -649,6 +654,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   alt=""
                   className="h-full w-full object-cover"
                   loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-4xl font-semibold text-slate-400 dark:text-zinc-500">
@@ -686,7 +692,12 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
             <div className="relative mx-auto w-fit md:hidden">
               <Avatar className="h-24 w-24 shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
-                <AvatarImage src={it.photo || undefined} className="object-cover" />
+                <AvatarImage
+                  src={it.photo || undefined}
+                  className="object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
                 <AvatarFallback className="text-xl font-bold">
                   {it.name.charAt(0)}
                 </AvatarFallback>
