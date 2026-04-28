@@ -135,19 +135,52 @@ export function BottomNav() {
     : 0;
   const [headerVisible, setHeaderVisible] = useState(true);
   const scrollYRef = useRef(0);
+  const headerVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > scrollYRef.current && currentScrollY > 100) {
-        setHeaderVisible(false);
-      } else {
-        setHeaderVisible(true);
-      }
+      const prev = scrollYRef.current;
+      const dy = currentScrollY - prev;
       scrollYRef.current = currentScrollY;
+
+      // Small delay + hysteresis to avoid flicker/stuck states
+      // when the user scrolls up/down quickly.
+      const MIN_DELTA = 10;
+      const HIDE_AFTER_MS = 120;
+      const SHOW_AFTER_MS = 80;
+
+      // Always show near the top.
+      if (currentScrollY <= 100) {
+        if (headerVisibilityTimerRef.current) {
+          clearTimeout(headerVisibilityTimerRef.current);
+          headerVisibilityTimerRef.current = null;
+        }
+        setHeaderVisible(true);
+        return;
+      }
+
+      if (Math.abs(dy) < MIN_DELTA) return;
+
+      const nextVisible = dy < 0;
+      if (headerVisibilityTimerRef.current) {
+        clearTimeout(headerVisibilityTimerRef.current);
+      }
+      headerVisibilityTimerRef.current = setTimeout(() => {
+        setHeaderVisible(nextVisible);
+        headerVisibilityTimerRef.current = null;
+      }, nextVisible ? SHOW_AFTER_MS : HIDE_AFTER_MS);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (headerVisibilityTimerRef.current) {
+        clearTimeout(headerVisibilityTimerRef.current);
+        headerVisibilityTimerRef.current = null;
+      }
+    };
   }, []);
 
   /** Scroll-linked — no CSS transition; transform/opacity follow collapse progress. */

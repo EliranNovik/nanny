@@ -62,6 +62,7 @@ import {
 } from "@/lib/favoriteToLikedTabFlight";
 import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 type PostedHelpEngagement =
   | "idle"
@@ -191,6 +192,9 @@ export default function PublicProfilePage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioDraft, setBioDraft] = useState("");
+  const [savingBio, setSavingBio] = useState(false);
   const [sharedJobs, setSharedJobs] = useState<SharedJob[]>([]);
   const [reviews, setReviews] = useState<UserReview[]>([]);
   const [mediaItems, setMediaItems] = useState<PublicProfileMediaRow[]>([]);
@@ -234,6 +238,35 @@ export default function PublicProfilePage() {
   const [profileMediaTab, setProfileMediaTab] =
     useState<ProfileMediaSectionTab>("posts");
   const profileFavoriteButtonRef = useRef<HTMLButtonElement>(null);
+
+  async function saveBio(nextBio: string) {
+    if (!userId || !isOwnProfile) return;
+    setSavingBio(true);
+    try {
+      const bio = nextBio.trim() || null;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ bio })
+        .eq("id", userId);
+      if (error) throw error;
+
+      // Keep legacy freelancer_profiles.bio in sync when applicable.
+      if ((profile?.role || "") === "freelancer") {
+        await supabase
+          .from("freelancer_profiles")
+          .update({ bio })
+          .eq("user_id", userId);
+      }
+
+      setProfile((p) => (p ? { ...p, bio } : p));
+      setEditingBio(false);
+      addToast({ title: "Bio updated", variant: "success" });
+    } catch (e) {
+      addToast({ title: "Could not update bio", variant: "error" });
+    } finally {
+      setSavingBio(false);
+    }
+  }
 
   async function handleOpenDirectChat() {
     if (!userId || !currentUser || !profile) return;
@@ -418,7 +451,7 @@ export default function PublicProfilePage() {
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select(
-            "id, full_name, photo_url, role, city, categories, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
+            "id, full_name, photo_url, role, city, categories, bio, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
           )
           .eq("id", userId)
           .single();
@@ -432,12 +465,14 @@ export default function PublicProfilePage() {
           .eq("user_id", userId)
           .maybeSingle();
 
+        const bio = (profileData as { bio?: string | null } | null)?.bio ?? freelancerData?.bio ?? null;
         const nextProfile: PublicProfile = {
           ...profileData,
-          bio: freelancerData?.bio || null,
+          bio,
           whatsapp_number: profileData.whatsapp_number_e164,
         };
         setProfile(nextProfile);
+        setBioDraft(bio ?? "");
 
         // 3. Jobs + pending notifications strictly between viewer (A) and profile (B) only.
         const profileId = userId;
@@ -977,14 +1012,14 @@ export default function PublicProfilePage() {
         {/* Profile Hero Header Info (Below header bar) */}
         <div className="px-5 pt-20 pb-6 bg-white dark:bg-black">
           <div className="flex gap-4 items-start mb-6">
-            <div className="relative h-24 w-24 shrink-0">
+            <div className="relative h-36 w-36 shrink-0">
                {profile.photo_url ? (
                 <button type="button" onClick={() => setProfileMediaLightbox({ urls: [profile.photo_url!], initialIndex: 0 })} className="relative block h-full w-full rounded-full ring-2 ring-slate-100 transition active:scale-[0.98] dark:ring-white/10 overflow-hidden shadow-lg shadow-black/5" aria-label="View profile photo full screen">
                   <img src={profile.photo_url} alt={profile.full_name ?? "Profile"} className="h-full w-full object-cover" loading="eager" />
                 </button>
               ) : (
                 <div className="flex h-full w-full items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 ring-2 ring-slate-100 dark:ring-white/10 shadow-lg shadow-black/5">
-                  <span className="text-2xl font-black text-slate-400">{photoInitials}</span>
+                  <span className="text-4xl font-black text-slate-400">{photoInitials}</span>
                 </div>
               )}
             </div>
@@ -1017,6 +1052,67 @@ export default function PublicProfilePage() {
               </div>
             </div>
           )}
+
+          {/* Bio (under categories) */}
+          <div className="mt-6">
+            <p className="text-[10px] uppercase font-black tracking-[.2em] text-slate-400 dark:text-slate-500 mb-2 ml-0.5">
+              About me
+            </p>
+            {editingBio && isOwnProfile ? (
+              <div className="space-y-3">
+                <Textarea
+                  value={bioDraft}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setBioDraft(e.target.value)
+                  }
+                  placeholder="Write a short bio…"
+                  maxLength={700}
+                  rows={4}
+                  className="min-h-[110px] resize-none rounded-2xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-white/10 dark:bg-white/5"
+                  disabled={savingBio}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="rounded-full"
+                    onClick={() => {
+                      setEditingBio(false);
+                      setBioDraft(profile.bio ?? "");
+                    }}
+                    disabled={savingBio}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className="rounded-full"
+                    onClick={() => void saveBio(bioDraft)}
+                    disabled={savingBio}
+                  >
+                    {savingBio ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save bio"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-medium text-slate-700 dark:text-white/85 whitespace-pre-wrap">
+                  {profile.bio?.trim() ? profile.bio : "No bio shared yet."}
+                </p>
+                {isOwnProfile ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0 rounded-full"
+                    onClick={() => setEditingBio(true)}
+                  >
+                    {!profile.bio?.trim() ? <Plus className="mr-1.5 h-4 w-4" aria-hidden /> : null}
+                    {profile.bio?.trim() ? "Edit bio" : "Add bio"}
+                  </Button>
+                ) : null}
+              </div>
+            )}
+          </div>
 
           {/* Connect Actions */}
           {!isOwnProfile && (
@@ -1082,7 +1178,7 @@ export default function PublicProfilePage() {
                   <p className="text-xs font-black uppercase tracking-widest opacity-40">No photos</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-0.5">
+                <div className="grid grid-cols-2 gap-1 px-4">
                    {imageRows.map((row, idx) => (
                     <div key={row.id} className="aspect-square relative group">
                        <button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full">

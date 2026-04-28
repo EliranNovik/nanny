@@ -16,6 +16,7 @@ import {
   LayoutGrid,
   Sparkles,
   SendHorizontal,
+  BadgeCheck,
   VolumeX,
   Volume2,
 } from "lucide-react";
@@ -51,6 +52,7 @@ export type ProfileSnippet = {
   id: string;
   full_name: string | null;
   photo_url: string | null;
+  is_verified?: boolean | null;
 };
 
 export type ProfilePost = {
@@ -122,10 +124,16 @@ function renderCaptionWithMentions(caption: string): React.ReactNode {
 
 function CommentsDialog({
   postId,
+  caption,
+  authorName,
+  authorPhotoUrl,
   open,
   onClose,
 }: {
   postId: string;
+  caption?: React.ReactNode;
+  authorName?: string;
+  authorPhotoUrl?: string | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -153,7 +161,7 @@ function CommentsDialog({
       const ids = [...new Set(list.map((r) => r.author_id))];
       const { data: profs } = await supabase
         .from("profiles")
-        .select("id, full_name, photo_url")
+        .select("id, full_name, photo_url, is_verified")
         .in("id", ids);
       const map = new Map((profs ?? []).map((p) => [p.id as string, p as ProfileSnippet]));
       setComments(list.map((r) => ({ ...r, author: map.get(r.author_id) })));
@@ -230,6 +238,31 @@ function CommentsDialog({
 
         <ScrollArea className="flex-1 px-5">
           <div className="space-y-5 py-4">
+            {caption ? (
+              <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
+                    Post
+                  </div>
+                  {authorName ? (
+                    <div className="inline-flex items-center gap-2">
+                      <Avatar className="h-6 w-6 ring-1 ring-border/50">
+                        <AvatarImage src={authorPhotoUrl ?? undefined} />
+                        <AvatarFallback className="text-[10px] font-black">
+                          {authorName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="text-xs font-bold text-foreground/80">
+                        Written by {authorName}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                  {caption}
+                </div>
+              </div>
+            ) : null}
             {loading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -385,7 +418,7 @@ export function ComposeModal({
     tagTimeoutRef.current = setTimeout(async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, photo_url")
+        .select("id, full_name, photo_url, is_verified")
         .ilike("full_name", `%${tagQuery.trim()}%`)
         .neq("id", user?.id ?? "")
         .limit(8);
@@ -690,12 +723,16 @@ function PostCard({
   onLikeToggle,
   isOwnFeed,
   onDeleted,
+  globalVideoUnmuted,
+  onGlobalVideoUnmutedChange,
 }: {
   post: FeedPost;
   currentUserId: string | null;
   onLikeToggle: (postId: string, liked: boolean) => void;
   isOwnFeed: boolean;
   onDeleted: (postId: string) => void;
+  globalVideoUnmuted: boolean;
+  onGlobalVideoUnmutedChange: (next: boolean) => void;
 }) {
   const { addToast } = useToast();
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -705,7 +742,7 @@ function PostCard({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [videoLightboxOpen, setVideoLightboxOpen] = useState(false);
   const [showAllTagged, setShowAllTagged] = useState(false);
-  const [videoUnmutedByUser, setVideoUnmutedByUser] = useState(false);
+  const videoUnmutedByUser = globalVideoUnmuted;
   const [mediaOrientation, setMediaOrientation] = useState<
     "unknown" | "portrait" | "landscape"
   >("unknown");
@@ -724,7 +761,7 @@ function PostCard({
   // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
   const mobileMediaBoxClass = isLandscape
     ? "max-md:w-full"
-    : "max-md:h-[min(88dvh,54rem)]";
+    : "max-md:h-[min(76dvh,46rem)]";
   const mobileMediaStyle: React.CSSProperties | undefined =
     isLandscape && mediaAspectRatio
       ? { aspectRatio: String(mediaAspectRatio) }
@@ -735,7 +772,7 @@ function PostCard({
   // - Landscape: size to the media's real aspect ratio
   const desktopMediaBoxClass = isLandscape
     ? "md:w-full"
-    : "md:h-[min(78vh,46rem)]";
+    : "md:h-[min(72vh,42rem)]";
   const desktopMediaStyle: React.CSSProperties | undefined =
     isLandscape && mediaAspectRatio
       ? { aspectRatio: String(mediaAspectRatio) }
@@ -876,7 +913,7 @@ function PostCard({
           <div className="min-w-0 flex-1">
             <Link
               to={`/profile/${post.author_id}`}
-              className="font-bold text-sm text-foreground hover:underline underline-offset-2"
+              className="font-black text-[15px] text-foreground hover:underline underline-offset-2"
             >
               {authorName}
             </Link>
@@ -960,15 +997,25 @@ function PostCard({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <div className="truncate text-[13px] font-extrabold leading-tight tracking-tight text-white drop-shadow-sm">
-                  {authorName}
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="truncate text-[15px] font-extrabold leading-tight tracking-tight text-white drop-shadow-sm">
+                    {authorName}
+                  </div>
+                  {post.author?.is_verified ? (
+                    <BadgeCheck
+                      className="h-[18px] w-[18px] shrink-0 drop-shadow-sm"
+                      fill="#0ea5e9"
+                      color="#ffffff"
+                      aria-label="Verified"
+                    />
+                  ) : null}
                 </div>
-                <div className="mt-0.5 inline-flex items-center gap-1.5">
-                  <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold tabular-nums tracking-tight text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <time className="text-[15px] font-normal tabular-nums tracking-tight text-white/90 drop-shadow-sm">
                     {postedLabel}
-                  </span>
+                  </time>
                   {isSource ? (
-                    <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-white/85 drop-shadow-sm">
                       {categoryLabel((post as AvailabilityPost).category)}
                     </span>
                   ) : null}
@@ -1084,7 +1131,7 @@ function PostCard({
               const el = videoRef.current;
               if (!el) return;
               const nextMuted = !el.muted;
-              setVideoUnmutedByUser(!nextMuted);
+              onGlobalVideoUnmutedChange(!nextMuted);
               el.muted = nextMuted;
               if (!nextMuted) {
                 const p = el.play();
@@ -1123,15 +1170,25 @@ function PostCard({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <div className="truncate text-[13px] font-extrabold leading-tight tracking-tight text-white drop-shadow-sm">
-                  {authorName}
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="truncate text-[15px] font-extrabold leading-tight tracking-tight text-white drop-shadow-sm">
+                    {authorName}
+                  </div>
+                  {post.author?.is_verified ? (
+                    <BadgeCheck
+                      className="h-[18px] w-[18px] shrink-0 drop-shadow-sm"
+                      fill="#0ea5e9"
+                      color="#ffffff"
+                      aria-label="Verified"
+                    />
+                  ) : null}
                 </div>
-                <div className="mt-0.5 inline-flex items-center gap-1.5">
-                  <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold tabular-nums tracking-tight text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <time className="text-[15px] font-normal tabular-nums tracking-tight text-white/90 drop-shadow-sm">
                     {postedLabel}
-                  </span>
+                  </time>
                   {isSource ? (
-                    <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-white/85 drop-shadow-sm">
                       {categoryLabel((post as AvailabilityPost).category)}
                     </span>
                   ) : null}
@@ -1232,7 +1289,7 @@ function PostCard({
                   const el = videoModalRef.current;
                   if (!el) return;
                   const nextMuted = !el.muted;
-                  setVideoUnmutedByUser(!nextMuted);
+                  onGlobalVideoUnmutedChange(!nextMuted);
                   el.muted = nextMuted;
                   if (!nextMuted) void el.play();
                 }}
@@ -1271,9 +1328,30 @@ function PostCard({
       {/* Caption */}
       {post.caption?.trim() && (
         <div className="px-4 pt-2 pb-0 md:pt-3 md:pb-1">
-          <p className="text-[15px] leading-relaxed text-foreground">
-            {renderCaptionWithMentions(post.caption)}
-          </p>
+          <div className="flex items-end justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setCommentsOpen(true)}
+              className="flex-1 text-left"
+              aria-label="Open full post text"
+            >
+              <p className="line-clamp-2 text-[15px] leading-relaxed text-foreground">
+                <span className="font-black">{authorName}</span>{" "}
+                <span className="mx-1 inline-block align-middle text-[12px] text-muted-foreground">•</span>{" "}
+                {renderCaptionWithMentions(post.caption)}
+              </p>
+            </button>
+            {post.caption.trim().length > 120 || post.caption.includes("\n") ? (
+              <button
+                type="button"
+                onClick={() => setCommentsOpen(true)}
+                className="shrink-0 text-sm font-black text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+                aria-label="Show full text"
+              >
+                More
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -1315,7 +1393,7 @@ function PostCard({
         >
           <Heart
             className={cn("h-5 w-5 transition-transform", post.liked_by_me && "fill-rose-500 scale-110")}
-            strokeWidth={2}
+            strokeWidth={2.75}
           />
           {post.like_count > 0 && (
             <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
@@ -1329,7 +1407,7 @@ function PostCard({
           className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted/60 hover:text-orange-600 transition-colors"
           aria-label="Comments"
         >
-          <MessageCircle className="h-5 w-5" strokeWidth={2} />
+          <MessageCircle className="h-5 w-5" strokeWidth={2.75} />
           {commentCount > 0 && (
             <span className="min-w-[1ch] tabular-nums">{commentCount}</span>
           )}
@@ -1342,13 +1420,16 @@ function PostCard({
           className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted/60 hover:text-orange-600 transition-colors"
           aria-label="Share"
         >
-          <Share2 className="h-5 w-5" strokeWidth={2} />
+          <Share2 className="h-5 w-5" strokeWidth={2.75} />
         </button>
       </div>
 
       {/* Comments dialog */}
       <CommentsDialog
         postId={post.id}
+        caption={post.caption?.trim() ? renderCaptionWithMentions(post.caption) : undefined}
+        authorName={authorName}
+        authorPhotoUrl={post.author?.photo_url ?? null}
         open={commentsOpen}
         onClose={() => {
           setCommentsOpen(false);
@@ -1389,6 +1470,7 @@ export function ProfilePostsFeed({
   filterLikedByUserId,
 }: ProfilePostsFeedProps) {
   const { user, profile: currentProfile } = useAuth();
+  const [globalVideoUnmuted, setGlobalVideoUnmuted] = useState(false);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -1618,7 +1700,7 @@ export function ProfilePostsFeed({
 
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, full_name, photo_url")
+        .select("id, full_name, photo_url, is_verified")
         .in("id", [...profileIds, ...allTaggedIds].slice(0, 200));
 
       const profileMap = new Map<string, ProfileSnippet>(
@@ -1838,6 +1920,8 @@ export function ProfilePostsFeed({
             onLikeToggle={handleLikeToggle}
             isOwnFeed={isOwnProfile}
             onDeleted={handleDeleted}
+            globalVideoUnmuted={globalVideoUnmuted}
+            onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
           />
         ))
       )}
