@@ -77,6 +77,7 @@ import AdminPage from "@/pages/admin/AdminPage";
 import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
+import GlobalPostsPage from "@/pages/GlobalPostsPage";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -214,6 +215,7 @@ function AppRoutes() {
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>
         <Route path="/public/posts" element={<PublicCommunityPostsPage />} />
+        <Route path="/community/feed" element={<GlobalPostsPage />} />
         {/* Client routes */}
         <Route
           path="/client/home"

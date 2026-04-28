@@ -79,10 +79,6 @@ function bottomNavTabIconClass(isActive: boolean) {
   );
 }
 
-/** Label under each bottom tab icon (mobile + desktop). */
-const bottomNavTabLabelClass =
-  "mt-0.5 inline-block max-w-[4.5rem] truncate text-center text-[9px] font-semibold leading-tight text-zinc-950 dark:text-white sm:max-w-none sm:text-[10px]";
-
 /** App menu — job tab counts: dark frosted glass (light) / light frosted glass (dark). */
 const appMenuJobsCountBadgeClassName = cn(
   "shrink-0 min-w-[1.75rem] justify-center rounded-full border px-2 py-0.5 text-xs font-bold tabular-nums",
@@ -137,6 +133,23 @@ export function BottomNav() {
   const shellCollapseChromeP = isShellScrollCollapseRoute
     ? discoverHeaderCollapseProgress
     : 0;
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const scrollYRef = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > scrollYRef.current && currentScrollY > 100) {
+        setHeaderVisible(false);
+      } else {
+        setHeaderVisible(true);
+      }
+      scrollYRef.current = currentScrollY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   /** Scroll-linked — no CSS transition; transform/opacity follow collapse progress. */
   const shellScrollMobileChromeOverlayStyle: CSSProperties | undefined =
     isShellScrollCollapseRoute && shellCollapseChromeP > 0
@@ -805,10 +818,11 @@ export function BottomNav() {
     <div
       data-mobile-header-strip=""
       className={cn(
-        "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] translate-y-0 opacity-100",
+        "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] transition-[transform,opacity,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
         "border-none bg-background shadow-none backdrop-blur-none dark:bg-background",
+        !headerVisible && !isShellScrollCollapseRoute && "-translate-y-full opacity-0",
         !isShellScrollCollapseRoute &&
-        "transition-[transform,opacity,background-color] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "motion-reduce:transition-none",
       )}
       style={{
         paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
@@ -825,12 +839,13 @@ export function BottomNav() {
   const MobileFloatingActions = (
     <div
       className={cn(
-        "md:hidden fixed z-[60] pointer-events-none",
+        "md:hidden fixed z-[60] pointer-events-none transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
         mobileSearchOpen || showCommunityHeaderCategoryDropdown
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
           : "right-[max(0.75rem,env(safe-area-inset-right))]",
+        !headerVisible && !isShellScrollCollapseRoute && "-translate-y-full opacity-0",
         !isShellScrollCollapseRoute &&
-        "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "motion-reduce:transition-none",
       )}
       style={{
         top: "max(0.75rem, env(safe-area-inset-top))",
@@ -910,12 +925,13 @@ export function BottomNav() {
   const mobileUniversalBackBtnClass =
     "pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
 
-  const MobileLeftHeaderCluster = isPublicUserProfilePage ? null : (
+  const MobileLeftHeaderCluster = (
     <div
       className={cn(
-        "md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1",
+        "md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        !headerVisible && !isShellScrollCollapseRoute && "-translate-y-full opacity-0",
         !isShellScrollCollapseRoute &&
-        "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "motion-reduce:transition-none",
       )}
       style={{
         top: "max(0.75rem, env(safe-area-inset-top))",
@@ -1029,6 +1045,7 @@ export function BottomNav() {
       "/availability",
       "/freelancer/availability",
       "/public/posts",
+      "/community/feed",
       "/liked",
       "/dashboard",
       "/messages",
@@ -1065,7 +1082,6 @@ export function BottomNav() {
                   active
                   className="text-zinc-950 dark:text-white"
                 />
-                <span className={bottomNavTabLabelClass}>Home</span>
               </div>
             </div>
           </div>
@@ -1132,9 +1148,8 @@ export function BottomNav() {
                     aria-current={isActive ? "page" : undefined}
                   >
                     <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
-                      <BottomNavHomeIcon active={isActive} />
+                      <BottomNavHomeIcon active={isActive} className={bottomNavTabIconClass(isActive)} />
                     </div>
-                    <span className={bottomNavTabLabelClass}>Home</span>
                   </Link>
                 );
               })()}
@@ -1157,7 +1172,6 @@ export function BottomNav() {
                     aria-hidden
                   />
                 </div>
-                <span className={bottomNavTabLabelClass}>Explore</span>
               </Link>
 
               {/* Center — + dropdown */}
@@ -1192,7 +1206,6 @@ export function BottomNav() {
                       <Plus className="h-6 w-6" strokeWidth={2.75} aria-hidden />
                     </div>
                   </div>
-                  <span className={bottomNavTabLabelClass}>New</span>
                 </button>
 
                 {plusMenuOpen ? (
@@ -1244,6 +1257,24 @@ export function BottomNav() {
                         ) : null}
                       </span>
                     </button>
+                    <div className="h-px w-full bg-white/10" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-3 px-5 py-4 text-left text-[15px] font-bold hover:bg-white/10 active:bg-white/15 relative"
+                      onClick={() => {
+                        setPlusMenuOpen(false);
+                        navigate("/community/feed");
+                      }}
+                    >
+                      <Radio className="h-6 w-6 shrink-0 text-white/90" aria-hidden />
+                      <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                        <span>Community posts</span>
+                        <span className="shrink-0 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm ring-1 ring-white/20">
+                          New
+                        </span>
+                      </span>
+                    </button>
                   </div>
                 ) : null}
               </div>
@@ -1267,7 +1298,6 @@ export function BottomNav() {
                     <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
                       <MessageCircle className={bottomNavTabIconClass(isActive)} />
                     </div>
-                    <span className={bottomNavTabLabelClass}>Inbox</span>
 
                     {showMessageBadge && (
                       <Badge
@@ -1310,7 +1340,6 @@ export function BottomNav() {
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <span className={bottomNavTabLabelClass}>Profile</span>
                     </button>
 
                     <Link
@@ -1342,7 +1371,6 @@ export function BottomNav() {
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <span className={bottomNavTabLabelClass}>Profile</span>
                     </Link>
                   </>
                 );
