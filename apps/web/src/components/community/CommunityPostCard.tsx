@@ -159,6 +159,7 @@ export function CommunityPostCard({
   const pinFooterToBottom = publicFeedCard && imageUrls.length === 0;
   const splitDesktopImageCard = publicFeedCard && imageUrls.length > 0;
   const noImagePublicFeed = publicFeedCard && imageUrls.length === 0;
+  const overlayAuthorOnImage = Boolean(plain && imageUrls.length === 1);
 
   const sharePost = useCallback(async () => {
     const url = `${window.location.origin}/public/posts?post=${encodeURIComponent(post.id)}`;
@@ -398,69 +399,67 @@ export function CommunityPostCard({
                     "md:justify-end md:px-4 md:pt-4 md:pb-0",
                 )}
               >
-                <div
-                  className={cn(
-                    "flex min-w-0 flex-1 items-start gap-3",
-                    splitDesktopImageCard && "md:hidden",
-                  )}
-                >
-                  {!isMine ? (
-                    <Link
-                      to={`/profile/${post.author_id}`}
-                      className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
-                      aria-label={`View ${post.author_full_name || "member"} profile`}
-                    >
-                      {avatarEl}
-                    </Link>
-                  ) : (
-                    <div className="relative shrink-0 rounded-full">
-                      {avatarEl}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1 pt-0.5">
-                    <div className="flex items-center gap-1">
-                      <span className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
-                        {post.author_full_name || "Member"}
-                      </span>
-                      {verified && (
-                        <BadgeCheck
-                          className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
-                          aria-label="Verified"
-                        />
+                {overlayAuthorOnImage ? (
+                  <div className="min-w-0 flex-1" />
+                ) : (
+                  <div
+                    className={cn(
+                      "flex min-w-0 flex-1 items-start gap-3",
+                      splitDesktopImageCard && "md:hidden",
+                    )}
+                  >
+                    {!isMine ? (
+                      <Link
+                        to={`/profile/${post.author_id}`}
+                        className="relative shrink-0 rounded-full outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70"
+                        aria-label={`View ${post.author_full_name || "member"} profile`}
+                      >
+                        {avatarEl}
+                      </Link>
+                    ) : (
+                      <div className="relative shrink-0 rounded-full">{avatarEl}</div>
+                    )}
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <div className="flex items-center gap-1">
+                        <span className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
+                          {post.author_full_name || "Member"}
+                        </span>
+                        {verified && (
+                          <BadgeCheck
+                            className="h-[18px] w-[18px] shrink-0 fill-sky-500 text-white dark:fill-sky-400"
+                            aria-label="Verified"
+                          />
+                        )}
+                      </div>
+                      {(() => {
+                        const total = Number(post.author_total_ratings ?? 0);
+                        const avg = Number(post.author_average_rating ?? 0);
+                        if (total > 0) {
+                          return (
+                            <StarRating
+                              rating={avg}
+                              totalRatings={total}
+                              size="md"
+                              className="mt-1.5"
+                              starClassName="text-amber-500 dark:text-amber-400"
+                              numberClassName="text-amber-950 dark:text-amber-100"
+                            />
+                          );
+                        }
+                        return <p className="mt-1 text-xs text-muted-foreground">No reviews yet</p>;
+                      })()}
+                      {postedAgoLabel && (
+                        <time
+                          dateTime={post.created_at}
+                          title={new Date(post.created_at).toISOString()}
+                          className="mt-1.5 block text-xs font-medium tabular-nums tracking-tight text-muted-foreground"
+                        >
+                          Posted {postedAgoLabel}
+                        </time>
                       )}
                     </div>
-                    {(() => {
-                      const total = Number(post.author_total_ratings ?? 0);
-                      const avg = Number(post.author_average_rating ?? 0);
-                      if (total > 0) {
-                        return (
-                          <StarRating
-                            rating={avg}
-                            totalRatings={total}
-                            size="md"
-                            className="mt-1.5"
-                            starClassName="text-amber-500 dark:text-amber-400"
-                            numberClassName="text-amber-950 dark:text-amber-100"
-                          />
-                        );
-                      }
-                      return (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          No reviews yet
-                        </p>
-                      );
-                    })()}
-                    {postedAgoLabel && (
-                      <time
-                        dateTime={post.created_at}
-                        title={new Date(post.created_at).toISOString()}
-                        className="mt-1.5 block text-xs font-medium tabular-nums tracking-tight text-muted-foreground"
-                      >
-                        Posted {postedAgoLabel}
-                      </time>
-                    )}
                   </div>
-                </div>
+                )}
                 {(!isMine || !hideShareInIconRow) && (
                   <div className="flex shrink-0 items-start gap-0.5">
                     {!isMine &&
@@ -612,6 +611,86 @@ export function CommunityPostCard({
                         loading="lazy"
                       />
                     </button>
+                    {overlayAuthorOnImage ? (
+                      <>
+                        <div
+                          className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-20 bg-gradient-to-b from-black/70 via-black/35 to-transparent"
+                          aria-hidden
+                        />
+                        <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between gap-3 p-3">
+                          <div className="min-w-0">
+                            {!isMine ? (
+                              <Link
+                                to={`/profile/${post.author_id}`}
+                                className="group inline-flex items-center gap-2 rounded-full pr-2 outline-none ring-offset-2 ring-offset-black/20 focus-visible:ring-2 focus-visible:ring-white/60"
+                                aria-label={`View ${post.author_full_name || "member"} profile`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Avatar className="h-9 w-9 ring-1 ring-white/20 shadow-sm">
+                                  <AvatarImage
+                                    src={post.author_photo_url ?? undefined}
+                                    className="object-cover"
+                                    alt=""
+                                  />
+                                  <AvatarFallback className="bg-black/50 text-sm font-bold text-white">
+                                    {(post.author_full_name || "?").charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1">
+                                    <span className="truncate text-[13px] font-extrabold leading-tight tracking-tight text-white drop-shadow-sm">
+                                      {post.author_full_name || "Member"}
+                                    </span>
+                                    {verified && (
+                                      <BadgeCheck
+                                        className="h-4 w-4 shrink-0 fill-sky-400 text-white"
+                                        aria-label="Verified"
+                                      />
+                                    )}
+                                  </div>
+                                  {postedAgoLabel ? (
+                                    <div className="mt-0.5 inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold tabular-nums tracking-tight text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                                      {postedAgoLabel}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </Link>
+                            ) : (
+                              <div className="inline-flex items-center gap-2 pr-2">
+                                <Avatar className="h-9 w-9 ring-1 ring-white/20 shadow-sm">
+                                  <AvatarImage
+                                    src={post.author_photo_url ?? undefined}
+                                    className="object-cover"
+                                    alt=""
+                                  />
+                                  <AvatarFallback className="bg-black/50 text-sm font-bold text-white">
+                                    {(post.author_full_name || "?").charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1">
+                                    <span className="truncate text-[13px] font-extrabold leading-tight tracking-tight text-white drop-shadow-sm">
+                                      {post.author_full_name || "Member"}
+                                    </span>
+                                    {verified && (
+                                      <BadgeCheck
+                                        className="h-4 w-4 shrink-0 fill-sky-400 text-white"
+                                        aria-label="Verified"
+                                      />
+                                    )}
+                                  </div>
+                                  {postedAgoLabel ? (
+                                    <div className="mt-0.5 inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold tabular-nums tracking-tight text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                                      {postedAgoLabel}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
                     <div className="pointer-events-none absolute bottom-2 left-2 z-[2]">
                       <PostTimeLeftBadge expiresAtIso={post.expires_at} />
                     </div>

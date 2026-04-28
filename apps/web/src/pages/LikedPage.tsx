@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import {
   BadgeCheck,
   CheckCircle2,
@@ -58,6 +59,16 @@ type PostWithExtras = PostRow & {
   coverImage: string | null;
 };
 
+type LikedProfilePost = {
+  id: string;
+  author_id: string;
+  caption: string | null;
+  media_type: "image" | "video" | null;
+  storage_path: string | null;
+  created_at: string;
+  author?: ProfileRow | null;
+};
+
 /** Same grey card shell as public profile history rows. */
 const profileCardShellClass = cn(
   "group overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/5 dark:bg-zinc-900",
@@ -95,8 +106,14 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
   const { addToast } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [postsError, setPostsError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [posts, setPosts] = useState<PostWithExtras[]>([]);
+  const [likedProfilePosts, setLikedProfilePosts] = useState<LikedProfilePost[]>([]);
   const [busyProfileId, setBusyProfileId] = useState<string | null>(null);
   const [busyPostId, setBusyPostId] = useState<string | null>(null);
   const [openingChatProfileId, setOpeningChatProfileId] = useState<
@@ -112,202 +129,289 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
   const [conversationIdByJobId, setConversationIdByJobId] = useState<
     Record<string, string>
   >({});
-  const [savedTab, setSavedTab] = useState<"posts" | "profiles">("profiles");
+  const [savedTab, setSavedTab] = useState<"posts" | "profiles">(
+    dataLikedPage ? "posts" : "profiles",
+  );
+
+  function formatSupabaseError(e: unknown): string {
+    if (!e) return "Unknown error";
+    if (e instanceof Error) return e.message;
+    if (typeof e === "object") {
+      const anyE = e as any;
+      const msg = anyE?.message ? String(anyE.message) : undefined;
+      const code = anyE?.code ? String(anyE.code) : undefined;
+      const details = anyE?.details ? String(anyE.details) : undefined;
+      const hint = anyE?.hint ? String(anyE.hint) : undefined;
+      return [msg, code && `code=${code}`, details && `details=${details}`, hint && `hint=${hint}`]
+        .filter(Boolean)
+        .join(" | ");
+    }
+    return String(e);
+  }
+
+  async function withTimeout<T>(p: PromiseLike<T>, label: string, ms = 3000): Promise<T> {
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const timeout = new Promise<T>((_, reject) => {
+      t = setTimeout(() => reject(new Error(`[LikedPage] TIMEOUT after ${ms}ms: ${label}`)), ms);
+    });
+    try {
+      // Supabase builders are PromiseLike (thenable), not real Promises.
+      return await Promise.race([Promise.resolve(p), timeout]);
+    } finally {
+      if (t) clearTimeout(t);
+    }
+  }
 
   const load = useCallback(async () => {
     if (!user?.id) {
       setProfiles([]);
       setPosts([]);
+      setLikedProfilePosts([]);
       setHireInterestByPostId({});
       setConversationIdByJobId({});
       setLoading(false);
+      setLoadError(null);
+      setProfilesError(null);
+      setPostsError(null);
       return;
     }
 
     setLoading(true);
+    setLoadError(null);
+    setProfilesError(null);
+    setPostsError(null);
     try {
-      const [profFavRes, postFavRes] = await Promise.all([
-        supabase
-          .from("profile_favorites")
-          .select("favorite_user_id, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("community_post_favorites")
-          .select("post_id, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-      ]);
-
-      if (profFavRes.error) throw profFavRes.error;
-      if (postFavRes.error) throw postFavRes.error;
-
-      const favUserIds = (profFavRes.data ?? []).map(
-        (r) => r.favorite_user_id as string,
-      );
-      const favPostIds = (postFavRes.data ?? []).map(
-        (r) => r.post_id as string,
-      );
-
-      if (favUserIds.length === 0) {
-        setProfiles([]);
-      } else {
-        const { data: profs, error: pe } = await supabase
-          .from("profiles")
-          .select(
-            "id, full_name, photo_url, role, average_rating, total_ratings, whatsapp_number_e164, telegram_username",
-          )
-          .in("id", favUserIds);
-        if (pe) throw pe;
-        const byId = new Map(
-          (profs ?? []).map((p) => [
-            p.id as string,
-            mapProfileRowFromDb(p as Record<string, unknown>),
-          ]),
-        );
-        const ordered: ProfileRow[] = [];
-        for (const id of favUserIds) {
-          const p = byId.get(id);
-          if (p) ordered.push(p);
-        }
-        setProfiles(ordered);
-      }
-
-      if (favPostIds.length === 0) {
-        setPosts([]);
-        setHireInterestByPostId({});
-        setConversationIdByJobId({});
-      } else {
-        const { data: postRows, error: postErr } = await supabase
-          .from("community_posts")
-          .select(
-            "id, author_id, category, title, body, note, created_at, expires_at, status, availability_payload",
-          )
-          .in("id", favPostIds);
-        if (postErr) throw postErr;
-        const list = (postRows ?? []) as PostRow[];
-        const order = new Map(favPostIds.map((id, i) => [id, i]));
-        list.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-
-        const authorIds = [...new Set(list.map((p) => p.author_id))];
-        const postIds = list.map((p) => p.id);
-
-        let authorsData: ProfileRow[] = [];
-        if (authorIds.length > 0) {
-          const { data: ad, error: ae } = await supabase
-            .from("profiles")
-            .select("id, full_name, photo_url, city, role, is_verified")
-            .in("id", authorIds);
-          if (ae) throw ae;
-          authorsData = (ad ?? []) as ProfileRow[];
-        }
-
-        let imageRows: { post_id: string; image_url: string }[] = [];
-        if (postIds.length > 0) {
-          const { data: idata, error: ie } = await supabase
-            .from("community_post_images")
-            .select("post_id, image_url, sort_order")
-            .in("post_id", postIds)
-            .order("sort_order", { ascending: true });
-          if (ie) throw ie;
-          imageRows = (idata ?? []) as { post_id: string; image_url: string }[];
-        }
-
-        const authorMap = new Map(authorsData.map((a) => [a.id, a]));
-        const firstImage = new Map<string, string>();
-        for (const row of imageRows) {
-          if (!firstImage.has(row.post_id))
-            firstImage.set(row.post_id, row.image_url);
-        }
-
-        setPosts(
-          list.map((p) => ({
-            ...p,
-            availability_payload:
-              (p.availability_payload as AvailabilityPayload) ?? null,
-            author: authorMap.get(p.author_id) ?? null,
-            coverImage: firstImage.get(p.id) ?? null,
-          })),
-        );
-
-        const hireMap: Record<string, HireInterestState> = {};
-        const { data: interestRows, error: interestErr } = await supabase
-          .from("community_post_hire_interests")
-          .select("community_post_id, status, job_request_id, created_at")
-          .eq("client_id", user.id)
-          .in("community_post_id", postIds)
-          .order("created_at", { ascending: false });
-
-        if (interestErr) {
-          console.warn("[LikedPage] hire interests", interestErr);
-        } else {
-          for (const row of interestRows ?? []) {
-            const pid = row.community_post_id as string;
-            if (hireMap[pid]) continue;
-            const st = row.status as string;
-            if (st === "pending") hireMap[pid] = { status: "pending" };
-            else if (st === "confirmed" && row.job_request_id) {
-              hireMap[pid] = {
-                status: "confirmed",
-                job_request_id: row.job_request_id as string,
-              };
-            } else if (st === "declined") hireMap[pid] = { status: "declined" };
+      console.log("[LikedPage] load start", { dataLikedPage: Boolean(dataLikedPage), userId: user.id });
+      const runProfiles = async () => {
+        setLoadingProfiles(true);
+        setProfilesError(null);
+        try {
+          const profFavRes = await withTimeout(
+            supabase
+              .from("profile_favorites")
+              .select("favorite_user_id, created_at")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false }),
+            "profile_favorites select",
+            8000,
+          );
+          if (profFavRes.error) throw profFavRes.error;
+          const favUserIds = (profFavRes.data ?? []).map((r: any) => r.favorite_user_id as string);
+          if (favUserIds.length === 0) {
+            setProfiles([]);
+            return;
           }
+          const { data: profs, error: pe } = await withTimeout(
+            supabase
+              .from("profiles")
+              .select(
+                "id, full_name, photo_url, role, average_rating, total_ratings, whatsapp_number_e164, telegram_username",
+              )
+              .in("id", favUserIds),
+            "profiles select (favorites)",
+            8000,
+          );
+          if (pe) throw pe;
+          const byId = new Map(
+            (profs ?? []).map((p) => [
+              (p as any).id as string,
+              mapProfileRowFromDb(p as Record<string, unknown>),
+            ]),
+          );
+          const ordered: ProfileRow[] = [];
+          for (const id of favUserIds) {
+            const p = byId.get(id);
+            if (p) ordered.push(p);
+          }
+          setProfiles(ordered);
+        } catch (e) {
+          console.error("[LikedPage] profiles load", e);
+          setProfiles([]);
+          setProfilesError(formatSupabaseError(e));
+        } finally {
+          setLoadingProfiles(false);
         }
-        setHireInterestByPostId(hireMap);
+      };
 
-        const confirmedJobIds = Object.values(hireMap)
-          .filter(
-            (h): h is Extract<HireInterestState, { status: "confirmed" }> =>
-              h.status === "confirmed",
-          )
-          .map((h) => h.job_request_id);
-        if (confirmedJobIds.length > 0) {
-          const { data: convos, error: convErr } = await supabase
-            .from("conversations")
-            .select("id, job_id")
-            .in("job_id", confirmedJobIds);
-          if (convErr) {
-            console.warn("[LikedPage] conversations", convErr);
-            setConversationIdByJobId({});
-          } else {
-            const cMap: Record<string, string> = {};
-            for (const c of convos ?? []) {
-              if (c.job_id && c.id) cMap[c.job_id as string] = c.id as string;
+      const runPosts = async () => {
+        setLoadingPosts(true);
+        setPostsError(null);
+        try {
+          if (dataLikedPage) {
+            const postFavRes = await withTimeout(
+              supabase
+                .from("profile_post_likes")
+                .select("post_id, created_at")
+                .eq("user_id", user.id)
+                .order("created_at", { ascending: false }),
+              "profile_post_likes select (by user_id)",
+              8000,
+            );
+            if (postFavRes.error) throw postFavRes.error;
+            const favPostIds = (postFavRes.data ?? []).map((r: any) => r.post_id as string);
+            console.log("[LikedPage] liked post ids", favPostIds.length);
+            if (favPostIds.length === 0) {
+              setLikedProfilePosts([]);
+              setPosts([]);
+              return;
             }
-            setConversationIdByJobId(cMap);
+
+            const { data: postRows, error: postErr } = await withTimeout(
+              supabase
+                .from("profile_posts")
+                .select("id, author_id, caption, media_type, storage_path, created_at")
+                .in("id", favPostIds),
+              "profile_posts select (by id in favPostIds)",
+              8000,
+            );
+            if (postErr) throw postErr;
+
+            const list = (postRows ?? []) as LikedProfilePost[];
+            console.log("[LikedPage] liked profile_posts loaded", list.length);
+            const order = new Map(favPostIds.map((id: string, i: number) => [id, i]));
+            list.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+
+            const authorIds = [...new Set(list.map((p) => p.author_id))];
+            if (authorIds.length > 0) {
+              const { data: ad, error: ae } = await withTimeout(
+                supabase
+                  .from("profiles")
+                  .select("id, full_name, photo_url, city, role, is_verified")
+                  .in("id", authorIds),
+                "profiles select (liked posts authors)",
+                8000,
+              );
+              if (ae) throw ae;
+              const authorMap = new Map(((ad ?? []) as ProfileRow[]).map((a) => [a.id, a]));
+              setLikedProfilePosts(
+                list.map((p) => ({ ...p, author: authorMap.get(p.author_id) ?? null })),
+              );
+            } else {
+              setLikedProfilePosts(list.map((p) => ({ ...p, author: null })));
+            }
+
+            setPosts([]);
+            setHireInterestByPostId({});
+            setConversationIdByJobId({});
+            return;
           }
-        } else {
+
+          // Old saved community posts mode (kept for /liked route).
+          const postFavRes = await withTimeout(
+            supabase
+              .from("community_post_favorites")
+              .select("post_id, created_at")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false }),
+            "community_post_favorites select (by user_id)",
+            8000,
+          );
+          if (postFavRes.error) throw postFavRes.error;
+          const favPostIds = (postFavRes.data ?? []).map((r: any) => r.post_id as string);
+          if (favPostIds.length === 0) {
+            setPosts([]);
+            setLikedProfilePosts([]);
+            setHireInterestByPostId({});
+            setConversationIdByJobId({});
+            return;
+          }
+
+          const { data: postRows, error: postErr } = await supabase
+            .from("community_posts")
+            .select(
+              "id, author_id, category, title, body, note, created_at, expires_at, status, availability_payload",
+            )
+            .in("id", favPostIds);
+          if (postErr) throw postErr;
+
+          const list = (postRows ?? []) as PostRow[];
+          const order = new Map(favPostIds.map((id, i) => [id, i]));
+          list.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+
+          const authorIds = [...new Set(list.map((p) => p.author_id))];
+          const postIds = list.map((p) => p.id);
+
+          let authorsData: ProfileRow[] = [];
+          if (authorIds.length > 0) {
+            const { data: ad, error: ae } = await supabase
+              .from("profiles")
+              .select("id, full_name, photo_url, city, role, is_verified")
+              .in("id", authorIds);
+            if (ae) throw ae;
+            authorsData = (ad ?? []) as ProfileRow[];
+          }
+
+          let imageRows: { post_id: string; image_url: string }[] = [];
+          if (postIds.length > 0) {
+            const { data: idata, error: ie } = await supabase
+              .from("community_post_images")
+              .select("post_id, image_url, sort_order")
+              .in("post_id", postIds)
+              .order("sort_order", { ascending: true });
+            if (ie) throw ie;
+            imageRows = (idata ?? []) as { post_id: string; image_url: string }[];
+          }
+
+          const authorMap = new Map(authorsData.map((a) => [a.id, a]));
+          const firstImage = new Map<string, string>();
+          for (const row of imageRows) {
+            if (!firstImage.has(row.post_id)) firstImage.set(row.post_id, row.image_url);
+          }
+
+          setPosts(
+            list.map((p) => ({
+              ...p,
+              availability_payload: (p.availability_payload as AvailabilityPayload) ?? null,
+              author: authorMap.get(p.author_id) ?? null,
+              coverImage: firstImage.get(p.id) ?? null,
+            })),
+          );
+          setLikedProfilePosts([]);
+        } catch (e) {
+          console.error("[LikedPage] posts load", e);
+          setPosts([]);
+          setLikedProfilePosts([]);
+          setHireInterestByPostId({});
           setConversationIdByJobId({});
+          setPostsError(formatSupabaseError(e));
+        } finally {
+          setLoadingPosts(false);
         }
-      }
+      };
+
+      await Promise.all([runProfiles(), runPosts()]);
     } catch (e) {
       console.error("[LikedPage]", e);
+      setLoadError(formatSupabaseError(e));
       addToast({
         title: "Could not load saved items",
-        description: e instanceof Error ? e.message : "Try again.",
+        description: formatSupabaseError(e),
         variant: "error",
       });
       setProfiles([]);
       setPosts([]);
+      setLikedProfilePosts([]);
       setHireInterestByPostId({});
       setConversationIdByJobId({});
     } finally {
       setLoading(false);
+      console.log("[LikedPage] load end");
     }
-  }, [user?.id, addToast]);
+  }, [user?.id, addToast, dataLikedPage]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  const effectivePostCount = dataLikedPage ? likedProfilePosts.length : posts.length;
+
   /** After load: if the user only has saved posts (no profiles), show Posts so the list is not hidden. */
   useEffect(() => {
     if (loading) return;
-    if (profiles.length === 0 && posts.length > 0) {
+    if (profiles.length === 0 && effectivePostCount > 0) {
       setSavedTab("posts");
     }
-  }, [loading, profiles.length, posts.length]);
+  }, [loading, profiles.length, effectivePostCount, dataLikedPage]);
 
   const removeProfileFavorite = async (favoriteUserId: string) => {
     if (!user?.id) return;
@@ -337,14 +441,25 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
     if (!user?.id) return;
     setBusyPostId(postId);
     try {
-      const { error } = await supabase
-        .from("community_post_favorites")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("post_id", postId);
+      const { error } = dataLikedPage
+        ? await supabase
+          .from("profile_post_likes")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("post_id", postId)
+        : await supabase
+          .from("community_post_favorites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("post_id", postId);
       if (error) throw error;
-      setPosts((prev) => prev.filter((p) => p.id !== postId));
-      addToast({ title: "Removed from saved posts", variant: "success" });
+      if (dataLikedPage) {
+        setLikedProfilePosts((prev) => prev.filter((p) => p.id !== postId));
+        addToast({ title: "Removed from liked posts", variant: "success" });
+      } else {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+        addToast({ title: "Removed from saved posts", variant: "success" });
+      }
     } catch (e) {
       addToast({
         title: "Could not remove",
@@ -467,8 +582,8 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
     </p>
   );
 
-  /** Show pinned tabs while loading (immediate) or when there is anything saved; hide only after load if empty. */
-  const showSavedTabs = loading || profiles.length > 0 || posts.length > 0;
+  /** On the in-app Saved page (client/freelancer), tabs should scroll away (not fixed). */
+  const showSavedTabs = !dataLikedPage && (loading || profiles.length > 0 || effectivePostCount > 0);
 
   return (
     <div
@@ -479,8 +594,9 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
         <div
           className={cn(
             "fixed inset-x-0 z-[45] pointer-events-none",
-            /** Mobile: same scroll-linked top offset as Discover /jobs tab strips (`useMobileShellScrollCollapse`). */
-            "max-md:[top:calc(env(safe-area-inset-top,0px)+(1-var(--mobile-shell-collapse-progress,0))*3.5rem)]",
+            /** Mobile: move away together with the collapsing shell header. */
+            "max-md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
+            "max-md:translate-y-[calc(var(--mobile-shell-collapse-progress,0)*-5rem)] max-md:will-change-transform",
             "md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
             "border-b border-border/30 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-md",
             "supports-[backdrop-filter]:bg-background/85 dark:border-border/40 dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]",
@@ -522,7 +638,9 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
                         ? undefined
                         : loading
                           ? "Posts"
-                          : `Posts, ${posts.length} saved`
+                          : dataLikedPage
+                            ? `Posts, ${likedProfilePosts.length} liked`
+                            : `Posts, ${posts.length} saved`
                     }
                     onClick={() => setSavedTab("posts")}
                     className={cn(
@@ -551,7 +669,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
                           Posts
                         </span>
                         <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
-                          ({loading ? "…" : posts.length})
+                          ({loading ? "…" : dataLikedPage ? likedProfilePosts.length : posts.length})
                         </span>
                       </>
                     )}
@@ -606,14 +724,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
         </div>
       )}
 
-      <div
-        className={cn(
-          "app-desktop-shell px-1",
-          showSavedTabs
-            ? "max-md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem-var(--mobile-shell-collapse-progress,0)*3.5rem)] md:pt-[calc(0.5rem+4.5rem+0.5rem+1px+0.75rem)]"
-            : "pt-4 md:pt-6",
-        )}
-      >
+      <div className={cn("app-desktop-shell px-1", showSavedTabs ? "pt-0" : "pt-4 md:pt-6")}>
         <h1 className="sr-only">Saved</h1>
         <div
           className={cn(
@@ -621,11 +732,119 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
             !showSavedTabs && "mt-6",
           )}
         >
+          {dataLikedPage && (loading || profiles.length > 0 || effectivePostCount > 0) ? (
+            <div className="mx-auto flex max-w-2xl justify-center px-2 py-2 md:px-0">
+              <div
+                role="tablist"
+                aria-label="Saved content type"
+                className="flex w-full justify-center"
+              >
+                <div
+                  className={cn(
+                    "relative mx-auto grid min-h-[56px] w-full max-w-[22rem] grid-cols-2 gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[24rem] sm:min-h-[64px]",
+                    "bg-slate-100/80 border border-slate-200/60 shadow-inner",
+                    "dark:bg-zinc-900/50 dark:border-zinc-800/60 leading-none",
+                  )}
+                >
+                  <div
+                    aria-hidden
+                    className={cn(
+                      "pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 z-[5] rounded-[9999px]",
+                      "w-[calc((100%-1rem)/2)] will-change-transform",
+                      "bg-white shadow-sm ring-1 ring-slate-900/5",
+                      "dark:bg-zinc-800 dark:ring-white/10 dark:shadow-none",
+                      "transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+                      savedTab === "posts"
+                        ? "translate-x-0"
+                        : "translate-x-[calc(100%+0.25rem)]",
+                    )}
+                  />
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={savedTab === "posts"}
+                    onClick={() => setSavedTab("posts")}
+                    className={cn(
+                      "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
+                      "transition-[color,transform] duration-300 ease-out",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                      "active:scale-[0.98] motion-reduce:transition-none",
+                      savedTab === "posts"
+                        ? "gap-2.5 text-slate-900 dark:text-white sm:gap-3"
+                        : "gap-2.5 text-slate-500 hover:text-slate-700 sm:gap-3 dark:text-zinc-400 dark:hover:text-zinc-200",
+                    )}
+                  >
+                    <Sparkles
+                      className={cn(
+                        "h-5 w-5 shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
+                        savedTab === "posts"
+                          ? "text-rose-500 dark:text-rose-500"
+                          : "text-slate-400 dark:text-zinc-500",
+                      )}
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                    {savedTab === "posts" && (
+                      <>
+                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-[15px]">
+                          Posts
+                        </span>
+                        <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
+                          ({loading ? "…" : likedProfilePosts.length})
+                        </span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={savedTab === "profiles"}
+                    onClick={() => setSavedTab("profiles")}
+                    className={cn(
+                      "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
+                      "transition-[color,transform] duration-300 ease-out",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                      "active:scale-[0.98] motion-reduce:transition-none",
+                      savedTab === "profiles"
+                        ? "gap-2.5 text-slate-900 dark:text-white sm:gap-3"
+                        : "gap-2.5 text-slate-500 hover:text-slate-700 sm:gap-3 dark:text-zinc-400 dark:hover:text-zinc-200",
+                    )}
+                  >
+                    <UserRound
+                      className={cn(
+                        "h-5 w-5 shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
+                        savedTab === "profiles"
+                          ? "text-rose-500 dark:text-rose-500"
+                          : "text-slate-400 dark:text-zinc-500",
+                      )}
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                    {savedTab === "profiles" && (
+                      <>
+                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-[15px]">
+                          Profiles
+                        </span>
+                        <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
+                          ({loading ? "…" : profiles.length})
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {loadError ? (
+            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+              {loadError}
+            </div>
+          ) : null}
           {loading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
             </div>
-          ) : profiles.length === 0 && posts.length === 0 ? (
+          ) : profiles.length === 0 && effectivePostCount === 0 ? (
             <Card className="rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15">
               <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
                 <Sparkles className="h-10 w-10 text-rose-400/80" />
@@ -642,7 +861,18 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
               className="w-full"
             >
               <TabsContent value="posts" className="mt-0 outline-none">
-                {posts.length === 0 ? (
+                {postsError ? (
+                  <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+                    {postsError}
+                  </div>
+                ) : null}
+                {loadingPosts ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : dataLikedPage ? (
+                  <ProfilePostsFeed filterLikedByUserId={user?.id ?? undefined} />
+                ) : posts.length === 0 ? (
                   <Card className="rounded-2xl border border-dashed border-border/60 bg-transparent">
                     <CardContent className="py-12 text-center">
                       <Sparkles className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
@@ -847,7 +1077,16 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
               </TabsContent>
 
               <TabsContent value="profiles" className="mt-0 outline-none">
-                {profiles.length === 0 ? (
+                {profilesError ? (
+                  <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+                    {profilesError}
+                  </div>
+                ) : null}
+                {loadingProfiles ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : profiles.length === 0 ? (
                   <Card className="rounded-2xl border border-dashed border-border/60 bg-transparent">
                     <CardContent className="py-12 text-center">
                       <UserRound className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />

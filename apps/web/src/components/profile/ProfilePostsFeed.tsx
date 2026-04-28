@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -16,6 +16,8 @@ import {
   LayoutGrid,
   Sparkles,
   SendHorizontal,
+  VolumeX,
+  Volume2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -166,6 +168,19 @@ function CommentsDialog({
     if (open) void fetchComments();
   }, [open, fetchComments]);
 
+  // Live updates while the dialog is open (new / deleted comments).
+  useRealtimeSubscription(
+    {
+      table: "profile_post_comments",
+      event: "*",
+      filter: `post_id=eq.${postId}`,
+      enabled: open,
+    },
+    () => {
+      void fetchComments();
+    },
+  );
+
   useEffect(() => {
     if (comments.length > 0) {
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -194,7 +209,18 @@ function CommentsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="flex max-h-[min(90vh,580px)] flex-col gap-0 p-0 sm:max-w-md rounded-2xl overflow-hidden">
+      <DialogContent
+        className={cn(
+          "flex flex-col gap-0 p-0 overflow-hidden",
+          // Desktop / large screens: centered modal
+          "sm:max-w-md sm:rounded-2xl sm:max-h-[min(90vh,580px)]",
+          // Mobile: bottom sheet
+          "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto",
+          "max-md:h-[78vh] max-md:max-h-[78vh]",
+          "max-md:translate-x-0 max-md:translate-y-0",
+          "max-md:rounded-t-[22px] max-md:rounded-b-none",
+        )}
+      >
         <DialogHeader className="border-b border-border/60 px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <MessageCircle className="h-5 w-5 text-orange-500" strokeWidth={2} />
@@ -217,12 +243,27 @@ function CommentsDialog({
                 const name = c.author?.full_name?.trim() || "Member";
                 return (
                   <div key={c.id} className="flex gap-3">
-                    <Avatar className="h-8 w-8 shrink-0 ring-2 ring-background">
-                      <AvatarImage src={c.author?.photo_url ?? undefined} />
-                      <AvatarFallback className="text-xs font-bold">
-                        {name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link
+                      to={c.author?.id ? `/profile/${c.author.id}` : "#"}
+                      className={cn(
+                        "shrink-0 rounded-full outline-none transition-opacity",
+                        c.author?.id
+                          ? "hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          : "pointer-events-none opacity-60",
+                      )}
+                      aria-label={c.author?.id ? `View ${name} profile` : undefined}
+                      onClick={() => {
+                        // Close sheet on navigation for a smoother mobile flow.
+                        onClose();
+                      }}
+                    >
+                      <Avatar className="h-8 w-8 ring-2 ring-background">
+                        <AvatarImage src={c.author?.photo_url ?? undefined} />
+                        <AvatarFallback className="text-xs font-bold">
+                          {name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
                         <span className="text-sm font-semibold text-foreground">{name}</span>
@@ -314,6 +355,7 @@ export function ComposeModal({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const tagTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tagBoxRef = useRef<HTMLDivElement>(null);
 
   function reset() {
     setCaption("");
@@ -350,6 +392,34 @@ export function ComposeModal({
       setTagResults((data ?? []) as ProfileSnippet[]);
     }, 280);
   }, [tagQuery, user?.id]);
+
+  // Close the tag dropdown on outside click / escape / focus change.
+  useEffect(() => {
+    if (tagResults.length === 0) return;
+
+    const onDocPointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      const box = tagBoxRef.current;
+      if (!box) return;
+      if (box.contains(target)) return;
+      setTagResults([]);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setTagResults([]);
+    };
+
+    const capture = true;
+    document.addEventListener("mousedown", onDocPointerDown, capture);
+    document.addEventListener("touchstart", onDocPointerDown, capture);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocPointerDown, capture);
+      document.removeEventListener("touchstart", onDocPointerDown, capture);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [tagResults.length]);
 
   async function handleSubmit() {
     if (!user?.id) return;
@@ -394,7 +464,18 @@ export function ComposeModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="flex flex-col gap-0 p-0 sm:max-w-lg rounded-2xl overflow-hidden max-h-[min(92vh,660px)]">
+      <DialogContent
+        className={cn(
+          "flex flex-col gap-0 p-0 overflow-hidden",
+          // Desktop / large screens: centered modal
+          "sm:max-w-lg sm:rounded-2xl sm:max-h-[min(92vh,660px)]",
+          // Mobile: bottom sheet
+          "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto",
+          "max-md:h-[85vh] max-md:max-h-[85vh]",
+          "max-md:translate-x-0 max-md:translate-y-0",
+          "max-md:rounded-t-[22px] max-md:rounded-b-none",
+        )}
+      >
         <DialogHeader className="border-b border-border/60 px-5 py-4">
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <LayoutGrid className="h-5 w-5 text-orange-500" strokeWidth={2} />
@@ -462,13 +543,17 @@ export function ComposeModal({
 
             {/* Tag users */}
             <div className="space-y-2">
-              <div className="relative">
+              <div ref={tagBoxRef} className="relative">
                 <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Tag someone…"
                   value={tagQuery}
                   onChange={(e) => setTagQuery(e.target.value)}
+                  onBlur={() => {
+                    // Allow click on dropdown items before closing.
+                    window.setTimeout(() => setTagResults([]), 120);
+                  }}
                   className="w-full h-10 rounded-full border border-input bg-muted/40 pl-9 pr-4 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 dark:bg-zinc-800/60"
                   disabled={submitting}
                 />
@@ -618,6 +703,11 @@ function PostCard({
   const [liking, setLiking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [videoLightboxOpen, setVideoLightboxOpen] = useState(false);
+  const [showAllTagged, setShowAllTagged] = useState(false);
+  const [videoUnmutedByUser, setVideoUnmutedByUser] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoModalRef = useRef<HTMLVideoElement | null>(null);
 
   const mediaUrl =
     post.media_type && post.storage_path
@@ -633,17 +723,26 @@ function PostCard({
     setLiking(true);
     try {
       if (post.liked_by_me) {
-        await supabase
+        const { error } = await supabase
           .from("profile_post_likes")
           .delete()
           .eq("post_id", post.id)
           .eq("user_id", currentUserId);
+        if (error) throw error;
       } else {
-        await supabase.from("profile_post_likes").insert({ post_id: post.id, user_id: currentUserId });
+        const { error } = await supabase
+          .from("profile_post_likes")
+          .insert({ post_id: post.id, user_id: currentUserId });
+        if (error) throw error;
       }
       onLikeToggle(post.id, !post.liked_by_me);
     } catch (e) {
       console.error("[PostCard] toggleLike", e);
+      addToast({
+        title: "Could not like post",
+        description: e instanceof Error ? e.message : "Please try again.",
+        variant: "error",
+      });
     } finally {
       setLiking(false);
     }
@@ -683,6 +782,47 @@ function PostCard({
 
   const authorName = post.author?.full_name?.trim() || "User";
   const isSource = post.source === "availability";
+  const showHeaderOnMedia = Boolean(mediaUrl);
+  const postedLabel = useMemo(
+    () => formatDistanceToNow(new Date(post.created_at), { addSuffix: true }),
+    [post.created_at],
+  );
+
+  useEffect(() => {
+    if (!mediaUrl || post.media_type !== "video") return;
+    const el = videoRef.current;
+    if (!el) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          // Autoplay muted as we scroll it into view.
+          if (!videoUnmutedByUser) el.muted = true;
+          const p = el.play();
+          if (p && typeof (p as Promise<void>).catch === "function") {
+            (p as Promise<void>).catch(() => {
+              // Autoplay can be blocked; ignore.
+            });
+          }
+        } else {
+          // Pause when leaving viewport to avoid multiple videos playing.
+          try {
+            el.pause();
+          } catch {
+            /* ignore */
+          }
+        }
+      },
+      { threshold: [0, 0.25, 0.6, 0.85] },
+    );
+
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+    };
+  }, [mediaUrl, post.media_type, videoUnmutedByUser]);
 
   return (
     <div
@@ -690,80 +830,362 @@ function PostCard({
         "overflow-hidden transition-all duration-300",
         "bg-white dark:bg-zinc-950/20",
         "md:rounded-2xl md:border md:border-border/60 md:shadow-md", // Card on desktop
-        "border-b border-slate-100 dark:border-white/5 shadow-none" // Divider on mobile
+        "border-b border-slate-100 dark:border-white/5 shadow-none", // Divider on mobile
+        "pb-6 md:pb-0", // More breathing room after action icons on mobile
+        "mb-10 md:mb-0" // More spacing between posts on mobile
       )}
     >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-        <Link to={`/profile/${post.author_id}`} className="shrink-0">
-          <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
-            <AvatarImage src={post.author?.photo_url ?? undefined} className="object-cover" />
-            <AvatarFallback className="font-bold text-sm">
-              {authorName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        </Link>
-        <div className="min-w-0 flex-1">
-          <Link
-            to={`/profile/${post.author_id}`}
-            className="font-bold text-sm text-foreground hover:underline underline-offset-2"
-          >
-            {authorName}
+      {!showHeaderOnMedia ? (
+        <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+          <Link to={`/profile/${post.author_id}`} className="shrink-0">
+            <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
+              <AvatarImage src={post.author?.photo_url ?? undefined} className="object-cover" />
+              <AvatarFallback className="font-bold text-sm">
+                {authorName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           </Link>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <time className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-            </time>
-            {isSource && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
-                <Sparkles className="h-2.5 w-2.5" />
-                {categoryLabel((post as AvailabilityPost).category)}
-              </span>
-            )}
+          <div className="min-w-0 flex-1">
+            <Link
+              to={`/profile/${post.author_id}`}
+              className="font-bold text-sm text-foreground hover:underline underline-offset-2"
+            >
+              {authorName}
+            </Link>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <time className="text-xs text-muted-foreground">{postedLabel}</time>
+              {isSource && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  {categoryLabel((post as AvailabilityPost).category)}
+                </span>
+              )}
+            </div>
           </div>
+          {/* Delete button — own posts only */}
+          {isOwnFeed && post.source === "post" && (
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDelete}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50 dark:hover:bg-red-950/40"
+              aria-label="Delete post"
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </button>
+          )}
         </div>
-        {/* Delete button — own posts only */}
-        {isOwnFeed && post.source === "post" && (
-          <button
-            type="button"
-            disabled={deleting}
-            onClick={handleDelete}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50 dark:hover:bg-red-950/40"
-            aria-label="Delete post"
-          >
-            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-          </button>
-        )}
-      </div>
+      ) : null}
 
       {/* Media */}
       {mediaUrl && post.media_type === "image" && (
-        <button
-          type="button"
-          onClick={() => setLightboxOpen(true)}
-          className="block w-full mt-2 overflow-hidden focus-visible:outline-none"
-          aria-label="View image full screen"
-        >
-          <img
-            src={mediaUrl}
-            alt=""
-            className="w-full max-h-[360px] object-cover"
-            loading="lazy"
+        <div className="relative mt-0 md:mt-2 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(true)}
+            className="block w-full overflow-hidden focus-visible:outline-none"
+            aria-label="View image full screen"
+          >
+            <img
+              src={mediaUrl}
+              alt=""
+              className="w-full max-h-[360px] object-cover"
+              loading="lazy"
+            />
+          </button>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-12 bg-gradient-to-b from-black/35 via-black/12 to-transparent"
+            aria-hidden
           />
-        </button>
-      )}
-      {mediaUrl && post.media_type === "video" && (
-        <div className="mt-2 overflow-hidden bg-black">
-          <video
-            src={mediaUrl}
-            controls
-            playsInline
-            muted
-            preload="metadata"
-            className="w-full max-h-[360px] object-contain"
-          />
+          <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between gap-3 p-3">
+            <Link
+              to={`/profile/${post.author_id}`}
+              className="group pointer-events-auto inline-flex min-w-0 items-center gap-2 rounded-full pr-2 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              aria-label={`View ${authorName} profile`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Avatar className="h-9 w-9 ring-1 ring-white/20 shadow-sm">
+                <AvatarImage src={post.author?.photo_url ?? undefined} className="object-cover" alt="" />
+                <AvatarFallback className="bg-black/50 text-sm font-bold text-white">
+                  {authorName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-extrabold leading-tight tracking-tight text-white drop-shadow-sm">
+                  {authorName}
+                </div>
+                <div className="mt-0.5 inline-flex items-center gap-1.5">
+                  <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold tabular-nums tracking-tight text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                    {postedLabel}
+                  </span>
+                  {isSource ? (
+                    <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                      {categoryLabel((post as AvailabilityPost).category)}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </Link>
+            {isOwnFeed && post.source === "post" ? (
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDelete();
+                }}
+                className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-md ring-1 ring-inset ring-white/15 transition-colors hover:bg-black/45 disabled:opacity-60"
+                aria-label="Delete post"
+              >
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              </button>
+            ) : null}
+          </div>
+
+          {/* Tagged users — bottom-left overlay on media */}
+          {post.tagged_profiles.length > 0 ? (
+            <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
+              <span className="pointer-events-none inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12">
+                <AtSign className="h-4 w-4" aria-hidden />
+              </span>
+              {(showAllTagged ? post.tagged_profiles : post.tagged_profiles.slice(0, 3)).map((t) => (
+                <Link
+                  key={t.id}
+                  to={`/profile/${t.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12 hover:bg-black/45"
+                  aria-label={`View tagged user ${t.full_name ?? "member"}`}
+                >
+                  <Avatar className="h-6 w-6 shrink-0 ring-1 ring-white/15">
+                    <AvatarImage src={t.photo_url ?? undefined} />
+                    <AvatarFallback className="bg-white/10 text-[10px] font-black text-white">
+                      {(t.full_name ?? "?").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{t.full_name ?? "Member"}</span>
+                </Link>
+              ))}
+              {!showAllTagged && post.tagged_profiles.length > 3 ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAllTagged(true);
+                  }}
+                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12 hover:bg-black/45"
+                  aria-label="Show all tagged users"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
+                  {post.tagged_profiles.length - 3}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       )}
+      {mediaUrl && post.media_type === "video" && (
+        <div className="relative mt-0 md:mt-2 overflow-hidden bg-muted/40 dark:bg-neutral-900/50">
+          <video
+            ref={videoRef}
+            src={mediaUrl}
+            // Remove native browser controls bar (we provide our own mute + fullscreen).
+            playsInline
+            muted={!videoUnmutedByUser}
+            preload="metadata"
+            className="w-full aspect-[4/3] object-cover"
+            onClick={(e) => {
+              // Tap video to open full-size modal.
+              e.stopPropagation();
+              setVideoLightboxOpen(true);
+              // Ensure it keeps playing as it opens.
+              const el = videoRef.current;
+              if (!el) return;
+              const p = el.play();
+              if (p && typeof (p as Promise<void>).catch === "function") {
+                (p as Promise<void>).catch(() => {
+                  /* ignore */
+                });
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const el = videoRef.current;
+              if (!el) return;
+              const nextMuted = !el.muted;
+              setVideoUnmutedByUser(!nextMuted);
+              el.muted = nextMuted;
+              if (!nextMuted) {
+                const p = el.play();
+                if (p && typeof (p as Promise<void>).catch === "function") {
+                  (p as Promise<void>).catch(() => {
+                    /* ignore */
+                  });
+                }
+              }
+            }}
+            className="pointer-events-auto absolute right-3 top-3 z-[6] flex h-10 w-10 items-center justify-center rounded-full bg-black/35 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/15 hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            aria-label={videoUnmutedByUser ? "Mute video" : "Unmute video"}
+            title={videoUnmutedByUser ? "Mute" : "Unmute"}
+          >
+            {videoUnmutedByUser ? (
+              <Volume2 className="h-5 w-5" aria-hidden />
+            ) : (
+              <VolumeX className="h-5 w-5" aria-hidden />
+            )}
+          </button>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-12 bg-gradient-to-b from-black/35 via-black/12 to-transparent"
+            aria-hidden
+          />
+          <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between gap-3 p-3">
+            <Link
+              to={`/profile/${post.author_id}`}
+              className="group pointer-events-auto inline-flex min-w-0 items-center gap-2 rounded-full pr-2 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              aria-label={`View ${authorName} profile`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Avatar className="h-9 w-9 ring-1 ring-white/20 shadow-sm">
+                <AvatarImage src={post.author?.photo_url ?? undefined} className="object-cover" alt="" />
+                <AvatarFallback className="bg-black/50 text-sm font-bold text-white">
+                  {authorName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-extrabold leading-tight tracking-tight text-white drop-shadow-sm">
+                  {authorName}
+                </div>
+                <div className="mt-0.5 inline-flex items-center gap-1.5">
+                  <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold tabular-nums tracking-tight text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                    {postedLabel}
+                  </span>
+                  {isSource ? (
+                    <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white/90 backdrop-blur-md ring-1 ring-inset ring-white/15">
+                      {categoryLabel((post as AvailabilityPost).category)}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </Link>
+            {isOwnFeed && post.source === "post" ? (
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDelete();
+                }}
+                className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-md ring-1 ring-inset ring-white/15 transition-colors hover:bg-black/45 disabled:opacity-60"
+                aria-label="Delete post"
+              >
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              </button>
+            ) : null}
+          </div>
+
+          {/* Tagged users — bottom-left overlay on media */}
+          {post.tagged_profiles.length > 0 ? (
+            <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
+              <span className="pointer-events-none inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12">
+                <AtSign className="h-4 w-4" aria-hidden />
+              </span>
+              {(showAllTagged ? post.tagged_profiles : post.tagged_profiles.slice(0, 3)).map((t) => (
+                <Link
+                  key={t.id}
+                  to={`/profile/${t.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12 hover:bg-black/45"
+                  aria-label={`View tagged user ${t.full_name ?? "member"}`}
+                >
+                  <Avatar className="h-6 w-6 shrink-0 ring-1 ring-white/15">
+                    <AvatarImage src={t.photo_url ?? undefined} />
+                    <AvatarFallback className="bg-white/10 text-[10px] font-black text-white">
+                      {(t.full_name ?? "?").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{t.full_name ?? "Member"}</span>
+                </Link>
+              ))}
+              {!showAllTagged && post.tagged_profiles.length > 3 ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAllTagged(true);
+                  }}
+                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12 hover:bg-black/45"
+                  aria-label="Show all tagged users"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
+                  {post.tagged_profiles.length - 3}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Full-size video modal */}
+      {mediaUrl && post.media_type === "video" ? (
+        <Dialog open={videoLightboxOpen} onOpenChange={setVideoLightboxOpen}>
+          <DialogContent className="max-md:fixed max-md:inset-0 max-md:h-[100dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-none max-md:border-0 max-md:p-0 max-md:shadow-none sm:max-w-4xl sm:p-0 overflow-hidden bg-black">
+            <div className="relative h-[100dvh] w-full sm:h-[min(80vh,44rem)]">
+              <video
+                ref={videoModalRef}
+                src={mediaUrl}
+                className="h-full w-full object-contain bg-black"
+                playsInline
+                controls
+                autoPlay
+                muted={!videoUnmutedByUser}
+                onPlay={() => {
+                  // keep in sync: if user previously unmuted inline, reflect here too
+                  const el = videoModalRef.current;
+                  if (!el) return;
+                  el.muted = !videoUnmutedByUser;
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() => setVideoLightboxOpen(false)}
+                className="absolute right-4 top-4 z-[10] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md ring-1 ring-inset ring-white/15 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const el = videoModalRef.current;
+                  if (!el) return;
+                  const nextMuted = !el.muted;
+                  setVideoUnmutedByUser(!nextMuted);
+                  el.muted = nextMuted;
+                  if (!nextMuted) void el.play();
+                }}
+                className="absolute right-4 top-16 z-[10] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md ring-1 ring-inset ring-white/15 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                aria-label={videoUnmutedByUser ? "Mute video" : "Unmute video"}
+                title={videoUnmutedByUser ? "Mute" : "Unmute"}
+              >
+                {videoUnmutedByUser ? (
+                  <Volume2 className="h-5 w-5" aria-hidden />
+                ) : (
+                  <VolumeX className="h-5 w-5" aria-hidden />
+                )}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       {/* Lightbox (simple full-screen overlay) */}
       {lightboxOpen && mediaUrl && post.media_type === "image" && (
@@ -784,15 +1206,15 @@ function PostCard({
 
       {/* Caption */}
       {post.caption?.trim() && (
-        <div className="px-4 pt-3 pb-1">
-          <p className="text-sm leading-relaxed text-foreground">
+        <div className="px-4 pt-2 pb-0 md:pt-3 md:pb-1">
+          <p className="text-[15px] leading-relaxed text-foreground">
             {renderCaptionWithMentions(post.caption)}
           </p>
         </div>
       )}
 
-      {/* Tagged users */}
-      {post.tagged_profiles.length > 0 && (
+      {/* Tagged users (only when there is no media overlay) */}
+      {!showHeaderOnMedia && post.tagged_profiles.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pt-2">
           <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           {post.tagged_profiles.map((t) => (
@@ -812,7 +1234,7 @@ function PostCard({
       )}
 
       {/* Action bar */}
-      <div className="flex items-center gap-0 px-2 py-2 border-t border-border/40 mt-3">
+      <div className="mt-0 flex items-center gap-0 bg-transparent px-2 py-1 md:mt-1.5 md:py-2">
         {/* Like */}
         <button
           type="button"
@@ -889,6 +1311,8 @@ interface ProfilePostsFeedProps {
   filterAuthorId?: string;
   authorNameFilter?: string;
   sortOrder?: "newest" | "oldest";
+  /** Show only posts liked by this user (new social feed). */
+  filterLikedByUserId?: string;
 }
 
 export function ProfilePostsFeed({
@@ -898,6 +1322,7 @@ export function ProfilePostsFeed({
   filterAuthorId,
   authorNameFilter,
   sortOrder = "newest",
+  filterLikedByUserId,
 }: ProfilePostsFeedProps) {
   const { user, profile: currentProfile } = useAuth();
   const [posts, setPosts] = useState<FeedPost[]>([]);
@@ -905,15 +1330,95 @@ export function ProfilePostsFeed({
   const [composeOpen, setComposeOpen] = useState(false);
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
+  const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Realtime subscription for live feed updates
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeRefreshTimeoutRef.current) {
+      clearTimeout(realtimeRefreshTimeoutRef.current);
+    }
+    // Debounce to avoid storms when multiple rows change rapidly.
+    realtimeRefreshTimeoutRef.current = setTimeout(() => {
+      setRefreshKey((prev) => prev + 1);
+    }, 250);
+  }, []);
+
+  // Realtime subscription for live feed updates.
+  // We keep it conservative: refresh the feed for post changes, but apply likes/comments in-place.
+  const realtimeEnabled =
+    !authorNameFilter && !filterTaggedUserId && !filterAuthorId && !filterLikedByUserId;
+
   useRealtimeSubscription(
-    { table: "profile_posts", event: "INSERT", enabled: !userId }, 
-    () => setRefreshKey((prev) => prev + 1)
+    {
+      table: "profile_posts",
+      event: "*",
+      filter: userId ? `author_id=eq.${userId}` : undefined,
+      enabled: realtimeEnabled,
+    },
+    () => scheduleRealtimeRefresh(),
   );
+
   useRealtimeSubscription(
-    { table: "community_posts", event: "INSERT", enabled: !userId }, 
-    () => setRefreshKey((prev) => prev + 1)
+    {
+      table: "community_posts",
+      event: "*",
+      filter: userId ? `author_id=eq.${userId}` : undefined,
+      enabled: realtimeEnabled,
+    },
+    () => scheduleRealtimeRefresh(),
+  );
+
+  useRealtimeSubscription(
+    { table: "profile_post_likes", event: "*", enabled: realtimeEnabled },
+    (payload) => {
+      const row = (payload?.new ?? payload?.old) as { post_id?: string; user_id?: string } | undefined;
+      const postId = row?.post_id;
+      if (!postId) return;
+      setPosts((prev) => {
+        const idx = prev.findIndex((p) => p.source === "post" && p.id === postId);
+        if (idx === -1) return prev;
+        const next = [...prev];
+        const p = next[idx] as ProfilePost;
+        const isMe = Boolean(user?.id && row?.user_id === user.id);
+        if (payload?.eventType === "INSERT") {
+          next[idx] = { ...p, like_count: p.like_count + 1, liked_by_me: isMe ? true : p.liked_by_me };
+        } else if (payload?.eventType === "DELETE") {
+          next[idx] = {
+            ...p,
+            like_count: Math.max(0, p.like_count - 1),
+            liked_by_me: isMe ? false : p.liked_by_me,
+          };
+        } else {
+          // For UPDATE/other, safest is to refresh soon.
+          scheduleRealtimeRefresh();
+          return prev;
+        }
+        return next;
+      });
+    },
+  );
+
+  useRealtimeSubscription(
+    { table: "profile_post_comments", event: "*", enabled: realtimeEnabled },
+    (payload) => {
+      const row = (payload?.new ?? payload?.old) as { post_id?: string } | undefined;
+      const postId = row?.post_id;
+      if (!postId) return;
+      setPosts((prev) => {
+        const idx = prev.findIndex((p) => p.source === "post" && p.id === postId);
+        if (idx === -1) return prev;
+        const next = [...prev];
+        const p = next[idx] as ProfilePost;
+        if (payload?.eventType === "INSERT") {
+          next[idx] = { ...p, comment_count: p.comment_count + 1 };
+        } else if (payload?.eventType === "DELETE") {
+          next[idx] = { ...p, comment_count: Math.max(0, p.comment_count - 1) };
+        } else {
+          scheduleRealtimeRefresh();
+          return prev;
+        }
+        return next;
+      });
+    },
   );
 
   const authorProfile: ProfileSnippet = {
@@ -937,12 +1442,32 @@ export function ProfilePostsFeed({
         if (profiles) resolvedAuthorIds = profiles.map((p) => p.id);
       }
 
-      // 1. Fetch profile posts
+      // 1. Optional: liked-only filter (per user)
+      let likedPostIds: string[] | null = null;
+      if (filterLikedByUserId) {
+        const { data: likedRows, error: likedErr } = await supabase
+          .from("profile_post_likes")
+          .select("post_id, created_at")
+          .eq("user_id", filterLikedByUserId)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (likedErr) throw likedErr;
+        likedPostIds = (likedRows ?? []).map((r) => r.post_id as string);
+        if (likedPostIds.length === 0) {
+          setPosts([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Fetch profile posts
       let query = supabase
         .from("profile_posts")
         .select("id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at");
 
-      if (userId) {
+      if (filterLikedByUserId && likedPostIds) {
+        query = query.in("id", likedPostIds);
+      } else if (userId) {
         query = query.eq("author_id", userId);
       } else if (filterAuthorId) {
         query = query.eq("author_id", filterAuthorId);
@@ -974,31 +1499,46 @@ export function ProfilePostsFeed({
         created_at: string;
       }[];
 
-      // 2. Fetch availability/community posts
-      const nowIso = new Date().toISOString();
-      let availQuery = supabase
-        .from("community_posts")
-        .select("id, category, title, note, expires_at, availability_payload, created_at, author_id")
-        .eq("status", "active")
-        .gt("expires_at", nowIso);
-
-      if (userId) {
-        availQuery = availQuery.eq("author_id", userId);
-      } else if (filterAuthorId) {
-        availQuery = availQuery.eq("author_id", filterAuthorId);
-      } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
-        if (resolvedAuthorIds.length > 0) {
-          availQuery = availQuery.in("author_id", resolvedAuthorIds);
-        } else {
-          // No profiles found, but we still need to run a query that returns nothing or handle it.
-          // Since we already checked resolvedAuthorIds for the main posts, we can skip or force no results.
-          availQuery = availQuery.eq("author_id", "00000000-0000-0000-0000-000000000000"); // guaranteed empty
-        }
+      // Keep liked page order stable (by like time) when requested.
+      if (filterLikedByUserId && likedPostIds) {
+        const idx = new Map(likedPostIds.map((id, i) => [id, i]));
+        rawPosts.sort((a, b) => (idx.get(a.id) ?? 0) - (idx.get(b.id) ?? 0));
       }
 
-      const { data: availRows } = await availQuery
-        .order("created_at", { ascending: sortOrder === "oldest" })
-        .limit(userId ? 20 : 50);
+      // 3. Fetch availability/community posts (skip for liked-only view)
+      if (filterLikedByUserId) {
+        // fall through with empty availability list
+      }
+      const nowIso = new Date().toISOString();
+      let availRows: any[] | null = null;
+      if (!filterLikedByUserId) {
+        let availQuery = supabase
+          .from("community_posts")
+          .select("id, category, title, note, expires_at, availability_payload, created_at, author_id")
+          .eq("status", "active")
+          .gt("expires_at", nowIso);
+
+        if (userId) {
+          availQuery = availQuery.eq("author_id", userId);
+        } else if (filterAuthorId) {
+          availQuery = availQuery.eq("author_id", filterAuthorId);
+        } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
+          if (resolvedAuthorIds.length > 0) {
+            availQuery = availQuery.in("author_id", resolvedAuthorIds);
+          } else {
+            // No profiles found, but we still need to run a query that returns nothing or handle it.
+            // Since we already checked resolvedAuthorIds for the main posts, we can skip or force no results.
+            availQuery = availQuery.eq("author_id", "00000000-0000-0000-0000-000000000000"); // guaranteed empty
+          }
+        }
+
+        const { data } = await availQuery
+          .order("created_at", { ascending: sortOrder === "oldest" })
+          .limit(userId ? 20 : 50);
+        availRows = data ?? [];
+      } else {
+        availRows = [];
+      }
 
       // 3. Collect all user IDs to resolve profiles
       const allTaggedIds = new Set<string>();
@@ -1178,24 +1718,26 @@ export function ProfilePostsFeed({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-0 md:space-y-4">
       {/* Compose button — own profile only */}
       {isOwnProfile && (
-        <button
-          type="button"
-          onClick={() => {
-            if (!user) { navigate("/login"); return; }
-            setComposeOpen(true);
-          }}
-          className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-orange-300 dark:border-orange-800/60 bg-orange-50/60 dark:bg-orange-950/20 px-4 py-3.5 text-left transition-colors hover:bg-orange-100/60 dark:hover:bg-orange-950/40 group"
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/50 group-hover:bg-orange-200 dark:group-hover:bg-orange-900 transition-colors">
-            <Plus className="h-5 w-5 text-orange-600 dark:text-orange-400" strokeWidth={2.5} />
-          </div>
-          <span className="text-sm font-semibold text-orange-700 dark:text-orange-400">
-            Share something with your followers…
-          </span>
-        </button>
+        <div className="mb-4 md:mb-0">
+          <button
+            type="button"
+            onClick={() => {
+              if (!user) { navigate("/login"); return; }
+              setComposeOpen(true);
+            }}
+            className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-orange-300 dark:border-orange-800/60 bg-orange-50/60 dark:bg-orange-950/20 px-4 py-3.5 text-left transition-colors hover:bg-orange-100/60 dark:hover:bg-orange-950/40 group"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/50 group-hover:bg-orange-200 dark:group-hover:bg-orange-900 transition-colors">
+              <Plus className="h-5 w-5 text-orange-600 dark:text-orange-400" strokeWidth={2.5} />
+            </div>
+            <span className="text-sm font-semibold text-orange-700 dark:text-orange-400">
+              Share something with your followers…
+            </span>
+          </button>
+        </div>
       )}
 
       {/* Feed */}

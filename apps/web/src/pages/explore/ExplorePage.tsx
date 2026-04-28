@@ -276,117 +276,101 @@ export default function ExplorePage() {
       data-explore-page=""
       data-explore-mode={mode}
     >
-      {/* Fixed under BottomNav header — same shell as Discover home primary toggle */}
-      <div
-        className={cn(
-          "fixed inset-x-0 z-[55] pointer-events-none border-b border-border/40 dark:border-border/30",
-          "bg-white dark:bg-background",
-          "max-md:top-0",
-          "md:top-[calc(env(safe-area-inset-top,0px)+3.5rem)]",
-        )}
-      >
-        <div
-          aria-hidden
-          className="shrink-0 bg-white dark:bg-background md:hidden"
-          style={{
-            height: "calc(env(safe-area-inset-top, 0px) + 3.5rem)",
-          }}
-        />
-        <div className="app-desktop-shell pointer-events-auto max-md:px-2.5">
-          <div className="w-full space-y-0.5 px-2 pb-0.5 pt-2">
-            <div role="tablist" aria-label="Explore: what are you here for?">
-              <div
+      {/* In-flow header: scrolls away with content */}
+      <div className="app-desktop-shell max-md:px-2.5">
+        <div className="w-full space-y-0.5 px-2 pb-0.5 pt-2 md:pt-5">
+          <div role="tablist" aria-label="Explore: what are you here for?">
+            <div
+              className={cn(
+                // Match Discover home primary segmented control (DiscoverHomeContent).
+                "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
+                "border border-slate-300/70 bg-slate-100 shadow-sm",
+                "dark:border-zinc-700/80 dark:bg-zinc-900",
+                "leading-none",
+              )}
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "hire"}
+                aria-label={mode === "hire" ? undefined : "I need help"}
+                onClick={() => setMode("hire")}
                 className={cn(
-                  // Match Discover home primary segmented control (DiscoverHomeContent).
-                  "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
-                  "border border-slate-300/70 bg-slate-100 shadow-sm",
-                  "dark:border-zinc-700/80 dark:bg-zinc-900",
-                  "leading-none",
+                  "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 sm:min-h-[54px] sm:px-3",
+                  "transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                  "active:scale-[0.98] motion-reduce:transition-none",
+                  mode === "hire"
+                    ? "bg-white text-neutral-900 shadow-sm ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/80"
+                    : "bg-transparent text-neutral-900 hover:bg-white/60 dark:hover:bg-zinc-800/50",
                 )}
               >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === "hire"}
-                  aria-label={mode === "hire" ? undefined : "I need help"}
-                  onClick={() => setMode("hire")}
+                <HeartHandshake
                   className={cn(
-                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 sm:min-h-[54px] sm:px-3",
-                    "transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "active:scale-[0.98] motion-reduce:transition-none",
+                    discoverIcon.md,
+                    "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
                     mode === "hire"
-                      ? "bg-white text-neutral-900 shadow-sm ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/80"
-                      : "bg-transparent text-neutral-900 hover:bg-white/60 dark:hover:bg-zinc-800/50",
+                      ? "text-[#7B61FF]"
+                      : "text-slate-400 dark:text-zinc-500",
                   )}
-                >
-                  <HeartHandshake
-                    className={cn(
-                      discoverIcon.md,
-                      "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                      mode === "hire"
-                        ? "text-[#7B61FF]"
-                        : "text-slate-400 dark:text-zinc-500",
-                    )}
-                    strokeWidth={DISCOVER_STROKE}
-                    aria-hidden
-                  />
-                  <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-tight text-neutral-900 sm:text-[16px] dark:text-zinc-100">
-                    I need help
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === "work"}
-                  aria-label={mode === "work" ? undefined : "Help others"}
-                  onClick={() => setMode("work")}
+                  strokeWidth={DISCOVER_STROKE}
+                  aria-hidden
+                />
+                <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-tight text-neutral-900 sm:text-[16px] dark:text-zinc-100">
+                  I need help
+                </span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "work"}
+                aria-label={mode === "work" ? undefined : "Help others"}
+                onClick={() => setMode("work")}
+                className={cn(
+                  "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 sm:min-h-[54px] sm:px-3",
+                  "transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                  "active:scale-[0.98] motion-reduce:transition-none",
+                  mode === "work"
+                    ? "bg-white text-neutral-900 shadow-sm ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/80"
+                    : "bg-transparent text-neutral-900 hover:bg-white/60 dark:hover:bg-zinc-800/50",
+                )}
+              >
+                <HelpingHand
                   className={cn(
-                    "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 sm:min-h-[54px] sm:px-3",
-                    "transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                    "active:scale-[0.98] motion-reduce:transition-none",
+                    discoverIcon.md,
+                    "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
                     mode === "work"
-                      ? "bg-white text-neutral-900 shadow-sm ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/80"
-                      : "bg-transparent text-neutral-900 hover:bg-white/60 dark:hover:bg-zinc-800/50",
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-slate-400 dark:text-zinc-500",
                   )}
-                >
-                  <HelpingHand
-                    className={cn(
-                      discoverIcon.md,
-                      "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                      mode === "work"
-                        ? "text-emerald-700 dark:text-emerald-400"
-                        : "text-slate-400 dark:text-zinc-500",
-                    )}
-                    strokeWidth={DISCOVER_STROKE}
-                    aria-hidden
-                  />
-                  <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-tight text-neutral-900 sm:text-[16px] dark:text-zinc-100">
-                    Help others
-                  </span>
-                </button>
-              </div>
+                  strokeWidth={DISCOVER_STROKE}
+                  aria-hidden
+                />
+                <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-tight text-neutral-900 sm:text-[16px] dark:text-zinc-100">
+                  Help others
+                </span>
+              </button>
             </div>
-
-            <ExploreSecondaryUnderlineTabs
-              mode={mode}
-              tab={tab}
-              onTabChange={setTab}
-              counts={tabCounts}
-            />
           </div>
+
+          <ExploreSecondaryUnderlineTabs
+            mode={mode}
+            tab={tab}
+            onTabChange={setTab}
+            counts={tabCounts}
+          />
         </div>
       </div>
 
-      {/* Scroll area: offset = mobile header spacer + primary toggle + underline tab row */}
+      {/* Content */}
       <div
         className={cn(
-          "app-desktop-shell app-scroll-below-explore-fixed max-md:px-2.5",
+          "app-desktop-shell max-md:px-2.5",
           "bg-white dark:bg-zinc-950",
         )}
       >
-        <div className="px-1 pt-0 md:pt-5">
+        <div className="px-1 pt-3 md:pt-5">
           {mode === "hire" ? (
             <>
               {tab === "live_help" ? (
