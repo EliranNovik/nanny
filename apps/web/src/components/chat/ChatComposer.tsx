@@ -18,9 +18,6 @@ interface ChatComposerProps {
   desktopComposerRef: React.RefObject<HTMLTextAreaElement>;
   hideBackButton?: boolean;
   mobileView?: "steps" | "chat";
-  /** Shown above the input (e.g. coordination shortcuts) */
-  quickReplies?: string[];
-  onQuickReply?: (text: string) => void;
 }
 
 export function ChatComposer({
@@ -37,8 +34,6 @@ export function ChatComposer({
   desktopComposerRef,
   hideBackButton,
   mobileView,
-  quickReplies = [],
-  onQuickReply,
 }: ChatComposerProps) {
   const [showPhrases, setShowPhrases] = React.useState(false);
 
@@ -109,7 +104,7 @@ export function ChatComposer({
                 key={p}
                 type="button"
                 onClick={() => {
-                  onQuickReply?.(p);
+                  setNewMessage(p);
                   setShowPhrases(false);
                 }}
                 className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80 dark:hover:bg-zinc-800/80"
@@ -206,7 +201,7 @@ export function ChatComposer({
                 key={p}
                 type="button"
                 onClick={() => {
-                  onQuickReply?.(p);
+                  setNewMessage(p);
                   setShowPhrases(false);
                 }}
                 className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80 dark:hover:bg-zinc-800/80"

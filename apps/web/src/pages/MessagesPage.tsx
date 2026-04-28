@@ -12,12 +12,10 @@ import {
   persistDismissedActivityIds,
 } from "@/lib/inboxDismissedActivity";
 import {
-  loadHiddenChatUserIds,
   persistHiddenChatUserIds,
 } from "@/lib/inboxHiddenChats";
-import { InboxChatSwipeRow } from "@/components/messages/InboxChatSwipeRow";
 import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
-import { jobCategoryLabel, type JobSummaryRow } from "@/lib/chatJobContext";
+import { type JobSummaryRow } from "@/lib/chatJobContext";
 import { useLiveJobConversationBanner } from "@/hooks/useLiveJobConversationBanner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -38,6 +36,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
@@ -100,6 +99,7 @@ type InboxRow =
 
 export default function MessagesPage() {
   const { user, profile } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams<{ conversationId?: string }>();
@@ -236,11 +236,7 @@ export default function MessagesPage() {
       if (existing) {
         handleConversationClick(existing.id);
       } else {
-        const { data: selectedProf } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", selectedUserId)
-          .single();
+
 
         const client_id = profile?.role === "client" ? user.id : selectedUserId;
         const freelancer_id = profile?.role === "freelancer" ? user.id : selectedUserId;

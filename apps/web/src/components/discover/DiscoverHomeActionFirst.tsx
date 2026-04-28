@@ -254,18 +254,7 @@ export function DiscoverHomeActionFirst({
     return openHelpRows.length;
   }, [frData, openHelpRows, profile?.role, user?.id]);
 
-  const liveCategoriesLabel = useMemo(() => {
-    if (!isWorkLive) return null;
-    const ids = (profile as { categories?: unknown } | null)?.categories;
-    if (!Array.isArray(ids)) return null;
-    const labels = ids
-      .map((v) => String(v))
-      .filter((id) => isServiceCategoryId(id))
-      .map((id) => DISCOVER_HOME_CATEGORIES.find((c) => c.id === id)?.label || id.replace(/_/g, " "))
-      .filter((s) => Boolean(String(s).trim()));
-    if (labels.length === 0) return null;
-    return labels.slice(0, 3).join(" · ");
-  }, [isWorkLive, profile]);
+
 
   const myRequestsCount = useMemo(() => {
     return (frData?.myOpenRequests ?? []).length;

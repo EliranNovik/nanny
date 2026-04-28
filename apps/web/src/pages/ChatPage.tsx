@@ -196,7 +196,6 @@ export default function ChatPage({
     if (conversationId) consumePendingChatOpen(conversationId);
   }, [conversationId]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const mobileScrollRef = useRef<HTMLDivElement>(null);
   const mobileComposerRef = useRef<HTMLTextAreaElement>(null);
   const desktopComposerRef = useRef<HTMLTextAreaElement>(null);
 
@@ -210,27 +209,7 @@ export default function ChatPage({
     });
   }
 
-  const coordinationQuickReplies = useMemo(
-    () =>
-      matchBannerActive
-        ? [
-            "What time works best for you?",
-            "Happy to proceed — let's confirm details.",
-            "Quick question about the location.",
-          ]
-        : [
-            "I'm on my way",
-            "Available now",
-            "Can you share a few more details?",
-          ],
-    [matchBannerActive],
-  );
 
-  const handleQuickReply = useCallback((text: string) => {
-    setNewMessage((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text));
-    focusComposer();
-    trackEvent("chat_quick_reply", { len: text.length });
-  }, []);
 
   function adjustComposerHeight() {
     const maxPx =
@@ -2444,8 +2423,6 @@ export default function ChatPage({
           desktopComposerRef={desktopComposerRef}
           hideBackButton={hideBackButton}
           mobileView={mobileView}
-          quickReplies={coordinationQuickReplies}
-          onQuickReply={handleQuickReply}
         />
       </div>
 
