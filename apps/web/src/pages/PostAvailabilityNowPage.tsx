@@ -13,9 +13,13 @@ import {
   serviceCategoryLabel,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
+import {
+  LIVE_CAN_START_OPTIONS,
+  type LiveCanStartId,
+} from "@/lib/liveCanStart";
 import { cn } from "@/lib/utils";
 
-type Phase = "categories" | "confirm";
+type Phase = "categories" | "when_start" | "confirm";
 
 export default function PostAvailabilityNowPage() {
   const navigate = useNavigate();
@@ -28,6 +32,8 @@ export default function PostAvailabilityNowPage() {
 
   const [phase, setPhase] = useState<Phase>("categories");
   const [selected, setSelected] = useState<Set<ServiceCategoryId>>(() => new Set());
+  const [liveCanStartChoice, setLiveCanStartChoice] =
+    useState<LiveCanStartId | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const categoryPickerHeaderRef = useRef<HTMLElement>(null);
@@ -73,13 +79,17 @@ export default function PostAvailabilityNowPage() {
 
   const handleHeaderBack = useCallback(() => {
     if (phase === "confirm") {
+      setPhase("when_start");
+      return;
+    }
+    if (phase === "when_start") {
       setPhase("categories");
       return;
     }
     navigate(mainTabHomePath, { replace: true });
   }, [mainTabHomePath, navigate, phase]);
 
-  const goConfirm = useCallback(() => {
+  const advanceToWhenStart = useCallback(() => {
     if (selected.size === 0) {
       addToast({
         title: "Choose at least one category",
@@ -87,13 +97,33 @@ export default function PostAvailabilityNowPage() {
       });
       return;
     }
-    setPhase("confirm");
+    setPhase("when_start");
   }, [addToast, selected.size]);
+
+  const advanceToConfirm = useCallback(() => {
+    if (!liveCanStartChoice) {
+      addToast({
+        title: "When can you start?",
+        description: "Pick how soon you can take work.",
+        variant: "warning",
+      });
+      return;
+    }
+    setPhase("confirm");
+  }, [addToast, liveCanStartChoice]);
 
   const handlePublish = async () => {
     if (!user?.id || !profile) return;
     if (orderedSelected.length === 0) {
       addToast({ title: "Choose at least one category", variant: "warning" });
+      return;
+    }
+    if (!liveCanStartChoice) {
+      addToast({
+        title: "When can you start?",
+        description: "Go back and pick how soon you can take work.",
+        variant: "warning",
+      });
       return;
     }
     setSubmitting(true);
@@ -104,6 +134,7 @@ export default function PostAvailabilityNowPage() {
       const payload = {
         live_until: liveUntil,
         live_categories: orderedSelected,
+        live_can_start_in: liveCanStartChoice,
         available_now: true,
         updated_at: new Date().toISOString(),
       };
@@ -169,8 +200,8 @@ export default function PostAvailabilityNowPage() {
                 variant="ghost"
                 size="icon"
                 className="mt-0.5 shrink-0 rounded-full"
-                onClick={() => navigate(mainTabHomePath, { replace: true })}
-                aria-label="Back to home"
+                onClick={handleHeaderBack}
+                aria-label="Back"
               >
                 <ChevronLeft className="h-6 w-6" />
               </Button>
@@ -263,7 +294,106 @@ export default function PostAvailabilityNowPage() {
             type="button"
             className="h-12 w-full rounded-xl bg-emerald-600 font-semibold hover:bg-emerald-700"
             disabled={selected.size === 0}
-            onClick={goConfirm}
+            onClick={advanceToWhenStart}
+          >
+            Continue
+          </Button>
+
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+            <Link
+              to="/availability"
+              className="font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
+            >
+              View availability
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "when_start") {
+    return (
+      <div
+        data-post-availability-no-mobile-header=""
+        className="min-h-screen bg-slate-50/50 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 dark:bg-background"
+      >
+        <header
+          ref={categoryPickerHeaderRef}
+          className={cn(
+            "border-b border-slate-200/80 bg-slate-50/95 shadow-sm backdrop-blur-md dark:border-white/[0.08] dark:bg-background/95",
+            "pb-3 pt-2.5",
+            "fixed inset-x-0 z-[55] top-[env(safe-area-inset-top,0px)] md:static md:inset-auto md:z-auto md:shadow-none md:pt-4",
+          )}
+        >
+          <div className="app-desktop-shell mx-auto w-full max-w-lg px-4">
+            <div className="flex items-start gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mt-0.5 shrink-0 rounded-full"
+                onClick={handleHeaderBack}
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Go live
+                </p>
+                <h1 className="text-xl font-black tracking-tight text-foreground">
+                  When can you start?
+                </h1>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  If you match a client soon, when can you realistically begin?
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div
+          aria-hidden
+          className="w-full shrink-0 md:hidden"
+          style={{
+            height:
+              categoryPickerHeaderH > 0
+                ? `calc(env(safe-area-inset-top, 0px) + ${categoryPickerHeaderH}px)`
+                : "clamp(6.5rem, 22vh, 9rem)",
+          }}
+        />
+
+        <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-8 pt-2 md:max-w-lg md:pt-0">
+          <div className="grid gap-2.5">
+            {LIVE_CAN_START_OPTIONS.map((opt) => {
+              const on = liveCanStartChoice === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setLiveCanStartChoice(opt.id)}
+                  className={cn(
+                    "flex min-h-[3.25rem] w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left shadow-sm transition-colors",
+                    on
+                      ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/35 dark:bg-emerald-950/40"
+                      : "border-slate-200/90 bg-white hover:border-emerald-300/80 dark:border-white/10 dark:bg-zinc-900",
+                  )}
+                >
+                  <span className="font-bold text-foreground">{opt.label}</span>
+                  {on ? (
+                    <Check className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+
+          <Button
+            type="button"
+            className="h-12 w-full rounded-xl bg-emerald-600 font-semibold hover:bg-emerald-700"
+            disabled={!liveCanStartChoice}
+            onClick={advanceToConfirm}
           >
             Continue
           </Button>
@@ -337,12 +467,23 @@ export default function PostAvailabilityNowPage() {
               </li>
             ))}
           </ul>
+          {liveCanStartChoice ? (
+            <div className="mt-4 border-t border-slate-100 pt-4 dark:border-white/10">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-zinc-500">
+                Can start
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {LIVE_CAN_START_OPTIONS.find((o) => o.id === liveCanStartChoice)
+                  ?.label ?? "—"}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <Button
           type="button"
           className="h-12 w-full rounded-xl bg-emerald-600 font-semibold hover:bg-emerald-700"
-          disabled={submitting || orderedSelected.length === 0}
+          disabled={submitting || orderedSelected.length === 0 || !liveCanStartChoice}
           onClick={() => void handlePublish()}
         >
           {submitting ? (

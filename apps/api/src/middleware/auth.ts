@@ -97,3 +97,34 @@ export async function requireUser(
   }
 }
 
+export async function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const userId = (req as AuthenticatedRequest).user?.id;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const { data: profile, error } = await supa
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error || !profile?.is_admin) {
+      console.error("[AuthMiddleware] Admin check failed", { userId, error });
+      res.status(403).json({ error: "Forbidden: Admin access required" });
+      return;
+    }
+
+    next();
+  } catch (err: any) {
+    console.error("[AuthMiddleware] Unexpected admin check error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+

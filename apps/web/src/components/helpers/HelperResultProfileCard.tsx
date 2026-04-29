@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Heart, Loader2, MessageCircle } from "lucide-react";
+import { MapPin, Heart, Loader2, MessageCircle, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
 import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
+import { canStartInCardLabel } from "@/lib/liveCanStart";
 
 export type PublicProfileGalleryRow = {
   id: string;
@@ -73,6 +74,10 @@ type HelperResultProfileCardProps = {
   viewerId: string | undefined;
   favoriteIds: Set<string>;
   favoriteBusyId: string | null;
+  /** Helper avg reply time after client message; only shown when credible + under 1h. */
+  respondsWithinLabel?: string | null;
+  /** Helper’s own go-live preference (`freelancer_profiles.live_can_start_in`). */
+  canStartInLabel?: string | null;
   onToggleFavorite: (userId: string, e: React.MouseEvent) => void;
   onOpenProfile: (userId: string) => void;
   variant?: "grid" | "fullscreen";
@@ -84,6 +89,8 @@ export function HelperResultProfileCard({
   viewerId,
   favoriteIds,
   favoriteBusyId,
+  respondsWithinLabel = null,
+  canStartInLabel = null,
   onToggleFavorite,
   onOpenProfile,
   variant = "grid",
@@ -116,6 +123,16 @@ export function HelperResultProfileCard({
         : h.freelancer_profiles?.hourly_rate_max != null
           ? `Up to ₪${h.freelancer_profiles.hourly_rate_max}/hr`
           : null;
+
+  const respondsWithinBadge = useMemo(
+    () => respondsWithinLabel,
+    [respondsWithinLabel],
+  );
+
+  const canStartBadge = useMemo(
+    () => (canStartInLabel ? canStartInLabel : canStartInCardLabel(h.freelancer_profiles?.live_can_start_in)),
+    [canStartInLabel, h.freelancer_profiles?.live_can_start_in],
+  );
 
   const syncIndex = useCallback(() => {
     const el = scrollRef.current;
@@ -440,26 +457,37 @@ export function HelperResultProfileCard({
           </div>
         ) : null}
 
-        {isFreelancerInActive24hLiveWindow(h.freelancer_profiles) && (
-          <div
-            className="pointer-events-none absolute left-3 top-3 z-[12] max-w-[calc(100%-5.5rem)]"
-            role="status"
-            aria-label="Available for jobs now"
-          >
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full",
-                "bg-black/25 px-3 py-1.5 shadow-lg backdrop-blur-xl",
-                "text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-white",
-                "ring-1 ring-inset ring-white/15",
-              )}
-            >
-              <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
+        {(isFreelancerInActive24hLiveWindow(h.freelancer_profiles) ||
+          respondsWithinBadge ||
+          canStartBadge) && (
+          <div className="pointer-events-none absolute left-3 top-3 z-[12] flex max-w-[calc(100%-5.5rem)] flex-col items-start gap-2">
+            {isFreelancerInActive24hLiveWindow(h.freelancer_profiles) ? (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full",
+                  "bg-black/25 px-3 py-1.5 shadow-lg backdrop-blur-xl",
+                  "text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-white",
+                  "ring-1 ring-inset ring-white/15",
+                )}
+                role="status"
+                aria-label="Available for jobs now"
+              >
+                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                  <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
+                </span>
+                <span className="pr-0.5">Live</span>
               </span>
-              <span className="pr-0.5">Live</span>
-            </span>
+            ) : null}
+
+            {canStartBadge ? (
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/95 via-emerald-400/95 to-teal-400/95 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-emerald-500/20 ring-1 ring-inset ring-white/15">
+                  <Zap className="h-3.5 w-3.5 shrink-0 text-white/95" strokeWidth={2.75} aria-hidden />
+                  Ready in {canStartBadge}
+                </span>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -571,6 +599,41 @@ export function HelperResultProfileCard({
                 </span>
               ) : null}
             </div>
+          </div>
+
+          {/* Responds-within badge: above Contact now button */}
+          {respondsWithinBadge ? (
+            <div className="pointer-events-none flex justify-end">
+              <span className="inline-flex items-center rounded-full bg-black/30 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-xl shadow-black/30 backdrop-blur-xl ring-1 ring-inset ring-white/15">
+                Responds within {respondsWithinBadge}
+              </span>
+            </div>
+          ) : null}
+
+          <div className="pointer-events-auto">
+            <button
+              type="button"
+              onClick={(e) => void openDirectChat(e)}
+              disabled={chatOpening}
+              className={cn(
+                "group inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3",
+                "bg-white/95 text-slate-900 shadow-xl shadow-black/20",
+                "ring-1 ring-inset ring-black/10 transition-colors",
+                "hover:bg-white active:bg-white/90",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                "disabled:opacity-60 disabled:pointer-events-none",
+              )}
+              aria-label="Contact now"
+            >
+              {chatOpening ? (
+                <Loader2 className="h-5 w-5 animate-spin text-slate-900/80" aria-hidden />
+              ) : (
+                <MessageCircle className="h-5 w-5 text-slate-900/90" strokeWidth={2.25} aria-hidden />
+              )}
+              <span className="text-[13px] font-black uppercase tracking-[0.14em]">
+                Contact now
+              </span>
+            </button>
           </div>
 
           <div className="flex min-h-[1.25rem] flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2">

@@ -27,6 +27,7 @@ import {
   OpenJobRequestMatchCard,
   type OpenJobRequestMatchRow,
 } from "@/components/jobs/OpenJobRequestMatchCard";
+import { JobRequestCommentsModal } from "@/components/jobs/JobRequestCommentsModal";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
 import {
   GOOGLE_MAPS_LIBRARIES,
@@ -220,6 +221,11 @@ export default function FreelancerJobsMatchPage() {
   const [galleryByUserId, setGalleryByUserId] = useState<
     Record<string, PublicProfileGalleryRow[]>
   >({});
+  const [ratingsByUserId, setRatingsByUserId] = useState<
+    Record<string, { average_rating: number | null; total_ratings: number | null }>
+  >({});
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [activeCommentsJobId, setActiveCommentsJobId] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchChromeCollapsed, setSearchChromeCollapsed] = useState(false);
   const resultsAnchorRef = useRef<HTMLDivElement>(null);
@@ -437,6 +443,37 @@ export default function FreelancerJobsMatchPage() {
     setLoading(true);
     try {
       const filters = [...selectedCategories];
+      
+      // 1. Fetch focused job fallback if provided via search query
+      let focusedRow: OpenJobRequestMatchRow | null = null;
+      if (focusJobId) {
+        const { data: focusedJob } = await supabase
+          .from("job_requests")
+          .select(`
+            id, client_id, service_type, location_city, location_lat, location_lng, 
+            start_at, created_at, shift_hours, time_duration, care_frequency, 
+            service_details, notes, budget_min, budget_max
+          `)
+          .eq("id", focusJobId)
+          .maybeSingle();
+
+        if (focusedJob) {
+          const { data: clientProfile } = await supabase
+            .from("profiles")
+            .select("full_name, photo_url")
+            .eq("id", focusedJob.client_id)
+            .maybeSingle();
+
+          focusedRow = {
+            ...focusedJob,
+            client_display_name: clientProfile?.full_name || "Client",
+            client_photo_url: clientProfile?.photo_url || null,
+            distance_km: null
+          } as OpenJobRequestMatchRow;
+        }
+      }
+
+      // 2. Fetch overall matches based on filters
       const { data, error } = await supabase.rpc("get_job_requests_near_location", {
         search_lat: center.lat,
         search_lng: center.lng,
@@ -446,22 +483,37 @@ export default function FreelancerJobsMatchPage() {
         p_limit: 200,
       });
       if (error) throw error;
-      // Safety: never show the viewer's own requests, even if RPC hasn't been redeployed yet.
-      const fetched = (data ?? []) as OpenJobRequestMatchRow[];
-      setRows(fetched.filter((r) => r.client_id !== user.id));
+      
+      let fetched = (data ?? []) as OpenJobRequestMatchRow[];
+      
+      // 3. Guarantee focusedRow presence
+      if (focusedRow && !fetched.some((r) => r.id === focusJobId)) {
+        fetched = [focusedRow, ...fetched];
+      }
+
+      // Safety: never show the viewer's own requests
+      const finalRows = fetched.filter((r) => r.client_id !== user.id);
+      setRows(finalRows);
       // Fetch media for clients (profile photo + gallery)
       const clientIds = Array.from(
         new Set(fetched.map((r) => r.client_id).filter((id) => id !== user.id)),
       ).filter(Boolean);
       if (clientIds.length > 0) {
-        const { data: mediaRows, error: mediaErr } = await supabase
-          .from("public_profile_media")
-          .select("id, user_id, media_type, storage_path, sort_order, created_at")
-          .in("user_id", clientIds);
-        if (!mediaErr) {
+        const [mediaRes, profilesRes] = await Promise.all([
+          supabase
+            .from("public_profile_media")
+            .select("id, user_id, media_type, storage_path, sort_order, created_at")
+            .in("user_id", clientIds),
+          supabase
+            .from("profiles")
+            .select("id, average_rating, total_ratings")
+            .in("id", clientIds)
+        ]);
+
+        if (!mediaRes.error) {
           const by: Record<string, PublicProfileGalleryRow[]> = {};
           for (const id of clientIds) by[id] = [];
-          for (const row of (mediaRows ?? []) as PublicProfileGalleryRow[]) {
+          for (const row of (mediaRes.data ?? []) as PublicProfileGalleryRow[]) {
             const uid = row.user_id;
             if (!by[uid]) by[uid] = [];
             by[uid].push(row);
@@ -474,6 +526,32 @@ export default function FreelancerJobsMatchPage() {
             );
           }
           setGalleryByUserId(by);
+        }
+
+        if (!profilesRes.error && profilesRes.data) {
+          const ratingMap: Record<string, { average_rating: number | null; total_ratings: number | null }> = {};
+          for (const p of profilesRes.data) {
+            ratingMap[p.id] = {
+              average_rating: p.average_rating != null ? Number(p.average_rating) : null,
+              total_ratings: p.total_ratings != null ? Number(p.total_ratings) : null,
+            };
+          }
+          setRatingsByUserId(ratingMap);
+        }
+      }
+
+      const jobIds = fetched.map((r) => r.id);
+      if (jobIds.length > 0) {
+        const { data: commentsData } = await supabase
+          .from("job_request_comments")
+          .select("id, job_request_id")
+          .in("job_request_id", jobIds);
+        if (commentsData) {
+          const counts: Record<string, number> = {};
+          for (const c of commentsData) {
+            counts[c.job_request_id] = (counts[c.job_request_id] || 0) + 1;
+          }
+          setCommentCounts(counts);
         }
       }
       setHasSearched(true);
@@ -516,11 +594,11 @@ export default function FreelancerJobsMatchPage() {
   }, []);
 
   const acceptJob = useCallback(
-    async (jobId: string, row: OpenJobRequestMatchRow) => {
+    async (jobId: string, row: OpenJobRequestMatchRow, note?: string) => {
       if (!user?.id || !allowedToAct) {
         throw new Error("Enable a helper profile to accept requests.");
       }
-      await apiPost(`/api/jobs/${jobId}/freelancer-confirm-open`, {});
+      await apiPost(`/api/jobs/${jobId}/freelancer-confirm-open`, { note });
       addToast({
         title: "Accepted",
         description: `Waiting for ${(row.client_display_name || "the client").trim()}.`,
@@ -761,13 +839,16 @@ export default function FreelancerJobsMatchPage() {
                       <OpenJobRequestMatchCard
                         row={r}
                         gallery={galleryByUserId[r.client_id] ?? []}
+                        clientRating={ratingsByUserId[r.client_id]}
+                        commentCount={commentCounts[r.id] || 0}
+                        onOpenComments={(id) => setActiveCommentsJobId(id)}
                         formatTitle={(st) => formatJobTitle(st || undefined)}
                         onOpenProfile={(userId) =>
                           navigate(`/profile/${encodeURIComponent(userId)}`)
                         }
-                        onAccept={async (jobId) => {
+                        onAccept={async (jobId, note) => {
                           try {
-                            await acceptJob(jobId, r);
+                            await acceptJob(jobId, r, note);
                           } catch (e: unknown) {
                             addToast({
                               title: "Could not accept",
@@ -838,13 +919,16 @@ export default function FreelancerJobsMatchPage() {
                   key={r.id}
                   row={r}
                   gallery={galleryByUserId[r.client_id] ?? []}
+                  clientRating={ratingsByUserId[r.client_id]}
+                  commentCount={commentCounts[r.id] || 0}
+                  onOpenComments={(id) => setActiveCommentsJobId(id)}
                   formatTitle={(st) => formatJobTitle(st || undefined)}
                   onOpenProfile={(userId) =>
                     navigate(`/profile/${encodeURIComponent(userId)}`)
                   }
-                  onAccept={async (jobId) => {
+                  onAccept={async (jobId, note) => {
                     try {
-                      await acceptJob(jobId, r);
+                      await acceptJob(jobId, r, note);
                     } catch (e: unknown) {
                       addToast({
                         title: "Could not accept",
@@ -924,6 +1008,18 @@ export default function FreelancerJobsMatchPage() {
             </div>
           </div>
         ) : null}
+        {/* Comments Modal */}
+        <JobRequestCommentsModal
+          jobId={activeCommentsJobId}
+          isOpen={!!activeCommentsJobId}
+          onClose={() => setActiveCommentsJobId(null)}
+          onCommentAdded={(jid) => {
+            setCommentCounts((prev) => ({
+              ...prev,
+              [jid]: (prev[jid] || 0) + 1,
+            }));
+          }}
+        />
       </div>
     </div>
   );

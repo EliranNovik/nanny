@@ -13,7 +13,7 @@ const JOB_SAFE_FIELDS = [
   "id", "client_id", "selected_freelancer_id", "status", "stage",
   "service_type", "care_type", "care_frequency", "time_duration",
   "service_details", "children_count", "children_age_group",
-  "location_city", "start_at", "created_at", "locked_at",
+  "location_city", "location_lat", "location_lng", "start_at", "created_at", "locked_at",
   "confirm_starts_at", "confirm_ends_at", "confirm_window_seconds",
   "notes", "budget_min", "budget_max", "languages_pref", "requirements",
   "offered_hourly_rate", "price_offer_status", "community_post_id",
@@ -25,7 +25,8 @@ const FREELANCER_PROFILE_SAFE_FIELDS =
   "hourly_rate_min, hourly_rate_max, bio, available_now, languages";
 
 /** Profile fields safe to include in confirmations list (categories lives on profiles, not freelancer_profiles). */
-const PROFILE_CARD_FIELDS = "id, full_name, photo_url, city, categories";
+const PROFILE_CARD_FIELDS =
+  "id, full_name, photo_url, city, categories, location_lat, location_lng";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,20 @@ async function getJobForClient(jobId: string, clientId: string) {
     .single();
   return data ?? null;
 }
+
+/** Matches db / discover logic: empty live_categories = any category during an active window. */
+function freelancerLiveCategoriesMatchJob(
+  liveCategories: string[] | null | undefined,
+  serviceType: string,
+): boolean {
+  const lc = Array.isArray(liveCategories) ? liveCategories : [];
+  const st = (serviceType || "").trim();
+  if (lc.length === 0) return true;
+  if (!st) return true;
+  return lc.includes(st);
+}
+
+type MapDebugConfirmed = Record<string, unknown>;
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -625,10 +640,12 @@ jobsRouter.post("/:jobId/confirm", async (req: Request, res: Response): Promise<
     return;
   }
 
+  const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : null;
+
   // INTEGRITY: check for duplicate confirmation (idempotent upsert is fine but log)
   const { error } = await supabaseAdmin
     .from("job_confirmations")
-    .upsert({ job_id: jobId, freelancer_id: user.id, status: "available" });
+    .upsert({ job_id: jobId, freelancer_id: user.id, status: "available", note: note || undefined });
 
   if (error) {
     res.status(500).json({ error: error.message });
@@ -675,9 +692,11 @@ jobsRouter.post("/:jobId/freelancer-confirm-open", async (req: Request, res: Res
     return;
   }
 
+  const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : null;
+
   const { error } = await supabaseAdmin
     .from("job_confirmations")
-    .upsert({ job_id: jobId, freelancer_id: user.id, status: "available" });
+    .upsert({ job_id: jobId, freelancer_id: user.id, status: "available", note: note || undefined });
 
   if (error) {
     res.status(500).json({ error: error.message });
@@ -894,6 +913,9 @@ jobsRouter.post("/:jobId/accept-open-job", async (req: Request, res: Response): 
 jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise<void> => {
   const user = (req as AuthenticatedRequest).user;
   const { jobId } = req.params;
+  const wantDebug =
+    String((req.query as { debug?: string }).debug || "") === "1" ||
+    process.env.CONFIRMED_MAP_DEBUG === "1";
 
   if (!z.string().uuid().safeParse(jobId).success) {
     res.status(400).json({ error: "Invalid job id" });
@@ -906,6 +928,11 @@ jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise
     return;
   }
 
+  const jobRow = job as unknown as Record<string, unknown>;
+  const clientId = user.id;
+  const serviceType =
+    typeof jobRow.service_type === "string" ? jobRow.service_type.trim() : "";
+
   const { data: confs, error } = await supabaseAdmin
     .from("job_confirmations")
     .select("freelancer_id, note, is_open_job_accepted")
@@ -917,38 +944,132 @@ jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise
     return;
   }
 
-  const ids = (confs || []).map((c) => c.freelancer_id);
+  const confRows = confs || [];
+  const confirmationIds = new Set(confRows.map((c) => c.freelancer_id));
+  const confsMap = new Map(confRows.map((c) => [c.freelancer_id, c]));
 
-  if (ids.length === 0) {
-    res.json({ freelancers: [], confirm_ends_at: (job as any).confirm_ends_at, job });
-    return;
+  /** Only people who tapped confirm on this job (list + full map avatars). */
+  let freelancers: Record<string, unknown>[] = [];
+
+  if (confirmationIds.size > 0) {
+    const confirmationIdsArr = [...confirmationIds];
+    const { data: confProfiles, error: pErr } = await supabaseAdmin
+      .from("profiles")
+      .select(
+        `${PROFILE_CARD_FIELDS}, freelancer_profiles(${FREELANCER_PROFILE_SAFE_FIELDS})`,
+      )
+      .in("id", confirmationIdsArr);
+
+    if (pErr) {
+      res.status(500).json({ error: pErr.message });
+      return;
+    }
+
+    freelancers = (confProfiles || []).map((profile: Record<string, unknown>) => ({
+      ...profile,
+      confirmation_note: confsMap.get(profile.id as string)?.note ?? null,
+      is_open_job_accepted:
+        confsMap.get(profile.id as string)?.is_open_job_accepted ?? false,
+    }));
+
+    freelancers.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+      const ao = a.is_open_job_accepted ? 1 : 0;
+      const bo = b.is_open_job_accepted ? 1 : 0;
+      return bo - ao;
+    });
   }
 
-  // SECURITY: explicit safe field lists, no select(*)
-  const { data: profiles, error: pErr } = await supabaseAdmin
-    .from("profiles")
-    .select(
-      `${PROFILE_CARD_FIELDS}, freelancer_profiles(${FREELANCER_PROFILE_SAFE_FIELDS})`
-    )
-    .in("id", ids);
+  const nowIso = new Date().toISOString();
 
-  if (pErr) {
-    res.status(500).json({ error: pErr.message });
-    return;
+  const { data: liveRowsRaw, error: liveErr } = await supabaseAdmin
+    .from("freelancer_profiles")
+    .select("user_id, live_until, live_categories")
+    .not("live_until", "is", null)
+    .gt("live_until", nowIso)
+    .limit(400);
+
+  if (liveErr) {
+    console.warn("[confirmed] freelancer_profiles live_until query failed:", liveErr.message);
   }
 
-  const confsMap = new Map((confs || []).map((c) => [c.freelancer_id, c]));
-  const enrichedProfiles = (profiles || []).map((profile: any) => ({
-    ...profile,
-    confirmation_note: confsMap.get(profile.id)?.note || null,
-    is_open_job_accepted: confsMap.get(profile.id)?.is_open_job_accepted || false,
-  }));
+  const liveUserIdsNearCategory = new Set<string>();
+  let liveSkippedCategory = 0;
+  let liveExcludedClientSelf = 0;
 
-  res.json({
-    freelancers: enrichedProfiles,
-    confirm_ends_at: (job as any).confirm_ends_at,
+  for (const row of liveRowsRaw || []) {
+    const uid = String((row as { user_id?: string }).user_id ?? "");
+    if (!uid) continue;
+    if (uid === clientId) {
+      liveExcludedClientSelf += 1;
+      continue;
+    }
+    const fp = row as {
+      live_categories?: string[] | null;
+    };
+    if (!freelancerLiveCategoriesMatchJob(fp.live_categories, serviceType)) {
+      liveSkippedCategory += 1;
+      continue;
+    }
+    liveUserIdsNearCategory.add(uid);
+  }
+
+  /** Map-only: active 24h live window, excluding responders already listed in `freelancers`. */
+  const liveMapOnlyIds = [...liveUserIdsNearCategory].filter(
+    (id) => !confirmationIds.has(id),
+  );
+
+  let live_map_helpers: Record<string, unknown>[] = [];
+
+  if (liveMapOnlyIds.length > 0) {
+    const { data: liveProfiles, error: lhErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, photo_url, location_lat, location_lng, city")
+      .in("id", liveMapOnlyIds);
+
+    if (lhErr) {
+      console.warn("[confirmed] live_map_helpers profiles:", lhErr.message);
+    } else {
+      live_map_helpers = liveProfiles ?? [];
+    }
+  }
+
+  let _map_debug: MapDebugConfirmed | undefined;
+  if (wantDebug) {
+    _map_debug = {
+      job_id: jobId,
+      confirmation_row_count: confRows.length,
+      freelancer_list_count: freelancers.length,
+      live_fp_rows_loaded: liveRowsRaw?.length ?? 0,
+      live_user_ids_near_category: liveUserIdsNearCategory.size,
+      live_map_helpers_count: live_map_helpers.length,
+      live_skipped_wrong_category: liveSkippedCategory,
+      live_excluded_matching_client: liveExcludedClientSelf,
+      service_type: serviceType || null,
+      now_iso: nowIso,
+    };
+    console.warn(
+      "[confirmed map]",
+      JSON.stringify({
+        ..._map_debug,
+        confirmation_freelancer_ids: [...confirmationIds],
+      }),
+    );
+  }
+
+  const payload: Record<string, unknown> = {
+    freelancers,
+    /** Map overlays only — not responders on this job unless also in job_confirmations. */
+    live_map_helpers,
+    confirm_ends_at: jobRow.confirm_ends_at,
     job,
-  });
+  };
+  if (wantDebug && _map_debug) {
+    payload._map_debug = {
+      ..._map_debug,
+    };
+  }
+
+  res.json(payload);
 });
 
 // POST /:jobId/select — Client selects a freelancer and locks the job

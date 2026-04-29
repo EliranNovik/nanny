@@ -11,6 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Briefcase,
   Users,
@@ -22,6 +23,7 @@ import {
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { getJobStageBadge } from "@/lib/jobStages";
+import { apiGet, apiPost } from "@/lib/api";
 
 interface Job {
   id: string;
@@ -35,6 +37,14 @@ interface Job {
   created_at: string;
   client_id: string;
   selected_freelancer_id: string | null;
+  requirements?: string[];
+  languages_pref?: string[];
+  budget_min?: number | null;
+  budget_max?: number | null;
+  shift_hours?: string | null;
+  confirm_starts_at?: string | null;
+  confirm_ends_at?: string | null;
+  notes?: string | null;
   client?: {
     full_name: string | null;
     photo_url: string | null;
@@ -90,6 +100,8 @@ export default function AdminPage() {
   const [reports, setReports] = useState<ReportConversation[]>([]);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 
   useEffect(() => {
     // Wait for auth to finish loading before checking
@@ -114,12 +126,17 @@ export default function AdminPage() {
 
     setLoading(true);
     try {
-      await Promise.all([
-        fetchJobs(),
-        fetchUsers(),
-        fetchReports(),
-        fetchStatistics(),
-      ]);
+      const data = await apiGet<{
+        jobs: Job[];
+        users: UserProfile[];
+        reports: ReportConversation[];
+        statistics: Statistics;
+      }>("/api/admin/dashboard");
+
+      setJobs(data.jobs);
+      setUsers(data.users);
+      setReports(data.reports);
+      setStatistics(data.statistics);
     } catch (error) {
       console.error("Error fetching admin data:", error);
     } finally {
@@ -127,162 +144,35 @@ export default function AdminPage() {
     }
   }
 
-  async function fetchJobs() {
-    const { data, error } = await supabase
-      .from("job_requests")
-      .select(
-        `
-        *,
-        client:profiles!job_requests_client_id_fkey(id, full_name, photo_url),
-        freelancer:profiles!job_requests_selected_freelancer_id_fkey(id, full_name, photo_url)
-      `,
-      )
-      .order("created_at", { ascending: false });
+  const openJobModal = (job: Job) => {
+    setSelectedJob(job);
+    setIsJobModalOpen(true);
+  };
 
-    if (error) {
-      console.error("Error fetching jobs:", error);
-      return;
+  async function handleUserAction(userId: string, action: "disconnect" | "delete") {
+    const confirmationText =
+      action === "delete"
+        ? "Are you sure you want to COMPLETELY DELETE this user? This removes authentication logins and operational records permanently."
+        : "Are you sure you want to DISCONNECT this user profile? Operational logs will purge, but core authentication credentials remain.";
+
+    if (!window.confirm(confirmationText)) return;
+
+    try {
+      setLoading(true);
+      const res = await apiPost<{ success: boolean; message?: string }>(
+        `/api/admin/users/${userId}/action`,
+        { action }
+      );
+      if (res.success) {
+        fetchAllData();
+      }
+    } catch (err: any) {
+      alert(`Administrative action failed: ${err.message || err}`);
+      setLoading(false);
     }
-
-    setJobs(data || []);
   }
 
-  async function fetchUsers() {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching users:", error);
-      return;
-    }
-
-    setUsers(data || []);
-  }
-
-  async function fetchReports() {
-    if (!user) return;
-
-    // Fetch conversations where job_id is null (admin reports)
-    const { data: conversations, error: convError } = await supabase
-      .from("conversations")
-      .select(
-        `
-        *,
-        client:profiles!conversations_client_id_fkey(*)
-      `,
-      )
-      .is("job_id", null)
-      .order("created_at", { ascending: false });
-
-    if (convError) {
-      console.error("Error fetching reports:", convError);
-      return;
-    }
-
-    // Fetch last message and unread count for each conversation
-    const reportsWithMessages = await Promise.all(
-      (conversations || []).map(async (conv) => {
-        const { data: messages } = await supabase
-          .from("messages")
-          .select("body, created_at")
-          .eq("conversation_id", conv.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        const { count } = await supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", conv.id)
-          .is("read_at", null)
-          .neq("sender_id", user.id);
-
-        return {
-          ...conv,
-          last_message: messages || undefined,
-          unread_count: count || 0,
-        };
-      }),
-    );
-
-    setReports(reportsWithMessages);
-  }
-
-  async function fetchStatistics() {
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-    // Total jobs
-    const { count: totalJobs } = await supabase
-      .from("job_requests")
-      .select("*", { count: "exact", head: true });
-
-    // Active jobs
-    const { count: activeJobs } = await supabase
-      .from("job_requests")
-      .select("*", { count: "exact", head: true })
-      .in("status", ["locked", "active"]);
-
-    // Completed jobs
-    const { count: completedJobs } = await supabase
-      .from("job_requests")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "completed");
-
-    // Requested jobs (notifying, confirmations_closed)
-    const { count: requestedJobs } = await supabase
-      .from("job_requests")
-      .select("*", { count: "exact", head: true })
-      .in("status", ["notifying", "confirmations_closed"]);
-
-    // Total users (excluding admins from count)
-    const { count: totalUsers } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .or("is_admin.is.null,is_admin.eq.false");
-
-    // Total clients (excluding admins)
-    const { count: totalClients } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "client")
-      .or("is_admin.is.null,is_admin.eq.false");
-
-    // Total freelancers (excluding admins)
-    const { count: totalFreelancers } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "freelancer")
-      .or("is_admin.is.null,is_admin.eq.false");
-
-    // Jobs this week
-    const { count: jobsThisWeek } = await supabase
-      .from("job_requests")
-      .select("*", { count: "exact", head: true })
-      .gte("created_at", weekAgo.toISOString());
-
-    // Jobs last week
-    const { count: jobsLastWeek } = await supabase
-      .from("job_requests")
-      .select("*", { count: "exact", head: true })
-      .gte("created_at", twoWeeksAgo.toISOString())
-      .lt("created_at", weekAgo.toISOString());
-
-    setStatistics({
-      totalJobs: totalJobs || 0,
-      activeJobs: activeJobs || 0,
-      completedJobs: completedJobs || 0,
-      requestedJobs: requestedJobs || 0,
-      totalUsers: totalUsers || 0,
-      totalClients: totalClients || 0,
-      totalFreelancers: totalFreelancers || 0,
-      jobsThisWeek: jobsThisWeek || 0,
-      jobsLastWeek: jobsLastWeek || 0,
-    });
-  }
 
   const activeJobs = jobs.filter(
     (j) => j.status === "locked" || j.status === "active",
@@ -418,23 +308,12 @@ export default function AdminPage() {
                       No active jobs
                     </p>
                   ) : (
-                    activeJobs.map((job) => {
-                      const handleClick = async () => {
-                        const { data: conv } = await supabase
-                          .from("conversations")
-                          .select("id")
-                          .eq("job_id", job.id)
-                          .maybeSingle();
-                        if (conv) {
-                          navigate(`/chat/${conv.id}`);
-                        }
-                      };
-                      return (
-                        <Card
-                          key={job.id}
-                          className="p-3 cursor-pointer hover:bg-muted/50"
-                          onClick={handleClick}
-                        >
+                    activeJobs.map((job) => (
+                      <Card
+                        key={job.id}
+                        className="p-3 cursor-pointer hover:bg-muted/50"
+                        onClick={() => openJobModal(job)}
+                      >
                           <div className="flex items-start gap-2">
                             <Avatar className="w-8 h-8">
                               <AvatarImage
@@ -469,9 +348,8 @@ export default function AdminPage() {
                             </div>
                           </div>
                         </Card>
-                      );
-                    })
-                  )}
+                      ))
+                    )}
                 </CardContent>
               </Card>
 
@@ -493,9 +371,7 @@ export default function AdminPage() {
                       <Card
                         key={job.id}
                         className="p-3 cursor-pointer hover:bg-muted/50"
-                        onClick={() =>
-                          navigate(`/client/jobs/${job.id}/live`)
-                        }
+                        onClick={() => openJobModal(job)}
                       >
                         <div className="flex items-start gap-2">
                           <Avatar className="w-8 h-8">
@@ -549,7 +425,11 @@ export default function AdminPage() {
                     </p>
                   ) : (
                     completedJobs.map((job) => (
-                      <Card key={job.id} className="p-3">
+                      <Card 
+                        key={job.id} 
+                        className="p-3 cursor-pointer hover:bg-muted/50"
+                        onClick={() => openJobModal(job)}
+                      >
                         <div className="flex items-start gap-2">
                           <Avatar className="w-8 h-8">
                             <AvatarImage
@@ -580,113 +460,196 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="users" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>All Users</CardTitle>
-                <CardDescription>Clients and freelancers</CardDescription>
+            <Card className="border border-border/50 shadow-sm overflow-hidden rounded-xl bg-card">
+              <CardHeader className="px-6 py-5 border-b border-border/50">
+                <CardTitle className="text-xl font-bold">Comprehensive User Registry</CardTitle>
+                <CardDescription className="text-zinc-500 dark:text-zinc-400">
+                  Manage marketplace participants, active sessions, and access permissions.
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {users.map((user) => (
-                    <Card key={user.id} className="p-4">
-                      <div className="flex items-center gap-4">
-                        <Avatar>
-                          <AvatarImage src={user.photo_url || undefined} />
-                          <AvatarFallback>
-                            {user.full_name?.[0] || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              {user.full_name || "Unnamed"}
-                            </p>
-                            {user.is_admin ? (
-                              <Badge variant="destructive">Admin</Badge>
-                            ) : (
-                              <Badge
-                                variant={
-                                  user.role === "client"
-                                    ? "default"
-                                    : "secondary"
-                                }
-                              >
-                                {user.role}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {user.city || "No location"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Joined{" "}
-                            {format(new Date(user.created_at), "MMM d, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+              <CardContent className="p-0 max-h-[600px] overflow-y-auto">
+                {users.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground">
+                    No active user data loaded.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-sm text-zinc-600 dark:text-zinc-300">
+                      <thead className="sticky top-0 bg-zinc-50/80 backdrop-blur-md dark:bg-zinc-900/80 border-b border-border/50 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                        <tr>
+                          <th scope="col" className="px-6 py-3.5">Participant</th>
+                          <th scope="col" className="px-6 py-3.5">Role</th>
+                          <th scope="col" className="px-6 py-3.5">Location</th>
+                          <th scope="col" className="px-6 py-3.5">Onboarded</th>
+                          <th scope="col" className="px-6 py-3.5 text-right">Operations</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 bg-card">
+                        {users.map((u) => (
+                          <tr key={u.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+                            <td className="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9 border border-border/30 shadow-sm">
+                                  <AvatarImage src={u.photo_url || undefined} alt={u.full_name || "User Avatar"} />
+                                  <AvatarFallback className="bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 text-xs">
+                                    {u.full_name?.[0] || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-sm tracking-tight">{u.full_name || "Anonymous"}</span>
+                                  <span className="text-xs text-muted-foreground font-normal">{u.phone || "No phone listed"}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {u.is_admin ? (
+                                <Badge variant="destructive" className="rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm">Admin</Badge>
+                              ) : (
+                                <Badge
+                                  variant={u.role === "client" ? "default" : "secondary"}
+                                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm ${
+                                    u.role === "client" 
+                                      ? "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900" 
+                                      : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900"
+                                  }`}
+                                >
+                                  {u.role}
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-sm">
+                              {u.city || "N/A"}
+                            </td>
+                            <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-sm">
+                              {format(new Date(u.created_at), "MMM d, yyyy")}
+                            </td>
+                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                              {!u.is_admin && (
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleUserAction(u.id, "disconnect")}
+                                    className="px-3 py-1 text-xs font-medium text-amber-600 hover:text-amber-700 border border-amber-200 hover:border-amber-300 bg-amber-50/50 dark:bg-amber-950/10 dark:border-amber-900/30 dark:hover:bg-amber-950/20 rounded-lg transition-all shadow-sm"
+                                  >
+                                    Disconnect
+                                  </button>
+                                  <button
+                                    onClick={() => handleUserAction(u.id, "delete")}
+                                    className="px-3 py-1 text-xs font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 bg-red-50/50 dark:bg-red-950/10 dark:border-red-900/30 dark:hover:bg-red-950/20 rounded-lg transition-all shadow-sm"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="statistics" className="mt-6">
             {statistics && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Job Statistics</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Total Jobs</span>
-                      <span className="font-bold">{statistics.totalJobs}</span>
+              <div className="space-y-6">
+                {/* Quick Glance Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col shadow-sm transition-all hover:shadow-md hover:border-border">
+                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Total Operations</span>
+                    <span className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{statistics.totalJobs}</span>
+                    <div className="flex items-center gap-1.5 mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <span>{statistics.jobsThisWeek} created this week</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Active Jobs</span>
-                      <span className="font-bold text-green-600">
-                        {statistics.activeJobs}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Completed Jobs</span>
-                      <span className="font-bold text-blue-600">
-                        {statistics.completedJobs}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Requested Jobs</span>
-                      <span className="font-bold text-amber-600">
-                        {statistics.requestedJobs}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  
+                  <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col shadow-sm transition-all hover:shadow-md hover:border-border">
+                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Active Assignments</span>
+                    <span className="text-3xl font-extrabold tracking-tight mt-1 text-emerald-600 dark:text-emerald-400">{statistics.activeJobs}</span>
+                    <span className="text-xs text-muted-foreground mt-2 font-medium">In execution phase</span>
+                  </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>User Statistics</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Total Users</span>
-                      <span className="font-bold">{statistics.totalUsers}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Clients</span>
-                      <span className="font-bold">
-                        {statistics.totalClients}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Freelancers</span>
-                      <span className="font-bold">
-                        {statistics.totalFreelancers}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
+                  <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col shadow-sm transition-all hover:shadow-md hover:border-border">
+                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Fulfilling Requests</span>
+                    <span className="text-3xl font-extrabold tracking-tight mt-1 text-amber-600 dark:text-amber-400">{statistics.requestedJobs}</span>
+                    <span className="text-xs text-muted-foreground mt-2 font-medium">Candidate matching process</span>
+                  </div>
+
+                  <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col shadow-sm transition-all hover:shadow-md hover:border-border">
+                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">Completed Work</span>
+                    <span className="text-3xl font-extrabold tracking-tight mt-1 text-blue-600 dark:text-blue-400">{statistics.completedJobs}</span>
+                    <span className="text-xs text-muted-foreground mt-2 font-medium">Archived and paid out</span>
+                  </div>
+                </div>
+
+                {/* User Breakdown Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="border border-border/50 shadow-sm rounded-xl overflow-hidden bg-card">
+                    <CardHeader className="px-6 py-4 border-b border-border/50">
+                      <CardTitle className="text-base font-bold">Participant Metrics</CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-6 py-5 space-y-5">
+                      <div>
+                        <div className="flex justify-between items-center text-sm mb-1.5">
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-orange-500"></span>
+                            Clients (Employers)
+                          </span>
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{statistics.totalClients}</span>
+                        </div>
+                        <div className="w-full bg-zinc-100 dark:bg-zinc-800/60 rounded-full h-2">
+                          <div 
+                            className="bg-orange-500 h-2 rounded-full" 
+                            style={{ 
+                              width: `${statistics.totalUsers > 0 ? (statistics.totalClients / statistics.totalUsers) * 100 : 0}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center text-sm mb-1.5">
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                            Freelancers (Helpers)
+                          </span>
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{statistics.totalFreelancers}</span>
+                        </div>
+                        <div className="w-full bg-zinc-100 dark:bg-zinc-800/60 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full" 
+                            style={{ 
+                              width: `${statistics.totalUsers > 0 ? (statistics.totalFreelancers / statistics.totalUsers) * 100 : 0}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-border/40 flex justify-between items-center text-sm">
+                        <span className="text-zinc-500">Gross Platform Accounts</span>
+                        <span className="font-bold text-zinc-900 dark:text-zinc-50 text-base">{statistics.totalUsers}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-border/50 shadow-sm rounded-xl overflow-hidden bg-card">
+                    <CardHeader className="px-6 py-4 border-b border-border/50">
+                      <CardTitle className="text-base font-bold">Activity Velocity</CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-6 py-5 flex items-center justify-center h-full">
+                      <div className="text-center py-4">
+                        <span className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
+                          {statistics.jobsLastWeek > 0 
+                            ? `${Math.round(((statistics.jobsThisWeek - statistics.jobsLastWeek) / statistics.jobsLastWeek) * 100)}%`
+                            : "N/A"
+                          }
+                        </span>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Week-over-Week Request Growth</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
           </TabsContent>
@@ -751,6 +714,236 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Unified Job Details Modal */}
+        <Dialog open={isJobModalOpen} onOpenChange={setIsJobModalOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border border-border/40 bg-card p-0">
+            {selectedJob && (
+              <div className="flex flex-col">
+                {/* Header banner */}
+                <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 dark:from-zinc-950 dark:to-zinc-900 text-zinc-50 px-6 py-5 flex items-center justify-between border-b border-white/10 rounded-t-2xl">
+                  <div>
+                    <DialogTitle className="text-xl font-bold tracking-tight text-white">
+                      Job Specification Detail
+                    </DialogTitle>
+                    <p className="text-xs text-zinc-400 mt-1 font-medium">
+                      Reference ID: <span className="font-mono">{selectedJob.id}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-white/10 text-white hover:bg-white/20 border-none px-2.5 py-0.5 text-xs font-semibold shadow-sm uppercase tracking-wide">
+                      {selectedJob.status}
+                    </Badge>
+                    {selectedJob.stage && (
+                      <Badge className="px-2.5 py-0.5 text-xs font-semibold shadow-sm uppercase tracking-wide">
+                        {getJobStageBadge(selectedJob.stage).label}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Content body */}
+                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Left Column: Client & Freelancer Profiles */}
+                  <div className="space-y-6 md:col-span-1 border-r border-border/40 pr-0 md:pr-6 flex flex-col justify-start">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
+                        Employer (Client)
+                      </h4>
+                      <div className="flex items-center gap-3 p-3 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-xl border border-border/40">
+                        <Avatar className="h-11 w-11 shadow-sm border border-border/20">
+                          <AvatarImage src={selectedJob.client?.photo_url || undefined} />
+                          <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold text-sm">
+                            {selectedJob.client?.full_name?.[0] || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate text-zinc-900 dark:text-zinc-100">
+                            {selectedJob.client?.full_name || "Anonymous Client"}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {selectedJob.location_city || "No location listed"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
+                        Assigned Helper (Freelancer)
+                      </h4>
+                      {selectedJob.freelancer ? (
+                        <div className="flex items-center gap-3 p-3 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-xl border border-border/40">
+                          <Avatar className="h-11 w-11 shadow-sm border border-border/20">
+                            <AvatarImage src={selectedJob.freelancer.photo_url || undefined} />
+                            <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold text-sm">
+                              {selectedJob.freelancer.full_name?.[0] || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm truncate text-zinc-900 dark:text-zinc-100">
+                              {selectedJob.freelancer.full_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              Platform Helper
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 text-center bg-zinc-50/30 dark:bg-zinc-900/20 rounded-xl border border-dashed border-border/50 text-xs text-muted-foreground">
+                          No candidate currently locked.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-4 border-t border-border/40 mt-auto flex flex-col gap-2">
+                      <button
+                        onClick={async () => {
+                          const { data: conv } = await supabase
+                            .from("conversations")
+                            .select("id")
+                            .eq("job_id", selectedJob.id)
+                            .maybeSingle();
+                          if (conv) {
+                            navigate(`/chat/${conv.id}`);
+                            setIsJobModalOpen(false);
+                          } else {
+                            alert("No conversation logs established yet for this job.");
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-50 dark:text-zinc-900 font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        <MessageSquare className="h-4 w-4" /> Open Conversation
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigate(`/client/jobs/${selectedJob.id}/live`);
+                          setIsJobModalOpen(false);
+                        }}
+                        className="w-full px-4 py-2.5 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 border border-border/80 hover:border-border font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-900 shadow-sm"
+                      >
+                        <Briefcase className="h-4 w-4" /> Live Tracking
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Full specifications metadata */}
+                  <div className="md:col-span-2 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/50 border border-border/40 rounded-xl">
+                        <span className="text-xs text-zinc-500 font-medium">Care Category</span>
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mt-0.5 capitalize">
+                          {selectedJob.care_type?.replace("_", " ")}
+                        </p>
+                      </div>
+
+                      <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/50 border border-border/40 rounded-xl">
+                        <span className="text-xs text-zinc-500 font-medium">Compensation Range</span>
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mt-0.5">
+                          {selectedJob.budget_min && selectedJob.budget_max 
+                            ? `$${selectedJob.budget_min} - $${selectedJob.budget_max}/hr` 
+                            : "Rate custom/not specified"}
+                        </p>
+                      </div>
+
+                      <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/50 border border-border/40 rounded-xl">
+                        <span className="text-xs text-zinc-500 font-medium">Shift Parameters</span>
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mt-0.5 capitalize">
+                          {selectedJob.shift_hours?.replace("_", " ")}
+                        </p>
+                      </div>
+
+                      <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/50 border border-border/40 rounded-xl">
+                        <span className="text-xs text-zinc-500 font-medium">Target Schedule</span>
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mt-0.5">
+                          {selectedJob.start_at 
+                            ? format(new Date(selectedJob.start_at), "MMM d, yyyy 'at' h:mm a") 
+                            : "Flexible start date"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Care Specifics */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 border-b border-border/30 pb-1.5">
+                        Requirements & Support
+                      </h4>
+                      <div className="grid grid-cols-2 gap-y-2 text-sm">
+                        <div className="text-zinc-500">Total Children:</div>
+                        <div className="font-medium text-zinc-900 dark:text-zinc-50">
+                          {selectedJob.children_count || "0"} Children
+                        </div>
+
+                        <div className="text-zinc-500">Age Group Focus:</div>
+                        <div className="font-medium text-zinc-900 dark:text-zinc-50 capitalize">
+                          {selectedJob.children_age_group}
+                        </div>
+
+                        <div className="text-zinc-500">Required Skills:</div>
+                        <div className="flex flex-wrap gap-1 font-medium">
+                          {selectedJob.requirements && selectedJob.requirements.length > 0 ? (
+                            selectedJob.requirements.map((r: string, i: number) => (
+                              <Badge key={i} variant="outline" className="px-1.5 py-0 text-[10px] uppercase font-bold tracking-tight bg-zinc-100/50 dark:bg-zinc-800/40 text-zinc-700 dark:text-zinc-300">
+                                {r.replace("_", " ")}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-zinc-400 font-normal">No specialized skills tagged</span>
+                          )}
+                        </div>
+
+                        <div className="text-zinc-500">Preferred Languages:</div>
+                        <div className="flex flex-wrap gap-1 font-medium">
+                          {selectedJob.languages_pref && selectedJob.languages_pref.length > 0 ? (
+                            selectedJob.languages_pref.map((l: string, i: number) => (
+                              <Badge key={i} variant="secondary" className="px-1.5 py-0 text-[10px] uppercase font-bold tracking-tight">
+                                {l}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-zinc-400 font-normal">None specified</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Confirmation settings */}
+                    {(selectedJob.confirm_starts_at || selectedJob.confirm_ends_at) && (
+                      <div className="space-y-3 pt-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 border-b border-border/30 pb-1.5">
+                          Operational Windowing
+                        </h4>
+                        <div className="grid grid-cols-2 gap-y-2 text-sm">
+                          <div className="text-zinc-500">Matching Opens:</div>
+                          <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                            {selectedJob.confirm_starts_at ? format(new Date(selectedJob.confirm_starts_at), "MMM d, h:mm a") : "N/A"}
+                          </div>
+                          
+                          <div className="text-zinc-500">Matching Closes:</div>
+                          <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                            {selectedJob.confirm_ends_at ? format(new Date(selectedJob.confirm_ends_at), "MMM d, h:mm a") : "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Operational Notes */}
+                    {selectedJob.notes && (
+                      <div className="space-y-1.5 bg-zinc-50/50 dark:bg-zinc-900/50 border border-border/40 p-4 rounded-xl">
+                        <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                          Execution Directives & Notes
+                        </span>
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-normal">
+                          "{selectedJob.notes}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

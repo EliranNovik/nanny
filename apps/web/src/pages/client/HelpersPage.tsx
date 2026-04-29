@@ -28,6 +28,10 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import {
+  canStartInCardLabel,
+  respondsWithinCardLabel,
+} from "@/lib/liveCanStart";
+import {
   SERVICE_CATEGORIES,
   type ServiceCategoryId,
   isServiceCategoryId,
@@ -67,6 +71,7 @@ type FreelancerRow = {
     available_now: boolean | null;
     live_until?: string | null;
     live_categories?: string[] | null;
+    live_can_start_in?: string | null;
   } | null;
 };
 
@@ -307,6 +312,9 @@ export default function HelpersPage() {
   /** Debounced value used for API fetch + geocode (avoids hammering while typing). */
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [results, setResults] = useState<HelperResult[]>([]);
+  const [helperReplyStatsByHelperId, setHelperReplyStatsByHelperId] = useState<
+    Record<string, { avg_seconds: number; sample_count: number }>
+  >({});
   const [loadingFetch, setLoadingFetch] = useState(false);
   /** True after the user runs a search — helpers list and map pins appear only then. */
   const [hasSearched, setHasSearched] = useState(false);
@@ -485,6 +493,7 @@ export default function HelpersPage() {
       const rk = opts?.radiusKm ?? radiusKm;
       setLoadingFetch(true);
       try {
+        setHelperReplyStatsByHelperId({});
         const viewerCityNorm = normalizeCityLabel(profile?.city);
         const { data, error } = await supabase.rpc("get_helpers_near_location", {
           search_lat: center.lat,
@@ -501,6 +510,45 @@ export default function HelpersPage() {
         if (user?.id) rows = rows.filter((r) => r.id !== user.id);
 
         setResults(rows);
+
+        // Badges: helper avg response time (client msg -> helper reply)
+        const helperIds = Array.from(new Set(rows.map((r) => r.id).filter(Boolean)));
+        if (helperIds.length > 0) {
+          const { data: statRows, error: statErr } = await supabase.rpc(
+            "get_helper_chat_response_stats",
+            { p_helper_ids: helperIds },
+          );
+          if (statErr && import.meta.env.DEV) {
+            console.warn(
+              "[HelpersPage] get_helper_chat_response_stats failed:",
+              statErr,
+            );
+          }
+          if (import.meta.env.DEV) {
+            console.debug(
+              "[HelpersPage] helper reply stats rows:",
+              Array.isArray(statRows) ? statRows.length : "not-array",
+              statRows,
+            );
+          }
+          if (!statErr && Array.isArray(statRows)) {
+            const next: Record<string, { avg_seconds: number; sample_count: number }> = {};
+            for (const sr of statRows as {
+              helper_id: string;
+              avg_seconds: number | null;
+              sample_count: number | null;
+            }[]) {
+              if (!sr.helper_id || sr.avg_seconds == null || sr.sample_count == null)
+                continue;
+              next[sr.helper_id] = {
+                avg_seconds: Number(sr.avg_seconds),
+                sample_count: Number(sr.sample_count),
+              };
+            }
+            setHelperReplyStatsByHelperId(next);
+          }
+        }
+
         setHasSearched(true);
         setSearchChromeCollapsed(true);
         window.setTimeout(() => {
@@ -1200,6 +1248,13 @@ export default function HelpersPage() {
                         viewerId={user?.id}
                         favoriteIds={favoriteIds}
                         favoriteBusyId={favoriteBusyId}
+                        respondsWithinLabel={respondsWithinCardLabel(
+                          helperReplyStatsByHelperId[h.id]?.avg_seconds,
+                          helperReplyStatsByHelperId[h.id]?.sample_count,
+                        )}
+                        canStartInLabel={canStartInCardLabel(
+                          h.freelancer_profiles?.live_can_start_in,
+                        )}
                         onToggleFavorite={toggleFavorite}
                         onOpenProfile={(id) => navigate(`/profile/${id}`)}
                         variant="fullscreen"
@@ -1255,6 +1310,13 @@ export default function HelpersPage() {
                   viewerId={user?.id}
                   favoriteIds={favoriteIds}
                   favoriteBusyId={favoriteBusyId}
+                  respondsWithinLabel={respondsWithinCardLabel(
+                    helperReplyStatsByHelperId[h.id]?.avg_seconds,
+                    helperReplyStatsByHelperId[h.id]?.sample_count,
+                  )}
+                  canStartInLabel={canStartInCardLabel(
+                    h.freelancer_profiles?.live_can_start_in,
+                  )}
                   onToggleFavorite={toggleFavorite}
                   onOpenProfile={(id) => navigate(`/profile/${id}`)}
                 />

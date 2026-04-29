@@ -9,7 +9,8 @@ export interface NotificationAlert {
     | "confirmation"
     | "message"
     | "job_update"
-    | "hire_interest";
+    | "hire_interest"
+    | "job_comment";
   title: string;
   description?: string;
   link: string;
@@ -80,12 +81,26 @@ export async function fetchInboxActivityAlerts(
             .eq("id", otherId)
             .single();
 
+          let link = `/messages?conversation=${convoId}`;
+          if (profile.role === "freelancer" && msg.body && (msg.body.includes("replied back in comments") || msg.body.includes("left a comment on your request"))) {
+            const { data: latestJob } = await supabase
+              .from("job_requests")
+              .select("id")
+              .eq("client_id", convo.client_id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (latestJob) {
+              link = `/freelancer/jobs/match?openJobId=${latestJob.id}`;
+            }
+          }
+
           allAlerts.push({
             id: `msg-${msg.id}`,
             type: "message",
             title: senderProfile?.full_name || "New message",
             description: msg.body ?? undefined,
-            link: `/messages?conversation=${convoId}`,
+            link,
             created_at: msg.created_at,
             sender_name: senderProfile?.full_name || "User",
             sender_photo: senderProfile?.photo_url || undefined,
@@ -293,6 +308,116 @@ export async function fetchInboxActivityAlerts(
     }
   }
 
+  // Common: comments on posts
+  if (profile.role === "client") {
+    const { data: myJobs } = await supabase
+      .from("job_requests")
+      .select("id, care_type")
+      .eq("client_id", user.id);
+    
+    if (myJobs && myJobs.length > 0) {
+      const myJobIds = myJobs.map((j) => j.id);
+      const { data: comments } = await supabase
+        .from("job_request_comments")
+        .select(`
+          id,
+          body,
+          created_at,
+          author_id,
+          job_request_id
+        `)
+        .in("job_request_id", myJobIds)
+        .neq("author_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (comments && comments.length > 0) {
+        const authorIds = [...new Set(comments.map((c) => c.author_id))];
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name, photo_url")
+          .in("id", authorIds);
+
+        const profMap = new Map((profs || []).map((p) => [p.id, p]));
+
+        for (const c of comments) {
+          const author = profMap.get(c.author_id);
+          allAlerts.push({
+            id: `job-comment-${c.id}`,
+            type: "job_comment",
+            title: `Comment from ${author?.full_name || "Member"}`,
+            description: c.body,
+            link: buildJobsUrl("client", "my_requests"),
+            created_at: c.created_at,
+            sender_name: author?.full_name,
+            sender_photo: author?.photo_url,
+            metadata: { table: "job_request_comments", comment_id: c.id, job_id: c.job_request_id },
+          });
+        }
+      }
+    }
+  } else if (profile.role === "freelancer") {
+    const { data: myNotifs } = await supabase
+      .from("job_candidate_notifications")
+      .select("job_id")
+      .eq("freelancer_id", user.id);
+
+    const { data: myParticipations } = await supabase
+      .from("job_request_comments")
+      .select("job_request_id")
+      .eq("author_id", user.id);
+
+    const myJobIds = new Set<string>();
+    if (myNotifs) {
+      for (const n of myNotifs) myJobIds.add(n.job_id);
+    }
+    if (myParticipations) {
+      for (const p of myParticipations) myJobIds.add(p.job_request_id);
+    }
+
+    if (myJobIds.size > 0) {
+      const jobIdsArr = Array.from(myJobIds);
+      const { data: comments } = await supabase
+        .from("job_request_comments")
+        .select(`
+          id,
+          body,
+          created_at,
+          author_id,
+          job_request_id
+        `)
+        .in("job_request_id", jobIdsArr)
+        .neq("author_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (comments && comments.length > 0) {
+        const authorIds = [...new Set(comments.map((c) => c.author_id))];
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name, photo_url")
+          .in("id", authorIds);
+
+        const profMap = new Map((profs || []).map((p) => [p.id, p]));
+
+        for (const c of comments) {
+          const author = profMap.get(c.author_id);
+          allAlerts.push({
+            id: `job-comment-${c.id}`,
+            type: "job_comment",
+            title: `Comment from ${author?.full_name || "Member"}`,
+            description: c.body,
+            link: `/freelancer/jobs/match?openJobId=${c.job_request_id}`,
+            created_at: c.created_at,
+            sender_name: author?.full_name,
+            sender_photo: author?.photo_url,
+            metadata: { table: "job_request_comments", comment_id: c.id, job_id: c.job_request_id },
+          });
+        }
+      }
+    }
+  }
+
   const dismissed = loadDismissedActivityIds(user.id);
   const visible = allAlerts.filter((a) => !dismissed.has(a.id));
 
@@ -311,6 +436,8 @@ export function inboxActivityKindLabel(
   switch (type) {
     case "message":
       return "Chat";
+    case "job_comment":
+      return "Comment";
     case "job_request":
       return "Job invite";
     case "confirmation":

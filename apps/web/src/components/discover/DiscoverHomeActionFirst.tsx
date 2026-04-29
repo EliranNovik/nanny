@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronRight,
@@ -31,7 +32,6 @@ import {
 } from "@/lib/discoverBrowseNavigate";
 import { DiscoverHomeRealtimeStrip } from "@/components/discover/DiscoverHomeRealtimeStrip";
 import { DiscoverHomeRecentActivity } from "@/components/discover/DiscoverHomeRecentActivity";
-import { DiscoverHomeHeroDesktopLiveColumn } from "@/components/discover/DiscoverHomeHeroDesktopLiveColumn";
 import {
   DISCOVER_STROKE,
   discoverIcon,
@@ -669,7 +669,7 @@ export function DiscoverHomeActionFirst({
                 "ring-1 ring-black/[0.06] ring-inset",
               )}
             >
-              <div className={heroInnerClassName}>
+              <div className={cn(heroInnerClassName, "md:h-full")}>
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
                   alt=""
@@ -788,7 +788,7 @@ export function DiscoverHomeActionFirst({
                 "ring-1 ring-black/[0.06] ring-inset",
               )}
             >
-              <div className={heroInnerClassName}>
+              <div className={cn(heroInnerClassName, "md:h-full")}>
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.work}
                   alt=""
@@ -899,7 +899,145 @@ export function DiscoverHomeActionFirst({
               </div>
             </section>
           )}
-          <DiscoverHomeHeroDesktopLiveColumn />
+          {isHire ? (
+            acceptedRequests.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {acceptedRequests.map((job: any) => {
+                  const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
+                  const title = formatJobTitle(job);
+                  const loc = (job.location_city ?? "").trim() || "Location not set";
+                  
+                  return (
+                    <div
+                      key={job.id}
+                      className="flex flex-col gap-4 rounded-[24px] bg-zinc-50 border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 p-5 shadow-sm text-left transition-all hover:shadow-md h-full justify-between"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide text-emerald-800 dark:text-emerald-400">
+                          Your posted request
+                        </span>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[17px] font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">{title}</span>
+                          <span className="text-[13px] font-medium text-muted-foreground">{loc}</span>
+                          <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
+                            posted {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                        
+                        <div className="mt-4 flex items-center gap-3 border-t border-zinc-200/50 dark:border-zinc-800/50 pt-4">
+                          <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                            {job.acceptedCount} accepted
+                          </span>
+                          
+                          {avatars.length > 0 && (
+                            <div className="flex -space-x-1.5 overflow-hidden">
+                              {avatars.slice(0, 3).map((avatar: any, idx: number) => (
+                                <Avatar key={avatar.id || idx} className="h-7 w-7 border-2 border-white dark:border-zinc-900 shadow-sm">
+                                  {avatar.photo_url ? (
+                                    <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
+                                  ) : null}
+                                  <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">
+                                    {(avatar.full_name || "H").charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/client/jobs/${job.id}/live`)}
+                        className="w-full h-11 flex items-center justify-center rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-zinc-50 dark:text-zinc-900 text-sm font-bold shadow-sm transition-all active:scale-[0.98]"
+                      >
+                        Open Live Job
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-[24px] border border-dashed border-zinc-200/80 bg-zinc-50/50 px-4 py-10 text-center text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30 flex items-center justify-center">
+                No active requests.
+              </div>
+            )
+          ) : (
+            liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {liveHelpingJobs
+                  .filter(j => !dismissedLiveJobIds.includes(j.id))
+                  .slice(0, 1)
+                  .map((job: any) => {
+                    const client = liveHelpingProfiles.get(job.client_id);
+                    const title = formatJobTitle(job);
+                    const loc = (job.location_city ?? "").trim() || "Location not set";
+                    const clientName = client?.full_name || "Client";
+                    
+                    return (
+                      <div
+                        key={job.id}
+                        className="flex flex-col gap-4 rounded-[24px] bg-zinc-50 border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 p-5 shadow-sm text-left transition-all hover:shadow-md h-full justify-between"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide text-emerald-800 dark:text-emerald-400">
+                            Live
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {client?.photo_url ? (
+                            <Avatar className="h-12 w-12 shadow-sm border border-zinc-200/50 dark:border-zinc-800/50">
+                              <AvatarImage src={client.photo_url} alt={clientName} />
+                              <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-sm font-bold">
+                                {clientName.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-sm font-bold">
+                              {clientName.charAt(0)}
+                            </div>
+                          )}
+                          
+                          <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                            <span className="text-[17px] font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight truncate">
+                              {title}
+                            </span>
+                            <span className="text-[13px] font-medium text-muted-foreground truncate">
+                              {loc}
+                            </span>
+                            <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
+                              matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-zinc-200/50 dark:border-zinc-800/50 pt-3">
+                          <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                            Helping {clientName}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => navigate(`${explorePath}?mode=work&tab=live_help`)}
+                          className="w-full h-11 flex items-center justify-center rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-zinc-50 dark:text-zinc-900 text-sm font-bold shadow-sm transition-all active:scale-[0.98]"
+                        >
+                          Open live job
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            ) : (
+              <div className="rounded-[24px] border border-dashed border-zinc-200/80 bg-zinc-50/50 px-4 py-10 text-center text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30 flex items-center justify-center">
+                No live jobs right now.
+              </div>
+            )
+          )}
         </div>
 
         <div className="min-h-0 flex-1 overflow-hidden pt-2 flex flex-col gap-2">
@@ -913,7 +1051,7 @@ export function DiscoverHomeActionFirst({
         <DialogContent className={cn(
           "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
           "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:h-[85vh] max-md:w-full max-md:translate-y-0",
-          "md:max-h-[min(90vh,40rem)] md:max-w-2xl"
+          "md:max-h-[min(90vh,48rem)] md:max-w-4xl"
         )}>
           <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
             <div className="flex items-center justify-between">
@@ -934,7 +1072,7 @@ export function DiscoverHomeActionFirst({
         <DialogContent className={cn(
           "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
           "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:h-[85vh] max-md:w-full max-md:translate-y-0",
-          "md:max-h-[min(90vh,40rem)] md:max-w-2xl"
+          "md:max-h-[min(90vh,48rem)] md:max-w-4xl"
         )}>
           <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
             <div className="flex items-center justify-between">

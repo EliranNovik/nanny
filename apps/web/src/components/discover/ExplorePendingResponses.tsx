@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
@@ -85,6 +85,28 @@ export function ExplorePendingResponses() {
     () => inbound.filter((n) => Boolean(n.isConfirmed)),
     [inbound],
   );
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (pending.length === 0) return;
+    async function fetchCounts() {
+      const jobIds = pending.map((n) => n.job_id);
+      const { data: comments } = await supabase
+        .from("job_request_comments")
+        .select("job_request_id");
+
+      if (comments) {
+        const counts: Record<string, number> = {};
+        for (const c of comments) {
+          if (jobIds.includes(c.job_request_id)) {
+            counts[c.job_request_id] = (counts[c.job_request_id] || 0) + 1;
+          }
+        }
+        setCommentCounts(counts);
+      }
+    }
+    fetchCounts();
+  }, [pending]);
 
   const formatModalJobTitle = useCallback((job: any) => formatJobTitle(job), []);
 
@@ -163,9 +185,17 @@ export function ExplorePendingResponses() {
                       {title}
                     </span>
                   </div>
-                  <span className="shrink-0 rounded-full bg-amber-500/12 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-amber-900 dark:text-amber-200">
-                    Pending
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 rounded-full bg-amber-500/12 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                      Pending
+                    </span>
+                    {commentCounts[job.id] > 0 && (
+                      <span className="shrink-0 flex items-center gap-1 rounded-full bg-zinc-500/15 text-zinc-800 dark:text-zinc-200 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        {commentCounts[job.id]}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-3 flex items-center gap-3">

@@ -174,8 +174,8 @@ export function NotificationsModal({
                             ? "bg-blue-500/10 text-blue-600"
                             : alert.type === "job_request"
                               ? "bg-emerald-500/10 text-emerald-600"
-                              : alert.type === "hire_interest"
-                                ? "bg-orange-500/10 text-orange-600"
+                              : alert.type === "job_comment"
+                                ? "bg-rose-500/10 text-rose-600"
                                 : "bg-orange-500/10 text-orange-600",
                         )}
                       >
@@ -183,6 +183,8 @@ export function NotificationsModal({
                           <MessageSquare className="w-6 h-6" />
                         ) : alert.type === "job_request" ? (
                           <Bell className="w-6 h-6" />
+                        ) : alert.type === "job_comment" ? (
+                          <MessageSquare className="w-6 h-6" />
                         ) : alert.type === "hire_interest" ? (
                           <Sparkles className="w-6 h-6" />
                         ) : (

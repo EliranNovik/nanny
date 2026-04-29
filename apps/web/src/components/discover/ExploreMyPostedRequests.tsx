@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
+import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, MessageSquare } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
@@ -71,6 +73,28 @@ export function ExploreMyPostedRequests() {
   const navigate = useNavigate();
   const { data, isLoading } = useFreelancerRequests(user?.id);
   const jobs = data?.myOpenRequests ?? [];
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (jobs.length === 0) return;
+    async function fetchCounts() {
+      const jobIds = jobs.map((j: { id: string }) => j.id);
+      const { data: comments } = await supabase
+        .from("job_request_comments")
+        .select("job_request_id");
+
+      if (comments) {
+        const counts: Record<string, number> = {};
+        for (const c of comments) {
+          if (jobIds.includes(c.job_request_id)) {
+            counts[c.job_request_id] = (counts[c.job_request_id] || 0) + 1;
+          }
+        }
+        setCommentCounts(counts);
+      }
+    }
+    fetchCounts();
+  }, [jobs]);
 
   if (!user?.id) return null;
 
@@ -137,15 +161,23 @@ export function ExploreMyPostedRequests() {
                         {title}
                       </span>
                     </div>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wide",
-                        acceptedPillClass(accepted),
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wide",
+                          acceptedPillClass(accepted),
+                        )}
+                        aria-label={`${accepted} accepted helper${accepted === 1 ? "" : "s"}`}
+                      >
+                        {accepted} accepted
+                      </span>
+                      {commentCounts[job.id] > 0 && (
+                        <span className="shrink-0 flex items-center gap-1 rounded-full bg-zinc-500/15 text-zinc-800 dark:text-zinc-200 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          {commentCounts[job.id]}
+                        </span>
                       )}
-                      aria-label={`${accepted} accepted helper${accepted === 1 ? "" : "s"}`}
-                    >
-                      {accepted} accepted
-                    </span>
+                    </div>
                   </div>
 
                   <div className="mt-3 flex items-center gap-3">

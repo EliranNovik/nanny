@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Clock, MapPin, MessageCircle, Loader2, X, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
+import { Check, Clock, MapPin, MessageCircle, MessageSquare, Loader2, X, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
@@ -57,7 +57,7 @@ function buildSlides(photoUrl: string | null, gallery: PublicProfileGalleryRow[]
 
 /** Glass icon row overlaid on the hero image */
 const heroOverlayRoundBtn = cn(
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+  "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
   "bg-black/35 text-white shadow-lg backdrop-blur-md ring-1 ring-white/20 transition-colors",
   "hover:bg-black/45 active:scale-[0.97]",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
@@ -91,7 +91,8 @@ function getTelegramLink(username: string) {
 }
 
 function humanizeSnakeLabel(s: string): string {
-  return s.trim().replace(/_/g, " ");
+  const withDashes = s.trim().replace(/(\d)_+(\d)/g, "$1-$2");
+  return withDashes.replace(/_/g, " ");
 }
 
 function timeAgo(dateStr: string): string {
@@ -118,7 +119,7 @@ function CategoryIcon({ serviceType, className }: { serviceType: string | null |
 }
 
 /** Flatten service_details JSON into short readable lines and extracts notes. */
-function parseServiceDetails(raw: unknown): { badges: string[]; notes: string[] } {
+function parseServiceDetails(raw: unknown): { badges: { label: string; value: string }[]; notes: string[] } {
   if (typeof raw === "string") {
     const t = raw.trim();
     if (!t) return { badges: [], notes: [] };
@@ -151,7 +152,7 @@ function parseServiceDetails(raw: unknown): { badges: string[]; notes: string[] 
     "special_requests"
   ]);
 
-  const badges: string[] = [];
+  const badges: { label: string; value: string }[] = [];
   const notes: string[] = [];
 
   for (const [k, v] of Object.entries(o)) {
@@ -159,18 +160,21 @@ function parseServiceDetails(raw: unknown): { badges: string[]; notes: string[] 
     if (v == null || v === "") continue;
     if (Array.isArray(v) && v.length === 0) continue;
 
-    const label = humanizeSnakeLabel(k);
+    let label = humanizeSnakeLabel(k);
+    // Remove the word "count" case-insensitively
+    label = label.replace(/\bcount\b/gi, "").trim();
+
     if (typeof v === "string" || typeof v === "number") {
       const stringVal = String(v).trim();
       const isNote = noteKeys.has(k.toLowerCase()) || stringVal.length > 40;
 
       if (isNote) {
-        notes.push(stringVal); // Don't prepend the generic dictionary key to long notes
+        notes.push(stringVal);
       } else {
-        badges.push(`${label}: ${humanizeSnakeLabel(stringVal)}`);
+        badges.push({ label, value: humanizeSnakeLabel(stringVal) });
       }
     } else if (typeof v === "boolean") {
-      badges.push(`${label}: ${v ? "Yes" : "No"}`);
+      badges.push({ label, value: v ? "Yes" : "No" });
     }
   }
   return { badges: badges.slice(0, 8), notes: notes.slice(0, 3) };
@@ -183,15 +187,27 @@ export function OpenJobRequestMatchCard({
   onAccept,
   onDecline,
   onOpenProfile,
+  clientRating,
   variant = "grid",
+  commentCount = 0,
+  onOpenComments,
+  respondsWithinLabel = null,
+  canStartInLabel = null,
 }: {
   row: OpenJobRequestMatchRow;
   gallery: PublicProfileGalleryRow[];
   formatTitle: (serviceType: string | null | undefined) => string;
-  onAccept: (jobId: string) => Promise<void> | void;
+  onAccept: (jobId: string, note?: string) => Promise<void> | void;
   onDecline: (jobId: string) => Promise<void> | void;
   onOpenProfile: (userId: string) => void;
   variant?: "grid" | "fullscreen";
+  clientRating?: { average_rating: number | null; total_ratings: number | null } | null;
+  commentCount?: number;
+  onOpenComments?: (jobId: string) => void;
+  /** Client avg reply time after your messages (~time); only when credible + under 1h. */
+  respondsWithinLabel?: string | null;
+  /** Viewer’s live “when I can start” preference from freelancer_profiles. */
+  canStartInLabel?: string | null;
 }) {
   const { user: currentUser } = useAuth();
   const viewerId = currentUser?.id;
@@ -533,7 +549,7 @@ export function OpenJobRequestMatchCard({
         )}
 
         {showStrip ? (
-          <div className="pointer-events-none absolute top-3 left-1/2 z-[11] -translate-x-1/2">
+          <div className="pointer-events-none absolute top-3 right-3 z-[11]">
             <div className="rounded-full bg-black/35 px-3 py-2 shadow-lg backdrop-blur-md ring-1 ring-white/15">
               <div className="flex items-center justify-center gap-1.5">
                 {slides.map((_, idx) => (
@@ -574,9 +590,9 @@ export function OpenJobRequestMatchCard({
                 onClick={(e) => void openDirectChat(e)}
               >
                 {chatOpening ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-white/90" aria-hidden />
+                  <Loader2 className="h-6 w-6 animate-spin text-white/90" aria-hidden />
                 ) : (
-                  <MessageCircle className="h-5 w-5 text-emerald-300" strokeWidth={2} aria-hidden />
+                  <MessageCircle className="h-6 w-6 text-emerald-300" strokeWidth={2} aria-hidden />
                 )}
               </button>
               <button
@@ -587,9 +603,9 @@ export function OpenJobRequestMatchCard({
                 onClick={(e) => void openWhatsApp(e)}
               >
                 {socialBusy === "wa" ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-white/90" aria-hidden />
+                  <Loader2 className="h-6 w-6 animate-spin text-white/90" aria-hidden />
                 ) : (
-                  <WhatsAppIcon size={22} className="text-emerald-300" />
+                  <WhatsAppIcon size={26} className="text-emerald-300" />
                 )}
               </button>
               <button
@@ -600,9 +616,9 @@ export function OpenJobRequestMatchCard({
                 onClick={(e) => void openTelegram(e)}
               >
                 {socialBusy === "tg" ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-white/90" aria-hidden />
+                  <Loader2 className="h-6 w-6 animate-spin text-white/90" aria-hidden />
                 ) : (
-                  <TelegramIcon size={22} className="text-sky-300" />
+                  <TelegramIcon size={26} className="text-sky-300" />
                 )}
               </button>
             </>
@@ -611,9 +627,16 @@ export function OpenJobRequestMatchCard({
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[12] bg-gradient-to-t from-black/75 via-black/45 to-transparent px-3 pb-3 pt-12 flex justify-between items-end">
           <div className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.75)] min-w-0 pr-2">
-            <p className="truncate text-[17px] font-bold leading-tight tracking-tight text-white">
+            <p className="truncate text-[20px] font-black leading-tight tracking-tight text-white">
               {(row.client_display_name || "").trim() || "Member"}
             </p>
+            {clientRating && clientRating.average_rating != null && (
+              <div className="mt-0.5 flex items-center gap-1 text-[12px] font-bold text-amber-400">
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" strokeWidth={1.5} />
+                <span>{clientRating.average_rating.toFixed(1)}</span>
+                <span className="text-white/60 font-medium">({clientRating.total_ratings || 0})</span>
+              </div>
+            )}
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <div className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-white">
                 <MapPin className="h-4 w-4 shrink-0 text-emerald-300" strokeWidth={2.25} aria-hidden />
@@ -644,34 +667,63 @@ export function OpenJobRequestMatchCard({
         )}
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          type="button"
+          className="absolute top-4 right-4 z-10 flex items-center gap-1.5 text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenComments?.(row.id);
+          }}
+        >
+          <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
+          {commentCount > 0 && (
+            <span className="text-sm font-black tabular-nums">{commentCount}</span>
+          )}
+        </button>
+
+        {(respondsWithinLabel || canStartInLabel) ? (
+          <div className="flex flex-wrap gap-2 pr-12">
+            {respondsWithinLabel ? (
+              <span className="inline-flex max-w-full items-center rounded-full border border-sky-200/95 bg-gradient-to-br from-sky-50 to-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-sky-900 shadow-sm ring-1 ring-sky-100/90 dark:border-sky-800/70 dark:from-sky-950/60 dark:to-zinc-900 dark:text-sky-100 dark:ring-sky-900/40">
+                Responds within {respondsWithinLabel}
+              </span>
+            ) : null}
+            {canStartInLabel ? (
+              <span className="inline-flex max-w-full items-center rounded-full border border-emerald-200/95 bg-gradient-to-br from-emerald-50 to-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-950 shadow-sm ring-1 ring-emerald-100/90 dark:border-emerald-800/70 dark:from-emerald-950/50 dark:to-zinc-900 dark:text-emerald-100 dark:ring-emerald-900/40">
+                Can start in {canStartInLabel}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         {careFrequencyLine || timeDurationLine || serviceDetailLines.length > 0 ? (
           <div className="mt-2 space-y-1.5">
             {(careFrequencyLine || timeDurationLine) ? (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 {careFrequencyLine ? (
-                  <span className={cn("text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[15px]" : "text-[13px]")}>
-                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">Freq</span>
-                    <span className="font-semibold">{careFrequencyLine}</span>
+                  <span className={cn("text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[17px]" : "text-[15px]")}>
+                    <span className="text-[12px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">Freq</span>
+                    <span className="font-bold">{careFrequencyLine}</span>
                   </span>
                 ) : null}
                 {timeDurationLine ? (
-                  <span className={cn("text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[15px]" : "text-[13px]")}>
-                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">Dur</span>
-                    <span className="font-semibold">{timeDurationLine}</span>
+                  <span className={cn("text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[17px]" : "text-[15px]")}>
+                    <span className="text-[12px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">Dur</span>
+                    <span className="font-bold">{timeDurationLine}</span>
                   </span>
                 ) : null}
               </div>
             ) : null}
 
             {serviceDetailLines.length > 0 ? (
-              <div className="flex flex-col gap-0.5">
-                {serviceDetailLines.map((line, idx) => (
+              <div className="flex flex-col gap-1 mt-1">
+                {serviceDetailLines.map((badge, idx) => (
                   <span
                     key={idx}
-                    className={cn("flex items-center gap-1.5 text-slate-600 dark:text-zinc-400", variant === "fullscreen" ? "text-[14px]" : "text-[12px]")}
+                    className={cn("flex items-center text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[17px]" : "text-[15px]")}
                   >
-                    <Check className="h-3 w-3 text-emerald-500 shrink-0" strokeWidth={3.5} />
-                    {line}
+                    <span className="text-[12px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">{badge.label}</span>
+                    <span className="font-bold">{badge.value}</span>
                   </span>
                 ))}
               </div>
@@ -680,13 +732,13 @@ export function OpenJobRequestMatchCard({
         ) : null}
 
         {scheduleLine ? (
-          <p className={cn("mt-3 font-semibold text-slate-800 dark:text-zinc-100", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
+          <p className={cn("mt-3 font-bold text-slate-800 dark:text-zinc-100", variant === "fullscreen" ? "text-[18px]" : "text-[17px]")}>
             {scheduleLine}
           </p>
         ) : null}
 
         {budgetLine ? (
-          <p className={cn("mt-1.5 font-bold text-emerald-700 dark:text-emerald-500", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
+          <p className={cn("mt-1.5 font-extrabold text-emerald-700 dark:text-emerald-500", variant === "fullscreen" ? "text-[18px]" : "text-[17px]")}>
             {budgetLine}
           </p>
         ) : null}
@@ -739,14 +791,16 @@ export function OpenJobRequestMatchCard({
 
         {notesLine ? (
           <div className={cn("rounded-xl bg-orange-50/60 p-3.5 ring-1 ring-orange-100/60 dark:bg-orange-950/20 dark:ring-orange-900/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]", variant === "fullscreen" ? "mt-4" : "mt-3")}>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-orange-600/80 dark:text-orange-500/80 mb-1.5">
+            <p className="text-[12px] font-black uppercase tracking-[0.14em] text-orange-600/80 dark:text-orange-500/80 mb-1.5">
               Notes & Requirements
             </p>
-            <p className={cn("font-medium leading-relaxed text-slate-700 dark:text-zinc-300 whitespace-pre-wrap", variant === "fullscreen" ? "text-[15px]" : "text-[14px]")}>
+            <p className={cn("font-medium leading-relaxed text-slate-700 dark:text-zinc-300 whitespace-pre-wrap", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
               {notesLine}
             </p>
           </div>
         ) : null}
+
+
 
         {accepted ? (
           <div className="mt-auto pt-4 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-center text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
