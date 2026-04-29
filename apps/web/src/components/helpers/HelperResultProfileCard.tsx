@@ -10,6 +10,12 @@ import {
   MessageCircle,
   Trophy,
   Zap,
+  Sparkles,
+  Utensils,
+  Package,
+  Baby,
+  Wrench,
+  Star,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -63,6 +69,17 @@ function buildSlides(
     });
   }
   return slides;
+}
+
+function CategoryIcon({ id, className }: { id: string; className?: string }) {
+  switch (id) {
+    case "cleaning": return <Sparkles className={className} aria-hidden />;
+    case "cooking": return <Utensils className={className} aria-hidden />;
+    case "pickup_delivery": return <Package className={className} aria-hidden />;
+    case "nanny": return <Baby className={className} aria-hidden />;
+    case "other_help": return <Wrench className={className} aria-hidden />;
+    default: return <Sparkles className={className} aria-hidden />;
+  }
 }
 
 function getWhatsAppLink(number: string) {
@@ -131,9 +148,20 @@ export function HelperResultProfileCard({
     return SERVICE_CATEGORIES.slice(0, 10).map((c) => c.id);
   }, [h.freelancer_profiles?.live_categories]);
 
+  const liveCategories = useMemo(() => {
+    const liveIds = h.freelancer_profiles?.live_categories;
+    if (!liveIds || liveIds.length === 0) return [];
+    return liveIds
+      .map((id) => {
+        const c = SERVICE_CATEGORIES.find((c) => c.id === id);
+        return c ? { id: c.id, label: c.label } : null;
+      })
+      .filter(Boolean) as { id: string; label: string }[];
+  }, [h.freelancer_profiles?.live_categories]);
+
   const rateLabel =
     h.freelancer_profiles?.hourly_rate_min != null &&
-    h.freelancer_profiles?.hourly_rate_max != null
+      h.freelancer_profiles?.hourly_rate_max != null
       ? `₪${h.freelancer_profiles.hourly_rate_min}–${h.freelancer_profiles.hourly_rate_max}/hr`
       : h.freelancer_profiles?.hourly_rate_min != null
         ? `From ₪${h.freelancer_profiles.hourly_rate_min}/hr`
@@ -417,92 +445,92 @@ export function HelperResultProfileCard({
         )}
       >
         <div className="absolute inset-0 z-0 bg-black transform-gpu">
-        {slides.length === 0 ? (
-          <Avatar className="absolute inset-0 z-0 h-full w-full rounded-none border-0 shadow-none">
-            <AvatarFallback className="rounded-none bg-gradient-to-br from-zinc-800 via-zinc-900 to-black text-6xl font-black tracking-tight text-white/25">
-              {(h.full_name || "?").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        ) : showStrip ? (
-          <div
-            ref={scrollRef}
-            onScroll={() => {
-              window.requestAnimationFrame(syncIndex);
-            }}
-            className={cn(
-              "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
-              "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-              "overscroll-x-contain [-webkit-overflow-scrolling:touch]",
-            )}
-          >
-            {slides.map((slide) => (
-              <div
-                key={slide.key}
-                className="relative h-full w-full min-w-full max-w-full shrink-0 snap-start snap-always overflow-hidden"
-              >
-                {slide.kind === "video" ? (
-                  <div
-                    className="relative h-full w-full overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <video
+          {slides.length === 0 ? (
+            <Avatar className="absolute inset-0 z-0 h-full w-full rounded-none border-0 shadow-none">
+              <AvatarFallback className="rounded-none bg-gradient-to-br from-zinc-800 via-zinc-900 to-black text-6xl font-black tracking-tight text-white/25">
+                {(h.full_name || "?").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ) : showStrip ? (
+            <div
+              ref={scrollRef}
+              onScroll={() => {
+                window.requestAnimationFrame(syncIndex);
+              }}
+              className={cn(
+                "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
+                "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+                "overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+              )}
+            >
+              {slides.map((slide) => (
+                <div
+                  key={slide.key}
+                  className="relative h-full w-full min-w-full max-w-full shrink-0 snap-start snap-always overflow-hidden"
+                >
+                  {slide.kind === "video" ? (
+                    <div
+                      className="relative h-full w-full overflow-hidden"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <video
+                        src={slide.src}
+                        className="absolute inset-0 h-full w-full bg-black object-cover object-center"
+                        muted
+                        playsInline
+                        controls
+                        preload="metadata"
+                        controlsList="nodownload"
+                      />
+                    </div>
+                  ) : (
+                    <img
                       src={slide.src}
-                      className="absolute inset-0 h-full w-full bg-black object-cover object-center"
-                      muted
-                      playsInline
-                      controls
-                      preload="metadata"
-                      controlsList="nodownload"
+                      alt=""
+                      className="pointer-events-none absolute inset-0 h-full w-full bg-black object-cover object-center select-none"
+                      draggable={false}
                     />
-                  </div>
-                ) : (
-                  <img
-                    src={slide.src}
-                    alt=""
-                    className="pointer-events-none absolute inset-0 h-full w-full bg-black object-cover object-center select-none"
-                    draggable={false}
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="absolute inset-0 z-0 overflow-hidden">
+              {slides[0]!.kind === "video" ? (
+                <div
+                  className="relative h-full w-full overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <video
+                    src={slides[0]!.src}
+                    className="absolute inset-0 h-full w-full bg-black object-cover object-center"
+                    muted
+                    playsInline
+                    controls
+                    preload="metadata"
+                    controlsList="nodownload"
                   />
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="absolute inset-0 z-0 overflow-hidden">
-            {slides[0]!.kind === "video" ? (
-              <div
-                className="relative h-full w-full overflow-hidden"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <video
+                </div>
+              ) : (
+                <img
                   src={slides[0]!.src}
-                  className="absolute inset-0 h-full w-full bg-black object-cover object-center"
-                  muted
-                  playsInline
-                  controls
-                  preload="metadata"
-                  controlsList="nodownload"
+                  alt=""
+                  className="pointer-events-none absolute inset-0 h-full w-full bg-black object-cover object-center select-none"
+                  draggable={false}
                 />
-              </div>
-            ) : (
-              <img
-                src={slides[0]!.src}
-                alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full bg-black object-cover object-center select-none"
-                draggable={false}
-              />
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {/* Readability scrim — bottom portion only so the photo stays vivid */}
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black via-black/75 to-transparent"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[38%] bg-gradient-to-tr from-orange-500/18 to-transparent opacity-90 mix-blend-soft-light"
-          aria-hidden
-        />
+          {/* Readability scrim — bottom portion only so the photo stays vivid */}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[75%] bg-gradient-to-t from-black/95 via-black/80 to-transparent"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[38%] bg-gradient-to-tr from-orange-500/18 to-transparent opacity-90 mix-blend-soft-light"
+            aria-hidden
+          />
         </div>
 
         {showStrip ? (
@@ -536,61 +564,89 @@ export function HelperResultProfileCard({
         {(isFreelancerInActive24hLiveWindow(h.freelancer_profiles) ||
           respondsWithinBadge ||
           canStartBadge) && (
-          <div className="pointer-events-none absolute left-3 top-3 z-[12] flex max-w-[calc(100%-5.5rem)] flex-col items-start gap-2">
-            {isFreelancerInActive24hLiveWindow(h.freelancer_profiles) ? (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full",
-                  "bg-black/25 px-3 py-1.5 shadow-lg backdrop-blur-xl",
-                  "text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-white",
-                  "ring-1 ring-inset ring-white/15",
-                )}
-                role="status"
-                aria-label="Available for jobs now"
-              >
-                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                  <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
+            <div className="pointer-events-none absolute left-3 top-6 z-[12] flex max-w-[calc(100%-5.5rem)] flex-col items-start">
+              {isFreelancerInActive24hLiveWindow(h.freelancer_profiles) ? (
+                <span
+                  className={cn(
+                    "mb-3 inline-flex items-center gap-1.5 rounded-full",
+                    "bg-black/25 px-3 py-1.5 shadow-lg backdrop-blur-xl",
+                    "text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-white",
+                    "ring-1 ring-inset ring-white/15",
+                  )}
+                  role="status"
+                  aria-label="Available for jobs now"
+                >
+                  <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                    <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
+                  </span>
+                  <span className="pr-0.5">Live</span>
                 </span>
-                <span className="pr-0.5">Live</span>
-              </span>
-            ) : null}
+              ) : null}
 
-            {canStartBadge ? (
-              <span
-                className={cn(
-                  "inline-flex max-w-[min(100%,11rem)] items-center gap-1.5 whitespace-nowrap rounded-2xl px-2.5 py-2",
-                  "bg-gradient-to-br from-emerald-500/95 via-emerald-400/95 to-teal-500/95 text-white",
-                  "shadow-xl shadow-emerald-500/20 ring-1 ring-inset ring-white/15",
-                )}
-                role="status"
-              >
-                <Zap className="h-3.5 w-3.5 shrink-0 text-white/95" strokeWidth={2.75} aria-hidden />
-                <span className="text-[10px] font-black uppercase leading-none tracking-[0.12em]">
-                  Ready in {canStartBadge}
-                </span>
-              </span>
-            ) : null}
+              <div className="flex flex-col gap-1.5">
+                {canStartBadge ? (
+                  <span
+                    className={cn(
+                      "inline-flex w-full items-center gap-2.5 whitespace-nowrap rounded-[16px] px-3.5 py-2.5 pr-5",
+                      "bg-[#2ca36a] text-white shadow-lg",
+                    )}
+                    role="status"
+                  >
+                    <Zap className="h-5 w-5 shrink-0 text-white" strokeWidth={2} aria-hidden />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[12px] font-medium leading-none text-white/90">Ready in</span>
+                      <span className="text-[15px] font-bold leading-none tracking-tight text-white">
+                        {canStartBadge.toLowerCase() === "immediately" ? "Now" : canStartBadge}
+                      </span>
+                    </div>
+                  </span>
+                ) : null}
 
-            {respondsWithinBadge ? (
-              <span
-                className={cn(
-                  "inline-flex min-h-[4.75rem] min-w-[5.25rem] max-w-[11rem] flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-2.5",
-                  "bg-gradient-to-br from-sky-600/55 to-cyan-600/45 text-white backdrop-blur-md",
-                  "shadow-lg shadow-black/15",
-                )}
-                role="status"
-              >
-                <span className="block text-center text-[11px] font-black uppercase leading-snug tracking-[0.1em]">
-                  Responds within
-                </span>
-                <span className="block w-full text-center text-[14px] font-black uppercase leading-none tabular-nums tracking-wide text-white">
-                  {respondsWithinBadge}
-                </span>
-              </span>
-            ) : null}
-          </div>
-        )}
+                {respondsWithinBadge ? (
+                  <span
+                    className={cn(
+                      "inline-flex w-full items-center gap-2.5 whitespace-nowrap rounded-[16px] px-3.5 py-2.5 pr-5",
+                      "bg-[#2c2b4c]/40 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/10",
+                    )}
+                    role="status"
+                  >
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#5c4b8e]">
+                      <MessageCircle className="h-4 w-4 text-white" strokeWidth={2.25} aria-hidden />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[12px] font-medium leading-none text-white/90">Replies in</span>
+                      <span className="text-[15px] font-bold leading-none tracking-tight text-white">
+                        {respondsWithinBadge}
+                      </span>
+                    </div>
+                  </span>
+                ) : null}
+
+                {h.distanceKm != null ? (
+                  <span
+                    className={cn(
+                      "inline-flex w-full items-center gap-2.5 whitespace-nowrap rounded-[16px] px-3.5 py-2.5 pr-5",
+                      "bg-black/40 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/15",
+                    )}
+                    role="status"
+                  >
+                    <MapPin className="h-5 w-5 shrink-0 text-white" strokeWidth={2} aria-hidden />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[15px] font-bold leading-none tracking-tight text-white">
+                        {h.distanceKm < 1
+                          ? `${Math.round(h.distanceKm * 1000)} m`
+                          : `${h.distanceKm.toFixed(1)} km`}
+                      </span>
+                      <span className="text-[12px] font-medium leading-none text-white/90">
+                        {distanceFromViewerPin ? "from you" : "away"}
+                      </span>
+                    </div>
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          )}
 
         {viewerId ? (
           <>
@@ -613,7 +669,7 @@ export function HelperResultProfileCard({
                 aria-pressed={favoriteIds.has(h.id)}
                 disabled={favoriteBusyId === h.id}
                 onClick={(e) => void onToggleFavorite(h.id, e)}
-                className={cn(coloredGlassRoundBtn, "bg-rose-500/35 ring-white/35")}
+                className={cn(coloredGlassRoundBtn, "bg-black/45 ring-white/25 hover:bg-black/55")}
               >
                 {favoriteBusyId === h.id ? (
                   <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
@@ -629,85 +685,7 @@ export function HelperResultProfileCard({
               </button>
             </div>
 
-            <div
-              className="absolute right-2.5 top-1/2 z-[16] flex -translate-y-1/2 flex-col items-center gap-2"
-              onClick={(e) => e.stopPropagation()}
-            >
-            <button
-              type="button"
-              title="Open chat"
-              aria-label="Open chat"
-              disabled={chatOpening}
-              onClick={(e) => void openDirectChat(e)}
-              className={cn(
-                coloredGlassRoundBtn,
-                "bg-black/45 ring-white/25 backdrop-blur-2xl hover:bg-black/55",
-              )}
-            >
-              {chatOpening ? (
-                <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
-              ) : (
-                <MessageCircle className="h-6 w-6" strokeWidth={2} aria-hidden />
-              )}
-            </button>
 
-            {showWhatsAppButton ? (
-              <button
-                type="button"
-                title="WhatsApp"
-                aria-label="Open WhatsApp"
-                disabled={socialBusy === "wa"}
-                onClick={(e) => void openWhatsApp(e)}
-                className={cn(
-                  coloredGlassRoundBtn,
-                  "bg-emerald-500/40 ring-emerald-100/30",
-                )}
-              >
-                {socialBusy === "wa" ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
-                ) : (
-                  <WhatsAppIcon size={24} className="text-white" />
-                )}
-              </button>
-            ) : null}
-
-            {showTelegramButton ? (
-              <button
-                type="button"
-                title="Telegram"
-                aria-label="Open Telegram"
-                disabled={socialBusy === "tg"}
-                onClick={(e) => void openTelegram(e)}
-                className={cn(
-                  coloredGlassRoundBtn,
-                  "bg-blue-600/40 ring-blue-100/35",
-                )}
-              >
-                {socialBusy === "tg" ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
-                ) : (
-                  <TelegramIcon size={24} className="text-white" />
-                )}
-              </button>
-            ) : null}
-
-            {knockCategories.length > 0 ? (
-              <ProfileKnockMenu
-                targetUserId={h.id}
-                targetRole={h.role ?? null}
-                categories={knockCategories}
-                viewerId={viewerId}
-                viewerRole={currentProfile?.role ?? null}
-                viewerName={currentProfile?.full_name ?? null}
-                variant="glass"
-                dropdownOpens="up"
-                buttonClassName={cn(
-                  coloredGlassRoundBtn,
-                  "!bg-amber-500/40 !backdrop-blur-2xl ring-amber-100/35 hover:!brightness-110",
-                )}
-              />
-            ) : null}
-          </div>
           </>
         ) : null}
 
@@ -718,61 +696,6 @@ export function HelperResultProfileCard({
           )}
         >
           <div className="space-y-1.5 md:space-y-1">
-            {showLiveHelpWeekBadge ? (
-              <span
-                className={cn(
-                  "pointer-events-none relative mb-0.5 inline-flex min-w-[7.75rem] flex-col items-stretch gap-0.5 self-start rounded-xl py-2 pl-3",
-                  liveHelpCornerTier?.kind === "crown" ? "pr-[3.5rem]" : "pr-[2.75rem]",
-                  "bg-gradient-to-br from-violet-600/65 to-fuchsia-600/50 text-white backdrop-blur-md",
-                  "shadow-lg shadow-black/25 ring-1 ring-inset ring-white/15",
-                )}
-                role="status"
-                title="Completed bookings in the last 7 days"
-                aria-label={`${liveHelpWeekCount} completed live help bookings in the last 7 days`}
-              >
-                {liveHelpCornerTier ? (
-                  <span
-                    className={cn(
-                      "pointer-events-none absolute right-1 top-1 inline-flex shrink-0 items-center justify-center rounded-full bg-black/28 shadow-md ring-1 ring-inset ring-white/25 backdrop-blur-md",
-                      liveHelpCornerTier.kind === "crown" && "right-0.5 top-0.5 p-1.5",
-                      liveHelpCornerTier.kind === "trophy" && "right-1 top-1 p-1.5",
-                      liveHelpCornerTier.kind === "medal" && "right-1 top-1 p-1.5",
-                    )}
-                    title={liveHelpCornerTier.title}
-                    aria-hidden
-                  >
-                    {liveHelpCornerTier.kind === "medal" ? (
-                      <Medal
-                        className="h-[15px] w-[15px] text-amber-200 drop-shadow-sm"
-                        strokeWidth={2.25}
-                        aria-hidden
-                      />
-                    ) : liveHelpCornerTier.kind === "trophy" ? (
-                      <Trophy
-                        className="h-[22px] w-[22px] text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
-                        strokeWidth={2.35}
-                        aria-hidden
-                      />
-                    ) : (
-                      <Crown
-                        className="h-8 w-8 text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.55)]"
-                        strokeWidth={2.25}
-                        aria-hidden
-                      />
-                    )}
-                  </span>
-                ) : null}
-                <span className="text-center text-[9px] font-black uppercase leading-none tracking-[0.12em]">
-                  Live help
-                </span>
-                <span className="text-center text-[20px] font-black tabular-nums leading-none tracking-tight">
-                  {liveHelpWeekCount}
-                </span>
-                <span className="text-center text-[8px] font-bold uppercase tracking-wide text-white/90">
-                  this week
-                </span>
-              </span>
-            ) : null}
             <div className="flex min-w-0 items-baseline gap-1 text-[28px] font-black leading-[1.05] tracking-tight text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.55)]">
               <p className="line-clamp-2 min-w-0">
                 {h.full_name || "Helper"}
@@ -793,68 +716,152 @@ export function HelperResultProfileCard({
                 />
                 <span className="line-clamp-1 text-white">{h.city || "—"}</span>
               </span>
-              {h.distanceKm != null ? (
-                <span className="inline-flex shrink-0 flex-wrap items-baseline gap-x-1 text-[13px] font-bold tabular-nums text-white">
-                  <span>
-                    {h.distanceKm < 1
-                      ? `${Math.round(h.distanceKm * 1000)} m`
-                      : `${h.distanceKm.toFixed(1)} km`}
-                  </span>
-                  {distanceFromViewerPin ? (
-                    <span className="text-[11px] font-semibold tabular-nums text-white/85">
-                      · from you
-                    </span>
-                  ) : null}
-                </span>
-              ) : null}
             </div>
+
+            {liveCategories.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                {liveCategories.map((cat, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-black/40 px-3.5 py-2 text-[12px] font-bold uppercase tracking-wide text-white ring-1 ring-inset ring-white/15 backdrop-blur-md"
+                  >
+                    <CategoryIcon id={cat.id} className="h-4 w-4 text-emerald-400" />
+                    {cat.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
 
-          <div className="pointer-events-auto">
-            <button
-              type="button"
-              onClick={(e) => void openDirectChat(e)}
-              disabled={chatOpening}
-              className={cn(
-                "group inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3",
-                "bg-white/95 text-slate-900 shadow-xl shadow-black/20",
-                "ring-1 ring-inset ring-black/10 transition-colors",
-                "hover:bg-white active:bg-white/90",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                "disabled:opacity-60 disabled:pointer-events-none",
-              )}
-              aria-label="Contact now"
-            >
-              {chatOpening ? (
-                <Loader2 className="h-5 w-5 animate-spin text-slate-900/80" aria-hidden />
-              ) : (
-                <MessageCircle className="h-5 w-5 text-slate-900/90" strokeWidth={2.25} aria-hidden />
-              )}
-              <span className="text-[13px] font-black uppercase tracking-[0.14em]">
-                Contact now
-              </span>
-            </button>
-          </div>
-
-          <div className="flex min-h-[1.25rem] flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2">
-            <div className="min-w-0 shrink">
+          <div className="flex min-h-[1.25rem] flex-wrap items-center justify-between gap-2 pt-1 pb-1">
+            <div className="flex min-w-0 shrink items-center gap-3">
               {h.average_rating != null && h.average_rating > 0 ? (
-                <StarRating
-                  rating={h.average_rating}
-                  size="sm"
-                  showCount
-                  totalRatings={h.total_ratings ?? 0}
-                  className="drop-shadow-sm"
-                  starClassName="text-amber-400"
-                  emptyStarClassName="text-white/20"
-                  numberClassName="text-white font-black"
-                  countClassName="text-white/55"
-                />
+                <div className="flex items-center gap-1.5 text-[14px] font-black tabular-nums tracking-tight text-white drop-shadow-sm">
+                  <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400 drop-shadow-md" aria-hidden />
+                  <span>{h.average_rating.toFixed(1)}</span>
+                  <span className="text-[11px] font-bold text-white/60">
+                    ({h.total_ratings ?? 0})
+                  </span>
+                </div>
               ) : (
                 <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/55">
                   New helper
                 </span>
               )}
+              {liveHelpWeekCount != null && liveHelpWeekCount > 0 ? (
+                <>
+                  <span className="text-white/40" aria-hidden>|</span>
+                  <span className="text-[12px] font-medium text-white/90 drop-shadow-md">
+                    {liveHelpWeekCount} live jobs completed
+                  </span>
+                </>
+              ) : null}
+            </div>
+          </div>
+
+          {h.freelancer_profiles?.bio ? (
+            <p className="line-clamp-2 text-[13px] leading-relaxed text-white/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]">
+              {h.freelancer_profiles.bio}
+            </p>
+          ) : null}
+
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => void openDirectChat(e)}
+              disabled={chatOpening}
+              className={cn(
+                "group inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3",
+                "bg-emerald-500 text-white shadow-xl shadow-emerald-500/20",
+                "ring-1 ring-inset ring-emerald-600/20 transition-colors",
+                "hover:bg-emerald-400 active:bg-emerald-600",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                "disabled:opacity-60 disabled:pointer-events-none",
+              )}
+              aria-label="Contact now"
+            >
+              {chatOpening ? (
+                <Loader2 className="h-5 w-5 animate-spin text-white/80" aria-hidden />
+              ) : (
+                <MessageCircle className="h-5 w-5 text-white/90" strokeWidth={2.25} aria-hidden />
+              )}
+              <span className="text-[13px] font-black uppercase tracking-[0.14em]">
+                Contact now
+              </span>
+            </button>
+
+            {showWhatsAppButton ? (
+              <button
+                type="button"
+                title="WhatsApp"
+                aria-label="Open WhatsApp"
+                disabled={socialBusy === "wa"}
+                onClick={(e) => void openWhatsApp(e)}
+                className={cn(
+                  "inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-2xl",
+                  "bg-[#25D366] text-white shadow-xl shadow-[#25D366]/20 transition-all hover:brightness-110 active:scale-[0.97]",
+                  "disabled:opacity-60 disabled:pointer-events-none",
+                )}
+              >
+                {socialBusy === "wa" ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                ) : (
+                  <WhatsAppIcon size={24} className="text-white" />
+                )}
+              </button>
+            ) : null}
+
+            {showTelegramButton ? (
+              <button
+                type="button"
+                title="Telegram"
+                aria-label="Open Telegram"
+                disabled={socialBusy === "tg"}
+                onClick={(e) => void openTelegram(e)}
+                className={cn(
+                  "inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-2xl",
+                  "bg-[#229ED9] text-white shadow-xl shadow-[#229ED9]/20 transition-all hover:brightness-110 active:scale-[0.97]",
+                  "disabled:opacity-60 disabled:pointer-events-none",
+                )}
+              >
+                {socialBusy === "tg" ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                ) : (
+                  <TelegramIcon size={24} className="text-white" />
+                )}
+              </button>
+            ) : null}
+
+            {knockCategories.length > 0 ? (
+              <ProfileKnockMenu
+                targetUserId={h.id}
+                targetRole={h.role ?? null}
+                categories={knockCategories}
+                viewerId={viewerId}
+                viewerRole={currentProfile?.role ?? null}
+                viewerName={currentProfile?.full_name ?? null}
+                variant="glass"
+                dropdownOpens="up"
+                buttonClassName={cn(
+                  "inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-2xl",
+                  "!bg-amber-500 text-white shadow-xl shadow-amber-500/20 transition-all hover:brightness-110 active:scale-[0.97]",
+                )}
+              />
+            ) : null}
+          </div>
+
+          <div className="flex min-h-[1.25rem] flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2">
+            <div className="min-w-0 shrink">
+              {h.is_verified ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-400 drop-shadow-md">
+                  <BadgeCheck
+                    className="h-[1.2em] w-[1.2em] shrink-0 fill-emerald-500 text-white"
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                  Verified Helper
+                </span>
+              ) : null}
             </div>
             {rateLabel ? (
               <p className="max-w-[55%] text-right text-[15px] font-black tabular-nums leading-tight text-orange-100 [text-shadow:0_1px_12px_rgba(0,0,0,0.45)]">
@@ -862,12 +869,6 @@ export function HelperResultProfileCard({
               </p>
             ) : null}
           </div>
-
-          {h.freelancer_profiles?.bio ? (
-            <p className="line-clamp-2 text-[13px] leading-relaxed text-white/75 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]">
-              {h.freelancer_profiles.bio}
-            </p>
-          ) : null}
         </div>
       </CardContent>
     </Card>

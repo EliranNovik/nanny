@@ -58,7 +58,7 @@ begin
       jsonb_build_object(
         'hourly_rate_min', fp.hourly_rate_min,
         'hourly_rate_max', fp.hourly_rate_max,
-        'bio', fp.bio,
+        'bio', coalesce(fp.bio, p.bio),
         'available_now', fp.available_now,
         'live_until', fp.live_until,
         'live_categories', coalesce(fp.live_categories, '{}'::text[]),
