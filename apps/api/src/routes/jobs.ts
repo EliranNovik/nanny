@@ -22,11 +22,25 @@ const JOB_SAFE_FIELDS = [
 
 /** Freelancer profile fields safe to expose to another user (client). */
 const FREELANCER_PROFILE_SAFE_FIELDS =
-  "hourly_rate_min, hourly_rate_max, bio, available_now, languages";
+  [
+    "hourly_rate_min",
+    "hourly_rate_max",
+    "bio",
+    "available_now",
+    "languages",
+    "has_first_aid",
+    "newborn_experience",
+    "special_needs_experience",
+    "live_until",
+    "live_categories",
+    "live_can_start_in",
+    "rating_avg",
+    "rating_count",
+  ].join(", ");
 
 /** Profile fields safe to include in confirmations list (categories lives on profiles, not freelancer_profiles). */
 const PROFILE_CARD_FIELDS =
-  "id, full_name, photo_url, city, categories, location_lat, location_lng";
+  "id, full_name, photo_url, city, categories, location_lat, location_lng, is_verified";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -953,11 +967,24 @@ jobsRouter.get("/:jobId/confirmed", async (req: Request, res: Response): Promise
 
   if (confirmationIds.size > 0) {
     const confirmationIdsArr = [...confirmationIds];
-    const { data: confProfiles, error: pErr } = await supabaseAdmin
+    const confirmedProfileSelect = `${PROFILE_CARD_FIELDS}, freelancer_profiles(${FREELANCER_PROFILE_SAFE_FIELDS})`;
+    const { data: confProfiles, error: pErr } = await (
+      supabaseAdmin as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            in: (
+              col: string,
+              vals: string[],
+            ) => Promise<{
+              data: Record<string, unknown>[] | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      }
+    )
       .from("profiles")
-      .select(
-        `${PROFILE_CARD_FIELDS}, freelancer_profiles(${FREELANCER_PROFILE_SAFE_FIELDS})`,
-      )
+      .select(confirmedProfileSelect)
       .in("id", confirmationIdsArr);
 
     if (pErr) {

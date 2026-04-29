@@ -36,9 +36,45 @@ import {
   type ServiceCategoryId,
   isServiceCategoryId,
 } from "@/lib/serviceCategories";
+import { haversineDistanceKm } from "@/lib/geo";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
 const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
+
+/**
+ * Prefer great-circle km from the logged-in user’s saved map pin when both have coords;
+ * otherwise keep the RPC `distance_km` from the search radius / listing rules.
+ */
+function resolveHelperDistanceKmForViewer(
+  h: HelperResult,
+  viewerProfile: {
+    location_lat?: number | null;
+    location_lng?: number | null;
+  } | null | undefined,
+): { km: number | null; fromViewerPin: boolean } {
+  const vl = viewerProfile?.location_lat;
+  const vg = viewerProfile?.location_lng;
+  const hl = h.location_lat;
+  const hn = h.location_lng;
+  if (
+    vl != null &&
+    vg != null &&
+    hl != null &&
+    hn != null
+  ) {
+    const a = Number(vl);
+    const b = Number(vg);
+    const c = Number(hl);
+    const d = Number(hn);
+    if ([a, b, c, d].every((x) => Number.isFinite(x))) {
+      return {
+        km: haversineDistanceKm(a, b, c, d),
+        fromViewerPin: true,
+      };
+    }
+  }
+  return { km: h.distanceKm ?? null, fromViewerPin: false };
+}
 
 const SEARCH_CIRCLE_STYLE: google.maps.CircleOptions = {
   fillColor: "#f97316",
@@ -64,6 +100,11 @@ type FreelancerRow = {
   total_ratings?: number | null;
   role?: string | null;
   is_available_for_jobs?: boolean | null;
+  /** From `get_helpers_near_location` when migration 066 applied. */
+  whatsapp_contact_available?: boolean | null;
+  telegram_contact_available?: boolean | null;
+  /** From `get_helpers_near_location` when migration 068 applied. */
+  is_verified?: boolean | null;
   freelancer_profiles: {
     hourly_rate_min: number | null;
     hourly_rate_max: number | null;
@@ -315,6 +356,10 @@ export default function HelpersPage() {
   const [helperReplyStatsByHelperId, setHelperReplyStatsByHelperId] = useState<
     Record<string, { avg_seconds: number; sample_count: number }>
   >({});
+  /** Completed live help gigs in trailing 7 days (from `get_helpers_live_help_week_counts`). */
+  const [liveHelpWeekByHelperId, setLiveHelpWeekByHelperId] = useState<
+    Record<string, number>
+  >({});
   const [loadingFetch, setLoadingFetch] = useState(false);
   /** True after the user runs a search — helpers list and map pins appear only then. */
   const [hasSearched, setHasSearched] = useState(false);
@@ -494,6 +539,7 @@ export default function HelpersPage() {
       setLoadingFetch(true);
       try {
         setHelperReplyStatsByHelperId({});
+        setLiveHelpWeekByHelperId({});
         const viewerCityNorm = normalizeCityLabel(profile?.city);
         const { data, error } = await supabase.rpc("get_helpers_near_location", {
           search_lat: center.lat,
@@ -514,14 +560,27 @@ export default function HelpersPage() {
         // Badges: helper avg response time (client msg -> helper reply)
         const helperIds = Array.from(new Set(rows.map((r) => r.id).filter(Boolean)));
         if (helperIds.length > 0) {
-          const { data: statRows, error: statErr } = await supabase.rpc(
-            "get_helper_chat_response_stats",
-            { p_helper_ids: helperIds },
-          );
+          const [statRpc, weekRpc] = await Promise.all([
+            supabase.rpc("get_helper_chat_response_stats", {
+              p_helper_ids: helperIds,
+            }),
+            supabase.rpc("get_helpers_live_help_week_counts", {
+              p_helper_ids: helperIds,
+            }),
+          ]);
+          const { data: statRows, error: statErr } = statRpc;
+          const { data: weekRows, error: weekErr } = weekRpc;
+
           if (statErr && import.meta.env.DEV) {
             console.warn(
               "[HelpersPage] get_helper_chat_response_stats failed:",
               statErr,
+            );
+          }
+          if (weekErr && import.meta.env.DEV) {
+            console.warn(
+              "[HelpersPage] get_helpers_live_help_week_counts failed:",
+              weekErr,
             );
           }
           if (import.meta.env.DEV) {
@@ -547,6 +606,19 @@ export default function HelpersPage() {
             }
             setHelperReplyStatsByHelperId(next);
           }
+          if (!weekErr && Array.isArray(weekRows)) {
+            const weekNext: Record<string, number> = {};
+            for (const wr of weekRows as {
+              helper_id: string;
+              live_help_week_count: number | string | null;
+            }[]) {
+              if (!wr.helper_id || wr.live_help_week_count == null) continue;
+              const n = Number(wr.live_help_week_count);
+              if (!Number.isFinite(n) || n <= 0) continue;
+              weekNext[wr.helper_id] = Math.floor(n);
+            }
+            setLiveHelpWeekByHelperId(weekNext);
+          }
         }
 
         setHasSearched(true);
@@ -560,6 +632,8 @@ export default function HelpersPage() {
       } catch (e: unknown) {
         console.error("HelpersPage fetch:", e);
         setResults([]);
+        setHelperReplyStatsByHelperId({});
+        setLiveHelpWeekByHelperId({});
         addToast({
           title: "Error fetching helpers",
           description:
@@ -1236,14 +1310,18 @@ export default function HelpersPage() {
                   window.requestAnimationFrame(syncMobileSnapIndex);
                 }}
               >
-                {helpersMatchingCategories.map((h) => (
+                {helpersMatchingCategories.map((h) => {
+                  const { km, fromViewerPin } =
+                    resolveHelperDistanceKmForViewer(h, profile);
+                  return (
                   <div
                     key={h.id}
                     className="relative h-full w-full snap-start snap-always px-2 py-2"
                   >
                     <div className="h-full w-full overflow-hidden rounded-[22px]">
                       <HelperResultProfileCard
-                        helper={h}
+                        helper={{ ...h, distanceKm: km }}
+                        distanceFromViewerPin={fromViewerPin}
                         gallery={galleryByUserId[h.id] ?? []}
                         viewerId={user?.id}
                         favoriteIds={favoriteIds}
@@ -1255,6 +1333,7 @@ export default function HelpersPage() {
                         canStartInLabel={canStartInCardLabel(
                           h.freelancer_profiles?.live_can_start_in,
                         )}
+                        liveHelpWeekCount={liveHelpWeekByHelperId[h.id]}
                         onToggleFavorite={toggleFavorite}
                         onOpenProfile={(id) => navigate(`/profile/${id}`)}
                         variant="fullscreen"
@@ -1290,7 +1369,8 @@ export default function HelpersPage() {
                       );
                     })()}
                   </div>
-                ))}
+                );
+                })}
               </div>
             ) : null}
 
@@ -1302,10 +1382,14 @@ export default function HelpersPage() {
                 "max-md:-mt-1 max-md:scroll-mt-0 max-md:gap-4",
               )}
             >
-              {helpersMatchingCategories.map((h) => (
+              {helpersMatchingCategories.map((h) => {
+                const { km, fromViewerPin } =
+                  resolveHelperDistanceKmForViewer(h, profile);
+                return (
                 <HelperResultProfileCard
                   key={h.id}
-                  helper={h}
+                  helper={{ ...h, distanceKm: km }}
+                  distanceFromViewerPin={fromViewerPin}
                   gallery={galleryByUserId[h.id] ?? []}
                   viewerId={user?.id}
                   favoriteIds={favoriteIds}
@@ -1317,10 +1401,12 @@ export default function HelpersPage() {
                   canStartInLabel={canStartInCardLabel(
                     h.freelancer_profiles?.live_can_start_in,
                   )}
+                  liveHelpWeekCount={liveHelpWeekByHelperId[h.id]}
                   onToggleFavorite={toggleFavorite}
                   onOpenProfile={(id) => navigate(`/profile/${id}`)}
                 />
-              ))}
+                );
+              })}
             </div>
           </>
         )}

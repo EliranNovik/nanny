@@ -1,5 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Clock, MapPin, MessageCircle, MessageSquare, Loader2, X, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, Star } from "lucide-react";
+import {
+  BadgeCheck,
+  Baby,
+  Check,
+  Clock,
+  Crown,
+  Loader2,
+  MapPin,
+  Medal,
+  MessageCircle,
+  MessageSquare,
+  Sparkles,
+  Star,
+  Trophy,
+  Truck,
+  UtensilsCrossed,
+  Wrench,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
@@ -32,6 +50,9 @@ export type OpenJobRequestMatchRow = {
   distance_km: number | null;
   /** UI-only flag set by the match page after confirming availability */
   __accepted?: boolean;
+  /** From `get_job_requests_near_location` after migration 069. */
+  client_is_verified?: boolean | null;
+  client_posted_requests_count?: number | null;
 };
 
 type Slide = { key: string; kind: "image" | "video"; src: string };
@@ -113,9 +134,57 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   other_help: Wrench,
 };
 
-function CategoryIcon({ serviceType, className }: { serviceType: string | null | undefined; className?: string }) {
+function CategoryIcon({
+  serviceType,
+  className,
+  strokeWidth = 2,
+}: {
+  serviceType: string | null | undefined;
+  className?: string;
+  strokeWidth?: number;
+}) {
   const Icon = CATEGORY_ICONS[(serviceType ?? "").toLowerCase()] ?? Sparkles;
-  return <Icon className={className} aria-hidden />;
+  return <Icon className={className} strokeWidth={strokeWidth} aria-hidden />;
+}
+
+/**
+ * Category chip beside “Posted …”.
+ * Dark mode uses a solid black/zinc glass stack (no `bg-*` + gradient mix) so it always wins over light tints.
+ */
+function categoryPanelPillClasses(serviceType: string | null | undefined): string {
+  const k = (serviceType ?? "").toLowerCase();
+  const darkGlass = cn(
+    "dark:border-white/14 dark:bg-black/70 dark:text-zinc-50 dark:shadow-lg dark:shadow-black/70",
+    "dark:ring-1 dark:ring-inset dark:ring-white/10 dark:backdrop-blur-xl",
+  );
+  if (k.includes("clean")) {
+    return cn(
+      "border border-emerald-200/95 bg-emerald-50 text-emerald-950 shadow-sm ring-1 ring-emerald-100/80",
+      darkGlass,
+    );
+  }
+  if (k.includes("cook") || k.includes("chef") || k.includes("food")) {
+    return cn(
+      "border border-amber-200/95 bg-amber-50 text-amber-950 shadow-sm ring-1 ring-amber-100/80",
+      darkGlass,
+    );
+  }
+  if (k.includes("nanny") || k.includes("bab") || k.includes("sit")) {
+    return cn(
+      "border border-rose-200/95 bg-rose-50 text-rose-950 shadow-sm ring-1 ring-rose-100/80",
+      darkGlass,
+    );
+  }
+  if (k.includes("pickup") || k.includes("deliver") || k.includes("truck")) {
+    return cn(
+      "border border-sky-200/95 bg-sky-50 text-sky-950 shadow-sm ring-1 ring-sky-100/80",
+      darkGlass,
+    );
+  }
+  return cn(
+    "border border-violet-200/95 bg-violet-50 text-violet-950 shadow-sm ring-1 ring-violet-100/80",
+    darkGlass,
+  );
 }
 
 /** Flatten service_details JSON into short readable lines and extracts notes. */
@@ -331,6 +400,27 @@ export function OpenJobRequestMatchCard({
   }, [row.notes, parsedDetails.notes]);
 
   const accepted = row.__accepted === true;
+
+  const postedRequestsCountRaw = row.client_posted_requests_count;
+  const postedRequestsCount =
+    typeof postedRequestsCountRaw === "number" && Number.isFinite(postedRequestsCountRaw)
+      ? Math.floor(postedRequestsCountRaw)
+      : 0;
+  const showPostedRequestsBadge = postedRequestsCount > 0;
+
+  const postedRequestsCornerTier = useMemo(() => {
+    const n = postedRequestsCount;
+    if (n <= 0) return null;
+    if (n === 1)
+      return { kind: "medal" as const, title: "Posted 1 request in total" };
+    if (n >= 10)
+      return { kind: "crown" as const, title: "10+ posted requests" };
+    if (n >= 5)
+      return { kind: "trophy" as const, title: "5+ posted requests" };
+    return null;
+  }, [postedRequestsCount]);
+
+  const showVerifiedBadge = row.client_is_verified === true;
 
   const openDirectChat = useCallback(
     async (e: React.MouseEvent) => {
@@ -548,9 +638,30 @@ export function OpenJobRequestMatchCard({
           />
         )}
 
+        {slides.length > 0 ? (
+          <>
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black via-black/75 to-transparent"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[38%] bg-gradient-to-tr from-orange-500/18 to-transparent opacity-90 mix-blend-soft-light"
+              aria-hidden
+            />
+          </>
+        ) : null}
+
         {showStrip ? (
-          <div className="pointer-events-none absolute top-3 right-3 z-[11]">
-            <div className="rounded-full bg-black/35 px-3 py-2 shadow-lg backdrop-blur-md ring-1 ring-white/15">
+          <div
+            className="pointer-events-none absolute left-1/2 top-3 z-[15] -translate-x-1/2"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <div
+              className={cn(
+                "rounded-full bg-black/15 px-3 py-2 shadow-lg backdrop-blur-xl ring-1 ring-white/15",
+              )}
+            >
               <div className="flex items-center justify-center gap-1.5">
                 {slides.map((_, idx) => (
                   <span
@@ -559,8 +670,8 @@ export function OpenJobRequestMatchCard({
                     className={cn(
                       "h-1.5 w-7 rounded-full",
                       idx === activeIndex
-                        ? "bg-white shadow-[0_0_10px_rgba(255,255,255,0.35)]"
-                        : "bg-white/35",
+                        ? "bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.25)]"
+                        : "bg-white/20",
                     )}
                     aria-hidden
                   />
@@ -569,14 +680,6 @@ export function OpenJobRequestMatchCard({
             </div>
           </div>
         ) : null}
-
-        {/* Category — top left */}
-        <div className="pointer-events-none absolute left-0 top-0 z-[12] max-w-[min(100%,calc(100%-3.5rem))] pt-3 pl-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/20">
-            <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 shrink-0 text-white/90" />
-            {formatTitle(row.service_type)}
-          </span>
-        </div>
 
         {/* Quick actions — vertical column on the right */}
         <div className="pointer-events-auto absolute right-2 top-1/2 z-[13] flex -translate-y-1/2 flex-col gap-2">
@@ -625,16 +728,78 @@ export function OpenJobRequestMatchCard({
           ) : null}
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[12] bg-gradient-to-t from-black/75 via-black/45 to-transparent px-3 pb-3 pt-12 flex justify-between items-end">
-          <div className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.75)] min-w-0 pr-2">
-            <p className="truncate text-[20px] font-black leading-tight tracking-tight text-white">
-              {(row.client_display_name || "").trim() || "Member"}
-            </p>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[12] flex items-end justify-between gap-2 px-3 pb-3 pt-14">
+          <div className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.75)] min-w-0 flex-1 pr-1">
+            {showPostedRequestsBadge ? (
+              <span
+                className={cn(
+                  "relative mb-1.5 inline-flex min-w-[7rem] flex-col items-stretch gap-0.5 rounded-xl py-2 pl-3",
+                  postedRequestsCornerTier?.kind === "crown" ? "pr-[3.5rem]" : "pr-[2.75rem]",
+                  "pointer-events-none bg-gradient-to-br from-violet-600/65 to-fuchsia-600/50 text-white backdrop-blur-md",
+                  "shadow-lg shadow-black/25 ring-1 ring-inset ring-white/15",
+                )}
+                aria-label={`${postedRequestsCount} posted requests`}
+              >
+                {postedRequestsCornerTier ? (
+                  <span
+                    className={cn(
+                      "pointer-events-none absolute right-1 top-1 inline-flex shrink-0 items-center justify-center rounded-full bg-black/28 shadow-md ring-1 ring-inset ring-white/25 backdrop-blur-md",
+                      postedRequestsCornerTier.kind === "crown" && "right-0.5 top-0.5 p-1.5",
+                      postedRequestsCornerTier.kind === "trophy" && "right-1 top-1 p-1.5",
+                      postedRequestsCornerTier.kind === "medal" && "right-1 top-1 p-1.5",
+                    )}
+                    title={postedRequestsCornerTier.title}
+                    aria-hidden
+                  >
+                    {postedRequestsCornerTier.kind === "medal" ? (
+                      <Medal
+                        className="h-[13px] w-[13px] text-amber-200 drop-shadow-sm"
+                        strokeWidth={2.25}
+                        aria-hidden
+                      />
+                    ) : postedRequestsCornerTier.kind === "trophy" ? (
+                      <Trophy
+                        className="h-[20px] w-[20px] text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
+                        strokeWidth={2.35}
+                        aria-hidden
+                      />
+                    ) : (
+                      <Crown
+                        className="h-7 w-7 text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.55)]"
+                        strokeWidth={2.25}
+                        aria-hidden
+                      />
+                    )}
+                  </span>
+                ) : null}
+                <span className="text-center text-[8px] font-black uppercase leading-none tracking-[0.12em]">
+                  Posted
+                </span>
+                <span className="text-center text-[17px] font-black tabular-nums leading-none tracking-tight">
+                  {postedRequestsCount}
+                </span>
+                <span className="text-center text-[8px] font-semibold uppercase tracking-wide text-white/92">
+                  requests
+                </span>
+              </span>
+            ) : null}
+            <div className="flex min-w-0 items-baseline gap-1 font-black leading-tight tracking-tight text-white">
+              <p className="truncate text-[20px]">
+                {(row.client_display_name || "").trim() || "Member"}
+              </p>
+              {showVerifiedBadge ? (
+                <BadgeCheck
+                  className="h-[0.9em] w-[0.9em] shrink-0 translate-y-px fill-emerald-500 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
+                  strokeWidth={2.25}
+                  aria-label="Verified client"
+                />
+              ) : null}
+            </div>
             {clientRating && clientRating.average_rating != null && (
-              <div className="mt-0.5 flex items-center gap-1 text-[12px] font-bold text-amber-400">
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" strokeWidth={1.5} />
+              <div className="mt-1 flex items-center gap-1 text-[12px] font-bold text-amber-400">
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" strokeWidth={1.5} aria-hidden />
                 <span>{clientRating.average_rating.toFixed(1)}</span>
-                <span className="text-white/60 font-medium">({clientRating.total_ratings || 0})</span>
+                <span className="font-medium text-white/60">({clientRating.total_ratings || 0})</span>
               </div>
             )}
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -647,26 +812,69 @@ export function OpenJobRequestMatchCard({
               ) : null}
             </div>
           </div>
-          {row.created_at ? (
-            <div className="flex shrink-0 items-center gap-1 text-white/90 drop-shadow-[0_1px_6px_rgba(0,0,0,0.75)] mb-0.5">
-              <Clock className="h-3.5 w-3.5 shrink-0 text-white/90" strokeWidth={2.5} aria-hidden />
-              <span className="text-[11px] font-semibold text-white/90">
-                Posted {timeAgo(row.created_at)}
+          <div className="relative z-[14] flex max-w-[48%] shrink-0 flex-col items-end gap-1 self-end pb-0.5">
+            {respondsWithinLabel ? (
+              <span
+                className={cn(
+                  "inline-flex min-h-[4.75rem] min-w-[5.25rem] max-w-[11rem] flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-2.5",
+                  "bg-gradient-to-br from-sky-600/55 to-cyan-600/45 text-white backdrop-blur-md",
+                  "shadow-lg shadow-black/15",
+                )}
+                role="status"
+              >
+                <span className="block text-center text-[11px] font-black uppercase leading-snug tracking-[0.1em]">
+                  Responds within
+                </span>
+                <span className="block w-full text-center text-[14px] font-black uppercase leading-none tabular-nums tracking-wide text-white">
+                  {respondsWithinLabel}
+                </span>
               </span>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
 
       {/* Details + actions */}
       <div
         className={cn(
-          "relative z-[6] flex min-h-0 flex-1 flex-col border-t border-slate-200/90 bg-white px-4 pb-5 pt-4",
+          "relative z-[6] flex min-h-0 flex-1 flex-col border-t border-slate-200/90 bg-white px-4 pb-5 pt-12",
           "dark:border-zinc-800/80 dark:bg-zinc-900",
           variant === "fullscreen" && "max-h-[min(52vh,24rem)] overflow-y-auto",
         )}
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="pointer-events-none absolute left-4 top-3 z-[11] flex max-w-[min(calc(100%-4.75rem),100%)] flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.12em]",
+              categoryPanelPillClasses(row.service_type),
+            )}
+            role="presentation"
+          >
+            <CategoryIcon
+              serviceType={row.service_type}
+              className="h-3.5 w-3.5 shrink-0 text-current opacity-90"
+              strokeWidth={2.35}
+            />
+            {formatTitle(row.service_type)}
+          </span>
+          {row.created_at ? (
+            <div
+              className="inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-slate-200/95 bg-white/98 px-2.5 py-1 shadow-sm ring-1 ring-slate-200/65 dark:border-zinc-600 dark:bg-zinc-800/95 dark:ring-zinc-600/55"
+              role="status"
+              aria-label={`Posted ${timeAgo(row.created_at)}`}
+            >
+              <Clock
+                className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-zinc-400"
+                strokeWidth={2.5}
+                aria-hidden
+              />
+              <span className="text-[11px] font-semibold leading-tight tabular-nums text-slate-700 dark:text-zinc-200">
+                Posted {timeAgo(row.created_at)}
+              </span>
+            </div>
+          ) : null}
+        </div>
         <button
           type="button"
           className="absolute top-4 right-4 z-10 flex items-center gap-1.5 text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
@@ -681,18 +889,11 @@ export function OpenJobRequestMatchCard({
           )}
         </button>
 
-        {(respondsWithinLabel || canStartInLabel) ? (
+        {canStartInLabel ? (
           <div className="flex flex-wrap gap-2 pr-12">
-            {respondsWithinLabel ? (
-              <span className="inline-flex max-w-full items-center rounded-full border border-sky-200/95 bg-gradient-to-br from-sky-50 to-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-sky-900 shadow-sm ring-1 ring-sky-100/90 dark:border-sky-800/70 dark:from-sky-950/60 dark:to-zinc-900 dark:text-sky-100 dark:ring-sky-900/40">
-                Responds within {respondsWithinLabel}
-              </span>
-            ) : null}
-            {canStartInLabel ? (
-              <span className="inline-flex max-w-full items-center rounded-full border border-emerald-200/95 bg-gradient-to-br from-emerald-50 to-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-950 shadow-sm ring-1 ring-emerald-100/90 dark:border-emerald-800/70 dark:from-emerald-950/50 dark:to-zinc-900 dark:text-emerald-100 dark:ring-emerald-900/40">
-                Can start in {canStartInLabel}
-              </span>
-            ) : null}
+            <span className="inline-flex max-w-full items-center rounded-full border border-emerald-200/95 bg-gradient-to-br from-emerald-50 to-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-950 shadow-sm ring-1 ring-emerald-100/90 dark:border-emerald-800/70 dark:from-emerald-950/50 dark:to-zinc-900 dark:text-emerald-100 dark:ring-emerald-900/40">
+              Can start in {canStartInLabel}
+            </span>
           </div>
         ) : null}
 

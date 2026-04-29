@@ -79,6 +79,24 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.7" },
         },
+        /** Discover dock “Post live” shadow pulse — avoids ::before layering issues under opaque fills. */
+        "dock-post-live-glow": {
+          "0%, 100%": {
+            boxShadow: "0 0 0 0 rgba(123, 97, 255, 0)",
+          },
+          "50%": {
+            boxShadow: "0 0 26px 8px rgba(123, 97, 255, 0.42)",
+          },
+        },
+        /** Discover dock “Go live” shadow pulse */
+        "dock-go-live-glow": {
+          "0%, 100%": {
+            boxShadow: "0 0 0 0 rgba(16, 185, 129, 0)",
+          },
+          "50%": {
+            boxShadow: "0 0 26px 8px rgba(16, 185, 129, 0.45)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -86,6 +104,10 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "slide-in": "slide-in 0.3s ease-out",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
+        "dock-post-live-glow":
+          "dock-post-live-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
+        "dock-go-live-glow":
+          "dock-go-live-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
       },
     },
   },

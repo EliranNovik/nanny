@@ -4,8 +4,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import {
   MessageSquare,
+  Clock,
   ChevronRight,
-  ShieldCheck,
+  BadgeCheck,
   Star,
   Phone,
   Send,
@@ -21,6 +22,9 @@ import {
   Heart,
   User as UserIcon,
   LayoutGrid,
+  Medal,
+  Trophy,
+  Crown,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +33,11 @@ import { useToast } from "@/components/ui/toast";
 import { StarRating } from "@/components/StarRating";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { isFreelancerLiveWindowActive } from "@/lib/freelancerLiveWindow";
+import {
+  canStartInCardLabel,
+  respondsWithinCardLabel,
+} from "@/lib/liveCanStart";
 
 import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
@@ -79,6 +88,29 @@ function livePostCategoryLabel(category: string): string {
   return isServiceCategoryId(category)
     ? serviceCategoryLabel(category as ServiceCategoryId)
     : category.replace(/_/g, " ");
+}
+
+/** Medal @1, trophy @6–10, crown @11+ — same tiers as helper search / confirmed cards. */
+function liveHelpCornerTierFromCount(
+  n: number | null | undefined,
+): { kind: "medal" | "trophy" | "crown"; title: string } | null {
+  if (n == null || n <= 0) return null;
+  if (n === 1)
+    return {
+      kind: "medal",
+      title: "First live help booking this week",
+    };
+  if (n > 10)
+    return {
+      kind: "crown",
+      title: "Top tier · over 10 live help bookings this week",
+    };
+  if (n > 5)
+    return {
+      kind: "trophy",
+      title: "Great week · over 5 live help bookings",
+    };
+  return null;
 }
 
 function livePostSummaryLine(
@@ -145,6 +177,9 @@ interface PublicProfile {
   photo_url: string | null;
   bio: string | null;
   role: string | null;
+  /** Client accounts that offer help (`get_helpers_near_location` / HelpersPage). */
+  is_available_for_jobs?: boolean | null;
+  is_verified?: boolean | null;
   city: string | null;
   categories?: string[];
   whatsapp_number?: string | null;
@@ -152,6 +187,24 @@ interface PublicProfile {
   average_rating?: number;
   total_ratings?: number;
 }
+
+/** Mirrors HelpersPage / `get_helpers_near_location` — freelancer or active client-helper. */
+function canActAsHelperOnPublicProfile(
+  p: PublicProfile | null,
+): boolean {
+  if (!p?.role) return false;
+  if (p.role === "freelancer") return true;
+  if (p.role === "client" && p.is_available_for_jobs === true) return true;
+  return false;
+}
+
+type FreelancerMeta = {
+  live_until?: string | null;
+  live_can_start_in?: string | null;
+  available_now?: boolean | null;
+};
+
+type HelperReplyStats = { avg_seconds: number; sample_count: number };
 
 interface UserReview {
   id: string;
@@ -192,6 +245,11 @@ export default function PublicProfilePage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [freelancerMeta, setFreelancerMeta] = useState<FreelancerMeta | null>(
+    null,
+  );
+  const [helperReplyStats, setHelperReplyStats] =
+    useState<HelperReplyStats | null>(null);
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState("");
   const [savingBio, setSavingBio] = useState(false);
@@ -237,6 +295,10 @@ export default function PublicProfilePage() {
   >(null);
   const [profileMediaTab, setProfileMediaTab] =
     useState<ProfileMediaSectionTab>("posts");
+  /** Completed live-help bookings in the last 7 days (helpers only). */
+  const [liveHelpWeekCount, setLiveHelpWeekCount] = useState<number | null>(
+    null,
+  );
   const profileFavoriteButtonRef = useRef<HTMLButtonElement>(null);
 
   async function saveBio(nextBio: string) {
@@ -429,6 +491,8 @@ export default function PublicProfilePage() {
 
     if (cached) {
       setProfile(cached.profile as PublicProfile);
+      setFreelancerMeta((cached.freelancerMeta as FreelancerMeta) ?? null);
+      setHelperReplyStats((cached.helperReplyStats as HelperReplyStats) ?? null);
       setSharedJobs(cached.sharedJobs as SharedJob[]);
       setReviews(cached.reviews as UserReview[]);
       setMediaItems(cached.mediaItems as PublicProfileMediaRow[]);
@@ -451,7 +515,7 @@ export default function PublicProfilePage() {
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select(
-            "id, full_name, photo_url, role, city, categories, bio, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
+            "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
           )
           .eq("id", userId)
           .single();
@@ -461,11 +525,14 @@ export default function PublicProfilePage() {
         // 2. Fetch Bio/Freelancer Info if applicable
         const { data: freelancerData } = await supabase
           .from("freelancer_profiles")
-          .select("bio")
+          .select("bio, live_until, live_can_start_in, available_now")
           .eq("user_id", userId)
           .maybeSingle();
 
-        const bio = (profileData as { bio?: string | null } | null)?.bio ?? freelancerData?.bio ?? null;
+        const bio =
+          (profileData as { bio?: string | null } | null)?.bio ??
+          freelancerData?.bio ??
+          null;
         const nextProfile: PublicProfile = {
           ...profileData,
           bio,
@@ -473,6 +540,11 @@ export default function PublicProfilePage() {
         };
         setProfile(nextProfile);
         setBioDraft(bio ?? "");
+        setFreelancerMeta({
+          live_until: freelancerData?.live_until ?? null,
+          live_can_start_in: freelancerData?.live_can_start_in ?? null,
+          available_now: freelancerData?.available_now ?? null,
+        });
 
         // 3. Jobs + pending notifications strictly between viewer (A) and profile (B) only.
         const profileId = userId;
@@ -545,6 +617,100 @@ export default function PublicProfilePage() {
             .order("created_at", { ascending: false }),
         ]);
 
+        // Badge: helper avg response time (client msg → helper reply) — same RPC as HelpersPage.
+        let nextHelperReplyStats: HelperReplyStats | null = null;
+        if (canActAsHelperOnPublicProfile(nextProfile)) {
+          try {
+            const { data: statRows, error: statErr } = await supabase.rpc(
+              "get_helper_chat_response_stats",
+              { p_helper_ids: [userId] },
+            );
+            if (statErr && import.meta.env.DEV) {
+              console.warn(
+                "[PublicProfilePage] get_helper_chat_response_stats:",
+                statErr,
+              );
+            }
+            if (!statErr && Array.isArray(statRows) && statRows.length > 0) {
+              type StatRow = {
+                helper_id?: string | null;
+                avg_seconds?: number | null;
+                sample_count?: number | null;
+              };
+              let sr: StatRow | undefined;
+              if (statRows.length === 1) {
+                sr = statRows[0] as StatRow;
+              } else {
+                sr = (statRows as StatRow[]).find(
+                  (r) =>
+                    r.helper_id != null && String(r.helper_id) === String(userId),
+                );
+              }
+              if (
+                sr &&
+                sr.helper_id != null &&
+                sr.avg_seconds != null &&
+                sr.sample_count != null
+              ) {
+                nextHelperReplyStats = {
+                  avg_seconds: Number(sr.avg_seconds),
+                  sample_count: Number(sr.sample_count),
+                };
+              }
+            }
+          } catch (e) {
+            if (import.meta.env.DEV) {
+              console.debug(
+                "[PublicProfilePage] get_helper_chat_response_stats failed:",
+                e,
+              );
+            }
+          }
+        }
+        setHelperReplyStats(nextHelperReplyStats);
+
+        let nextLiveHelpWeek: number | null = null;
+        if (canActAsHelperOnPublicProfile(nextProfile)) {
+          try {
+            const { data: weekRows, error: weekErr } = await supabase.rpc(
+              "get_helpers_live_help_week_counts",
+              { p_helper_ids: [userId] },
+            );
+            if (weekErr && import.meta.env.DEV) {
+              console.warn(
+                "[PublicProfilePage] get_helpers_live_help_week_counts:",
+                weekErr,
+              );
+            }
+            if (!weekErr && Array.isArray(weekRows)) {
+              for (const wr of weekRows as {
+                helper_id?: string | null;
+                live_help_week_count?: number | string | null;
+              }[]) {
+                if (
+                  !wr.helper_id ||
+                  String(wr.helper_id) !== String(userId) ||
+                  wr.live_help_week_count == null
+                )
+                  continue;
+                const n = Number(wr.live_help_week_count);
+                if (Number.isFinite(n) && n > 0) {
+                  nextLiveHelpWeek = Math.floor(n);
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            if (import.meta.env.DEV) {
+              console.debug(
+                "[PublicProfilePage] get_helpers_live_help_week_counts failed:",
+                e,
+              );
+            }
+          }
+        }
+        if (!cancelled) setLiveHelpWeekCount(nextLiveHelpWeek);
+
         if (reviewsData.error) throw reviewsData.error;
         if (mediaData.error) throw mediaData.error;
         if (communityData.error) throw communityData.error;
@@ -605,6 +771,12 @@ export default function PublicProfilePage() {
           setLoading(false);
           writePublicProfileCache(viewerId, userId, {
             profile: nextProfile,
+            freelancerMeta: {
+              live_until: freelancerData?.live_until ?? null,
+              live_can_start_in: freelancerData?.live_can_start_in ?? null,
+              available_now: freelancerData?.available_now ?? null,
+            },
+            helperReplyStats: nextHelperReplyStats,
             sharedJobs: shared,
             reviews: reviewsData.data,
             mediaItems: mediaData.data,
@@ -614,7 +786,10 @@ export default function PublicProfilePage() {
         }
       } catch (e: unknown) {
         console.error(e);
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setLiveHelpWeekCount(null);
+        }
       }
     };
 
@@ -682,6 +857,7 @@ export default function PublicProfilePage() {
   }
 
   const isOwnProfile = currentUser?.id === userId;
+
   const helpedOthersCount = sharedJobs.filter(
     (j) => j.status === "completed" && j.selected_freelancer_id === userId,
   ).length;
@@ -700,6 +876,139 @@ export default function PublicProfilePage() {
     .map((n) => n[0])
     .join("")
     .slice(0, 2);
+
+  const showHelperBadges = canActAsHelperOnPublicProfile(profile);
+  const isLiveNow = showHelperBadges
+    ? isFreelancerLiveWindowActive(freelancerMeta)
+    : false;
+  const readyInLabel = showHelperBadges
+    ? canStartInCardLabel(freelancerMeta?.live_can_start_in)
+    : null;
+  const respondsWithinLabel = showHelperBadges
+    ? respondsWithinCardLabel(
+        helperReplyStats?.avg_seconds,
+        helperReplyStats?.sample_count,
+      )
+    : null;
+
+  const showLiveHelpWeekBadge =
+    showHelperBadges &&
+    liveHelpWeekCount != null &&
+    liveHelpWeekCount > 0;
+  const liveHelpTier = showLiveHelpWeekBadge
+    ? liveHelpCornerTierFromCount(liveHelpWeekCount)
+    : null;
+
+  const helperBadgesRow =
+    isLiveNow ||
+    readyInLabel ||
+    respondsWithinLabel ||
+    showLiveHelpWeekBadge ? (
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {showLiveHelpWeekBadge && liveHelpWeekCount != null ? (
+          <span
+            className={cn(
+              "relative inline-flex min-w-[7.75rem] flex-col items-stretch gap-0.5 self-start rounded-xl py-2 pl-3",
+              liveHelpTier?.kind === "crown" ? "pr-[3.5rem]" : "pr-[2.75rem]",
+              "bg-gradient-to-br from-violet-600/90 to-fuchsia-600/75 text-white shadow-md shadow-violet-900/20 ring-1 ring-inset ring-white/20 dark:from-violet-600/85 dark:to-fuchsia-600/70",
+            )}
+            role="status"
+            title="Completed bookings in the last 7 days"
+            aria-label={`${liveHelpWeekCount} completed live help bookings in the last 7 days`}
+          >
+            {liveHelpTier ? (
+              <span
+                className={cn(
+                  "pointer-events-none absolute right-1 top-1 inline-flex shrink-0 items-center justify-center rounded-full bg-black/28 shadow-md ring-1 ring-inset ring-white/25 backdrop-blur-md",
+                  liveHelpTier.kind === "crown" && "right-0.5 top-0.5 p-1.5",
+                  liveHelpTier.kind === "trophy" && "right-1 top-1 p-1.5",
+                  liveHelpTier.kind === "medal" && "right-1 top-1 p-1.5",
+                )}
+                title={liveHelpTier.title}
+                aria-hidden
+              >
+                {liveHelpTier.kind === "medal" ? (
+                  <Medal
+                    className="h-[15px] w-[15px] text-amber-200 drop-shadow-sm"
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                ) : liveHelpTier.kind === "trophy" ? (
+                  <Trophy
+                    className="h-[22px] w-[22px] text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
+                    strokeWidth={2.35}
+                    aria-hidden
+                  />
+                ) : (
+                  <Crown
+                    className="h-8 w-8 text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.55)]"
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                )}
+              </span>
+            ) : null}
+            <span className="text-center text-[9px] font-black uppercase leading-none tracking-[0.12em]">
+              Live help
+            </span>
+            <span className="text-center text-[20px] font-black tabular-nums leading-none tracking-tight">
+              {liveHelpWeekCount}
+            </span>
+            <span className="text-center text-[8px] font-bold uppercase tracking-wide text-white/90">
+              this week
+            </span>
+          </span>
+        ) : null}
+        {isLiveNow ? (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full",
+              "bg-emerald-600 px-3 py-1.5 shadow-md ring-1 ring-emerald-400/40",
+              "text-[10px] font-black uppercase tracking-[0.16em] text-white",
+            )}
+            role="status"
+            aria-label="Live now"
+          >
+            <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+              <span className="absolute inset-0 animate-ping rounded-full bg-white/60 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.75)]" />
+            </span>
+            Live now
+          </span>
+        ) : null}
+        {respondsWithinLabel ? (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
+              "bg-gradient-to-r from-sky-600 to-cyan-600 text-white",
+              "text-[10px] font-black uppercase tracking-[0.14em]",
+              "shadow-md shadow-sky-600/25 ring-1 ring-white/25",
+            )}
+            role="status"
+          >
+            Responds within {respondsWithinLabel}
+          </span>
+        ) : null}
+        {readyInLabel ? (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
+              "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white",
+              "text-[10px] font-black uppercase tracking-[0.14em]",
+              "shadow-md shadow-amber-600/30 ring-1 ring-white/30",
+            )}
+            role="status"
+          >
+            <Clock
+              className="h-3.5 w-3.5 shrink-0 opacity-95"
+              strokeWidth={2.75}
+              aria-hidden
+            />
+            Ready in {readyInLabel}
+          </span>
+        ) : null}
+      </div>
+    ) : null;
 
   const desktopTabs = [
     { id: "posts" as const, label: "Social Feed", Icon: LayoutGrid },
@@ -884,17 +1193,24 @@ export default function PublicProfilePage() {
                     <h1 className="text-[2rem] font-black leading-tight tracking-tight text-slate-900 dark:text-white truncate">
                       {profile.full_name}
                     </h1>
-                    <ShieldCheck className="h-7 w-7 text-emerald-500 shrink-0" strokeWidth={2.5} />
+                    {profile.is_verified ? (
+                      <BadgeCheck
+                        className="h-7 w-7 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
+                        strokeWidth={2.35}
+                        aria-label="Certified verified helper"
+                      />
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-4 mt-1 flex-wrap">
-                    <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="md" className="justify-start" />
                     {profile.city?.trim() && (
                       <span className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">
                         <MapPin className="h-4 w-4 shrink-0" aria-hidden />
                         {profile.city.trim()}
                       </span>
                     )}
+                    <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="md" className="justify-start" />
                   </div>
+                  {helperBadgesRow}
                   {profile.categories && profile.categories.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
                       {profile.categories.map((cat, i) => (
@@ -1024,18 +1340,28 @@ export default function PublicProfilePage() {
               )}
             </div>
             <div className="flex-1 min-w-0 flex flex-col pt-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-black leading-none tracking-tight text-slate-900 dark:text-white">{profile.full_name}</h1>
-                <ShieldCheck className="h-6 w-6 text-emerald-500 shrink-0" strokeWidth={2.5} />
-              </div>
-              <div className="flex items-center gap-1 mt-3">
-                 <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="sm" className="scale-110 origin-left" />
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="min-w-0 text-3xl font-black leading-none tracking-tight text-slate-900 dark:text-white truncate">
+                  {profile.full_name}
+                </h1>
+                {profile.is_verified ? (
+                  <BadgeCheck
+                    className="h-6 w-6 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
+                    strokeWidth={2.35}
+                    aria-label="Certified verified helper"
+                  />
+                ) : null}
               </div>
               {profile.city?.trim() && (
                 <p className="mt-3 flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-slate-950/60 dark:text-white/60">
-                   <MapPin className="h-3 w-3" /> {profile.city.trim()}
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+                  {profile.city.trim()}
                 </p>
               )}
+              <div className="flex items-center gap-1 mt-3">
+                <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="sm" className="scale-110 origin-left" />
+              </div>
+              {helperBadgesRow}
             </div>
           </div>
 

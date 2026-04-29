@@ -30,6 +30,8 @@ type ProfileKnockMenuProps = {
   variant?: "hero" | "inline" | "contact" | "glass";
   /** When `up`, menu opens above the button (avoids overflow clip at bottom of cards). */
   dropdownOpens?: "up" | "down";
+  /** Merged onto the toggle button — use for tinted glass helpers cards, etc. */
+  buttonClassName?: string;
 };
 
 export function ProfileKnockMenu({
@@ -43,6 +45,7 @@ export function ProfileKnockMenu({
   className,
   variant = "inline",
   dropdownOpens = "down",
+  buttonClassName,
 }: ProfileKnockMenuProps) {
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -128,6 +131,7 @@ export function ProfileKnockMenu({
         className={cn(
           "inline-flex items-center justify-center transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60",
           btnHero,
+          buttonClassName,
         )}
       >
         {sending ? (

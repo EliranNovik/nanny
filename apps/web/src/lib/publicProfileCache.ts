@@ -8,6 +8,8 @@ const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 export type PublicProfileCachePayload = {
   profile: unknown;
+  freelancerMeta?: unknown;
+  helperReplyStats?: unknown;
   sharedJobs: unknown;
   reviews: unknown;
   mediaItems: unknown;
@@ -37,6 +39,8 @@ export function readPublicProfileCache(
     if (Date.now() - parsed.savedAt > ttlMs) return null;
     return {
       profile: parsed.profile,
+      freelancerMeta: parsed.freelancerMeta,
+      helperReplyStats: parsed.helperReplyStats,
       sharedJobs: parsed.sharedJobs,
       reviews: parsed.reviews,
       mediaItems: parsed.mediaItems,

@@ -22,6 +22,10 @@ import {
   getLastCategory,
   setLastCategory,
 } from "@/lib/discoverMatchPreferences";
+import {
+  canStartInCardLabel,
+  respondsWithinFreelancerMatchCardLabel,
+} from "@/lib/liveCanStart";
 import { useToast } from "@/components/ui/toast";
 import {
   OpenJobRequestMatchCard,
@@ -225,10 +229,36 @@ export default function FreelancerJobsMatchPage() {
     Record<string, { average_rating: number | null; total_ratings: number | null }>
   >({});
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  /** Client (poster) reply stats for “Responds within” on cards. */
+  const [clientReplyStatsByClientId, setClientReplyStatsByClientId] = useState<
+    Record<string, { avg_seconds: number; sample_count: number }>
+  >({});
+  /** Logged-in freelancer’s go-live start preference (for “Can start in” on cards). */
+  const [viewerLiveCanStartIn, setViewerLiveCanStartIn] = useState<string | null>(null);
   const [activeCommentsJobId, setActiveCommentsJobId] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchChromeCollapsed, setSearchChromeCollapsed] = useState(false);
   const resultsAnchorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setViewerLiveCanStartIn(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("freelancer_profiles")
+        .select("live_can_start_in")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cancelled || error) return;
+      setViewerLiveCanStartIn((data?.live_can_start_in as string | null) ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -441,6 +471,7 @@ export default function FreelancerJobsMatchPage() {
     }
     setLastCategory("work", [...selectedCategories][0] ?? "other_help");
     setLoading(true);
+    setClientReplyStatsByClientId({});
     try {
       const filters = [...selectedCategories];
       
@@ -460,15 +491,22 @@ export default function FreelancerJobsMatchPage() {
         if (focusedJob) {
           const { data: clientProfile } = await supabase
             .from("profiles")
-            .select("full_name, photo_url")
+            .select("full_name, photo_url, is_verified")
             .eq("id", focusedJob.client_id)
             .maybeSingle();
+
+          const { count: postedCount } = await supabase
+            .from("job_requests")
+            .select("id", { count: "exact", head: true })
+            .eq("client_id", focusedJob.client_id);
 
           focusedRow = {
             ...focusedJob,
             client_display_name: clientProfile?.full_name || "Client",
             client_photo_url: clientProfile?.photo_url || null,
-            distance_km: null
+            distance_km: null,
+            client_is_verified: clientProfile?.is_verified ?? false,
+            client_posted_requests_count: postedCount ?? 0,
           } as OpenJobRequestMatchRow;
         }
       }
@@ -554,6 +592,45 @@ export default function FreelancerJobsMatchPage() {
           setCommentCounts(counts);
         }
       }
+
+      const statClientIds = Array.from(
+        new Set(finalRows.map((r) => r.client_id).filter(Boolean)),
+      );
+      if (statClientIds.length > 0) {
+        const { data: statRows, error: statErr } = await supabase.rpc(
+          "get_client_chat_response_stats",
+          { p_client_ids: statClientIds },
+        );
+        if (statErr && import.meta.env.DEV) {
+          console.warn(
+            "[FreelancerJobsMatchPage] get_client_chat_response_stats:",
+            statErr,
+          );
+        }
+        const next: Record<
+          string,
+          { avg_seconds: number; sample_count: number }
+        > = {};
+        if (!statErr && Array.isArray(statRows)) {
+          for (const sr of statRows as {
+            client_id: string;
+            avg_seconds: number | null;
+            sample_count: number | null;
+          }[]) {
+            if (!sr.client_id || sr.avg_seconds == null) continue;
+            const avg = Number(sr.avg_seconds);
+            if (!Number.isFinite(avg)) continue;
+            const sc =
+              sr.sample_count != null ? Number(sr.sample_count) : 0;
+            next[String(sr.client_id)] = {
+              avg_seconds: avg,
+              sample_count: sc,
+            };
+          }
+        }
+        setClientReplyStatsByClientId(next);
+      }
+
       setHasSearched(true);
       setSearchChromeCollapsed(true);
       const p = new URLSearchParams();
@@ -566,6 +643,7 @@ export default function FreelancerJobsMatchPage() {
         resultsAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     } catch (e: unknown) {
+      setClientReplyStatsByClientId({});
       addToast({
         title: "Search failed",
         description: e instanceof Error ? e.message : "Try again.",
@@ -574,7 +652,16 @@ export default function FreelancerJobsMatchPage() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, selectedCategories, center.lat, center.lng, radiusKm, addToast, setSearchParams]);
+  }, [
+    user?.id,
+    selectedCategories,
+    center.lat,
+    center.lng,
+    radiusKm,
+    addToast,
+    setSearchParams,
+    focusJobId,
+  ]);
 
   function useMyLocation() {
     if (!navigator.geolocation) return;
@@ -842,6 +929,13 @@ export default function FreelancerJobsMatchPage() {
                         clientRating={ratingsByUserId[r.client_id]}
                         commentCount={commentCounts[r.id] || 0}
                         onOpenComments={(id) => setActiveCommentsJobId(id)}
+                        respondsWithinLabel={respondsWithinFreelancerMatchCardLabel(
+                          clientReplyStatsByClientId[String(r.client_id)]
+                            ?.avg_seconds,
+                          clientReplyStatsByClientId[String(r.client_id)]
+                            ?.sample_count,
+                        )}
+                        canStartInLabel={canStartInCardLabel(viewerLiveCanStartIn)}
                         formatTitle={(st) => formatJobTitle(st || undefined)}
                         onOpenProfile={(userId) =>
                           navigate(`/profile/${encodeURIComponent(userId)}`)
@@ -922,6 +1016,13 @@ export default function FreelancerJobsMatchPage() {
                   clientRating={ratingsByUserId[r.client_id]}
                   commentCount={commentCounts[r.id] || 0}
                   onOpenComments={(id) => setActiveCommentsJobId(id)}
+                  respondsWithinLabel={respondsWithinFreelancerMatchCardLabel(
+                    clientReplyStatsByClientId[String(r.client_id)]
+                      ?.avg_seconds,
+                    clientReplyStatsByClientId[String(r.client_id)]
+                      ?.sample_count,
+                  )}
+                  canStartInLabel={canStartInCardLabel(viewerLiveCanStartIn)}
                   formatTitle={(st) => formatJobTitle(st || undefined)}
                   onOpenProfile={(userId) =>
                     navigate(`/profile/${encodeURIComponent(userId)}`)

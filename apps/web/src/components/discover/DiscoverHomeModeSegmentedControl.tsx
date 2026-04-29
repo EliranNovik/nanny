@@ -45,7 +45,7 @@ export function DiscoverHomeModeSegmentedControl({
           type="button"
           role="tab"
           aria-selected={mode === "hire"}
-          aria-label={mode === "hire" ? undefined : "I need help"}
+          aria-label={mode === "hire" ? undefined : "Get help now"}
           onClick={() => onModeChange("hire")}
           className={cn(
             "relative z-10 flex h-full w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
@@ -84,14 +84,14 @@ export function DiscoverHomeModeSegmentedControl({
                 : "text-[16px] sm:text-[18px] md:text-[13px]",
             )}
           >
-            I need help
+            Get help now
           </span>
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={mode === "work"}
-          aria-label={mode === "work" ? undefined : "Help others"}
+          aria-label={mode === "work" ? undefined : "Help others now"}
           onClick={() => onModeChange("work")}
           className={cn(
             "relative z-10 flex h-full w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
@@ -130,7 +130,7 @@ export function DiscoverHomeModeSegmentedControl({
                 : "text-[16px] sm:text-[18px] md:text-[13px]",
             )}
           >
-            Help others
+            Help others now
           </span>
         </button>
       </div>

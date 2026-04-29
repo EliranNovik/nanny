@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
+export function isVideoMediaUrl(url: string): boolean {
+  return /\.(mp4|webm|mov|m4v|ogv|ogg)(\?|#|$)/i.test(url);
+}
+
 interface ImageLightboxModalProps {
+  /** Image or video URLs (same `service_details.images` array). */
   images: string[];
   initialIndex?: number;
   isOpen: boolean;
@@ -65,7 +70,7 @@ export function ImageLightboxModal({
       }}
       role="dialog"
       aria-modal="true"
-      aria-label="Image gallery"
+      aria-label="Media gallery"
       onClick={onClose}
     >
       {/* Top bar */}
@@ -86,17 +91,27 @@ export function ImageLightboxModal({
         </button>
       </div>
 
-      {/* Main stage: image + nav overlaid inside same stacking context */}
+      {/* Main stage: image or video + nav overlaid inside same stacking context */}
       <div
         className="relative z-10 flex min-h-0 w-full flex-1 items-center justify-center px-0 md:px-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <img
-          src={images[currentIndex]}
-          alt={`Job photo ${currentIndex + 1}`}
-          className="relative z-0 h-full w-full max-h-full object-contain select-none md:max-h-[85vh] md:max-w-[90vw] md:rounded-2xl md:shadow-2xl"
-          draggable={false}
-        />
+        {isVideoMediaUrl(images[currentIndex]) ? (
+          <video
+            key={images[currentIndex]}
+            src={images[currentIndex]}
+            controls
+            playsInline
+            className="relative z-0 max-h-full w-full max-w-full object-contain md:max-h-[85vh] md:max-w-[90vw] md:rounded-2xl md:shadow-2xl"
+          />
+        ) : (
+          <img
+            src={images[currentIndex]}
+            alt={`Job photo ${currentIndex + 1}`}
+            className="relative z-0 h-full w-full max-h-full object-contain select-none md:max-h-[85vh] md:max-w-[90vw] md:rounded-2xl md:shadow-2xl"
+            draggable={false}
+          />
+        )}
 
         {images.length > 1 && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] md:pl-4 md:pr-4">
@@ -107,7 +122,7 @@ export function ImageLightboxModal({
                 goPrev();
               }}
               className="pointer-events-auto rounded-full border border-white/10 bg-black/50 p-3 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
-              aria-label="Previous image"
+              aria-label="Previous"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
@@ -118,7 +133,7 @@ export function ImageLightboxModal({
                 goNext();
               }}
               className="pointer-events-auto rounded-full border border-white/10 bg-black/50 p-3 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
-              aria-label="Next image"
+              aria-label="Next"
             >
               <ChevronRight className="h-6 w-6" />
             </button>
@@ -147,12 +162,21 @@ export function ImageLightboxModal({
                     : "border-white/20 opacity-60 hover:opacity-100"
                 }`}
               >
-                <img
-                  src={img}
-                  alt=""
-                  className="pointer-events-none h-full w-full object-cover"
-                  draggable={false}
-                />
+                {isVideoMediaUrl(img) ? (
+                  <video
+                    src={img}
+                    muted
+                    playsInline
+                    className="pointer-events-none h-full w-full object-cover"
+                  />
+                ) : (
+                  <img
+                    src={img}
+                    alt=""
+                    className="pointer-events-none h-full w-full object-cover"
+                    draggable={false}
+                  />
+                )}
               </button>
             ))}
           </div>
