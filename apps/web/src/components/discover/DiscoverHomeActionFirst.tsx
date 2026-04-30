@@ -682,7 +682,7 @@ export function DiscoverHomeActionFirst({
                 </div>
                 
                 {/* Active cards - Back INSIDE the image box at the bottom */}
-                {acceptedRequests.length > 0 && (
+                {acceptedRequests.length > 0 ? (
                   <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
                     {acceptedRequests.slice(0, 1).map((job: any) => {
                       const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
@@ -731,6 +731,25 @@ export function DiscoverHomeActionFirst({
                         </button>
                       );
                     })}
+                  </div>
+                ) : (
+                  <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
+                    <div className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-bold text-white">No active requests</p>
+                        <p className="text-[11px] font-medium text-white/70">Need help with something?</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(createRequestPath);
+                        }}
+                        className="shrink-0 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/30 transition-colors"
+                      >
+                        Post now
+                      </button>
+                    </div>
                   </div>
                 )}
               </section>
@@ -802,7 +821,7 @@ export function DiscoverHomeActionFirst({
                 </div>
 
                 {/* Active cards - Back INSIDE at the bottom */}
-                {liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 && (
+                {liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
                   <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
                     {liveHelpingJobs
                       .filter(j => !dismissedLiveJobIds.includes(j.id))
@@ -865,6 +884,25 @@ export function DiscoverHomeActionFirst({
                           </div>
                         );
                       })}
+                  </div>
+                ) : (
+                  <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
+                    <div className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-bold text-white">No live help</p>
+                        <p className="text-[11px] font-medium text-white/70">Find people who need help nearby</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigateToWorkBrowseRequests(navigate, profile);
+                        }}
+                        className="shrink-0 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/30 transition-colors"
+                      >
+                        Find posts
+                      </button>
+                    </div>
                   </div>
                 )}
               </section>
