@@ -714,7 +714,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
               {/* MOBILE BIG AVATAR (Like Hire cards) */}
               <div className="relative mx-auto w-fit md:hidden pt-1">
-                <Avatar className="h-24 w-24 shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
+                <Avatar className="h-28 w-28 shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
                   <AvatarImage
                     src={row.thumbUrl || undefined}
                     className="object-cover"
@@ -747,7 +747,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
               <div className="min-w-0 text-left md:p-4 md:pt-3">
                 <div className="flex items-center gap-1.5 md:hidden">
-                  <p className="truncate text-[15px] font-bold leading-tight text-slate-950 dark:text-zinc-50">
+                  <p className="truncate text-[17px] font-bold leading-tight text-slate-950 dark:text-zinc-50">
                     {shortDisplayName(row.name)}
                   </p>
                   {row.is_verified && (
@@ -758,11 +758,11 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   )}
                 </div>
 
-                <p className="mt-1 truncate text-[12px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
+                <p className="mt-1 truncate text-[14px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
                   {row.cityLine}
                 </p>
 
-                <p className="mt-1.5 flex items-center gap-1.5 truncate text-[14px] font-bold leading-tight text-slate-800 dark:text-zinc-200 md:mt-2 md:text-[15px]">
+                <p className="mt-1.5 flex items-center gap-1.5 truncate text-[16px] font-bold leading-tight text-slate-800 dark:text-zinc-200 md:mt-2 md:text-[15px]">
                   <span className="text-slate-500 dark:text-zinc-400">
                     {row.categoryIcon}
                   </span>
@@ -770,7 +770,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 </p>
 
                 {/* Mobile Rating Details */}
-                <div className="mt-1 flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400 md:hidden">
+                <div className="mt-1 flex items-center gap-1 text-[14px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400 md:hidden">
                   <Star className="h-4 w-4 text-emerald-600" strokeWidth={2.5} aria-hidden />
                   <span className="text-slate-700 dark:text-zinc-200">
                     {ratingLabel(row.average_rating)}
@@ -991,7 +991,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             </div>
 
             <div className="relative mx-auto w-fit md:hidden">
-              <Avatar className="h-24 w-24 shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
+              <Avatar className="h-28 w-28 shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
                 <AvatarImage
                   src={it.photo || undefined}
                   className="object-cover"
@@ -1046,7 +1046,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
             <div className="min-w-0 text-left md:p-4 md:pt-3">
               <div className="flex items-center gap-1.5 md:hidden">
-                <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+                <p className="truncate text-[16px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
                   {shortDisplayName(it.name)}
                 </p>
                 {it.is_verified && (
@@ -1056,16 +1056,16 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   />
                 )}
               </div>
-              <p className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
+              <p className="mt-0.5 truncate text-[14px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
                 {it.locationLine}
               </p>
-              <p className="mt-1 flex items-center gap-1.5 truncate text-[14px] font-bold leading-tight text-slate-700 dark:text-zinc-200 md:mt-2 md:text-[15px]">
+              <p className="mt-1 flex items-center gap-1.5 truncate text-[16px] font-bold leading-tight text-slate-700 dark:text-zinc-200 md:mt-2 md:text-[15px]">
                 <span className="text-slate-500 dark:text-zinc-400">
                   {categoryIconNode(it.categoryId)}
                 </span>
                 {it.label}
               </p>
-              <div className="mt-1 flex items-center gap-1 text-[12px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400 md:hidden">
+              <div className="mt-1 flex items-center gap-1 text-[14px] font-semibold tabular-nums text-slate-500 dark:text-zinc-400 md:hidden">
                 <Star className="h-4 w-4 text-[#7B61FF]" strokeWidth={2.5} aria-hidden />
                 <span className="text-slate-700 dark:text-zinc-200">
                   {ratingLabel(it.average_rating)}

@@ -510,6 +510,45 @@ input[type="range"].slider::-moz-range-thumb:hover {
   }
 }
 
+@keyframes discover-hero-pan {
+  0% {
+    background-position:
+      12% 8%,
+      85% 18%,
+      55% 85%,
+      0% 0%;
+    filter: saturate(1.05) contrast(1.02);
+  }
+  50% {
+    background-position:
+      22% 18%,
+      72% 28%,
+      62% 78%,
+      100% 100%;
+    filter: saturate(1.15) contrast(1.06);
+  }
+  100% {
+    background-position:
+      12% 8%,
+      85% 18%,
+      55% 85%,
+      0% 0%;
+    filter: saturate(1.05) contrast(1.02);
+  }
+}
+
+.discover-hero-animated {
+  background-size: 160% 160%;
+  animation: discover-hero-pan 10s ease-in-out infinite;
+  will-change: background-position, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discover-hero-animated {
+    animation: none;
+  }
+}
+
 @keyframes slide-in-right {
   from {
     opacity: 0;

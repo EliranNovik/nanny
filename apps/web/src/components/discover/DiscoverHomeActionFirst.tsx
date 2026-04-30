@@ -659,7 +659,7 @@ export function DiscoverHomeActionFirst({
         <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
           {isHire ? (
             <div className="flex flex-col">
-              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[16.5rem]">
+              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[10.75rem]">
                 <img
                   src="/pexels-rdne-6646861.jpg"
                   alt=""
@@ -671,7 +671,7 @@ export function DiscoverHomeActionFirst({
                 <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/60" />
                 
                 {/* Badge — Back INSIDE at the top left */}
-                <div className="absolute left-3 top-3 z-[10] inline-flex items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm ring-1 ring-inset ring-white/10">
+                <div className="absolute left-3 top-3 z-[10] inline-flex items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm ring-1 ring-inset ring-white/10">
                   <Zap className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
                   <span className="truncate">{HIRE.badge}</span>
                 </div>
@@ -692,7 +692,7 @@ export function DiscoverHomeActionFirst({
                             e.stopPropagation();
                             navigate(`/client/jobs/${job.id}/live`);
                           }}
-                          className="flex w-full items-center gap-4 rounded-[1.25rem] bg-black/65 p-4 text-left shadow-2xl backdrop-blur-xl ring-1 ring-inset ring-white/30 transition-all active:scale-[0.98]"
+                          className="flex w-full items-center gap-4 rounded-[1.25rem] bg-black/65 p-4 text-left shadow-2xl backdrop-blur-xl transition-all active:scale-[0.98]"
                         >
                           {/* Category Image Box - Styled like Explore Page */}
                           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white/10 shadow-lg ring-1 ring-white/10">
@@ -711,7 +711,7 @@ export function DiscoverHomeActionFirst({
                                 <span className="text-[12px] font-medium text-white/50">•</span>
                                 <span className="text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</span>
                               </div>
-                              <span className="text-[10px] font-medium text-white/45 whitespace-nowrap shrink-0">
+                              <span className="text-[11px] font-bold text-white whitespace-nowrap shrink-0">
                                 {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                               </span>
                             </div>
@@ -744,7 +744,7 @@ export function DiscoverHomeActionFirst({
                   </div>
                 ) : (
                   <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
-                    <div className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                    <div className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-bold text-white">No active requests</p>
                         <p className="text-[11px] font-medium text-white/70">Need help with something?</p>
@@ -787,7 +787,7 @@ export function DiscoverHomeActionFirst({
             </div>
           ) : (
             <div className="flex flex-col">
-              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[16.5rem]">
+              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[10.75rem]">
                 <img
                   src="/pexels-tima-miroshnichenko-6197046.jpg"
                   alt=""
@@ -799,7 +799,7 @@ export function DiscoverHomeActionFirst({
                 <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/60" />
 
                 {/* Badge — Back INSIDE at the top left */}
-                <div className="absolute left-3 top-3 z-[10] inline-flex items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm ring-1 ring-inset ring-white/10">
+                <div className="absolute left-3 top-3 z-[10] inline-flex items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm ring-1 ring-inset ring-white/10">
                   <Wifi className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
                   <span className="truncate">{workTheme.badge}</span>
                 </div>
@@ -861,7 +861,7 @@ export function DiscoverHomeActionFirst({
                                 e.stopPropagation();
                                 navigate(`${explorePath}?mode=work&tab=live_help`);
                               }}
-                              className="pointer-events-auto flex w-full items-center gap-4 rounded-[1.25rem] bg-black/65 p-4 shadow-2xl backdrop-blur-xl ring-1 ring-inset ring-white/30 text-left transition-all active:scale-[0.98]"
+                              className="pointer-events-auto flex w-full items-center gap-4 rounded-[1.25rem] bg-black/65 p-4 shadow-2xl backdrop-blur-xl text-left transition-all active:scale-[0.98]"
                             >
                               {/* Category Image Box - Styled like Explore Page */}
                               <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white/10 shadow-lg ring-1 ring-white/10">
@@ -880,7 +880,7 @@ export function DiscoverHomeActionFirst({
                                     <span className="text-[12px] font-medium text-white/50">•</span>
                                     <span className="text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</span>
                                   </div>
-                                  <span className="text-[10px] font-medium text-white/45 whitespace-nowrap shrink-0">
+                                  <span className="text-[11px] font-bold text-white whitespace-nowrap shrink-0">
                                     matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                                   </span>
                                 </div>
@@ -907,7 +907,7 @@ export function DiscoverHomeActionFirst({
                   </div>
                 ) : (
                   <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
-                    <div className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                    <div className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-bold text-white">No live help</p>
                         <p className="text-[11px] font-medium text-white/70">Find people who need help nearby</p>
