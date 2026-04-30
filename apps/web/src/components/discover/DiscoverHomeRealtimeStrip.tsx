@@ -571,19 +571,20 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     return (
       <div className="space-y-4">
         {/* Category Icons Row - Work Mode */}
-        <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-4 px-1 pb-1">
+        <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
           <button
             onClick={() => setSelectedFilterCategory("all")}
             className={cn(
-              "flex flex-col items-center gap-2 shrink-0 transition-all active:scale-95",
-              selectedFilterCategory === "all" ? "opacity-100" : "opacity-70"
+              "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95",
+              "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             )}
           >
             <div className={cn(
-              "relative h-14 w-14 rounded-full flex items-center justify-center border-[2.5px] transition-all shadow-md",
+              "relative h-14 w-14 rounded-full flex items-center justify-center border transition-all",
+              "bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55",
               selectedFilterCategory === "all"
-                ? "bg-emerald-600 border-emerald-600 text-white shadow-emerald-200 dark:shadow-none"
-                : "bg-slate-100 border-slate-200 text-slate-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-500"
+                ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:text-emerald-300"
+                : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
             )}>
               <Compass className="h-9 w-9" strokeWidth={2.5} />
               {(workCounts?.[ALL_HELP_CATEGORY_ID] ?? 0) > 0 && (
@@ -593,8 +594,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               )}
             </div>
             <span className={cn(
-              "text-[10px] font-black uppercase tracking-wider",
-              selectedFilterCategory === "all" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-zinc-500"
+              "text-[9px] font-extrabold uppercase tracking-[0.14em]",
+              selectedFilterCategory === "all" ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-zinc-500"
             )}>All</span>
           </button>
 
@@ -605,15 +606,16 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 key={cat.id}
                 onClick={() => setSelectedFilterCategory(cat.id as ServiceCategoryId)}
                 className={cn(
-                  "flex flex-col items-center gap-2 shrink-0 transition-all active:scale-95",
-                  selectedFilterCategory === cat.id ? "opacity-100" : "opacity-70"
+                  "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95",
+                  "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
               >
                 <div className={cn(
-                  "relative h-14 w-14 rounded-full flex items-center justify-center border-[2.5px] transition-all shadow-md",
+                  "relative h-14 w-14 rounded-full flex items-center justify-center border transition-all",
+                  "bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55",
                   selectedFilterCategory === cat.id
-                    ? "bg-emerald-600 border-emerald-600 text-white shadow-emerald-200 dark:shadow-none"
-                    : "bg-slate-100 border-slate-200 text-slate-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-500"
+                    ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:text-emerald-300"
+                    : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
                 )}>
                   <span className="h-9 w-9 flex items-center justify-center">
                     {categoryIconNode(cat.id, "h-6 w-6")}
@@ -625,8 +627,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   )}
                 </div>
                 <span className={cn(
-                  "text-[10px] font-black uppercase tracking-wider",
-                  selectedFilterCategory === cat.id ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-zinc-500"
+                  "text-[9px] font-extrabold uppercase tracking-[0.14em]",
+                  selectedFilterCategory === cat.id ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-zinc-500"
                 )}>{cat.label.split(' ')[0]}</span>
               </button>
             );
@@ -834,19 +836,20 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   return (
     <div className="space-y-4">
       {/* Category Icons Row - Hire Mode */}
-      <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-4 px-1 pb-1">
+      <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
         <button
           onClick={() => setSelectedFilterCategory("all")}
           className={cn(
-            "flex flex-col items-center gap-2 shrink-0 transition-all active:scale-95",
-            selectedFilterCategory === "all" ? "opacity-100" : "opacity-70"
+            "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95",
+            "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
         >
           <div className={cn(
-            "relative h-14 w-14 rounded-full flex items-center justify-center border-[2.5px] transition-all shadow-md",
+            "relative h-14 w-14 rounded-full flex items-center justify-center border transition-all",
+            "bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55",
             selectedFilterCategory === "all"
-              ? "bg-[#7B61FF] border-[#7B61FF] text-white shadow-violet-200 dark:shadow-none"
-              : "bg-slate-100 border-slate-200 text-slate-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-500"
+              ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:text-violet-300"
+              : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
           )}>
             <Compass className="h-9 w-9" strokeWidth={2.5} />
             {hireLiveHelperCount > 0 && (
@@ -856,8 +859,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             )}
           </div>
           <span className={cn(
-            "text-[10px] font-black uppercase tracking-wider",
-            selectedFilterCategory === "all" ? "text-[#7B61FF] dark:text-violet-400" : "text-slate-500 dark:text-zinc-500"
+            "text-[9px] font-extrabold uppercase tracking-[0.14em]",
+            selectedFilterCategory === "all" ? "text-violet-700 dark:text-violet-300" : "text-slate-500 dark:text-zinc-500"
           )}>All</span>
         </button>
 
@@ -868,15 +871,16 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               key={cat.id}
               onClick={() => setSelectedFilterCategory(cat.id as ServiceCategoryId)}
               className={cn(
-                "flex flex-col items-center gap-2 shrink-0 transition-all active:scale-95",
-                selectedFilterCategory === cat.id ? "opacity-100" : "opacity-70"
+                "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95",
+                "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               )}
             >
               <div className={cn(
-                "relative h-14 w-14 rounded-full flex items-center justify-center border-[2.5px] transition-all shadow-md",
+                "relative h-14 w-14 rounded-full flex items-center justify-center border transition-all",
+                "bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55",
                 selectedFilterCategory === cat.id
-                  ? "bg-[#7B61FF] border-[#7B61FF] text-white shadow-violet-200 dark:shadow-none"
-                  : "bg-slate-100 border-slate-200 text-slate-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-500"
+                  ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:text-violet-300"
+                  : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
               )}>
                 <span className="h-9 w-9 flex items-center justify-center">
                   {categoryIconNode(cat.id, "h-6 w-6")}
@@ -888,8 +892,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 )}
               </div>
               <span className={cn(
-                "text-[10px] font-black uppercase tracking-wider",
-                selectedFilterCategory === cat.id ? "text-[#7B61FF] dark:text-violet-400" : "text-slate-500 dark:text-zinc-500"
+                "text-[9px] font-extrabold uppercase tracking-[0.14em]",
+                selectedFilterCategory === cat.id ? "text-violet-700 dark:text-violet-300" : "text-slate-500 dark:text-zinc-500"
               )}>{cat.label.split(' ')[0]}</span>
             </button>
           );

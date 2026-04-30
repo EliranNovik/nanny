@@ -6,7 +6,6 @@ import {
   ClipboardList,
   Clock,
   PlayCircle,
-  PenLine,
   Search,
   UsersRound,
   Wifi,
@@ -350,17 +349,13 @@ export function DiscoverHomeActionFirst({
               className={cn(
                 boxClass,
                 postLivePulseClass,
-                "border-transparent bg-indigo-600/80 text-white shadow-indigo-500/20",
+                "border-transparent bg-indigo-600 text-white shadow-indigo-500/20",
               )}
-              aria-label="Post live"
+              aria-label="Request help now"
             >
-              <PenLine
-                className="h-8 w-8 text-white"
-                strokeWidth={2.6}
-                aria-hidden
-              />
+              <Zap className="h-8 w-8 text-white" strokeWidth={2.6} aria-hidden />
               <span className="text-center text-[13px] font-black uppercase leading-snug tracking-[0.08em]">
-                Post live
+                Request help now
               </span>
             </button>
             <button
@@ -435,7 +430,7 @@ export function DiscoverHomeActionFirst({
               className={cn(
                 boxClass,
                 goLivePulseClass,
-                "border-transparent bg-emerald-600/80 text-white",
+                "border-transparent bg-emerald-600 text-white",
               )}
               aria-label="Go live"
             >
@@ -524,11 +519,11 @@ export function DiscoverHomeActionFirst({
               postLivePulseClass,
               "border-transparent bg-gradient-to-br from-indigo-600 to-purple-800 text-white shadow-indigo-500/25 ring-indigo-500/20 hover:brightness-110",
             )}
-            aria-label="Post live"
+            aria-label="Request help now"
           >
-            <PenLine className="h-6 w-6 text-white" strokeWidth={2.6} aria-hidden />
+            <Zap className="h-6 w-6 text-white" strokeWidth={2.6} aria-hidden />
             <span className="text-[12px] font-black uppercase leading-snug tracking-wide">
-              Post live
+              Request help now
             </span>
           </button>
           <button
@@ -659,31 +654,14 @@ export function DiscoverHomeActionFirst({
         <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
           {isHire ? (
             <div className="flex flex-col">
-              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[10.75rem]">
-                <img
-                  src="/pexels-rdne-6646861.jpg"
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover object-top"
-                  loading="eager"
-                  decoding="async"
-                  {...{ fetchpriority: "high" }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/60" />
-                
-                {/* Badge — Back INSIDE at the top left */}
-                <div className="absolute left-3 top-3 z-[10] inline-flex items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm ring-1 ring-inset ring-white/10">
-                  <Zap className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
-                  <span className="truncate">{HIRE.badge}</span>
-                </div>
-                
-                {/* Active cards - Back INSIDE the image box at the bottom */}
-                {acceptedRequests.length > 0 ? (
-                  <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
-                    {acceptedRequests.slice(0, 1).map((job: any) => {
+              <div className="px-4">
+                <div className="mt-1">
+                  {acceptedRequests.length > 0 ? (
+                    acceptedRequests.slice(0, 1).map((job: any) => {
                       const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
                       const title = formatJobTitle(job);
                       const loc = (job.location_city ?? "").trim() || "Location not set";
-                      
+
                       return (
                         <button
                           key={job.id}
@@ -692,10 +670,9 @@ export function DiscoverHomeActionFirst({
                             e.stopPropagation();
                             navigate(`/client/jobs/${job.id}/live`);
                           }}
-                          className="flex w-full items-center gap-4 rounded-[1.25rem] bg-black/65 p-4 text-left shadow-2xl backdrop-blur-xl transition-all active:scale-[0.98]"
+                          className="flex w-full items-center gap-4 rounded-[1.25rem] bg-zinc-900/90 p-4 text-left shadow-xl backdrop-blur-xl transition-all active:scale-[0.98] dark:bg-black/55"
                         >
-                          {/* Category Image Box - Styled like Explore Page */}
-                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white/10 shadow-lg ring-1 ring-white/10">
+                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10 shadow-lg">
                             <img
                               src={getServiceCategoryImage(job.service_type)}
                               alt=""
@@ -715,12 +692,12 @@ export function DiscoverHomeActionFirst({
                                 {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                               </span>
                             </div>
-                            
+
                             <div className="mt-1.5 flex items-center gap-2.5">
-                              <span className="text-[12px] font-black uppercase tracking-wider text-emerald-400">
+                              <span className="text-[12px] font-black uppercase tracking-wider text-emerald-300">
                                 {job.acceptedCount} accepted
                               </span>
-                              
+
                               {avatars.length > 0 && (
                                 <div className="flex -space-x-2 overflow-hidden">
                                   {avatars.slice(0, 3).map((avatar: any, idx: number) => (
@@ -740,11 +717,9 @@ export function DiscoverHomeActionFirst({
                           <ChevronRight className="h-5 w-5 shrink-0 text-white/70" aria-hidden />
                         </button>
                       );
-                    })}
-                  </div>
-                ) : (
-                  <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
-                    <div className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md">
+                    })
+                  ) : (
+                    <div className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] bg-zinc-900/80 p-4 text-left shadow-lg backdrop-blur-md dark:bg-black/45">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-bold text-white">No active requests</p>
                         <p className="text-[11px] font-medium text-white/70">Need help with something?</p>
@@ -755,14 +730,14 @@ export function DiscoverHomeActionFirst({
                           e.stopPropagation();
                           navigate(createRequestPath);
                         }}
-                        className="shrink-0 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/30 transition-colors"
+                        className="shrink-0 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/20 transition-colors"
                       >
                         Post now
                       </button>
                     </div>
-                  </div>
-                )}
-              </section>
+                  )}
+                </div>
+              </div>
 
               {/* Text phrase — BELOW the image */}
               <div className="w-full px-4 pt-4">
@@ -787,127 +762,109 @@ export function DiscoverHomeActionFirst({
             </div>
           ) : (
             <div className="flex flex-col">
-              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[10.75rem]">
-                <img
-                  src="/pexels-tima-miroshnichenko-6197046.jpg"
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover object-top"
-                  loading="eager"
-                  decoding="async"
-                  {...{ fetchpriority: "high" }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/60" />
-
-                {/* Badge — Back INSIDE at the top left */}
-                <div className="absolute left-3 top-3 z-[10] inline-flex items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm ring-1 ring-inset ring-white/10">
-                  <Wifi className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
-                  <span className="truncate">{workTheme.badge}</span>
-                </div>
-
-                {/* Primary action (middle button) — top right */}
-                <div className="pointer-events-auto absolute right-3 top-3 z-[10] flex flex-col items-center gap-1.5">
-                  {isInActive24hGoLiveWindow ? (
-                    <div className="inline-flex items-center gap-2 rounded-full bg-black/40 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
-                      <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
-                        <span className="relative block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)]" />
-                      </span>
-                      <span>Live</span>
-                      {liveRemainingLabel ? (
-                        <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
-                          {liveRemainingLabel}
+              <div className="px-4">
+                <div className="flex items-center justify-end">
+                  <div className="pointer-events-auto">
+                    {isInActive24hGoLiveWindow ? (
+                      <div className="inline-flex items-center gap-2 rounded-full bg-zinc-900/70 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md dark:bg-black/40">
+                        <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                          <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
+                          <span className="relative block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)]" />
                         </span>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        trackEvent("discover_hero_go_live_corner", { mode: homeMode });
-                        writeDiscoverHomeIntent("work");
-                        navigate(workPrimaryPath);
-                        recordFirstMeaningfulAction("home_primary_work");
-                      }}
-                      className={cn(
-                        "group flex h-10 w-10 items-center justify-center rounded-full border shadow-2xl transition-all duration-300",
-                        "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                        "border-white/45 bg-white/25 text-white backdrop-blur-2xl ring-1 ring-inset ring-white/30",
-                        "hover:bg-white/30",
-                      )}
-                      aria-label="Go live"
-                    >
-                      <PlayCircle className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
-                    </button>
-                  )}
+                        <span>Live</span>
+                        {liveRemainingLabel ? (
+                          <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
+                            {liveRemainingLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trackEvent("discover_hero_go_live_corner", { mode: homeMode });
+                          writeDiscoverHomeIntent("work");
+                          navigate(workPrimaryPath);
+                          recordFirstMeaningfulAction("home_primary_work");
+                        }}
+                        className={cn(
+                          "group inline-flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-300",
+                          "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                          "border-white/10 bg-zinc-900/70 text-white shadow-lg backdrop-blur-xl dark:bg-black/45",
+                          "hover:bg-zinc-900/80",
+                        )}
+                        aria-label="Go live"
+                      >
+                        <PlayCircle className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Active cards - Back INSIDE at the bottom */}
-                {liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
-                  <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
-                    {liveHelpingJobs
-                      .filter(j => !dismissedLiveJobIds.includes(j.id))
+                <div className="mt-3">
+                  {liveHelpingJobs.filter((j) => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
+                    liveHelpingJobs
+                      .filter((j) => !dismissedLiveJobIds.includes(j.id))
                       .slice(0, 1)
                       .map((job: any) => {
                         const client = liveHelpingProfiles.get(job.client_id);
                         const title = formatJobTitle(job);
                         const loc = (job.location_city ?? "").trim() || "Location not set";
                         const clientName = client?.full_name || "Client";
-                        
+
                         return (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`${explorePath}?mode=work&tab=live_help`);
-                              }}
-                              className="pointer-events-auto flex w-full items-center gap-4 rounded-[1.25rem] bg-black/65 p-4 shadow-2xl backdrop-blur-xl text-left transition-all active:scale-[0.98]"
-                            >
-                              {/* Category Image Box - Styled like Explore Page */}
-                              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white/10 shadow-lg ring-1 ring-white/10">
-                                <img
-                                  src={getServiceCategoryImage(job.service_type)}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                                <div className="pointer-events-none absolute inset-0 bg-black/10" />
+                          <button
+                            key={job.id}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`${explorePath}?mode=work&tab=live_help`);
+                            }}
+                            className="pointer-events-auto flex w-full items-center gap-4 rounded-[1.25rem] bg-zinc-900/90 p-4 shadow-xl backdrop-blur-xl text-left transition-all active:scale-[0.98] dark:bg-black/55"
+                          >
+                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10 shadow-lg">
+                              <img
+                                src={getServiceCategoryImage(job.service_type)}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                              <div className="pointer-events-none absolute inset-0 bg-black/10" />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-[16px] font-black text-white truncate leading-tight">{title}</span>
+                                  <span className="text-[12px] font-medium text-white/50">•</span>
+                                  <span className="text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</span>
+                                </div>
+                                <span className="text-[11px] font-bold text-white whitespace-nowrap shrink-0">
+                                  matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                                </span>
                               </div>
 
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-baseline justify-between gap-2">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className="text-[16px] font-black text-white truncate leading-tight">{title}</span>
-                                    <span className="text-[12px] font-medium text-white/50">•</span>
-                                    <span className="text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</span>
-                                  </div>
-                                  <span className="text-[11px] font-bold text-white whitespace-nowrap shrink-0">
-                                    matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
-                                  </span>
-                                </div>
-                                
-                                <div className="mt-2 flex items-center gap-3">
-                                  <span className="text-[12px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                                    Helping {clientName}
-                                  </span>
-                                  
-                                  {client?.photo_url && (
-                                    <Avatar className="h-7 w-7 border-none shadow-md ring-2 ring-black/20">
-                                      <AvatarImage src={client.photo_url} alt={clientName} />
-                                      <AvatarFallback className="bg-zinc-800 text-[10px] font-black text-white">
-                                        {clientName.charAt(0)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  )}
-                                </div>
+                              <div className="mt-2 flex items-center gap-3">
+                                <span className="text-[12px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1">
+                                  Helping {clientName}
+                                </span>
+
+                                {client?.photo_url && (
+                                  <Avatar className="h-7 w-7 border-none shadow-md ring-2 ring-black/20">
+                                    <AvatarImage src={client.photo_url} alt={clientName} />
+                                    <AvatarFallback className="bg-zinc-800 text-[10px] font-black text-white">
+                                      {clientName.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                )}
                               </div>
-                              <ChevronRight className="h-5 w-5 shrink-0 text-white/70" aria-hidden />
-                            </button>
+                            </div>
+                            <ChevronRight className="h-5 w-5 shrink-0 text-white/70" aria-hidden />
+                          </button>
                         );
-                      })}
-                  </div>
-                ) : (
-                  <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
-                    <div className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md">
+                      })
+                  ) : (
+                    <div className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] bg-zinc-900/80 p-4 text-left shadow-lg backdrop-blur-md dark:bg-black/45">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-bold text-white">No live help</p>
                         <p className="text-[11px] font-medium text-white/70">Find people who need help nearby</p>
@@ -918,14 +875,14 @@ export function DiscoverHomeActionFirst({
                           e.stopPropagation();
                           navigateToWorkBrowseRequests(navigate, profile);
                         }}
-                        className="shrink-0 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/30 transition-colors"
+                        className="shrink-0 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/20 transition-colors"
                       >
                         Find posts
                       </button>
                     </div>
-                  </div>
-                )}
-              </section>
+                  )}
+                </div>
+              </div>
 
               {/* Text phrase — BELOW the image */}
               <div className="w-full px-4 pt-4">
@@ -953,7 +910,7 @@ export function DiscoverHomeActionFirst({
 
         <section className="mt-10 px-0 md:px-4 pb-24">
           <h2 className="mb-4 px-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
-            Community Posts
+            Our community live
           </h2>
           <ProfilePostsFeed limit={5} />
           <div className="mt-6 flex justify-center px-4 pb-8">
@@ -1258,7 +1215,7 @@ export function DiscoverHomeActionFirst({
 
         <section className="mt-8 pb-12">
           <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
-            Community Posts
+            Our community live
           </h2>
           <ProfilePostsFeed limit={5} />
         </section>
