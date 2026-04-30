@@ -61,7 +61,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           "pt-2 md:pt-7",
         )}
       >
-        <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden px-0 md:mx-0 md:max-w-none md:px-4">
+        <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-visible px-0 md:mx-0 md:max-w-none md:px-4 md:overflow-hidden">
           <DiscoverHomeActionFirst
             homeMode={homeMode}
             explorePath={explorePath}

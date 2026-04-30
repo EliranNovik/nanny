@@ -659,7 +659,7 @@ export function DiscoverHomeActionFirst({
         <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
           {isHire ? (
             <div className="flex flex-col">
-              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[12rem]">
+              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[16.5rem]">
                 <img
                   src="/pexels-rdne-6646861.jpg"
                   alt=""
@@ -787,7 +787,7 @@ export function DiscoverHomeActionFirst({
             </div>
           ) : (
             <div className="flex flex-col">
-              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[12rem]">
+              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[16.5rem]">
                 <img
                   src="/pexels-tima-miroshnichenko-6197046.jpg"
                   alt=""

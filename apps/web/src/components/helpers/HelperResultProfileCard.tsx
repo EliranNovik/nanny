@@ -25,7 +25,6 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
-import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
 import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
 import { canStartInCardLabel } from "@/lib/liveCanStart";
 
@@ -138,12 +137,6 @@ export function HelperResultProfileCard({
     () => buildSlides(h.photo_url, gallery),
     [h.photo_url, gallery],
   );
-
-  const knockCategories = useMemo(() => {
-    const live = h.freelancer_profiles?.live_categories;
-    if (live?.length) return live;
-    return SERVICE_CATEGORIES.slice(0, 10).map((c) => c.id);
-  }, [h.freelancer_profiles?.live_categories]);
 
   const liveCategories = useMemo(() => {
     const liveIds = h.freelancer_profiles?.live_categories;
@@ -572,15 +565,15 @@ export function HelperResultProfileCard({
                 {canStartBadge ? (
                   <span
                     className={cn(
-                      "inline-flex w-full items-center gap-2.5 whitespace-nowrap rounded-[16px] px-3.5 py-2.5 pr-5",
+                      "inline-flex w-[12.25rem] items-center gap-2 whitespace-nowrap rounded-xl px-2.5 py-2 pr-4",
                       "bg-[#2ca36a] text-white shadow-lg",
                     )}
                     role="status"
                   >
-                    <Zap className="h-5 w-5 shrink-0 text-white" strokeWidth={2} aria-hidden />
+                    <Zap className="h-4.5 w-4.5 shrink-0 text-white" strokeWidth={2.5} aria-hidden />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[12px] font-medium leading-none text-white/90">Ready in</span>
-                      <span className="text-[15px] font-bold leading-none tracking-tight text-white">
+                      <span className="text-[10px] font-semibold leading-none text-white/90">Ready in</span>
+                      <span className="text-[12px] font-black leading-none tracking-tight text-white">
                         {canStartBadge.toLowerCase() === "immediately" ? "Now" : canStartBadge}
                       </span>
                     </div>
@@ -590,17 +583,17 @@ export function HelperResultProfileCard({
                 {respondsWithinBadge ? (
                   <span
                     className={cn(
-                      "inline-flex w-full items-center gap-2.5 whitespace-nowrap rounded-[16px] px-3.5 py-2.5 pr-5",
+                      "inline-flex w-[12.25rem] items-center gap-2 whitespace-nowrap rounded-xl px-2.5 py-2 pr-4",
                       "bg-[#2c2b4c]/40 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/10",
                     )}
                     role="status"
                   >
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#5c4b8e]">
-                      <MessageCircle className="h-4 w-4 text-white" strokeWidth={2.25} aria-hidden />
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#5c4b8e]">
+                      <MessageCircle className="h-3.5 w-3.5 text-white" strokeWidth={2.5} aria-hidden />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[12px] font-medium leading-none text-white/90">Replies in</span>
-                      <span className="text-[15px] font-bold leading-none tracking-tight text-white">
+                      <span className="text-[10px] font-semibold leading-none text-white/90">Replies in</span>
+                      <span className="text-[12px] font-black leading-none tracking-tight text-white">
                         {respondsWithinBadge}
                       </span>
                     </div>
@@ -610,19 +603,19 @@ export function HelperResultProfileCard({
                 {h.distanceKm != null ? (
                   <span
                     className={cn(
-                      "inline-flex w-full items-center gap-2.5 whitespace-nowrap rounded-[16px] px-3.5 py-2.5 pr-5",
-                      "bg-black/40 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/15",
+                      "inline-flex w-[12.25rem] items-center gap-2 whitespace-nowrap rounded-xl px-2.5 py-2 pr-4",
+                      "bg-white/15 text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/20",
                     )}
                     role="status"
                   >
-                    <MapPin className="h-5 w-5 shrink-0 text-white" strokeWidth={2} aria-hidden />
+                    <MapPin className="h-4.5 w-4.5 shrink-0 text-white" strokeWidth={2.5} aria-hidden />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[15px] font-bold leading-none tracking-tight text-white">
+                      <span className="text-[12px] font-black leading-none tracking-tight text-white">
                         {h.distanceKm < 1
                           ? `${Math.round(h.distanceKm * 1000)} m`
                           : `${h.distanceKm.toFixed(1)} km`}
                       </span>
-                      <span className="text-[12px] font-medium leading-none text-white/90">
+                      <span className="text-[10px] font-semibold leading-none text-white/90">
                         {distanceFromViewerPin ? "from you" : "away"}
                       </span>
                     </div>
@@ -755,7 +748,7 @@ export function HelperResultProfileCard({
               onClick={(e) => void openDirectChat(e)}
               disabled={chatOpening}
               className={cn(
-                "group inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3",
+                "group inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3",
                 "bg-emerald-500 text-white shadow-xl shadow-emerald-500/20",
                 "ring-1 ring-inset ring-emerald-600/20 transition-colors",
                 "hover:bg-emerald-400 active:bg-emerald-600",
@@ -769,7 +762,7 @@ export function HelperResultProfileCard({
               ) : (
                 <MessageCircle className="h-5 w-5 text-white/90" strokeWidth={2.25} aria-hidden />
               )}
-              <span className="text-[13px] font-black uppercase tracking-[0.14em]">
+              <span className="truncate text-[13px] font-black uppercase tracking-[0.14em]">
                 Contact now
               </span>
             </button>
@@ -814,23 +807,6 @@ export function HelperResultProfileCard({
                   <TelegramIcon size={24} className="text-white" />
                 )}
               </button>
-            ) : null}
-
-            {knockCategories.length > 0 ? (
-              <ProfileKnockMenu
-                targetUserId={h.id}
-                targetRole={h.role ?? null}
-                categories={knockCategories}
-                viewerId={viewerId ?? null}
-                viewerRole={currentProfile?.role ?? null}
-                viewerName={currentProfile?.full_name ?? null}
-                variant="glass"
-                dropdownOpens="up"
-                buttonClassName={cn(
-                  "inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-2xl",
-                  "!bg-amber-500 text-white shadow-xl shadow-amber-500/20 transition-all hover:brightness-110 active:scale-[0.97]",
-                )}
-              />
             ) : null}
           </div>
 
