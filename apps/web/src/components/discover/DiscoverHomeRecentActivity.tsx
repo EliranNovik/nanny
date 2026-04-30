@@ -226,8 +226,8 @@ export function DiscoverHomeRecentActivity({
           review_text: string | null;
           created_at: string;
           reviewer:
-            | { full_name: string | null; photo_url: string | null }
-            | { full_name: string | null; photo_url: string | null }[]
+            | { full_name: string | null; photo_url: string | null; is_verified?: boolean | null }
+            | { full_name: string | null; photo_url: string | null; is_verified?: boolean | null }[]
             | null;
         };
         const rev = Array.isArray(row.reviewer)

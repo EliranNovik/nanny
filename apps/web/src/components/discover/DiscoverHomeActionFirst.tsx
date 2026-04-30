@@ -7,12 +7,10 @@ import {
   Clock,
   PlayCircle,
   PenLine,
-  Radio,
   Search,
   UsersRound,
   Wifi,
   Zap,
-  BadgeCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -643,10 +641,6 @@ export function DiscoverHomeActionFirst({
   }
 
   const workTheme = WORK;
-
-  // Shared font sizes/weights for mobile hero
-  const mobileHeroTitleClass = "text-[1.375rem] font-black leading-[1.2] tracking-tight text-white drop-shadow-md";
-  const mobileHeroBadgeClass = "inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm mb-2";
 
   return (
     <div

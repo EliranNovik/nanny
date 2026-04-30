@@ -369,7 +369,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             start_at?: string | null;
             shift_hours?: string | null;
             time_duration?: string | null;
-            profiles?: { photo_url?: string | null; full_name?: string | null; average_rating?: number | null; total_ratings?: number | null };
+            profiles?: { photo_url?: string | null; full_name?: string | null; average_rating?: number | null; total_ratings?: number | null; is_verified?: boolean | null };
             client_avg_reply_seconds?: number | null;
             client_reply_sample_count?: number | null;
           };

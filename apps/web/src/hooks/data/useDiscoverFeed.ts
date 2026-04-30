@@ -137,6 +137,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
               location_lng: number | null;
               average_rating?: number | null;
               total_ratings?: number | null;
+              is_verified?: boolean | null;
             }[]
           | {
               id: string;
