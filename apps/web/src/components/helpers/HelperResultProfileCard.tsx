@@ -2,13 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BadgeCheck,
-  Crown,
   Heart,
   Loader2,
   MapPin,
-  Medal,
   MessageCircle,
-  Trophy,
   Zap,
   Sparkles,
   Utensils,
@@ -19,7 +16,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { StarRating } from "@/components/StarRating";
+
 import { cn } from "@/lib/utils";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
@@ -179,20 +176,7 @@ export function HelperResultProfileCard({
     [canStartInLabel, h.freelancer_profiles?.live_can_start_in],
   );
 
-  const showLiveHelpWeekBadge =
-    liveHelpWeekCount != null && liveHelpWeekCount > 0;
 
-  /** Medal @1, Trophy @6–10, Crown @11+ — corner of live-help card. */
-  const liveHelpCornerTier = useMemo(() => {
-    const n = liveHelpWeekCount ?? 0;
-    if (n <= 0) return null;
-    if (n === 1) return { kind: "medal" as const, title: "First live help booking this week" };
-    if (n > 10)
-      return { kind: "crown" as const, title: "Top tier · over 10 live help bookings this week" };
-    if (n > 5)
-      return { kind: "trophy" as const, title: "Great week · over 5 live help bookings" };
-    return null;
-  }, [liveHelpWeekCount]);
 
   useEffect(() => {
     const rpcHasBoth =
@@ -837,7 +821,7 @@ export function HelperResultProfileCard({
                 targetUserId={h.id}
                 targetRole={h.role ?? null}
                 categories={knockCategories}
-                viewerId={viewerId}
+                viewerId={viewerId ?? null}
                 viewerRole={currentProfile?.role ?? null}
                 viewerName={currentProfile?.full_name ?? null}
                 variant="glass"

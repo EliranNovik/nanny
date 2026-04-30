@@ -5,12 +5,13 @@ export type DiscoverHomeIntent = "hire" | "work";
 
 const CHANGE_EVENT = "discover-home-intent-change";
 
-export function readDiscoverHomeIntent(): DiscoverHomeIntent {
+export function readDiscoverHomeIntent(fallback: DiscoverHomeIntent = "hire"): DiscoverHomeIntent {
   try {
     const v = localStorage.getItem(DISCOVER_HOME_INTENT_STORAGE_KEY);
-    return v === "work" ? "work" : "hire";
+    if (v === "hire" || v === "work") return v;
+    return fallback;
   } catch {
-    return "hire";
+    return fallback;
   }
 }
 

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, ChevronRight, Clock, MessageSquare, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock, MessageSquare, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { haversineDistanceKm } from "@/lib/geo";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
@@ -27,6 +28,8 @@ type JobRow = {
   created_at: string;
   service_type: string | null;
   location_city: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   client_id: string | null;
   selected_freelancer_id: string | null;
   status: string | null;
@@ -140,7 +143,7 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
     const base = supabase
       .from("job_requests")
       .select(
-        "id, created_at, service_type, location_city, client_id, selected_freelancer_id, status",
+        "id, created_at, service_type, location_city, location_lat, location_lng, client_id, selected_freelancer_id, status",
       )
       .in("status", [...HELPING_NOW_STATUSES])
       .not("selected_freelancer_id", "is", null)
@@ -215,6 +218,20 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
             const other = otherId ? profiles.get(otherId) : null;
             const otherName =
               String(other?.full_name ?? otherPartyLabel).trim() || otherPartyLabel;
+            
+            const distanceKm = (() => {
+              const vl = user?.user_metadata?.location_lat;
+              const vg = user?.user_metadata?.location_lng;
+              const hl = job.location_lat;
+              const hn = job.location_lng;
+              if (vl != null && vg != null && hl != null && hn != null) {
+                const a = Number(vl), b = Number(vg), c = Number(hl), d = Number(hn);
+                if ([a, b, c, d].every(Number.isFinite)) {
+                  return haversineDistanceKm(a, b, c, d);
+                }
+              }
+              return null;
+            })();
 
             return (
               <div
@@ -266,6 +283,16 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
                         </div>
                       )}
                       <div className="pointer-events-none absolute inset-0 bg-black/15" />
+                      {distanceKm != null && (
+                        <div className="absolute bottom-1 left-1 right-1 z-10 flex items-center justify-center">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-bold text-white shadow-lg backdrop-blur-md ring-1 ring-white/10">
+                            <MapPin className="h-2.5 w-2.5" strokeWidth={3} />
+                            <span>
+                              {distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(1)}km`}
+                            </span>
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="min-w-0 flex-1">

@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { HeartHandshake, HelpingHand } from "lucide-react";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExploreLiveHelpNow } from "@/components/discover/ExploreLiveHelpNow";
 import { ExploreHistoryJobs } from "@/components/discover/ExploreHistoryJobs";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
-import {
-  DISCOVER_STROKE,
-  discoverIcon,
-} from "@/components/discover/discoverHomeIcons";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/context/AuthContext";
@@ -160,10 +156,20 @@ export default function ExplorePage() {
     Partial<Record<HireTabId | WorkTabId, number>>
   >({});
 
-  const { mode, tab } = useMemo(
-    () => parseExploreSearchParams(searchParams),
-    [searchParams],
-  );
+  const { mode, tab } = useMemo(() => {
+    const parsed = parseExploreSearchParams(searchParams);
+    // If no explicit mode in URL, default based on the page role
+    if (!searchParams.get("mode")) {
+      parsed.mode = isClientExplore ? "hire" : "work";
+      // If we changed mode, ensure tab is valid
+      const ok =
+        parsed.mode === "hire"
+          ? isHireTab(parsed.tab)
+          : isWorkTab(parsed.tab);
+      if (!ok) parsed.tab = "live_help";
+    }
+    return parsed;
+  }, [searchParams, isClientExplore]);
 
   useEffect(() => {
     const t = searchParams.get("tab");
@@ -276,84 +282,24 @@ export default function ExplorePage() {
       data-explore-page=""
       data-explore-mode={mode}
     >
-      {/* In-flow header: scrolls away with content */}
+      {/* Header with Switcher Button */}
       <div className="app-desktop-shell max-md:px-2.5">
-        <div className="w-full space-y-0.5 px-2 pb-0.5 pt-2 md:pt-5">
-          <div role="tablist" aria-label="Explore: what are you here for?">
-            <div
-              className={cn(
-                // Match Discover home primary segmented control (DiscoverHomeContent).
-                "relative isolate mx-auto grid min-h-[50px] w-full max-w-[26rem] grid-cols-2 items-stretch gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[28rem] md:max-w-[30rem] sm:min-h-[58px]",
-                "border border-slate-300/70 bg-slate-100 shadow-sm",
-                "dark:border-zinc-700/80 dark:bg-zinc-900",
-                "leading-none",
-              )}
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "hire"}
-                aria-label={mode === "hire" ? undefined : "I need help"}
-                onClick={() => setMode("hire")}
-                className={cn(
-                  "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 sm:min-h-[54px] sm:px-3",
-                  "transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                  "active:scale-[0.98] motion-reduce:transition-none",
-                  mode === "hire"
-                    ? "bg-white text-neutral-900 shadow-sm ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/80"
-                    : "bg-transparent text-neutral-900 hover:bg-white/60 dark:hover:bg-zinc-800/50",
-                )}
-              >
-                <HeartHandshake
-                  className={cn(
-                    discoverIcon.md,
-                    "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                    mode === "hire"
-                      ? "text-[#7B61FF]"
-                      : "text-slate-400 dark:text-zinc-500",
-                  )}
-                  strokeWidth={DISCOVER_STROKE}
-                  aria-hidden
-                />
-                <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-tight text-neutral-900 sm:text-[16px] dark:text-zinc-100">
-                  I need help
-                </span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "work"}
-                aria-label={mode === "work" ? undefined : "Help others"}
-                onClick={() => setMode("work")}
-                className={cn(
-                  "relative z-10 flex h-full min-h-[46px] w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 sm:min-h-[54px] sm:px-3",
-                  "transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                  "active:scale-[0.98] motion-reduce:transition-none",
-                  mode === "work"
-                    ? "bg-white text-neutral-900 shadow-sm ring-1 ring-slate-200/90 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600/80"
-                    : "bg-transparent text-neutral-900 hover:bg-white/60 dark:hover:bg-zinc-800/50",
-                )}
-              >
-                <HelpingHand
-                  className={cn(
-                    discoverIcon.md,
-                    "shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                    mode === "work"
-                      ? "text-emerald-700 dark:text-emerald-400"
-                      : "text-slate-400 dark:text-zinc-500",
-                  )}
-                  strokeWidth={DISCOVER_STROKE}
-                  aria-hidden
-                />
-                <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-tight text-neutral-900 sm:text-[16px] dark:text-zinc-100">
-                  Help others
-                </span>
-              </button>
-            </div>
-          </div>
+        <div className="flex w-full items-center justify-between px-2 pb-1.5 pt-2 md:pt-5">
+          <h1 className="text-[17px] font-black tracking-tight text-slate-900 dark:text-white pl-2">
+            {mode === "hire" ? "I need help" : "Help others"}
+          </h1>
+          
+          <button
+            type="button"
+            onClick={() => setMode(mode === "hire" ? "work" : "hire")}
+            className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-3.5 py-2 text-[13px] font-bold text-slate-700 backdrop-blur-md transition-colors hover:bg-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:bg-zinc-700 shadow-sm"
+          >
+            {mode === "hire" ? "Help others?" : "Get help?"}
+            <ChevronRight className="-mr-0.5 h-4 w-4 opacity-70" aria-hidden />
+          </button>
+        </div>
 
+        <div className="px-2">
           <ExploreSecondaryUnderlineTabs
             mode={mode}
             tab={tab}

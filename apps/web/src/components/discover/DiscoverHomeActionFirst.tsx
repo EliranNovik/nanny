@@ -286,10 +286,8 @@ export function DiscoverHomeActionFirst({
   }, [frData]);
 
   /** Smooth shadow pulse on the colored tiles (`box-shadow`, no ::before layering). */
-  const postLivePulseClass =
-    "animate-dock-post-live-glow motion-reduce:animate-none";
-  const goLivePulseClass =
-    "animate-dock-go-live-glow motion-reduce:animate-none";
+  const postLivePulseClass = "";
+  const goLivePulseClass = "";
 
   /** Mobile: three equal shortcut tiles above BottomNav — same destinations as the old actions dialog. */
   function renderQuickActionDockMobile() {
@@ -696,9 +694,9 @@ export function DiscoverHomeActionFirst({
           <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
         </div>
 
-        <div className="flex-1 mt-3 flex flex-col">
+        <div className="shrink-0 mt-3 flex flex-col px-2 pb-6">
           {isHire ? (
-            <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[24rem]">
+            <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-[24px] ring-1 ring-black/10 shadow-md min-h-[18rem]">
               <img
                 src="/pexels-rdne-6646861.jpg"
                 alt=""
@@ -779,7 +777,7 @@ export function DiscoverHomeActionFirst({
 
             </section>
           ) : (
-            <section className="relative flex flex-col w-full flex-1 overflow-hidden ring-1 ring-black/10 shadow-sm min-h-[24rem]">
+            <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-[24px] ring-1 ring-black/10 shadow-md min-h-[18rem]">
               <img
                 src="/pexels-tima-miroshnichenko-6197046.jpg"
                 alt=""

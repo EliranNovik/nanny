@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, MessageSquare } from "lucide-react";
+import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, MessageSquare, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { haversineDistanceKm } from "@/lib/geo";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
@@ -22,6 +23,8 @@ type InboundNotif = {
     id: string;
     service_type?: string | null;
     location_city?: string | null;
+    location_lat: number | null;
+    location_lng: number | null;
     created_at: string;
     profiles?: { full_name?: string | null; photo_url?: string | null } | null;
   };
@@ -162,6 +165,20 @@ export function ExplorePendingResponses() {
             const imgSrc = serviceHeroImageSrc(job);
             const clientName =
               String(job.profiles?.full_name ?? "").trim() || "Client";
+            
+            const distanceKm = (() => {
+              const vl = user?.user_metadata?.location_lat;
+              const vg = user?.user_metadata?.location_lng;
+              const hl = job.location_lat;
+              const hn = job.location_lng;
+              if (vl != null && vg != null && hl != null && hn != null) {
+                const a = Number(vl), b = Number(vg), c = Number(hl), d = Number(hn);
+                if ([a, b, c, d].every(Number.isFinite)) {
+                  return haversineDistanceKm(a, b, c, d);
+                }
+              }
+              return null;
+            })();
 
             return (
               <button
@@ -211,6 +228,16 @@ export function ExplorePendingResponses() {
                       </div>
                     )}
                     <div className="pointer-events-none absolute inset-0 bg-black/10" />
+                    {distanceKm != null && (
+                      <div className="absolute bottom-1 left-1 right-1 z-10 flex items-center justify-center">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-bold text-white shadow-lg backdrop-blur-md ring-1 ring-white/10">
+                          <MapPin className="h-2.5 w-2.5" strokeWidth={3} />
+                          <span>
+                            {distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(1)}km`}
+                          </span>
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="min-w-0 flex-1">

@@ -13,6 +13,12 @@ export type DiscoverLiveAvatarEntry = {
   average_rating: number | null;
   total_ratings: number | null;
   location_line: string;
+  location_lat: number | null;
+  location_lng: number | null;
+  distance_km?: number | null;
+  live_can_start_in?: string | null;
+  avg_reply_seconds?: number | null;
+  reply_sample_count?: number | null;
 };
 
 export function useDiscoverFeed() {
@@ -73,11 +79,14 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
           user_id,
           live_until,
           live_categories,
+          live_can_start_in,
           profiles!inner (
             id,
             full_name,
             photo_url,
             city,
+            location_lat,
+            location_lng,
             average_rating,
             total_ratings
           )
@@ -91,18 +100,39 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
 
       const next: Record<string, DiscoverLiveAvatarEntry[]> = {};
 
+      const allHelperIds = Array.from(new Set((data || []).map((r) => r.user_id).filter(Boolean)));
+      const replyStats: Record<string, { avg_seconds: number; sample_count: number }> = {};
+      if (allHelperIds.length > 0) {
+        const { data: statRows } = await supabase.rpc("get_helper_chat_response_stats", {
+          p_helper_ids: allHelperIds as string[],
+        });
+        if (Array.isArray(statRows)) {
+          for (const sr of statRows) {
+            if (sr.helper_id && sr.avg_seconds != null && sr.sample_count != null) {
+              replyStats[sr.helper_id] = {
+                avg_seconds: Number(sr.avg_seconds),
+                sample_count: Number(sr.sample_count),
+              };
+            }
+          }
+        }
+      }
+
       for (const id of categoryIds) next[id] = [];
       const seen = new Map<string, Set<string>>();
 
       for (const row of (data || []) as {
         user_id?: string;
         live_categories?: string[] | null;
+        live_can_start_in?: string | null;
         profiles?:
           | {
               id: string;
               full_name: string | null;
               photo_url: string | null;
               city: string | null;
+              location_lat: number | null;
+              location_lng: number | null;
               average_rating?: number | null;
               total_ratings?: number | null;
             }[]
@@ -111,6 +141,8 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
               full_name: string | null;
               photo_url: string | null;
               city: string | null;
+              location_lat: number | null;
+              location_lng: number | null;
               average_rating?: number | null;
               total_ratings?: number | null;
             }
@@ -150,6 +182,11 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
             total_ratings:
               prof?.total_ratings != null ? Number(prof.total_ratings) : null,
             location_line,
+            location_lat: prof?.location_lat ?? null,
+            location_lng: prof?.location_lng ?? null,
+            live_can_start_in: row.live_can_start_in ?? null,
+            avg_reply_seconds: replyStats[authorId]?.avg_seconds ?? null,
+            reply_sample_count: replyStats[authorId]?.sample_count ?? null,
           });
         }
       }

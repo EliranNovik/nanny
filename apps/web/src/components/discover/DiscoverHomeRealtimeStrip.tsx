@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
+import { canStartInCardLabel, respondsWithinCardLabel } from "@/lib/liveCanStart";
 import {
   DISCOVER_HOME_CATEGORIES,
   ALL_HELP_CATEGORY_ID,
@@ -13,6 +14,7 @@ import {
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { trackEvent } from "@/lib/analytics";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
+import { haversineDistanceKm } from "@/lib/geo";
 import {
   useDiscoverOpenHelpRequests,
   type DiscoverOpenHelpRequestRow,
@@ -28,6 +30,9 @@ import {
   Truck,
   Wrench,
   UsersRound,
+  Zap,
+  MessageCircle,
+  MapPin,
 } from "lucide-react";
 import {
   DISCOVER_STROKE,
@@ -91,8 +96,10 @@ type WorkRowItem = {
   durationLine: string | null;
   thumbUrl: string;
   name: string;
-  average_rating?: number | null;
-  total_ratings?: number | null;
+  average_rating: number | null;
+  total_ratings: number | null;
+  responds_within_label?: string | null;
+  distanceKm?: number | null;
 };
 
 function categoryIconNode(serviceType: string | null | undefined): React.ReactNode {
@@ -149,6 +156,8 @@ function mapJobLikeToWorkRow(opts: {
   name: string | null | undefined;
   average_rating?: number | null | undefined;
   total_ratings?: number | null | undefined;
+  responds_within_label?: string | null;
+  distanceKm?: number | null;
 }): WorkRowItem {
   const cat = opts.serviceType;
   const title =
@@ -184,6 +193,8 @@ function mapJobLikeToWorkRow(opts: {
     name: (opts.name || "?").trim() || "?",
     average_rating: opts.average_rating ?? null,
     total_ratings: opts.total_ratings ?? null,
+    responds_within_label: opts.responds_within_label ?? null,
+    distanceKm: opts.distanceKm ?? null,
   };
 }
 
@@ -245,6 +256,9 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       total_ratings: number | null;
       /** Area / city (profile city) */
       locationLine: string;
+      can_start_in_label: string | null;
+      responds_within_label: string | null;
+      distanceKm: number | null;
     }[] = [];
     for (const cat of DISCOVER_HOME_CATEGORIES) {
       if (cat.id === ALL_HELP_CATEGORY_ID) continue;
@@ -262,7 +276,22 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
         href: `/profile/${encodeURIComponent(helperId)}?category=${encodeURIComponent(cat.id)}`,
         average_rating: first.average_rating ?? null,
         total_ratings: (first as { total_ratings?: number | null }).total_ratings ?? null,
-        locationLine: first.location_line ?? "—",
+        locationLine: first.location_line || "",
+        can_start_in_label: canStartInCardLabel(first.live_can_start_in),
+        responds_within_label: respondsWithinCardLabel(first.avg_reply_seconds, first.reply_sample_count),
+        distanceKm: (() => {
+          const vl = profile?.location_lat;
+          const vg = profile?.location_lng;
+          const hl = first.location_lat;
+          const hn = first.location_lng;
+          if (vl != null && vg != null && hl != null && hn != null) {
+            const a = Number(vl), b = Number(vg), c = Number(hl), d = Number(hn);
+            if ([a, b, c, d].every(Number.isFinite)) {
+              return haversineDistanceKm(a, b, c, d);
+            }
+          }
+          return first.distance_km ?? null;
+        })(),
       });
       if (out.length >= MAX) break;
     }
@@ -291,6 +320,20 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           name: r.client_display_name,
           average_rating: r.client_average_rating ?? null,
           total_ratings: r.client_total_ratings ?? null,
+          responds_within_label: respondsWithinCardLabel(r.client_avg_reply_seconds, r.client_reply_sample_count),
+          distanceKm: (() => {
+            const vl = profile?.location_lat;
+            const vg = profile?.location_lng;
+            const hl = r.location_lat;
+            const hn = r.location_lng;
+            if (vl != null && vg != null && hl != null && hn != null) {
+              const a = Number(vl), b = Number(vg), c = Number(hl), d = Number(hn);
+              if ([a, b, c, d].every(Number.isFinite)) {
+                return haversineDistanceKm(a, b, c, d);
+              }
+            }
+            return null;
+          })(),
         }),
       );
 
@@ -311,11 +354,15 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             care_type?: string | null;
             care_frequency?: string | null;
             location_city?: string;
+            location_lat?: number | null;
+            location_lng?: number | null;
             created_at?: string;
             start_at?: string | null;
             shift_hours?: string | null;
             time_duration?: string | null;
-            profiles?: { photo_url?: string | null; full_name?: string | null };
+            profiles?: { photo_url?: string | null; full_name?: string | null; average_rating?: number | null; total_ratings?: number | null };
+            client_avg_reply_seconds?: number | null;
+            client_reply_sample_count?: number | null;
           };
         }) => {
           const jr = n.job_requests;
@@ -334,15 +381,22 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             photo: jr.profiles?.photo_url,
             name: jr.profiles?.full_name,
             average_rating:
-              jr.profiles &&
-                (jr.profiles as { average_rating?: number | null }).average_rating != null
-                ? Number((jr.profiles as { average_rating?: number | null }).average_rating)
-                : null,
+              jr.profiles?.average_rating != null ? Number(jr.profiles.average_rating) : null,
             total_ratings:
-              jr.profiles &&
-                (jr.profiles as { total_ratings?: number | null }).total_ratings != null
-                ? Number((jr.profiles as { total_ratings?: number | null }).total_ratings)
-                : null,
+              jr.profiles?.total_ratings != null ? Number(jr.profiles.total_ratings) : null,
+            distanceKm: (() => {
+              const vl = profile?.location_lat;
+              const vg = profile?.location_lng;
+              const hl = jr.location_lat;
+              const hn = jr.location_lng;
+              if (vl != null && vg != null && hl != null && hn != null) {
+                const a = Number(vl), b = Number(vg), c = Number(hl), d = Number(hn);
+                if ([a, b, c, d].every(Number.isFinite)) {
+                  return haversineDistanceKm(a, b, c, d);
+                }
+              }
+              return null;
+            })(),
           });
         },
       );
@@ -490,16 +544,21 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   loading="lazy"
                 />
                 <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
-                  <span className="relative flex h-2 w-2" aria-hidden>
-                    <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                  </span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                   Live
                 </span>
-                <div
-                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black/80 via-black/50 to-transparent"
-                  aria-hidden
-                />
+              {row.distanceKm != null && (
+                <span className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[10px] font-bold text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                  <MapPin className="h-2.5 w-2.5" strokeWidth={3} />
+                  <span>
+                    {row.distanceKm < 1 ? `${Math.round(row.distanceKm * 1000)}m` : `${row.distanceKm.toFixed(1)}km`}
+                  </span>
+                </span>
+              )}
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black/80 via-black/50 to-transparent"
+                aria-hidden
+              />
                 <div className="absolute inset-x-0 bottom-0 z-[2] px-3 pb-2.5 pt-10">
                   <p
                     className={cn(
@@ -535,13 +594,24 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                     {row.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-2 translate-y-2 items-center gap-1 rounded-full bg-black/65 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                <span className="absolute top-0 left-0 z-10 inline-flex -translate-x-1.5 -translate-y-1.5 items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
                   <span className="relative flex h-2 w-2" aria-hidden>
                     <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                   </span>
                   Live
                 </span>
+                {row.distanceKm != null ? (
+                  <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-zinc-900 px-2.5 py-1 shadow-lg ring-1 ring-inset ring-white/20 backdrop-blur-md">
+                    <MapPin className="h-3 w-3 shrink-0 text-white" strokeWidth={2.5} aria-hidden />
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[10px] font-bold tracking-tight text-white">
+                        {row.distanceKm < 1 ? `${Math.round(row.distanceKm * 1000)}m` : `${row.distanceKm.toFixed(1)}km`}
+                      </span>
+                      <span className="text-[8px] font-medium uppercase tracking-wide text-white/70">Away</span>
+                    </div>
+                  </span>
+                ) : null}
               </div>
 
               {/* TEXT CONTENT (Aligned to match Hire cards on mobile) */}
@@ -668,6 +738,14 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 </span>
                 Live
               </span>
+              {it.distanceKm != null && (
+                <span className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[10px] font-bold text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                  <MapPin className="h-2.5 w-2.5" strokeWidth={3} />
+                  <span>
+                    {it.distanceKm < 1 ? `${Math.round(it.distanceKm * 1000)}m` : `${it.distanceKm.toFixed(1)}km`}
+                  </span>
+                </span>
+              )}
               <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black/80 via-black/50 to-transparent"
                 aria-hidden
@@ -702,13 +780,46 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   {it.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 z-10 inline-flex translate-x-2 translate-y-2 items-center gap-1 rounded-full bg-black/65 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+              <span className="absolute top-0 left-0 z-10 inline-flex -translate-x-1.5 -translate-y-1.5 items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
                 <span className="relative flex h-2 w-2" aria-hidden>
                   <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                 </span>
                 Live
               </span>
+              {it.distanceKm != null ? (
+                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-zinc-900 px-2.5 py-1 shadow-lg ring-1 ring-inset ring-white/20 backdrop-blur-md">
+                  <MapPin className="h-3 w-3 shrink-0 text-white" strokeWidth={2.5} aria-hidden />
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[10px] font-bold tracking-tight text-white">
+                      {it.distanceKm < 1 ? `${Math.round(it.distanceKm * 1000)}m` : `${it.distanceKm.toFixed(1)}km`}
+                    </span>
+                    <span className="text-[8px] font-medium uppercase tracking-wide text-white/70">Away</span>
+                  </div>
+                </span>
+              ) : it.can_start_in_label ? (
+                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-[#2ca36a] px-2.5 py-0.5 shadow-lg ring-1 ring-inset ring-white/20">
+                  <Zap className="h-3.5 w-3.5 shrink-0 text-white" strokeWidth={2.5} aria-hidden />
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[7px] font-medium uppercase tracking-wide text-white/90">Ready in</span>
+                    <span className="text-[9px] font-bold tracking-tight text-white">
+                      {it.can_start_in_label.toLowerCase() === "immediately" ? "Now" : it.can_start_in_label}
+                    </span>
+                  </div>
+                </span>
+              ) : it.responds_within_label ? (
+                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#2c2b4c]/90 px-2.5 py-0.5 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                  <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#5c4b8e]">
+                    <MessageCircle className="h-2 w-2 text-white" strokeWidth={2.5} aria-hidden />
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[7px] font-medium uppercase tracking-wide text-white/90">Replies in</span>
+                    <span className="text-[9px] font-bold tracking-tight text-white">
+                      {it.responds_within_label}
+                    </span>
+                  </div>
+                </span>
+              ) : null}
             </div>
 
             <div className="min-w-0 text-left md:p-4 md:pt-3">

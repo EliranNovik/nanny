@@ -127,7 +127,7 @@ export function BottomNav() {
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
   const [discoverHomeMode, setDiscoverHomeMode] = useState<
     "hire" | "work"
-  >(() => readDiscoverHomeIntent());
+  >(() => readDiscoverHomeIntent("hire"));
   const isLikedPage = pathnameNorm === "/liked";
   const isShellScrollCollapseRoute = isDiscoverHome || isLikedPage;
   const shellCollapseChromeP = isShellScrollCollapseRoute
@@ -290,9 +290,12 @@ export function BottomNav() {
   }, []);
 
   useEffect(() => {
-    if (isDiscoverHome) setDiscoverHomeMode(readDiscoverHomeIntent());
-    else setDesktopDiscoverSearchOpen(false);
-  }, [isDiscoverHome]);
+    if (isDiscoverHome) {
+      setDiscoverHomeMode(readDiscoverHomeIntent(profile?.role === "freelancer" ? "work" : "hire"));
+    } else {
+      setDesktopDiscoverSearchOpen(false);
+    }
+  }, [isDiscoverHome, profile?.role]);
 
   useEffect(() => {
     function onDocPointerDown(e: PointerEvent) {

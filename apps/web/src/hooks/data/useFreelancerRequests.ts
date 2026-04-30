@@ -65,7 +65,7 @@ export function useFreelancerRequests(userId: string | undefined) {
           .select(
             `id, job_id, status, created_at,
              job_requests (
-               id, status, client_id, community_post_id, community_post_expires_at, service_type, care_type, care_frequency, children_count, children_age_group, location_city, start_at, shift_hours, time_duration, languages_pref, requirements, budget_min, budget_max, notes, stage, offered_hourly_rate, price_offer_status, schedule_confirmed, service_details, created_at,
+               id, status, client_id, community_post_id, community_post_expires_at, service_type, care_type, care_frequency, children_count, children_age_group, location_city, location_lat, location_lng, start_at, shift_hours, time_duration, languages_pref, requirements, budget_min, budget_max, notes, stage, offered_hourly_rate, price_offer_status, schedule_confirmed, service_details, created_at,
                profiles!job_requests_client_id_fkey ( full_name, photo_url, average_rating, total_ratings, city )
              )`,
           )
@@ -136,13 +136,53 @@ export function useFreelancerRequests(userId: string | undefined) {
           .map((c) => c.job_id),
       );
 
-      const validNotifications = notificationsData
+      let validNotifications = notificationsData
         .filter((n: any) => n.job_requests && !n.job_requests.community_post_id)
         .map((n: any) => ({
           ...n,
           isConfirmed: confirmedJobIds.has(n.job_id),
           isDeclined: declinedJobIds.has(n.job_id),
         }));
+
+      const inboundClientIds = Array.from(
+        new Set(
+          validNotifications
+            .map((n: any) => n.job_requests?.client_id)
+            .filter(Boolean)
+        )
+      ) as string[];
+
+      if (inboundClientIds.length > 0) {
+        const { data: statsRows } = await supabase.rpc("get_client_chat_response_stats", {
+          p_client_ids: inboundClientIds,
+        });
+        if (Array.isArray(statsRows)) {
+          const statsMap = new Map<string, { avg_seconds: number; sample_count: number }>();
+          for (const r of statsRows) {
+            if (r.client_id && r.avg_seconds != null && r.sample_count != null) {
+              statsMap.set(r.client_id, {
+                avg_seconds: Number(r.avg_seconds),
+                sample_count: Number(r.sample_count),
+              });
+            }
+          }
+          validNotifications = validNotifications.map((n: any) => {
+            if (!n.job_requests?.client_id) return n;
+            const stat = statsMap.get(n.job_requests.client_id);
+            if (stat) {
+              return {
+                ...n,
+                job_requests: {
+                  ...n.job_requests,
+                  client_avg_reply_seconds: stat.avg_seconds,
+                  client_reply_sample_count: stat.sample_count,
+                },
+              };
+            }
+            return n;
+          });
+        }
+      }
 
       return {
         myOpenRequests: processedOpenJobs,

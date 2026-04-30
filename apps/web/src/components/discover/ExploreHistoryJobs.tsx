@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench } from "lucide-react";
+import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { haversineDistanceKm } from "@/lib/geo";
 import {
   EXPLORE_PAGE_CARD_SURFACE,
   INTERACTIVE_CARD_HOVER,
@@ -23,6 +24,8 @@ type JobRow = {
   created_at: string;
   service_type: string | null;
   location_city: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   client_id: string | null;
   selected_freelancer_id: string | null;
   status: string | null;
@@ -128,7 +131,7 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
     const base = supabase
       .from("job_requests")
       .select(
-        "id, created_at, service_type, location_city, client_id, selected_freelancer_id, status",
+        "id, created_at, service_type, location_city, location_lat, location_lng, client_id, selected_freelancer_id, status",
       )
       .in("status", [...PAST_STATUSES])
       .order("created_at", { ascending: false })
@@ -191,6 +194,20 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
               String(other?.full_name ?? otherPartyLabel).trim() || otherPartyLabel;
             const st = String(job.status ?? "").trim() || "done";
 
+            const distanceKm = (() => {
+              const vl = user?.user_metadata?.location_lat;
+              const vg = user?.user_metadata?.location_lng;
+              const hl = job.location_lat;
+              const hn = job.location_lng;
+              if (vl != null && vg != null && hl != null && hn != null) {
+                const a = Number(vl), b = Number(vg), c = Number(hl), d = Number(hn);
+                if ([a, b, c, d].every(Number.isFinite)) {
+                  return haversineDistanceKm(a, b, c, d);
+                }
+              }
+              return null;
+            })();
+
             return (
               <button
                 key={job.id}
@@ -224,7 +241,6 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
                     {st}
                   </span>
                 </div>
-
                 <div className="mt-3 flex items-center gap-3">
                   <div
                     className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/70 bg-muted/40 shadow-sm ring-1 ring-black/5 dark:border-white/10 dark:ring-white/10"
@@ -242,6 +258,16 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
                       </div>
                     )}
                     <div className="pointer-events-none absolute inset-0 bg-black/10" />
+                    {distanceKm != null && (
+                      <div className="absolute bottom-1 left-1 right-1 z-10 flex items-center justify-center">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-bold text-white shadow-lg backdrop-blur-md ring-1 ring-white/10">
+                          <MapPin className="h-2.5 w-2.5" strokeWidth={3} />
+                          <span>
+                            {distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(1)}km`}
+                          </span>
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="min-w-0 flex-1">

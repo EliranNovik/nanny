@@ -27,6 +27,10 @@ export type DiscoverOpenHelpRequestRow = {
   client_total_ratings?: number | null;
   /** job_requests.status — filter to open-only when present. */
   status?: string | null;
+  client_avg_reply_seconds?: number | null;
+  client_reply_sample_count?: number | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
 };
 
 /**
@@ -77,39 +81,85 @@ export function useDiscoverOpenHelpRequests(
         ),
       );
       if (clientIds.length > 0) {
-        const { data: profs, error: profErr } = await supabase
-          .from("profiles")
-          .select("id, average_rating, total_ratings")
-          .in("id", clientIds);
+        const [profRes, statsRes] = await Promise.all([
+          supabase.from("profiles").select("id, average_rating, total_ratings").in("id", clientIds),
+          supabase.rpc("get_client_chat_response_stats", { p_client_ids: clientIds }),
+        ]);
+
+        const { data: profs, error: profErr } = profRes;
+        const { data: statsRows } = statsRes;
+
+        const profMap = new Map<string, { average_rating: number | null; total_ratings: number | null }>();
         if (!profErr && profs && profs.length > 0) {
-          const map = new Map<
-            string,
-            { average_rating: number | null; total_ratings: number | null }
-          >();
-          for (const p of profs as Array<{
-            id: string;
-            average_rating: number | null;
-            total_ratings: number | null;
-          }>) {
-            map.set(p.id, {
-              average_rating:
-                p.average_rating != null ? Number(p.average_rating) : null,
-              total_ratings:
-                p.total_ratings != null ? Number(p.total_ratings) : null,
+          for (const p of profs as Array<{ id: string; average_rating: number | null; total_ratings: number | null }>) {
+            profMap.set(p.id, {
+              average_rating: p.average_rating != null ? Number(p.average_rating) : null,
+              total_ratings: p.total_ratings != null ? Number(p.total_ratings) : null,
             });
           }
-          rows = rows.map((r) => {
-            const id = (r.client_id || "").trim();
-            if (!id) return r;
-            const hit = map.get(id);
-            if (!hit) return r;
-            return {
-              ...r,
-              client_average_rating: hit.average_rating,
-              client_total_ratings: hit.total_ratings,
-            };
-          });
         }
+
+        const statsMap = new Map<string, { avg_seconds: number; sample_count: number }>();
+        if (Array.isArray(statsRows)) {
+          for (const r of statsRows) {
+            if (r.client_id && r.avg_seconds != null && r.sample_count != null) {
+              statsMap.set(r.client_id, {
+                avg_seconds: Number(r.avg_seconds),
+                sample_count: Number(r.sample_count),
+              });
+            }
+          }
+        }
+
+        const jobIds = rows.map((r) => r.id);
+        const { data: jobLocations } = await supabase
+          .from("job_requests")
+          .select("id, location_lat, location_lng")
+          .in("id", jobIds);
+
+        const locationMap = new Map<string, { lat: number | null; lng: number | null }>();
+        if (jobLocations) {
+          for (const loc of jobLocations) {
+            locationMap.set(loc.id, { lat: loc.location_lat, lng: loc.location_lng });
+          }
+        }
+
+        rows = rows.map((r) => {
+          const id = (r.client_id || "").trim();
+          const hit = id ? profMap.get(id) : undefined;
+          const statHit = id ? statsMap.get(id) : undefined;
+          const locHit = locationMap.get(r.id);
+          return {
+            ...r,
+            client_average_rating: hit?.average_rating ?? null,
+            client_total_ratings: hit?.total_ratings ?? null,
+            client_avg_reply_seconds: statHit?.avg_seconds ?? null,
+            client_reply_sample_count: statHit?.sample_count ?? null,
+            location_lat: locHit?.lat ?? null,
+            location_lng: locHit?.lng ?? null,
+          };
+        });
+      } else {
+        const jobIds = rows.map((r) => r.id);
+        const { data: jobLocations } = await supabase
+          .from("job_requests")
+          .select("id, location_lat, location_lng")
+          .in("id", jobIds);
+        
+        const locationMap = new Map<string, { lat: number | null; lng: number | null }>();
+        if (jobLocations) {
+          for (const loc of jobLocations) {
+            locationMap.set(loc.id, { lat: loc.location_lat, lng: loc.location_lng });
+          }
+        }
+        rows = rows.map((r) => {
+          const locHit = locationMap.get(r.id);
+          return {
+            ...r,
+            location_lat: locHit?.lat ?? null,
+            location_lng: locHit?.lng ?? null,
+          };
+        });
       }
       return rows;
     },
