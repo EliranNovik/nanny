@@ -58,23 +58,31 @@ export type OpenJobRequestMatchRow = {
 type Slide = { key: string; kind: "image" | "video"; src: string };
 
 function buildSlides(photoUrl: string | null, gallery: PublicProfileGalleryRow[]): Slide[] {
-  const slides: Slide[] = [];
+  const media: Slide[] = [];
   const trimmed = photoUrl?.trim();
-  if (trimmed) slides.push({ key: "profile-photo", kind: "image", src: trimmed });
+  if (trimmed) media.push({ key: "profile-photo", kind: "image", src: trimmed });
+
   const sorted = [...gallery].sort(
     (a, b) =>
       a.sort_order - b.sort_order ||
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
   for (const row of sorted) {
-    slides.push({
+    media.push({
       key: row.id,
       kind: row.media_type === "video" ? "video" : "image",
       src: publicProfileMediaPublicUrl(row.storage_path),
     });
   }
-  return slides;
+
+  // We return a set of slides where the first slide is ALWAYS the summary
+  // We use the profile photo as the background/circle for the summary slide
+  return [
+    { key: "summary", kind: "image", src: trimmed || "" },
+    ...media
+  ];
 }
+
 
 /** Glass icon row overlaid on the hero image */
 const heroOverlayRoundBtn = cn(
@@ -85,22 +93,21 @@ const heroOverlayRoundBtn = cn(
   "disabled:pointer-events-none disabled:opacity-55",
 );
 
-const panelDeclineBtn = cn(
-  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-red-100 bg-red-50/95",
-  "text-[14px] font-bold text-red-800 shadow-sm transition-colors",
-  "hover:bg-red-100 active:scale-[0.99]",
-  "dark:border-red-900/50 dark:bg-red-950/35 dark:text-red-100 dark:hover:bg-red-950/55",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/40 focus-visible:ring-offset-2",
-  "disabled:pointer-events-none disabled:opacity-55",
+const roundActionBtn = cn(
+  "flex items-center justify-center rounded-full shadow-xl transition-all active:scale-90",
+  "ring-1 ring-inset disabled:opacity-50 disabled:pointer-events-none",
 );
 
-const panelAcceptBtn = cn(
-  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl",
-  "bg-emerald-600 text-[14px] font-bold text-white shadow-sm transition-colors",
-  "hover:bg-emerald-700 active:scale-[0.99]",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:ring-offset-2",
-  "disabled:pointer-events-none disabled:opacity-55",
+const acceptRoundBtn = cn(
+  roundActionBtn,
+  "h-16 w-16 bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600 ring-emerald-400/20",
 );
+
+const declineRoundBtn = cn(
+  roundActionBtn,
+  "h-14 w-14 bg-white text-rose-500 ring-zinc-200 hover:bg-rose-50 dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
+);
+
 
 function getWhatsAppLink(number: string) {
   const cleaned = number.replace(/[^\d]/g, "");
@@ -422,9 +429,24 @@ export function OpenJobRequestMatchCard({
 
   const showVerifiedBadge = row.client_is_verified === true;
 
+  const [showContactDropdown, setShowContactDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showContactDropdown) return;
+    const clickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowContactDropdown(false);
+      }
+    };
+    window.addEventListener("mousedown", clickOutside);
+    return () => window.removeEventListener("mousedown", clickOutside);
+  }, [showContactDropdown]);
+
   const openDirectChat = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
+      setShowContactDropdown(false);
       if (!viewerId) {
         addToast({
           title: "Sign in required",
@@ -488,6 +510,7 @@ export function OpenJobRequestMatchCard({
   const openWhatsApp = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
+      setShowContactDropdown(false);
       if (!row.client_id) return;
       setSocialBusy("wa");
       try {
@@ -523,6 +546,7 @@ export function OpenJobRequestMatchCard({
   const openTelegram = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
+      setShowContactDropdown(false);
       if (!row.client_id) return;
       setSocialBusy("tg");
       try {
@@ -552,491 +576,514 @@ export function OpenJobRequestMatchCard({
     [addToast, row.client_id],
   );
 
+  const [showFullDetailsModal, setShowFullDetailsModal] = useState(false);
+
+  const allDetailItems = useMemo(() => {
+    const items: { label: string; value: string }[] = [];
+    if (careFrequencyLine) items.push({ label: "Freq", value: careFrequencyLine });
+    if (timeDurationLine) items.push({ label: "Dur", value: timeDurationLine });
+    serviceDetailLines.forEach((badge) => items.push(badge));
+    return items;
+  }, [careFrequencyLine, timeDurationLine, serviceDetailLines]);
+
+  const displayedItems = allDetailItems.slice(0, 4); // Show 4 items for 2x2 grid
+  const hasMoreItems =
+    allDetailItems.length > 4 ||
+    !!scheduleLine ||
+    !!budgetLine ||
+    jobImages.length > 0 ||
+    !!notesLine;
+
+  const summarySlideVisible = activeIndex === 0 && showStrip;
+
   return (
-    <div
-      className={cn(
-        "group relative flex flex-col overflow-hidden",
-        "bg-white shadow-2xl shadow-black/12 ring-1 ring-black/[0.06]",
-        "transition-all duration-500 ease-out dark:bg-zinc-900 dark:ring-white/5",
-        variant === "fullscreen"
-          ? "h-full rounded-none shadow-none ring-0"
-          : "rounded-[22px] hover:-translate-y-1 hover:shadow-xl",
-      )}
-      role="article"
-      aria-label="Open request"
-    >
-      {/* Media only — tap opens client profile */}
+    <>
       <div
         className={cn(
-          "relative w-full shrink-0 cursor-pointer overflow-hidden bg-black",
+          "group relative flex flex-col overflow-hidden",
+          "bg-zinc-900 shadow-2xl shadow-black/40 ring-1 ring-white/10",
+          "transition-all duration-500 ease-out",
           variant === "fullscreen"
-            ? "min-h-[38vh] flex-1"
-            : "aspect-[3/4] min-h-[16rem] max-h-[min(50vh,28rem)] sm:min-h-[18rem]",
+            ? "h-full rounded-none shadow-none ring-0"
+            : "rounded-[40px] hover:-translate-y-1 hover:shadow-black/50",
         )}
-        role="button"
-        tabIndex={0}
-        aria-label="View client profile"
-        onClick={() => onOpenProfile(row.client_id)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpenProfile(row.client_id);
-          }
-        }}
+
+        role="article"
+        aria-label="Open request"
       >
-        {slides.length === 0 ? (
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
-        ) : showStrip ? (
-          <div
-            ref={scrollRef}
-            onScroll={() => {
-              window.requestAnimationFrame(syncIndex);
-            }}
-            className={cn(
-              "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
-              "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-              "overscroll-x-contain [-webkit-overflow-scrolling:touch]",
-            )}
-          >
-            {slides.map((s) => (
-              <div
-                key={s.key}
-                className="relative h-full w-full min-w-full max-w-full shrink-0 snap-start snap-always overflow-hidden"
-              >
-                {s.kind === "video" ? (
+        {/* Media section */}
+        <div
+          className={cn(
+            "relative w-full shrink-0 overflow-hidden bg-zinc-900",
+            variant === "fullscreen"
+              ? "h-[48%] min-h-[16rem]"
+              : "aspect-[4/5] min-h-[18rem] max-h-[28rem]",
+          )}
+        >
+
+
+
+          {slides.length === 0 ? (
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
+          ) : (
+            <div
+              ref={scrollRef}
+              onScroll={() => {
+                window.requestAnimationFrame(syncIndex);
+              }}
+              className={cn(
+                "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
+                "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+                "overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+              )}
+            >
+              {slides.map((s, idx) => (
+                <div
+                  key={s.key}
+                  className="relative h-full w-full min-w-full max-w-full shrink-0 snap-start snap-always overflow-hidden"
+                >
+                  {/* Slide 0: Summary Layout (Mobile) vs Big Media (Desktop) */}
+                  {idx === 0 ? (
+                    <>
+                      {/* Desktop: Always Big Media */}
+                      <div className="hidden h-full w-full md:block">
+                        {s.kind === "video" ? (
+                          <video src={s.src} className="h-full w-full object-cover" muted playsInline controls />
+                        ) : (
+                          <img src={s.src} alt="" className="h-full w-full object-cover" />
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 to-transparent" />
+                      </div>
+
+                      {/* Summary Layout: Name, Location, Badges Overlay */}
+                      <div className="absolute inset-0 z-10 flex flex-col p-6 pt-10 md:p-8">
+                        <div className="flex flex-col items-center gap-4 md:mt-auto md:items-start md:gap-3 md:pb-6">
+
+                          {/* Circular Profile Image (Mobile Only to avoid double image on desktop) */}
+                          <div
+                            className="h-28 w-28 overflow-hidden rounded-full border-4 border-zinc-800 shadow-2xl ring-1 ring-white/10 md:hidden"
+                            onClick={() => onOpenProfile(row.client_id)}
+                          >
+                            <img src={s.src || row.client_photo_url || ""} alt="" className="h-full w-full object-cover" />
+                          </div>
+
+
+                          <div className="flex flex-col items-center text-center gap-2 md:items-start md:text-left">
+
+                            <div className="flex items-center gap-2.5">
+                              <h3 className="text-3xl font-black tracking-tight text-white md:text-4xl">
+                                {(row.client_display_name || "").trim() || "Member"}
+                              </h3>
+                              {row.client_is_verified && (
+                                <BadgeCheck className="h-6 w-6 fill-emerald-500 text-white md:h-8 md:w-8" strokeWidth={2} />
+                              )}
+                            </div>
+                            
+                            {/* Rating / Review Badge for Summary Slide */}
+                            {row.client_rating && (
+                              <div className="flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-md ring-1 ring-white/10 mb-1">
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                <span className="text-base font-bold text-white">{row.client_rating}</span>
+                                <span className="text-xs text-zinc-400 font-medium">({row.client_review_count || 0})</span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-2.5 text-base font-bold text-zinc-400 md:text-lg">
+                              <MapPin className="h-5 w-5 text-emerald-500" strokeWidth={2.5} />
+                              <span>{row.location_city || "Anywhere"}</span>
+                              {dist && <span className="text-zinc-700">·</span>}
+                              {dist && <span className="tabular-nums text-zinc-100">{dist}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+
+                        <div className="absolute right-4 top-5 flex flex-col items-end gap-2 md:right-5 md:top-6 md:gap-2.5">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.15em] shadow-xl ring-2 ring-white/10 md:px-5 md:py-2.5 md:text-[11px] md:tracking-[0.2em]",
+                              categoryPanelPillClasses(row.service_type),
+                            )}
+                          >
+                            <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 md:h-4.5 md:w-4.5" strokeWidth={3} />
+                            {formatTitle(row.service_type)}
+                          </span>
+
+                          {row.created_at && (
+                            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 shadow-lg shadow-emerald-950/40 ring-1 ring-white/20 animate-in fade-in slide-in-from-right-4 duration-500 md:px-4 md:py-2">
+                              <Clock className="h-3 w-3 text-white md:h-3.5 md:w-3.5" strokeWidth={3} />
+                              <span className="text-[9px] font-black uppercase tracking-widest text-white md:text-[11px]">
+                                {timeAgo(row.created_at)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Prompt to scroll for media if there are more slides */}
+                        {slides.length > 1 && (
+                          <div className="mt-auto flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600 animate-pulse md:gap-2.5 md:text-[11px] md:tracking-[0.4em]">
+                            <span>Photos</span>
+                            <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+
+
+                    <div className="relative h-full w-full">
+                      {s.kind === "video" ? (
+                        <video
+                          src={s.src}
+                          className="absolute inset-0 h-full w-full bg-black object-cover"
+                          muted
+                          playsInline
+                          controls
+                        />
+                      ) : (
+                        <img src={s.src} alt="" className="absolute inset-0 h-full w-full bg-black object-cover" />
+                      )}
+                      
+                      {/* Gradients for legibility */}
+                      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent z-[10]" />
+                      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/70 to-transparent z-[10]" />
+                      
+                      {/* Bottom Info: Name, Verification, Rating */}
+                      <div className="absolute bottom-6 left-6 z-[20] flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xl font-black text-white drop-shadow-xl md:text-2xl">
+                            {(row.client_display_name || "").trim()}
+                          </p>
+                          {row.client_is_verified && (
+                            <BadgeCheck className="h-5 w-5 fill-emerald-500 text-white md:h-6 md:w-6" strokeWidth={2} />
+                          )}
+                        </div>
+
+                        {/* Rating / Review Badge */}
+                        {row.client_rating && (
+                          <div className="flex items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 backdrop-blur-md ring-1 ring-white/10">
+                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                            <span className="text-sm font-bold text-white">{row.client_rating}</span>
+                            <span className="text-xs text-zinc-400 font-medium">({row.client_review_count || 0})</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Top Right Badges: Category, Time */}
+                      <div className="absolute right-5 top-6 z-[20] flex flex-col items-end gap-2.5">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl ring-2 ring-white/20 backdrop-blur-md",
+                            categoryPanelPillClasses(row.service_type),
+                          )}
+                        >
+                          <CategoryIcon serviceType={row.service_type} className="h-4.5 w-4.5" strokeWidth={3} />
+                          {formatTitle(row.service_type)}
+                        </span>
+
+                        {row.created_at && (
+                          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-600/90 px-4 py-2 shadow-xl shadow-emerald-950/40 ring-1 ring-white/30 backdrop-blur-md animate-in fade-in slide-in-from-right-4 duration-500">
+                            <Clock className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white">
+                              {timeAgo(row.created_at)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+
+          {/* Pagination dots (Hidden on Summary Slide for Mobile) */}
+          {showStrip && (
+            <div
+              className={cn(
+                "pointer-events-none absolute bottom-4 left-1/2 z-[30] -translate-x-1/2 transition-opacity duration-300",
+                activeIndex === 0 ? "opacity-0 md:opacity-100" : "opacity-100",
+              )}
+            >
+              <div className="flex gap-1.5 rounded-full bg-black/10 px-2 py-1.5 backdrop-blur-md">
+                {slides.map((_, idx) => (
                   <div
-                    className="relative h-full w-full overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <video
-                      src={s.src}
-                      className="absolute inset-0 h-full w-full bg-black object-cover object-center"
-                      muted
-                      playsInline
-                      preload="metadata"
-                      controls
-                      controlsList="nodownload"
-                    />
-                  </div>
-                ) : (
-                  <img
-                    src={s.src}
-                    alt=""
-                    className="pointer-events-none absolute inset-0 h-full w-full bg-black object-cover object-center select-none"
-                    draggable={false}
+                    key={idx}
+                    className={cn(
+                      "h-1 rounded-full transition-all duration-300",
+                      idx === activeIndex ? "w-4 bg-emerald-500" : "w-1 bg-white/40",
+                    )}
                   />
-                )}
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Details section */}
+        <div className="relative flex flex-1 flex-col bg-zinc-900 p-4 pt-3 md:p-6 md:pt-5">
+
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:gap-x-6 md:gap-y-4">
+            {displayedItems.map((item, idx) => (
+              <div key={idx} className="flex flex-col gap-0.5 md:gap-1">
+                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 md:text-[11px] md:tracking-[0.2em]">
+                  {item.label}
+                </span>
+                <span className="truncate text-[15px] font-bold text-zinc-100 md:text-base">{item.value}</span>
               </div>
             ))}
           </div>
-        ) : (
-          <img
-            src={slides[0]!.src}
-            alt=""
-            className="pointer-events-none absolute inset-0 h-full w-full bg-black object-cover object-center select-none"
-            draggable={false}
-          />
-        )}
 
-        {slides.length > 0 ? (
-          <>
-            <div
-              className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black via-black/75 to-transparent"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[38%] bg-gradient-to-tr from-orange-500/18 to-transparent opacity-90 mix-blend-soft-light"
-              aria-hidden
-            />
-          </>
-        ) : null}
+          <div className="mt-4 flex items-center justify-between md:mt-6">
+            {hasMoreItems ? (
+              <button
+                type="button"
+                className="group flex items-center gap-2 text-[13px] font-black uppercase tracking-widest text-emerald-500"
+                onClick={() => setShowFullDetailsModal(true)}
+              >
+                Request Details
+                <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
+              </button>
+            ) : (
+              <div />
+            )}
 
-        {showStrip ? (
-          <div
-            className="pointer-events-none absolute left-1/2 top-3 z-[15] -translate-x-1/2"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            <div
-              className={cn(
-                "rounded-full bg-black/15 px-3 py-2 shadow-lg backdrop-blur-xl ring-1 ring-white/15",
+            <div className="flex items-center gap-5">
+              <button
+                type="button"
+                className="flex items-center gap-2.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+                onClick={() => onOpenComments?.(row.id)}
+              >
+                <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
+                {commentCount > 0 && <span className="text-sm font-black tabular-nums">{commentCount}</span>}
+              </button>
+
+
+              {/* Contact Button as Profile Image Circle */}
+              {viewerId && (
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    className={cn(
+                      "h-10 w-10 overflow-hidden rounded-full ring-2 ring-zinc-800 transition-all active:scale-95 shadow-lg",
+                      showContactDropdown && "ring-emerald-500 shadow-emerald-500/20",
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowContactDropdown(!showContactDropdown);
+                    }}
+                  >
+                    <img src={row.client_photo_url || ""} alt="" className="h-full w-full object-cover" />
+                  </button>
+
+                  {showContactDropdown && (
+                    <div
+                      className="absolute bottom-12 right-0 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200 z-[50]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
+                        onClick={(e) => void openDirectChat(e)}
+                      >
+                        <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
+                        onClick={(e) => void openWhatsApp(e)}
+                      >
+                        <WhatsAppIcon size={22} className="text-white" />
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
+                        onClick={(e) => void openTelegram(e)}
+                      >
+                        <TelegramIcon size={20} className="text-white" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
-            >
-              <div className="flex items-center justify-center gap-1.5">
-                {slides.map((_, idx) => (
-                  <span
-                    // eslint-disable-next-line react/no-array-index-key
-                    key={idx}
-                    className={cn(
-                      "h-1.5 w-7 rounded-full",
-                      idx === activeIndex
-                        ? "bg-white/85 shadow-[0_0_10px_rgba(255,255,255,0.25)]"
-                        : "bg-white/20",
-                    )}
-                    aria-hidden
-                  />
-                ))}
-              </div>
             </div>
           </div>
-        ) : null}
 
-        {/* Quick actions — vertical column on the right */}
-        <div className="pointer-events-auto absolute right-2 top-1/2 z-[13] flex -translate-y-1/2 flex-col gap-2">
-          {viewerId ? (
-            <>
-              <button
-                type="button"
-                className={heroOverlayRoundBtn}
-                aria-label="Open chat"
-                disabled={chatOpening}
-                onClick={(e) => void openDirectChat(e)}
-              >
-                {chatOpening ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-white/90" aria-hidden />
-                ) : (
-                  <MessageCircle className="h-6 w-6 text-emerald-300" strokeWidth={2} aria-hidden />
-                )}
-              </button>
-              <button
-                type="button"
-                className={heroOverlayRoundBtn}
-                aria-label="Open WhatsApp"
-                disabled={socialBusy === "wa"}
-                onClick={(e) => void openWhatsApp(e)}
-              >
-                {socialBusy === "wa" ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-white/90" aria-hidden />
-                ) : (
-                  <WhatsAppIcon size={26} className="text-emerald-300" />
-                )}
-              </button>
-              <button
-                type="button"
-                className={heroOverlayRoundBtn}
-                aria-label="Open Telegram"
-                disabled={socialBusy === "tg"}
-                onClick={(e) => void openTelegram(e)}
-              >
-                {socialBusy === "tg" ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-white/90" aria-hidden />
-                ) : (
-                  <TelegramIcon size={26} className="text-sky-300" />
-                )}
-              </button>
-            </>
-          ) : null}
-        </div>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[12] flex items-end justify-between gap-2 px-3 pb-3 pt-14">
-          <div className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.75)] min-w-0 flex-1 pr-1">
-            {showPostedRequestsBadge ? (
-              <span
-                className={cn(
-                  "relative mb-1.5 inline-flex min-w-[7rem] flex-col items-stretch gap-0.5 rounded-xl py-2 pl-3",
-                  postedRequestsCornerTier?.kind === "crown" ? "pr-[3.5rem]" : "pr-[2.75rem]",
-                  "pointer-events-none bg-gradient-to-br from-violet-600/65 to-fuchsia-600/50 text-white backdrop-blur-md",
-                  "shadow-lg shadow-black/25 ring-1 ring-inset ring-white/15",
-                )}
-                aria-label={`${postedRequestsCount} posted requests`}
-              >
-                {postedRequestsCornerTier ? (
-                  <span
-                    className={cn(
-                      "pointer-events-none absolute right-1 top-1 inline-flex shrink-0 items-center justify-center rounded-full bg-black/28 shadow-md ring-1 ring-inset ring-white/25 backdrop-blur-md",
-                      postedRequestsCornerTier.kind === "crown" && "right-0.5 top-0.5 p-1.5",
-                      postedRequestsCornerTier.kind === "trophy" && "right-1 top-1 p-1.5",
-                      postedRequestsCornerTier.kind === "medal" && "right-1 top-1 p-1.5",
-                    )}
-                    title={postedRequestsCornerTier.title}
-                    aria-hidden
-                  >
-                    {postedRequestsCornerTier.kind === "medal" ? (
-                      <Medal
-                        className="h-[13px] w-[13px] text-amber-200 drop-shadow-sm"
-                        strokeWidth={2.25}
-                        aria-hidden
-                      />
-                    ) : postedRequestsCornerTier.kind === "trophy" ? (
-                      <Trophy
-                        className="h-[20px] w-[20px] text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
-                        strokeWidth={2.35}
-                        aria-hidden
-                      />
-                    ) : (
-                      <Crown
-                        className="h-7 w-7 text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.55)]"
-                        strokeWidth={2.25}
-                        aria-hidden
-                      />
-                    )}
-                  </span>
-                ) : null}
-                <span className="text-center text-[8px] font-black uppercase leading-none tracking-[0.12em]">
-                  Posted
-                </span>
-                <span className="text-center text-[17px] font-black tabular-nums leading-none tracking-tight">
-                  {postedRequestsCount}
-                </span>
-                <span className="text-center text-[8px] font-semibold uppercase tracking-wide text-white/92">
-                  requests
-                </span>
-              </span>
-            ) : null}
-            <div className="flex min-w-0 items-baseline gap-1 font-black leading-tight tracking-tight text-white">
-              <p className="truncate text-[20px]">
-                {(row.client_display_name || "").trim() || "Member"}
-              </p>
-              {showVerifiedBadge ? (
-                <BadgeCheck
-                  className="h-[0.9em] w-[0.9em] shrink-0 translate-y-px fill-emerald-500 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
-                  strokeWidth={2.25}
-                  aria-label="Verified client"
-                />
-              ) : null}
-            </div>
-            {clientRating && clientRating.average_rating != null && (
-              <div className="mt-1 flex items-center gap-1 text-[12px] font-bold text-amber-400">
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" strokeWidth={1.5} aria-hidden />
-                <span>{clientRating.average_rating.toFixed(1)}</span>
-                <span className="font-medium text-white/60">({clientRating.total_ratings || 0})</span>
+          {/* Action buttons — Floating on mobile, relative on desktop */}
+          <div className="absolute bottom-12 left-0 right-0 flex items-center justify-center gap-10 md:relative md:bottom-0 md:mt-auto md:pb-1 md:pt-3">
+
+            {accepted ? (
+              <div className="rounded-2xl bg-zinc-100 px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 dark:bg-zinc-800">
+                Accepted · Pending
               </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={declineRoundBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void decline();
+                  }}
+                  disabled={busy != null}
+                  aria-label="Decline"
+                >
+                  <X className="h-7.5 w-7.5" strokeWidth={3} />
+                </button>
+                <button
+                  type="button"
+                  className={acceptRoundBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void accept();
+                  }}
+                  disabled={busy != null}
+                  aria-label="Accept"
+                >
+                  <Check className="h-10.5 w-10.5" strokeWidth={3.5} />
+                </button>
+              </>
             )}
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <div className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-white">
-                <MapPin className="h-4 w-4 shrink-0 text-emerald-300" strokeWidth={2.25} aria-hidden />
-                <span className="truncate">{(row.location_city || "").trim() || "—"}</span>
-              </div>
-              {dist ? (
-                <span className="text-[12px] font-bold tabular-nums text-white">{dist}</span>
-              ) : null}
-            </div>
           </div>
-          <div className="relative z-[14] flex max-w-[48%] shrink-0 flex-col items-end gap-1 self-end pb-0.5">
-            {respondsWithinLabel ? (
-              <span
-                className={cn(
-                  "inline-flex min-h-[4.75rem] min-w-[5.25rem] max-w-[11rem] flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-2.5",
-                  "bg-gradient-to-br from-sky-600/55 to-cyan-600/45 text-white backdrop-blur-md",
-                  "shadow-lg shadow-black/15",
-                )}
-                role="status"
-              >
-                <span className="block text-center text-[11px] font-black uppercase leading-snug tracking-[0.1em]">
-                  Responds within
-                </span>
-                <span className="block w-full text-center text-[14px] font-black uppercase leading-none tabular-nums tracking-wide text-white">
-                  {respondsWithinLabel}
-                </span>
-              </span>
-            ) : null}
-          </div>
+
+          {/* Spacer to prevent content from hiding behind floating buttons */}
+          <div className="h-24 md:h-2" />
         </div>
       </div>
 
-      {/* Details + actions */}
-      <div
-        className={cn(
-          "relative z-[6] flex min-h-0 flex-1 flex-col border-t border-slate-200/90 bg-white px-4 pb-5 pt-12",
-          "dark:border-zinc-800/80 dark:bg-zinc-900",
-          variant === "fullscreen" && "max-h-[min(52vh,24rem)] overflow-y-auto",
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="pointer-events-none absolute left-4 top-3 z-[11] flex max-w-[min(calc(100%-4.75rem),100%)] flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.12em]",
-              categoryPanelPillClasses(row.service_type),
-            )}
-            role="presentation"
-          >
-            <CategoryIcon
-              serviceType={row.service_type}
-              className="h-3.5 w-3.5 shrink-0 text-current opacity-90"
-              strokeWidth={2.35}
-            />
-            {formatTitle(row.service_type)}
-          </span>
-          {row.created_at ? (
-            <div
-              className="inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-slate-200/95 bg-white/98 px-2.5 py-1 shadow-sm ring-1 ring-slate-200/65 dark:border-zinc-600 dark:bg-zinc-800/95 dark:ring-zinc-600/55"
-              role="status"
-              aria-label={`Posted ${timeAgo(row.created_at)}`}
-            >
-              <Clock
-                className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-zinc-400"
-                strokeWidth={2.5}
-                aria-hidden
-              />
-              <span className="text-[11px] font-semibold leading-tight tabular-nums text-slate-700 dark:text-zinc-200">
-                Posted {timeAgo(row.created_at)}
-              </span>
-            </div>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          className="absolute top-4 right-4 z-10 flex items-center gap-1.5 text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenComments?.(row.id);
-          }}
+
+
+
+
+
+
+
+      {/* Full Details Modal */}
+      {showFullDetailsModal && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/60 backdrop-blur-sm md:items-center"
+          onClick={() => setShowFullDetailsModal(false)}
         >
-          <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
-          {commentCount > 0 && (
-            <span className="text-sm font-black tabular-nums">{commentCount}</span>
-          )}
-        </button>
-
-        {canStartInLabel ? (
-          <div className="flex flex-wrap gap-2 pr-12">
-            <span className="inline-flex max-w-full items-center rounded-full border border-emerald-200/95 bg-gradient-to-br from-emerald-50 to-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-950 shadow-sm ring-1 ring-emerald-100/90 dark:border-emerald-800/70 dark:from-emerald-950/50 dark:to-zinc-900 dark:text-emerald-100 dark:ring-emerald-900/40">
-              Can start in {canStartInLabel}
-            </span>
-          </div>
-        ) : null}
-
-        {careFrequencyLine || timeDurationLine || serviceDetailLines.length > 0 ? (
-          <div className="mt-2 space-y-1.5">
-            {(careFrequencyLine || timeDurationLine) ? (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                {careFrequencyLine ? (
-                  <span className={cn("text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[17px]" : "text-[15px]")}>
-                    <span className="text-[12px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">Freq</span>
-                    <span className="font-bold">{careFrequencyLine}</span>
-                  </span>
-                ) : null}
-                {timeDurationLine ? (
-                  <span className={cn("text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[17px]" : "text-[15px]")}>
-                    <span className="text-[12px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">Dur</span>
-                    <span className="font-bold">{timeDurationLine}</span>
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-
-            {serviceDetailLines.length > 0 ? (
-              <div className="flex flex-col gap-1 mt-1">
-                {serviceDetailLines.map((badge, idx) => (
-                  <span
-                    key={idx}
-                    className={cn("flex items-center text-slate-700 dark:text-zinc-300", variant === "fullscreen" ? "text-[17px]" : "text-[15px]")}
-                  >
-                    <span className="text-[12px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500 mr-1.5">{badge.label}</span>
-                    <span className="font-bold">{badge.value}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {scheduleLine ? (
-          <p className={cn("mt-3 font-bold text-slate-800 dark:text-zinc-100", variant === "fullscreen" ? "text-[18px]" : "text-[17px]")}>
-            {scheduleLine}
-          </p>
-        ) : null}
-
-        {budgetLine ? (
-          <p className={cn("mt-1.5 font-extrabold text-emerald-700 dark:text-emerald-500", variant === "fullscreen" ? "text-[18px]" : "text-[17px]")}>
-            {budgetLine}
-          </p>
-        ) : null}
-
-        {jobImages.length > 0 ? (
-          <>
-            <div className={cn("flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", variant === "fullscreen" ? "mt-3" : "mt-2")}>
-              {jobImages.map((src, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className="relative shrink-0 overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-                  style={{ width: variant === "fullscreen" ? "6.5rem" : "5rem", height: variant === "fullscreen" ? "6.5rem" : "5rem" }}
-                  onClick={(e) => { e.stopPropagation(); setLightboxSrc(src); }}
-                  aria-label={`View image ${idx + 1}`}
-                >
-                  <img
-                    src={src}
-                    alt={`Request image ${idx + 1}`}
-                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                    loading="lazy"
-                  />
-                </button>
-              ))}
-            </div>
-            {/* Lightbox */}
-            {lightboxSrc ? (
-              <div
-                className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm"
-                onClick={() => setLightboxSrc(null)}
+          <div
+            className="relative flex h-[80vh] w-full flex-col rounded-t-[24px] bg-white shadow-2xl animate-in slide-in-from-bottom-6 dark:bg-zinc-900 md:h-auto md:max-h-[85vh] md:max-w-lg md:rounded-[24px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+              <h3 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">
+                Request Details
+              </h3>
+              <button
+                type="button"
+                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                onClick={() => setShowFullDetailsModal(false)}
               >
-                <img
-                  src={lightboxSrc}
-                  alt=""
-                  className="max-h-[90dvh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <button
-                  type="button"
-                  className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md ring-1 ring-white/20 transition hover:bg-black/60"
-                  onClick={() => setLightboxSrc(null)}
-                  aria-label="Close"
-                >
-                  <X className="h-5 w-5" strokeWidth={2.25} />
-                </button>
+                <X className="h-5 w-5" strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-6">
+              <div className="space-y-6">
+                {/* Details List */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+                  {allDetailItems.map((item, idx) => (
+                    <div key={idx} className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-500">
+                        {item.label}
+                      </span>
+                      <span className="text-base font-bold text-zinc-800 dark:text-zinc-200">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+
+                {scheduleLine && (
+                  <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                    <p className="mb-1 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-400">Schedule</p>
+                    <p className="text-base font-bold text-zinc-800 dark:text-zinc-100">{scheduleLine}</p>
+                  </div>
+                )}
+
+                {budgetLine && (
+                  <div className="rounded-2xl bg-emerald-50/50 p-4 dark:bg-emerald-950/20">
+                    <p className="mb-1 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-600/80">Budget</p>
+                    <p className="text-base font-extrabold text-emerald-700 dark:text-emerald-500">{budgetLine}</p>
+                  </div>
+                )}
+
+                {jobImages.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-zinc-400">Request Photos</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {jobImages.map((src, idx) => (
+                        <div key={idx} className="aspect-square overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                          <img
+                            src={src}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            onClick={() => setLightboxSrc(src)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {notesLine && (
+                  <div className="rounded-2xl bg-orange-50/60 p-4 ring-1 ring-orange-100/60 dark:bg-orange-950/20 dark:ring-orange-900/40">
+                    <p className="mb-2 text-[11px] font-black uppercase tracking-[0.14em] text-orange-600/80">
+                      Notes & Requirements
+                    </p>
+                    <p className="whitespace-pre-wrap text-[15px] font-medium leading-relaxed text-zinc-700 dark:text-zinc-300">
+                      {notesLine}
+                    </p>
+                  </div>
+                )}
               </div>
-            ) : null}
-          </>
-        ) : null}
+            </div>
 
-        {notesLine ? (
-          <div className={cn("rounded-xl bg-orange-50/60 p-3.5 ring-1 ring-orange-100/60 dark:bg-orange-950/20 dark:ring-orange-900/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]", variant === "fullscreen" ? "mt-4" : "mt-3")}>
-            <p className="text-[12px] font-black uppercase tracking-[0.14em] text-orange-600/80 dark:text-orange-500/80 mb-1.5">
-              Notes & Requirements
-            </p>
-            <p className={cn("font-medium leading-relaxed text-slate-700 dark:text-zinc-300 whitespace-pre-wrap", variant === "fullscreen" ? "text-[16px]" : "text-[15px]")}>
-              {notesLine}
-            </p>
+            {/* Footer */}
+            <div className="border-t border-zinc-100 p-6 dark:border-zinc-800">
+              <button
+                type="button"
+                className="w-full h-12 rounded-xl bg-zinc-900 text-[15px] font-bold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                onClick={() => setShowFullDetailsModal(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
-        ) : null}
-
-
-
-        {accepted ? (
-          <div className="mt-auto pt-4 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-center text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-            Accepted · waiting
-          </div>
-        ) : (
-          <div className="mt-auto grid grid-cols-2 gap-3 pt-5">
-            <button
-              type="button"
-              className={panelDeclineBtn}
-              onClick={(e) => {
-                e.stopPropagation();
-                void decline();
-              }}
-              disabled={busy != null}
-            >
-              <X className="h-4 w-4" aria-hidden />
-              Decline
-            </button>
-            <button
-              type="button"
-              className={panelAcceptBtn}
-              onClick={(e) => {
-                e.stopPropagation();
-                void accept();
-              }}
-              disabled={busy != null}
-            >
-              <Check className="h-4 w-4" aria-hidden />
-              Accept
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <img
+            src={lightboxSrc}
+            alt=""
+            className="max-h-[90dvh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md ring-1 ring-white/20 transition hover:bg-black/60"
+            onClick={() => setLightboxSrc(null)}
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" strokeWidth={2.25} />
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 

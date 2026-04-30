@@ -967,35 +967,6 @@ export default function FreelancerJobsMatchPage() {
                         variant="fullscreen"
                       />
                     </div>
-
-                    {(() => {
-                      const remaining = Math.max(
-                        0,
-                        filteredRows.length - (mobileSnapIndex + 1),
-                      );
-                      if (remaining <= 0) return null;
-                      const badge = remaining > 10 ? "10+" : String(remaining);
-                      return (
-                        <div
-                          className={cn(
-                            "pointer-events-none absolute inset-x-0 z-[60] flex items-center justify-center",
-                            "bottom-[5.75rem] px-3",
-                          )}
-                          aria-hidden
-                        >
-                          <div className="inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-white shadow-lg backdrop-blur-xl ring-1 ring-inset ring-white/15">
-                            <ChevronDown
-                              className="h-4 w-4 text-white/85 motion-reduce:animate-none animate-bounce"
-                              strokeWidth={2.5}
-                              aria-hidden
-                            />
-                            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-black tabular-nums">
-                              {badge}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
                   </div>
                 ))}
               </div>
