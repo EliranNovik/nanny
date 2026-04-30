@@ -12,11 +12,11 @@ export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [composeOpen, setComposeOpen] = useState(false);
-  
+
   const [showTaggedMe, setShowTaggedMe] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [authorSearch, setAuthorSearch] = useState("");
-  
+
   const authorProfile: ProfileSnippet | null = user ? {
     id: user.id,
     full_name: profile?.full_name ?? null,
@@ -24,11 +24,7 @@ export default function GlobalPostsPage() {
   } : null;
 
   return (
-    <PageFrame variant="fullBleed" className="bg-white dark:bg-black">
-      {/* 
-        Standard Flow Header: Not fixed, not sticky. 
-        It will naturally scroll away as the user moves down the feed.
-      */}
+    <PageFrame variant="fullBleed" className="bg-white dark:bg-black" frameName="community-feed">
       <div className="border-b border-slate-200/60 bg-white dark:border-white/5 dark:bg-zinc-950">
         {/* Simple pro header */}
         <div className="relative overflow-hidden">
@@ -77,7 +73,7 @@ export default function GlobalPostsPage() {
               {/* Search Input */}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors" />
-                <input 
+                <input
                   type="text"
                   placeholder="Search @name…"
                   value={authorSearch}
@@ -105,9 +101,9 @@ export default function GlobalPostsPage() {
               <div className="flex items-center justify-between gap-3 md:justify-end">
                 {/* Tagged me check */}
                 <div className="flex shrink-0 items-center gap-2">
-                  <Switch 
-                    id="tagged-me" 
-                    checked={showTaggedMe} 
+                  <Switch
+                    id="tagged-me"
+                    checked={showTaggedMe}
                     onCheckedChange={setShowTaggedMe}
                     className="scale-75 data-[state=checked]:bg-orange-600"
                   />
@@ -115,7 +111,7 @@ export default function GlobalPostsPage() {
                     Tagged me
                   </Label>
                 </div>
-                
+
                 {/* Sort Toggle */}
                 <button
                   onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
@@ -137,7 +133,7 @@ export default function GlobalPostsPage() {
       <div className="app-desktop-shell py-6 md:py-8 px-0 md:px-4">
         <div className="max-w-3xl mx-auto">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <ProfilePostsFeed 
+            <ProfilePostsFeed
               filterTaggedUserId={showTaggedMe ? user?.id : undefined}
               authorNameFilter={authorSearch}
               sortOrder={sortOrder}
@@ -151,7 +147,7 @@ export default function GlobalPostsPage() {
           open={composeOpen}
           onClose={() => setComposeOpen(false)}
           onPosted={() => {
-            window.location.reload(); 
+            window.location.reload();
           }}
           authorProfile={authorProfile}
         />

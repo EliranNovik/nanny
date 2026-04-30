@@ -81,6 +81,18 @@ export function isServiceCategoryId(
   return !!value && (SERVICE_CATEGORY_IDS as readonly string[]).includes(value);
 }
 
-export function serviceCategoryLabel(id: ServiceCategoryId): string {
-  return SERVICE_CATEGORIES.find((c) => c.id === id)?.label ?? id;
+export function getServiceCategoryImage(id?: string | null): string {
+  if (!id) return "/pexels-rdne-6646861.jpg";
+  return (
+    SERVICE_CATEGORIES.find((c) => c.id === id)?.imageSrc ??
+    "/pexels-rdne-6646861.jpg"
+  );
+}
+
+export function serviceCategoryLabel(id?: string | null): string {
+  if (!id) return "Help request";
+  return (
+    SERVICE_CATEGORIES.find((c) => c.id === id)?.label ??
+    id.replace(/_/g, " ")
+  );
 }

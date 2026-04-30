@@ -15,8 +15,6 @@ import { Input } from "@/components/ui/input";
 import { DualLocationPicker } from "@/components/DualLocationPicker";
 import { CreateJobCityAutocomplete } from "@/components/CreateJobCityAutocomplete";
 import {
-  Clock,
-  MapPin,
   Heart,
   ChevronRight,
   Loader2,
@@ -48,6 +46,7 @@ import {
   serviceCategoryLabel,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
+import { useLiveJobCounts } from "@/hooks/data/useLiveJobCounts";
 
 /** Step 2+ list tiles — white surfaces, emerald selection (matches availability wizard) */
 const JOB_CHOICE_IDLE =
@@ -299,6 +298,7 @@ export default function CreateJobPage() {
     };
   });
 
+  const { data: liveCounts = {} } = useLiveJobCounts();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -391,8 +391,16 @@ export default function CreateJobPage() {
   /** Step 1 = choosing category — no hero image or category name in header */
   const showCategoryHero = Boolean(categoryImageSrc && step > 1);
 
-  const shellTitle =
-    step === 1 ? "Type of help" : categoryLabel || "Type of help";
+  const shellTitle = useMemo(() => {
+    switch (step) {
+      case 1: return "Type of help";
+      case 2: return "Type of Care";
+      case 3: return "Location";
+      case 4: return "Time Duration";
+      case 5: return "Service Details";
+      default: return categoryLabel || "Post your request";
+    }
+  }, [step, categoryLabel]);
 
   const stepTip =
     step >= 1 && step <= TOTAL_STEPS
@@ -431,16 +439,6 @@ export default function CreateJobPage() {
   /** Post now — high-contrast orange CTA */
   const postNowOrangeBase =
     "gap-1.5 border border-orange-400/90 bg-gradient-to-r from-orange-500 to-orange-600 font-bold text-white shadow-lg shadow-orange-950/35 ring-1 ring-orange-300/50 transition hover:from-orange-500 hover:to-orange-500 hover:brightness-105 hover:shadow-orange-900/40 focus-visible:ring-orange-500/60 dark:border-orange-400/70 dark:from-orange-500 dark:to-orange-600 dark:ring-orange-400/30";
-
-  const postNowMobileHeroClass = cn(
-    "mt-0.5 h-10 shrink-0 rounded-full px-4 text-sm sm:h-11 sm:px-[1.125rem] sm:text-[0.9375rem]",
-    postNowOrangeBase,
-  );
-
-  const postNowMobilePlainClass = cn(
-    "mt-0.5 h-11 shrink-0 rounded-full px-4 text-base",
-    postNowOrangeBase,
-  );
 
   function canProceed(): boolean {
     switch (step) {
@@ -585,17 +583,24 @@ export default function CreateJobPage() {
                   />
                   <div className="absolute inset-x-0 top-0 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1 px-2 pb-3 pt-2 sm:gap-2 sm:px-3 sm:pb-4">
                     <div className="flex justify-start">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className={mobileHeroPillClass}
-                        onClick={handleHeaderBack}
-                        aria-label="Back"
-                      >
-                        <ChevronLeft className="h-5 w-5 shrink-0" />
-                        Back
-                      </Button>
+                      {step === 1 ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className={mobileHeroPillClass}
+                          onClick={handleHeaderBack}
+                          aria-label="Back"
+                        >
+                          <ChevronLeft className="h-5 w-5 shrink-0" />
+                          Back
+                        </Button>
+                      ) : (
+                        <div className={cn(mobileHeroPillClass, "opacity-0 pointer-events-none")}>
+                          <ChevronLeft className="h-5 w-5 shrink-0" />
+                          Back
+                        </div>
+                      )}
                     </div>
                     <div className="min-w-0 max-w-[min(100%,18rem)] justify-self-center pt-0.5 text-center">
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 sm:text-[11px]">
@@ -606,63 +611,26 @@ export default function CreateJobPage() {
                       </h1>
                     </div>
                     <div className="flex justify-end">
-                      {step === 3 ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className={mobileHeroPillClass}
-                          onClick={() => setStep(4)}
-                          disabled={!canProceed()}
-                        >
-                          Next
-                          <ChevronRight className="h-5 w-5 shrink-0" />
-                        </Button>
-                      ) : step === 5 ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className={postNowMobileHeroClass}
-                          onClick={handleSubmit}
-                          disabled={loading || !canProceed()}
-                        >
-                          {loading ? (
-                            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-white" />
-                          ) : (
-                            <>
-                              Post now
-                              <Sparkles className="ml-1 h-5 w-5 shrink-0 text-white" />
-                            </>
-                          )}
-                        </Button>
-                      ) : null}
+                      <div className={cn(mobileHeroPillClass, "opacity-0 pointer-events-none")}>
+                        Next
+                        <ChevronRight className="h-5 w-5 shrink-0" />
+                      </div>
                     </div>
                   </div>
-                  <div
-                    className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[min(50%,10rem)] bg-gradient-to-t from-black/95 via-black/60 to-transparent"
-                    aria-hidden
-                  />
-                  <div
-                    className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 sm:px-4 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pt-2"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <p className="mb-1.5 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)] sm:mb-2 sm:text-[11px]">
-                      Step {step} of {TOTAL_STEPS}
-                    </p>
-                    <div className="flex gap-1.5" aria-hidden>
+                  <div className="absolute inset-x-0 bottom-0 z-20 px-3 pb-1">
+                    <div className="flex gap-1" aria-hidden>
                       {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
                         <div
                           key={i}
                           className={cn(
                             "h-1 flex-1 rounded-full transition-colors",
-                            i < step ? "bg-emerald-500" : "bg-white/25",
+                            i < step ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-white/25",
                           )}
                         />
                       ))}
                     </div>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -681,17 +649,24 @@ export default function CreateJobPage() {
             >
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1 px-3 py-2.5 sm:px-4">
                 <div className="flex justify-start">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={mobilePlainHeaderPillClass}
-                    onClick={handleHeaderBack}
-                    aria-label="Back"
-                  >
-                    <ChevronLeft className="h-5 w-5 shrink-0" />
-                    Back
-                  </Button>
+                  {step === 1 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={mobilePlainHeaderPillClass}
+                      onClick={handleHeaderBack}
+                      aria-label="Back"
+                    >
+                      <ChevronLeft className="h-5 w-5 shrink-0" />
+                      Back
+                    </Button>
+                  ) : (
+                    <div className={cn(mobilePlainHeaderPillClass, "opacity-0 pointer-events-none")}>
+                      <ChevronLeft className="h-5 w-5 shrink-0" />
+                      Back
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0 max-w-[min(100%,18rem)] justify-self-center text-center">
                   <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -702,37 +677,25 @@ export default function CreateJobPage() {
                   </h1>
                 </div>
                 <div className="flex justify-end">
-                  {step === 3 ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className={mobilePlainHeaderPillClass}
-                      onClick={() => setStep(4)}
-                      disabled={!canProceed()}
-                    >
-                      Next
-                      <ChevronRight className="h-5 w-5 shrink-0" />
-                    </Button>
-                  ) : step === 5 ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className={postNowMobilePlainClass}
-                      onClick={handleSubmit}
-                      disabled={loading || !canProceed()}
-                    >
-                      {loading ? (
-                        <Loader2 className="h-5 w-5 shrink-0 animate-spin text-white" />
-                      ) : (
-                        <>
-                          Post now
-                          <Sparkles className="ml-1 h-5 w-5 shrink-0 text-white" />
-                        </>
+                  <div className={cn(mobilePlainHeaderPillClass, "opacity-0 pointer-events-none")}>
+                    Next
+                    <ChevronRight className="h-5 w-5 shrink-0" />
+                  </div>
+                </div>
+              </div>
+              <div className="px-3 pb-1.5 sm:px-4">
+                <div className="flex gap-1" aria-hidden>
+                  {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "h-1 flex-1 rounded-full transition-colors",
+                        i < step
+                          ? "bg-emerald-500"
+                          : "bg-emerald-500/15 dark:bg-emerald-400/10",
                       )}
-                    </Button>
-                  ) : null}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
@@ -741,7 +704,7 @@ export default function CreateJobPage() {
         )}
       </div>
 
-      <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pb-8 pt-5 md:pt-0">
+      <div className="app-desktop-shell mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pb-8 pt-2 md:pt-0">
         <div className="hidden items-start justify-between gap-4 md:flex">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -767,61 +730,23 @@ export default function CreateJobPage() {
                 />
               </div>
             ) : null}
-            {step === 3 ? (
-              <Button
-                type="button"
-                className="mt-0.5 shrink-0 font-semibold"
-                onClick={() => setStep(4)}
-                disabled={!canProceed()}
-              >
-                Next
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            ) : step === 5 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className={cn(
-                  "mt-0.5 shrink-0 rounded-full px-5 py-2.5 text-sm font-bold sm:text-base",
-                  postNowOrangeBase,
-                )}
-                onClick={handleSubmit}
-                disabled={loading || !canProceed()}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-white" />
-                    <span className="text-white">Posting…</span>
-                  </>
-                ) : (
-                  <>
-                    Post now
-                    <Sparkles className="ml-1 h-4 w-4 shrink-0 text-white" />
-                  </>
-                )}
-              </Button>
-            ) : null}
           </div>
         </div>
 
-        <div
-          className={cn(
-            "flex gap-1.5",
-            showCategoryHero ? "hidden md:flex" : "flex",
-          )}
-          aria-hidden
-        >
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div
-              key={i}
-              className={cn(
-                "h-1 flex-1 rounded-full transition-colors",
-                i < step
-                  ? "bg-emerald-500"
-                  : "bg-emerald-500/15 dark:bg-emerald-400/10",
-              )}
-            />
-          ))}
+        <div className="hidden md:block">
+          <div className="flex gap-1" aria-hidden>
+            {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "h-1 flex-1 rounded-full transition-colors",
+                  i < step
+                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                    : "bg-emerald-500/15 dark:bg-emerald-400/10",
+                )}
+              />
+            ))}
+          </div>
         </div>
 
         {stepTip ? (
@@ -843,36 +768,6 @@ export default function CreateJobPage() {
         ) : null}
 
         <div className="animate-fade-in">
-          <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground md:mb-6">
-            {step === 1 && (
-              <>
-                <Sparkles className="w-5 h-5 text-primary shrink-0" /> Type of
-                Help
-              </>
-            )}
-            {step === 2 && (
-              <>
-                <Clock className="w-5 h-5 text-primary shrink-0" /> Type of Care
-              </>
-            )}
-            {step === 3 && (
-              <>
-                <MapPin className="w-5 h-5 text-primary shrink-0" /> Location
-              </>
-            )}
-            {step === 4 && (
-              <>
-                <Clock className="w-5 h-5 text-primary shrink-0" /> Time
-                Duration
-              </>
-            )}
-            {step === 5 && (
-              <>
-                <Heart className="w-5 h-5 text-primary shrink-0" /> Service
-                Details
-              </>
-            )}
-          </h2>
           <div>
             {error && (
               <div className="p-3 mb-4 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -896,7 +791,7 @@ export default function CreateJobPage() {
                       "shadow-md transition-[transform,box-shadow] duration-200 hover:shadow-lg active:scale-[0.97]",
                       "focus-visible:ring-2 focus-visible:ring-emerald-500/65 focus-visible:ring-inset",
                       jobData.service_type === type.id &&
-                        "ring-2 ring-emerald-500 ring-offset-1 ring-offset-background md:ring-offset-2",
+                      "ring-2 ring-emerald-500 ring-offset-1 ring-offset-background md:ring-offset-2",
                     )}
                   >
                     <img
@@ -904,20 +799,31 @@ export default function CreateJobPage() {
                       alt=""
                       className="absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-200 group-hover:scale-105 group-active:scale-[0.98] group-active:brightness-110"
                     />
+                    {liveCounts[type.id] > 0 && (
+                      <div className="absolute right-1.5 top-1.5 z-[10] flex h-6 items-center gap-1.5 rounded-full bg-red-500 pl-1.5 pr-2.5 text-[10px] font-black uppercase tracking-tight text-white shadow-[0_4px_12px_rgba(239,68,68,0.45)] ring-1.5 ring-white animate-in zoom-in-50 duration-300">
+                        <div className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
+                          <div className="absolute inset-0 animate-ping rounded-full bg-white/70" />
+                          <div className="relative block h-1.5 w-1.5 rounded-full bg-white" />
+                        </div>
+                        <span className="truncate">
+                          {liveCounts[type.id]} Live Now
+                        </span>
+                      </div>
+                    )}
                     <div
-                      className="pointer-events-none absolute inset-0 z-[1] bg-black/35 transition-opacity duration-200 group-active:bg-black/25"
+                      className="pointer-events-none absolute inset-0 z-[1] bg-black/25 transition-opacity duration-200 group-active:bg-black/15"
                       aria-hidden
                     />
                     <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/95 via-black/75 to-transparent pt-14 pb-1 px-1 sm:pt-24 sm:pb-2 sm:px-2 md:pt-28"
+                      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black via-black/90 to-transparent pt-20 pb-1 px-1 sm:pt-28 sm:pb-2 sm:px-2 md:pt-32"
                       aria-hidden
                     />
                     <div className="absolute inset-x-0 bottom-0 z-[2] flex flex-col items-center justify-end px-1.5 pb-4 pt-8 text-center sm:px-2 sm:pb-6 sm:pt-10 md:pb-8 md:pt-12">
-                      <span className="text-base font-semibold leading-snug tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] max-md:line-clamp-2 sm:text-sm md:text-base lg:text-lg">
+                      <span className="text-lg font-black leading-tight tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-md:line-clamp-2 sm:text-base md:text-lg lg:text-xl">
                         {type.label}
                       </span>
                       {type.description ? (
-                        <span className="mt-1 max-w-[98%] text-xs font-medium leading-snug text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)] max-md:line-clamp-2 sm:mt-1 sm:text-[10px] md:text-xs">
+                        <span className="mt-1.5 max-w-[98%] text-[13px] font-bold leading-snug text-white/95 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)] max-md:line-clamp-2 sm:mt-1 sm:text-[11px] md:text-xs">
                           {type.description}
                         </span>
                       ) : null}
@@ -1204,6 +1110,47 @@ export default function CreateJobPage() {
               </div>
             )}
 
+            {/* Bottom Navigation Actions (Steps 2-5 only) */}
+            {step > 1 && (
+              <div className="mt-10 flex flex-col gap-3 pb-8 px-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-16 w-full text-lg font-black transition-all shadow-xl active:scale-[0.98]",
+                    step === TOTAL_STEPS
+                      ? postNowOrangeBase
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-950/20 border-b-4 border-emerald-800 active:border-b-0 active:translate-y-[2px]"
+                  )}
+                  onClick={step === TOTAL_STEPS ? handleSubmit : () => setStep((s: number) => s + 1)}
+                  disabled={loading || !canProceed()}
+                >
+                  {step === TOTAL_STEPS ? (
+                    loading ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-white" />
+                    ) : (
+                      <>
+                        Post My Request Now
+                        <Sparkles className="ml-2 h-6 w-6 text-white" />
+                      </>
+                    )
+                  ) : (
+                    <>
+                      Next Step
+                      <ChevronRight className="ml-2 h-6 w-6" />
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-14 w-full text-lg font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 active:scale-[0.98]"
+                  onClick={handleHeaderBack}
+                >
+                  <ChevronLeft className="mr-2 h-5 w-5" /> Back
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -47,7 +47,9 @@ import {
   ALL_HELP_CATEGORY_ID,
   DISCOVER_HOME_CATEGORIES,
   isServiceCategoryId,
+  getServiceCategoryImage,
 } from "@/lib/serviceCategories";
+import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
 
@@ -114,7 +116,7 @@ export function DiscoverHomeActionFirst({
 
   const [liveHelpingJobs, setLiveHelpingJobs] = useState<any[]>([]);
   const [liveHelpingProfiles, setLiveHelpingProfiles] = useState<Map<string, any>>(new Map());
-  const [dismissedLiveJobIds, setDismissedLiveJobIds] = useState<string[]>([]);
+  const [dismissedLiveJobIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user?.id || isHire) {
@@ -293,14 +295,14 @@ export function DiscoverHomeActionFirst({
     const bottomOffset =
       "bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)]";
     const badgeClass =
-      "absolute -right-1 -top-1 z-10 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums text-white shadow-md bg-red-500 ring-2 ring-white";
+      "absolute -right-1.5 -top-1.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums text-white shadow-lg bg-red-500 border-none";
 
     const boxClass = cn(
-      "relative flex min-h-[6.5rem] flex-1 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5",
-      "bg-white text-slate-900 shadow-[0_12px_32px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.96]",
+      "relative flex min-h-[5.5rem] flex-1 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5",
+      "bg-zinc-950/40 text-white shadow-[0_12px_24px_rgba(0,0,0,0.2)] backdrop-blur-xl transition-transform active:scale-[0.96]",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-      "dark:border-white/10 dark:bg-zinc-800/95 dark:text-zinc-100",
-      "border-slate-200/90",
+      "dark:border-white/10 dark:bg-zinc-800/40 dark:text-zinc-100",
+      "border-white/10",
     );
 
     if (isHire) {
@@ -324,7 +326,7 @@ export function DiscoverHomeActionFirst({
               }`}
             >
               <Search
-                className="h-8 w-8 text-[#7B61FF]"
+                className="h-8 w-8 text-white"
                 strokeWidth={2.6}
                 aria-hidden
               />
@@ -348,7 +350,7 @@ export function DiscoverHomeActionFirst({
               className={cn(
                 boxClass,
                 postLivePulseClass,
-                "border-transparent bg-[#7B61FF] text-white",
+                "border-transparent bg-indigo-600/80 text-white shadow-indigo-500/20",
               )}
               aria-label="Post live"
             >
@@ -370,7 +372,7 @@ export function DiscoverHomeActionFirst({
               }`}
             >
               <ClipboardList
-                className="h-8 w-8 text-[#7B61FF]"
+                className="h-8 w-8 text-white"
                 strokeWidth={2.6}
                 aria-hidden
               />
@@ -408,7 +410,7 @@ export function DiscoverHomeActionFirst({
             }`}
           >
             <UsersRound
-              className="h-8 w-8 text-emerald-600"
+              className="h-8 w-8 text-white"
               strokeWidth={2.6}
               aria-hidden
             />
@@ -433,7 +435,7 @@ export function DiscoverHomeActionFirst({
               className={cn(
                 boxClass,
                 goLivePulseClass,
-                "border-transparent bg-emerald-600 text-white",
+                "border-transparent bg-emerald-600/80 text-white",
               )}
               aria-label="Go live"
             >
@@ -456,7 +458,7 @@ export function DiscoverHomeActionFirst({
             }`}
           >
             <Clock
-              className="h-8 w-8 text-emerald-600"
+              className="h-8 w-8 text-white"
               strokeWidth={2.6}
               aria-hidden
             />
@@ -520,7 +522,7 @@ export function DiscoverHomeActionFirst({
             className={cn(
               boxClass,
               postLivePulseClass,
-              "border-transparent bg-[#7B61FF]/95 text-white ring-[#7B61FF]/35 hover:bg-[#7B61FF]",
+              "border-transparent bg-gradient-to-br from-indigo-600 to-purple-800 text-white shadow-indigo-500/25 ring-indigo-500/20 hover:brightness-110",
             )}
             aria-label="Post live"
           >
@@ -645,20 +647,19 @@ export function DiscoverHomeActionFirst({
   return (
     <div
       className={cn(
-        "flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden md:gap-5",
+        "flex min-h-0 w-full flex-1 flex-col gap-3 md:gap-5",
       )}
     >
       {renderQuickActionDockMobile()}
-      {/* ===== MOBILE ONLY LAYOUT ===== */}
       <div className="flex flex-1 md:hidden flex-col gap-0 pb-[5rem]">
-        <div className="shrink-0 pt-0 px-1">
+        <div className="shrink-0 pt-0 px-0">
           <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
         </div>
 
-        <div className="shrink-0 mt-3 flex flex-col px-2 pb-6">
+        <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
           {isHire ? (
             <div className="flex flex-col">
-              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-[24px] ring-1 ring-black/10 shadow-md min-h-[12rem]">
+              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[12rem]">
                 <img
                   src="/pexels-rdne-6646861.jpg"
                   alt=""
@@ -691,28 +692,43 @@ export function DiscoverHomeActionFirst({
                             e.stopPropagation();
                             navigate(`/client/jobs/${job.id}/live`);
                           }}
-                          className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20 transition-all active:scale-[0.98]"
+                          className="flex w-full items-center gap-4 rounded-[1.25rem] bg-black/65 p-4 text-left shadow-2xl backdrop-blur-xl ring-1 ring-inset ring-white/30 transition-all active:scale-[0.98]"
                         >
+                          {/* Category Image Box - Styled like Explore Page */}
+                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white/10 shadow-lg ring-1 ring-white/10">
+                            <img
+                              src={getServiceCategoryImage(job.service_type)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="pointer-events-none absolute inset-0 bg-black/10" />
+                          </div>
+
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[13px] font-bold text-white truncate">{title}</span>
-                              <span className="text-[11px] font-medium text-white/60">•</span>
-                              <span className="text-[12px] font-semibold text-white/80 truncate">{loc}</span>
+                            <div className="flex items-baseline justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-[16px] font-black text-white truncate leading-tight">{title}</span>
+                                <span className="text-[12px] font-medium text-white/50">•</span>
+                                <span className="text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</span>
+                              </div>
+                              <span className="text-[10px] font-medium text-white/45 whitespace-nowrap shrink-0">
+                                {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                              </span>
                             </div>
                             
-                            <div className="mt-1 flex items-center gap-2">
-                              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                            <div className="mt-1.5 flex items-center gap-2.5">
+                              <span className="text-[12px] font-black uppercase tracking-wider text-emerald-400">
                                 {job.acceptedCount} accepted
                               </span>
                               
                               {avatars.length > 0 && (
-                                <div className="flex -space-x-1.5 overflow-hidden">
+                                <div className="flex -space-x-2 overflow-hidden">
                                   {avatars.slice(0, 3).map((avatar: any, idx: number) => (
-                                    <Avatar key={avatar.id || idx} className="h-5 w-5 border-none shadow-sm">
+                                    <Avatar key={avatar.id || idx} className="h-7 w-7 border-none shadow-md ring-2 ring-black/20">
                                       {avatar.photo_url ? (
                                         <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
                                       ) : null}
-                                      <AvatarFallback className="bg-zinc-800 text-[9px] font-bold text-white">
+                                      <AvatarFallback className="bg-zinc-800 text-[10px] font-black text-white">
                                         {(avatar.full_name || "H").charAt(0)}
                                       </AvatarFallback>
                                     </Avatar>
@@ -721,7 +737,7 @@ export function DiscoverHomeActionFirst({
                               )}
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
+                          <ChevronRight className="h-5 w-5 shrink-0 text-white/70" aria-hidden />
                         </button>
                       );
                     })}
@@ -749,17 +765,29 @@ export function DiscoverHomeActionFirst({
               </section>
 
               {/* Text phrase — BELOW the image */}
-              <div className="w-full px-1 pt-4">
-                <div className="min-w-0">
-                  <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
-                    {HIRE.title}
-                  </h2>
+              <div className="w-full px-4 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
+                      {HIRE.title}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      writeDiscoverHomeIntent("work");
+                    }}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-full bg-slate-100 px-4 py-2.5 text-[13px] font-bold text-slate-700 transition-all active:scale-95 dark:bg-zinc-800 dark:text-zinc-200 border border-slate-200 dark:border-white/5 shadow-sm"
+                  >
+                    Help others?
+                    <ChevronRight className="-mr-0.5 h-4 w-4 opacity-70" aria-hidden />
+                  </button>
                 </div>
               </div>
             </div>
           ) : (
             <div className="flex flex-col">
-              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-[24px] ring-1 ring-black/10 shadow-md min-h-[12rem]">
+              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-none min-h-[12rem]">
                 <img
                   src="/pexels-tima-miroshnichenko-6197046.jpg"
                   alt=""
@@ -827,55 +855,53 @@ export function DiscoverHomeActionFirst({
                         const clientName = client?.full_name || "Client";
                         
                         return (
-                          <div
-                            key={job.id}
-                            className="pointer-events-auto flex items-center justify-between gap-3 rounded-xl bg-black/45 p-3 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20 text-left"
-                          >
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`${explorePath}?mode=work&tab=live_help`);
                               }}
-                              className="min-w-0 flex-1 flex items-center justify-between gap-3 text-left"
+                              className="pointer-events-auto flex w-full items-center gap-4 rounded-[1.25rem] bg-black/65 p-4 shadow-2xl backdrop-blur-xl ring-1 ring-inset ring-white/30 text-left transition-all active:scale-[0.98]"
                             >
+                              {/* Category Image Box - Styled like Explore Page */}
+                              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white/10 shadow-lg ring-1 ring-white/10">
+                                <img
+                                  src={getServiceCategoryImage(job.service_type)}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                                <div className="pointer-events-none absolute inset-0 bg-black/10" />
+                              </div>
+
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[13px] font-bold text-white truncate">{title}</span>
-                                  <span className="text-[11px] font-medium text-white/60">•</span>
-                                  <span className="text-[12px] font-semibold text-white/80 truncate">{loc}</span>
+                                <div className="flex items-baseline justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-[16px] font-black text-white truncate leading-tight">{title}</span>
+                                    <span className="text-[12px] font-medium text-white/50">•</span>
+                                    <span className="text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</span>
+                                  </div>
+                                  <span className="text-[10px] font-medium text-white/45 whitespace-nowrap shrink-0">
+                                    matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                                  </span>
                                 </div>
                                 
-                                <div className="mt-1 flex items-center gap-2">
-                                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                                <div className="mt-2 flex items-center gap-3">
+                                  <span className="text-[12px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
                                     Helping {clientName}
                                   </span>
                                   
                                   {client?.photo_url && (
-                                    <Avatar className="h-5 w-5 border-none shadow-sm">
+                                    <Avatar className="h-7 w-7 border-none shadow-md ring-2 ring-black/20">
                                       <AvatarImage src={client.photo_url} alt={clientName} />
-                                      <AvatarFallback className="bg-zinc-800 text-[9px] font-bold text-white">
+                                      <AvatarFallback className="bg-zinc-800 text-[10px] font-black text-white">
                                         {clientName.charAt(0)}
                                       </AvatarFallback>
                                     </Avatar>
                                   )}
                                 </div>
                               </div>
-                              <ChevronRight className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
+                              <ChevronRight className="h-5 w-5 shrink-0 text-white/70" aria-hidden />
                             </button>
-                            
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDismissedLiveJobIds(prev => [...prev, job.id]);
-                              }}
-                              className="p-1 rounded-full hover:bg-white/10 text-white/60"
-                              aria-label="Dismiss"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
                         );
                       })}
                   </div>
@@ -902,16 +928,45 @@ export function DiscoverHomeActionFirst({
               </section>
 
               {/* Text phrase — BELOW the image */}
-              <div className="w-full px-1 pt-4">
-                <div className="min-w-0">
-                  <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
-                    {workTheme.title}
-                  </h2>
+              <div className="w-full px-4 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
+                      {workTheme.title}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      writeDiscoverHomeIntent("hire");
+                    }}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-full bg-slate-100 px-4 py-2.5 text-[13px] font-bold text-slate-700 transition-all active:scale-95 dark:bg-zinc-800 dark:text-zinc-200 border border-slate-200 dark:border-white/5 shadow-sm"
+                  >
+                    Need help?
+                    <ChevronRight className="-mr-0.5 h-4 w-4 opacity-70" aria-hidden />
+                  </button>
                 </div>
               </div>
             </div>
           )}
         </div>
+
+        <section className="mt-10 px-0 md:px-4 pb-24">
+          <h2 className="mb-4 px-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
+            Community Posts
+          </h2>
+          <ProfilePostsFeed limit={5} />
+          <div className="mt-6 flex justify-center px-4 pb-8">
+            <button
+              type="button"
+              onClick={() => navigate("/community/feed")}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-6 py-3 text-[14px] font-black text-slate-700 transition-all active:scale-95 dark:bg-zinc-800 dark:text-zinc-200 border border-slate-200 dark:border-white/5 shadow-sm"
+            >
+              Show all posts
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </section>
       </div>
 
       {/* ===== DESKTOP ONLY LAYOUT ===== */}
@@ -1050,34 +1105,45 @@ export function DiscoverHomeActionFirst({
                         </span>
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[17px] font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">{title}</span>
-                          <span className="text-[13px] font-medium text-muted-foreground">{loc}</span>
-                          <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
-                            posted {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
-                          </span>
+                      <div className="flex gap-5">
+                        {/* Desktop Category Image */}
+                        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ring-1 ring-black/5 dark:ring-white/10">
+                          <img
+                            src={getServiceCategoryImage(job.service_type)}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
                         </div>
-                        
-                        <div className="mt-4 flex items-center gap-3 border-t border-zinc-200/50 dark:border-zinc-800/50 pt-4">
-                          <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                            {job.acceptedCount} accepted
-                          </span>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[17px] font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">{title}</span>
+                            <span className="text-[13px] font-medium text-muted-foreground">{loc}</span>
+                            <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
+                              posted {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
                           
-                          {avatars.length > 0 && (
-                            <div className="flex -space-x-1.5 overflow-hidden">
-                              {avatars.slice(0, 3).map((avatar: any, idx: number) => (
-                                <Avatar key={avatar.id || idx} className="h-7 w-7 border-2 border-white dark:border-zinc-900 shadow-sm">
-                                  {avatar.photo_url ? (
-                                    <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
-                                  ) : null}
-                                  <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">
-                                    {(avatar.full_name || "H").charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                              ))}
-                            </div>
-                          )}
+                          <div className="mt-4 flex items-center gap-3 border-t border-zinc-200/50 dark:border-zinc-800/50 pt-4">
+                            <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                              {job.acceptedCount} accepted
+                            </span>
+                            
+                            {avatars.length > 0 && (
+                              <div className="flex -space-x-1.5 overflow-hidden">
+                                {avatars.slice(0, 3).map((avatar: any, idx: number) => (
+                                  <Avatar key={avatar.id || idx} className="h-7 w-7 border-2 border-white dark:border-zinc-900 shadow-sm">
+                                    {avatar.photo_url ? (
+                                      <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
+                                    ) : null}
+                                    <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">
+                                      {(avatar.full_name || "H").charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -1120,37 +1186,50 @@ export function DiscoverHomeActionFirst({
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          {client?.photo_url ? (
-                            <Avatar className="h-12 w-12 shadow-sm border border-zinc-200/50 dark:border-zinc-800/50">
-                              <AvatarImage src={client.photo_url} alt={clientName} />
-                              <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-sm font-bold">
-                                {clientName.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-sm font-bold">
-                              {clientName.charAt(0)}
-                            </div>
-                          )}
-                          
-                          <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                            <span className="text-[17px] font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight truncate">
-                              {title}
-                            </span>
-                            <span className="text-[13px] font-medium text-muted-foreground truncate">
-                              {loc}
-                            </span>
-                            <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
-                              matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
-                            </span>
+                        <div className="flex gap-5">
+                          {/* Desktop Category Image */}
+                          <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ring-1 ring-black/5 dark:ring-white/10">
+                            <img
+                              src={getServiceCategoryImage(job.service_type)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
                           </div>
-                        </div>
 
-                        <div className="border-t border-zinc-200/50 dark:border-zinc-800/50 pt-3">
-                          <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                            Helping {clientName}
-                          </span>
+                          <div className="flex flex-1 flex-col gap-4">
+                            <div className="flex items-center gap-3">
+                              {client?.photo_url ? (
+                                <Avatar className="h-12 w-12 shadow-sm border border-zinc-200/50 dark:border-zinc-800/50">
+                                  <AvatarImage src={client.photo_url} alt={clientName} />
+                                  <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-sm font-bold">
+                                    {clientName.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ) : (
+                                <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-sm font-bold">
+                                  {clientName.charAt(0)}
+                                </div>
+                              )}
+                              
+                              <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                                <span className="text-[17px] font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight truncate">
+                                  {title}
+                                </span>
+                                <span className="text-[13px] font-medium text-muted-foreground truncate">
+                                  {loc}
+                                </span>
+                                <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
+                                  matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="border-t border-zinc-200/50 dark:border-zinc-800/50 pt-3">
+                              <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                Helping {clientName}
+                              </span>
+                            </div>
+                          </div>
                         </div>
 
                         <button
@@ -1176,6 +1255,13 @@ export function DiscoverHomeActionFirst({
           <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
           <DiscoverHomeRecentActivity viewerRole={isHire ? "client" : "freelancer"} />
         </div>
+
+        <section className="mt-8 pb-12">
+          <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
+            Community Posts
+          </h2>
+          <ProfilePostsFeed limit={5} />
+        </section>
       </div>
 
       {/* My Requests Modal */}

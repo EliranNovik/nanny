@@ -1458,6 +1458,7 @@ interface ProfilePostsFeedProps {
   sortOrder?: "newest" | "oldest";
   /** Show only posts liked by this user (new social feed). */
   filterLikedByUserId?: string;
+  limit?: number;
 }
 
 export function ProfilePostsFeed({
@@ -1468,6 +1469,7 @@ export function ProfilePostsFeed({
   authorNameFilter,
   sortOrder = "newest",
   filterLikedByUserId,
+  limit,
 }: ProfilePostsFeedProps) {
   const { user, profile: currentProfile } = useAuth();
   const [globalVideoUnmuted, setGlobalVideoUnmuted] = useState(false);
@@ -1632,7 +1634,7 @@ export function ProfilePostsFeed({
 
       const { data: profilePostRows, error: ppErr } = await query
         .order("created_at", { ascending: sortOrder === "oldest" })
-        .limit(userId ? 50 : 100);
+        .limit(limit ?? (userId ? 50 : 100));
 
       if (ppErr) throw ppErr;
       const rawPosts = (profilePostRows ?? []) as {
@@ -1680,7 +1682,7 @@ export function ProfilePostsFeed({
 
         const { data } = await availQuery
           .order("created_at", { ascending: sortOrder === "oldest" })
-          .limit(userId ? 20 : 50);
+          .limit(limit ?? (userId ? 20 : 50));
         availRows = data ?? [];
       } else {
         availRows = [];

@@ -7,7 +7,9 @@ import {
 } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useDiscoverHomeScrollHeader } from "@/context/DiscoverHomeScrollHeaderContext";
+import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
+import { useMemo } from "react";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
 import {
   badgeCountForJobsTab,
@@ -133,6 +135,18 @@ export function BottomNav() {
   const shellCollapseChromeP = isShellScrollCollapseRoute
     ? discoverHeaderCollapseProgress
     : 0;
+
+  const avatars = useDiscoverLiveAvatars();
+  const liveAvatars = useMemo(() => {
+    if (!avatars.data) return [];
+    const all = Object.values(avatars.data).flat();
+    const uniqueMap = new Map<string, any>();
+    for (const av of all) {
+      if (av.helper_user_id) uniqueMap.set(av.helper_user_id, av);
+    }
+    return Array.from(uniqueMap.values());
+  }, [avatars.data]);
+
   const [headerVisible, setHeaderVisible] = useState(true);
   const scrollYRef = useRef(0);
   const headerVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -146,32 +160,21 @@ export function BottomNav() {
       const dy = currentScrollY - prev;
       scrollYRef.current = currentScrollY;
 
-      // Small delay + hysteresis to avoid flicker/stuck states
-      // when the user scrolls up/down quickly.
-      const MIN_DELTA = 10;
-      const HIDE_AFTER_MS = 120;
-      const SHOW_AFTER_MS = 80;
+      // Small hysteresis to avoid flicker.
+      const MIN_DELTA_DOWN = 5;
+      const MIN_DELTA_UP = 3;
 
       // Always show near the top.
-      if (currentScrollY <= 100) {
-        if (headerVisibilityTimerRef.current) {
-          clearTimeout(headerVisibilityTimerRef.current);
-          headerVisibilityTimerRef.current = null;
-        }
+      if (currentScrollY <= 60) {
         setHeaderVisible(true);
         return;
       }
 
-      if (Math.abs(dy) < MIN_DELTA) return;
-
-      const nextVisible = dy < 0;
-      if (headerVisibilityTimerRef.current) {
-        clearTimeout(headerVisibilityTimerRef.current);
+      if (dy > MIN_DELTA_DOWN) {
+        setHeaderVisible(false);
+      } else if (dy < -MIN_DELTA_UP) {
+        setHeaderVisible(true);
       }
-      headerVisibilityTimerRef.current = setTimeout(() => {
-        setHeaderVisible(nextVisible);
-        headerVisibilityTimerRef.current = null;
-      }, nextVisible ? SHOW_AFTER_MS : HIDE_AFTER_MS);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
@@ -185,11 +188,13 @@ export function BottomNav() {
 
   /** Scroll-linked — no CSS transition; transform/opacity follow collapse progress. */
   const shellScrollMobileChromeOverlayStyle: CSSProperties | undefined =
-    isShellScrollCollapseRoute && shellCollapseChromeP > 0
+    isShellScrollCollapseRoute
       ? {
-        transform: `translateY(calc(-1 * ${shellCollapseChromeP * 130}%))`,
-        opacity: Math.max(0, 1 - shellCollapseChromeP),
-        transition: "none",
+        transform: headerVisible
+          ? `translateY(calc(-1 * ${shellCollapseChromeP * 130}%))`
+          : "translateY(-120%)",
+        opacity: headerVisible ? Math.max(0, 1 - (shellCollapseChromeP * 1.5)) : 0,
+        transition: "transform 500ms cubic-bezier(0.22, 1, 0.36, 1), opacity 400ms ease",
       }
       : undefined;
 
@@ -221,6 +226,7 @@ export function BottomNav() {
   const hideMobileAppHeaderChrome =
     pathnameNorm === "/client/create" ||
     pathnameNorm === "/availability/post-now" ||
+    pathnameNorm === "/community/feed" ||
     isHelpersFindPage ||
     isFreelancerJobsMatch;
   /** Own availability, legacy /posts, and public board — category + back live in header */
@@ -855,8 +861,7 @@ export function BottomNav() {
       className={cn(
         "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] transition-[transform,opacity,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
         "border-none bg-background shadow-none backdrop-blur-none dark:bg-background",
-        !headerVisible && !isShellScrollCollapseRoute && "-translate-y-full opacity-0",
-        !isShellScrollCollapseRoute &&
+        !headerVisible && "-translate-y-full opacity-0",
         "motion-reduce:transition-none",
       )}
       style={{
@@ -866,7 +871,7 @@ export function BottomNav() {
       }}
       aria-hidden
     >
-      <div className="h-11 w-full" />
+      <div className="h-9 w-full" />
     </div>
   );
 
@@ -878,12 +883,11 @@ export function BottomNav() {
         mobileSearchOpen || showCommunityHeaderCategoryDropdown
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
           : "right-[max(0.75rem,env(safe-area-inset-right))]",
-        !headerVisible && !isShellScrollCollapseRoute && "-translate-y-full opacity-0",
-        !isShellScrollCollapseRoute &&
+        !headerVisible && "-translate-y-[150%] opacity-0",
         "motion-reduce:transition-none",
       )}
       style={{
-        top: "max(0.75rem, env(safe-area-inset-top))",
+        top: "max(0.5rem, env(safe-area-inset-top))",
         ...shellScrollMobileChromeOverlayStyle,
       }}
     >
@@ -964,18 +968,61 @@ export function BottomNav() {
     <div
       className={cn(
         "md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        !headerVisible && !isShellScrollCollapseRoute && "-translate-y-full opacity-0",
-        !isShellScrollCollapseRoute &&
+        !headerVisible && "-translate-y-[150%] opacity-0",
         "motion-reduce:transition-none",
       )}
       style={{
-        top: "max(0.75rem, env(safe-area-inset-top))",
+        top: "max(0.5rem, env(safe-area-inset-top))",
         left: "max(0.75rem, env(safe-area-inset-left))",
         ...shellScrollMobileChromeOverlayStyle,
       }}
     >
       {isDiscoverHome ? (
-        renderDiscoverHomeLocationChip("mobile")
+        <div className="flex flex-col relative overflow-visible">
+          {/* Default state: Location Chip */}
+          <div
+            className="transition-all duration-300"
+            style={{
+              opacity: 1 - shellCollapseChromeP * 2.5,
+              transform: `translateY(${shellCollapseChromeP * 10}px)`,
+              visibility: shellCollapseChromeP > 0.4 ? "hidden" : "visible",
+            }}
+          >
+            {renderDiscoverHomeLocationChip("mobile")}
+          </div>
+
+          {/* Collapsed state: "Get help now" or Avatars */}
+          <div
+            className="absolute left-1 top-0.5 flex items-center gap-1.5 transition-all duration-300"
+            style={{
+              opacity: Math.max(0, (shellCollapseChromeP - 0.45) * 2),
+              transform: `translateY(${(1 - shellCollapseChromeP) * 12}px)`,
+              visibility: shellCollapseChromeP < 0.35 ? "hidden" : "visible",
+            }}
+          >
+            <div className="flex -space-x-3">
+              {liveAvatars.slice(0, 4).map((av, i) => (
+                <div
+                  key={av.id || i}
+                  className="h-8 w-8 rounded-full border-2 border-white bg-slate-100 dark:border-zinc-900 dark:bg-zinc-800 relative shadow-sm overflow-visible"
+                  style={{ zIndex: 10 - i }}
+                >
+                  <Avatar className="h-full w-full">
+                    <AvatarImage src={av.photo_url || undefined} className="object-cover" />
+                    <AvatarFallback className="text-[10px] font-bold">{av.full_name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 border border-white dark:border-zinc-900" />
+                  </span>
+                </div>
+              ))}
+            </div>
+            <span className="text-[14px] font-black tracking-tight text-slate-900 dark:text-white ml-1">
+              {discoverHomeMode === "hire" ? "Get help" : "Help others"}
+            </span>
+          </div>
+        </div>
       ) : (
         <button
           type="button"
@@ -1233,9 +1280,7 @@ export function BottomNav() {
                       className={cn(
                         "flex h-11 w-11 items-center justify-center rounded-full",
                         isDiscoverHome
-                          ? discoverHomeMode === "work"
-                            ? "bg-emerald-800 text-white ring-1 ring-inset ring-white/25"
-                            : "bg-[#7B61FF] text-white ring-1 ring-inset ring-white/25"
+                          ? "bg-zinc-950 text-white shadow-xl ring-1 ring-inset ring-white/25"
                           : "bg-orange-600 text-white ring-1 ring-inset ring-white/20",
                         "transition-[transform,filter] duration-200 ease-out",
                         "group-hover:brightness-110 group-active:scale-[0.98]",

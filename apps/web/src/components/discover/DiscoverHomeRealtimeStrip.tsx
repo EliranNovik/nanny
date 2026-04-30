@@ -524,7 +524,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
         <div
           className={cn(
-            "-mx-1 gap-3 px-1 pb-0.5",
+            "gap-3 pb-0.5",
             "flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             "md:mx-0 md:grid md:grid-cols-5 md:grid-rows-1 md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none lg:gap-3",
           )}
@@ -559,7 +559,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   <span className="h-4 w-4">{row.categoryIcon}</span>
                 </span>
 
-                <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+                <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                   Live
                 </span>
@@ -615,7 +615,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                     {row.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="absolute top-0 left-0 z-10 inline-flex -translate-x-1.5 -translate-y-1.5 items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                <span className="absolute top-0 left-0 z-10 inline-flex -translate-x-1.5 -translate-y-1.5 items-center gap-1 rounded-full bg-black/75 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
                   <span className="relative flex h-2 w-2" aria-hidden>
                     <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -725,7 +725,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     <div className="space-y-3.5">
       <div
         className={cn(
-          "-mx-1 gap-3 px-1 pb-0.5",
+          "gap-3 pb-0.5",
           "flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "md:mx-0 md:grid md:grid-cols-5 md:grid-rows-1 md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none lg:gap-3",
         )}
@@ -759,7 +759,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   {it.name.charAt(0)}
                 </div>
               )}
-              <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
+              <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
                 <span className="relative flex h-2 w-2" aria-hidden>
                   <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -772,19 +772,19 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 <span className="h-4 w-4">{it.categoryIcon}</span>
               </span>
               {it.distanceKm != null ? (
-                <span className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[10px] font-bold text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                <span className="absolute bottom-3.5 left-2.5 z-[3] inline-flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
                   <MapPin className="h-2.5 w-2.5" strokeWidth={3} />
                   <span>
                     {it.distanceKm < 1 ? `${Math.round(it.distanceKm * 1000)}m` : `${it.distanceKm.toFixed(1)}km`}
                   </span>
                 </span>
               ) : it.can_start_in_label ? (
-                <span className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                <span className="absolute bottom-3.5 left-2.5 z-[3] inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
                   <Zap className="h-2.5 w-2.5" strokeWidth={3} />
-                  <span>Ready in {it.can_start_in_label.toLowerCase() === "immediately" ? "Now" : it.can_start_in_label}</span>
+                  <span>Ready {it.can_start_in_label.toLowerCase() === "immediately" ? "Now" : it.can_start_in_label}</span>
                 </span>
               ) : it.responds_within_label ? (
-                <span className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full bg-indigo-600 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                <span className="absolute bottom-3.5 left-2.5 z-[3] inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
                   <MessageCircle className="h-2.5 w-2.5" strokeWidth={3} />
                   <span>Replies in {it.responds_within_label}</span>
                 </span>
@@ -832,7 +832,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   {it.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute top-0 left-0 z-10 inline-flex -translate-x-1.5 -translate-y-1.5 items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+              <span className="absolute top-0 left-0 z-10 inline-flex -translate-x-1.5 -translate-y-1.5 items-center gap-1 rounded-full bg-black/75 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
                 <span className="relative flex h-2 w-2" aria-hidden>
                   <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -840,7 +840,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 Live
               </span>
               {it.distanceKm != null ? (
-                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-zinc-900 px-2.5 py-1 shadow-lg ring-1 ring-inset ring-white/20 backdrop-blur-md">
+                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-[20%] items-center gap-1.5 whitespace-nowrap rounded-full bg-zinc-900 px-2.5 py-1.5 shadow-lg ring-1 ring-inset ring-white/20 backdrop-blur-md">
                   <MapPin className="h-3 w-3 shrink-0 text-white" strokeWidth={2.5} aria-hidden />
                   <div className="flex items-baseline gap-1">
                     <span className="text-[10px] font-bold tracking-tight text-white">
@@ -850,17 +850,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   </div>
                 </span>
               ) : it.can_start_in_label ? (
-                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-[#2ca36a] px-2.5 py-0.5 shadow-lg ring-1 ring-inset ring-white/20">
+                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-[20%] items-center gap-1 whitespace-nowrap rounded-full bg-[#2ca36a] px-2.5 py-1.5 shadow-lg ring-1 ring-inset ring-white/20">
                   <Zap className="h-3.5 w-3.5 shrink-0 text-white" strokeWidth={2.5} aria-hidden />
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[7px] font-medium uppercase tracking-wide text-white/90">Ready in</span>
+                    <span className="text-[7px] font-medium uppercase tracking-wide text-white/90">Ready</span>
                     <span className="text-[9px] font-bold tracking-tight text-white">
                       {it.can_start_in_label.toLowerCase() === "immediately" ? "Now" : it.can_start_in_label}
                     </span>
                   </div>
                 </span>
               ) : it.responds_within_label ? (
-                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#2c2b4c]/90 px-2.5 py-0.5 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                <span className="absolute bottom-0 left-1/2 z-10 inline-flex -translate-x-1/2 translate-y-[20%] items-center gap-1.5 whitespace-nowrap rounded-full bg-[#2c2b4c]/90 px-2.5 py-1.5 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
                   <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#5c4b8e]">
                     <MessageCircle className="h-2 w-2 text-white" strokeWidth={2.5} aria-hidden />
                   </div>
@@ -881,7 +881,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 </p>
                 {it.is_verified && (
                   <BadgeCheck
-                    className="h-3.5 w-3.5 shrink-0 fill-emerald-500 text-white"
+                    className="h-5 w-5 shrink-0 fill-emerald-500 text-white"
                     strokeWidth={2.5}
                   />
                 )}

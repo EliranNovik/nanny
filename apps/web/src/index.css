@@ -211,12 +211,11 @@
      * Content fills between fixed app header + BottomNav padding (see .app-main-scroll-pad).
      */
     .app-main-scroll-pad:has([data-discover-home-page]) {
-      height: 100dvh;
-      max-height: 100dvh;
+      height: auto;
+      max-height: none;
       min-height: 0;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      overflow: visible;
+      display: block;
     }
   }
 
@@ -258,7 +257,7 @@
    * with BottomNav mobileScrollHeaderLayer (padding + h-10 + padding).
    */
   .app-content-below-fixed-header {
-    padding-top: calc(0.5rem + 2.5rem + 0.5rem);
+    padding-top: calc(0.5rem + 2.25rem + 0.5rem);
   }
 
   /* Create job / post availability: mobile app header hidden — #root safe-area only */
@@ -272,12 +271,12 @@
 
     /* Discover home: fixed top padding — tab toggle does not collapse on scroll */
     .app-content-below-fixed-header:has([data-discover-home-page]) {
-      padding-top: calc(0.5rem + 2.5rem + 0.5rem);
+      padding-top: calc(0.5rem + 2.25rem + 0.5rem);
     }
 
     /* /jobs: fixed top padding — tab strip does not collapse on scroll */
     .app-content-below-fixed-header:has([data-unified-jobs-page]) {
-      padding-top: calc(0.5rem + 2.5rem + 0.5rem);
+      padding-top: calc(0.5rem + 2.25rem + 0.5rem);
     }
 
     /**
@@ -285,7 +284,7 @@
      */
     .app-content-below-fixed-header:has([data-liked-page]) {
       padding-top: calc(
-        (1 - var(--mobile-shell-collapse-progress, 0)) * (0.5rem + 2.5rem + 0.5rem)
+        (1 - var(--mobile-shell-collapse-progress, 0)) * (0.5rem + 2.25rem + 0.5rem)
       );
     }
   }
