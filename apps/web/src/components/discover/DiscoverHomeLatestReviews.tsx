@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { ChevronRight, Sparkles, Star, X } from "lucide-react";
+import { ChevronRight, Sparkles, Star, X, BadgeCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -16,11 +16,13 @@ type ReviewRow = {
     id: string;
     full_name: string | null;
     photo_url: string | null;
+    is_verified: boolean | null;
   } | null;
   reviewee: {
     id: string;
     full_name: string | null;
     photo_url: string | null;
+    is_verified: boolean | null;
   } | null;
 };
 
@@ -77,12 +79,14 @@ export function DiscoverHomeLatestReviews({ limit = 6 }: { limit?: number }) {
             reviewer:profiles!reviewer_id (
               id,
               full_name,
-              photo_url
+              photo_url,
+              is_verified
             ),
             reviewee:profiles!reviewee_id (
               id,
               full_name,
-              photo_url
+              photo_url,
+              is_verified
             )
           `,
         )
@@ -206,8 +210,15 @@ export function DiscoverHomeLatestReviews({ limit = 6 }: { limit?: number }) {
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="mb-3 flex items-start justify-between gap-4">
             <div className="min-w-0 pr-2">
-              <h4 className="truncate text-xl font-black text-gray-900 transition-colors dark:text-white">
+              <h4 className="truncate text-xl font-black text-gray-900 transition-colors dark:text-white flex items-center gap-1.5">
                 {reviewerName}
+                {r.reviewer?.is_verified && (
+                  <BadgeCheck
+                    className="h-5 w-5 shrink-0 translate-y-[1px] fill-emerald-500 text-white"
+                    strokeWidth={2.5}
+                    aria-label="Verified"
+                  />
+                )}
               </h4>
               <p className="mt-1 truncate text-[13px] font-semibold text-slate-500 dark:text-slate-400">
                 for{" "}
@@ -234,6 +245,13 @@ export function DiscoverHomeLatestReviews({ limit = 6 }: { limit?: number }) {
                   }
                 >
                   {revieweeName}
+                  {r.reviewee?.is_verified && (
+                    <BadgeCheck
+                      className="ml-1 h-3.5 w-3.5 shrink-0 translate-y-[1px] fill-emerald-500 text-white"
+                      strokeWidth={2.5}
+                      aria-label="Verified"
+                    />
+                  )}
                 </button>
                 {r.created_at ? (
                   <span className="text-slate-500/90 dark:text-slate-400/90">

@@ -31,6 +31,7 @@ export type DiscoverOpenHelpRequestRow = {
   client_reply_sample_count?: number | null;
   location_lat?: number | null;
   location_lng?: number | null;
+  is_verified?: boolean | null;
 };
 
 /**
@@ -82,19 +83,20 @@ export function useDiscoverOpenHelpRequests(
       );
       if (clientIds.length > 0) {
         const [profRes, statsRes] = await Promise.all([
-          supabase.from("profiles").select("id, average_rating, total_ratings").in("id", clientIds),
+          supabase.from("profiles").select("id, average_rating, total_ratings, is_verified").in("id", clientIds),
           supabase.rpc("get_client_chat_response_stats", { p_client_ids: clientIds }),
         ]);
 
         const { data: profs, error: profErr } = profRes;
         const { data: statsRows } = statsRes;
 
-        const profMap = new Map<string, { average_rating: number | null; total_ratings: number | null }>();
+        const profMap = new Map<string, { average_rating: number | null; total_ratings: number | null; is_verified: boolean | null }>();
         if (!profErr && profs && profs.length > 0) {
-          for (const p of profs as Array<{ id: string; average_rating: number | null; total_ratings: number | null }>) {
+          for (const p of profs as Array<{ id: string; average_rating: number | null; total_ratings: number | null; is_verified: boolean | null }>) {
             profMap.set(p.id, {
               average_rating: p.average_rating != null ? Number(p.average_rating) : null,
               total_ratings: p.total_ratings != null ? Number(p.total_ratings) : null,
+              is_verified: p.is_verified ?? null,
             });
           }
         }
@@ -133,6 +135,7 @@ export function useDiscoverOpenHelpRequests(
             ...r,
             client_average_rating: hit?.average_rating ?? null,
             client_total_ratings: hit?.total_ratings ?? null,
+            is_verified: hit?.is_verified ?? null,
             client_avg_reply_seconds: statHit?.avg_seconds ?? null,
             client_reply_sample_count: statHit?.sample_count ?? null,
             location_lat: locHit?.lat ?? null,

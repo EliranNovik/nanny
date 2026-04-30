@@ -19,6 +19,7 @@ export type DiscoverLiveAvatarEntry = {
   live_can_start_in?: string | null;
   avg_reply_seconds?: number | null;
   reply_sample_count?: number | null;
+  is_verified?: boolean | null;
 };
 
 export function useDiscoverFeed() {
@@ -88,7 +89,8 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
             location_lat,
             location_lng,
             average_rating,
-            total_ratings
+            total_ratings,
+            is_verified
           )
         `,
         )
@@ -145,6 +147,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
               location_lng: number | null;
               average_rating?: number | null;
               total_ratings?: number | null;
+              is_verified?: boolean | null;
             }
           | null;
       }[]) {
@@ -187,6 +190,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
             live_can_start_in: row.live_can_start_in ?? null,
             avg_reply_seconds: replyStats[authorId]?.avg_seconds ?? null,
             reply_sample_count: replyStats[authorId]?.sample_count ?? null,
+            is_verified: prof?.is_verified ?? null,
           });
         }
       }

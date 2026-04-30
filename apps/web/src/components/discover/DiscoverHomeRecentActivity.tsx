@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { Loader2, MessageCircle, Sparkles, Star, UserPlus } from "lucide-react";
+import { Loader2, MessageCircle, Sparkles, Star, UserPlus, BadgeCheck } from "lucide-react";
 
 export type DiscoverHomeRecentActivityViewer = "client" | "freelancer";
 
@@ -18,6 +18,7 @@ type ActivityRow = {
   subtitle?: string;
   href: string;
   rating?: number;
+  is_verified?: boolean;
 };
 
 function clampNote(s: string, n: number): string {
@@ -86,7 +87,7 @@ export function DiscoverHomeRecentActivity({
             rating,
             review_text,
             created_at,
-            reviewer:profiles!reviewer_id ( id, full_name, photo_url )
+            reviewer:profiles!reviewer_id ( id, full_name, photo_url, is_verified )
           `,
           )
           .eq("reviewee_id", uid)
@@ -181,18 +182,19 @@ export function DiscoverHomeRecentActivity({
 
       const profilesMap = new Map<
         string,
-        { full_name: string | null; photo_url: string | null }
+        { full_name: string | null; photo_url: string | null; is_verified: boolean | null }
       >();
       if (profileIds.size > 0) {
         const { data: profs, error: pErr } = await supabase
           .from("profiles")
-          .select("id, full_name, photo_url")
+          .select("id, full_name, photo_url, is_verified")
           .in("id", [...profileIds]);
         if (!pErr && profs) {
           for (const p of profs) {
             profilesMap.set(p.id as string, {
               full_name: p.full_name as string | null,
               photo_url: p.photo_url as string | null,
+              is_verified: p.is_verified as boolean | null,
             });
           }
         }
@@ -232,12 +234,14 @@ export function DiscoverHomeRecentActivity({
           ? row.reviewer[0]
           : row.reviewer;
         const name = rev?.full_name?.trim() || "Someone";
+        const verified = !!rev?.is_verified;
         merged.push({
           kind: "review",
           id: `rev-${row.id}`,
           at: row.created_at,
           rating: Number(row.rating) || 5,
           title: `${name} left you a review`,
+          is_verified: verified,
           subtitle: row.review_text
             ? clampNote(row.review_text, 100)
             : undefined,
@@ -255,6 +259,7 @@ export function DiscoverHomeRecentActivity({
           id: `com-${c.id}`,
           at: c.created_at,
           title: `${name} commented on “${clampNote(postTitle, 40)}”`,
+          is_verified: !!prof?.is_verified,
           subtitle: clampNote(c.body, 120),
           href: `/public/posts?post=${encodeURIComponent(c.post_id)}`,
         });
@@ -270,6 +275,7 @@ export function DiscoverHomeRecentActivity({
           id: `hir-${h.id}`,
           at: h.created_at,
           title: `${name} sent hire interest`,
+          is_verified: !!prof?.is_verified,
           subtitle: `On “${clampNote(postTitle, 48)}” · ${st}`,
           href: `/availability/post/${encodeURIComponent(h.community_post_id)}/hires`,
         });
@@ -364,8 +370,15 @@ export function DiscoverHomeRecentActivity({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-sm font-semibold text-foreground">
+                    <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                       {row.title}
+                      {row.is_verified && (
+                        <BadgeCheck
+                          className="h-5 w-5 shrink-0 translate-y-[1px] fill-emerald-500 text-white"
+                          strokeWidth={2.5}
+                          aria-label="Verified"
+                        />
+                      )}
                     </span>
                     {row.kind === "review" && row.rating != null ? (
                       <StarRow rating={row.rating} />

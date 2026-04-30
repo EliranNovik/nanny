@@ -33,6 +33,7 @@ import {
   Zap,
   MessageCircle,
   MapPin,
+  BadgeCheck,
 } from "lucide-react";
 import {
   DISCOVER_STROKE,
@@ -100,6 +101,7 @@ type WorkRowItem = {
   total_ratings: number | null;
   responds_within_label?: string | null;
   distanceKm?: number | null;
+  is_verified?: boolean | null;
 };
 
 function categoryIconNode(serviceType: string | null | undefined): React.ReactNode {
@@ -158,6 +160,7 @@ function mapJobLikeToWorkRow(opts: {
   total_ratings?: number | null | undefined;
   responds_within_label?: string | null;
   distanceKm?: number | null;
+  is_verified?: boolean | null;
 }): WorkRowItem {
   const cat = opts.serviceType;
   const title =
@@ -195,6 +198,7 @@ function mapJobLikeToWorkRow(opts: {
     total_ratings: opts.total_ratings ?? null,
     responds_within_label: opts.responds_within_label ?? null,
     distanceKm: opts.distanceKm ?? null,
+    is_verified: opts.is_verified ?? null,
   };
 }
 
@@ -259,6 +263,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       can_start_in_label: string | null;
       responds_within_label: string | null;
       distanceKm: number | null;
+      is_verified: boolean | null;
+      categoryIcon: React.ReactNode;
     }[] = [];
     for (const cat of DISCOVER_HOME_CATEGORIES) {
       if (cat.id === ALL_HELP_CATEGORY_ID) continue;
@@ -292,6 +298,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           }
           return first.distance_km ?? null;
         })(),
+        is_verified: first.is_verified ?? null,
+        categoryIcon: categoryIconNode(cat.id),
       });
       if (out.length >= MAX) break;
     }
@@ -334,6 +342,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             }
             return null;
           })(),
+          is_verified: r.is_verified ?? null,
         }),
       );
 
@@ -397,6 +406,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               }
               return null;
             })(),
+            is_verified: jr.profiles?.is_verified ?? null,
           });
         },
       );
@@ -425,7 +435,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       type="button"
       onClick={onBrowseTap}
       className={cn(
-        "flex shrink-0 flex-col items-center gap-1 text-center",
+        "flex shrink-0 flex-col items-center gap-2 text-center min-h-24 justify-center",
         "outline-none focus-visible:rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2",
         variant === "hire"
           ? "focus-visible:ring-[#1e3a8a]/45"
@@ -434,7 +444,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     >
       <span
         className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-full shadow-sm ring-2 transition-transform active:scale-[0.97]",
+          "flex h-16 w-16 items-center justify-center rounded-full shadow-sm ring-2 transition-transform active:scale-[0.97]",
           variant === "hire"
             ? "bg-[#1e3a8a]/12 text-[#1e3a8a] ring-[#1e3a8a]/25 dark:bg-blue-950/50 dark:text-blue-300"
             : "bg-[#065f46]/12 text-[#065f46] ring-[#065f46]/25 dark:bg-emerald-950/50 dark:text-emerald-300",
@@ -443,17 +453,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       >
         {variant === "hire" ? (
           <UsersRound
-            className={discoverIcon.md}
+            className="w-8 h-8"
             strokeWidth={DISCOVER_STROKE}
           />
         ) : (
           <ClipboardList
-            className={discoverIcon.md}
+            className="w-8 h-8"
             strokeWidth={DISCOVER_STROKE}
           />
         )}
       </span>
-      <span className="max-w-[5rem] text-[10px] font-bold leading-tight text-foreground">
+      <span className="max-w-[6rem] text-xs font-bold leading-tight text-foreground">
         {browseLabel}
       </span>
     </button>
@@ -543,6 +553,12 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   className="h-full w-full object-cover"
                   loading="lazy"
                 />
+                
+                {/* Category Badge - Desktop */}
+                <span className="absolute right-2 top-2 z-[3] flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                  <span className="h-4 w-4">{row.categoryIcon}</span>
+                </span>
+
                 <span className="absolute left-2 top-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-md">
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                   Live
@@ -560,13 +576,18 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 aria-hidden
               />
                 <div className="absolute inset-x-0 bottom-0 z-[2] px-3 pb-2.5 pt-10">
-                  <p
-                    className={cn(
-                      "truncate text-lg font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]",
+                  <div className="flex items-baseline gap-1.5 min-w-0">
+                    <p className="truncate text-lg font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
+                      {shortDisplayName(row.name)}
+                    </p>
+                    {row.is_verified && (
+                      <BadgeCheck
+                        className="h-[22px] w-[22px] shrink-0 translate-y-[1px] fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
+                        strokeWidth={2.5}
+                        aria-label="Verified"
+                      />
                     )}
-                  >
-                    {shortDisplayName(row.name)}
-                  </p>
+                  </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[12px] font-semibold tabular-nums text-white/95">
                     <Star
                       className="h-3.5 w-3.5 shrink-0 text-emerald-300"
@@ -614,11 +635,18 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 ) : null}
               </div>
 
-              {/* TEXT CONTENT (Aligned to match Hire cards on mobile) */}
               <div className="min-w-0 text-left md:p-4 md:pt-3">
-                <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50 md:hidden">
-                  {shortDisplayName(row.name)}
-                </p>
+                <div className="flex items-center gap-1.5 md:hidden">
+                  <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+                    {shortDisplayName(row.name)}
+                  </p>
+                  {row.is_verified && (
+                    <BadgeCheck
+                      className="h-5 w-5 shrink-0 fill-emerald-500 text-white"
+                      strokeWidth={2.5}
+                    />
+                  )}
+                </div>
 
                 <p className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
                   {row.cityLine}
@@ -738,22 +766,46 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 </span>
                 Live
               </span>
-              {it.distanceKm != null && (
+              
+              {/* Category Badge - Desktop */}
+              <span className="absolute right-2 top-2 z-[3] flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                <span className="h-4 w-4">{it.categoryIcon}</span>
+              </span>
+              {it.distanceKm != null ? (
                 <span className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[10px] font-bold text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
                   <MapPin className="h-2.5 w-2.5" strokeWidth={3} />
                   <span>
                     {it.distanceKm < 1 ? `${Math.round(it.distanceKm * 1000)}m` : `${it.distanceKm.toFixed(1)}km`}
                   </span>
                 </span>
-              )}
+              ) : it.can_start_in_label ? (
+                <span className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                  <Zap className="h-2.5 w-2.5" strokeWidth={3} />
+                  <span>Ready in {it.can_start_in_label.toLowerCase() === "immediately" ? "Now" : it.can_start_in_label}</span>
+                </span>
+              ) : it.responds_within_label ? (
+                <span className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full bg-indigo-600 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-md ring-1 ring-white/10">
+                  <MessageCircle className="h-2.5 w-2.5" strokeWidth={3} />
+                  <span>Replies in {it.responds_within_label}</span>
+                </span>
+              ) : null}
               <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48%] bg-gradient-to-t from-black/80 via-black/50 to-transparent"
                 aria-hidden
               />
               <div className="absolute inset-x-0 bottom-0 z-[2] px-3 pb-2.5 pt-10">
-                <p className="truncate text-lg font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
-                  {shortDisplayName(it.name)}
-                </p>
+                <div className="flex items-baseline gap-1.5 min-w-0">
+                  <p className="truncate text-lg font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
+                    {shortDisplayName(it.name)}
+                  </p>
+                  {it.is_verified && (
+                    <BadgeCheck
+                      className="h-[22px] w-[22px] shrink-0 translate-y-[1px] fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
+                      strokeWidth={2.5}
+                      aria-label="Verified"
+                    />
+                  )}
+                </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[12px] font-semibold tabular-nums text-white/95">
                   <Star
                     className="h-3.5 w-3.5 shrink-0 text-violet-200"
@@ -823,9 +875,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             </div>
 
             <div className="min-w-0 text-left md:p-4 md:pt-3">
-              <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50 md:hidden">
-                {shortDisplayName(it.name)}
-              </p>
+              <div className="flex items-center gap-1.5 md:hidden">
+                <p className="truncate text-[14px] font-semibold leading-tight text-slate-900 dark:text-zinc-50">
+                  {shortDisplayName(it.name)}
+                </p>
+                {it.is_verified && (
+                  <BadgeCheck
+                    className="h-3.5 w-3.5 shrink-0 fill-emerald-500 text-white"
+                    strokeWidth={2.5}
+                  />
+                )}
+              </div>
               <p className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-zinc-400 md:mt-0 md:text-sm">
                 {it.locationLine}
               </p>

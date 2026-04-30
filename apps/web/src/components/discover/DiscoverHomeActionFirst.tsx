@@ -12,6 +12,7 @@ import {
   UsersRound,
   Wifi,
   Zap,
+  BadgeCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -146,7 +147,7 @@ export function DiscoverHomeActionFirst({
       if (clientIds.length > 0) {
         const { data: profs, error: profError } = await supabase
           .from("profiles")
-          .select("id, full_name, photo_url")
+          .select("id, full_name, photo_url, is_verified")
           .in("id", clientIds);
         
         if (cancelled) return;
@@ -297,7 +298,7 @@ export function DiscoverHomeActionFirst({
       "absolute -right-1 -top-1 z-10 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums text-white shadow-md bg-red-500 ring-2 ring-white";
 
     const boxClass = cn(
-      "relative flex min-h-[5rem] flex-1 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5",
+      "relative flex min-h-[6.5rem] flex-1 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5",
       "bg-white text-slate-900 shadow-[0_12px_32px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.96]",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       "dark:border-white/10 dark:bg-zinc-800/95 dark:text-zinc-100",
@@ -325,11 +326,11 @@ export function DiscoverHomeActionFirst({
               }`}
             >
               <Search
-                className="h-6 w-6 text-[#7B61FF]"
+                className="h-8 w-8 text-[#7B61FF]"
                 strokeWidth={2.6}
                 aria-hidden
               />
-              <span className="text-center text-[11px] font-black uppercase leading-none tracking-[0.09em]">
+              <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
                 Find helpers
               </span>
               {hireLiveHelperCount > 0 ? (
@@ -354,11 +355,11 @@ export function DiscoverHomeActionFirst({
               aria-label="Post live"
             >
               <PenLine
-                className="h-6 w-6 text-white"
+                className="h-8 w-8 text-white"
                 strokeWidth={2.6}
                 aria-hidden
               />
-              <span className="text-center text-[11px] font-black uppercase leading-snug tracking-[0.08em]">
+              <span className="text-center text-[13px] font-black uppercase leading-snug tracking-[0.08em]">
                 Post live
               </span>
             </button>
@@ -371,11 +372,11 @@ export function DiscoverHomeActionFirst({
               }`}
             >
               <ClipboardList
-                className="h-6 w-6 text-[#7B61FF]"
+                className="h-8 w-8 text-[#7B61FF]"
                 strokeWidth={2.6}
                 aria-hidden
               />
-              <span className="text-center text-[11px] font-black uppercase leading-none tracking-[0.09em]">
+              <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
                 Requests
               </span>
               {myRequestsCount > 0 ? (
@@ -409,11 +410,11 @@ export function DiscoverHomeActionFirst({
             }`}
           >
             <UsersRound
-              className="h-6 w-6 text-emerald-600"
+              className="h-8 w-8 text-emerald-600"
               strokeWidth={2.6}
               aria-hidden
             />
-            <span className="text-center text-[11px] font-black uppercase leading-none tracking-[0.09em]">
+            <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
               Find posts
             </span>
             {workLivePostCount > 0 ? (
@@ -422,26 +423,7 @@ export function DiscoverHomeActionFirst({
               </span>
             ) : null}
           </button>
-          {isInActive24hGoLiveWindow ? (
-            <div
-              className={cn(
-                boxClass,
-                "pointer-events-none cursor-default shadow-none ring-1 ring-emerald-400/50",
-                "border-emerald-400/70 bg-transparent text-emerald-100 dark:bg-emerald-950/25",
-              )}
-              role="status"
-              aria-label="You're live — 24 hour availability active"
-            >
-              <Radio
-                className="h-6 w-6 text-emerald-300"
-                strokeWidth={2.6}
-                aria-hidden
-              />
-              <span className="text-center text-[11px] font-black uppercase leading-snug tracking-[0.1em]">
-                Live
-              </span>
-            </div>
-          ) : (
+          {isInActive24hGoLiveWindow ? null : (
             <button
               type="button"
               onClick={() => {
@@ -458,11 +440,11 @@ export function DiscoverHomeActionFirst({
               aria-label="Go live"
             >
               <PlayCircle
-                className="h-6 w-6 text-white"
+                className="h-8 w-8 text-white"
                 strokeWidth={2.6}
                 aria-hidden
               />
-              <span className="text-center text-[11px] font-black uppercase leading-none tracking-[0.09em]">
+              <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
                 Go live
               </span>
             </button>
@@ -476,11 +458,11 @@ export function DiscoverHomeActionFirst({
             }`}
           >
             <Clock
-              className="h-6 w-6 text-emerald-600"
+              className="h-8 w-8 text-emerald-600"
               strokeWidth={2.6}
               aria-hidden
             />
-            <span className="text-center text-[11px] font-black uppercase leading-none tracking-[0.09em]">
+            <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
               Pending
             </span>
             {pendingWorkRequestsCount > 0 ? (
@@ -594,22 +576,7 @@ export function DiscoverHomeActionFirst({
             </span>
           ) : null}
         </button>
-        {isInActive24hGoLiveWindow ? (
-          <div
-            className={cn(
-              boxClass,
-              "pointer-events-none cursor-default shadow-none ring-1 ring-emerald-400/50",
-              "border-emerald-400/70 bg-transparent text-emerald-100 dark:bg-emerald-950/25",
-            )}
-            role="status"
-            aria-label="You're live — 24 hour availability active"
-          >
-            <Radio className="h-6 w-6 text-emerald-300" strokeWidth={2.6} aria-hidden />
-            <span className="text-[12px] font-black uppercase leading-snug tracking-wide">
-              Live
-            </span>
-          </div>
-        ) : (
+        {isInActive24hGoLiveWindow ? null : (
           <button
             type="button"
             onClick={(e) => {
@@ -696,220 +663,221 @@ export function DiscoverHomeActionFirst({
 
         <div className="shrink-0 mt-3 flex flex-col px-2 pb-6">
           {isHire ? (
-            <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-[24px] ring-1 ring-black/10 shadow-md min-h-[18rem]">
-              <img
-                src="/pexels-rdne-6646861.jpg"
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover object-top"
-                loading="eager"
-                decoding="async"
-                {...{ fetchpriority: "high" }}
-              />
-              {/* Dark overlay on top for badge + title */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/35 to-transparent" />
-
-              {/* Primary actions moved into the bottom Actions menu */}
-
-              {/* Badge + title — pinned to the top of the image */}
-              <div className="relative z-[2] w-full p-6 pt-6">
-                <div className="min-w-0">
-                  <div className={cn(mobileHeroBadgeClass, "mb-3")}>
-                    <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
-                    <span className="truncate">{HIRE.badge}</span>
-                  </div>
-                  <h2 className={mobileHeroTitleClass}>{HIRE.title}</h2>
-                  
-                  {acceptedRequests.length > 0 && (
-                    <div className="mt-10 flex flex-col gap-2">
-                      {acceptedRequests.map((job: any) => {
-                        const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
-                        const title = formatJobTitle(job);
-                        const loc = (job.location_city ?? "").trim() || "Location not set";
-                        
-                        return (
-                          <button
-                            key={job.id}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/client/jobs/${job.id}/live`);
-                            }}
-                            className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl bg-black/40 p-3 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20 text-left transition-all hover:bg-black/50 active:scale-[0.98]"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[13px] font-bold text-white truncate">{title}</span>
-                                <span className="text-[11px] font-medium text-white/60">•</span>
-                                <span className="text-[12px] font-semibold text-white/80 truncate">{loc}</span>
-                              </div>
-                              
-                              <div className="mt-1 flex items-center gap-2">
-                                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
-                                  {job.acceptedCount} accepted
-                                </span>
-                                
-                                {/* Avatars */}
-                                {avatars.length > 0 && (
-                                  <div className="flex -space-x-1.5 overflow-hidden">
-                                    {avatars.slice(0, 3).map((avatar: any, idx: number) => (
-                                      <Avatar key={avatar.id || idx} className="h-6 w-6 border-none shadow-sm">
-                                        {avatar.photo_url ? (
-                                          <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
-                                        ) : null}
-                                        <AvatarFallback className="bg-zinc-800 text-[10px] font-bold text-white">
-                                          {(avatar.full_name || "H").charAt(0)}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
+            <div className="flex flex-col">
+              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-[24px] ring-1 ring-black/10 shadow-md min-h-[12rem]">
+                <img
+                  src="/pexels-rdne-6646861.jpg"
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover object-top"
+                  loading="eager"
+                  decoding="async"
+                  {...{ fetchpriority: "high" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/60" />
+                
+                {/* Badge — Back INSIDE at the top left */}
+                <div className="absolute left-3 top-3 z-[10] inline-flex items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm ring-1 ring-inset ring-white/10">
+                  <Zap className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
+                  <span className="truncate">{HIRE.badge}</span>
+                </div>
+                
+                {/* Active cards - Back INSIDE the image box at the bottom */}
+                {acceptedRequests.length > 0 && (
+                  <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
+                    {acceptedRequests.slice(0, 1).map((job: any) => {
+                      const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
+                      const title = formatJobTitle(job);
+                      const loc = (job.location_city ?? "").trim() || "Location not set";
+                      
+                      return (
+                        <button
+                          key={job.id}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/client/jobs/${job.id}/live`);
+                          }}
+                          className="flex w-full items-center justify-between gap-3 rounded-xl bg-black/45 p-3 text-left shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20 transition-all active:scale-[0.98]"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[13px] font-bold text-white truncate">{title}</span>
+                              <span className="text-[11px] font-medium text-white/60">•</span>
+                              <span className="text-[12px] font-semibold text-white/80 truncate">{loc}</span>
                             </div>
                             
-                            <ChevronRight className="h-5 w-5 shrink-0 text-white/60" aria-hidden />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                                {job.acceptedCount} accepted
+                              </span>
+                              
+                              {avatars.length > 0 && (
+                                <div className="flex -space-x-1.5 overflow-hidden">
+                                  {avatars.slice(0, 3).map((avatar: any, idx: number) => (
+                                    <Avatar key={avatar.id || idx} className="h-5 w-5 border-none shadow-sm">
+                                      {avatar.photo_url ? (
+                                        <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
+                                      ) : null}
+                                      <AvatarFallback className="bg-zinc-800 text-[9px] font-bold text-white">
+                                        {(avatar.full_name || "H").charAt(0)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              {/* Text phrase — BELOW the image */}
+              <div className="w-full px-1 pt-4">
+                <div className="min-w-0">
+                  <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
+                    {HIRE.title}
+                  </h2>
                 </div>
               </div>
-
-            </section>
+            </div>
           ) : (
-            <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-[24px] ring-1 ring-black/10 shadow-md min-h-[18rem]">
-              <img
-                src="/pexels-tima-miroshnichenko-6197046.jpg"
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover object-top"
-                loading="eager"
-                decoding="async"
-                {...{ fetchpriority: "high" }}
-              />
-              {/* Dark overlay on top for badge + title */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/35 to-transparent" />
+            <div className="flex flex-col">
+              <section className="relative flex flex-col w-full shrink-0 overflow-hidden rounded-[24px] ring-1 ring-black/10 shadow-md min-h-[12rem]">
+                <img
+                  src="/pexels-tima-miroshnichenko-6197046.jpg"
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover object-top"
+                  loading="eager"
+                  decoding="async"
+                  {...{ fetchpriority: "high" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/60" />
 
-              {/* Primary action (middle button) — top right */}
-              <div className="pointer-events-auto absolute right-4 top-4 z-[10] flex flex-col items-center gap-1.5">
-                {isInActive24hGoLiveWindow ? (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-black/40 px-3 py-2 text-[12px] font-black uppercase tracking-[0.16em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
-                    <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
-                      <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
-                      <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.65)]" />
-                    </span>
-                    <span>Live</span>
-                    {liveRemainingLabel ? (
-                      <span className="rounded-full bg-white/15 px-2 py-1 text-[12px] font-black tabular-nums tracking-wide">
-                        {liveRemainingLabel}
+                {/* Badge — Back INSIDE at the top left */}
+                <div className="absolute left-3 top-3 z-[10] inline-flex items-center gap-1.5 rounded-full bg-white/25 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm ring-1 ring-inset ring-white/10">
+                  <Wifi className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
+                  <span className="truncate">{workTheme.badge}</span>
+                </div>
+
+                {/* Primary action (middle button) — top right */}
+                <div className="pointer-events-auto absolute right-3 top-3 z-[10] flex flex-col items-center gap-1.5">
+                  {isInActive24hGoLiveWindow ? (
+                    <div className="inline-flex items-center gap-2 rounded-full bg-black/40 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+                      <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
+                        <span className="relative block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)]" />
                       </span>
-                    ) : null}
-                  </div>
-                ) : (
-                  <>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      trackEvent("discover_hero_go_live_corner", { mode: homeMode });
-                      writeDiscoverHomeIntent("work");
-                      navigate(workPrimaryPath);
-                      recordFirstMeaningfulAction("home_primary_work");
-                    }}
-                    className={cn(
-                      "group flex h-12 w-12 items-center justify-center rounded-full border shadow-2xl transition-all duration-300",
-                      "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                      "border-white/45 bg-white/25 text-white backdrop-blur-2xl ring-1 ring-inset ring-white/30",
-                      "hover:bg-white/30",
-                    )}
-                    aria-label="Go live"
-                  >
-                    <PlayCircle className="h-7 w-7 text-white" strokeWidth={2.5} aria-hidden />
-                  </button>
-                  </>
-                )}
-              </div>
+                      <span>Live</span>
+                      {liveRemainingLabel ? (
+                        <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
+                          {liveRemainingLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        trackEvent("discover_hero_go_live_corner", { mode: homeMode });
+                        writeDiscoverHomeIntent("work");
+                        navigate(workPrimaryPath);
+                        recordFirstMeaningfulAction("home_primary_work");
+                      }}
+                      className={cn(
+                        "group flex h-10 w-10 items-center justify-center rounded-full border shadow-2xl transition-all duration-300",
+                        "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                        "border-white/45 bg-white/25 text-white backdrop-blur-2xl ring-1 ring-inset ring-white/30",
+                        "hover:bg-white/30",
+                      )}
+                      aria-label="Go live"
+                    >
+                      <PlayCircle className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
+                    </button>
+                  )}
+                </div>
 
-              {/* Badge + title — pinned to the top of the image */}
-              <div className="relative z-[2] w-full p-6 pt-6">
-                <div className="min-w-0">
-                  <div className={cn(mobileHeroBadgeClass, "mb-3")}>
-                    <Wifi className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />
-                    <span className="truncate">{workTheme.badge}</span>
-                  </div>
-                  <h2 className={mobileHeroTitleClass}>{workTheme.title}</h2>
-
-                  
-                  {liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 && (
-                    <div className="mt-10 flex flex-col gap-2">
-                      {liveHelpingJobs
-                        .filter(j => !dismissedLiveJobIds.includes(j.id))
-                        .slice(0, 1)
-                        .map((job: any) => {
-                          const client = liveHelpingProfiles.get(job.client_id);
-                          const title = formatJobTitle(job);
-                          const loc = (job.location_city ?? "").trim() || "Location not set";
-                          const clientName = client?.full_name || "Client";
-                          
-                          return (
-                            <div
-                              key={job.id}
-                              className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl bg-black/40 p-3 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20 text-left"
+                {/* Active cards - Back INSIDE at the bottom */}
+                {liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 && (
+                  <div className="absolute inset-x-0 bottom-0 z-[5] p-3">
+                    {liveHelpingJobs
+                      .filter(j => !dismissedLiveJobIds.includes(j.id))
+                      .slice(0, 1)
+                      .map((job: any) => {
+                        const client = liveHelpingProfiles.get(job.client_id);
+                        const title = formatJobTitle(job);
+                        const loc = (job.location_city ?? "").trim() || "Location not set";
+                        const clientName = client?.full_name || "Client";
+                        
+                        return (
+                          <div
+                            key={job.id}
+                            className="pointer-events-auto flex items-center justify-between gap-3 rounded-xl bg-black/45 p-3 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20 text-left"
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`${explorePath}?mode=work&tab=live_help`);
+                              }}
+                              className="min-w-0 flex-1 flex items-center justify-between gap-3 text-left"
                             >
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`${explorePath}?mode=work&tab=live_help`);
-                                }}
-                                className="min-w-0 flex-1 flex items-center justify-between gap-3 text-left"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[13px] font-bold text-white truncate">{title}</span>
-                                    <span className="text-[11px] font-medium text-white/60">•</span>
-                                    <span className="text-[12px] font-semibold text-white/80 truncate">{loc}</span>
-                                  </div>
-                                  
-                                  <div className="mt-1 flex items-center gap-2">
-                                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
-                                      Helping {clientName}
-                                    </span>
-                                    
-                                    {client?.photo_url && (
-                                      <Avatar className="h-6 w-6 border-none shadow-sm">
-                                        <AvatarImage src={client.photo_url} alt={clientName} />
-                                        <AvatarFallback className="bg-zinc-800 text-[10px] font-bold text-white">
-                                          {clientName.charAt(0)}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                    )}
-                                  </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[13px] font-bold text-white truncate">{title}</span>
+                                  <span className="text-[11px] font-medium text-white/60">•</span>
+                                  <span className="text-[12px] font-semibold text-white/80 truncate">{loc}</span>
                                 </div>
                                 
-                                <ChevronRight className="h-5 w-5 shrink-0 text-white/60" aria-hidden />
-                              </button>
-                              
-                              {/* Remove Button */}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDismissedLiveJobIds(prev => [...prev, job.id]);
-                                }}
-                                className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
-                                aria-label="Dismiss"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  )}
+                                <div className="mt-1 flex items-center gap-2">
+                                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                                    Helping {clientName}
+                                  </span>
+                                  
+                                  {client?.photo_url && (
+                                    <Avatar className="h-5 w-5 border-none shadow-sm">
+                                      <AvatarImage src={client.photo_url} alt={clientName} />
+                                      <AvatarFallback className="bg-zinc-800 text-[9px] font-bold text-white">
+                                        {clientName.charAt(0)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  )}
+                                </div>
+                              </div>
+                              <ChevronRight className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
+                            </button>
+                            
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDismissedLiveJobIds(prev => [...prev, job.id]);
+                              }}
+                              className="p-1 rounded-full hover:bg-white/10 text-white/60"
+                              aria-label="Dismiss"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </section>
+
+              {/* Text phrase — BELOW the image */}
+              <div className="w-full px-1 pt-4">
+                <div className="min-w-0">
+                  <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
+                    {workTheme.title}
+                  </h2>
                 </div>
               </div>
-
-            </section>
+            </div>
           )}
         </div>
       </div>
