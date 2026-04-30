@@ -8,13 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
-import {
-  Loader2,
-  Navigation,
-  Radar,
-  Search,
-  ChevronDown,
-} from "lucide-react";
+import { Loader2, Navigation, Radar, Search } from "lucide-react";
 import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { isServiceCategoryId } from "@/lib/serviceCategories";
@@ -922,7 +916,7 @@ export default function FreelancerJobsMatchPage() {
                     key={r.id}
                     className="relative h-full w-full snap-start snap-always px-2 py-2"
                   >
-                    <div className="h-full w-full overflow-hidden rounded-[22px]">
+                    <div className="flex h-full min-h-0 w-full flex-col overflow-visible rounded-[22px]">
                       <OpenJobRequestMatchCard
                         row={r}
                         gallery={galleryByUserId[r.client_id] ?? []}

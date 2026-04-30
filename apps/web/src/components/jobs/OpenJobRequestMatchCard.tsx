@@ -4,15 +4,12 @@ import {
   Baby,
   Check,
   Clock,
-  Crown,
   Loader2,
   MapPin,
-  Medal,
   MessageCircle,
   MessageSquare,
   Sparkles,
   Star,
-  Trophy,
   Truck,
   UtensilsCrossed,
   Wrench,
@@ -58,29 +55,22 @@ export type OpenJobRequestMatchRow = {
 type Slide = { key: string; kind: "image" | "video"; src: string };
 
 function buildSlides(photoUrl: string | null, gallery: PublicProfileGalleryRow[]): Slide[] {
-  const media: Slide[] = [];
-  const trimmed = photoUrl?.trim();
-  if (trimmed) media.push({ key: "profile-photo", kind: "image", src: trimmed });
+  const trimmed = photoUrl?.trim() ?? "";
 
   const sorted = [...gallery].sort(
     (a, b) =>
       a.sort_order - b.sort_order ||
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
-  for (const row of sorted) {
-    media.push({
-      key: row.id,
-      kind: row.media_type === "video" ? "video" : "image",
-      src: publicProfileMediaPublicUrl(row.storage_path),
-    });
-  }
+  const gallerySlides: Slide[] = sorted.map((row) => ({
+    key: row.id,
+    kind: row.media_type === "video" ? "video" : "image",
+    src: publicProfileMediaPublicUrl(row.storage_path),
+  }));
 
-  // We return a set of slides where the first slide is ALWAYS the summary
-  // We use the profile photo as the background/circle for the summary slide
-  return [
-    { key: "summary", kind: "image", src: trimmed || "" },
-    ...media
-  ];
+  // First slide is the summary (hero + overlays). Remaining slides are gallery only —
+  // do not repeat the profile photo as slide 2 (it looked like a “double” image on desktop).
+  return [{ key: "summary", kind: "image" as const, src: trimmed }, ...gallerySlides];
 }
 
 
@@ -408,27 +398,6 @@ export function OpenJobRequestMatchCard({
 
   const accepted = row.__accepted === true;
 
-  const postedRequestsCountRaw = row.client_posted_requests_count;
-  const postedRequestsCount =
-    typeof postedRequestsCountRaw === "number" && Number.isFinite(postedRequestsCountRaw)
-      ? Math.floor(postedRequestsCountRaw)
-      : 0;
-  const showPostedRequestsBadge = postedRequestsCount > 0;
-
-  const postedRequestsCornerTier = useMemo(() => {
-    const n = postedRequestsCount;
-    if (n <= 0) return null;
-    if (n === 1)
-      return { kind: "medal" as const, title: "Posted 1 request in total" };
-    if (n >= 10)
-      return { kind: "crown" as const, title: "10+ posted requests" };
-    if (n >= 5)
-      return { kind: "trophy" as const, title: "5+ posted requests" };
-    return null;
-  }, [postedRequestsCount]);
-
-  const showVerifiedBadge = row.client_is_verified === true;
-
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -586,26 +555,33 @@ export function OpenJobRequestMatchCard({
     return items;
   }, [careFrequencyLine, timeDurationLine, serviceDetailLines]);
 
-  const displayedItems = allDetailItems.slice(0, 4); // Show 4 items for 2x2 grid
-  const hasMoreItems =
-    allDetailItems.length > 4 ||
+  const displayedItems = allDetailItems.slice(0, 6);
+  /** Modal can show the same fields as the card (e.g. only FREQ/DUR) plus schedule/budget/photos/notes — still useful. */
+  const canOpenDetailsModal =
+    allDetailItems.length > 0 ||
     !!scheduleLine ||
     !!budgetLine ||
     jobImages.length > 0 ||
     !!notesLine;
 
-  const summarySlideVisible = activeIndex === 0 && showStrip;
+  const ratingAvg = clientRating?.average_rating;
+  const ratingCount = clientRating?.total_ratings ?? 0;
+  const ratingLine =
+    typeof ratingAvg === "number" && Number.isFinite(ratingAvg)
+      ? ratingAvg.toFixed(1)
+      : null;
 
   return (
     <>
       <div
         className={cn(
-          "group relative flex flex-col overflow-hidden",
+          "group relative flex min-h-0 flex-col",
+          variant === "fullscreen" ? "overflow-visible" : "overflow-hidden rounded-[40px]",
           "bg-zinc-900 shadow-2xl shadow-black/40 ring-1 ring-white/10",
           "transition-all duration-500 ease-out",
           variant === "fullscreen"
             ? "h-full rounded-none shadow-none ring-0"
-            : "rounded-[40px] hover:-translate-y-1 hover:shadow-black/50",
+            : "hover:-translate-y-1 hover:shadow-black/50",
         )}
 
         role="article"
@@ -642,63 +618,65 @@ export function OpenJobRequestMatchCard({
                   key={s.key}
                   className="relative h-full w-full min-w-full max-w-full shrink-0 snap-start snap-always overflow-hidden"
                 >
-                  {/* Slide 0: Summary Layout (Mobile) vs Big Media (Desktop) */}
+                  {/* Slide 0: Full-bleed hero + overlays (same on mobile & desktop — no circular crop on mobile). */}
                   {idx === 0 ? (
                     <>
-                      {/* Desktop: Always Big Media */}
-                      <div className="hidden h-full w-full md:block">
+                      <div className="absolute inset-0 z-0 bg-zinc-900">
                         {s.kind === "video" ? (
                           <video src={s.src} className="h-full w-full object-cover" muted playsInline controls />
-                        ) : (
+                        ) : s.src ? (
                           <img src={s.src} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
                         )}
-                        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black/80 via-black/40 to-transparent md:h-40" />
                       </div>
 
-                      {/* Summary Layout: Name, Location, Badges Overlay */}
-                      <div className="absolute inset-0 z-10 flex flex-col p-6 pt-10 md:p-8">
-                        <div className="flex flex-col items-center gap-4 md:mt-auto md:items-start md:gap-3 md:pb-6">
+                      <div
+                        className={cn(
+                          "pointer-events-none absolute inset-x-0 bottom-0 z-[15] px-6 pb-[4.75rem] pt-24 md:px-8 md:pb-[5.25rem]",
+                          "flex flex-col items-start gap-2 text-left",
+                        )}
+                      >
+                        <button
+                          type="button"
+                          className={cn(
+                            "pointer-events-auto flex max-w-full flex-wrap items-center gap-2.5 text-left touch-manipulation outline-none",
+                            "focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40",
+                          )}
+                          onClick={() => onOpenProfile(row.client_id)}
+                          aria-label={`Open profile: ${(row.client_display_name || "").trim() || "Member"}`}
+                        >
+                          <span className="text-3xl font-black tracking-tight text-white drop-shadow-lg md:text-4xl">
+                            {(row.client_display_name || "").trim() || "Member"}
+                          </span>
+                          {row.client_is_verified && (
+                            <BadgeCheck className="h-6 w-6 shrink-0 fill-emerald-500 text-white md:h-8 md:w-8" strokeWidth={2} />
+                          )}
+                        </button>
 
-                          {/* Circular Profile Image (Mobile Only to avoid double image on desktop) */}
-                          <div
-                            className="h-28 w-28 overflow-hidden rounded-full border-4 border-zinc-800 shadow-2xl ring-1 ring-white/10 md:hidden"
-                            onClick={() => onOpenProfile(row.client_id)}
-                          >
-                            <img src={s.src || row.client_photo_url || ""} alt="" className="h-full w-full object-cover" />
-                          </div>
+                        {ratingLine != null && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 backdrop-blur-md ring-1 ring-white/15">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-base font-bold text-white">{ratingLine}</span>
+                            <span className="text-xs font-medium text-zinc-400">({ratingCount})</span>
+                          </span>
+                        )}
 
+                        <span className="flex flex-wrap items-center gap-2 pt-0.5 text-base font-bold text-zinc-200 drop-shadow-md md:text-lg">
+                          <MapPin className="h-5 w-5 shrink-0 text-emerald-400" strokeWidth={2.5} />
+                          <span>{row.location_city || "Anywhere"}</span>
+                          {dist ? (
+                            <>
+                              <span className="text-zinc-600">·</span>
+                              <span className="tabular-nums text-white">{dist}</span>
+                            </>
+                          ) : null}
+                        </span>
+                      </div>
 
-                          <div className="flex flex-col items-center text-center gap-2 md:items-start md:text-left">
-
-                            <div className="flex items-center gap-2.5">
-                              <h3 className="text-3xl font-black tracking-tight text-white md:text-4xl">
-                                {(row.client_display_name || "").trim() || "Member"}
-                              </h3>
-                              {row.client_is_verified && (
-                                <BadgeCheck className="h-6 w-6 fill-emerald-500 text-white md:h-8 md:w-8" strokeWidth={2} />
-                              )}
-                            </div>
-                            
-                            {/* Rating / Review Badge for Summary Slide */}
-                            {row.client_rating && (
-                              <div className="flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-md ring-1 ring-white/10 mb-1">
-                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                <span className="text-base font-bold text-white">{row.client_rating}</span>
-                                <span className="text-xs text-zinc-400 font-medium">({row.client_review_count || 0})</span>
-                              </div>
-                            )}
-
-                            <div className="flex items-center gap-2.5 text-base font-bold text-zinc-400 md:text-lg">
-                              <MapPin className="h-5 w-5 text-emerald-500" strokeWidth={2.5} />
-                              <span>{row.location_city || "Anywhere"}</span>
-                              {dist && <span className="text-zinc-700">·</span>}
-                              {dist && <span className="tabular-nums text-zinc-100">{dist}</span>}
-                            </div>
-                          </div>
-                        </div>
-
-
-                        <div className="absolute right-4 top-5 flex flex-col items-end gap-2 md:right-5 md:top-6 md:gap-2.5">
+                      <div className="pointer-events-none absolute right-4 top-5 z-[18] md:right-5 md:top-6">
+                        <div className="pointer-events-auto flex flex-col items-end gap-2 md:gap-2.5">
                           <span
                             className={cn(
                               "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.15em] shadow-xl ring-2 ring-white/10 md:px-5 md:py-2.5 md:text-[11px] md:tracking-[0.2em]",
@@ -718,15 +696,14 @@ export function OpenJobRequestMatchCard({
                             </div>
                           )}
                         </div>
-
-                        {/* Prompt to scroll for media if there are more slides */}
-                        {slides.length > 1 && (
-                          <div className="mt-auto flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600 animate-pulse md:gap-2.5 md:text-[11px] md:tracking-[0.4em]">
-                            <span>Photos</span>
-                            <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                          </div>
-                        )}
                       </div>
+
+                      {slides.length > 1 && (
+                        <div className="pointer-events-none absolute bottom-3 left-1/2 z-[15] flex -translate-x-1/2 items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 animate-pulse md:bottom-4 md:gap-2.5 md:text-[11px] md:tracking-[0.4em]">
+                          <span>Photos</span>
+                          <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                        </div>
+                      )}
                     </>
                   ) : (
 
@@ -760,13 +737,24 @@ export function OpenJobRequestMatchCard({
                         </div>
 
                         {/* Rating / Review Badge */}
-                        {row.client_rating && (
+                        {ratingLine != null && (
                           <div className="flex items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 backdrop-blur-md ring-1 ring-white/10">
                             <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm font-bold text-white">{row.client_rating}</span>
-                            <span className="text-xs text-zinc-400 font-medium">({row.client_review_count || 0})</span>
+                            <span className="text-sm font-bold text-white">{ratingLine}</span>
+                            <span className="text-xs font-medium text-zinc-400">({ratingCount})</span>
                           </div>
                         )}
+
+                        <div className="flex flex-wrap items-center gap-1.5 text-[13px] font-bold leading-tight text-zinc-100 drop-shadow-xl md:hidden">
+                          <MapPin className="h-4 w-4 shrink-0 text-emerald-400" strokeWidth={2.5} />
+                          <span>{row.location_city || "Anywhere"}</span>
+                          {dist ? (
+                            <>
+                              <span className="text-zinc-500">·</span>
+                              <span className="tabular-nums">{dist}</span>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
 
                       {/* Top Right Badges: Category, Time */}
@@ -824,60 +812,99 @@ export function OpenJobRequestMatchCard({
         </div>
 
         {/* Details section */}
-        <div className="relative flex flex-1 flex-col bg-zinc-900 p-4 pt-3 md:p-6 md:pt-5">
+        <div
+          className={cn(
+            "relative flex min-h-0 flex-1 flex-col bg-zinc-900 p-4 pt-3 md:p-6 md:pt-5",
+            variant === "grid" &&
+              "pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]",
+          )}
+        >
+          <div
+            className={cn(
+              "min-h-0 flex-1",
+              variant === "fullscreen" && "overflow-y-auto overscroll-contain",
+            )}
+          >
+            <div className="mb-3 hidden max-md:flex max-md:flex-wrap max-md:items-center max-md:gap-x-2 max-md:gap-y-1 max-md:border-b max-md:border-white/10 max-md:pb-3">
+              <MapPin className="h-4 w-4 shrink-0 text-emerald-500" strokeWidth={2.5} />
+              <span className="min-w-0 font-bold text-zinc-100">{row.location_city || "Anywhere"}</span>
+              {dist ? <span className="tabular-nums text-sm text-zinc-400">{dist}</span> : null}
+            </div>
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:gap-x-6 md:gap-y-4">
-            {displayedItems.map((item, idx) => (
-              <div key={idx} className="flex flex-col gap-0.5 md:gap-1">
-                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 md:text-[11px] md:tracking-[0.2em]">
-                  {item.label}
-                </span>
-                <span className="truncate text-[15px] font-bold text-zinc-100 md:text-base">{item.value}</span>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:gap-x-6 md:gap-y-3">
+              {displayedItems.map((item, idx) => (
+                <div key={idx} className="flex min-w-0 flex-col gap-0.5 md:gap-1">
+                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 md:text-[11px] md:tracking-[0.2em]">
+                    {item.label}
+                  </span>
+                  <span className="line-clamp-3 break-words text-[15px] font-bold leading-snug text-zinc-100 md:text-base">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {(respondsWithinLabel || canStartInLabel) && (
+              <div className="mt-3 space-y-1.5 text-[11px] leading-snug text-zinc-400 md:mt-4 md:text-xs">
+                {respondsWithinLabel ? (
+                  <p>
+                    <span className="font-black uppercase tracking-wider text-zinc-500">Replies </span>
+                    {respondsWithinLabel}
+                  </p>
+                ) : null}
+                {canStartInLabel ? (
+                  <p>
+                    <span className="font-black uppercase tracking-wider text-zinc-500">You </span>
+                    {canStartInLabel}
+                  </p>
+                ) : null}
               </div>
-            ))}
-          </div>
-
-          <div className="mt-4 flex items-center justify-between md:mt-6">
-            {hasMoreItems ? (
-              <button
-                type="button"
-                className="group flex items-center gap-2 text-[13px] font-black uppercase tracking-widest text-emerald-500"
-                onClick={() => setShowFullDetailsModal(true)}
-              >
-                Request Details
-                <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
-              </button>
-            ) : (
-              <div />
             )}
 
-            <div className="flex items-center gap-5">
-              <button
-                type="button"
-                className="flex items-center gap-2.5 text-zinc-500 hover:text-zinc-300 transition-colors"
-                onClick={() => onOpenComments?.(row.id)}
-              >
-                <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
-                {commentCount > 0 && <span className="text-sm font-black tabular-nums">{commentCount}</span>}
-              </button>
+            <div className="mt-4 flex items-center justify-between md:mt-6">
+              {canOpenDetailsModal ? (
+                <button
+                  type="button"
+                  className="group flex items-center gap-2 text-[13px] font-black uppercase tracking-widest text-emerald-500"
+                  onClick={() => setShowFullDetailsModal(true)}
+                >
+                  Request Details
+                  <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
+                </button>
+              ) : (
+                <div />
+              )}
 
+              <div className="flex items-center gap-5">
+                <button
+                  type="button"
+                  className="flex items-center gap-2.5 text-zinc-500 transition-colors hover:text-zinc-300"
+                  onClick={() => onOpenComments?.(row.id)}
+                >
+                  <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
+                  {commentCount > 0 && <span className="text-sm font-black tabular-nums">{commentCount}</span>}
+                </button>
 
-              {/* Contact Button as Profile Image Circle */}
-              {viewerId && (
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    type="button"
-                    className={cn(
-                      "h-10 w-10 overflow-hidden rounded-full ring-2 ring-zinc-800 transition-all active:scale-95 shadow-lg",
-                      showContactDropdown && "ring-emerald-500 shadow-emerald-500/20",
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowContactDropdown(!showContactDropdown);
-                    }}
-                  >
-                    <img src={row.client_photo_url || ""} alt="" className="h-full w-full object-cover" />
-                  </button>
+                {/* Icon-only — hero already shows the client photo */}
+                {viewerId && (
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      type="button"
+                      className={cn(
+                        heroOverlayRoundBtn,
+                        "h-10 w-10 bg-zinc-800/90 text-white ring-zinc-600",
+                        showContactDropdown && "ring-2 ring-emerald-500 ring-offset-2 ring-offset-zinc-900",
+                      )}
+                      aria-label="Contact client"
+                      aria-expanded={showContactDropdown}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowContactDropdown(!showContactDropdown);
+                      }}
+                      disabled={chatOpening}
+                    >
+                      <MessageCircle className="h-5 w-5" strokeWidth={2.25} />
+                    </button>
 
                   {showContactDropdown && (
                     <div
@@ -888,22 +915,40 @@ export function OpenJobRequestMatchCard({
                         type="button"
                         className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
                         onClick={(e) => void openDirectChat(e)}
+                        disabled={chatOpening}
+                        aria-busy={chatOpening}
                       >
-                        <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
+                        {chatOpening ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                        ) : (
+                          <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
+                        )}
                       </button>
                       <button
                         type="button"
                         className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
                         onClick={(e) => void openWhatsApp(e)}
+                        disabled={socialBusy != null}
+                        aria-busy={socialBusy === "wa"}
                       >
-                        <WhatsAppIcon size={22} className="text-white" />
+                        {socialBusy === "wa" ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                        ) : (
+                          <WhatsAppIcon size={22} className="text-white" />
+                        )}
                       </button>
                       <button
                         type="button"
                         className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
                         onClick={(e) => void openTelegram(e)}
+                        disabled={socialBusy != null}
+                        aria-busy={socialBusy === "tg"}
                       >
-                        <TelegramIcon size={20} className="text-white" />
+                        {socialBusy === "tg" ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                        ) : (
+                          <TelegramIcon size={20} className="text-white" />
+                        )}
                       </button>
                     </div>
                   )}
@@ -911,11 +956,17 @@ export function OpenJobRequestMatchCard({
               )}
             </div>
           </div>
+          </div>
 
-
-          {/* Action buttons — Floating on mobile, relative on desktop */}
-          <div className="absolute bottom-12 left-0 right-0 flex items-center justify-center gap-10 md:relative md:bottom-0 md:mt-auto md:pb-1 md:pt-3">
-
+          {/* Action buttons — in document flow so they are not clipped by overflow / safe areas */}
+          <div
+            className={cn(
+              "mt-auto flex shrink-0 items-center justify-center gap-10 pt-4",
+              variant === "fullscreen"
+                ? "pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
+                : "pb-2 md:pb-1 md:pt-3",
+            )}
+          >
             {accepted ? (
               <div className="rounded-2xl bg-zinc-100 px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 dark:bg-zinc-800">
                 Accepted · Pending
@@ -932,7 +983,7 @@ export function OpenJobRequestMatchCard({
                   disabled={busy != null}
                   aria-label="Decline"
                 >
-                  <X className="h-7.5 w-7.5" strokeWidth={3} />
+                  <X className="h-8 w-8" strokeWidth={3} />
                 </button>
                 <button
                   type="button"
@@ -944,14 +995,11 @@ export function OpenJobRequestMatchCard({
                   disabled={busy != null}
                   aria-label="Accept"
                 >
-                  <Check className="h-10.5 w-10.5" strokeWidth={3.5} />
+                  <Check className="h-10 w-10" strokeWidth={3.5} />
                 </button>
               </>
             )}
           </div>
-
-          {/* Spacer to prevent content from hiding behind floating buttons */}
-          <div className="h-24 md:h-2" />
         </div>
       </div>
 
