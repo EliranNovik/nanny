@@ -32,6 +32,10 @@ export type DiscoverOpenHelpRequestRow = {
   location_lat?: number | null;
   location_lng?: number | null;
   is_verified?: boolean | null;
+  /** From job_requests enrichment — job photos live in `images` */
+  service_details?: Record<string, unknown> | null;
+  /** From job_requests enrichment */
+  notes?: string | null;
 };
 
 /**
@@ -114,15 +118,28 @@ export function useDiscoverOpenHelpRequests(
         }
 
         const jobIds = rows.map((r) => r.id);
-        const { data: jobLocations } = await supabase
+        const { data: jobExtras } = await supabase
           .from("job_requests")
-          .select("id, location_lat, location_lng")
+          .select("id, location_lat, location_lng, service_details, notes")
           .in("id", jobIds);
 
-        const locationMap = new Map<string, { lat: number | null; lng: number | null }>();
-        if (jobLocations) {
-          for (const loc of jobLocations) {
-            locationMap.set(loc.id, { lat: loc.location_lat, lng: loc.location_lng });
+        const jobExtrasMap = new Map<
+          string,
+          {
+            lat: number | null;
+            lng: number | null;
+            service_details: Record<string, unknown> | null;
+            notes: string | null;
+          }
+        >();
+        if (jobExtras) {
+          for (const row of jobExtras) {
+            jobExtrasMap.set(row.id, {
+              lat: row.location_lat,
+              lng: row.location_lng,
+              service_details: (row.service_details ?? null) as Record<string, unknown> | null,
+              notes: row.notes != null ? String(row.notes) : null,
+            });
           }
         }
 
@@ -130,7 +147,7 @@ export function useDiscoverOpenHelpRequests(
           const id = (r.client_id || "").trim();
           const hit = id ? profMap.get(id) : undefined;
           const statHit = id ? statsMap.get(id) : undefined;
-          const locHit = locationMap.get(r.id);
+          const ex = jobExtrasMap.get(r.id);
           return {
             ...r,
             client_average_rating: hit?.average_rating ?? null,
@@ -138,29 +155,46 @@ export function useDiscoverOpenHelpRequests(
             is_verified: hit?.is_verified ?? null,
             client_avg_reply_seconds: statHit?.avg_seconds ?? null,
             client_reply_sample_count: statHit?.sample_count ?? null,
-            location_lat: locHit?.lat ?? null,
-            location_lng: locHit?.lng ?? null,
+            location_lat: ex?.lat ?? null,
+            location_lng: ex?.lng ?? null,
+            service_details: ex?.service_details ?? null,
+            notes: ex?.notes ?? null,
           };
         });
       } else {
         const jobIds = rows.map((r) => r.id);
-        const { data: jobLocations } = await supabase
+        const { data: jobExtras } = await supabase
           .from("job_requests")
-          .select("id, location_lat, location_lng")
+          .select("id, location_lat, location_lng, service_details, notes")
           .in("id", jobIds);
-        
-        const locationMap = new Map<string, { lat: number | null; lng: number | null }>();
-        if (jobLocations) {
-          for (const loc of jobLocations) {
-            locationMap.set(loc.id, { lat: loc.location_lat, lng: loc.location_lng });
+
+        const jobExtrasMap = new Map<
+          string,
+          {
+            lat: number | null;
+            lng: number | null;
+            service_details: Record<string, unknown> | null;
+            notes: string | null;
+          }
+        >();
+        if (jobExtras) {
+          for (const row of jobExtras) {
+            jobExtrasMap.set(row.id, {
+              lat: row.location_lat,
+              lng: row.location_lng,
+              service_details: (row.service_details ?? null) as Record<string, unknown> | null,
+              notes: row.notes != null ? String(row.notes) : null,
+            });
           }
         }
         rows = rows.map((r) => {
-          const locHit = locationMap.get(r.id);
+          const ex = jobExtrasMap.get(r.id);
           return {
             ...r,
-            location_lat: locHit?.lat ?? null,
-            location_lng: locHit?.lng ?? null,
+            location_lat: ex?.lat ?? null,
+            location_lng: ex?.lng ?? null,
+            service_details: ex?.service_details ?? null,
+            notes: ex?.notes ?? null,
           };
         });
       }

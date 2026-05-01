@@ -298,10 +298,9 @@ export function DiscoverHomeActionFirst({
 
     const boxClass = cn(
       "relative flex min-h-[5.5rem] flex-1 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5",
-      "bg-zinc-950/40 text-white shadow-[0_12px_24px_rgba(0,0,0,0.2)] backdrop-blur-xl transition-transform active:scale-[0.96]",
+      "border-white/10 bg-zinc-950/40 text-white shadow-[0_12px_24px_rgba(0,0,0,0.2)] backdrop-blur-xl transition-transform active:scale-[0.96]",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-      "dark:border-white/10 dark:bg-zinc-800/40 dark:text-zinc-100",
-      "border-white/10",
+      "dark:border-zinc-500/30 dark:bg-zinc-600/70 dark:text-zinc-50 dark:shadow-[0_12px_24px_rgba(0,0,0,0.35)]",
     );
 
     if (isHire) {
@@ -312,7 +311,7 @@ export function DiscoverHomeActionFirst({
             bottomOffset,
           )}
         >
-          <div className="mx-auto flex w-full max-w-lg gap-2 px-3">
+          <div className="mx-auto flex w-full max-w-md justify-center gap-2 px-3 sm:max-w-lg">
             <button
               type="button"
               onClick={() => {
@@ -392,7 +391,7 @@ export function DiscoverHomeActionFirst({
           bottomOffset,
         )}
       >
-        <div className="mx-auto flex w-full max-w-lg gap-2 px-3">
+        <div className="mx-auto flex w-full max-w-md justify-center gap-2 px-3 sm:max-w-lg">
           <button
             type="button"
             onClick={() => {
@@ -654,8 +653,8 @@ export function DiscoverHomeActionFirst({
         <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
           {isHire ? (
             <div className="flex flex-col">
-              <div className="px-4">
-                <div className="mt-1">
+              <div className="flex justify-center px-4">
+                <div className="mt-1 w-full max-w-md">
                   {acceptedRequests.length > 0 ? (
                     acceptedRequests.slice(0, 1).map((job: any) => {
                       const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
@@ -670,7 +669,7 @@ export function DiscoverHomeActionFirst({
                             e.stopPropagation();
                             navigate(`/client/jobs/${job.id}/live`);
                           }}
-                          className="flex w-full items-center gap-4 rounded-[1.25rem] bg-zinc-900/90 p-4 text-left shadow-xl backdrop-blur-xl transition-all active:scale-[0.98] dark:bg-black/55"
+                          className="flex w-full items-center gap-4 rounded-[1.25rem] border border-zinc-700/40 bg-zinc-900/90 p-4 text-left shadow-xl backdrop-blur-xl transition-all active:scale-[0.98] dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-black/25"
                         >
                           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10 shadow-lg">
                             <img
@@ -682,16 +681,13 @@ export function DiscoverHomeActionFirst({
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline justify-between gap-2">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="text-[16px] font-black text-white truncate leading-tight">{title}</span>
-                                <span className="text-[12px] font-medium text-white/50">•</span>
-                                <span className="text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</span>
-                              </div>
-                              <span className="text-[11px] font-bold text-white whitespace-nowrap shrink-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[16px] font-black text-white leading-tight">{title}</span>
+                              <span className="shrink-0 rounded-full bg-white/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/85 ring-1 ring-white/10">
                                 {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                               </span>
                             </div>
+                            <p className="mt-0.5 text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</p>
 
                             <div className="mt-1.5 flex items-center gap-2.5">
                               <span className="text-[12px] font-black uppercase tracking-wider text-emerald-300">
@@ -719,7 +715,7 @@ export function DiscoverHomeActionFirst({
                       );
                     })
                   ) : (
-                    <div className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] bg-zinc-900/80 p-4 text-left shadow-lg backdrop-blur-md dark:bg-black/45">
+                    <div className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] border border-zinc-700/40 bg-zinc-900/80 p-4 text-left shadow-lg backdrop-blur-md dark:border-zinc-500/35 dark:bg-zinc-700/85 dark:shadow-black/20">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-bold text-white">No active requests</p>
                         <p className="text-[11px] font-medium text-white/70">Need help with something?</p>
@@ -739,8 +735,8 @@ export function DiscoverHomeActionFirst({
                 </div>
               </div>
 
-              {/* Text phrase — BELOW the image */}
-              <div className="w-full px-4 pt-4">
+              {/* Text phrase — below the my-requests card; extra top padding for breathing room */}
+              <div className="w-full px-4 pt-8">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -762,47 +758,26 @@ export function DiscoverHomeActionFirst({
             </div>
           ) : (
             <div className="flex flex-col">
-              <div className="px-4">
-                <div className="flex items-center justify-end">
-                  <div className="pointer-events-auto">
-                    {isInActive24hGoLiveWindow ? (
-                      <div className="inline-flex items-center gap-2 rounded-full bg-zinc-900/70 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md dark:bg-black/40">
-                        <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                          <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
-                          <span className="relative block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)]" />
+              <div className="flex flex-col px-4">
+                {isInActive24hGoLiveWindow ? (
+                  <div className="flex items-center justify-center sm:justify-end">
+                    <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-zinc-500/30 bg-zinc-900/70 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md dark:bg-zinc-600/90">
+                      <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
+                        <span className="relative block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)]" />
+                      </span>
+                      <span>Live</span>
+                      {liveRemainingLabel ? (
+                        <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
+                          {liveRemainingLabel}
                         </span>
-                        <span>Live</span>
-                        {liveRemainingLabel ? (
-                          <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
-                            {liveRemainingLabel}
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          trackEvent("discover_hero_go_live_corner", { mode: homeMode });
-                          writeDiscoverHomeIntent("work");
-                          navigate(workPrimaryPath);
-                          recordFirstMeaningfulAction("home_primary_work");
-                        }}
-                        className={cn(
-                          "group inline-flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-300",
-                          "active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                          "border-white/10 bg-zinc-900/70 text-white shadow-lg backdrop-blur-xl dark:bg-black/45",
-                          "hover:bg-zinc-900/80",
-                        )}
-                        aria-label="Go live"
-                      >
-                        <PlayCircle className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
-                      </button>
-                    )}
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
-                <div className="mt-3">
+                <div className="mt-3 flex justify-center">
+                  <div className="w-full max-w-md">
                   {liveHelpingJobs.filter((j) => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
                     liveHelpingJobs
                       .filter((j) => !dismissedLiveJobIds.includes(j.id))
@@ -821,7 +796,7 @@ export function DiscoverHomeActionFirst({
                               e.stopPropagation();
                               navigate(`${explorePath}?mode=work&tab=live_help`);
                             }}
-                            className="pointer-events-auto flex w-full items-center gap-4 rounded-[1.25rem] bg-zinc-900/90 p-4 shadow-xl backdrop-blur-xl text-left transition-all active:scale-[0.98] dark:bg-black/55"
+                            className="pointer-events-auto flex w-full items-center gap-4 rounded-[1.25rem] border border-zinc-700/40 bg-zinc-900/90 p-4 text-left shadow-xl backdrop-blur-xl transition-all active:scale-[0.98] dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-black/25"
                           >
                             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10 shadow-lg">
                               <img
@@ -833,16 +808,13 @@ export function DiscoverHomeActionFirst({
                             </div>
 
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-baseline justify-between gap-2">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="text-[16px] font-black text-white truncate leading-tight">{title}</span>
-                                  <span className="text-[12px] font-medium text-white/50">•</span>
-                                  <span className="text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</span>
-                                </div>
-                                <span className="text-[11px] font-bold text-white whitespace-nowrap shrink-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[16px] font-black text-white leading-tight">{title}</span>
+                                <span className="shrink-0 rounded-full bg-white/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/85 ring-1 ring-white/10">
                                   matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                                 </span>
                               </div>
+                              <p className="mt-0.5 text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</p>
 
                               <div className="mt-2 flex items-center gap-3">
                                 <span className="text-[12px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1">
@@ -864,7 +836,7 @@ export function DiscoverHomeActionFirst({
                         );
                       })
                   ) : (
-                    <div className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] bg-zinc-900/80 p-4 text-left shadow-lg backdrop-blur-md dark:bg-black/45">
+                    <div className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] border border-zinc-700/40 bg-zinc-900/80 p-4 text-left shadow-lg backdrop-blur-md dark:border-zinc-500/35 dark:bg-zinc-700/85 dark:shadow-black/20">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-bold text-white">No live help</p>
                         <p className="text-[11px] font-medium text-white/70">Find people who need help nearby</p>
@@ -881,11 +853,12 @@ export function DiscoverHomeActionFirst({
                       </button>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
 
-              {/* Text phrase — BELOW the image */}
-              <div className="w-full px-4 pt-4">
+              {/* Text phrase — below the live-help card; extra top padding for breathing room */}
+              <div className="w-full px-4 pt-8">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
