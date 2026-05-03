@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import {
   Link,
   useLocation,
@@ -1148,26 +1149,29 @@ export function BottomNav() {
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
-          <div
-            className={cn(
-              // Desktop: keep it pinned to the viewport bottom (no floating gap).
-              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl",
-            )}
-          >
-            <div className="flex items-center justify-center px-6 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-[env(safe-area-inset-bottom,0px)]">
-              <div
-                className="flex shrink-0 flex-col items-center justify-center"
-                title="Getting Started"
-              >
-                <BottomNavHomeIcon
-                  active
-                  className="text-zinc-950 dark:text-white"
-                />
+        {createPortal(
+          <nav className="fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
+            <div
+              className={cn(
+                // Desktop: keep it pinned to the viewport bottom (no floating gap).
+                "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl",
+              )}
+            >
+              <div className="flex items-center justify-center px-6 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-[env(safe-area-inset-bottom,0px)]">
+                <div
+                  className="flex shrink-0 flex-col items-center justify-center"
+                  title="Getting Started"
+                >
+                  <BottomNavHomeIcon
+                    active
+                    className="text-zinc-950 dark:text-white"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </nav>
+          </nav>,
+          document.body,
+        )}
         <NotificationsModal
           open={notificationsOpen}
           onOpenChange={setNotificationsOpen}
@@ -1201,13 +1205,13 @@ export function BottomNav() {
         {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
-        <nav
-          className={cn(
-            "fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0",
-            // Discover home browse dock uses z-[140]; lift nav (+ quick menu) above it while open.
-            plusMenuOpen ? "z-[160]" : "z-[120]",
-          )}
-        >
+        {createPortal(
+          <nav
+            className={cn(
+              /** Body portal: above reels / body overlays (z~119) but below Dialog (z-[130]). #root is z-1 so in-root z-120 could not stack above portaled reels. */
+              "fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0",
+            )}
+          >
           <div
             className={cn(
               // Desktop: keep it pinned to the viewport bottom (no floating gap).
@@ -1463,7 +1467,9 @@ export function BottomNav() {
             {/* Safe area padding (desktop bar only; mobile uses nav pb) */}
             <div className="hidden h-[env(safe-area-inset-bottom,0px)] w-full md:block" />
           </div>
-        </nav>
+        </nav>,
+          document.body,
+        )}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         <MobileSmartSearchOverlay
@@ -1487,15 +1493,18 @@ export function BottomNav() {
         {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
-        <nav className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
-          <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl">
-            <div className="flex items-center justify-center px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">
-              <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
-                <Home className="w-7 h-7" />
+        {createPortal(
+          <nav className="fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
+            <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl">
+              <div className="flex items-center justify-center px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">
+                <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
+                  <Home className="w-7 h-7" />
+                </div>
               </div>
             </div>
-          </div>
-        </nav>
+          </nav>,
+          document.body,
+        )}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         <MobileSmartSearchOverlay
