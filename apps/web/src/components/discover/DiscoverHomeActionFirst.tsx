@@ -323,11 +323,28 @@ export function DiscoverHomeActionFirst({
     return (frData?.myOpenRequests ?? []).length;
   }, [frData]);
 
+  const hireMoreMenuTotal = useMemo(
+    () => hireLiveHelperCount + myRequestsCount,
+    [hireLiveHelperCount, myRequestsCount],
+  );
+
   const pendingWorkRequestsCount = useMemo(() => {
     return (frData?.inboundNotifications ?? []).filter((n) =>
       Boolean(n.isConfirmed),
     ).length;
   }, [frData]);
+
+  const workMoreMenuTotal = useMemo(
+    () =>
+      isInActive24hGoLiveWindow
+        ? pendingWorkRequestsCount
+        : workLivePostCount + pendingWorkRequestsCount,
+    [
+      isInActive24hGoLiveWindow,
+      pendingWorkRequestsCount,
+      workLivePostCount,
+    ],
+  );
 
   /** Smooth shadow pulse on dock FABs (`box-shadow` keyframes; respects `motion-safe`). */
   const primaryCtaBreatheClass = "motion-safe:animate-dock-primary-breathe";
@@ -338,7 +355,7 @@ export function DiscoverHomeActionFirst({
   function renderQuickActionDockMobile() {
     const dockClass = cn(
       "pointer-events-auto fixed right-0 z-[140] flex flex-col items-end gap-3 md:hidden",
-      "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px))+2.875rem+0.5rem)]",
+      "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px))+3.5rem+0.5rem)]",
       "pr-[max(0.75rem,env(safe-area-inset-right,0px))]",
     );
 
@@ -513,148 +530,154 @@ export function DiscoverHomeActionFirst({
     );
   }
 
-  /** Desktop hero: matching three shortcuts (no modal). */
+  /** Desktop hero: three round icon badges + captions (no modal). */
   function renderHeroQuickActionsDesktop() {
-    const badgeSm =
-      "absolute -right-1.5 -top-1.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums text-white shadow-md bg-red-500 ring-2 ring-white";
-    const boxClass = cn(
-      "relative flex min-h-[4.35rem] w-full min-w-0 shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-2.5 text-center shadow-lg transition-transform active:scale-[0.98]",
-      "bg-white/90 text-slate-900 backdrop-blur-xl ring-1 ring-black/10 hover:bg-white",
-      "dark:border-white/10 dark:bg-zinc-800/85 dark:text-zinc-100 dark:hover:bg-zinc-800",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+    const countBadgeClass =
+      "absolute -right-0.5 -top-0.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums text-white shadow-md bg-red-500 ring-2 ring-white dark:ring-zinc-900";
+
+    const roundBadgeClass = cn(
+      "relative flex aspect-square h-[3.75rem] w-[3.75rem] shrink-0 items-center justify-center rounded-full border p-0 shadow-lg transition-transform active:scale-[0.98]",
+      "bg-white/92 text-slate-900 backdrop-blur-xl ring-1 ring-black/10 hover:bg-white",
+      "dark:border-white/10 dark:bg-zinc-800/92 dark:text-zinc-100 dark:hover:bg-zinc-800",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent focus-visible:ring-emerald-500/35",
     );
+
+    const badgeCaptionClass =
+      "max-w-[5.25rem] text-center text-[10px] font-black uppercase leading-tight tracking-[0.06em] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_0_14px_rgba(0,0,0,0.45)]";
+
+    const desktopQuickWrap = "pointer-events-auto absolute bottom-5 right-6 z-[20] hidden items-end gap-3.5 md:flex";
 
     if (isHire) {
       return (
-        <div className="pointer-events-auto absolute bottom-6 right-6 z-[20] hidden w-[min(100%-2rem,28rem)] grid grid-cols-3 gap-2 md:grid">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              trackEvent("discover_actions_browse_helpers", { mode: homeMode });
-              navigateToHelpersBrowse(navigate);
-            }}
-            className={boxClass}
-            aria-label="Find helpers"
-          >
-            <Search className="h-6 w-6 text-[#7B61FF]" strokeWidth={2.6} aria-hidden />
-            <span className="text-[12px] font-black uppercase tracking-wide">
-              Find helpers
-            </span>
-            {hireLiveHelperCount > 0 ? (
-              <span className={badgeSm}>
-                {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
-              </span>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              trackEvent("discover_actions_post_request", { mode: homeMode });
-              writeDiscoverHomeIntent("hire");
-              navigate(createRequestPath);
-              recordFirstMeaningfulAction("home_primary_create_request");
-            }}
-            className={cn(
-              boxClass,
-              primaryCtaBreatheClass,
-              "border-transparent bg-gradient-to-br from-indigo-600 to-purple-800 text-white shadow-indigo-500/25 ring-indigo-500/20 hover:brightness-110",
-            )}
-            aria-label="Request help now"
-          >
-            <Zap className="h-6 w-6 text-white" strokeWidth={2.6} aria-hidden />
-            <span className="text-[12px] font-black uppercase leading-snug tracking-wide">
-              Request help now
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMyRequestsOpen(true);
-            }}
-            className={boxClass}
-            aria-label="My requests"
-          >
-            <ClipboardList className="h-6 w-6 text-[#7B61FF]" strokeWidth={2.6} aria-hidden />
-            <span className="text-[12px] font-black uppercase tracking-wide">
-              My requests
-            </span>
-            {myRequestsCount > 0 ? (
-              <span className={badgeSm}>
-                {myRequestsCount > 9 ? "9+" : myRequestsCount}
-              </span>
-            ) : null}
-          </button>
+        <div className={desktopQuickWrap}>
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                trackEvent("discover_actions_browse_helpers", { mode: homeMode });
+                navigateToHelpersBrowse(navigate);
+              }}
+              className={roundBadgeClass}
+              aria-label="Find helpers"
+            >
+              <Search className="h-7 w-7 text-[#7B61FF]" strokeWidth={2.5} aria-hidden />
+              {hireLiveHelperCount > 0 ? (
+                <span className={countBadgeClass}>
+                  {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
+                </span>
+              ) : null}
+            </button>
+            <span className={badgeCaptionClass}>Find helpers</span>
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                trackEvent("discover_actions_post_request", { mode: homeMode });
+                writeDiscoverHomeIntent("hire");
+                navigate(createRequestPath);
+                recordFirstMeaningfulAction("home_primary_create_request");
+              }}
+              className={cn(
+                roundBadgeClass,
+                primaryCtaBreatheClass,
+                "border-transparent bg-gradient-to-br from-indigo-600 to-purple-800 text-white shadow-indigo-500/30 ring-indigo-500/25 hover:brightness-110",
+              )}
+              aria-label="Request help now"
+            >
+              <Zap className="h-7 w-7 text-white" strokeWidth={2.5} aria-hidden />
+            </button>
+            <span className={badgeCaptionClass}>Post request</span>
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMyRequestsOpen(true);
+              }}
+              className={roundBadgeClass}
+              aria-label="My requests"
+            >
+              <ClipboardList className="h-7 w-7 text-[#7B61FF]" strokeWidth={2.5} aria-hidden />
+              {myRequestsCount > 0 ? (
+                <span className={countBadgeClass}>
+                  {myRequestsCount > 9 ? "9+" : myRequestsCount}
+                </span>
+              ) : null}
+            </button>
+            <span className={badgeCaptionClass}>My requests</span>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="pointer-events-auto absolute bottom-6 right-6 z-[20] hidden w-[min(100%-2rem,28rem)] grid grid-cols-3 gap-2 md:grid">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            trackEvent("discover_actions_browse_requests", { mode: homeMode });
-            navigateToWorkBrowseRequests(navigate, profile);
-          }}
-          className={boxClass}
-          aria-label="Find posts"
-        >
-          <UsersRound className="h-6 w-6 text-emerald-600" strokeWidth={2.6} aria-hidden />
-          <span className="text-[12px] font-black uppercase tracking-wide">
-            Find posts
-          </span>
-          {workLivePostCount > 0 ? (
-            <span className={badgeSm}>
-              {workLivePostCount > 99 ? "99+" : workLivePostCount}
-            </span>
-          ) : null}
-        </button>
-        {isInActive24hGoLiveWindow ? null : (
+      <div className={desktopQuickWrap}>
+        <div className="flex flex-col items-center gap-1.5">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              trackEvent("discover_actions_go_live", { mode: homeMode });
-              writeDiscoverHomeIntent("work");
-              navigate(workPrimaryPath);
-              recordFirstMeaningfulAction("home_primary_work");
+              trackEvent("discover_actions_browse_requests", { mode: homeMode });
+              navigateToWorkBrowseRequests(navigate, profile);
             }}
-            className={cn(
-              boxClass,
-              primaryCtaBreatheClass,
-              "border-transparent bg-emerald-600 text-white hover:bg-emerald-600",
-            )}
-            aria-label="Go live"
+            className={roundBadgeClass}
+            aria-label="Find posts"
           >
-            <PlayCircle className="h-6 w-6 text-white" strokeWidth={2.6} aria-hidden />
-            <span className="text-[12px] font-black uppercase tracking-wide">
-              Go live
-            </span>
+            <UsersRound className="h-7 w-7 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} aria-hidden />
+            {workLivePostCount > 0 ? (
+              <span className={countBadgeClass}>
+                {workLivePostCount > 99 ? "99+" : workLivePostCount}
+              </span>
+            ) : null}
           </button>
+          <span className={badgeCaptionClass}>Find posts</span>
+        </div>
+        {isInActive24hGoLiveWindow ? null : (
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                trackEvent("discover_actions_go_live", { mode: homeMode });
+                writeDiscoverHomeIntent("work");
+                navigate(workPrimaryPath);
+                recordFirstMeaningfulAction("home_primary_work");
+              }}
+              className={cn(
+                roundBadgeClass,
+                primaryCtaBreatheClass,
+                "border-transparent bg-emerald-600 text-white shadow-emerald-900/20 ring-emerald-500/30 hover:bg-emerald-600",
+              )}
+              aria-label="Go live"
+            >
+              <PlayCircle className="h-7 w-7 text-white" strokeWidth={2.5} aria-hidden />
+            </button>
+            <span className={badgeCaptionClass}>Go live</span>
+          </div>
         )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setPendingWorkRequestsOpen(true);
-          }}
-          className={boxClass}
-          aria-label="Pending responses"
-        >
-          <Clock className="h-6 w-6 text-emerald-600" strokeWidth={2.6} aria-hidden />
-          <span className="text-[12px] font-black uppercase tracking-wide">
-            Pending
-          </span>
-          {pendingWorkRequestsCount > 0 ? (
-            <span className={badgeSm}>
-              {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
-            </span>
-          ) : null}
-        </button>
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPendingWorkRequestsOpen(true);
+            }}
+            className={roundBadgeClass}
+            aria-label="Pending responses"
+          >
+            <Clock className="h-7 w-7 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} aria-hidden />
+            {pendingWorkRequestsCount > 0 ? (
+              <span className={countBadgeClass}>
+                {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
+              </span>
+            ) : null}
+          </button>
+          <span className={badgeCaptionClass}>Pending</span>
+        </div>
       </div>
     );
   }
@@ -700,6 +723,7 @@ export function DiscoverHomeActionFirst({
             recordFirstMeaningfulAction("home_primary_create_request");
           }}
           onMoreClick={() => setQuickMoreOpen(true)}
+          moreMenuTotal={hireMoreMenuTotal}
           moreMenuOpen={quickMoreOpen}
         />
       ) : (
@@ -714,6 +738,7 @@ export function DiscoverHomeActionFirst({
             recordFirstMeaningfulAction("home_primary_work");
           }}
           onMoreClick={() => setQuickMoreOpen(true)}
+          moreMenuTotal={workMoreMenuTotal}
           moreMenuOpen={quickMoreOpen}
         />
       )}
@@ -1049,11 +1074,6 @@ export function DiscoverHomeActionFirst({
                   </div>
                 </div>
               </section>
-              <DiscoverHomeLiveHelperCards
-                helpers={liveHelpersForCards}
-                loading={liveAvatarsPending}
-                className="min-w-0 px-0.5"
-              />
             </div>
           ) : (
             <section
@@ -1286,7 +1306,15 @@ export function DiscoverHomeActionFirst({
 
         <div className="min-h-0 flex-1 overflow-hidden pt-2 flex flex-col gap-2">
           <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
-          {!isHire ? <DiscoverHomePostedHelpRequests enabled className="px-1 pt-1" /> : null}
+          {isHire ? (
+            <DiscoverHomeLiveHelperCards
+              helpers={liveHelpersForCards}
+              loading={liveAvatarsPending}
+              className="min-w-0 px-0.5 pt-1"
+            />
+          ) : (
+            <DiscoverHomePostedHelpRequests enabled className="px-1 pt-1" />
+          )}
           <DiscoverHomeRecentActivity viewerRole={isHire ? "client" : "freelancer"} />
         </div>
 

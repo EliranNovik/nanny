@@ -1,16 +1,20 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
   ChevronRight,
   CookingPot,
+  MapPin,
+  MessageCircle,
   Sparkles,
   Truck,
   UsersRound,
   Wrench,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { queryKeys } from "@/hooks/data/keys";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
@@ -20,6 +24,8 @@ import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { useAuth } from "@/context/AuthContext";
 import { navigateToWorkBrowseRequests } from "@/lib/discoverBrowseNavigate";
 import { LiveAvatarDot } from "@/components/discover/LiveAvatarDot";
+import { DiscoverProfileSaveBadge } from "@/components/discover/DiscoverProfileSaveBadge";
+import { replyTimeCompactFragmentForClient } from "@/lib/liveCanStart";
 
 const MAX_BOXES = 5;
 /** Fetch one extra row to know if more than `MAX_BOXES` exist. */
@@ -38,6 +44,9 @@ export type PostedHelpRequestRow = {
   author_photo_url: string | null;
   author_average_rating: number;
   author_total_ratings: number;
+  /** From `get_client_chat_response_stats` (freelancer → client reply latency). */
+  author_avg_reply_seconds?: number | null;
+  author_reply_sample_count?: number | null;
 };
 
 function humanizeSnakeField(raw: string | null | undefined): string | null {
@@ -87,10 +96,25 @@ function titleForServiceType(serviceType: string): string {
   return s ? s.slice(0, 1).toUpperCase() + s.slice(1) : "Help request";
 }
 
+const listGridClass =
+  "grid grid-cols-1 gap-2.5 md:grid-cols-2 md:gap-3";
+
 const rowBtnClass = cn(
-  "flex w-full items-stretch gap-3 rounded-[1.25rem] border-0 bg-zinc-100 p-4 text-left shadow-none ring-0 backdrop-blur-sm transition-all active:scale-[0.98]",
+  "flex min-w-0 w-full items-stretch gap-3 rounded-[1.25rem] border-0 bg-zinc-100 p-4 text-left shadow-none ring-0 backdrop-blur-sm transition-all active:scale-[0.98]",
   "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-xl dark:ring-0 dark:backdrop-blur-xl dark:shadow-black/25",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+);
+
+const respondBadgeClass = cn(
+  "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 pl-1.5 shadow-sm",
+  "border-violet-200/90 bg-gradient-to-br from-violet-50 via-white to-violet-100/50 text-violet-950",
+  "dark:border-violet-500/25 dark:from-violet-950/50 dark:via-zinc-800/90 dark:to-violet-900/30 dark:text-violet-50 dark:shadow-black/20",
+);
+
+const respondBadgePlaceholderClass = cn(
+  "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 pl-1.5 shadow-sm",
+  "border-zinc-200/90 bg-gradient-to-br from-zinc-50 via-white to-zinc-100/60 text-zinc-800",
+  "dark:border-zinc-600/50 dark:from-zinc-900/50 dark:via-zinc-800/90 dark:to-zinc-900/40 dark:text-zinc-200 dark:shadow-black/20",
 );
 
 type Props = {
@@ -104,9 +128,30 @@ export function DiscoverHomePostedHelpRequests({
   className,
 }: Props) {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<PostedHelpRequestRow[]>([]);
+
+  const { data: profileFavoriteRows = [] } = useQuery({
+    queryKey: queryKeys.profileFavorites(user?.id ?? null),
+    queryFn: async () => {
+      const uid = user?.id;
+      if (!uid) return [];
+      const { data, error } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", uid);
+      if (error) throw error;
+      return (data ?? []) as { favorite_user_id: string }[];
+    },
+    enabled: !!user?.id,
+    staleTime: 60_000,
+  });
+
+  const favoriteUserIds = useMemo(
+    () => new Set(profileFavoriteRows.map((r) => r.favorite_user_id)),
+    [profileFavoriteRows],
+  );
 
   const visibleRows = useMemo(() => rows.slice(0, MAX_BOXES), [rows]);
   /** True when the server returned more than we show (we fetch `MAX_BOXES + 1`). */
@@ -166,7 +211,59 @@ export function DiscoverHomePostedHelpRequests({
           return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
         })(),
       })) as PostedHelpRequestRow[];
-      setRows(list.filter((r) => r.job_id.length > 0));
+
+      const withIds = list.filter((r) => r.job_id.length > 0);
+      const clientIds = Array.from(
+        new Set(withIds.map((r) => r.client_id.trim()).filter(Boolean)),
+      );
+      let merged: PostedHelpRequestRow[] = withIds;
+      if (clientIds.length > 0) {
+        const { data: statsRows, error: statsErr } = await supabase.rpc(
+          "get_client_chat_response_stats",
+          { p_client_ids: clientIds },
+        );
+        if (statsErr) {
+          console.warn(
+            "[DiscoverHomePostedHelpRequests] get_client_chat_response_stats:",
+            statsErr.code,
+            statsErr.message,
+          );
+        }
+        if (!statsErr && Array.isArray(statsRows)) {
+          const statsMap = new Map<
+            string,
+            { avg_seconds: number; sample_count: number }
+          >();
+          for (const sr of statsRows as Array<{
+            client_id?: string;
+            clientId?: string;
+            avg_seconds?: number | null;
+            avgSeconds?: number | null;
+            sample_count?: number | null;
+            sampleCount?: number | null;
+          }>) {
+            const cid = String(
+              sr.client_id ?? sr.clientId ?? "",
+            ).trim();
+            const avgRaw = sr.avg_seconds ?? sr.avgSeconds;
+            if (!cid || avgRaw == null || !Number.isFinite(Number(avgRaw)))
+              continue;
+            statsMap.set(cid, {
+              avg_seconds: Number(avgRaw),
+              sample_count: Number(sr.sample_count ?? sr.sampleCount ?? 0),
+            });
+          }
+          merged = withIds.map((r) => {
+            const st = statsMap.get(r.client_id.trim());
+            return {
+              ...r,
+              author_avg_reply_seconds: st?.avg_seconds ?? null,
+              author_reply_sample_count: st?.sample_count ?? null,
+            };
+          });
+        }
+      }
+      setRows(merged);
       setLoading(false);
     })();
     return () => {
@@ -181,7 +278,7 @@ export function DiscoverHomePostedHelpRequests({
         <p className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
           Open requests near you
         </p>
-        <div className="flex flex-col gap-2.5">
+        <div className={listGridClass}>
           {Array.from({ length: MAX_BOXES }, (_, i) => (
             <div
               key={i}
@@ -207,7 +304,7 @@ export function DiscoverHomePostedHelpRequests({
       <p className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
         Open requests near you
       </p>
-      <div className="flex flex-col gap-2.5">
+      <div className={listGridClass}>
         {visibleRows.map((r) => {
           const name = (r.author_full_name || "Member").trim() || "Member";
           const title = titleForServiceType(r.service_type);
@@ -221,12 +318,17 @@ export function DiscoverHomePostedHelpRequests({
           const rating = Number.isFinite(r.author_average_rating) ? r.author_average_rating : 0;
           const totalRatings = Number.isFinite(r.author_total_ratings) ? r.author_total_ratings : 0;
           const durationLabel = durationLineForPostedRow(r);
+          const respondTime = replyTimeCompactFragmentForClient(
+            r.author_avg_reply_seconds,
+            r.author_reply_sample_count,
+          );
+          const hasMeasuredReply = respondTime != null;
 
           return (
             <button
               key={r.job_id}
               type="button"
-              className={rowBtnClass}
+              className={cn(rowBtnClass, "relative")}
               onClick={() => {
                 trackEvent("discover_posted_help_request_open_match", {
                   job_id: r.job_id,
@@ -238,14 +340,25 @@ export function DiscoverHomePostedHelpRequests({
               }}
             >
               <div className="flex w-[5.25rem] shrink-0 flex-col items-center gap-1 self-start sm:w-[5.75rem]">
-                <div className="relative h-16 w-16 shrink-0">
-                  <Avatar className="h-16 w-16 overflow-hidden shadow-md">
-                    <AvatarImage src={r.author_photo_url || undefined} alt="" className="object-cover" />
-                    <AvatarFallback className="bg-zinc-200 text-base font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
-                      {name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <LiveAvatarDot />
+                <div className="relative inline-flex shrink-0">
+                  <div className="relative h-16 w-16 shrink-0">
+                    <Avatar className="h-16 w-16 overflow-hidden shadow-md">
+                      <AvatarImage src={r.author_photo_url || undefined} alt="" className="object-cover" />
+                      <AvatarFallback className="bg-zinc-200 text-base font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
+                        {name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <LiveAvatarDot />
+                  </div>
+                  {r.client_id.trim() ? (
+                    <DiscoverProfileSaveBadge
+                      targetUserId={r.client_id}
+                      accent="work"
+                      viewerUserId={user?.id}
+                      favoriteUserIds={favoriteUserIds}
+                      analyticsEvent="discover_posted_request_save_profile"
+                    />
+                  ) : null}
                 </div>
                 <p
                   className="w-full max-w-[5.75rem] truncate text-center text-[13px] font-bold leading-snug text-zinc-800 dark:text-zinc-100 sm:text-[14px]"
@@ -265,14 +378,28 @@ export function DiscoverHomePostedHelpRequests({
                   countClassName="text-zinc-500 text-[10px] dark:text-white/55"
                 />
               </div>
-              <div className="flex min-h-[5rem] min-w-0 flex-1 flex-col pt-0.5">
+              <div
+                className={cn(
+                  "flex min-h-[5rem] min-w-0 flex-1 flex-col pt-0.5",
+                  "pr-[5.75rem] sm:pr-24",
+                )}
+              >
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   {postedRequestCategoryIcon(r.service_type, "h-4.5 w-4.5 shrink-0 stroke-[2.25]")}
                   <span className="min-w-0 truncate text-[17px] font-black leading-tight text-zinc-900 dark:text-white">
                     {title}
                   </span>
                 </div>
-                <p className="mt-0.5 truncate text-[15px] font-bold leading-tight text-zinc-600 dark:text-white/80">{loc}</p>
+                <p className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                  <MapPin
+                    className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 truncate text-[15px] font-bold leading-tight text-zinc-600 dark:text-white/80">
+                    {loc}
+                  </span>
+                </p>
                 {durationLabel ? (
                   <p className="mt-0.5 truncate text-[15px] font-semibold leading-snug text-zinc-500 dark:text-white/70">
                     {durationLabel}
@@ -285,6 +412,53 @@ export function DiscoverHomePostedHelpRequests({
                     </span>
                   </div>
                 ) : null}
+              </div>
+              <div className="absolute right-10 top-3 z-20 flex max-w-[min(11rem,calc(100%-5rem))] flex-col items-end sm:right-11">
+                <span
+                  className={cn(
+                    hasMeasuredReply ? respondBadgeClass : respondBadgePlaceholderClass,
+                    "shrink-0",
+                  )}
+                  title={
+                    hasMeasuredReply
+                      ? `Typical reply ${respondTime}`
+                      : "Typical reply time shows here once there is chat history with this member"
+                  }
+                >
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full ring-1",
+                      hasMeasuredReply
+                        ? "bg-violet-500/15 text-violet-700 ring-violet-500/15 dark:bg-violet-400/15 dark:text-violet-200 dark:ring-violet-400/20"
+                        : "bg-zinc-400/15 text-zinc-600 ring-zinc-400/20 dark:bg-zinc-600/40 dark:text-zinc-200 dark:ring-zinc-500/30",
+                    )}
+                    aria-hidden
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" strokeWidth={2.35} />
+                  </span>
+                  <span className="flex min-w-0 flex-col items-start gap-0 pr-0.5 leading-none">
+                    <span
+                      className={cn(
+                        "text-[8px] font-black uppercase tracking-[0.14em]",
+                        hasMeasuredReply
+                          ? "text-violet-600/85 dark:text-violet-300/90"
+                          : "text-zinc-600/90 dark:text-zinc-400",
+                      )}
+                    >
+                      Reply
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[12px] font-black tabular-nums tracking-tight",
+                        hasMeasuredReply
+                          ? "text-violet-950 dark:text-white"
+                          : "text-zinc-700 dark:text-zinc-100",
+                      )}
+                    >
+                      {respondTime ?? "new"}
+                    </span>
+                  </span>
+                </span>
               </div>
               <div
                 className="flex w-8 shrink-0 items-center justify-center self-stretch pl-0.5"

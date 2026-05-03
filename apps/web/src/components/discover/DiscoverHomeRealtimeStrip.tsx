@@ -39,6 +39,7 @@ import {
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { trackEvent } from "@/lib/analytics";
 import { LiveAvatarDot } from "@/components/discover/LiveAvatarDot";
+import { DiscoverProfileSaveBadge } from "@/components/discover/DiscoverProfileSaveBadge";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
 import { haversineDistanceKm } from "@/lib/geo";
 import {
@@ -190,12 +191,15 @@ const workStripDeclineRoundBtn = cn(
   "h-14 w-14 bg-white text-rose-500 ring-zinc-200 hover:bg-rose-50 dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
 );
 
-/** Hire (“I need help”) = purple ring; work (“Help others”) = green ring — not per-category. */
+/**
+ * Avatar frame: three-tone gradient in one hue (no outer shadow).
+ * Hire = violet family; work = emerald family.
+ */
 function stripAvatarRingClass(mode: "hire" | "work"): string {
   if (mode === "hire") {
-    return "bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 shadow-[0_8px_24px_-8px_rgba(139,92,246,0.55)]";
+    return "bg-gradient-to-br from-violet-400 via-violet-600 to-violet-900 dark:from-violet-300 dark:via-violet-500 dark:to-violet-800";
   }
-  return "bg-gradient-to-br from-emerald-400 to-teal-600 shadow-[0_8px_24px_-8px_rgba(16,185,129,0.55)]";
+  return "bg-gradient-to-br from-emerald-300 via-emerald-600 to-emerald-900 dark:from-emerald-400 dark:via-emerald-600 dark:to-emerald-800";
 }
 
 function pickPrimaryLiveCategory(
@@ -1814,6 +1818,27 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     user?.id,
   );
 
+  const { data: profileFavoriteRows = [] } = useQuery({
+    queryKey: queryKeys.profileFavorites(user?.id ?? null),
+    queryFn: async () => {
+      const uid = user?.id;
+      if (!uid) return [];
+      const { data, error } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", uid);
+      if (error) throw error;
+      return (data ?? []) as { favorite_user_id: string }[];
+    },
+    enabled: !!user?.id,
+    staleTime: 60_000,
+  });
+
+  const favoriteUserIds = useMemo(
+    () => new Set(profileFavoriteRows.map((r) => r.favorite_user_id)),
+    [profileFavoriteRows],
+  );
+
   const hireItems = useMemo((): HireStripItem[] => {
     const catsByHelper = new Map<string, Set<ServiceCategoryId>>();
     for (const catDef of DISCOVER_HOME_CATEGORIES) {
@@ -2220,7 +2245,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 "active:scale-[0.97] md:w-[5.5rem]",
               )}
             >
-              <div className="relative">
+              <div className="relative inline-flex">
                 <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("work"))}>
                   <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
                     <Avatar className="h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
@@ -2238,6 +2263,14 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   </div>
                   <LiveAvatarDot />
                 </div>
+                {row.clientId.trim() ? (
+                  <DiscoverProfileSaveBadge
+                    targetUserId={row.clientId}
+                    accent="work"
+                    viewerUserId={user?.id}
+                    favoriteUserIds={favoriteUserIds}
+                  />
+                ) : null}
               </div>
               <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
                 {shortDisplayName(row.name)}
@@ -2336,7 +2369,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               "active:scale-[0.97] md:w-[5.5rem]",
             )}
           >
-            <div className="relative">
+            <div className="relative inline-flex">
               <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("hire"))}>
                 <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
                   <Avatar className="h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
@@ -2354,6 +2387,14 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 </div>
                 <LiveAvatarDot />
               </div>
+              {it.helperUserId.trim() ? (
+                <DiscoverProfileSaveBadge
+                  targetUserId={it.helperUserId}
+                  accent="hire"
+                  viewerUserId={user?.id}
+                  favoriteUserIds={favoriteUserIds}
+                />
+              ) : null}
             </div>
             <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
               {shortDisplayName(it.name)}

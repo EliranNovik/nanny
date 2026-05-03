@@ -24,5 +24,9 @@ export const queryKeys = {
   communityPosts: (category: string | null) => [...queryKeys.community, "posts", category] as const,
   postFavorites: (userId?: string, postIds?: string[]) => [...queryKeys.community, "favorites", userId, postIds?.sort().join(",")] as const,
   pendingHireInterests: (userId?: string, postIds?: string[]) => [...queryKeys.community, "hireInterests", userId, postIds?.sort().join(",")] as const,
+
+  /** Saved profiles (`profile_favorites`) for the current user. */
+  profileFavorites: (userId?: string | null) =>
+    [...queryKeys.community, "profileFavorites", userId ?? "none"] as const,
 };
 

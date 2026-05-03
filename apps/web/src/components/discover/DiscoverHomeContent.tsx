@@ -47,7 +47,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
       className={cn(
         "relative flex min-h-0 flex-1 flex-col bg-white dark:bg-background",
         homeMode === "work" || homeMode === "hire"
-          ? "max-md:pb-[calc(6.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]"
+          ? "max-md:pb-[calc(6.85rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]"
           : "max-md:pb-0",
         "md:min-h-screen md:flex-none md:overflow-visible md:pb-12 md:overflow-y-auto",
       )}

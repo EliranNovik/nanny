@@ -25,6 +25,8 @@ export type DiscoverLiveAvatarEntry = {
 /** Full live window row for hire home cards (not capped per category like the strip). */
 export type DiscoverLiveHelperCardEntry = DiscoverLiveAvatarEntry & {
   live_category_ids: string[];
+  /** From `freelancer_profiles.bio` when present */
+  bio?: string | null;
 };
 
 export type DiscoverLiveAvatarsPayload = {
@@ -91,6 +93,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
         .select(
           `
           user_id,
+          bio,
           live_until,
           live_categories,
           live_can_start_in,
@@ -142,6 +145,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
 
       for (const row of (data || []) as {
         user_id?: string;
+        bio?: string | null;
         live_categories?: string[] | null;
         live_can_start_in?: string | null;
         profiles?:
@@ -192,6 +196,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
           ),
         );
         if (validatedCats.length > 0) {
+          const bioRaw = row.bio != null ? String(row.bio).trim() : "";
           helpersForCards.push({
             helper_user_id: authorId,
             full_name: prof?.full_name ?? null,
@@ -210,6 +215,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
             reply_sample_count: replyStats[authorId]?.sample_count ?? null,
             is_verified: prof?.is_verified ?? null,
             live_category_ids: validatedCats,
+            bio: bioRaw.length > 0 ? bioRaw : null,
           });
         }
 

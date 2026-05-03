@@ -197,7 +197,7 @@ export default function ExplorePage() {
       className={cn(
         "relative min-h-screen bg-white dark:bg-zinc-950",
         mode === "work"
-          ? "pb-8 max-md:pb-[calc(6.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] md:pb-10"
+          ? "pb-8 max-md:pb-[calc(6.85rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] md:pb-10"
           : "pb-8 md:pb-10",
       )}
       style={{ "--app-explore-stack-gap": "0.03125rem" } as React.CSSProperties}
