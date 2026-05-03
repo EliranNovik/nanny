@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Clock,
   CookingPot,
-  MapPin,
   MessageCircle,
   Sparkles,
   Truck,
@@ -49,29 +48,16 @@ function categoryIconNode(
   return <Wrench className={cn(className, categoryIconTint)} aria-hidden />;
 }
 
-/** Single-line-ish snippet for card; ellipsis when trimmed. */
-function shortBioSnippet(raw: string | null | undefined, maxChars = 110): string | null {
-  const one = (raw ?? "").replace(/\s+/g, " ").trim();
-  if (!one) return null;
-  if (one.length <= maxChars) return one;
-  return `${one.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
-}
-
 const listGridClass =
   "grid grid-cols-1 gap-2.5 md:grid-cols-2 md:gap-3";
 
 const rowBtnClass = cn(
-  "flex min-w-0 w-full flex-col gap-2 rounded-[1.25rem] border-0 bg-zinc-100 p-4 text-left shadow-none ring-0 backdrop-blur-sm transition-all active:scale-[0.98]",
+  "flex min-w-0 w-full flex-col gap-2 rounded-[1.25rem] border-0 bg-zinc-50 p-4 text-left shadow-sm ring-0 backdrop-blur-sm transition-all hover:bg-zinc-50/90 hover:shadow-md active:scale-[0.98]",
   "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-xl dark:ring-0 dark:backdrop-blur-xl dark:shadow-black/25",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 );
 
 const rowTopClass = "relative flex min-w-0 w-full items-start gap-3";
-
-const categoryRowClass = cn(
-  "flex min-w-0 w-full flex-row flex-wrap gap-1.5 border-t border-zinc-200/70 pt-2 dark:border-white/10",
-  "pl-[calc(4.5rem+0.75rem)] sm:pl-[calc(5rem+0.75rem)]",
-);
 
 const respondBadgeClass = cn(
   "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 pl-1.5 shadow-sm",
@@ -126,7 +112,7 @@ export function DiscoverHomeLiveHelperCards({
 
   const seeMoreBtnClass = cn(
     "group mt-3 flex w-full items-center justify-center gap-1 rounded-full border border-zinc-200/70 bg-zinc-50/50 px-4 py-2 text-[12px] font-semibold tracking-wide text-zinc-500 shadow-none transition-all",
-    "hover:border-zinc-300/90 hover:bg-zinc-100/70 hover:text-zinc-800 active:scale-[0.99]",
+    "hover:border-zinc-300/90 hover:bg-zinc-200/35 hover:text-zinc-800 active:scale-[0.99]",
     "dark:border-white/10 dark:bg-zinc-900/35 dark:text-zinc-400 dark:hover:border-white/18 dark:hover:bg-zinc-800/55 dark:hover:text-zinc-100",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
   );
@@ -165,8 +151,6 @@ export function DiscoverHomeLiveHelperCards({
 
           const showBadges = Boolean(respondTime || readyTime);
           const categoryIds = h.live_category_ids.filter(isServiceCategoryId);
-          const bioCollapsed = (h.bio ?? "").replace(/\s+/g, " ").trim();
-          const bioSnippet = shortBioSnippet(h.bio);
 
           return (
             <button
@@ -186,7 +170,7 @@ export function DiscoverHomeLiveHelperCards({
               }}
             >
               <div className={rowTopClass}>
-                <div className="flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5 self-start sm:w-[5rem]">
+                <div className="flex w-[4.5rem] shrink-0 flex-col items-center self-start sm:w-[5rem]">
                   <div className="relative inline-flex shrink-0">
                     <div className="relative h-16 w-16 shrink-0">
                       <Avatar className="h-16 w-16 overflow-hidden shadow-md">
@@ -205,105 +189,94 @@ export function DiscoverHomeLiveHelperCards({
                       analyticsEvent="discover_live_helper_save_profile"
                     />
                   </div>
+                </div>
+                <div className="relative flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+                  {showBadges ? (
+                    <div className="pointer-events-none absolute right-0 top-0 z-[1] flex flex-col items-end gap-1.5">
+                      {readyTime ? (
+                        <span className={cn(readyBadgeClass, "pointer-events-auto shrink-0")} title={`Can start ${readyTime}`}>
+                          <span
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/15 dark:bg-emerald-400/15 dark:text-emerald-200 dark:ring-emerald-400/20"
+                            aria-hidden
+                          >
+                            {readyTime === "now" ? (
+                              <Zap className="h-3.5 w-3.5" strokeWidth={2.35} />
+                            ) : (
+                              <Clock className="h-3.5 w-3.5" strokeWidth={2.35} />
+                            )}
+                          </span>
+                          <span className="flex min-w-0 flex-col items-start gap-0 pr-0.5 leading-none">
+                            <span className="text-[8px] font-black uppercase tracking-[0.14em] text-emerald-700/90 dark:text-emerald-300/90">
+                              Start
+                            </span>
+                            <span className="text-[12px] font-black tabular-nums tracking-tight text-emerald-950 dark:text-white">
+                              {readyTime}
+                            </span>
+                          </span>
+                        </span>
+                      ) : null}
+                      {respondTime ? (
+                        <span className={cn(respondBadgeClass, "pointer-events-auto shrink-0")} title={`Typical reply ${respondTime}`}>
+                          <span
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-700 ring-1 ring-violet-500/15 dark:bg-violet-400/15 dark:text-violet-200 dark:ring-violet-400/20"
+                            aria-hidden
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" strokeWidth={2.35} />
+                          </span>
+                          <span className="flex min-w-0 flex-col items-start gap-0 pr-0.5 leading-none">
+                            <span className="text-[8px] font-black uppercase tracking-[0.14em] text-violet-600/85 dark:text-violet-300/90">
+                              Reply
+                            </span>
+                            <span className="text-[12px] font-black tabular-nums tracking-tight text-violet-950 dark:text-white">
+                              {respondTime}
+                            </span>
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div
+                    className={cn(
+                      "flex min-w-0 flex-col gap-1.5",
+                      showBadges && "pr-[6.75rem] sm:pr-[7.25rem]",
+                    )}
+                  >
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className="min-w-0 truncate text-[17px] font-black leading-tight text-zinc-900 dark:text-white">
+                        {name}
+                      </span>
+                      <span className="min-w-0 truncate text-[14px] font-bold leading-tight text-zinc-600 dark:text-white/75">
+                        {(h.location_line || "").trim() || "Location not set"}
+                      </span>
+                    </div>
                   <StarRating
                     rating={rating}
                     totalRatings={totalRatings}
                     size="sm"
                     showCount
-                    className="max-w-full flex-col items-center gap-0.5"
+                    className="max-w-full shrink-0 items-center justify-start"
                     starClassName="text-amber-500 dark:text-amber-400"
                     emptyStarClassName="text-zinc-300 dark:text-white/25"
                     numberClassName="text-amber-700 tabular-nums text-[11px] dark:text-amber-100"
                     countClassName="text-zinc-500 text-[10px] dark:text-white/55"
                   />
+                  </div>
                 </div>
                 <div
-                  className={cn(
-                    "flex min-h-[4.5rem] min-w-0 flex-1 flex-col pt-0.5",
-                    showBadges && "pr-[6.25rem] sm:pr-[7.25rem]",
-                  )}
-                >
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="min-w-0 truncate text-[17px] font-black leading-tight text-zinc-900 dark:text-white">{name}</span>
-                  </div>
-                  <p className="mt-0.5 flex min-w-0 items-center gap-1.5">
-                    <MapPin
-                      className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400"
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                    <span className="min-w-0 truncate text-[15px] font-bold leading-tight text-zinc-600 dark:text-white/80">
-                      {(h.location_line || "").trim() || "Location not set"}
-                    </span>
-                  </p>
-                  {bioSnippet ? (
-                    <p
-                      className="mt-1 line-clamp-2 min-w-0 text-left text-[13px] font-medium leading-snug text-zinc-500 dark:text-white/60"
-                      title={bioCollapsed}
-                    >
-                      {bioSnippet}
-                    </p>
-                  ) : null}
-                </div>
-                {showBadges ? (
-                  <div className="absolute right-10 top-2.5 z-[1] flex max-w-[min(12.5rem,calc(100%-4.5rem))] flex-col items-end gap-1.5 sm:right-11">
-                  {respondTime ? (
-                    <span className={cn(respondBadgeClass, "shrink-0")} title={`Typical reply ${respondTime}`}>
-                      <span
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-700 ring-1 ring-violet-500/15 dark:bg-violet-400/15 dark:text-violet-200 dark:ring-violet-400/20"
-                        aria-hidden
-                      >
-                        <MessageCircle className="h-3.5 w-3.5" strokeWidth={2.35} />
-                      </span>
-                      <span className="flex min-w-0 flex-col items-start gap-0 pr-0.5 leading-none">
-                        <span className="text-[8px] font-black uppercase tracking-[0.14em] text-violet-600/85 dark:text-violet-300/90">
-                          Reply
-                        </span>
-                        <span className="text-[12px] font-black tabular-nums tracking-tight text-violet-950 dark:text-white">
-                          {respondTime}
-                        </span>
-                      </span>
-                    </span>
-                  ) : null}
-                  {readyTime ? (
-                    <span className={cn(readyBadgeClass, "shrink-0")} title={`Can start ${readyTime}`}>
-                      <span
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/15 dark:bg-emerald-400/15 dark:text-emerald-200 dark:ring-emerald-400/20"
-                        aria-hidden
-                      >
-                        {readyTime === "now" ? (
-                          <Zap className="h-3.5 w-3.5" strokeWidth={2.35} />
-                        ) : (
-                          <Clock className="h-3.5 w-3.5" strokeWidth={2.35} />
-                        )}
-                      </span>
-                      <span className="flex min-w-0 flex-col items-start gap-0 pr-0.5 leading-none">
-                        <span className="text-[8px] font-black uppercase tracking-[0.14em] text-emerald-700/90 dark:text-emerald-300/90">
-                          Start
-                        </span>
-                        <span className="text-[12px] font-black tabular-nums tracking-tight text-emerald-950 dark:text-white">
-                          {readyTime}
-                        </span>
-                      </span>
-                    </span>
-                  ) : null}
-                  </div>
-                ) : null}
-                <div
-                  className="flex w-8 shrink-0 items-center justify-center self-stretch pl-0.5"
+                  className="flex w-8 shrink-0 items-center justify-center self-start py-0.5 pl-0.5"
                   aria-hidden
                 >
                   <ChevronRight className="h-5 w-5 text-zinc-400 dark:text-white/70" />
                 </div>
               </div>
               {categoryIds.length > 0 ? (
-                <div className={categoryRowClass}>
+                <div className="flex w-full min-w-0 flex-row flex-wrap items-center gap-1.5">
                   {categoryIds.map((cid) => {
                     const label = serviceCategoryLabel(cid);
                     return (
                       <span
                         key={cid}
-                        className="inline-flex max-w-[min(100%,12rem)] shrink-0 items-center gap-1 rounded-full bg-zinc-200/70 px-2.5 py-1 text-[12px] font-bold text-zinc-800 ring-0 dark:bg-white/10 dark:text-white/90 dark:ring-1 dark:ring-white/10"
+                        className="inline-flex min-w-0 max-w-full shrink-0 items-center gap-1 rounded-full bg-zinc-200/70 px-2.5 py-1 text-[11px] font-bold text-zinc-800 ring-0 dark:bg-white/10 dark:text-white/90 dark:ring-1 dark:ring-white/10"
                       >
                         {categoryIconNode(cid, "h-3.5 w-3.5 shrink-0 stroke-[2.25]")}
                         <span className="truncate">{label}</span>

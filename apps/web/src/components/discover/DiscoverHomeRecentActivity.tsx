@@ -10,6 +10,21 @@ export type DiscoverHomeRecentActivityViewer = "client" | "freelancer";
 
 type ActivityKind = "review" | "comment" | "hire_received" | "hire_sent";
 
+function kindLabel(kind: ActivityKind): string {
+  switch (kind) {
+    case "review":
+      return "Review";
+    case "comment":
+      return "Comment";
+    case "hire_received":
+      return "Hire interest";
+    case "hire_sent":
+      return "Hire sent";
+    default:
+      return "Activity";
+  }
+}
+
 type ActivityRow = {
   kind: ActivityKind;
   id: string;
@@ -60,8 +75,14 @@ const iconForKind: Record<ActivityKind, typeof Star> = {
 
 export function DiscoverHomeRecentActivity({
   viewerRole,
+  limit = 14,
+  variant = "list",
+  showHeading = true,
 }: {
   viewerRole: DiscoverHomeRecentActivityViewer;
+  limit?: number;
+  variant?: "list" | "table";
+  showHeading?: boolean;
 }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -77,6 +98,7 @@ export function DiscoverHomeRecentActivity({
     setLoading(true);
     try {
       const uid = user.id;
+      const qLimit = Math.min(100, Math.max(12, limit));
 
       const [reviewsRes, myPostsRes] = await Promise.all([
         supabase
@@ -92,7 +114,7 @@ export function DiscoverHomeRecentActivity({
           )
           .eq("reviewee_id", uid)
           .order("created_at", { ascending: false })
-          .limit(12),
+          .limit(qLimit),
         supabase
           .from("community_posts")
           .select("id, title")
@@ -145,7 +167,7 @@ export function DiscoverHomeRecentActivity({
               .select("id, created_at, status, community_post_id")
               .eq("client_id", uid)
               .order("created_at", { ascending: false })
-              .limit(12)
+              .limit(qLimit)
           : Promise.resolve({ data: [] as typeof hireSentRaw, error: null });
 
       if (myPostIds.length > 0) {
@@ -155,13 +177,13 @@ export function DiscoverHomeRecentActivity({
             .select("id, body, created_at, author_id, post_id")
             .in("post_id", myPostIds)
             .order("created_at", { ascending: false })
-            .limit(12),
+            .limit(qLimit),
           supabase
             .from("community_post_hire_interests")
             .select("id, created_at, status, community_post_id, client_id")
             .in("community_post_id", myPostIds)
             .order("created_at", { ascending: false })
-            .limit(12),
+            .limit(qLimit),
           hireSentPromise,
         ]);
         if (cRes.error)
@@ -304,14 +326,14 @@ export function DiscoverHomeRecentActivity({
       merged.sort(
         (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
       );
-      setItems(merged.slice(0, 14));
+      setItems(merged.slice(0, limit));
     } catch (e) {
       console.error("[DiscoverHomeRecentActivity]", e);
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [user?.id, viewerRole]);
+  }, [user?.id, viewerRole, limit]);
 
   useEffect(() => {
     void load();
@@ -332,14 +354,27 @@ export function DiscoverHomeRecentActivity({
     );
   }
 
+  const contentTop =
+    showHeading && variant === "list" ? "mt-4" : variant === "table" ? "mt-0" : "mt-4";
+
   return (
-    <section className="mb-6 px-1" aria-label="Your recent activity">
-      <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-        Recent activity
-      </p>
+    <section
+      className={cn(variant === "list" && "mb-6 px-1")}
+      aria-label="Your recent activity"
+    >
+      {showHeading && variant === "list" ? (
+        <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+          Recent activity
+        </p>
+      ) : null}
 
       {showLoginPrompt ? (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <p
+          className={cn(
+            "text-sm text-muted-foreground",
+            showHeading && variant === "list" ? "mt-4" : "mt-0",
+          )}
+        >
           <Link
             to="/login"
             className="font-semibold text-foreground underline-offset-4 hover:underline"
@@ -349,19 +384,109 @@ export function DiscoverHomeRecentActivity({
           to see your reviews, comments, and hire activity.
         </p>
       ) : loading ? (
-        <div className="mt-6 flex justify-center py-6">
+        <div
+          className={cn(
+            "flex justify-center py-8",
+            showHeading && variant === "list" ? "mt-6" : "mt-2",
+          )}
+        >
           <Loader2
             className="h-8 w-8 animate-spin text-muted-foreground"
             aria-hidden
           />
         </div>
       ) : emptyLoggedIn ? (
-        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+        <p
+          className={cn(
+            "text-sm leading-relaxed text-muted-foreground",
+            showHeading && variant === "list" ? "mt-4" : "mt-0",
+          )}
+        >
           Nothing here yet. When someone comments on your post, sends hire
           interest, or leaves a review, it will show up here.
         </p>
+      ) : variant === "table" ? (
+        <div
+          className={cn(
+            "rounded-xl border border-border/60 bg-card shadow-sm dark:border-white/10",
+            contentTop,
+          )}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[32rem] text-left text-sm md:min-w-0">
+              <thead className="border-b border-border/60 bg-muted/40">
+                <tr>
+                  <th className="whitespace-nowrap px-3 py-3 font-semibold text-muted-foreground md:px-4">
+                    Type
+                  </th>
+                  <th className="px-3 py-3 font-semibold text-muted-foreground md:px-4">
+                    Summary
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-3 font-semibold text-muted-foreground md:px-4">
+                    When
+                  </th>
+                  <th className="w-16 px-2 py-3 text-right font-semibold text-muted-foreground md:w-20 md:px-3">
+                    <span className="sr-only">Open</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {items.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="align-top transition-colors hover:bg-muted/25"
+                  >
+                    <td className="whitespace-nowrap px-3 py-3 md:px-4">
+                      <span className="inline-flex items-center gap-2">
+                        <ActivityIcon kind={row.kind} />
+                        <span className="font-medium text-foreground">
+                          {kindLabel(row.kind)}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="max-w-[14rem] px-3 py-3 text-foreground md:max-w-none md:px-4">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-semibold leading-snug">
+                          {row.title}
+                        </span>
+                        {row.is_verified ? (
+                          <BadgeCheck
+                            className="h-4 w-4 shrink-0 fill-emerald-500 text-white md:h-5 md:w-5"
+                            strokeWidth={2.5}
+                            aria-label="Verified"
+                          />
+                        ) : null}
+                        {row.kind === "review" && row.rating != null ? (
+                          <StarRow rating={row.rating} />
+                        ) : null}
+                      </div>
+                      {row.subtitle ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {row.subtitle}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground md:px-4">
+                      {formatDistanceToNow(new Date(row.at), {
+                        addSuffix: true,
+                      })}
+                    </td>
+                    <td className="px-2 py-3 text-right md:px-3">
+                      <Link
+                        to={row.href}
+                        className="inline-flex rounded-md px-2 py-1 text-xs font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        Open
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
-        <ul className="mt-4 flex flex-col gap-0 divide-y divide-border/60 rounded-xl border border-border/50 bg-card/30 dark:bg-card/10">
+        <ul className="mt-4 flex flex-col gap-0 divide-y divide-border/60 rounded-xl border-0 bg-zinc-50 shadow-sm dark:divide-white/10 dark:bg-zinc-900/60 dark:shadow-none">
           {items.map((row) => (
             <li key={row.id} className="first:rounded-t-xl last:rounded-b-xl">
               <Link

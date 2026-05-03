@@ -32,7 +32,6 @@ import {
 import { DiscoverHirePostRequestStrip } from "@/components/discover/DiscoverHirePostRequestStrip";
 import { ExploreHelpOthersLiveStrip } from "@/components/discover/ExploreHelpOthersLiveStrip";
 import { DiscoverHomeRealtimeStrip } from "@/components/discover/DiscoverHomeRealtimeStrip";
-import { DiscoverHomeRecentActivity } from "@/components/discover/DiscoverHomeRecentActivity";
 import {
   DISCOVER_STROKE,
   discoverIcon,
@@ -81,12 +80,12 @@ const WORK = {
 
 /** Mobile “my request” / “live help” rows — light card, dark glass in dark mode */
 const discoverHomeMobilePromoRowClass = cn(
-  "flex w-full items-center gap-4 rounded-[1.25rem] border-0 bg-zinc-100 p-4 text-left shadow-none ring-0 backdrop-blur-sm transition-all active:scale-[0.98]",
+  "flex w-full items-center gap-4 rounded-[1.25rem] border-0 bg-zinc-50 p-4 text-left shadow-sm ring-0 backdrop-blur-sm transition-all hover:bg-zinc-50/90 hover:shadow-md active:scale-[0.98]",
   "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-xl dark:ring-0 dark:backdrop-blur-xl dark:shadow-black/25",
 );
 
 const discoverHomeMobileEmptyRowClass = cn(
-  "flex w-full items-center justify-between gap-3 rounded-[1.25rem] border-0 bg-zinc-100 p-4 text-left shadow-none ring-0 backdrop-blur-sm",
+  "flex w-full items-center justify-between gap-3 rounded-[1.25rem] border-0 bg-zinc-50 p-4 text-left shadow-sm ring-0 backdrop-blur-sm hover:bg-zinc-50/90 hover:shadow-md",
   "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/85 dark:shadow-black/20 dark:ring-0",
 );
 
@@ -1315,7 +1314,6 @@ export function DiscoverHomeActionFirst({
           ) : (
             <DiscoverHomePostedHelpRequests enabled className="px-1 pt-1" />
           )}
-          <DiscoverHomeRecentActivity viewerRole={isHire ? "client" : "freelancer"} />
         </div>
 
         <section className="mt-8 pb-12">

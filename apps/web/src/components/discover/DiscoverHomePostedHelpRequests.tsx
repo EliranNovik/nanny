@@ -100,7 +100,7 @@ const listGridClass =
   "grid grid-cols-1 gap-2.5 md:grid-cols-2 md:gap-3";
 
 const rowBtnClass = cn(
-  "flex min-w-0 w-full items-stretch gap-3 rounded-[1.25rem] border-0 bg-zinc-100 p-4 text-left shadow-none ring-0 backdrop-blur-sm transition-all active:scale-[0.98]",
+  "flex min-w-0 w-full items-stretch gap-3 rounded-[1.25rem] border-0 bg-zinc-50 p-4 text-left shadow-sm ring-0 backdrop-blur-sm transition-all hover:bg-zinc-50/90 hover:shadow-md active:scale-[0.98]",
   "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-xl dark:ring-0 dark:backdrop-blur-xl dark:shadow-black/25",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 );
@@ -294,7 +294,7 @@ export function DiscoverHomePostedHelpRequests({
 
   const seeMoreBtnClass = cn(
     "group mt-3 flex w-full items-center justify-center gap-1 rounded-full border border-zinc-200/70 bg-zinc-50/50 px-4 py-2 text-[12px] font-semibold tracking-wide text-zinc-500 shadow-none transition-all",
-    "hover:border-zinc-300/90 hover:bg-zinc-100/70 hover:text-zinc-800 active:scale-[0.99]",
+    "hover:border-zinc-300/90 hover:bg-zinc-200/35 hover:text-zinc-800 active:scale-[0.99]",
     "dark:border-white/10 dark:bg-zinc-900/35 dark:text-zinc-400 dark:hover:border-white/18 dark:hover:bg-zinc-800/55 dark:hover:text-zinc-100",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
   );
@@ -339,6 +339,7 @@ export function DiscoverHomePostedHelpRequests({
                 );
               }}
             >
+              <div className="relative flex min-w-0 w-full items-stretch gap-3">
               <div className="flex w-[5.25rem] shrink-0 flex-col items-center gap-1 self-start sm:w-[5.75rem]">
                 <div className="relative inline-flex shrink-0">
                   <div className="relative h-16 w-16 shrink-0">
@@ -366,21 +367,10 @@ export function DiscoverHomePostedHelpRequests({
                 >
                   {name}
                 </p>
-                <StarRating
-                  rating={rating}
-                  totalRatings={totalRatings}
-                  size="sm"
-                  showCount
-                  className="max-w-full flex-col items-center gap-0.5"
-                  starClassName="text-amber-500 dark:text-amber-400"
-                  emptyStarClassName="text-zinc-300 dark:text-white/25"
-                  numberClassName="text-amber-700 tabular-nums text-[11px] dark:text-amber-100"
-                  countClassName="text-zinc-500 text-[10px] dark:text-white/55"
-                />
               </div>
               <div
                 className={cn(
-                  "flex min-h-[5rem] min-w-0 flex-1 flex-col pt-0.5",
+                  "flex min-w-0 flex-1 flex-col gap-0.5 pt-0.5",
                   "pr-[5.75rem] sm:pr-24",
                 )}
               >
@@ -405,15 +395,19 @@ export function DiscoverHomePostedHelpRequests({
                     {durationLabel}
                   </p>
                 ) : null}
-                {when ? (
-                  <div className="mt-auto flex justify-end pt-2">
-                    <span className="shrink-0 rounded-full border-0 bg-zinc-200/90 px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-zinc-800 ring-0 dark:border dark:border-zinc-500/50 dark:bg-zinc-800/95 dark:text-zinc-100 dark:ring-1 dark:ring-zinc-950/40">
-                      {when}
-                    </span>
-                  </div>
-                ) : null}
+                <StarRating
+                  rating={rating}
+                  totalRatings={totalRatings}
+                  size="sm"
+                  showCount
+                  className="mt-1 max-w-full min-w-0 items-center justify-start"
+                  starClassName="text-amber-500 dark:text-amber-400"
+                  emptyStarClassName="text-zinc-300 dark:text-white/25"
+                  numberClassName="text-amber-700 tabular-nums text-[11px] dark:text-amber-100"
+                  countClassName="text-zinc-500 text-[10px] dark:text-white/55"
+                />
               </div>
-              <div className="absolute right-10 top-3 z-20 flex max-w-[min(11rem,calc(100%-5rem))] flex-col items-end sm:right-11">
+              <div className="absolute right-10 top-3 z-20 flex max-w-[min(11rem,calc(100%-5rem))] flex-col items-end gap-1.5 sm:right-11">
                 <span
                   className={cn(
                     hasMeasuredReply ? respondBadgeClass : respondBadgePlaceholderClass,
@@ -459,12 +453,21 @@ export function DiscoverHomePostedHelpRequests({
                     </span>
                   </span>
                 </span>
+                {when ? (
+                  <span
+                    className="inline-flex max-w-[min(11rem,calc(100vw-8rem))] shrink-0 items-center justify-center rounded-full border-0 bg-zinc-200/90 px-2.5 py-1 text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-zinc-800 ring-0 dark:border dark:border-zinc-500/50 dark:bg-zinc-800/95 dark:text-zinc-100 dark:ring-1 dark:ring-zinc-950/40 sm:text-[11px]"
+                    title={new Date(r.created_at).toLocaleString()}
+                  >
+                    <span className="line-clamp-2 text-center leading-tight">{when}</span>
+                  </span>
+                ) : null}
               </div>
               <div
-                className="flex w-8 shrink-0 items-center justify-center self-stretch pl-0.5"
+                className="flex w-8 shrink-0 items-center justify-center self-start py-0.5 pl-0.5"
                 aria-hidden
               >
                 <ChevronRight className="h-5 w-5 text-zinc-400 dark:text-white/70" />
+              </div>
               </div>
             </button>
           );

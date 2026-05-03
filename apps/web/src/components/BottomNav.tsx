@@ -1131,6 +1131,7 @@ export function BottomNav() {
       "/community/feed",
       "/liked",
       "/dashboard",
+      "/recent-activity",
       "/messages",
       "/calendar",
     ];

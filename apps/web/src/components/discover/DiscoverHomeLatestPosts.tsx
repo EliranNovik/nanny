@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
+import {
+  EXPLORE_PAGE_CARD_HOVER,
+  EXPLORE_PAGE_CARD_SURFACE,
+} from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { ChevronRight, Radio, X } from "lucide-react";
@@ -209,9 +212,9 @@ export function DiscoverHomeLatestPosts() {
         type="button"
         onClick={() => openPost(post.id)}
         className={cn(
-          "group w-full rounded-2xl bg-white dark:bg-zinc-900 px-4 py-4 text-left",
-          "border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
-          INTERACTIVE_CARD_HOVER,
+          "group w-full rounded-2xl px-4 py-4 text-left",
+          EXPLORE_PAGE_CARD_SURFACE,
+          EXPLORE_PAGE_CARD_HOVER,
           "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         )}
         aria-label="Open post"

@@ -39,6 +39,7 @@ import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
 import FreelancerAvailabilityLivePage from "./pages/freelancer/FreelancerAvailabilityLivePage";
 import DashboardPage from "@/pages/client/DashboardPage";
+import RecentActivityPage from "@/pages/RecentActivityPage";
 import ClientHomePage from "@/pages/client/ClientHomePage";
 import HelpersPage from "@/pages/client/HelpersPage";
 import HelpersMatchPage from "@/pages/client/HelpersMatchPage";
@@ -230,6 +231,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/recent-activity"
+          element={
+            <ProtectedRoute>
+              <RecentActivityPage />
             </ProtectedRoute>
           }
         />

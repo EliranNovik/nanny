@@ -102,11 +102,11 @@ export function ExploreMyPostedRequests() {
   return (
     <section className="space-y-4" aria-label="Your posted requests for help">
       {isLoading ? (
-        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
+        <div className="rounded-2xl border-0 bg-zinc-50 px-4 py-6 text-sm text-muted-foreground shadow-sm dark:bg-zinc-900">
           Loading your requests…
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-10 text-center shadow-none dark:bg-zinc-900/50">
+        <div className="rounded-2xl border-0 bg-zinc-50 px-4 py-10 text-center shadow-sm dark:bg-zinc-900/50">
           <p className="text-lg font-bold text-foreground">
             No open requests
           </p>

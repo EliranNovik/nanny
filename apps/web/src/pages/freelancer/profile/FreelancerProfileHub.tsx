@@ -19,6 +19,7 @@ import {
   MapPin,
   Image as ImageIcon,
   ExternalLink,
+  Activity,
 } from "lucide-react";
 
 export default function FreelancerProfileHub() {
@@ -97,6 +98,12 @@ export default function FreelancerProfileHub() {
           </div>
 
           <div className="rounded-[24px] border border-slate-200/80 dark:border-white/5 bg-white dark:bg-zinc-900 divide-y divide-slate-100 dark:divide-white/5 overflow-hidden shadow-sm">
+            <ProfileMenuRow
+              to="/recent-activity"
+              icon={Activity}
+              label="Recent activity"
+              description="Reviews, comments on your posts, and hire interest"
+            />
             <ProfileMenuRow
               to="/freelancer/profile/saved"
               icon={Heart}

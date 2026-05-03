@@ -267,7 +267,7 @@ export function DiscoverHomeHeroDesktopLiveColumn({ className }: Props) {
       ) : null}
 
       {showSkeleton ? (
-        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
+        <div className="rounded-2xl border-0 bg-zinc-50 px-4 py-6 text-sm text-muted-foreground shadow-sm dark:bg-zinc-900">
           Loading live help…
         </div>
       ) : null}
@@ -456,7 +456,7 @@ export function DiscoverHomeHeroDesktopLiveColumn({ className }: Props) {
           ) : null}
 
           {!loading && !helperJob && !clientJob ? (
-            <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-10 text-center text-sm text-muted-foreground shadow-none dark:bg-zinc-900/50">
+            <div className="rounded-2xl border-0 bg-zinc-50 px-4 py-10 text-center text-sm text-muted-foreground shadow-sm dark:bg-zinc-900/50">
               No active jobs right now. When you are matched, status appears
               here on desktop.
             </div>

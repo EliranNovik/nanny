@@ -445,11 +445,11 @@ export function ExploreYourMatches({
         isOwnRequest={selectedJobDetails?.client_id === user?.id}
       />
       {loading ? (
-        <div className="rounded-xl border-0 bg-zinc-100 px-3 py-4 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
+        <div className="rounded-xl border-0 bg-zinc-50 px-3 py-4 text-sm text-muted-foreground shadow-sm dark:bg-zinc-900">
           Loading your matches…
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-5 text-center text-sm text-muted-foreground shadow-none dark:bg-zinc-900/50">
+        <div className="rounded-2xl border-0 bg-zinc-50 px-4 py-5 text-center text-sm text-muted-foreground shadow-sm dark:bg-zinc-900/50">
           {matchPerspective === "client"
             ? "No active “helping me now” jobs yet. When a helper is confirmed on your request, it will show here."
             : matchPerspective === "helper"

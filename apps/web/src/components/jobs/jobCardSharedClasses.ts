@@ -44,11 +44,12 @@ export const JOB_CARD_EMPTY_PANEL = cn(
 );
 
 /**
- * Explore tab cards — light: zinc slab, no outline (matches discover home list rows).
+ * Explore tab cards + discover home list rows — light: same grey as Public Profile
+ * “Open Help Requests” (`bg-zinc-50 shadow-sm border-0`).
  * Dark: filled panel + light shadow.
  */
 export const EXPLORE_PAGE_CARD_SURFACE = cn(
-  "border-0 bg-zinc-100 shadow-none ring-0",
+  "border-0 bg-zinc-50 shadow-sm ring-0",
   "dark:border-0 dark:bg-zinc-800 dark:shadow-sm",
 );
 

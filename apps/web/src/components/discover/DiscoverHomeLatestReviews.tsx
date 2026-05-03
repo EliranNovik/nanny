@@ -162,8 +162,7 @@ export function DiscoverHomeLatestReviews({ limit = 6 }: { limit?: number }) {
     return (
       <article
         className={cn(
-          "group relative w-full rounded-3xl border border-slate-200/90 bg-white p-6 pt-12 text-left",
-          "shadow-md shadow-slate-950/5 transition-all duration-300 hover:shadow-lg",
+          "group relative w-full rounded-3xl border-0 bg-zinc-50 p-6 pt-12 text-left shadow-sm shadow-slate-950/5 transition-all duration-300 hover:bg-zinc-50/90 hover:shadow-md",
           "dark:border-border/50 dark:bg-zinc-900 dark:shadow-black/20 dark:hover:shadow-lg",
         )}
       >

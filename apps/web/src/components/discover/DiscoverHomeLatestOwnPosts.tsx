@@ -7,7 +7,6 @@ import {
   EXPLORE_PAGE_CARD_HOVER,
   EXPLORE_PAGE_CARD_SURFACE,
   EXPLORE_PAGE_CARD_THUMB,
-  INTERACTIVE_CARD_HOVER,
 } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -316,10 +315,8 @@ export function DiscoverHomeLatestOwnPosts({
         onClick={() => openOwnPostCard(r.id)}
         className={cn(
           "group relative w-full rounded-2xl p-4 text-left",
-          explorePageCards
-            ? EXPLORE_PAGE_CARD_SURFACE
-            : "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
-          explorePageCards ? EXPLORE_PAGE_CARD_HOVER : INTERACTIVE_CARD_HOVER,
+          EXPLORE_PAGE_CARD_SURFACE,
+          EXPLORE_PAGE_CARD_HOVER,
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
         )}
       >
@@ -489,10 +486,8 @@ export function DiscoverHomeLatestOwnPosts({
                   onClick={() => openOwnPostCard(r.id)}
                   className={cn(
                     "group relative w-full rounded-xl p-3 text-left",
-                    explorePageCards
-                      ? EXPLORE_PAGE_CARD_SURFACE
-                      : "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
-                    explorePageCards ? EXPLORE_PAGE_CARD_HOVER : INTERACTIVE_CARD_HOVER,
+                    EXPLORE_PAGE_CARD_SURFACE,
+                    EXPLORE_PAGE_CARD_HOVER,
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                   )}
                 >
@@ -585,10 +580,8 @@ export function DiscoverHomeLatestOwnPosts({
                   onClick={() => openOwnPostCard(r.id)}
                   className={cn(
                     "group relative w-full rounded-2xl p-4 text-left",
-                    explorePageCards
-                      ? EXPLORE_PAGE_CARD_SURFACE
-                      : "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
-                    explorePageCards ? EXPLORE_PAGE_CARD_HOVER : INTERACTIVE_CARD_HOVER,
+                    EXPLORE_PAGE_CARD_SURFACE,
+                    EXPLORE_PAGE_CARD_HOVER,
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                   )}
                 >
