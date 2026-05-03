@@ -19,6 +19,7 @@ import { serviceCategoryLabel, isServiceCategoryId } from "@/lib/serviceCategori
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { useAuth } from "@/context/AuthContext";
 import { navigateToWorkBrowseRequests } from "@/lib/discoverBrowseNavigate";
+import { LiveAvatarDot } from "@/components/discover/LiveAvatarDot";
 
 const MAX_BOXES = 5;
 /** Fetch one extra row to know if more than `MAX_BOXES` exist. */
@@ -178,7 +179,7 @@ export function DiscoverHomePostedHelpRequests({
     return (
       <section className={cn("w-full", className)} aria-label="Posted help requests">
         <p className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
-          Open requests
+          Open requests near you
         </p>
         <div className="flex flex-col gap-2.5">
           {Array.from({ length: MAX_BOXES }, (_, i) => (
@@ -204,7 +205,7 @@ export function DiscoverHomePostedHelpRequests({
   return (
     <section className={cn("w-full", className)} aria-label="Posted help requests">
       <p className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
-        Open requests
+        Open requests near you
       </p>
       <div className="flex flex-col gap-2.5">
         {visibleRows.map((r) => {
@@ -237,12 +238,15 @@ export function DiscoverHomePostedHelpRequests({
               }}
             >
               <div className="flex w-[5.25rem] shrink-0 flex-col items-center gap-1 self-start sm:w-[5.75rem]">
-                <Avatar className="h-16 w-16 overflow-hidden shadow-md">
-                  <AvatarImage src={r.author_photo_url || undefined} alt="" className="object-cover" />
-                  <AvatarFallback className="bg-zinc-200 text-base font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
-                    {name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative h-16 w-16 shrink-0">
+                  <Avatar className="h-16 w-16 overflow-hidden shadow-md">
+                    <AvatarImage src={r.author_photo_url || undefined} alt="" className="object-cover" />
+                    <AvatarFallback className="bg-zinc-200 text-base font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
+                      {name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <LiveAvatarDot />
+                </div>
                 <p
                   className="w-full max-w-[5.75rem] truncate text-center text-[13px] font-bold leading-snug text-zinc-800 dark:text-zinc-100 sm:text-[14px]"
                   title={name}

@@ -4,8 +4,9 @@ import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, Ma
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { haversineDistanceKm } from "@/lib/geo";
 import {
+  EXPLORE_PAGE_CARD_HOVER,
   EXPLORE_PAGE_CARD_SURFACE,
-  INTERACTIVE_CARD_HOVER,
+  EXPLORE_PAGE_CARD_THUMB,
 } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -171,11 +172,11 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
   return (
     <section className="space-y-4" aria-label="History">
       {loading ? (
-        <div className="rounded-2xl border-0 bg-transparent px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
+        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
           Loading history…
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-transparent px-4 py-10 text-center shadow-none dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-10 text-center shadow-none dark:bg-zinc-900/50">
           <p className="text-lg font-bold text-foreground">{emptyTitle}</p>
           <p className="mt-2 text-sm text-muted-foreground">{emptySub}</p>
         </div>
@@ -218,7 +219,7 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
                 className={cn(
                   "group relative w-full rounded-2xl pt-2 px-4 pb-4 text-left",
                   EXPLORE_PAGE_CARD_SURFACE,
-                  INTERACTIVE_CARD_HOVER,
+                  EXPLORE_PAGE_CARD_HOVER,
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
                 )}
               >
@@ -242,10 +243,7 @@ export function ExploreHistoryJobs({ mode }: { mode: Mode }) {
                   </span>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
-                  <div
-                    className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200/70 bg-muted/40 shadow-sm ring-1 ring-black/5 dark:border-white/10 dark:ring-white/10"
-                    aria-hidden
-                  >
+                  <div className={EXPLORE_PAGE_CARD_THUMB} aria-hidden>
                     {imgSrc ? (
                       <img src={imgSrc} alt="" className="h-full w-full object-cover" />
                     ) : (

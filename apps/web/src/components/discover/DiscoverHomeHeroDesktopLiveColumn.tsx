@@ -14,8 +14,9 @@ import { Button } from "@/components/ui/button";
 import { LiveTimer } from "@/components/LiveTimer";
 import JobReviewModal from "@/components/JobReviewModal";
 import {
+  EXPLORE_PAGE_CARD_HOVER,
   EXPLORE_PAGE_CARD_SURFACE,
-  INTERACTIVE_CARD_HOVER,
+  EXPLORE_PAGE_CARD_THUMB,
 } from "@/components/jobs/jobCardSharedClasses";
 import { buildJobsUrl } from "@/components/jobs/jobsPerspective";
 
@@ -96,7 +97,7 @@ function ExploreLiveThumb({ job }: { job: JobMini }) {
   const imgSrc = serviceHeroImageSrc(job);
   return (
     <div
-      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15 md:h-20 md:w-20"
+      className={cn(EXPLORE_PAGE_CARD_THUMB, "h-16 w-16 md:h-20 md:w-20")}
       aria-hidden
     >
       {imgSrc ? (
@@ -238,7 +239,7 @@ export function DiscoverHomeHeroDesktopLiveColumn({ className }: Props) {
   const exploreCardClass = cn(
     "group relative w-full rounded-2xl p-4 text-left",
     EXPLORE_PAGE_CARD_SURFACE,
-    INTERACTIVE_CARD_HOVER,
+    EXPLORE_PAGE_CARD_HOVER,
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
   );
 
@@ -266,7 +267,7 @@ export function DiscoverHomeHeroDesktopLiveColumn({ className }: Props) {
       ) : null}
 
       {showSkeleton ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-6 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
+        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
           Loading live help…
         </div>
       ) : null}
@@ -455,7 +456,7 @@ export function DiscoverHomeHeroDesktopLiveColumn({ className }: Props) {
           ) : null}
 
           {!loading && !helperJob && !clientJob ? (
-            <div className="rounded-2xl border border-dashed border-slate-200/80 bg-white px-4 py-10 text-center text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900">
+            <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-10 text-center text-sm text-muted-foreground shadow-none dark:bg-zinc-900/50">
               No active jobs right now. When you are matched, status appears
               here on desktop.
             </div>

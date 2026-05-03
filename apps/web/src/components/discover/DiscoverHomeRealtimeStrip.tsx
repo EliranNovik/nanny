@@ -38,6 +38,7 @@ import {
 } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { trackEvent } from "@/lib/analytics";
+import { LiveAvatarDot } from "@/components/discover/LiveAvatarDot";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
 import { haversineDistanceKm } from "@/lib/geo";
 import {
@@ -188,21 +189,6 @@ const workStripDeclineRoundBtn = cn(
   workStripRoundActionBtn,
   "h-14 w-14 bg-white text-rose-500 ring-zinc-200 hover:bg-rose-50 dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
 );
-
-/**
- * Live indicator — anchored on the avatar ring’s upper-right arc (overlaps gradient stroke),
- * not the layout box corner (which sits above the visible circle on `rounded-full`).
- */
-function StripAvatarLiveDot() {
-  return (
-    <span
-      className="pointer-events-none absolute left-[78%] top-[9%] z-[4] block size-3.5 -translate-x-1/2 -translate-y-1/2"
-      aria-hidden
-    >
-      <span className="block size-full rounded-full bg-emerald-500 will-change-transform motion-safe:animate-strip-live-dot-breathe dark:bg-emerald-400" />
-    </span>
-  );
-}
 
 /** Hire (“I need help”) = purple ring; work (“Help others”) = green ring — not per-category. */
 function stripAvatarRingClass(mode: "hire" | "work"): string {
@@ -1231,7 +1217,7 @@ function DiscoverRealtimeStripDetailDialog({
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <StripAvatarLiveDot />
+                      <LiveAvatarDot />
                     </div>
                   </button>
                   <div className="flex flex-wrap items-center justify-center gap-x-1 text-[13px] text-zinc-500 dark:text-zinc-400">
@@ -1290,7 +1276,7 @@ function DiscoverRealtimeStripDetailDialog({
                         </AvatarFallback>
                       </Avatar>
                     </div>
-                    {hire ? <StripAvatarLiveDot /> : null}
+                    {hire ? <LiveAvatarDot /> : null}
                   </div>
                 </button>
 
@@ -2250,7 +2236,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                       </AvatarFallback>
                     </Avatar>
                   </div>
-                  <StripAvatarLiveDot />
+                  <LiveAvatarDot />
                 </div>
               </div>
               <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
@@ -2366,7 +2352,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                     </AvatarFallback>
                   </Avatar>
                 </div>
-                <StripAvatarLiveDot />
+                <LiveAvatarDot />
               </div>
             </div>
             <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">

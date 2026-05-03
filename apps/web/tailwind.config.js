@@ -79,22 +79,27 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.7" },
         },
-        /** Discover dock “Post live” shadow pulse — avoids ::before layering issues under opaque fills. */
-        "dock-post-live-glow": {
+        /** Go live / Post request CTAs: scale only (no colored glow). */
+        "dock-primary-breathe": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(0.92)" },
+        },
+        /** Discover dock white “More” FAB — soft ring pulse */
+        "dock-more-fab-glow": {
           "0%, 100%": {
-            boxShadow: "0 0 0 0 rgba(123, 97, 255, 0)",
+            boxShadow: "0 0 0 0 rgba(148, 163, 184, 0)",
           },
           "50%": {
-            boxShadow: "0 0 26px 8px rgba(123, 97, 255, 0.42)",
+            boxShadow: "0 0 22px 7px rgba(148, 163, 184, 0.38)",
           },
         },
-        /** Discover dock “Go live” shadow pulse */
-        "dock-go-live-glow": {
+        /** Bottom nav center “+” — soft shadow pulse */
+        "dock-plus-glow": {
           "0%, 100%": {
-            boxShadow: "0 0 0 0 rgba(16, 185, 129, 0)",
+            boxShadow: "0 4px 14px -4px rgba(0, 0, 0, 0.12)",
           },
           "50%": {
-            boxShadow: "0 0 26px 8px rgba(16, 185, 129, 0.45)",
+            boxShadow: "0 10px 28px -2px rgba(0, 0, 0, 0.38)",
           },
         },
         /** Discover strip avatar live dot — inner element scales (outer holds translate). */
@@ -109,10 +114,12 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "slide-in": "slide-in 0.3s ease-out",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
-        "dock-post-live-glow":
-          "dock-post-live-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
-        "dock-go-live-glow":
-          "dock-go-live-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
+        "dock-primary-breathe":
+          "dock-primary-breathe 2.25s ease-in-out infinite",
+        "dock-more-fab-glow":
+          "dock-more-fab-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
+        "dock-plus-glow":
+          "dock-plus-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
         "strip-live-dot-breathe":
           "strip-live-dot-breathe 1.75s ease-in-out infinite",
       },

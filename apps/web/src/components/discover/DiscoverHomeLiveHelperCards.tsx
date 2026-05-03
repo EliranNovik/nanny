@@ -23,6 +23,7 @@ import {
 } from "@/lib/clientAppPaths";
 import { readyTimeCompactFragment, replyTimeCompactFragment } from "@/lib/liveCanStart";
 import type { DiscoverLiveHelperCardEntry } from "@/hooks/data/useDiscoverFeed";
+import { LiveAvatarDot } from "@/components/discover/LiveAvatarDot";
 
 const MAX_BOXES = 5;
 
@@ -69,9 +70,9 @@ export function DiscoverHomeLiveHelperCards({
 
   if (loading) {
     return (
-      <section className={cn("w-full", className)} aria-label="Helpers live now">
+      <section className={cn("w-full", className)} aria-label="Helper live near you">
         <p className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
-          Helpers live now
+          Helper live near you
         </p>
         <div className="flex flex-col gap-2.5">
           {Array.from({ length: 3 }, (_, i) => (
@@ -86,9 +87,9 @@ export function DiscoverHomeLiveHelperCards({
   }
 
   return (
-    <section className={cn("w-full", className)} aria-label="Helpers live now">
+    <section className={cn("w-full", className)} aria-label="Helper live near you">
       <p className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
-        Helpers live now
+        Helper live near you
       </p>
       <div className="flex flex-col gap-2.5">
         {visibleRows.map((h) => {
@@ -99,11 +100,13 @@ export function DiscoverHomeLiveHelperCards({
           const respondTime = replyTimeCompactFragment(h.avg_reply_seconds, h.reply_sample_count);
           const readyTime = readyTimeCompactFragment(h.live_can_start_in);
 
+          const showBadges = Boolean(respondTime || readyTime);
+
           return (
             <button
               key={h.helper_user_id}
               type="button"
-              className={rowBtnClass}
+              className={cn(rowBtnClass, "relative")}
               onClick={() => {
                 trackEvent("discover_live_helper_card_open", {
                   helper_user_id: h.helper_user_id,
@@ -117,12 +120,15 @@ export function DiscoverHomeLiveHelperCards({
               }}
             >
               <div className="flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5 self-start sm:w-[5rem]">
-                <Avatar className="h-16 w-16 overflow-hidden shadow-md">
-                  <AvatarImage src={h.photo_url || undefined} alt="" className="object-cover" />
-                  <AvatarFallback className="bg-zinc-200 text-base font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
-                    {name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative h-16 w-16 shrink-0">
+                  <Avatar className="h-16 w-16 overflow-hidden shadow-md">
+                    <AvatarImage src={h.photo_url || undefined} alt="" className="object-cover" />
+                    <AvatarFallback className="bg-zinc-200 text-base font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
+                      {name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <LiveAvatarDot />
+                </div>
                 <StarRating
                   rating={rating}
                   totalRatings={totalRatings}
@@ -135,7 +141,12 @@ export function DiscoverHomeLiveHelperCards({
                   countClassName="text-zinc-500 text-[10px] dark:text-white/55"
                 />
               </div>
-              <div className="flex min-h-[5rem] min-w-0 flex-1 flex-col pt-0.5">
+              <div
+                className={cn(
+                  "flex min-h-[5rem] min-w-0 flex-1 flex-col pt-0.5",
+                  showBadges && "pr-[5.25rem] sm:pr-28",
+                )}
+              >
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="min-w-0 truncate text-[17px] font-black leading-tight text-zinc-900 dark:text-white">{name}</span>
                 </div>
@@ -157,9 +168,11 @@ export function DiscoverHomeLiveHelperCards({
                     );
                   })}
                 </div>
-                <div className="mt-auto flex flex-wrap justify-end gap-1.5 pt-2">
+              </div>
+              {showBadges ? (
+                <div className="absolute right-11 top-3 z-[1] flex max-w-[min(11rem,calc(100%-5rem))] flex-col items-end gap-1 sm:right-12">
                   {respondTime ? (
-                    <span className="shrink-0 rounded-full border-0 bg-cyan-100/95 px-2 py-0.5 text-[11px] font-semibold tabular-nums tracking-tight text-cyan-950 ring-0 dark:bg-cyan-500/20 dark:text-cyan-50 dark:ring-1 dark:ring-cyan-400/35">
+                    <span className="shrink-0 rounded-full border-0 bg-violet-100/95 px-2 py-0.5 text-[11px] font-semibold tabular-nums tracking-tight text-violet-950 ring-0 dark:bg-violet-500/20 dark:text-violet-50 dark:ring-1 dark:ring-violet-400/35">
                       respond {respondTime}
                     </span>
                   ) : null}
@@ -169,7 +182,7 @@ export function DiscoverHomeLiveHelperCards({
                     </span>
                   ) : null}
                 </div>
-              </div>
+              ) : null}
               <div
                 className="flex w-8 shrink-0 items-center justify-center self-stretch pl-0.5"
                 aria-hidden

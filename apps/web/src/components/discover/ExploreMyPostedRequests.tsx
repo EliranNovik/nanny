@@ -3,8 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, MessageSquare } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
+  EXPLORE_PAGE_CARD_HOVER,
   EXPLORE_PAGE_CARD_SURFACE,
-  INTERACTIVE_CARD_HOVER,
+  EXPLORE_PAGE_CARD_THUMB,
 } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -101,11 +102,11 @@ export function ExploreMyPostedRequests() {
   return (
     <section className="space-y-4" aria-label="Your posted requests for help">
       {isLoading ? (
-        <div className="rounded-2xl border-0 bg-transparent px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
+        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-6 text-sm text-muted-foreground shadow-none dark:bg-zinc-900">
           Loading your requests…
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-transparent px-4 py-10 text-center shadow-none dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="rounded-2xl border-0 bg-zinc-100 px-4 py-10 text-center shadow-none dark:bg-zinc-900/50">
           <p className="text-lg font-bold text-foreground">
             No open requests
           </p>
@@ -147,7 +148,7 @@ export function ExploreMyPostedRequests() {
                   className={cn(
                     "group relative w-full rounded-2xl pt-2 px-4 pb-4 text-left",
                     EXPLORE_PAGE_CARD_SURFACE,
-                    INTERACTIVE_CARD_HOVER,
+                    EXPLORE_PAGE_CARD_HOVER,
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                   )}
                 >
@@ -181,10 +182,7 @@ export function ExploreMyPostedRequests() {
                   </div>
 
                   <div className="mt-3 flex items-center gap-3">
-                    <div
-                      className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
-                      aria-hidden
-                    >
+                    <div className={EXPLORE_PAGE_CARD_THUMB} aria-hidden>
                       {imgSrc ? (
                         <img
                           src={imgSrc}

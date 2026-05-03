@@ -44,11 +44,26 @@ export const JOB_CARD_EMPTY_PANEL = cn(
 );
 
 /**
- * Explore page tab cards: white tiles on the grey Explore scroll area.
+ * Explore tab cards — light: zinc slab, no outline (matches discover home list rows).
+ * Dark: filled panel + light shadow.
  */
 export const EXPLORE_PAGE_CARD_SURFACE = cn(
-  "bg-transparent border-0 shadow-none",
-  "dark:bg-zinc-800 dark:border-0 dark:shadow-sm",
+  "border-0 bg-zinc-100 shadow-none ring-0",
+  "dark:border-0 dark:bg-zinc-800 dark:shadow-sm",
+);
+
+/** Hover for explore cards only — no border brightening (surface stays outline-free in light mode). */
+export const EXPLORE_PAGE_CARD_HOVER = cn(
+  "transition-[transform,box-shadow] duration-300 ease-out",
+  "hover:-translate-y-0.5 hover:shadow-md hover:shadow-zinc-900/[0.06]",
+  "active:translate-y-0 active:shadow-sm active:duration-150",
+  "dark:hover:shadow-xl dark:hover:shadow-black/35",
+);
+
+/** Image / map tile on explore job cards — light: inset grey, no ring; dark: subtle border. */
+export const EXPLORE_PAGE_CARD_THUMB = cn(
+  "relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-0 bg-zinc-200/70 shadow-none ring-0",
+  "dark:border dark:border-white/10 dark:bg-muted/40 dark:shadow-sm dark:ring-1 dark:ring-white/10",
 );
 
 /** Stacked avatars on Explore cards — separation on grey card */

@@ -4,7 +4,9 @@ import { ChevronRight, Clock } from "lucide-react";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import {
   EXPLORE_PAGE_AVATAR_RING,
+  EXPLORE_PAGE_CARD_HOVER,
   EXPLORE_PAGE_CARD_SURFACE,
+  EXPLORE_PAGE_CARD_THUMB,
   INTERACTIVE_CARD_HOVER,
 } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
@@ -317,7 +319,7 @@ export function DiscoverHomeLatestOwnPosts({
           explorePageCards
             ? EXPLORE_PAGE_CARD_SURFACE
             : "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
-          INTERACTIVE_CARD_HOVER,
+          explorePageCards ? EXPLORE_PAGE_CARD_HOVER : INTERACTIVE_CARD_HOVER,
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
         )}
       >
@@ -360,7 +362,11 @@ export function DiscoverHomeLatestOwnPosts({
 
         <div className="mt-3 flex items-center gap-3">
           <div
-            className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
+            className={
+              explorePageCards
+                ? EXPLORE_PAGE_CARD_THUMB
+                : "relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
+            }
             aria-hidden
           >
             {imgSrc ? (
@@ -486,7 +492,7 @@ export function DiscoverHomeLatestOwnPosts({
                     explorePageCards
                       ? EXPLORE_PAGE_CARD_SURFACE
                       : "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
-                    INTERACTIVE_CARD_HOVER,
+                    explorePageCards ? EXPLORE_PAGE_CARD_HOVER : INTERACTIVE_CARD_HOVER,
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                   )}
                 >
@@ -529,7 +535,11 @@ export function DiscoverHomeLatestOwnPosts({
 
                   <div className="mt-2.5 flex items-center gap-2.5">
                     <div
-                      className="relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
+                      className={
+                        explorePageCards
+                          ? cn(EXPLORE_PAGE_CARD_THUMB, "h-[4.25rem] w-[4.25rem] rounded-xl")
+                          : "relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border border-emerald-500/20 bg-muted/40 shadow-sm ring-1 ring-emerald-500/15"
+                      }
                       aria-hidden
                     >
                       {imgSrc ? (
@@ -578,7 +588,7 @@ export function DiscoverHomeLatestOwnPosts({
                     explorePageCards
                       ? EXPLORE_PAGE_CARD_SURFACE
                       : "bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
-                    INTERACTIVE_CARD_HOVER,
+                    explorePageCards ? EXPLORE_PAGE_CARD_HOVER : INTERACTIVE_CARD_HOVER,
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                   )}
                 >

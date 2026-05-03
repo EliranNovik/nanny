@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { differenceInDays, differenceInHours, formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronRight,
   ClipboardList,
   Clock,
-  MoreHorizontal,
   PlayCircle,
   Search,
   UsersRound,
@@ -30,6 +29,8 @@ import {
   navigateToHelpersBrowse,
   navigateToWorkBrowseRequests,
 } from "@/lib/discoverBrowseNavigate";
+import { DiscoverHirePostRequestStrip } from "@/components/discover/DiscoverHirePostRequestStrip";
+import { ExploreHelpOthersLiveStrip } from "@/components/discover/ExploreHelpOthersLiveStrip";
 import { DiscoverHomeRealtimeStrip } from "@/components/discover/DiscoverHomeRealtimeStrip";
 import { DiscoverHomeRecentActivity } from "@/components/discover/DiscoverHomeRecentActivity";
 import {
@@ -116,6 +117,22 @@ function formatJobTitle(job: { service_type?: string }) {
   if (job.service_type === "nanny") return "Nanny";
   if (job.service_type === "other_help") return "Other Help";
   return "Help request";
+}
+
+/** Live-help “matched … ago”: full hours if under 24h, else whole days. */
+function formatMatchedAgoDaysOrHours(iso: string | number | Date): string {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "";
+  const now = new Date();
+  const hours = differenceInHours(now, then);
+  if (hours < 0) return "";
+  if (hours < 24) {
+    if (hours < 1) return "less than 1 hour ago";
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+  const days = differenceInDays(now, then);
+  const d = Math.max(1, days);
+  return `${d} day${d === 1 ? "" : "s"} ago`;
 }
 
 export function DiscoverHomeActionFirst({
@@ -312,9 +329,8 @@ export function DiscoverHomeActionFirst({
     ).length;
   }, [frData]);
 
-  /** Smooth shadow pulse on the colored tiles (`box-shadow`, no ::before layering). */
-  const postLivePulseClass = "";
-  const goLivePulseClass = "";
+  /** Smooth shadow pulse on dock FABs (`box-shadow` keyframes; respects `motion-safe`). */
+  const primaryCtaBreatheClass = "motion-safe:animate-dock-primary-breathe";
 
   /**
    * Mobile: icon-only primary + More, stacked on the right above BottomNav; sheet unchanged.
@@ -322,7 +338,7 @@ export function DiscoverHomeActionFirst({
   function renderQuickActionDockMobile() {
     const dockClass = cn(
       "pointer-events-auto fixed right-0 z-[140] flex flex-col items-end gap-3 md:hidden",
-      "bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)]",
+      "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px))+2.875rem+0.5rem)]",
       "pr-[max(0.75rem,env(safe-area-inset-right,0px))]",
     );
 
@@ -338,38 +354,13 @@ export function DiscoverHomeActionFirst({
       "dark:focus-visible:ring-white/35 dark:focus-visible:ring-offset-zinc-950",
     );
 
-    const hireFabClass = cn(
-      fabBase,
-      "bg-gradient-to-br from-indigo-600 to-violet-700 shadow-indigo-950/40",
-      "focus-visible:ring-indigo-400/45 dark:focus-visible:ring-indigo-200/40",
-      postLivePulseClass,
-    );
-
-    const workGoLiveFabClass = cn(
-      fabBase,
-      "bg-emerald-600 shadow-emerald-950/35",
-      "focus-visible:ring-emerald-400/50 dark:focus-visible:ring-emerald-200/40",
-      goLivePulseClass,
-    );
-
     const workBrowseFabClass = cn(
       fabBase,
       "border border-emerald-500/45 bg-emerald-50 text-emerald-700 shadow-2xl",
       "focus-visible:ring-emerald-500/35 dark:focus-visible:ring-emerald-200/35",
       "dark:border-emerald-400/35 dark:bg-zinc-800/95 dark:text-white dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
+      primaryCtaBreatheClass,
     );
-
-    const moreBtnClass = cn(
-      "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full border transition-transform active:scale-[0.96] shadow-2xl",
-      "border-slate-200/90 bg-white text-zinc-700 hover:bg-slate-50",
-      "dark:border-white/12 dark:bg-zinc-800/95 dark:text-white/95 dark:hover:bg-zinc-700/95 dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-white/25 dark:focus-visible:ring-offset-zinc-950",
-    );
-
-    const hireMoreMenuTotal = hireLiveHelperCount + myRequestsCount;
-    const workMoreMenuTotal = isInActive24hGoLiveWindow
-      ? pendingWorkRequestsCount
-      : workLivePostCount + pendingWorkRequestsCount;
 
     const quickMoreSheet = (
       <Dialog open={quickMoreOpen} onOpenChange={setQuickMoreOpen}>
@@ -488,48 +479,15 @@ export function DiscoverHomeActionFirst({
     );
 
     if (isHire) {
-      return (
-        <>
-          <div className={dockClass}>
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent("discover_actions_post_request", { mode: homeMode });
-                writeDiscoverHomeIntent("hire");
-                navigate(createRequestPath);
-                recordFirstMeaningfulAction("home_primary_create_request");
-              }}
-              className={hireFabClass}
-              aria-label="Request help now"
-            >
-              <Zap className="h-7 w-7" strokeWidth={2.5} aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => setQuickMoreOpen(true)}
-              className={moreBtnClass}
-              aria-label="More discover actions"
-              aria-expanded={quickMoreOpen}
-            >
-              <MoreHorizontal className="h-7 w-7" strokeWidth={2.5} aria-hidden />
-              {hireMoreMenuTotal > 0 ? (
-                <span className={moreMenuCountBadge} aria-hidden>
-                  {hireMoreMenuTotal > 99 ? "99+" : hireMoreMenuTotal}
-                </span>
-              ) : null}
-            </button>
-          </div>
-          {quickMoreSheet}
-        </>
-      );
+      return <>{quickMoreSheet}</>;
     }
 
     const workFabIsBrowse = isInActive24hGoLiveWindow;
 
     return (
       <>
-        <div className={dockClass}>
-          {workFabIsBrowse ? (
+        {workFabIsBrowse ? (
+          <div className={dockClass}>
             <button
               type="button"
               onClick={() => {
@@ -548,36 +506,8 @@ export function DiscoverHomeActionFirst({
                 </span>
               ) : null}
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent("discover_actions_go_live", { mode: homeMode });
-                writeDiscoverHomeIntent("work");
-                navigate(workPrimaryPath);
-                recordFirstMeaningfulAction("home_primary_work");
-              }}
-              className={workGoLiveFabClass}
-              aria-label="Go live"
-            >
-              <PlayCircle className="h-7 w-7" strokeWidth={2.5} aria-hidden />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setQuickMoreOpen(true)}
-            className={moreBtnClass}
-            aria-label="More discover actions"
-            aria-expanded={quickMoreOpen}
-          >
-            <MoreHorizontal className="h-7 w-7" strokeWidth={2.5} aria-hidden />
-            {workMoreMenuTotal > 0 ? (
-              <span className={moreMenuCountBadge} aria-hidden>
-                {workMoreMenuTotal > 99 ? "99+" : workMoreMenuTotal}
-              </span>
-            ) : null}
-          </button>
-        </div>
+          </div>
+        ) : null}
         {quickMoreSheet}
       </>
     );
@@ -628,7 +558,7 @@ export function DiscoverHomeActionFirst({
             }}
             className={cn(
               boxClass,
-              postLivePulseClass,
+              primaryCtaBreatheClass,
               "border-transparent bg-gradient-to-br from-indigo-600 to-purple-800 text-white shadow-indigo-500/25 ring-indigo-500/20 hover:brightness-110",
             )}
             aria-label="Request help now"
@@ -695,7 +625,7 @@ export function DiscoverHomeActionFirst({
             }}
             className={cn(
               boxClass,
-              goLivePulseClass,
+              primaryCtaBreatheClass,
               "border-transparent bg-emerald-600 text-white hover:bg-emerald-600",
             )}
             aria-label="Go live"
@@ -758,6 +688,35 @@ export function DiscoverHomeActionFirst({
       )}
     >
       {renderQuickActionDockMobile()}
+      {isHire ? (
+        <DiscoverHirePostRequestStrip
+          onPostRequest={() => {
+            trackEvent("discover_actions_post_request", {
+              mode: homeMode,
+              source: "strip",
+            });
+            writeDiscoverHomeIntent("hire");
+            navigate(createRequestPath);
+            recordFirstMeaningfulAction("home_primary_create_request");
+          }}
+          onMoreClick={() => setQuickMoreOpen(true)}
+          moreMenuOpen={quickMoreOpen}
+        />
+      ) : (
+        <ExploreHelpOthersLiveStrip
+          onGoLive={() => {
+            trackEvent("discover_actions_go_live", {
+              mode: homeMode,
+              source: "strip",
+            });
+            writeDiscoverHomeIntent("work");
+            navigate(workPrimaryPath);
+            recordFirstMeaningfulAction("home_primary_work");
+          }}
+          onMoreClick={() => setQuickMoreOpen(true)}
+          moreMenuOpen={quickMoreOpen}
+        />
+      )}
       <div className="flex flex-1 md:hidden flex-col gap-0 pb-[5rem]">
         <div className="shrink-0 pt-0 px-0">
           <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
@@ -936,7 +895,7 @@ export function DiscoverHomeActionFirst({
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[18px] font-black leading-tight text-zinc-900 dark:text-white">{title}</span>
                                 <span className={discoverHomeMobileMetaPillClass}>
-                                  matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                                  matched {formatMatchedAgoDaysOrHours(job.created_at)}
                                 </span>
                               </div>
                               <p className="mt-0.5 truncate text-[16px] font-bold leading-tight text-zinc-600 dark:text-white/80">{loc}</p>
@@ -1292,7 +1251,7 @@ export function DiscoverHomeActionFirst({
                                   {loc}
                                 </span>
                                 <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
-                                  matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
+                                  matched {formatMatchedAgoDaysOrHours(job.created_at)}
                                 </span>
                               </div>
                             </div>

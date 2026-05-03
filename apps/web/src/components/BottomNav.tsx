@@ -1278,7 +1278,7 @@ export function BottomNav() {
                   <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
                     <div
                       className={cn(
-                        "flex h-11 w-11 items-center justify-center rounded-full",
+                        "flex h-11 w-11 items-center justify-center rounded-full motion-safe:animate-dock-plus-glow",
                         isDiscoverHome
                           ? "bg-zinc-950 text-white shadow-xl ring-1 ring-inset ring-white/25"
                           : "bg-orange-600 text-white ring-1 ring-inset ring-white/20",
