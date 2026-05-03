@@ -784,6 +784,7 @@ function PostCard({
   onGlobalVideoUnmutedChange,
   refreshPostShareStats,
   onOpenMediaReels,
+  hidePostLikeButton,
 }: {
   post: FeedPost;
   currentUserId: string | null;
@@ -794,6 +795,8 @@ function PostCard({
   onGlobalVideoUnmutedChange: (next: boolean) => void;
   refreshPostShareStats: (postId: string) => void;
   onOpenMediaReels: (postId: string) => void;
+  /** Liked-posts-only feed (e.g. Saved / Liked) — hide redundant like control. */
+  hidePostLikeButton?: boolean;
 }) {
   const { addToast } = useToast();
   const { profile: viewerProfile } = useAuth();
@@ -1117,6 +1120,7 @@ function PostCard({
           hasMedia ? "pb-0 pt-0.5 md:pt-1 md:pb-0" : "py-1 md:mt-0.5 md:py-2",
         )}
       >
+        {!hidePostLikeButton ? (
         <button
           type="button"
           disabled={liking || post.source === "availability"}
@@ -1139,6 +1143,7 @@ function PostCard({
             <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
           )}
         </button>
+        ) : null}
         <button
           type="button"
           onClick={() => setCommentsOpen(true)}
@@ -2270,6 +2275,7 @@ export function ProfilePostsFeed({
             onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
             refreshPostShareStats={refreshPostShareStats}
             onOpenMediaReels={setReelsOpenPostId}
+            hidePostLikeButton={Boolean(filterLikedByUserId)}
           />
         ))
       )}
@@ -2285,6 +2291,7 @@ export function ProfilePostsFeed({
           onLikeToggle={handleLikeToggle}
           onRefreshShareStats={refreshPostShareStats}
           onOpenComments={(postId) => setReelCommentsPostId(postId)}
+          hideLikeButton={Boolean(filterLikedByUserId)}
         />
       ) : null}
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -16,8 +17,8 @@ import {
   UserCircle,
   Plus,
   Trash2,
-  MapPin,
   Sparkles,
+  HelpCircle,
   HeartHandshake,
   Heart,
   User as UserIcon,
@@ -43,22 +44,17 @@ import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
   publicProfileMediaPublicUrl,
 } from "@/lib/publicProfileMedia";
-import { ExpiryCountdown } from "@/components/ExpiryCountdown";
-import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import { VideoLightboxModal } from "@/components/VideoLightboxModal";
+import { type AvailabilityPayload } from "@/lib/availabilityPosts";
 import {
-  formatPriceHintFromPayload,
-  getAvailabilityStatusOption,
-  getQuickDetailsOption,
-  type AvailabilityPayload,
-} from "@/lib/availabilityPosts";
-import {
+  getServiceCategoryImage,
   isServiceCategoryId,
   serviceCategoryLabel,
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
+import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
 import { apiPost } from "@/lib/api";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import {
@@ -113,28 +109,6 @@ function liveHelpCornerTierFromCount(
   return null;
 }
 
-function livePostSummaryLine(
-  payload: AvailabilityPayload | null,
-  note: string | null,
-): string {
-  const parts: string[] = [];
-  if (payload?.availability_status) {
-    const o = getAvailabilityStatusOption(String(payload.availability_status));
-    if (o) parts.push(o.label);
-  }
-  if (payload?.quick_details) {
-    const o = getQuickDetailsOption(String(payload.quick_details));
-    if (o) parts.push(o.label);
-  }
-  const price = formatPriceHintFromPayload(payload);
-  if (price) parts.push(price);
-  const head = parts.join(" · ");
-  if (head) return head;
-  const n = note?.trim();
-  if (n) return n.length > 72 ? `${n.slice(0, 69)}…` : n;
-  return "Open full post on the public board";
-}
-
 type LiveCommunityPostRow = {
   id: string;
   category: string;
@@ -153,15 +127,6 @@ function jobServiceLabel(serviceType: string | undefined): string {
 }
 
 
-
-function formatJobTitleForModal(job: { service_type?: string }) {
-  if (job.service_type === "cleaning") return "Cleaning";
-  if (job.service_type === "cooking") return "Cooking";
-  if (job.service_type === "pickup_delivery") return "Pickup & Delivery";
-  if (job.service_type === "nanny") return "Nanny";
-  if (job.service_type === "other_help") return "Other Help";
-  return "Service Request";
-}
 
 type ProfilePostedHelpRequest = {
   id: string;
@@ -239,6 +204,27 @@ interface PublicProfileMediaRow {
 
 type ProfileMediaSectionTab = "images" | "videos" | "posts" | "about";
 
+function publicProfileCategoryBadgeIcon(categoryId: string) {
+  const id = categoryId.toLowerCase();
+  if (!isServiceCategoryId(id)) {
+    return (
+      <HelpCircle
+        className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+        strokeWidth={2.25}
+        aria-hidden
+      />
+    );
+  }
+  const { Icon, iconClass } = HIRE_CATEGORY_TILE_UI[id];
+  return (
+    <Icon
+      className={cn("h-4 w-4 shrink-0", iconClass)}
+      strokeWidth={2.25}
+      aria-hidden
+    />
+  );
+}
+
 export default function PublicProfilePage() {
   const { userId } = useParams();
   const { user: currentUser, profile: currentProfile } = useAuth();
@@ -262,10 +248,6 @@ export default function PublicProfilePage() {
   const [postedHelpRequests, setPostedHelpRequests] = useState<
     ProfilePostedHelpRequest[]
   >([]);
-  const [postedHelpPreviewJob, setPostedHelpPreviewJob] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
   const [postedHelpMapJob, setPostedHelpMapJob] = useState<Record<
     string,
     unknown
@@ -276,9 +258,6 @@ export default function PublicProfilePage() {
 
   const [postedHelpConfirming, setPostedHelpConfirming] = useState(false);
   const [postedHelpDeclining, setPostedHelpDeclining] = useState(false);
-  const [loadingPostedHelpPreviewId, setLoadingPostedHelpPreviewId] = useState<
-    string | null
-  >(null);
   const [loading, setLoading] = useState(true);
   const [openingChat, setOpeningChat] = useState(false);
   const [profileFavorited, setProfileFavorited] = useState(false);
@@ -929,8 +908,19 @@ export default function PublicProfilePage() {
     ? liveHelpCornerTierFromCount(liveHelpWeekCount)
     : null;
 
+  /** On the avatar image; slightly past top-right rim, no ring — reads as “on” the photo. */
+  const profileLiveNowDot = isLiveNow ? (
+    <span
+      className="pointer-events-none absolute right-0 top-0 z-20 flex h-9 w-9 translate-x-[12%] -translate-y-[12%] items-center justify-center"
+      role="status"
+      aria-label="Live now"
+    >
+      <span className="absolute inset-[5px] animate-ping rounded-full bg-emerald-400/45 motion-reduce:animate-none" />
+      <span className="relative block h-[18px] w-[18px] rounded-full bg-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.95)]" />
+    </span>
+  ) : null;
+
   const helperBadgesRow =
-    isLiveNow ||
     readyInLabel ||
     respondsWithinLabel ||
     showLiveHelpWeekBadge ? (
@@ -989,52 +979,50 @@ export default function PublicProfilePage() {
             </span>
           </span>
         ) : null}
-        {isLiveNow ? (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full",
-              "bg-emerald-600 px-3 py-1.5 shadow-md ring-1 ring-emerald-400/40",
-              "text-[10px] font-black uppercase tracking-[0.16em] text-white",
-            )}
-            role="status"
-            aria-label="Live now"
-          >
-            <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-              <span className="absolute inset-0 animate-ping rounded-full bg-white/60 motion-reduce:animate-none" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.75)]" />
-            </span>
-            Live now
-          </span>
-        ) : null}
         {respondsWithinLabel ? (
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
-              "bg-gradient-to-r from-sky-600 to-cyan-600 text-white",
-              "text-[10px] font-black uppercase tracking-[0.14em]",
-              "shadow-md shadow-sky-600/25 ring-1 ring-white/25",
+              "inline-flex min-h-[2.75rem] min-w-[4.5rem] flex-col justify-center gap-0.5 rounded-lg px-2 py-1",
+              "bg-gradient-to-br from-sky-600 to-cyan-700 text-white",
+              "shadow-md shadow-sky-900/20 ring-1 ring-inset ring-white/20",
             )}
             role="status"
+            title={`Typical reply time ${respondsWithinLabel}`}
           >
-            Responds within {respondsWithinLabel}
+            <span className="flex items-center gap-1 text-[8px] font-bold uppercase leading-none tracking-wide text-white/90">
+              <MessageSquare
+                className="h-2.5 w-2.5 shrink-0 opacity-95"
+                strokeWidth={2.75}
+                aria-hidden
+              />
+              Responds
+            </span>
+            <span className="text-[11px] font-black tabular-nums leading-none tracking-tight">
+              {respondsWithinLabel}
+            </span>
           </span>
         ) : null}
         {readyInLabel ? (
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
-              "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white",
-              "text-[10px] font-black uppercase tracking-[0.14em]",
-              "shadow-md shadow-amber-600/30 ring-1 ring-white/30",
+              "inline-flex min-h-[2.75rem] min-w-[4.5rem] flex-col justify-center gap-0.5 rounded-lg px-2 py-1",
+              "bg-gradient-to-br from-amber-500 to-orange-600 text-white",
+              "shadow-md shadow-amber-900/25 ring-1 ring-inset ring-white/25",
             )}
             role="status"
+            title={`Can start ${readyInLabel}`}
           >
-            <Clock
-              className="h-3.5 w-3.5 shrink-0 opacity-95"
-              strokeWidth={2.75}
-              aria-hidden
-            />
-            Ready in {readyInLabel}
+            <span className="flex items-center gap-1 text-[8px] font-bold uppercase leading-none tracking-wide text-white/90">
+              <Clock
+                className="h-2.5 w-2.5 shrink-0 opacity-95"
+                strokeWidth={2.75}
+                aria-hidden
+              />
+              Ready in
+            </span>
+            <span className="text-[11px] font-black tabular-nums leading-none tracking-tight">
+              {readyInLabel}
+            </span>
           </span>
         ) : null}
       </div>
@@ -1047,29 +1035,13 @@ export default function PublicProfilePage() {
     { id: "about" as const, label: "About", Icon: UserCircle },
   ];
 
-  async function openPostedHelpPreview(jobId: string) {
-    setLoadingPostedHelpPreviewId(jobId);
-    try {
-      const { data, error } = await supabase
-        .from("job_requests")
-        .select("*")
-        .eq("id", jobId)
-        .single();
-      if (error) throw error;
-      setPostedHelpPreviewJob(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingPostedHelpPreviewId(null);
-    }
-  }
-
   async function handlePostedHelpConfirm() {
-    if (!postedHelpPreviewJob?.id || !currentUser?.id) return;
+    const jobId = (postedHelpMapJob as { id?: string } | null)?.id;
+    if (!jobId || !currentUser?.id) return;
     setPostedHelpConfirming(true);
     try {
       const res = (await apiPost("/api/jobs/respond", {
-        jobId: postedHelpPreviewJob.id,
+        jobId,
         action: "accept",
       })) as { error?: string | null };
       if (res?.error) throw new Error(res.error);
@@ -1087,11 +1059,12 @@ export default function PublicProfilePage() {
   }
 
   async function handlePostedHelpDecline() {
-    if (!postedHelpPreviewJob?.id || !currentUser?.id) return;
+    const jobId = (postedHelpMapJob as { id?: string } | null)?.id;
+    if (!jobId || !currentUser?.id) return;
     setPostedHelpDeclining(true);
     try {
       const res = (await apiPost("/api/jobs/respond", {
-        jobId: postedHelpPreviewJob.id,
+        jobId,
         action: "decline",
       })) as { error?: string | null };
       if (res?.error) throw new Error(res.error);
@@ -1116,38 +1089,53 @@ export default function PublicProfilePage() {
       <button
         key={job.id}
         type="button"
-        onClick={() => void openPostedHelpPreview(job.id)}
-        disabled={loadingPostedHelpPreviewId === job.id}
+        onClick={() =>
+          navigate(
+            `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(job.id)}`,
+          )
+        }
         className="block w-full focus-visible:outline-none"
       >
         <Card
           className={cn(
-            "cursor-pointer bg-white shadow-md transition-all hover:shadow-lg active:scale-[0.99] dark:bg-zinc-900",
+            "cursor-pointer overflow-hidden rounded-2xl border-0 bg-zinc-50 shadow-sm transition-all",
+            "sm:rounded-2xl sm:border-0 sm:bg-zinc-50 sm:shadow-sm",
+            "hover:bg-zinc-50/90 hover:shadow-md active:scale-[0.99]",
+            "dark:border dark:border-white/10 dark:bg-zinc-900 dark:shadow-none dark:hover:border-white/15",
+            "dark:sm:border dark:sm:border-white/10 dark:sm:bg-zinc-900",
           )}
         >
-          <CardContent className="flex items-center justify-between p-5">
-            <div className="flex min-w-0 flex-1 items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/10">
-                <HeartHandshake className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+          <CardContent className="flex items-center justify-between gap-3.5 p-5 sm:p-6">
+            <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-slate-200/60 dark:bg-zinc-800">
+                <img
+                  src={getServiceCategoryImage(job.service_type)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div className="min-w-0 text-left">
-                <p className="line-clamp-1 font-bold capitalize text-slate-900 dark:text-white">
+                <p className="line-clamp-1 text-base font-bold capitalize leading-tight text-slate-900 dark:text-white sm:text-[1.05rem]">
                   {jobServiceLabel(job.service_type)}
                 </p>
-                <p className="mt-0.5 line-clamp-1 text-xs font-medium text-slate-400">
+                <p className="mt-1 line-clamp-1 text-sm font-medium text-slate-500 dark:text-slate-400">
                   {job.location_city || "Anywhere"}
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <Badge variant="outline" className="opacity-70">
-                Open
+            <div className="flex shrink-0 items-center gap-2.5">
+              <Badge
+                variant="secondary"
+                className="max-w-[8.5rem] truncate border-0 bg-white/90 px-3 py-1 text-[11px] font-bold tabular-nums text-slate-600 shadow-none dark:bg-zinc-800/90 dark:text-slate-300"
+                title={new Date(job.created_at).toLocaleString()}
+              >
+                {formatDistanceToNow(new Date(job.created_at), {
+                  addSuffix: true,
+                })}
               </Badge>
-              {loadingPostedHelpPreviewId === job.id ? (
-                <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-              ) : (
-                <ChevronRight className="h-5 w-5 text-slate-300" />
-              )}
+              <ChevronRight className="h-6 w-6 shrink-0 text-slate-400 dark:text-slate-500" />
             </div>
           </CardContent>
         </Card>
@@ -1194,24 +1182,30 @@ export default function PublicProfilePage() {
         <div className="app-desktop-shell px-4">
           <div className="flex flex-col md:flex-row gap-6 md:items-start">
             {/* Avatar block — hidden on mobile hero layout to move it below header */}
-            <div className="hidden md:block relative h-32 w-32 shrink-0 lg:h-40 lg:w-40">
+            <div className="hidden md:block h-32 w-32 shrink-0 lg:h-40 lg:w-40">
               {profile.photo_url ? (
                 <button
                   type="button"
                   onClick={() => setProfileMediaLightbox({ urls: [profile.photo_url!], initialIndex: 0 })}
-                  className="relative block h-full w-full rounded-full ring-4 ring-white shadow-xl transition hover:scale-[1.02] active:scale-[0.98] dark:ring-zinc-900"
+                  className="relative block h-full w-full overflow-visible rounded-full ring-4 ring-white shadow-xl transition hover:scale-[1.02] active:scale-[0.98] dark:ring-zinc-900"
                   aria-label="View profile photo full screen"
                 >
-                  <img
-                    src={profile.photo_url}
-                    alt={profile.full_name ?? "Profile"}
-                    className="h-full w-full rounded-full object-cover"
-                    loading="eager"
-                  />
+                  <span className="absolute inset-0 overflow-hidden rounded-full">
+                    <img
+                      src={profile.photo_url}
+                      alt={profile.full_name ?? "Profile"}
+                      className="h-full w-full object-cover"
+                      loading="eager"
+                    />
+                  </span>
+                  {profileLiveNowDot}
                 </button>
               ) : (
-                <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-muted to-primary/10 ring-4 ring-white shadow-xl dark:ring-zinc-900">
-                  <span className="text-4xl font-black uppercase tracking-tight text-primary/60">{photoInitials}</span>
+                <div className="relative flex h-full w-full items-center justify-center overflow-visible rounded-full bg-gradient-to-br from-primary/20 via-muted to-primary/10 ring-4 ring-white shadow-xl dark:ring-zinc-900">
+                  <span className="text-4xl font-black uppercase tracking-tight text-primary/60">
+                    {photoInitials}
+                  </span>
+                  {profileLiveNowDot}
                 </div>
               )}
             </div>
@@ -1219,32 +1213,38 @@ export default function PublicProfilePage() {
             <div className="flex-1 min-w-0 pb-2">
               <div className="flex items-start justify-between gap-6 flex-wrap">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-[2rem] font-black leading-tight tracking-tight text-slate-900 dark:text-white truncate">
-                      {profile.full_name}
-                    </h1>
-                    {profile.is_verified ? (
-                      <BadgeCheck
-                        className="h-7 w-7 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
-                        strokeWidth={2.35}
-                        aria-label="Certified verified helper"
-                      />
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-4 mt-1 flex-wrap">
-                    {profile.city?.trim() && (
-                      <span className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <h1 className="truncate text-[2rem] font-black leading-tight tracking-tight text-slate-900 dark:text-white">
+                        {profile.full_name}
+                      </h1>
+                      {profile.is_verified ? (
+                        <BadgeCheck
+                          className="h-7 w-7 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
+                          strokeWidth={2.35}
+                          aria-label="Certified verified helper"
+                        />
+                      ) : null}
+                    </div>
+                    {profile.city?.trim() ? (
+                      <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-400">
                         {profile.city.trim()}
                       </span>
-                    )}
+                    ) : null}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-4">
                     <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="md" className="justify-start" />
                   </div>
                   {helperBadgesRow}
                   {profile.categories && profile.categories.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
                       {profile.categories.map((cat, i) => (
-                        <Badge key={i} variant="secondary" className="rounded-full border border-slate-200/80 bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-700 shadow-sm dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-slate-200">
+                        <Badge
+                          key={i}
+                          variant="secondary"
+                          className="inline-flex items-center gap-1.5 rounded-full border-transparent bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-700 shadow-sm dark:bg-zinc-800/80 dark:text-slate-200"
+                        >
+                          {publicProfileCategoryBadgeIcon(cat)}
                           {cat.replace(/_/g, " ")}
                         </Badge>
                       ))}
@@ -1356,58 +1356,79 @@ export default function PublicProfilePage() {
       ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
         {/* Profile Hero Header Info (Below header bar) */}
-        <div className="px-5 pt-20 pb-6 bg-white dark:bg-black">
+        <div className="px-5 pb-6 pt-[max(2.75rem,calc(env(safe-area-inset-top,0px)+2.5rem))] bg-white dark:bg-black">
           <div className="flex gap-4 items-start mb-6">
-            <div className="relative h-36 w-36 shrink-0">
-               {profile.photo_url ? (
-                <button type="button" onClick={() => setProfileMediaLightbox({ urls: [profile.photo_url!], initialIndex: 0 })} className="relative block h-full w-full rounded-full ring-2 ring-slate-100 transition active:scale-[0.98] dark:ring-white/10 overflow-hidden shadow-lg shadow-black/5" aria-label="View profile photo full screen">
-                  <img src={profile.photo_url} alt={profile.full_name ?? "Profile"} className="h-full w-full object-cover" loading="eager" />
+            <div className="h-36 w-36 shrink-0">
+              {profile.photo_url ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setProfileMediaLightbox({
+                      urls: [profile.photo_url!],
+                      initialIndex: 0,
+                    })
+                  }
+                  className="relative block h-full w-full overflow-visible rounded-full ring-2 ring-slate-100 shadow-lg shadow-black/5 transition active:scale-[0.98] dark:ring-white/10"
+                  aria-label="View profile photo full screen"
+                >
+                  <span className="absolute inset-0 overflow-hidden rounded-full">
+                    <img
+                      src={profile.photo_url}
+                      alt={profile.full_name ?? "Profile"}
+                      className="h-full w-full object-cover"
+                      loading="eager"
+                    />
+                  </span>
+                  {profileLiveNowDot}
                 </button>
               ) : (
-                <div className="flex h-full w-full items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 ring-2 ring-slate-100 dark:ring-white/10 shadow-lg shadow-black/5">
+                <div className="relative flex h-full w-full items-center justify-center overflow-visible rounded-full bg-slate-100 ring-2 ring-slate-100 shadow-lg shadow-black/5 dark:bg-white/5 dark:ring-white/10">
                   <span className="text-4xl font-black text-slate-400">{photoInitials}</span>
+                  {profileLiveNowDot}
                 </div>
               )}
             </div>
-            <div className="flex-1 min-w-0 flex flex-col pt-1">
-              <div className="flex items-center gap-2 min-w-0">
-                <h1 className="min-w-0 text-3xl font-black leading-none tracking-tight text-slate-900 dark:text-white truncate">
-                  {profile.full_name}
-                </h1>
-                {profile.is_verified ? (
-                  <BadgeCheck
-                    className="h-6 w-6 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
-                    strokeWidth={2.35}
-                    aria-label="Certified verified helper"
-                  />
+            <div className="flex flex-1 min-w-0 flex-col pt-1">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 className="min-w-0 truncate text-3xl font-black leading-none tracking-tight text-slate-900 dark:text-white">
+                    {profile.full_name}
+                  </h1>
+                  {profile.is_verified ? (
+                    <BadgeCheck
+                      className="h-6 w-6 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
+                      strokeWidth={2.35}
+                      aria-label="Certified verified helper"
+                    />
+                  ) : null}
+                </div>
+                {profile.city?.trim() ? (
+                  <span className="shrink-0 text-[11px] font-black uppercase tracking-widest text-slate-950/60 dark:text-white/60">
+                    {profile.city.trim()}
+                  </span>
                 ) : null}
               </div>
-              {profile.city?.trim() && (
-                <p className="mt-3 flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-slate-950/60 dark:text-white/60">
-                  <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-                  {profile.city.trim()}
-                </p>
-              )}
-              <div className="flex items-center gap-1 mt-3">
-                <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="sm" className="scale-110 origin-left" />
+              <div className="mt-2 flex items-center gap-1">
+                <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="sm" className="origin-left scale-110" />
               </div>
               {helperBadgesRow}
             </div>
           </div>
 
-          {/* Job Categories */}
-          {profile.categories && profile.categories.length > 0 && (
-            <div className="mt-2">
-              <p className="text-[10px] uppercase font-black tracking-[.2em] text-slate-400 dark:text-slate-500 mb-3 ml-0.5">Job With</p>
-              <div className="flex flex-wrap gap-2">
-                {profile.categories.map((cat, i) => (
-                  <Badge key={i} variant="secondary" className="rounded-full border border-slate-100 bg-slate-100/30 text-slate-950 dark:border-white/5 dark:bg-white/5 dark:text-white px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider shadow-none">
-                    {cat.replace(/_/g, " ")}
-                  </Badge>
-                ))}
-              </div>
+          {profile.categories && profile.categories.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {profile.categories.map((cat, i) => (
+                <Badge
+                  key={i}
+                  variant="secondary"
+                  className="inline-flex items-center gap-1.5 rounded-full border-transparent bg-slate-100/30 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-none dark:bg-white/5 dark:text-white"
+                >
+                  {publicProfileCategoryBadgeIcon(cat)}
+                  {cat.replace(/_/g, " ")}
+                </Badge>
+              ))}
             </div>
-          )}
+          ) : null}
 
           {/* Bio (under categories) */}
           <div className="mt-6">
@@ -1600,44 +1621,27 @@ export default function PublicProfilePage() {
                  )}
               </section>
 
-              {/* Quick Stats restored but without outlines */}
-              <section className="grid grid-cols-2 gap-3 px-1 sm:gap-4 sm:px-0">
-                <div className="rounded-2xl bg-card/85 p-5 shadow-md">
-                  <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500">Helped Others</p>
-                  <p className="text-3xl font-black text-slate-900 dark:text-white">{helpedOthersCount}</p>
+              <section className="flex flex-wrap items-baseline gap-x-8 gap-y-2 px-0.5">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-black tabular-nums text-slate-900 dark:text-white">
+                    {helpedOthersCount}
+                  </span>
+                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    helped others
+                  </span>
                 </div>
-                <div className="rounded-2xl bg-card/85 p-5 shadow-md">
-                  <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500">Got Helped</p>
-                  <p className="text-3xl font-black text-slate-900 dark:text-white">{gotHelpedCount}</p>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-black tabular-nums text-slate-900 dark:text-white">
+                    {gotHelpedCount}
+                  </span>
+                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    got helped
+                  </span>
                 </div>
               </section>
 
               {/* History sections moved here */}
               <section className="space-y-10">
-                 {/* Live Board */}
-                 <div>
-                    <h2 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400 mb-6 flex items-center gap-2">
-                       <Sparkles className="h-3.5 w-3.5 text-orange-600" />
-                       Active Public Posts
-                    </h2>
-                    <div className="space-y-3">
-                       {liveCommunityPosts.length > 0 ? liveCommunityPosts.map(post => (
-                         <Link key={post.id} to={`/public/posts?post=${encodeURIComponent(post.id)}`} className="block">
-                            <Card className="rounded-3xl border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 overflow-hidden shadow-none transition-active active:scale-[0.98]">
-                               <CardContent className="p-5 flex flex-col gap-1">
-                                  <div className="flex items-center justify-between">
-                                     <span className="text-[10px] font-black uppercase tracking-widest text-orange-600">{livePostCategoryLabel(post.category)}</span>
-                                     <ExpiryCountdown expiresAtIso={post.expires_at} compact className="text-[10px] font-bold" />
-                                  </div>
-                                  <h3 className="font-black text-lg text-slate-900 dark:text-white mt-1">{post.title}</h3>
-                                  <p className="text-xs font-semibold text-slate-500 line-clamp-2">{livePostSummaryLine(post.availability_payload, post.note)}</p>
-                               </CardContent>
-                            </Card>
-                         </Link>
-                       )) : <p className="text-sm font-medium text-slate-400 py-2">No active board posts.</p>}
-                    </div>
-                 </div>
-
                  {/* Needs Help — Restored to original styles */}
                   <div>
                     <div className="mb-6 flex items-center gap-3 px-2"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10"><HeartHandshake className="h-5 w-5 text-rose-600 dark:text-rose-400" /></div><h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Open Help Requests</h2></div>
@@ -1647,7 +1651,76 @@ export default function PublicProfilePage() {
                  {/* User Reviews — Full Restored Design with gradients and floating avatars */}
                   <div className="pt-4">
                     <div className="flex items-center gap-3 mb-6 px-2"><div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center"><Star className="w-5 h-5 text-amber-500 fill-amber-500" /></div><h2 className="text-xl font-black tracking-tight uppercase">User Reviews</h2></div>
-                    <div className="grid grid-cols-1 gap-x-6 gap-y-14 pt-8">{reviews.length > 0 ? reviews.map((review, idx) => { const gradients = ["from-blue-400 to-orange-500","from-green-400 to-teal-500","from-orange-400 to-pink-500","from-red-400 to-indigo-500","from-orange-400 to-blue-500"]; const gradient = gradients[idx % gradients.length]; return (<div key={review.id} className="relative flex h-full flex-col rounded-3xl bg-white p-6 pt-12 shadow-md transition-all duration-500 hover:shadow-lg dark:bg-zinc-900 dark:shadow-black/20 group"><div className={cn("absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110", gradient)}><Avatar className="h-full w-full border-4 border-white dark:border-zinc-900"><AvatarImage src={review.reviewer.photo_url || undefined} className="object-cover" /><AvatarFallback className="bg-transparent text-white font-bold text-2xl">{review.reviewer.full_name?.slice(0, 2).toUpperCase() || "??"}</AvatarFallback></Avatar></div><div className="flex min-h-0 flex-1 flex-col"><div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"><div className="min-w-0 pr-2"><h4 className="truncate text-lg font-bold text-gray-900 group-hover:text-primary transition-colors dark:text-white">{review.reviewer.full_name}</h4><p className="mt-0.5 text-[11px] font-medium text-slate-400">{new Date(review.created_at).toLocaleDateString()}</p></div><div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1"><Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" /><span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">{review.rating}</span></div></div><p className="line-clamp-6 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">"{review.review_text || "No comments provided."}"</p></div></div>); }) : (<div className="col-span-full flex flex-col items-center gap-3 px-2 py-4 text-center"><UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden /><p className="text-slate-400 font-medium dark:text-slate-500">No reviews yet for this user</p></div>)}</div>
+                    {reviews.length > 0 ? (
+                      <div
+                        className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-5 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
+                        role="list"
+                        aria-label="User reviews"
+                      >
+                        {reviews.map((review, idx) => {
+                          const gradients = [
+                            "from-blue-400 to-orange-500",
+                            "from-green-400 to-teal-500",
+                            "from-orange-400 to-pink-500",
+                            "from-red-400 to-indigo-500",
+                            "from-orange-400 to-blue-500",
+                          ];
+                          const gradient = gradients[idx % gradients.length];
+                          return (
+                            <div
+                              key={review.id}
+                              role="listitem"
+                              className="group relative flex w-[min(19rem,calc(100vw-2.5rem))] max-w-sm shrink-0 snap-start snap-always flex-col rounded-3xl bg-white p-6 pt-12 shadow-md transition-all duration-500 dark:bg-zinc-900 dark:shadow-black/20"
+                            >
+                              <div
+                                className={cn(
+                                  "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110",
+                                  gradient,
+                                )}
+                              >
+                                <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
+                                  <AvatarImage
+                                    src={review.reviewer.photo_url || undefined}
+                                    className="object-cover"
+                                  />
+                                  <AvatarFallback className="bg-transparent text-2xl font-bold text-white">
+                                    {review.reviewer.full_name?.slice(0, 2).toUpperCase() || "??"}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                              <div className="flex min-h-0 flex-1 flex-col">
+                                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                                  <div className="min-w-0 pr-2">
+                                    <h4 className="truncate text-lg font-bold text-gray-900 transition-colors group-hover:text-primary dark:text-white">
+                                      {review.reviewer.full_name}
+                                    </h4>
+                                    <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                                      {new Date(review.created_at).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
+                                    <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                                    <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">
+                                      {review.rating}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="line-clamp-4 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">
+                                  {`"${review.review_text || "No comments provided."}"`}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 px-2 py-4 text-center">
+                        <UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
+                        <p className="font-medium text-slate-400 dark:text-slate-500">
+                          No reviews yet for this user
+                        </p>
+                      </div>
+                    )}
                   </div>
               </section>
            </TabsContent>
@@ -1719,7 +1792,7 @@ export default function PublicProfilePage() {
               <div className="flex items-center gap-2.5 mb-5"><Sparkles className="h-4 w-4 text-orange-500 shrink-0" /><h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Public Service Board</h3></div>
               {liveCommunityPosts.length > 0 ? (
                 <div className="space-y-2">
-                  {liveCommunityPosts.map((post) => (<Link key={post.id} to={`/public/posts?post=${encodeURIComponent(post.id)}`} className="flex flex-col gap-1 rounded-2xl p-4 bg-white/60 dark:bg-white/5 border border-slate-100/50 dark:border-white/5 hover:bg-white dark:hover:bg-white/10 transition-all group outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"><div className="flex items-center justify-between gap-2 overflow-hidden"><p className="text-sm font-black text-slate-900 dark:text-white truncate group-hover:text-orange-600 transition-colors uppercase tracking-tight">{post.title}</p><ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform group-hover:translate-x-0.5" /></div><div className="flex items-center gap-2"><Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest h-5 px-2 border-slate-200">{livePostCategoryLabel(post.category)}</Badge></div></Link>))}
+                  {liveCommunityPosts.map((post) => (<Link key={post.id} to={`/public/posts?post=${encodeURIComponent(post.id)}`} className="flex flex-col gap-1 rounded-2xl p-4 bg-white/60 dark:bg-white/5 border border-slate-100/50 dark:border-white/5 hover:bg-white dark:hover:bg-white/10 transition-all group outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"><div className="flex items-center justify-between gap-2 overflow-hidden"><p className="text-sm font-black text-slate-900 dark:text-white truncate group-hover:text-orange-600 transition-colors uppercase tracking-tight">{post.title}</p><ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform group-hover:translate-x-0.5" /></div><div className="flex items-center gap-2"><Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest h-5 border-transparent bg-slate-100/90 px-2 text-slate-800 dark:bg-white/10 dark:text-slate-200">{livePostCategoryLabel(post.category)}</Badge></div></Link>))}
                 </div>
               ) : <p className="text-xs text-muted-foreground py-2 text-center bg-slate-50/50 dark:bg-white/5 rounded-2xl">No live board posts.</p>}
             </div>
@@ -1751,32 +1824,6 @@ export default function PublicProfilePage() {
           setPostedHelpEngagement("idle");
           setPostedHelpNotifId(null);
         }}
-        incomingActionMessage={postedHelpIncomingActionMessage}
-        showAcceptButton={showPostedHelpRespond}
-        onConfirm={showPostedHelpRespond ? handlePostedHelpConfirm : undefined}
-        onDecline={showPostedHelpRespond ? handlePostedHelpDecline : undefined}
-        isConfirming={postedHelpConfirming}
-        isDeclining={postedHelpDeclining}
-      />
-
-      <JobDetailsModal
-        isOpen={Boolean(postedHelpPreviewJob)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPostedHelpPreviewJob(null);
-            setPostedHelpEngagement("idle");
-            setPostedHelpNotifId(null);
-          }
-        }}
-        job={postedHelpPreviewJob}
-        formatJobTitle={formatJobTitleForModal}
-        isOwnRequest={Boolean(
-          currentUser?.id &&
-          postedHelpPreviewJob &&
-          currentUser.id ===
-            (postedHelpPreviewJob as { client_id?: string }).client_id,
-        )}
-        previewLayout
         incomingActionMessage={postedHelpIncomingActionMessage}
         showAcceptButton={showPostedHelpRespond}
         onConfirm={showPostedHelpRespond ? handlePostedHelpConfirm : undefined}

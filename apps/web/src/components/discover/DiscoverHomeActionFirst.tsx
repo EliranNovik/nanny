@@ -583,7 +583,7 @@ export function DiscoverHomeActionFirst({
               className={cn(
                 roundBadgeClass,
                 primaryCtaBreatheClass,
-                "border-transparent bg-gradient-to-br from-indigo-600 to-purple-800 text-white shadow-indigo-500/30 ring-indigo-500/25 hover:brightness-110",
+                "border-transparent bg-gradient-to-br from-indigo-600 to-purple-800 text-white shadow-none ring-indigo-500/25 hover:brightness-110",
               )}
               aria-label="Request help now"
             >
@@ -650,7 +650,7 @@ export function DiscoverHomeActionFirst({
               className={cn(
                 roundBadgeClass,
                 primaryCtaBreatheClass,
-                "border-transparent bg-emerald-600 text-white shadow-emerald-900/20 ring-emerald-500/30 hover:bg-emerald-600",
+                "border-transparent bg-emerald-600 text-white shadow-none ring-emerald-500/30 hover:bg-emerald-600",
               )}
               aria-label="Go live"
             >

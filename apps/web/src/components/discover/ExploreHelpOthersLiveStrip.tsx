@@ -18,8 +18,8 @@ const stripBottomFlushClass =
   "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]";
 
 const stripGoLiveFabClass = cn(
-  "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-xl transition-transform active:scale-[0.96]",
-  "motion-safe:animate-dock-primary-breathe bg-emerald-600 shadow-emerald-950/35",
+  "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-none transition-transform active:scale-[0.96]",
+  "motion-safe:animate-dock-primary-breathe bg-emerald-600",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
   "dark:focus-visible:ring-emerald-200/40 dark:focus-visible:ring-offset-zinc-950",
 );
@@ -175,9 +175,9 @@ export function ExploreHelpOthersLiveStrip({
         {isLive ? (
           <div
             className={cn(
-              "flex items-center gap-3 rounded-2xl border px-3 py-2.5 pl-3.5 shadow-md",
+              "flex items-center gap-3 rounded-2xl border px-3 py-2.5 pl-3.5 shadow-none",
               "border-emerald-200/90 bg-white text-emerald-950",
-              "dark:border-emerald-400/20 dark:bg-emerald-950/55 dark:text-emerald-50 dark:shadow-lg dark:backdrop-blur-xl",
+              "dark:border-emerald-400/20 dark:bg-emerald-950/55 dark:text-emerald-50 dark:backdrop-blur-xl",
             )}
             role="status"
             aria-live="polite"
@@ -213,9 +213,9 @@ export function ExploreHelpOthersLiveStrip({
         ) : (
           <div
             className={cn(
-              "flex items-center gap-3 rounded-2xl border px-3 py-2.5 pl-3.5 shadow-md",
+              "flex items-center gap-3 rounded-2xl border px-3 py-2.5 pl-3.5 shadow-none",
               "border-zinc-200 bg-white text-zinc-900",
-              "dark:border-white/10 dark:bg-zinc-900/90 dark:text-zinc-50 dark:shadow-lg",
+              "dark:border-white/10 dark:bg-zinc-900/90 dark:text-zinc-50",
             )}
           >
             <div className="flex min-w-0 flex-1 items-center gap-3">

@@ -672,7 +672,7 @@ export default function HelpersMatchPage() {
               <div className="flex flex-wrap gap-2">
                 {isFreelancerLiveWindowActive(fp) ? (
                   <span className="inline-flex items-center rounded-full bg-emerald-500/12 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-                    Available now
+                    Live now
                   </span>
                 ) : null}
                 {rateLine ? (

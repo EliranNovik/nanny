@@ -78,6 +78,8 @@ type Props = {
   onLikeToggle: (postId: string, liked: boolean) => void;
   onRefreshShareStats: (postId: string) => void;
   onOpenComments: (postId: string) => void;
+  /** Liked-posts-only contexts — hide redundant like control. */
+  hideLikeButton?: boolean;
 };
 
 export function PostMediaReelsViewer({
@@ -89,6 +91,7 @@ export function PostMediaReelsViewer({
   onLikeToggle,
   onRefreshShareStats,
   onOpenComments,
+  hideLikeButton = false,
 }: Props) {
   const { addToast } = useToast();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -282,6 +285,7 @@ export function PostMediaReelsViewer({
       {/* Right action rail — fixed to viewer, reflects active slide */}
       <div className="pointer-events-none absolute right-2 top-[42%] z-30 flex -translate-y-1/2 flex-col items-center gap-5">
         <div className="pointer-events-auto flex flex-col items-center gap-5 pr-1">
+          {!hideLikeButton ? (
           <button
             type="button"
             disabled={likingId === activeSlide.postId}
@@ -306,6 +310,7 @@ export function PostMediaReelsViewer({
               </span>
             ) : null}
           </button>
+          ) : null}
           <button
             type="button"
             onClick={() => onOpenComments(activeSlide.postId)}

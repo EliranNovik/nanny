@@ -1060,7 +1060,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
                                             ? "View post"
                                             : hire?.status === "confirmed"
                                               ? "View on board"
-                                              : "Available now"}
+                                              : "Live now"}
                                         </Link>
                                       </Button>
                                     </div>

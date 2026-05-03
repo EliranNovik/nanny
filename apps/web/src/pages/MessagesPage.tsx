@@ -28,15 +28,14 @@ import {
   MessageSquare,
   Home,
   Rss,
+  Newspaper,
   User,
   PlusSquare,
   Trash2,
   X,
-  Heart,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
@@ -99,7 +98,6 @@ type InboxRow =
 
 export default function MessagesPage() {
   const { user, profile } = useAuth();
-  const { addToast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams<{ conversationId?: string }>();
@@ -140,64 +138,6 @@ export default function MessagesPage() {
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
-  const [favoriteUserIds, setFavoriteUserIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!user?.id) {
-      setFavoriteUserIds(new Set());
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("profile_favorites")
-        .select("favorite_user_id")
-        .eq("user_id", user.id);
-      if (!cancelled && data) {
-        setFavoriteUserIds(new Set(data.map((r: any) => r.favorite_user_id)));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
-
-  const toggleProfileFavorite = async (targetUserId: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (!user?.id) return;
-
-    const isCurrentlyFav = favoriteUserIds.has(targetUserId);
-    try {
-      if (isCurrentlyFav) {
-        const { error } = await supabase
-          .from("profile_favorites")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("favorite_user_id", targetUserId);
-        if (error) throw error;
-        setFavoriteUserIds((prev) => {
-          const next = new Set(prev);
-          next.delete(targetUserId);
-          return next;
-        });
-        addToast({ title: "Removed from saved profiles", variant: "success" });
-      } else {
-        const { error } = await supabase
-          .from("profile_favorites")
-          .insert({ user_id: user.id, favorite_user_id: targetUserId });
-        if (error) throw error;
-        setFavoriteUserIds((prev) => {
-          const next = new Set(prev);
-          next.add(targetUserId);
-          return next;
-        });
-        addToast({ title: "Saved to profiles", variant: "success" });
-      }
-    } catch (err) {
-      console.error("[MessagesPage] toggleProfileFavorite:", err);
-      addToast({ title: "Could not update", variant: "error" });
-    }
-  };
 
   useEffect(() => {
     if (!userSearchQuery.trim()) {
@@ -261,8 +201,8 @@ export default function MessagesPage() {
     [activityAlerts, dismissedActivityIds],
   );
 
-  const inboxRows = useMemo((): InboxRow[] => {
-    const rows: InboxRow[] = [];
+  const chatInboxRows = useMemo((): Extract<InboxRow, { kind: "chat" }>[] => {
+    const rows: Extract<InboxRow, { kind: "chat" }>[] = [];
     for (const c of conversations) {
       const oid = c.other_user_id;
       if (oid && hiddenChatUserIds.has(oid)) continue;
@@ -271,13 +211,21 @@ export default function MessagesPage() {
         : new Date(c.created_at).getTime();
       rows.push({ kind: "chat", key: `chat-${c.id}`, sortAt, conversation: c });
     }
+    rows.sort((x, y) => y.sortAt - x.sortAt);
+    return rows;
+  }, [conversations, hiddenChatUserIds]);
+
+  const activityInboxRows = useMemo((): Extract<InboxRow, { kind: "activity" }>[] => {
+    const rows: Extract<InboxRow, { kind: "activity" }>[] = [];
     for (const a of visibleActivityAlerts) {
       const sortAt = a.created_at ? new Date(a.created_at).getTime() : 0;
       rows.push({ kind: "activity", key: `act-${a.id}`, sortAt, alert: a });
     }
     rows.sort((x, y) => y.sortAt - x.sortAt);
     return rows;
-  }, [conversations, visibleActivityAlerts, hiddenChatUserIds]);
+  }, [visibleActivityAlerts]);
+
+  const [inboxTab, setInboxTab] = useState<"messages" | "news">("messages");
 
   const inboxUnreadTotal = useMemo(
     () => conversations.reduce((s, c) => s + (c.unread_count || 0), 0),
@@ -305,6 +253,7 @@ export default function MessagesPage() {
   // Update mobile view when conversationId changes
   useEffect(() => {
     if (conversationId) {
+      setInboxTab("messages");
       if (window.innerWidth < 768) {
         setMobileView("chat");
       }
@@ -874,13 +823,10 @@ export default function MessagesPage() {
             </Button>
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
-                Messages
+                Inbox
               </h2>
-              {(inboxUnreadTotal > 0 || visibleActivityAlerts.length > 0) && (
-                <p
-                  className="mt-1 text-xs text-muted-foreground"
-                  role="status"
-                >
+              {inboxTab === "messages" ? (
+                <p className="mt-1 text-xs text-muted-foreground" role="status">
                   {inboxUnreadTotal > 0 ? (
                     <span className="font-medium text-foreground">
                       {inboxUnreadTotal} unread
@@ -888,25 +834,80 @@ export default function MessagesPage() {
                   ) : (
                     <span>All read</span>
                   )}
-                  {visibleActivityAlerts.length > 0 ? (
-                    <>
-                      <span className="text-muted-foreground/60"> · </span>
-                      <span>
-                        {visibleActivityAlerts.length} update
-                        {visibleActivityAlerts.length === 1 ? "" : "s"}
-                      </span>
-                    </>
-                  ) : null}
+                </p>
+              ) : visibleActivityAlerts.length > 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground" role="status">
+                  <span>
+                    {visibleActivityAlerts.length} update
+                    {visibleActivityAlerts.length === 1 ? "" : "s"}
+                  </span>
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground" role="status">
+                  Nothing new
                 </p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Unified inbox: active chats + job / hire activity */}
+        {/* Messages vs news */}
+        <div className="shrink-0 border-b border-border/30 px-4 pb-3 pt-1">
+          <div
+            className="flex rounded-xl bg-muted/50 p-1 dark:bg-zinc-900/80"
+            role="tablist"
+            aria-label="Inbox sections"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={inboxTab === "messages"}
+              onClick={() => setInboxTab("messages")}
+              className={cn(
+                "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
+                inboxTab === "messages"
+                  ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-white"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+              <span>Messages</span>
+              {inboxUnreadTotal > 0 ? (
+                <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
+                  {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={inboxTab === "news"}
+              onClick={() => setInboxTab("news")}
+              className={cn(
+                "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
+                inboxTab === "news"
+                  ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-white"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Newspaper className="h-4 w-4 shrink-0" aria-hidden />
+              <span>News</span>
+              {visibleActivityAlerts.length > 0 ? (
+                <span className="rounded-full bg-muted-foreground/20 px-1.5 py-0.5 text-[10px] font-bold leading-none text-foreground dark:bg-white/15">
+                  {visibleActivityAlerts.length > 99
+                    ? "99+"
+                    : visibleActivityAlerts.length}
+                </span>
+              ) : null}
+            </button>
+          </div>
+        </div>
+
+        {/* Messages list or activity / news list */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <ScrollArea className="min-h-0 flex-1 bg-transparent [&_[data-radix-scroll-area-viewport]]:min-w-0 [&_[data-radix-scroll-area-viewport]]:max-w-full [&_[data-radix-scroll-area-viewport]]:bg-transparent">
-            {inboxRows.length === 0 ? (
+            {inboxTab === "messages" ? (
+              chatInboxRows.length === 0 ? (
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <MessageCircle className="h-8 w-8 text-muted-foreground" />
@@ -956,82 +957,7 @@ export default function MessagesPage() {
               </div>
             ) : (
               <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
-                {inboxRows.map((row) => {
-                  if (row.kind === "activity") {
-                    const a = row.alert;
-                    const kind = inboxActivityKindLabel(a.type);
-                    const ActivityIcon =
-                      a.type === "message"
-                        ? MessageSquare
-                        : a.type === "job_request"
-                          ? Bell
-                          : Briefcase;
-                    return (
-                      <div
-                        key={row.key}
-                        role="button"
-                        tabIndex={0}
-                        className="cursor-pointer px-4 py-3 pr-[max(1rem,env(safe-area-inset-right,0px))] text-left transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 w-full"
-                        onClick={() => handleActivityClick(a)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleActivityClick(a);
-                          }
-                        }}
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="relative shrink-0">
-                            {a.sender_photo ? (
-                              <Avatar className="h-14 w-14 flex-shrink-0">
-                                <AvatarImage src={a.sender_photo} />
-                                <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
-                                  {a.title.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                            ) : (
-                              <div
-                                className={cn(
-                                  "h-14 w-14 rounded-full flex items-center justify-center",
-                                  a.type === "job_request" &&
-                                    "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
-                                  a.type === "confirmation" &&
-                                    "bg-sky-500/15 text-sky-700 dark:text-sky-400",
-                                  a.type === "job_update" &&
-                                    "bg-amber-500/15 text-amber-800 dark:text-amber-300",
-                                  a.type === "message" &&
-                                    "bg-blue-500/15 text-blue-700 dark:text-blue-400",
-                                )}
-                              >
-                                <ActivityIcon className="w-6 h-6" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="relative min-w-0 flex-1">
-                            {a.created_at && (
-                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6rem] whitespace-nowrap text-right text-[12px] font-semibold tabular-nums text-muted-foreground/80">
-                                {formatTime(a.created_at)}
-                              </span>
-                            )}
-                            <div className="min-w-0 max-w-full pr-24">
-                              <p className="mb-0.5 truncate text-[12px] font-medium text-muted-foreground">
-                                {kind}
-                              </p>
-                              <p className="truncate text-[17px] font-semibold text-foreground">
-                                {a.title}
-                              </p>
-                              {a.description && (
-                                <p className="mt-0.5 truncate text-[14px] text-muted-foreground">
-                                  {a.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
+                {chatInboxRows.map((row) => {
                   const convo = row.conversation;
                   const initials =
                     convo.other_user_profile?.full_name
@@ -1047,7 +973,7 @@ export default function MessagesPage() {
                     <div
                       key={row.key}
                       className={cn(
-                        "cursor-pointer px-4 py-3 pr-[max(1rem,env(safe-area-inset-right,0px))] transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 relative border-l-2 border-transparent md:bg-transparent",
+                        "cursor-pointer px-4 py-4 pr-[max(1rem,env(safe-area-inset-right,0px))] transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 relative border-l-2 border-transparent md:bg-transparent",
                         isActive && "bg-muted/50 dark:bg-zinc-900/70 border-l-primary",
                         convo.unread_count > 0 &&
                           !isActive &&
@@ -1055,22 +981,22 @@ export default function MessagesPage() {
                       )}
                       onClick={() => handleConversationClick(convo.id)}
                     >
-                        <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex min-w-0 items-start gap-3.5">
                           <div className="relative shrink-0 pt-0.5">
-                            <Avatar className="h-14 w-14 flex-shrink-0">
+                            <Avatar className="h-16 w-16 flex-shrink-0">
                               <AvatarImage
                                 src={
                                   convo.other_user_profile?.photo_url ||
                                   undefined
                                 }
                               />
-                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                                 {initials}
                               </AvatarFallback>
                             </Avatar>
                             {convo.unread_count > 0 && (
-                              <div className="absolute -right-0.5 -top-0.5 h-4 min-w-[1rem] rounded-full bg-primary px-1 flex items-center justify-center">
-                                <span className="text-[10px] font-semibold tabular-nums leading-none text-primary-foreground">
+                              <div className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.125rem] items-center justify-center rounded-full bg-primary px-1">
+                                <span className="text-[11px] font-semibold tabular-nums leading-none text-primary-foreground">
                                   {convo.unread_count > 9
                                     ? "9+"
                                     : convo.unread_count}
@@ -1080,44 +1006,28 @@ export default function MessagesPage() {
                           </div>
                           <div className="relative min-w-0 flex-1">
                             {convo.last_message && (
-                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[5.5rem] whitespace-nowrap text-right text-[13px] tabular-nums text-muted-foreground">
+                              <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6.5rem] whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground">
                                 {formatTime(convo.last_message.created_at)}
                               </span>
                             )}
-                            <div className="min-w-0 max-w-full pr-16">
+                            <div className="min-w-0 max-w-full pr-[5.5rem]">
                               <p
                                 className={cn(
-                                  "truncate text-[17px] font-semibold text-foreground flex items-center gap-1.5",
+                                  "truncate text-lg font-semibold leading-snug text-foreground md:text-xl",
                                   convo.unread_count > 0 && "text-foreground",
                                 )}
                               >
-                                <span>{convo.other_user_profile?.full_name || "User"}</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    if (convo.other_user_id) toggleProfileFavorite(convo.other_user_id, e);
-                                  }}
-                                  className="p-0.5 rounded-full hover:bg-muted/50 transition-colors z-10"
-                                >
-                                  <Heart
-                                    className={cn(
-                                      "h-4 w-4 transition-all",
-                                      convo.other_user_id && favoriteUserIds.has(convo.other_user_id)
-                                        ? "fill-rose-500 text-rose-500 scale-110"
-                                        : "text-muted-foreground/60 hover:text-rose-500"
-                                    )}
-                                  />
-                                </button>
+                                {convo.other_user_profile?.full_name || "User"}
                               </p>
                               {subtitle ? (
-                                <p className="mt-0.5 truncate text-[14px] text-muted-foreground">
+                                <p className="mt-1 truncate text-[15px] leading-snug text-muted-foreground md:text-base">
                                   {subtitle}
                                 </p>
                               ) : null}
                               {convo.last_message && (
                                 <p
                                   className={cn(
-                                    "mt-1 line-clamp-2 text-[14px] leading-snug text-muted-foreground",
+                                    "mt-1.5 line-clamp-2 text-[15px] leading-snug text-muted-foreground md:text-base",
                                     convo.unread_count > 0 &&
                                       "font-medium text-foreground/90",
                                   )}
@@ -1157,11 +1067,103 @@ export default function MessagesPage() {
                     );
                   })}
               </div>
+            ))
+            : activityInboxRows.length === 0 ? (
+              <div className="flex flex-col items-center px-6 py-12 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <Newspaper className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-foreground">
+                  No updates yet
+                </h3>
+                <p className="mb-6 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                  Job invites, confirmations, and other activity will show up here
+                  when something needs your attention.
+                </p>
+              </div>
+            ) : (
+              <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
+                {activityInboxRows.map((row) => {
+                  const a = row.alert;
+                  const kind = inboxActivityKindLabel(a.type);
+                  const ActivityIcon =
+                    a.type === "message"
+                      ? MessageSquare
+                      : a.type === "job_request"
+                        ? Bell
+                        : Briefcase;
+                  return (
+                    <div
+                      key={row.key}
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer px-4 py-3 pr-[max(1rem,env(safe-area-inset-right,0px))] text-left transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 w-full"
+                      onClick={() => handleActivityClick(a)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleActivityClick(a);
+                        }
+                      }}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="relative shrink-0">
+                          {a.sender_photo ? (
+                            <Avatar className="h-14 w-14 flex-shrink-0">
+                              <AvatarImage src={a.sender_photo} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                                {a.title.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div
+                              className={cn(
+                                "h-14 w-14 rounded-full flex items-center justify-center",
+                                a.type === "job_request" &&
+                                  "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+                                a.type === "confirmation" &&
+                                  "bg-sky-500/15 text-sky-700 dark:text-sky-400",
+                                a.type === "job_update" &&
+                                  "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+                                a.type === "message" &&
+                                  "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+                              )}
+                            >
+                              <ActivityIcon className="w-6 h-6" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="relative min-w-0 flex-1">
+                          {a.created_at && (
+                            <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[6rem] whitespace-nowrap text-right text-[12px] font-semibold tabular-nums text-muted-foreground/80">
+                              {formatTime(a.created_at)}
+                            </span>
+                          )}
+                          <div className="min-w-0 max-w-full pr-24">
+                            <p className="mb-0.5 truncate text-[12px] font-medium text-muted-foreground">
+                              {kind}
+                            </p>
+                            <p className="truncate text-[17px] font-semibold text-foreground">
+                              {a.title}
+                            </p>
+                            {a.description && (
+                              <p className="mt-0.5 truncate text-[14px] text-muted-foreground">
+                                {a.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </ScrollArea>
         </div>
 
-        {/* Mobile Action Box */}
+        {/* Mobile Action Box — messages tab only */}
+        {inboxTab === "messages" ? (
         <div className="flex md:hidden shrink-0 items-center justify-around border-t border-border/30 bg-background/95 px-4 pt-2.5 pb-4 h-[71px]">
           <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
             <DialogTrigger asChild>
@@ -1213,6 +1215,7 @@ export default function MessagesPage() {
             <span className="text-[11px] font-medium">{isManageMode ? "Done" : "Remove"}</span>
           </button>
         </div>
+        ) : null}
 
         {/* Desktop Tab Bar */}
         <div className="hidden md:flex shrink-0 items-center justify-around border-t border-border/30 bg-background/95 px-4 pt-2.5 pb-4 h-[71px]">
@@ -1322,24 +1325,8 @@ export default function MessagesPage() {
                       </Avatar>
                     </button>
                     <div className="min-w-0 flex-1">
-                      <h2 className="font-semibold truncate flex items-center gap-1.5">
+                      <h2 className="truncate text-lg font-semibold leading-tight">
                         {otherUserProfile?.full_name || "User"}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            if (otherUserId) toggleProfileFavorite(otherUserId, e);
-                          }}
-                          className="p-0.5 rounded-full hover:bg-muted/50 transition-colors"
-                        >
-                          <Heart
-                            className={cn(
-                              "h-4 w-4 transition-all",
-                              otherUserId && favoriteUserIds.has(otherUserId)
-                                ? "fill-rose-500 text-rose-500 scale-110"
-                                : "text-muted-foreground/60 hover:text-rose-500"
-                            )}
-                          />
-                        </button>
                       </h2>
                     </div>
                     {liveJobHeaderBanner && (
@@ -1403,8 +1390,7 @@ export default function MessagesPage() {
               </div>
               <h3 className="font-semibold text-lg mb-2">Select a chat</h3>
               <p className="text-sm text-muted-foreground">
-                Pick a conversation from your inbox, or open a job update from
-                the list.
+                Pick a conversation from your Messages list.
               </p>
             </div>
           </div>

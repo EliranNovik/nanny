@@ -1342,7 +1342,7 @@ function ConfirmedApplicantHeroTopBadges({
             "ring-1 ring-inset ring-white/15",
           )}
           role="status"
-          aria-label="Available for jobs now"
+          aria-label="Live now, available for jobs"
         >
           <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
             <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />

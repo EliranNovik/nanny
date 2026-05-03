@@ -39,9 +39,9 @@ export type PublicProfileGalleryRow = {
 
 type Slide = { key: string; kind: "image" | "video"; src: string };
 
-/** Round action — colored frosted glass */
+/** Round action — frosted glass (no ring; shadow + blur define the edge) */
 const coloredGlassRoundBtn =
-  "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-lg backdrop-blur-2xl transition-all hover:brightness-110 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/90 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ring-1";
+  "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-lg backdrop-blur-2xl transition-all hover:brightness-110 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/90 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";
 
 function buildSlides(
   photoUrl: string | null,
@@ -545,19 +545,19 @@ export function HelperResultProfileCard({
               {isFreelancerInActive24hLiveWindow(h.freelancer_profiles) ? (
                 <span
                   className={cn(
-                    "mb-3 inline-flex items-center gap-2 rounded-full",
-                    "bg-emerald-600 px-3 py-1.5 shadow-lg shadow-emerald-600/20 backdrop-blur-md",
-                    "text-[12px] font-bold text-white",
-                    "ring-1 ring-inset ring-emerald-700/20",
+                    "mb-8 inline-flex items-center gap-2.5 rounded-full",
+                    "bg-black/50 px-3.5 py-2 text-[13px] font-semibold tracking-tight text-white/95",
+                    "shadow-lg shadow-black/30 backdrop-blur-xl",
+                    "supports-[backdrop-filter]:bg-black/40",
                   )}
                   role="status"
-                  aria-label="Available for jobs now"
+                  aria-label="Live now, available for jobs"
                 >
-                  <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                    <span className="absolute inset-0 animate-ping rounded-full bg-[#1ae58e]/60 motion-reduce:animate-none" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1ae58e] shadow-[0_0_6px_rgba(26,229,142,0.9)]" />
+                  <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+                    <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/35 motion-reduce:animate-none" />
+                    <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)] ring-2 ring-emerald-400/35" />
                   </span>
-                  <span>Available now</span>
+                  <span>Live now</span>
                 </span>
               ) : null}
 
@@ -644,7 +644,7 @@ export function HelperResultProfileCard({
                 aria-pressed={favoriteIds.has(h.id)}
                 disabled={favoriteBusyId === h.id}
                 onClick={(e) => void onToggleFavorite(h.id, e)}
-                className={cn(coloredGlassRoundBtn, "bg-black/45 ring-white/25 hover:bg-black/55")}
+                className={cn(coloredGlassRoundBtn, "bg-black/45 hover:bg-black/55")}
               >
                 {favoriteBusyId === h.id ? (
                   <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
@@ -671,25 +671,21 @@ export function HelperResultProfileCard({
           )}
         >
           <div className="space-y-1.5 md:space-y-1">
-            <div className="flex min-w-0 items-baseline gap-1 text-[28px] font-black leading-[1.05] tracking-tight text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.55)]">
-              <p className="line-clamp-2 min-w-0">
-                {h.full_name || "Helper"}
-              </p>
-              {h.is_verified ? (
-                <BadgeCheck
-                  className="h-[0.95em] w-[0.95em] shrink-0 translate-y-[0.06em] fill-emerald-500 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
-                  strokeWidth={2.25}
-                  aria-label="Certified verified helper"
-                />
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[15px] font-semibold text-white">
-              <span className="inline-flex min-w-0 items-center gap-1 text-white">
-                <MapPin
-                  className="h-4 w-4 shrink-0 text-orange-300"
-                  aria-hidden
-                />
-                <span className="line-clamp-1 text-white">{h.city || "—"}</span>
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[28px] font-black leading-[1.05] tracking-tight text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.55)]">
+              <div className="flex min-w-0 items-baseline gap-1">
+                <p className="line-clamp-2 min-w-0">
+                  {h.full_name || "Helper"}
+                </p>
+                {h.is_verified ? (
+                  <BadgeCheck
+                    className="h-[0.95em] w-[0.95em] shrink-0 translate-y-[0.06em] fill-emerald-500 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]"
+                    strokeWidth={2.25}
+                    aria-label="Certified verified helper"
+                  />
+                ) : null}
+              </div>
+              <span className="line-clamp-1 max-w-full shrink-0 text-[15px] font-semibold leading-tight text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.45)] sm:max-w-[min(100%,12rem)]">
+                {h.city?.trim() || "—"}
               </span>
             </div>
 
@@ -698,7 +694,7 @@ export function HelperResultProfileCard({
                 {liveCategories.map((cat, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-black/40 px-3.5 py-2 text-[12px] font-bold uppercase tracking-wide text-white ring-1 ring-inset ring-white/15 backdrop-blur-md"
+                    className="inline-flex items-center gap-1.5 rounded-xl border-0 bg-black/40 px-3.5 py-2 text-[12px] font-bold uppercase tracking-wide text-white shadow-none ring-0 backdrop-blur-md"
                   >
                     <CategoryIcon id={cat.id} className="h-4 w-4 text-emerald-400" />
                     {cat.label}

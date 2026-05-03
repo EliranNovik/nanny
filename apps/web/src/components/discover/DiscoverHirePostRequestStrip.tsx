@@ -6,8 +6,8 @@ const stripBottomFlushClass =
   "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]";
 
 const stripPostRequestFabClass = cn(
-  "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-xl transition-transform active:scale-[0.96]",
-  "motion-safe:animate-dock-primary-breathe bg-gradient-to-br from-indigo-600 to-violet-700 shadow-indigo-950/40",
+  "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-none transition-transform active:scale-[0.96]",
+  "motion-safe:animate-dock-primary-breathe bg-gradient-to-br from-indigo-600 to-violet-700",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
   "dark:focus-visible:ring-indigo-200/40 dark:focus-visible:ring-offset-zinc-950",
 );
@@ -48,9 +48,9 @@ export function DiscoverHirePostRequestStrip({
       <div className="mx-auto max-w-lg">
         <div
           className={cn(
-            "flex items-center gap-2 rounded-xl border px-2.5 py-1.5 pl-3 shadow-md",
+            "flex items-center gap-2 rounded-xl border px-2.5 py-1.5 pl-3 shadow-none",
             "border-zinc-200 bg-white text-zinc-900",
-            "dark:border-white/10 dark:bg-zinc-900/90 dark:text-zinc-50 dark:shadow-lg",
+            "dark:border-white/10 dark:bg-zinc-900/90 dark:text-zinc-50",
           )}
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">
