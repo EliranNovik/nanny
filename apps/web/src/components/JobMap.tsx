@@ -700,7 +700,18 @@ export default function JobMap({
     };
 
     setupMap();
-  }, [isLoaded, job?.id, job?.service_type, job?.location_city]);
+    // Include pickup coords so the same job id re-processes when `service_details` fills in
+    // (e.g. strip row hydrated before coords were present).
+  }, [
+    isLoaded,
+    job?.id,
+    job?.service_type,
+    job?.location_city,
+    job?.service_details?.from_lat,
+    job?.service_details?.from_lng,
+    job?.service_details?.to_lat,
+    job?.service_details?.to_lng,
+  ]);
 
   if (!mapsApiKey) {
     return (

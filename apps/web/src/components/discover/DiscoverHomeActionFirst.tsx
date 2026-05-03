@@ -52,6 +52,8 @@ import {
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
+import { DiscoverHomePostedHelpRequests } from "@/components/discover/DiscoverHomePostedHelpRequests";
+import { DiscoverHomeLiveHelperCards } from "@/components/discover/DiscoverHomeLiveHelperCards";
 
 type HomeMode = "hire" | "work";
 
@@ -71,7 +73,7 @@ const HIRE = {
 
 const WORK = {
   badge: "POSTS NEAR YOU",
-  title: "People need help right now.",
+  title: "Community requests",
   sub: "Go live and get requests instantly in your area.",
   primary: "Go live now",
 } as const;
@@ -105,7 +107,10 @@ export function DiscoverHomeActionFirst({
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const isHire = homeMode === "hire";
-  const { data: categoryAvatars = {} } = useDiscoverLiveAvatars(user?.id);
+  const { data: liveAvatarsPayload, isPending: liveAvatarsPending } =
+    useDiscoverLiveAvatars(user?.id);
+  const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
+  const liveHelpersForCards = liveAvatarsPayload?.helpersForCards ?? [];
   const { data: frData } = useFreelancerRequests(user?.id);
   const [myRequestsOpen, setMyRequestsOpen] = useState(false);
 
@@ -843,6 +848,12 @@ export function DiscoverHomeActionFirst({
                   </button>
                 </div>
               </div>
+              <div className="mx-auto mt-5 w-full max-w-md px-4 pb-2">
+                <DiscoverHomeLiveHelperCards
+                  helpers={liveHelpersForCards}
+                  loading={liveAvatarsPending}
+                />
+              </div>
             </div>
           ) : (
             <div className="flex flex-col">
@@ -965,6 +976,8 @@ export function DiscoverHomeActionFirst({
                   </button>
                 </div>
               </div>
+
+              <DiscoverHomePostedHelpRequests enabled={!isHire} className="w-full px-4 pt-6" />
             </div>
           )}
         </div>
@@ -997,59 +1010,66 @@ export function DiscoverHomeActionFirst({
           )}
         >
           {isHire ? (
-            <section
-              className={cn(
-                "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
-                "ring-1 ring-black/[0.06] ring-inset",
-              )}
-            >
-              {renderHeroQuickActionsDesktop()}
-              <div className={cn(heroInnerClassName, "md:h-full")}>
-                <img
-                  src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
-                  alt=""
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-                  decoding="async"
-                  {...{ fetchpriority: "high" }}
-                />
+            <div className="flex min-h-0 min-w-0 flex-col gap-4">
+              <section
+                className={cn(
+                  "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
+                  "ring-1 ring-black/[0.06] ring-inset",
+                )}
+              >
+                {renderHeroQuickActionsDesktop()}
+                <div className={cn(heroInnerClassName, "md:h-full")}>
+                  <img
+                    src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
+                    alt=""
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+                    decoding="async"
+                    {...{ fetchpriority: "high" }}
+                  />
 
-                <div className={heroStackClassName}>
-                  <div className={heroTopBlockClassName}>
-                    <div className="min-w-0">
-                      {/* Desktop hero actions moved into the bottom Actions menu */}
+                  <div className={heroStackClassName}>
+                    <div className={heroTopBlockClassName}>
+                      <div className="min-w-0">
+                        {/* Desktop hero actions moved into the bottom Actions menu */}
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
-                          <Zap
-                            className={cn(discoverIcon.sm, "shrink-0")}
-                            strokeWidth={DISCOVER_STROKE}
-                            aria-hidden
-                          />
-                          {HIRE.badge}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
+                            <Zap
+                              className={cn(discoverIcon.sm, "shrink-0")}
+                              strokeWidth={DISCOVER_STROKE}
+                              aria-hidden
+                            />
+                            {HIRE.badge}
+                          </div>
                         </div>
-                      </div>
-                      <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
-                        <h2
-                          className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
-                          style={{
-                            textShadow:
-                              "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
-                          }}
-                        >
-                          {HIRE.title}
-                        </h2>
-                        <p
-                          className="whitespace-pre-line text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
-                          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
-                        >
-                          {HIRE.sub}
-                        </p>
+                        <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
+                          <h2
+                            className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
+                            style={{
+                              textShadow:
+                                "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
+                            }}
+                          >
+                            {HIRE.title}
+                          </h2>
+                          <p
+                            className="whitespace-pre-line text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
+                            style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                          >
+                            {HIRE.sub}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+              <DiscoverHomeLiveHelperCards
+                helpers={liveHelpersForCards}
+                loading={liveAvatarsPending}
+                className="min-w-0 px-0.5"
+              />
+            </div>
           ) : (
             <section
               className={cn(
@@ -1271,6 +1291,7 @@ export function DiscoverHomeActionFirst({
 
         <div className="min-h-0 flex-1 overflow-hidden pt-2 flex flex-col gap-2">
           <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
+          {!isHire ? <DiscoverHomePostedHelpRequests enabled className="px-1 pt-1" /> : null}
           <DiscoverHomeRecentActivity viewerRole={isHire ? "client" : "freelancer"} />
         </div>
 

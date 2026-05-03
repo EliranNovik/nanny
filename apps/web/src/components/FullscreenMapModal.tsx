@@ -1,4 +1,10 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import JobMap from "./JobMap";
 import {
   X,
@@ -475,12 +481,22 @@ export function FullscreenMapModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
+        overlayClassName="z-[200]"
         className={cn(
           sheetPresentation
             ? discoverSheetDialogContentClassName
             : defaultMapShellClass,
+          // Above discover request/helper sheets (DialogContent defaults to z-[130];
+          // discoverSheetDialogContentClassName uses z-50 and would paint behind the open sheet).
+          "z-[200]",
         )}
       >
+        <VisuallyHidden.Root>
+          <DialogTitle>Job route map</DialogTitle>
+          <DialogDescription>
+            Map showing the job route or location. Close when you are done.
+          </DialogDescription>
+        </VisuallyHidden.Root>
         {sheetPresentation ? (
           <div className={cn(discoverSheetInnerCardClassName, "flex flex-col")}>
             <DiscoverSheetTopHandle />

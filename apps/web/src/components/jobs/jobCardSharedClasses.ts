@@ -10,12 +10,17 @@ export const INTERACTIVE_CARD_HOVER =
   "active:translate-y-0 active:shadow-md active:duration-150 " +
   "dark:hover:border-white/[0.14] dark:hover:shadow-xl dark:hover:shadow-black/40";
 
+/** Outer corner radius — shared by incoming job rows and open-request match cards. */
+export const JOB_CARD_OUTER_CORNER = "rounded-[20px]";
+
 /**
  * Flat chrome on every breakpoint. Overrides `Card` defaults (`sm:bg-card`, `sm:border`, shadows)
  * so job rows stay transparent on desktop — no grey panel.
  */
 export const JOB_CARD_SHELL = cn(
-  "group relative flex min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-sm",
+  "group relative flex min-h-0 w-full min-w-0 flex-col overflow-hidden",
+  JOB_CARD_OUTER_CORNER,
+  "border border-slate-200/80 bg-white shadow-sm",
   "dark:border-white/5 dark:bg-zinc-900",
   INTERACTIVE_CARD_HOVER,
 );
@@ -33,7 +38,8 @@ export const JOB_CARD_THUMB_BUTTON =
 
 /** Dashed empty-state panel — consistent with flat job cards */
 export const JOB_CARD_EMPTY_PANEL = cn(
-  "rounded-[20px] border border-dashed border-slate-300/45 bg-transparent shadow-none",
+  JOB_CARD_OUTER_CORNER,
+  "border border-dashed border-slate-300/45 bg-transparent shadow-none",
   "dark:border-zinc-600/40",
 );
 

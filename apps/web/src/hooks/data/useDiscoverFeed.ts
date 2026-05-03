@@ -22,6 +22,16 @@ export type DiscoverLiveAvatarEntry = {
   is_verified?: boolean | null;
 };
 
+/** Full live window row for hire home cards (not capped per category like the strip). */
+export type DiscoverLiveHelperCardEntry = DiscoverLiveAvatarEntry & {
+  live_category_ids: string[];
+};
+
+export type DiscoverLiveAvatarsPayload = {
+  byCategory: Record<string, DiscoverLiveAvatarEntry[]>;
+  helpersForCards: DiscoverLiveHelperCardEntry[];
+};
+
 export function useDiscoverFeed() {
   return useQuery({
     queryKey: queryKeys.discoverFeed(),
@@ -128,6 +138,8 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
       for (const id of categoryIds) next[id] = [];
       const seen = new Map<string, Set<string>>();
 
+      const helpersForCards: DiscoverLiveHelperCardEntry[] = [];
+
       for (const row of (data || []) as {
         user_id?: string;
         live_categories?: string[] | null;
@@ -172,6 +184,35 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
         const cats = Array.isArray(row.live_categories)
           ? row.live_categories
           : [];
+        const validatedCats = Array.from(
+          new Set(
+            cats
+              .map((cat) => String(cat ?? "").trim())
+              .filter((c) => c && c in next),
+          ),
+        );
+        if (validatedCats.length > 0) {
+          helpersForCards.push({
+            helper_user_id: authorId,
+            full_name: prof?.full_name ?? null,
+            photo_url: prof?.photo_url ?? null,
+            average_rating:
+              prof?.average_rating != null
+                ? Number(prof.average_rating)
+                : null,
+            total_ratings:
+              prof?.total_ratings != null ? Number(prof.total_ratings) : null,
+            location_line,
+            location_lat: prof?.location_lat ?? null,
+            location_lng: prof?.location_lng ?? null,
+            live_can_start_in: row.live_can_start_in ?? null,
+            avg_reply_seconds: replyStats[authorId]?.avg_seconds ?? null,
+            reply_sample_count: replyStats[authorId]?.sample_count ?? null,
+            is_verified: prof?.is_verified ?? null,
+            live_category_ids: validatedCats,
+          });
+        }
+
         for (const cat of cats) {
           const c = String(cat ?? "").trim();
           if (!c || !(c in next)) continue;
@@ -211,7 +252,18 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
         if (!next[id]) next[id] = [];
       }
 
-      return next;
+      helpersForCards.sort((a, b) => {
+        const ra = a.average_rating != null && Number.isFinite(a.average_rating) ? a.average_rating : -1;
+        const rb = b.average_rating != null && Number.isFinite(b.average_rating) ? b.average_rating : -1;
+        if (rb !== ra) return rb - ra;
+        return (a.full_name || "").localeCompare(b.full_name || "");
+      });
+
+      const payload: DiscoverLiveAvatarsPayload = {
+        byCategory: next,
+        helpersForCards,
+      };
+      return payload;
     },
   });
 }

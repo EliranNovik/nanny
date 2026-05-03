@@ -138,8 +138,8 @@ export function BottomNav() {
 
   const avatars = useDiscoverLiveAvatars();
   const liveAvatars = useMemo(() => {
-    if (!avatars.data) return [];
-    const all = Object.values(avatars.data).flat();
+    if (!avatars.data?.byCategory) return [];
+    const all = Object.values(avatars.data.byCategory).flat();
     const uniqueMap = new Map<string, any>();
     for (const av of all) {
       if (av.helper_user_id) uniqueMap.set(av.helper_user_id, av);

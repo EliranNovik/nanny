@@ -22,6 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
+import { JOB_CARD_OUTER_CORNER } from "@/components/jobs/jobCardSharedClasses";
 
 export type OpenJobRequestMatchRow = {
   id: string;
@@ -96,6 +97,13 @@ const acceptRoundBtn = cn(
 const declineRoundBtn = cn(
   roundActionBtn,
   "h-14 w-14 bg-white text-rose-500 ring-zinc-200 hover:bg-rose-50 dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
+);
+
+/** Posted-at time on hero — bottom-right, frosted black glass */
+const postedTimeGlassBadge = cn(
+  "pointer-events-none inline-flex items-center gap-1.5 rounded-full border border-white/12",
+  "bg-black/45 px-3 py-1.5 text-white shadow-lg backdrop-blur-xl ring-1 ring-black/20",
+  "md:px-4 md:py-2",
 );
 
 
@@ -257,8 +265,6 @@ export function OpenJobRequestMatchCard({
   variant = "grid",
   commentCount = 0,
   onOpenComments,
-  respondsWithinLabel = null,
-  canStartInLabel = null,
 }: {
   row: OpenJobRequestMatchRow;
   gallery: PublicProfileGalleryRow[];
@@ -270,10 +276,6 @@ export function OpenJobRequestMatchCard({
   clientRating?: { average_rating: number | null; total_ratings: number | null } | null;
   commentCount?: number;
   onOpenComments?: (jobId: string) => void;
-  /** Client avg reply time after your messages (~time); only when credible + under 1h. */
-  respondsWithinLabel?: string | null;
-  /** Viewer’s live “when I can start” preference from freelancer_profiles. */
-  canStartInLabel?: string | null;
 }) {
   const { user: currentUser } = useAuth();
   const viewerId = currentUser?.id;
@@ -575,13 +577,15 @@ export function OpenJobRequestMatchCard({
     <>
       <div
         className={cn(
-          "group relative flex min-h-0 flex-col",
-          variant === "fullscreen" ? "overflow-visible" : "overflow-hidden rounded-[40px]",
-          "bg-zinc-900 shadow-2xl shadow-black/40 ring-1 ring-white/10",
-          "transition-all duration-500 ease-out",
+          "group relative flex min-h-0 flex-col overflow-hidden",
+          JOB_CARD_OUTER_CORNER,
+          "max-md:rounded-[28px]",
+          "bg-white text-slate-900 ring-1 ring-slate-200/80 transition-all duration-500 ease-out",
+          "shadow-lg shadow-slate-900/[0.08]",
+          "dark:bg-zinc-900 dark:text-zinc-100 dark:ring-white/10 dark:shadow-2xl dark:shadow-black/40",
           variant === "fullscreen"
-            ? "h-full rounded-none shadow-none ring-0"
-            : "hover:-translate-y-1 hover:shadow-black/50",
+            ? "h-full shadow-md shadow-slate-900/10 dark:shadow-none dark:ring-0"
+            : "hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/12 dark:hover:shadow-black/50",
         )}
 
         role="article"
@@ -592,7 +596,7 @@ export function OpenJobRequestMatchCard({
           className={cn(
             "relative w-full shrink-0 overflow-hidden bg-zinc-900",
             variant === "fullscreen"
-              ? "h-[48%] min-h-[16rem]"
+              ? "h-[44%] min-h-[14rem] max-h-[50vh]"
               : "aspect-[4/5] min-h-[18rem] max-h-[28rem]",
           )}
         >
@@ -610,7 +614,7 @@ export function OpenJobRequestMatchCard({
               className={cn(
                 "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
                 "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-                "overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+                "overscroll-x-contain [-webkit-overflow-scrolling:touch] touch-pan-x",
               )}
             >
               {slides.map((s, idx) => (
@@ -662,17 +666,6 @@ export function OpenJobRequestMatchCard({
                             <span className="text-xs font-medium text-zinc-400">({ratingCount})</span>
                           </span>
                         )}
-
-                        <span className="flex flex-wrap items-center gap-2 pt-0.5 text-base font-bold text-zinc-200 drop-shadow-md md:text-lg">
-                          <MapPin className="h-5 w-5 shrink-0 text-emerald-400" strokeWidth={2.5} />
-                          <span>{row.location_city || "Anywhere"}</span>
-                          {dist ? (
-                            <>
-                              <span className="text-zinc-600">·</span>
-                              <span className="tabular-nums text-white">{dist}</span>
-                            </>
-                          ) : null}
-                        </span>
                       </div>
 
                       <div className="pointer-events-none absolute right-4 top-5 z-[18] md:right-5 md:top-6">
@@ -686,24 +679,20 @@ export function OpenJobRequestMatchCard({
                             <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 md:h-4.5 md:w-4.5" strokeWidth={3} />
                             {formatTitle(row.service_type)}
                           </span>
-
-                          {row.created_at && (
-                            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 shadow-lg shadow-emerald-950/40 ring-1 ring-white/20 animate-in fade-in slide-in-from-right-4 duration-500 md:px-4 md:py-2">
-                              <Clock className="h-3 w-3 text-white md:h-3.5 md:w-3.5" strokeWidth={3} />
-                              <span className="text-[9px] font-black uppercase tracking-widest text-white md:text-[11px]">
-                                {timeAgo(row.created_at)}
-                              </span>
-                            </div>
-                          )}
                         </div>
                       </div>
 
-                      {slides.length > 1 && (
-                        <div className="pointer-events-none absolute bottom-3 left-1/2 z-[15] flex -translate-x-1/2 items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 animate-pulse md:bottom-4 md:gap-2.5 md:text-[11px] md:tracking-[0.4em]">
-                          <span>Photos</span>
-                          <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                      {row.created_at ? (
+                        <div className="pointer-events-none absolute bottom-4 right-4 z-[19] md:bottom-5 md:right-5">
+                          <div className={postedTimeGlassBadge}>
+                            <Clock className="h-3 w-3 shrink-0 text-white/90 md:h-3.5 md:w-3.5" strokeWidth={2.5} />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/95 md:text-[11px]">
+                              {timeAgo(row.created_at)}
+                            </span>
+                          </div>
                         </div>
-                      )}
+                      ) : null}
+
                     </>
                   ) : (
 
@@ -744,20 +733,9 @@ export function OpenJobRequestMatchCard({
                             <span className="text-xs font-medium text-zinc-400">({ratingCount})</span>
                           </div>
                         )}
-
-                        <div className="flex flex-wrap items-center gap-1.5 text-[13px] font-bold leading-tight text-zinc-100 drop-shadow-xl md:hidden">
-                          <MapPin className="h-4 w-4 shrink-0 text-emerald-400" strokeWidth={2.5} />
-                          <span>{row.location_city || "Anywhere"}</span>
-                          {dist ? (
-                            <>
-                              <span className="text-zinc-500">·</span>
-                              <span className="tabular-nums">{dist}</span>
-                            </>
-                          ) : null}
-                        </div>
                       </div>
 
-                      {/* Top Right Badges: Category, Time */}
+                      {/* Top right: category only */}
                       <div className="absolute right-5 top-6 z-[20] flex flex-col items-end gap-2.5">
                         <span
                           className={cn(
@@ -768,16 +746,18 @@ export function OpenJobRequestMatchCard({
                           <CategoryIcon serviceType={row.service_type} className="h-4.5 w-4.5" strokeWidth={3} />
                           {formatTitle(row.service_type)}
                         </span>
+                      </div>
 
-                        {row.created_at && (
-                          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-600/90 px-4 py-2 shadow-xl shadow-emerald-950/40 ring-1 ring-white/30 backdrop-blur-md animate-in fade-in slide-in-from-right-4 duration-500">
-                            <Clock className="h-3.5 w-3.5 text-white" strokeWidth={3} />
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white">
+                      {row.created_at ? (
+                        <div className="pointer-events-none absolute bottom-5 right-5 z-[21]">
+                          <div className={postedTimeGlassBadge}>
+                            <Clock className="h-3.5 w-3.5 shrink-0 text-white/90" strokeWidth={2.5} />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/95">
                               {timeAgo(row.created_at)}
                             </span>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
 
 
@@ -796,13 +776,15 @@ export function OpenJobRequestMatchCard({
                 activeIndex === 0 ? "opacity-0 md:opacity-100" : "opacity-100",
               )}
             >
-              <div className="flex gap-1.5 rounded-full bg-black/10 px-2 py-1.5 backdrop-blur-md">
+              <div className="flex gap-1.5 rounded-full bg-slate-900/10 px-2 py-1.5 backdrop-blur-md dark:bg-black/10">
                 {slides.map((_, idx) => (
                   <div
                     key={idx}
                     className={cn(
                       "h-1 rounded-full transition-all duration-300",
-                      idx === activeIndex ? "w-4 bg-emerald-500" : "w-1 bg-white/40",
+                      idx === activeIndex
+                        ? "w-4 bg-emerald-500"
+                        : "w-1 bg-slate-400/60 dark:bg-white/40",
                     )}
                   />
                 ))}
@@ -811,10 +793,12 @@ export function OpenJobRequestMatchCard({
           )}
         </div>
 
-        {/* Details section */}
+        {/* Details section — light panel in light mode, dark in dark mode */}
         <div
           className={cn(
-            "relative flex min-h-0 flex-1 flex-col bg-zinc-900 p-4 pt-3 md:p-6 md:pt-5",
+            "relative flex min-h-0 flex-1 flex-col border-t p-4 pt-3 md:p-6 md:pt-5",
+            "border-slate-200/90 bg-slate-50 text-slate-900",
+            "dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100",
             variant === "grid" &&
               "pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]",
           )}
@@ -822,160 +806,66 @@ export function OpenJobRequestMatchCard({
           <div
             className={cn(
               "min-h-0 flex-1",
-              variant === "fullscreen" && "overflow-y-auto overscroll-contain",
+              variant === "fullscreen" && "overflow-hidden",
             )}
           >
-            <div className="mb-3 hidden max-md:flex max-md:flex-wrap max-md:items-center max-md:gap-x-2 max-md:gap-y-1 max-md:border-b max-md:border-white/10 max-md:pb-3">
-              <MapPin className="h-4 w-4 shrink-0 text-emerald-500" strokeWidth={2.5} />
-              <span className="min-w-0 font-bold text-zinc-100">{row.location_city || "Anywhere"}</span>
-              {dist ? <span className="tabular-nums text-sm text-zinc-400">{dist}</span> : null}
+            <div className="mb-3 hidden max-md:flex max-md:flex-wrap max-md:items-center max-md:gap-x-2 max-md:gap-y-1 max-md:border-b max-md:border-slate-200/90 max-md:pb-3 dark:max-md:border-white/10">
+              <MapPin className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-500" strokeWidth={2.5} />
+              <span className="min-w-0 font-bold text-slate-900 dark:text-zinc-100">
+                {row.location_city || "Anywhere"}
+              </span>
+              {dist ? (
+                <span className="tabular-nums text-sm text-slate-500 dark:text-zinc-400">{dist}</span>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:gap-x-6 md:gap-y-3">
               {displayedItems.map((item, idx) => (
                 <div key={idx} className="flex min-w-0 flex-col gap-0.5 md:gap-1">
-                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 md:text-[11px] md:tracking-[0.2em]">
+                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 md:text-[11px] md:tracking-[0.2em] dark:text-zinc-500">
                     {item.label}
                   </span>
-                  <span className="line-clamp-3 break-words text-[15px] font-bold leading-snug text-zinc-100 md:text-base">
+                  <span className="line-clamp-3 break-words text-[15px] font-bold leading-snug text-slate-900 md:text-base dark:text-zinc-100">
                     {item.value}
                   </span>
                 </div>
               ))}
             </div>
 
-            {(respondsWithinLabel || canStartInLabel) && (
-              <div className="mt-3 space-y-1.5 text-[11px] leading-snug text-zinc-400 md:mt-4 md:text-xs">
-                {respondsWithinLabel ? (
-                  <p>
-                    <span className="font-black uppercase tracking-wider text-zinc-500">Replies </span>
-                    {respondsWithinLabel}
-                  </p>
-                ) : null}
-                {canStartInLabel ? (
-                  <p>
-                    <span className="font-black uppercase tracking-wider text-zinc-500">You </span>
-                    {canStartInLabel}
-                  </p>
-                ) : null}
-              </div>
-            )}
-
-            <div className="mt-4 flex items-center justify-between md:mt-6">
-              {canOpenDetailsModal ? (
+            {canOpenDetailsModal ? (
+              <div className="mt-4 md:mt-6">
                 <button
                   type="button"
-                  className="group flex items-center gap-2 text-[13px] font-black uppercase tracking-widest text-emerald-500"
+                  className="group flex items-center gap-2 text-[13px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500"
                   onClick={() => setShowFullDetailsModal(true)}
                 >
                   Request Details
                   <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
                 </button>
-              ) : (
-                <div />
-              )}
-
-              <div className="flex items-center gap-5">
-                <button
-                  type="button"
-                  className="flex items-center gap-2.5 text-zinc-500 transition-colors hover:text-zinc-300"
-                  onClick={() => onOpenComments?.(row.id)}
-                >
-                  <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
-                  {commentCount > 0 && <span className="text-sm font-black tabular-nums">{commentCount}</span>}
-                </button>
-
-                {/* Icon-only — hero already shows the client photo */}
-                {viewerId && (
-                  <div className="relative" ref={dropdownRef}>
-                    <button
-                      type="button"
-                      className={cn(
-                        heroOverlayRoundBtn,
-                        "h-10 w-10 bg-zinc-800/90 text-white ring-zinc-600",
-                        showContactDropdown && "ring-2 ring-emerald-500 ring-offset-2 ring-offset-zinc-900",
-                      )}
-                      aria-label="Contact client"
-                      aria-expanded={showContactDropdown}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowContactDropdown(!showContactDropdown);
-                      }}
-                      disabled={chatOpening}
-                    >
-                      <MessageCircle className="h-5 w-5" strokeWidth={2.25} />
-                    </button>
-
-                  {showContactDropdown && (
-                    <div
-                      className="absolute bottom-12 right-0 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200 z-[50]"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
-                        onClick={(e) => void openDirectChat(e)}
-                        disabled={chatOpening}
-                        aria-busy={chatOpening}
-                      >
-                        {chatOpening ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
-                        ) : (
-                          <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
-                        onClick={(e) => void openWhatsApp(e)}
-                        disabled={socialBusy != null}
-                        aria-busy={socialBusy === "wa"}
-                      >
-                        {socialBusy === "wa" ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
-                        ) : (
-                          <WhatsAppIcon size={22} className="text-white" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(heroOverlayRoundBtn, "h-11 w-11 bg-zinc-800 ring-zinc-700")}
-                        onClick={(e) => void openTelegram(e)}
-                        disabled={socialBusy != null}
-                        aria-busy={socialBusy === "tg"}
-                      >
-                        {socialBusy === "tg" ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
-                        ) : (
-                          <TelegramIcon size={20} className="text-white" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
+            ) : null}
           </div>
 
-          {/* Action buttons — in document flow so they are not clipped by overflow / safe areas */}
+          {/* Decline left · comments + contact + accept on the right */}
           <div
             className={cn(
-              "mt-auto flex shrink-0 items-center justify-center gap-10 pt-4",
+              "mt-auto flex w-full min-w-0 shrink-0 items-center justify-between gap-3 px-2 pt-4",
               variant === "fullscreen"
                 ? "pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
-                : "pb-2 md:pb-1 md:pt-3",
+                : "pb-2 md:px-3 md:pb-1 md:pt-3",
             )}
           >
             {accepted ? (
-              <div className="rounded-2xl bg-zinc-100 px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 dark:bg-zinc-800">
-                Accepted · Pending
+              <div className="flex w-full justify-center py-0.5">
+                <div className="rounded-2xl bg-zinc-100 px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 dark:bg-zinc-800">
+                  Accepted · Pending
+                </div>
               </div>
             ) : (
               <>
                 <button
                   type="button"
-                  className={declineRoundBtn}
+                  className={cn(declineRoundBtn, "shrink-0")}
                   onClick={(e) => {
                     e.stopPropagation();
                     void decline();
@@ -985,18 +875,110 @@ export function OpenJobRequestMatchCard({
                 >
                   <X className="h-8 w-8" strokeWidth={3} />
                 </button>
-                <button
-                  type="button"
-                  className={acceptRoundBtn}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void accept();
-                  }}
-                  disabled={busy != null}
-                  aria-label="Accept"
-                >
-                  <Check className="h-10 w-10" strokeWidth={3.5} />
-                </button>
+                <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    className={cn(acceptRoundBtn, "shrink-0")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void accept();
+                    }}
+                    disabled={busy != null}
+                    aria-label="Accept"
+                  >
+                    <Check className="h-10 w-10" strokeWidth={3.5} />
+                  </button>
+                  <button
+                    type="button"
+                    className="flex shrink-0 items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-800 dark:text-zinc-500 dark:hover:text-zinc-300"
+                    onClick={() => onOpenComments?.(row.id)}
+                    aria-label="Comments"
+                  >
+                    <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
+                    {commentCount > 0 ? (
+                      <span className="text-sm font-black tabular-nums">{commentCount}</span>
+                    ) : null}
+                  </button>
+                  {viewerId ? (
+                    <div className="relative shrink-0" ref={dropdownRef}>
+                      <button
+                        type="button"
+                        className={cn(
+                          heroOverlayRoundBtn,
+                          "h-10 w-10 bg-slate-200/95 text-slate-800 ring-slate-300",
+                          "dark:bg-zinc-800/90 dark:text-white dark:ring-zinc-600",
+                          showContactDropdown &&
+                            "ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-50 dark:ring-offset-zinc-900",
+                        )}
+                        aria-label="Contact client"
+                        aria-expanded={showContactDropdown}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowContactDropdown(!showContactDropdown);
+                        }}
+                        disabled={chatOpening}
+                      >
+                        <MessageCircle className="h-5 w-5" strokeWidth={2.25} />
+                      </button>
+
+                      {showContactDropdown ? (
+                        <div
+                          className="absolute bottom-12 right-0 z-[50] flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className={cn(
+                              heroOverlayRoundBtn,
+                              "h-11 w-11 bg-slate-800 text-white ring-slate-700 dark:bg-zinc-800 dark:ring-zinc-700",
+                            )}
+                            onClick={(e) => void openDirectChat(e)}
+                            disabled={chatOpening}
+                            aria-busy={chatOpening}
+                          >
+                            {chatOpening ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                            ) : (
+                              <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(
+                              heroOverlayRoundBtn,
+                              "h-11 w-11 bg-slate-800 text-white ring-slate-700 dark:bg-zinc-800 dark:ring-zinc-700",
+                            )}
+                            onClick={(e) => void openWhatsApp(e)}
+                            disabled={socialBusy != null}
+                            aria-busy={socialBusy === "wa"}
+                          >
+                            {socialBusy === "wa" ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                            ) : (
+                              <WhatsAppIcon size={22} className="text-white" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(
+                              heroOverlayRoundBtn,
+                              "h-11 w-11 bg-slate-800 text-white ring-slate-700 dark:bg-zinc-800 dark:ring-zinc-700",
+                            )}
+                            onClick={(e) => void openTelegram(e)}
+                            disabled={socialBusy != null}
+                            aria-busy={socialBusy === "tg"}
+                          >
+                            {socialBusy === "tg" ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
+                            ) : (
+                              <TelegramIcon size={20} className="text-white" />
+                            )}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </>
             )}
           </div>

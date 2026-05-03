@@ -16,10 +16,6 @@ import {
   getLastCategory,
   setLastCategory,
 } from "@/lib/discoverMatchPreferences";
-import {
-  canStartInCardLabel,
-  respondsWithinFreelancerMatchCardLabel,
-} from "@/lib/liveCanStart";
 import { useToast } from "@/components/ui/toast";
 import {
   OpenJobRequestMatchCard,
@@ -223,36 +219,10 @@ export default function FreelancerJobsMatchPage() {
     Record<string, { average_rating: number | null; total_ratings: number | null }>
   >({});
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
-  /** Client (poster) reply stats for “Responds within” on cards. */
-  const [clientReplyStatsByClientId, setClientReplyStatsByClientId] = useState<
-    Record<string, { avg_seconds: number; sample_count: number }>
-  >({});
-  /** Logged-in freelancer’s go-live start preference (for “Can start in” on cards). */
-  const [viewerLiveCanStartIn, setViewerLiveCanStartIn] = useState<string | null>(null);
   const [activeCommentsJobId, setActiveCommentsJobId] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchChromeCollapsed, setSearchChromeCollapsed] = useState(false);
   const resultsAnchorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setViewerLiveCanStartIn(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const { data, error } = await supabase
-        .from("freelancer_profiles")
-        .select("live_can_start_in")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (cancelled || error) return;
-      setViewerLiveCanStartIn((data?.live_can_start_in as string | null) ?? null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -265,6 +235,8 @@ export default function FreelancerJobsMatchPage() {
   }, [rows, searchQuery]);
 
   const showSearchChrome = !hasSearched || !searchChromeCollapsed;
+  /** Mobile: full-bleed swipe deck — drop shell top padding so the fixed card stack can sit higher. */
+  const mobileSwipeDeckActive = hasSearched && searchChromeCollapsed;
   const mobileSnapRef = useRef<HTMLDivElement | null>(null);
   const [mobileSnapIndex, setMobileSnapIndex] = useState(0);
   const pendingRestoreScrollTopRef = useRef<number | null>(null);
@@ -459,28 +431,37 @@ export default function FreelancerJobsMatchPage() {
 
   const runSearch = useCallback(async () => {
     if (!user?.id) return;
-    if (selectedCategories.size === 0) {
-      addToast({ title: "Pick at least one category", variant: "default" });
-      return;
-    }
-    setLastCategory("work", [...selectedCategories][0] ?? "other_help");
     setLoading(true);
-    setClientReplyStatsByClientId({});
     try {
-      const filters = [...selectedCategories];
-      
-      // 1. Fetch focused job fallback if provided via search query
+      let filters = [...selectedCategories] as ServiceCategoryId[];
       let focusedRow: OpenJobRequestMatchRow | null = null;
+
       if (focusJobId) {
-        const { data: focusedJob } = await supabase
-          .from("job_requests")
-          .select(`
-            id, client_id, service_type, location_city, location_lat, location_lng, 
-            start_at, created_at, shift_hours, time_duration, care_frequency, 
-            service_details, notes, budget_min, budget_max
-          `)
-          .eq("id", focusJobId)
-          .maybeSingle();
+        const { data: focusRows, error: focusRpcErr } = await supabase.rpc(
+          "get_job_request_public_summary_for_match",
+          { p_job_id: focusJobId },
+        );
+        if (focusRpcErr) throw focusRpcErr;
+        const focusedJob =
+          Array.isArray(focusRows) && focusRows.length > 0
+            ? (focusRows[0] as {
+                id: string;
+                client_id: string;
+                service_type: string | null;
+                location_city: string | null;
+                location_lat: number | null;
+                location_lng: number | null;
+                start_at: string | null;
+                created_at: string | null;
+                shift_hours: string | null;
+                time_duration: string | null;
+                care_frequency: string | null;
+                service_details: Record<string, unknown> | null;
+                notes: string | null;
+                budget_min: number | null;
+                budget_max: number | null;
+              })
+            : null;
 
         if (focusedJob) {
           const { data: clientProfile } = await supabase
@@ -502,10 +483,24 @@ export default function FreelancerJobsMatchPage() {
             client_is_verified: clientProfile?.is_verified ?? false,
             client_posted_requests_count: postedCount ?? 0,
           } as OpenJobRequestMatchRow;
+
+          if (filters.length === 0) {
+            const st = (focusedJob.service_type || "").trim();
+            if (st && isServiceCategoryId(st)) {
+              filters = [st as ServiceCategoryId];
+              setSelectedCategories(new Set([st as ServiceCategoryId]));
+            }
+          }
         }
       }
 
-      // 2. Fetch overall matches based on filters
+      if (filters.length === 0) {
+        addToast({ title: "Pick at least one category", variant: "default" });
+        return;
+      }
+
+      setLastCategory("work", filters[0] ?? "other_help");
+
       const { data, error } = await supabase.rpc("get_job_requests_near_location", {
         search_lat: center.lat,
         search_lng: center.lng,
@@ -587,44 +582,6 @@ export default function FreelancerJobsMatchPage() {
         }
       }
 
-      const statClientIds = Array.from(
-        new Set(finalRows.map((r) => r.client_id).filter(Boolean)),
-      );
-      if (statClientIds.length > 0) {
-        const { data: statRows, error: statErr } = await supabase.rpc(
-          "get_client_chat_response_stats",
-          { p_client_ids: statClientIds },
-        );
-        if (statErr && import.meta.env.DEV) {
-          console.warn(
-            "[FreelancerJobsMatchPage] get_client_chat_response_stats:",
-            statErr,
-          );
-        }
-        const next: Record<
-          string,
-          { avg_seconds: number; sample_count: number }
-        > = {};
-        if (!statErr && Array.isArray(statRows)) {
-          for (const sr of statRows as {
-            client_id: string;
-            avg_seconds: number | null;
-            sample_count: number | null;
-          }[]) {
-            if (!sr.client_id || sr.avg_seconds == null) continue;
-            const avg = Number(sr.avg_seconds);
-            if (!Number.isFinite(avg)) continue;
-            const sc =
-              sr.sample_count != null ? Number(sr.sample_count) : 0;
-            next[String(sr.client_id)] = {
-              avg_seconds: avg,
-              sample_count: sc,
-            };
-          }
-        }
-        setClientReplyStatsByClientId(next);
-      }
-
       setHasSearched(true);
       setSearchChromeCollapsed(true);
       const p = new URLSearchParams();
@@ -637,7 +594,6 @@ export default function FreelancerJobsMatchPage() {
         resultsAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     } catch (e: unknown) {
-      setClientReplyStatsByClientId({});
       addToast({
         title: "Search failed",
         description: e instanceof Error ? e.message : "Try again.",
@@ -712,7 +668,12 @@ export default function FreelancerJobsMatchPage() {
         "max-md:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] md:pb-8",
       )}
     >
-      <div className={cn("app-desktop-shell space-y-8 pt-6 md:pt-8")}>
+      <div
+        className={cn(
+          "app-desktop-shell space-y-8 pt-6 md:pt-8",
+          mobileSwipeDeckActive && "max-md:space-y-0 max-md:pt-0",
+        )}
+      >
         {showSearchChrome ? (
           <>
             <div className="mx-auto w-full max-w-lg px-2 text-center md:max-w-2xl animate-in fade-in slide-in-from-top-2 duration-300">
@@ -898,10 +859,10 @@ export default function FreelancerJobsMatchPage() {
             {!showSearchChrome ? (
               <div
                 className={cn(
-                  "fixed inset-x-0 z-[50] md:hidden",
-                  "top-[max(0px,env(safe-area-inset-top,0px))]",
-                  "bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+5.25rem)]",
-                  "overflow-y-auto overscroll-y-contain",
+                  "fixed inset-x-0 top-0 z-[50] md:hidden",
+                  "pt-[max(8px,calc(env(safe-area-inset-top,0px)+6px))]",
+                  "bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+4.75rem)]",
+                  "overflow-y-auto overscroll-y-contain [touch-action:pan-y]",
                   "snap-y snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
                   "bg-background",
                 )}
@@ -914,22 +875,15 @@ export default function FreelancerJobsMatchPage() {
                 {filteredRows.map((r) => (
                   <div
                     key={r.id}
-                    className="relative h-full w-full snap-start snap-always px-2 py-2"
+                    className="relative h-full w-full snap-start snap-always px-2 pb-1 pt-1"
                   >
-                    <div className="flex h-full min-h-0 w-full flex-col overflow-visible rounded-[22px]">
+                    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
                       <OpenJobRequestMatchCard
                         row={r}
                         gallery={galleryByUserId[r.client_id] ?? []}
                         clientRating={ratingsByUserId[r.client_id]}
                         commentCount={commentCounts[r.id] || 0}
                         onOpenComments={(id) => setActiveCommentsJobId(id)}
-                        respondsWithinLabel={respondsWithinFreelancerMatchCardLabel(
-                          clientReplyStatsByClientId[String(r.client_id)]
-                            ?.avg_seconds,
-                          clientReplyStatsByClientId[String(r.client_id)]
-                            ?.sample_count,
-                        )}
-                        canStartInLabel={canStartInCardLabel(viewerLiveCanStartIn)}
                         formatTitle={(st) => formatJobTitle(st || undefined)}
                         onOpenProfile={(userId) =>
                           navigate(`/profile/${encodeURIComponent(userId)}`)
@@ -981,13 +935,6 @@ export default function FreelancerJobsMatchPage() {
                   clientRating={ratingsByUserId[r.client_id]}
                   commentCount={commentCounts[r.id] || 0}
                   onOpenComments={(id) => setActiveCommentsJobId(id)}
-                  respondsWithinLabel={respondsWithinFreelancerMatchCardLabel(
-                    clientReplyStatsByClientId[String(r.client_id)]
-                      ?.avg_seconds,
-                    clientReplyStatsByClientId[String(r.client_id)]
-                      ?.sample_count,
-                  )}
-                  canStartInLabel={canStartInCardLabel(viewerLiveCanStartIn)}
                   formatTitle={(st) => formatJobTitle(st || undefined)}
                   onOpenProfile={(userId) =>
                     navigate(`/profile/${encodeURIComponent(userId)}`)

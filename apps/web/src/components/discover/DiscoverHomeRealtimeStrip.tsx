@@ -653,6 +653,104 @@ type DiscoverMediaSlide = {
   src: string;
 };
 
+type DiscoverStripReviewRow = {
+  id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  reviewer_name: string | null;
+  reviewer_photo: string | null;
+};
+
+function normalizeDiscoverStripReviews(raw: unknown[] | null | undefined): DiscoverStripReviewRow[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DiscoverStripReviewRow[] = [];
+  for (const row of raw) {
+    const r = row as {
+      id?: string;
+      rating?: number | null;
+      review_text?: string | null;
+      created_at?: string;
+      reviewer?:
+        | { full_name?: string | null; photo_url?: string | null }
+        | { full_name?: string | null; photo_url?: string | null }[]
+        | null;
+    };
+    if (!r?.id || !r.created_at) continue;
+    const revRaw = r.reviewer;
+    const rev = Array.isArray(revRaw) ? revRaw[0] : revRaw;
+    out.push({
+      id: String(r.id),
+      rating: Math.min(5, Math.max(1, Number(r.rating) || 1)),
+      review_text: r.review_text ?? null,
+      created_at: String(r.created_at),
+      reviewer_name: rev?.full_name != null ? String(rev.full_name).trim() || null : null,
+      reviewer_photo: rev?.photo_url != null ? String(rev.photo_url).trim() || null : null,
+    });
+  }
+  return out;
+}
+
+function stripReviewCardDisplayName(full: string): string {
+  const t = full.trim();
+  if (!t) return "Client";
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0] ?? t;
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  const initial = last?.charAt(0);
+  return initial ? `${first} ${initial}.` : (first ?? t);
+}
+
+/** Testimonial-style cards: overlapping gradient avatar, name + rating row, italic quote. */
+function DiscoverStripReviewsCarousel({ reviews }: { reviews: DiscoverStripReviewRow[] }) {
+  if (reviews.length === 0) return null;
+  return (
+    <div className="w-full">
+      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible py-2 pl-0.5 pr-1 pt-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {reviews.map((rev) => {
+          const quoted = (rev.review_text || "").trim() || "No comments provided.";
+          const rawName = rev.reviewer_name?.trim() || "Client";
+          const name = stripReviewCardDisplayName(rawName);
+          return (
+            <article
+              key={rev.id}
+              className="relative w-[min(19rem,calc(100vw-5rem))] shrink-0 snap-start rounded-3xl border border-zinc-100 bg-white px-4 pb-5 pt-3 shadow-lg shadow-zinc-900/[0.06] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40"
+            >
+              <div className="pointer-events-none absolute -top-9 left-4 z-[1]">
+                <div className="rounded-full bg-gradient-to-br from-sky-500 via-indigo-500 to-fuchsia-500 p-[3px] shadow-md shadow-indigo-500/25">
+                  <div className="rounded-full bg-white p-0.5 dark:bg-zinc-900">
+                    <Avatar className="h-14 w-14 border-0">
+                      <AvatarImage src={rev.reviewer_photo || undefined} alt="" className="object-cover" />
+                      <AvatarFallback className="text-lg font-bold text-zinc-600 dark:text-zinc-300">
+                        {rawName.slice(0, 1)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-9 flex items-start justify-between gap-3">
+                <span className="min-w-0 truncate text-[15px] font-bold leading-tight text-zinc-900 dark:text-zinc-50">
+                  {name}
+                </span>
+                <div className="flex shrink-0 items-center gap-1 rounded-full border border-amber-200/90 bg-amber-50 px-2.5 py-1 dark:border-amber-400/35 dark:bg-amber-400/15">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" strokeWidth={0} aria-hidden />
+                  <span className="text-[13px] font-bold tabular-nums text-amber-950 dark:text-amber-100">
+                    {rev.rating}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-3 line-clamp-4 text-[14px] font-medium italic leading-relaxed text-slate-600 dark:text-slate-300">
+                &ldquo;{quoted}&rdquo;
+              </p>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function buildDiscoverMediaSlides(
   photoUrl: string | null | undefined,
   gallery: PublicProfileGalleryRow[],
@@ -682,7 +780,7 @@ function useDiscoverStripDetailExtras(userId: string | undefined, open: boolean)
     staleTime: 60_000,
     queryFn: async () => {
       const uid = userId!;
-      const [fpRes, profRes, mediaRes] = await Promise.all([
+      const [fpRes, profRes, mediaRes, reviewsRes] = await Promise.all([
         supabase.from("freelancer_profiles").select("live_categories, bio").eq("user_id", uid).maybeSingle(),
         supabase
           .from("profiles")
@@ -695,10 +793,23 @@ function useDiscoverStripDetailExtras(userId: string | undefined, open: boolean)
           .from("public_profile_media")
           .select("id, user_id, media_type, storage_path, sort_order, created_at")
           .eq("user_id", uid),
+        supabase
+          .from("job_reviews")
+          .select(
+            "id, rating, review_text, created_at, reviewer:profiles!reviewer_id(full_name, photo_url)",
+          )
+          .eq("reviewee_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(24),
       ]);
       if (fpRes.error) throw fpRes.error;
       if (profRes.error) throw profRes.error;
       if (mediaRes.error) throw mediaRes.error;
+      if (reviewsRes.error) {
+        if (import.meta.env.DEV) {
+          console.warn("[useDiscoverStripDetailExtras] job_reviews", reviewsRes.error);
+        }
+      }
 
       const liveCategories = Array.isArray(fpRes.data?.live_categories)
         ? (fpRes.data!.live_categories as string[]).map((c) => String(c ?? "").trim()).filter(Boolean)
@@ -745,6 +856,10 @@ function useDiscoverStripDetailExtras(userId: string | undefined, open: boolean)
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       );
 
+      const reviews = normalizeDiscoverStripReviews(
+        !reviewsRes.error ? (reviewsRes.data as unknown[]) : [],
+      );
+
       return {
         liveCategories,
         bio,
@@ -755,6 +870,7 @@ function useDiscoverStripDetailExtras(userId: string | undefined, open: boolean)
         shareWhatsapp,
         shareTelegram,
         profileCategories,
+        reviews,
       };
     },
   });
@@ -1066,6 +1182,14 @@ function DiscoverRealtimeStripDetailDialog({
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        onPointerDownOutside={(e) => {
+          // Nested `FullscreenMapModal` portals outside this sheet; without this, Radix treats
+          // map overlay / content as an “outside” interaction and closes the sheet (unmounting the map).
+          if (pickupMapOpen) e.preventDefault();
+        }}
+        onFocusOutside={(e) => {
+          if (pickupMapOpen) e.preventDefault();
+        }}
         className={cn(
           "flex max-h-[90dvh] flex-col gap-0 overflow-hidden border-0 bg-white p-0 text-zinc-900 shadow-2xl duration-200 dark:border-zinc-800 dark:bg-[#121212] dark:text-zinc-100",
           "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:max-h-[88dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[28px] max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
@@ -1079,7 +1203,7 @@ function DiscoverRealtimeStripDetailDialog({
         )}
       >
         <div
-          className="shrink-0 border-b border-zinc-200 dark:border-zinc-800"
+          className="shrink-0 pb-1"
           onTouchStart={onSheetPullTouchStart}
           onTouchEnd={onSheetPullTouchEnd}
         >
@@ -1097,19 +1221,23 @@ function DiscoverRealtimeStripDetailDialog({
               <span className="sr-only">Close sheet</span>
             </button>
           </div>
-          <div className="px-4 pb-3 pt-1">
-            <DialogHeader className="m-0 space-y-0 p-0 text-center">
-              <DialogTitle className="text-center text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 sm:text-[16px] dark:text-zinc-100">
-                {variant === "hire" ? (
-                  <span className="font-bold">Your helper</span>
-                ) : work ? (
-                  <StripDialogWorkTitle displayName={displayName} work={work} />
-                ) : (
-                  "Request"
-                )}
-              </DialogTitle>
+          {variant === "hire" ? (
+            <DialogHeader className="sr-only">
+              <DialogTitle>Helper profile</DialogTitle>
             </DialogHeader>
-          </div>
+          ) : (
+            <div className="px-4 pb-4 pt-5">
+              <DialogHeader className="m-0 space-y-0 p-0 text-center">
+                <DialogTitle className="text-center text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 sm:text-[16px] dark:text-zinc-100">
+                  {work ? (
+                    <StripDialogWorkTitle displayName={displayName} work={work} />
+                  ) : (
+                    "Request"
+                  )}
+                </DialogTitle>
+              </DialogHeader>
+            </div>
+          )}
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -1301,6 +1429,12 @@ function DiscoverRealtimeStripDetailDialog({
                   {hireExtras.data.bio}
                 </GSheetRow>
               ) : null}
+            </div>
+          ) : null}
+
+          {hire && hireExtras.data?.reviews && hireExtras.data.reviews.length > 0 ? (
+            <div className="mt-1 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+              <DiscoverStripReviewsCarousel reviews={hireExtras.data.reviews} />
             </div>
           ) : null}
 
@@ -1541,6 +1675,26 @@ function parsePickupDeliveryDetails(sd: Record<string, unknown> | null) {
   return { fromAddress, toAddress, hasRouteCoords };
 }
 
+/** Align pickup coords / addresses with `JobMap` (snake_case + optional camelCase from JSON). */
+function serviceDetailsForMap(sd: Record<string, unknown>): Record<string, unknown> {
+  const g = (a: string, b: string) => {
+    const av = sd[a];
+    if (av !== undefined && av !== null && String(av).trim() !== "") return av;
+    const bv = sd[b];
+    if (bv !== undefined && bv !== null && String(bv).trim() !== "") return bv;
+    return av;
+  };
+  return {
+    ...sd,
+    from_lat: g("from_lat", "fromLat"),
+    from_lng: g("from_lng", "fromLng"),
+    to_lat: g("to_lat", "toLat"),
+    to_lng: g("to_lng", "toLng"),
+    from_address: g("from_address", "fromAddress") ?? sd.from_address,
+    to_address: g("to_address", "toAddress") ?? sd.to_address,
+  };
+}
+
 /** Minimal job row shape for `JobMap` / `FullscreenMapModal` on discover request sheet. */
 function workRowToMapJob(work: WorkRowItem): Record<string, unknown> {
   const sd = work.serviceDetails ?? {};
@@ -1550,7 +1704,7 @@ function workRowToMapJob(work: WorkRowItem): Record<string, unknown> {
     client_id: work.clientId,
     service_type: work.categoryId,
     location_city: city && city !== "—" ? city : null,
-    service_details: { ...sd },
+    service_details: serviceDetailsForMap(sd),
   };
 }
 
@@ -1702,7 +1856,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     setDetailWork(row);
     setDetailOpen(true);
   };
-  const { data: categoryAvatars = {} } = useDiscoverLiveAvatars(user?.id);
+  const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
+  const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
   const [selectedFilterCategory, setSelectedFilterCategory] = useState<ServiceCategoryId | "all">("all");
   const { data: frData } = useFreelancerRequests(
     variant === "work" && user?.id ? user.id : undefined,

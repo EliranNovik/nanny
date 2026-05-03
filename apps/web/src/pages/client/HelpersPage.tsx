@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { useAuth } from "@/context/AuthContext";
@@ -37,6 +37,11 @@ import {
   isServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { haversineDistanceKm } from "@/lib/geo";
+import {
+  HELPERS_FOCUS_HELPER_QUERY,
+  HELPERS_FOCUS_LAT_QUERY,
+  HELPERS_FOCUS_LNG_QUERY,
+} from "@/lib/clientAppPaths";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
 const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
@@ -334,8 +339,10 @@ function HelpersMapBlock({
   );
 }
 
+/** App route `/client/helpers` — same as {@link CLIENT_HELPERS_PAGE_PATH} in `@/lib/clientAppPaths`. */
 export default function HelpersPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { addToast } = useToast();
   const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
@@ -534,16 +541,22 @@ export default function HelpersPage() {
   }, [profile?.service_radius]);
 
   const runSearch = useCallback(
-    async (opts?: { radiusKm?: number }) => {
+    async (opts?: {
+      radiusKm?: number;
+      /** When deep-linking, search around this pin instead of current `center` state. */
+      searchCenter?: { lat: number; lng: number };
+    }) => {
       const rk = opts?.radiusKm ?? radiusKm;
+      const searchLat = opts?.searchCenter?.lat ?? center.lat;
+      const searchLng = opts?.searchCenter?.lng ?? center.lng;
       setLoadingFetch(true);
       try {
         setHelperReplyStatsByHelperId({});
         setLiveHelpWeekByHelperId({});
         const viewerCityNorm = normalizeCityLabel(profile?.city);
         const { data, error } = await supabase.rpc("get_helpers_near_location", {
-          search_lat: center.lat,
-          search_lng: center.lng,
+          search_lat: searchLat,
+          search_lng: searchLng,
           radius_km: rk,
           search_query: searchQuery.trim(),
           viewer_city_norm: viewerCityNorm || "",
@@ -657,6 +670,37 @@ export default function HelpersPage() {
       addToast,
     ],
   );
+
+  const focusHelperIdFromUrl = (
+    searchParams.get(HELPERS_FOCUS_HELPER_QUERY) ?? ""
+  ).trim();
+
+  const deepLinkAutoSearchStartedRef = useRef(false);
+  const deepLinkScrollDoneRef = useRef(false);
+  const deepLinkClearedCategoriesRef = useRef(false);
+
+  /** Deep link: auto-run first search (uses optional anchor coords from query). */
+  useEffect(() => {
+    if (!focusHelperIdFromUrl) return;
+    if (hasSearched) return;
+    if (deepLinkAutoSearchStartedRef.current) return;
+    deepLinkAutoSearchStartedRef.current = true;
+
+    const latS = searchParams.get(HELPERS_FOCUS_LAT_QUERY);
+    const lngS = searchParams.get(HELPERS_FOCUS_LNG_QUERY);
+    let searchCenter: { lat: number; lng: number } | undefined;
+    if (latS != null && lngS != null) {
+      const la = Number(latS);
+      const ln = Number(lngS);
+      if (Number.isFinite(la) && Number.isFinite(ln)) {
+        searchCenter = { lat: la, lng: ln };
+        gpsLockRef.current = true;
+        setCenter({ lat: la, lng: ln });
+        setGeocodeMatchedPlace(false);
+      }
+    }
+    void runSearch(searchCenter ? { searchCenter } : undefined);
+  }, [focusHelperIdFromUrl, hasSearched, runSearch, searchParams]);
 
   /** Geocode city/place queries to move the map + circle; name-like queries keep map and filter by text. */
   useEffect(() => {
@@ -802,10 +846,100 @@ export default function HelpersPage() {
     if (el) el.scrollTo({ top: 0, behavior: "auto" });
   }, [helpersMatchingCategories.map((h) => h.id).join("|")]);
 
+  const helpersMatchingIdsKey = useMemo(
+    () => helpersMatchingCategories.map((h) => h.id).join("|"),
+    [helpersMatchingCategories],
+  );
+
+  /** Deep link: scroll to the helper card, then strip focus params from the URL. */
+  useEffect(() => {
+    if (!focusHelperIdFromUrl) {
+      deepLinkScrollDoneRef.current = false;
+      deepLinkClearedCategoriesRef.current = false;
+      deepLinkAutoSearchStartedRef.current = false;
+      return;
+    }
+    if (!hasSearched || loadingFetch) return;
+    if (deepLinkScrollDoneRef.current) return;
+
+    const id = focusHelperIdFromUrl;
+    let idx = helpersMatchingCategories.findIndex((h) => h.id === id);
+    if (idx < 0) {
+      const inLive = helpersInLiveWindow.some((h) => h.id === id);
+      if (
+        inLive &&
+        selectedCategories.size > 0 &&
+        !deepLinkClearedCategoriesRef.current
+      ) {
+        deepLinkClearedCategoriesRef.current = true;
+        setSelectedCategories(new Set());
+        return;
+      }
+      deepLinkScrollDoneRef.current = true;
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.delete(HELPERS_FOCUS_HELPER_QUERY);
+          p.delete(HELPERS_FOCUS_LAT_QUERY);
+          p.delete(HELPERS_FOCUS_LNG_QUERY);
+          return p;
+        },
+        { replace: true },
+      );
+      return;
+    }
+
+    const clearFocusParams = () => {
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.delete(HELPERS_FOCUS_HELPER_QUERY);
+          p.delete(HELPERS_FOCUS_LAT_QUERY);
+          p.delete(HELPERS_FOCUS_LNG_QUERY);
+          return p;
+        },
+        { replace: true },
+      );
+    };
+
+    const t = window.setTimeout(() => {
+      const isDesktop =
+        typeof window !== "undefined" &&
+        window.matchMedia("(min-width: 768px)").matches;
+      if (isDesktop) {
+        document
+          .getElementById(`helper-result-${id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        const el = mobileSnapRef.current;
+        if (el && el.clientHeight > 0) {
+          el.scrollTo({ top: idx * el.clientHeight, behavior: "smooth" });
+          setMobileSnapIndex(idx);
+        }
+      }
+      deepLinkScrollDoneRef.current = true;
+      clearFocusParams();
+    }, 220);
+
+    return () => window.clearTimeout(t);
+  }, [
+    focusHelperIdFromUrl,
+    hasSearched,
+    loadingFetch,
+    helpersMatchingIdsKey,
+    helpersMatchingCategories,
+    helpersInLiveWindow,
+    selectedCategories.size,
+    setSearchParams,
+  ]);
+
   /** Restore previous state (Back navigation / revisit). */
   useEffect(() => {
     if (restoringRef.current) return;
     restoringRef.current = true;
+    if (searchParams.get(HELPERS_FOCUS_HELPER_QUERY)?.trim()) {
+      return;
+    }
     try {
       const raw = sessionStorage.getItem(HELPERS_PAGE_STATE_KEY);
       if (!raw) return;
@@ -863,12 +997,13 @@ export default function HelpersPage() {
     } catch {
       // ignore corrupted session state
     }
-  }, [user?.id]);
+  }, [user?.id, searchParams]);
 
   /** If restored state says we already searched, refetch results once. */
   useEffect(() => {
     if (!restoringRef.current) return;
     if (!hasSearched) return;
+    if (deepLinkAutoSearchStartedRef.current) return;
     void runSearch({ radiusKm });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSearched]);
@@ -1316,6 +1451,7 @@ export default function HelpersPage() {
                   return (
                   <div
                     key={h.id}
+                    id={`helper-result-${h.id}`}
                     className="relative h-full w-full snap-start snap-always px-2 py-2"
                   >
                     <div className="h-full w-full overflow-hidden rounded-[22px]">
@@ -1386,25 +1522,26 @@ export default function HelpersPage() {
                 const { km, fromViewerPin } =
                   resolveHelperDistanceKmForViewer(h, profile);
                 return (
-                <HelperResultProfileCard
-                  key={h.id}
-                  helper={{ ...h, distanceKm: km }}
-                  distanceFromViewerPin={fromViewerPin}
-                  gallery={galleryByUserId[h.id] ?? []}
-                  viewerId={user?.id}
-                  favoriteIds={favoriteIds}
-                  favoriteBusyId={favoriteBusyId}
-                  respondsWithinLabel={respondsWithinCardLabel(
-                    helperReplyStatsByHelperId[h.id]?.avg_seconds,
-                    helperReplyStatsByHelperId[h.id]?.sample_count,
-                  )}
-                  canStartInLabel={canStartInCardLabel(
-                    h.freelancer_profiles?.live_can_start_in,
-                  )}
-                  liveHelpWeekCount={liveHelpWeekByHelperId[h.id]}
-                  onToggleFavorite={toggleFavorite}
-                  onOpenProfile={(id) => navigate(`/profile/${id}`)}
-                />
+                <div key={h.id} id={`helper-result-${h.id}`} className="min-h-0">
+                  <HelperResultProfileCard
+                    helper={{ ...h, distanceKm: km }}
+                    distanceFromViewerPin={fromViewerPin}
+                    gallery={galleryByUserId[h.id] ?? []}
+                    viewerId={user?.id}
+                    favoriteIds={favoriteIds}
+                    favoriteBusyId={favoriteBusyId}
+                    respondsWithinLabel={respondsWithinCardLabel(
+                      helperReplyStatsByHelperId[h.id]?.avg_seconds,
+                      helperReplyStatsByHelperId[h.id]?.sample_count,
+                    )}
+                    canStartInLabel={canStartInCardLabel(
+                      h.freelancer_profiles?.live_can_start_in,
+                    )}
+                    liveHelpWeekCount={liveHelpWeekByHelperId[h.id]}
+                    onToggleFavorite={toggleFavorite}
+                    onOpenProfile={(id) => navigate(`/profile/${id}`)}
+                  />
+                </div>
                 );
               })}
             </div>

@@ -5,6 +5,7 @@ import {
   hasProfileCoords,
 } from "@/lib/discoverMatchPreferences";
 import { trackEvent } from "@/lib/analytics";
+import { CLIENT_HELPERS_PAGE_PATH } from "@/lib/clientAppPaths";
 
 type Profile = {
   role?: string;
@@ -17,7 +18,7 @@ type Profile = {
 /** Client — full helpers directory / search (Find helpers), not swipe match. */
 export function navigateToHelpersBrowse(navigate: NavigateFunction): void {
   trackEvent("discover_helpers_browse", {});
-  navigate("/client/helpers");
+  navigate(CLIENT_HELPERS_PAGE_PATH);
 }
 
 /** Shared with Discover home — helpers match with optional category + GPS from profile. */
