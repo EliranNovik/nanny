@@ -475,6 +475,12 @@ export default function FreelancerJobsMatchPage() {
             .select("id", { count: "exact", head: true })
             .eq("client_id", focusedJob.client_id);
 
+          const { count: openAcceptCt } = await supabase
+            .from("job_confirmations")
+            .select("id", { count: "exact", head: true })
+            .eq("job_id", focusedJob.id)
+            .eq("status", "available");
+
           focusedRow = {
             ...focusedJob,
             client_display_name: clientProfile?.full_name || "Client",
@@ -482,6 +488,7 @@ export default function FreelancerJobsMatchPage() {
             distance_km: null,
             client_is_verified: clientProfile?.is_verified ?? false,
             client_posted_requests_count: postedCount ?? 0,
+            open_accept_count: openAcceptCt ?? 0,
           } as OpenJobRequestMatchRow;
 
           if (filters.length === 0) {
@@ -641,9 +648,18 @@ export default function FreelancerJobsMatchPage() {
         description: `Waiting for ${(row.client_display_name || "the client").trim()}.`,
         variant: "success",
       });
-      // Mark card as accepted (keep it visible)
+      // Mark card as accepted (keep it visible) and bump open-interest count for the badge
       setRows((prev) =>
-        prev.map((r) => (r.id === jobId ? { ...r, __accepted: true } : r)),
+        prev.map((r) => {
+          if (r.id !== jobId) return r;
+          const prevCount =
+            typeof r.open_accept_count === "number" && Number.isFinite(r.open_accept_count)
+              ? r.open_accept_count
+              : typeof r.open_accept_count === "string"
+                ? Number(r.open_accept_count) || 0
+                : 0;
+          return { ...r, __accepted: true, open_accept_count: prevCount + 1 };
+        }),
       );
     },
     [user?.id, allowedToAct, addToast],

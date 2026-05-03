@@ -51,6 +51,8 @@ export type OpenJobRequestMatchRow = {
   /** From `get_job_requests_near_location` after migration 069. */
   client_is_verified?: boolean | null;
   client_posted_requests_count?: number | null;
+  /** Helpers with `job_confirmations.status = available` (migration 076). */
+  open_accept_count?: number | string | null;
 };
 
 type Slide = { key: string; kind: "image" | "video"; src: string };
@@ -400,6 +402,13 @@ export function OpenJobRequestMatchCard({
 
   const accepted = row.__accepted === true;
 
+  const openAcceptCountDisplay = useMemo(() => {
+    const raw = row.open_accept_count;
+    const n = typeof raw === "string" ? Number(raw) : raw;
+    if (typeof n !== "number" || !Number.isFinite(n)) return 0;
+    return Math.max(0, Math.floor(n));
+  }, [row.open_accept_count]);
+
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -638,60 +647,48 @@ export function OpenJobRequestMatchCard({
 
                       <div
                         className={cn(
-                          "pointer-events-none absolute inset-x-0 bottom-0 z-[15] px-6 pb-[4.75rem] pt-24 md:px-8 md:pb-[5.25rem]",
-                          "flex flex-col items-start gap-2 text-left",
+                          "pointer-events-none absolute inset-x-0 bottom-0 z-[15] flex items-end justify-between gap-3 px-4 pb-4 text-left md:px-6 md:pb-[4.75rem]",
+                          showStrip && "max-md:pb-10",
                         )}
                       >
-                        <button
-                          type="button"
-                          className={cn(
-                            "pointer-events-auto flex max-w-full flex-wrap items-center gap-2.5 text-left touch-manipulation outline-none",
-                            "focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40",
-                          )}
-                          onClick={() => onOpenProfile(row.client_id)}
-                          aria-label={`Open profile: ${(row.client_display_name || "").trim() || "Member"}`}
-                        >
-                          <span className="text-3xl font-black tracking-tight text-white drop-shadow-lg md:text-4xl">
-                            {(row.client_display_name || "").trim() || "Member"}
-                          </span>
-                          {row.client_is_verified && (
-                            <BadgeCheck className="h-6 w-6 shrink-0 fill-emerald-500 text-white md:h-8 md:w-8" strokeWidth={2} />
-                          )}
-                        </button>
-
-                        {ratingLine != null && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 backdrop-blur-md ring-1 ring-white/15">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-base font-bold text-white">{ratingLine}</span>
-                            <span className="text-xs font-medium text-zinc-400">({ratingCount})</span>
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="pointer-events-none absolute right-4 top-5 z-[18] md:right-5 md:top-6">
-                        <div className="pointer-events-auto flex flex-col items-end gap-2 md:gap-2.5">
-                          <span
+                        <div className="flex min-w-0 flex-1 flex-col items-start gap-2 pr-2">
+                          <button
+                            type="button"
                             className={cn(
-                              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.15em] shadow-xl ring-2 ring-white/10 md:px-5 md:py-2.5 md:text-[11px] md:tracking-[0.2em]",
-                              categoryPanelPillClasses(row.service_type),
+                              "pointer-events-auto flex max-w-full flex-wrap items-center gap-2.5 text-left touch-manipulation outline-none",
+                              "focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40",
                             )}
+                            onClick={() => onOpenProfile(row.client_id)}
+                            aria-label={`Open profile: ${(row.client_display_name || "").trim() || "Member"}`}
                           >
-                            <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 md:h-4.5 md:w-4.5" strokeWidth={3} />
-                            {formatTitle(row.service_type)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {row.created_at ? (
-                        <div className="pointer-events-none absolute bottom-4 right-4 z-[19] md:bottom-5 md:right-5">
-                          <div className={postedTimeGlassBadge}>
-                            <Clock className="h-3 w-3 shrink-0 text-white/90 md:h-3.5 md:w-3.5" strokeWidth={2.5} />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/95 md:text-[11px]">
-                              {timeAgo(row.created_at)}
+                            <span className="text-3xl font-black tracking-tight text-white drop-shadow-lg md:text-4xl">
+                              {(row.client_display_name || "").trim() || "Member"}
                             </span>
-                          </div>
+                            {row.client_is_verified && (
+                              <BadgeCheck className="h-6 w-6 shrink-0 fill-emerald-500 text-white md:h-8 md:w-8" strokeWidth={2} />
+                            )}
+                          </button>
+
+                          {ratingLine != null && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 backdrop-blur-md ring-1 ring-white/15">
+                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              <span className="text-base font-bold text-white">{ratingLine}</span>
+                              <span className="text-xs font-medium text-zinc-400">({ratingCount})</span>
+                            </span>
+                          )}
                         </div>
-                      ) : null}
+
+                        {row.created_at ? (
+                          <div className="pointer-events-none shrink-0 self-end">
+                            <div className={postedTimeGlassBadge}>
+                              <Clock className="h-3 w-3 shrink-0 text-white/90 md:h-3.5 md:w-3.5" strokeWidth={2.5} />
+                              <span className="text-[9px] font-black uppercase tracking-widest text-white/95 md:text-[11px]">
+                                {timeAgo(row.created_at)}
+                              </span>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
 
                     </>
                   ) : (
@@ -735,19 +732,6 @@ export function OpenJobRequestMatchCard({
                         )}
                       </div>
 
-                      {/* Top right: category only */}
-                      <div className="absolute right-5 top-6 z-[20] flex flex-col items-end gap-2.5">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl ring-2 ring-white/20 backdrop-blur-md",
-                            categoryPanelPillClasses(row.service_type),
-                          )}
-                        >
-                          <CategoryIcon serviceType={row.service_type} className="h-4.5 w-4.5" strokeWidth={3} />
-                          {formatTitle(row.service_type)}
-                        </span>
-                      </div>
-
                       {row.created_at ? (
                         <div className="pointer-events-none absolute bottom-5 right-5 z-[21]">
                           <div className={postedTimeGlassBadge}>
@@ -768,13 +752,10 @@ export function OpenJobRequestMatchCard({
           )}
 
 
-          {/* Pagination dots (Hidden on Summary Slide for Mobile) */}
+          {/* Pagination dots — all slides including profile hero */}
           {showStrip && (
             <div
-              className={cn(
-                "pointer-events-none absolute bottom-4 left-1/2 z-[30] -translate-x-1/2 transition-opacity duration-300",
-                activeIndex === 0 ? "opacity-0 md:opacity-100" : "opacity-100",
-              )}
+              className="pointer-events-none absolute bottom-4 left-1/2 z-[30] -translate-x-1/2"
             >
               <div className="flex gap-1.5 rounded-full bg-slate-900/10 px-2 py-1.5 backdrop-blur-md dark:bg-black/10">
                 {slides.map((_, idx) => (
@@ -809,7 +790,7 @@ export function OpenJobRequestMatchCard({
               variant === "fullscreen" && "overflow-hidden",
             )}
           >
-            <div className="mb-3 hidden max-md:flex max-md:flex-wrap max-md:items-center max-md:gap-x-2 max-md:gap-y-1 max-md:border-b max-md:border-slate-200/90 max-md:pb-3 dark:max-md:border-white/10">
+            <div className="mb-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-slate-200/90 pb-3 dark:border-white/10">
               <MapPin className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-500" strokeWidth={2.5} />
               <span className="min-w-0 font-bold text-slate-900 dark:text-zinc-100">
                 {row.location_city || "Anywhere"}
@@ -817,6 +798,15 @@ export function OpenJobRequestMatchCard({
               {dist ? (
                 <span className="tabular-nums text-sm text-slate-500 dark:text-zinc-400">{dist}</span>
               ) : null}
+              <span
+                className={cn(
+                  "inline-flex max-w-[min(100%,12rem)] shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide md:max-w-[14rem] md:gap-2 md:px-3 md:py-1.5 md:text-[11px] md:tracking-wider",
+                  categoryPanelPillClasses(row.service_type),
+                )}
+              >
+                <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" strokeWidth={2.5} />
+                <span className="min-w-0 truncate">{formatTitle(row.service_type)}</span>
+              </span>
             </div>
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:gap-x-6 md:gap-y-3">
@@ -849,7 +839,7 @@ export function OpenJobRequestMatchCard({
           {/* Decline left · comments + contact + accept on the right */}
           <div
             className={cn(
-              "mt-auto flex w-full min-w-0 shrink-0 items-center justify-between gap-3 px-2 pt-4",
+              "mt-auto flex w-full min-w-0 shrink-0 items-center justify-between gap-4 px-2 pt-4 md:gap-5",
               variant === "fullscreen"
                 ? "pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
                 : "pb-2 md:px-3 md:pb-1 md:pt-3",
@@ -875,40 +865,66 @@ export function OpenJobRequestMatchCard({
                 >
                   <X className="h-8 w-8" strokeWidth={3} />
                 </button>
-                <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3">
-                  <button
-                    type="button"
-                    className={cn(acceptRoundBtn, "shrink-0")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void accept();
-                    }}
-                    disabled={busy != null}
-                    aria-label="Accept"
-                  >
-                    <Check className="h-10 w-10" strokeWidth={3.5} />
-                  </button>
-                  <button
-                    type="button"
-                    className="flex shrink-0 items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-800 dark:text-zinc-500 dark:hover:text-zinc-300"
-                    onClick={() => onOpenComments?.(row.id)}
-                    aria-label="Comments"
-                  >
-                    <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
-                    {commentCount > 0 ? (
-                      <span className="text-sm font-black tabular-nums">{commentCount}</span>
+                <div className="flex min-w-0 flex-1 items-center justify-end">
+                  <div className="relative shrink-0">
+                    {openAcceptCountDisplay > 0 ? (
+                      <div
+                        className={cn(
+                          "pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 max-w-[min(100vw-6rem,14rem)] -translate-x-1/2 whitespace-nowrap rounded-full border border-emerald-600/10 bg-emerald-500/[0.07] px-2.5 py-1 text-center shadow-sm",
+                          "text-[11px] leading-snug text-emerald-900/80 dark:border-emerald-400/15 dark:bg-emerald-400/[0.08] dark:text-emerald-100/75",
+                          "motion-safe:animate-pulse",
+                        )}
+                        role="status"
+                      >
+                        <span className="font-semibold tabular-nums text-emerald-800 dark:text-emerald-200/90">
+                          {openAcceptCountDisplay > 99 ? "99+" : openAcceptCountDisplay}
+                        </span>
+                        <span className="font-medium text-emerald-800/75 dark:text-emerald-200/65">
+                          {" "}
+                          already accepted
+                        </span>
+                      </div>
                     ) : null}
-                  </button>
-                  {viewerId ? (
+                    <button
+                      type="button"
+                      className={cn(acceptRoundBtn, "shrink-0")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void accept();
+                      }}
+                      disabled={busy != null}
+                      aria-label={
+                        openAcceptCountDisplay > 0
+                          ? `Accept request — ${openAcceptCountDisplay} helper${
+                              openAcceptCountDisplay === 1 ? "" : "s"
+                            } already accepted`
+                          : "Accept request"
+                      }
+                    >
+                      <Check className="h-10 w-10" strokeWidth={3.5} />
+                    </button>
+                  </div>
+                  <div className="ml-6 flex shrink-0 items-center gap-3 sm:ml-8 sm:gap-3.5">
+                    <button
+                      type="button"
+                      className="flex shrink-0 items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-800 dark:text-zinc-500 dark:hover:text-zinc-300"
+                      onClick={() => onOpenComments?.(row.id)}
+                      aria-label="Comments"
+                    >
+                      <MessageSquare className="h-5 w-5" strokeWidth={2.5} />
+                      {commentCount > 0 ? (
+                        <span className="text-sm font-black tabular-nums">{commentCount}</span>
+                      ) : null}
+                    </button>
+                    {viewerId ? (
                     <div className="relative shrink-0" ref={dropdownRef}>
                       <button
                         type="button"
                         className={cn(
-                          heroOverlayRoundBtn,
-                          "h-10 w-10 bg-slate-200/95 text-slate-800 ring-slate-300",
-                          "dark:bg-zinc-800/90 dark:text-white dark:ring-zinc-600",
-                          showContactDropdown &&
-                            "ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-50 dark:ring-offset-zinc-900",
+                          "flex shrink-0 items-center justify-center rounded-md p-2 text-slate-500 transition-colors outline-none",
+                          "hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2",
+                          "dark:text-zinc-500 dark:hover:text-zinc-300 dark:focus-visible:ring-offset-zinc-900",
+                          showContactDropdown && "text-emerald-600 dark:text-emerald-400",
                         )}
                         aria-label="Contact client"
                         aria-expanded={showContactDropdown}
@@ -978,6 +994,7 @@ export function OpenJobRequestMatchCard({
                       ) : null}
                     </div>
                   ) : null}
+                  </div>
                 </div>
               </>
             )}

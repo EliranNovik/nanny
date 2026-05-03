@@ -50,6 +50,42 @@ export function respondsWithinCardLabel(
 }
 
 /**
+ * Short reply-time fragment for tight UI (e.g. `respond 7m`) — no `~`, lowercase units
+ * so `uppercase` CSS does not turn minutes into “M”.
+ */
+export function replyTimeCompactFragment(
+  avgSeconds: number | null | undefined,
+  sampleCount: number | null | undefined,
+): string | null {
+  void sampleCount;
+  if (avgSeconds == null || !Number.isFinite(avgSeconds)) return null;
+  if (avgSeconds <= 0) return null;
+  if (avgSeconds >= 3600) return null;
+  if (avgSeconds < 90) return `${Math.max(1, Math.round(avgSeconds))}s`;
+  const mins = avgSeconds / 60;
+  if (mins < 60) {
+    const s = mins < 10 ? mins.toFixed(1) : String(Math.round(mins));
+    return `${s.replace(/\.0$/, "")}m`;
+  }
+  return null;
+}
+
+/** Short “ready in …” fragment for badges, e.g. `ready 30m`. */
+export function readyTimeCompactFragment(
+  raw: string | null | undefined,
+): string | null {
+  if (!raw || !isLiveCanStartId(raw)) return null;
+  const byId: Record<LiveCanStartId, string> = {
+    immediate: "now",
+    in_15_min: "15m",
+    in_30_min: "30m",
+    in_1_hour: "1h",
+    later_today: "later",
+  };
+  return byId[raw];
+}
+
+/**
  * Same intent as `respondsWithinCardLabel`, but for freelancer job match when previewing
  * **clients**: clients often reply slower than helpers, so we show up to ~48h instead of hiding past 1h.
  */

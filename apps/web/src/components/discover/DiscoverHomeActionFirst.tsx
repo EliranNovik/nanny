@@ -78,6 +78,26 @@ const WORK = {
   primary: "Go live now",
 } as const;
 
+/** Mobile “my request” / “live help” rows — light card, dark glass in dark mode */
+const discoverHomeMobilePromoRowClass = cn(
+  "flex w-full items-center gap-4 rounded-[1.25rem] border-0 bg-zinc-100 p-4 text-left shadow-none ring-0 backdrop-blur-sm transition-all active:scale-[0.98]",
+  "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-xl dark:ring-0 dark:backdrop-blur-xl dark:shadow-black/25",
+);
+
+const discoverHomeMobileEmptyRowClass = cn(
+  "flex w-full items-center justify-between gap-3 rounded-[1.25rem] border-0 bg-zinc-100 p-4 text-left shadow-none ring-0 backdrop-blur-sm",
+  "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/85 dark:shadow-black/20 dark:ring-0",
+);
+
+const discoverHomeMobileThumbClass =
+  "relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-0 bg-zinc-200/70 shadow-none dark:border dark:border-white/10 dark:bg-white/10 dark:shadow-lg";
+
+const discoverHomeMobileMetaPillClass =
+  "shrink-0 rounded-full border-0 bg-zinc-200/90 px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-zinc-800 ring-0 dark:border dark:border-zinc-500/50 dark:bg-zinc-800/95 dark:text-zinc-100 dark:ring-1 dark:ring-zinc-950/40";
+
+const discoverHomeMobileEmptyCtaClass =
+  "shrink-0 rounded-full border border-emerald-600/20 bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-900 shadow-sm transition-colors hover:bg-emerald-100 dark:border-white/10 dark:bg-white/15 dark:text-white dark:hover:bg-white/20 dark:shadow-none";
+
 /** Same stack + padding for both hire/work heroes; modest min-height keeps imagery balanced. */
 const heroInnerClassName =
   "relative flex min-h-[10rem] flex-col sm:min-h-[12.5rem] md:min-h-[16rem]";
@@ -713,14 +733,14 @@ export function DiscoverHomeActionFirst({
     if (!isInActive24hGoLiveWindow) return null;
     return (
       <div className="pointer-events-none absolute right-6 top-6 z-[21] hidden md:block">
-        <div className="inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/20">
+        <div className="inline-flex items-center gap-2 rounded-full border-0 bg-zinc-100 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-800 shadow-none ring-0 backdrop-blur-sm dark:border-transparent dark:bg-black/35 dark:text-white dark:shadow-lg dark:ring-1 dark:ring-inset dark:ring-white/20">
           <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
             <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
             <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.65)]" />
           </span>
           <span>Live</span>
           {liveRemainingLabel ? (
-            <span className="rounded-full bg-white/15 px-2 py-1 text-[11px] font-black tabular-nums tracking-wide">
+            <span className="rounded-full bg-zinc-200/80 px-2 py-1 text-[11px] font-black tabular-nums tracking-wide dark:bg-white/15">
               {liveRemainingLabel}
             </span>
           ) : null}
@@ -746,6 +766,9 @@ export function DiscoverHomeActionFirst({
         <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
           {isHire ? (
             <div className="flex flex-col">
+              <h3 className="px-4 pb-2 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
+                My requests
+              </h3>
               <div className="flex justify-center px-4">
                 <div className="mt-1 w-full max-w-md">
                   {acceptedRequests.length > 0 ? (
@@ -762,39 +785,39 @@ export function DiscoverHomeActionFirst({
                             e.stopPropagation();
                             navigate(`/client/jobs/${job.id}/live`);
                           }}
-                          className="flex w-full items-center gap-4 rounded-[1.25rem] border border-zinc-700/40 bg-zinc-900/90 p-4 text-left shadow-xl backdrop-blur-xl transition-all active:scale-[0.98] dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-black/25"
+                          className={discoverHomeMobilePromoRowClass}
                         >
-                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10 shadow-lg">
+                          <div className={discoverHomeMobileThumbClass}>
                             <img
                               src={getServiceCategoryImage(job.service_type)}
                               alt=""
                               className="h-full w-full object-cover"
                             />
-                            <div className="pointer-events-none absolute inset-0 bg-black/10" />
+                            <div className="pointer-events-none absolute inset-0 bg-black/5 dark:bg-black/10" />
                           </div>
 
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[16px] font-black text-white leading-tight">{title}</span>
-                              <span className="shrink-0 rounded-full bg-white/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/85 ring-1 ring-white/10">
+                              <span className="text-[18px] font-black leading-tight text-zinc-900 dark:text-white">{title}</span>
+                              <span className={discoverHomeMobileMetaPillClass}>
                                 {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                               </span>
                             </div>
-                            <p className="mt-0.5 text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</p>
+                            <p className="mt-0.5 truncate text-[16px] font-bold leading-tight text-zinc-600 dark:text-white/80">{loc}</p>
 
                             <div className="mt-1.5 flex items-center gap-2.5">
-                              <span className="text-[12px] font-black uppercase tracking-wider text-emerald-300">
+                              <span className="text-[14px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
                                 {job.acceptedCount} accepted
                               </span>
 
                               {avatars.length > 0 && (
                                 <div className="flex -space-x-2 overflow-hidden">
                                   {avatars.slice(0, 3).map((avatar: any, idx: number) => (
-                                    <Avatar key={avatar.id || idx} className="h-7 w-7 border-none shadow-md ring-2 ring-black/20">
+                                    <Avatar key={avatar.id || idx} className="h-7 w-7 border-none shadow-md ring-2 ring-zinc-200/90 dark:ring-black/20">
                                       {avatar.photo_url ? (
                                         <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
                                       ) : null}
-                                      <AvatarFallback className="bg-zinc-800 text-[10px] font-black text-white">
+                                      <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
                                         {(avatar.full_name || "H").charAt(0)}
                                       </AvatarFallback>
                                     </Avatar>
@@ -803,15 +826,15 @@ export function DiscoverHomeActionFirst({
                               )}
                             </div>
                           </div>
-                          <ChevronRight className="h-5 w-5 shrink-0 text-white/70" aria-hidden />
+                          <ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 dark:text-white/70" aria-hidden />
                         </button>
                       );
                     })
                   ) : (
-                    <div className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] border border-zinc-700/40 bg-zinc-900/80 p-4 text-left shadow-lg backdrop-blur-md dark:border-zinc-500/35 dark:bg-zinc-700/85 dark:shadow-black/20">
+                    <div className={discoverHomeMobileEmptyRowClass}>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-bold text-white">No active requests</p>
-                        <p className="text-[11px] font-medium text-white/70">Need help with something?</p>
+                        <p className="text-[13px] font-bold text-zinc-900 dark:text-white">No active requests</p>
+                        <p className="text-[11px] font-medium text-zinc-500 dark:text-white/70">Need help with something?</p>
                       </div>
                       <button
                         type="button"
@@ -819,7 +842,7 @@ export function DiscoverHomeActionFirst({
                           e.stopPropagation();
                           navigate(createRequestPath);
                         }}
-                        className="shrink-0 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/20 transition-colors"
+                        className={discoverHomeMobileEmptyCtaClass}
                       >
                         Post now
                       </button>
@@ -860,14 +883,14 @@ export function DiscoverHomeActionFirst({
               <div className="flex flex-col px-4">
                 {isInActive24hGoLiveWindow ? (
                   <div className="flex items-center justify-center sm:justify-end">
-                    <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-zinc-500/30 bg-zinc-900/70 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md dark:bg-zinc-600/90">
+                    <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border-0 bg-zinc-100 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-800 shadow-none ring-0 backdrop-blur-sm dark:border dark:border-zinc-500/30 dark:bg-zinc-600/90 dark:text-white dark:shadow-lg dark:backdrop-blur-md">
                       <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
                         <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
                         <span className="relative block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)]" />
                       </span>
                       <span>Live</span>
                       {liveRemainingLabel ? (
-                        <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[11px] font-black tabular-nums tracking-wide">
+                        <span className="rounded-full bg-zinc-200/80 px-1.5 py-0.5 text-[11px] font-black tabular-nums tracking-wide dark:bg-white/15">
                           {liveRemainingLabel}
                         </span>
                       ) : null}
@@ -875,7 +898,10 @@ export function DiscoverHomeActionFirst({
                   </div>
                 ) : null}
 
-                <div className="mt-3 flex justify-center">
+                <h3 className="mt-3 px-4 pb-2 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
+                  Live help
+                </h3>
+                <div className="mt-0 flex justify-center">
                   <div className="w-full max-w-md">
                   {liveHelpingJobs.filter((j) => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
                     liveHelpingJobs
@@ -895,50 +921,50 @@ export function DiscoverHomeActionFirst({
                               e.stopPropagation();
                               navigate(`${explorePath}?mode=work&tab=live_help`);
                             }}
-                            className="pointer-events-auto flex w-full items-center gap-4 rounded-[1.25rem] border border-zinc-700/40 bg-zinc-900/90 p-4 text-left shadow-xl backdrop-blur-xl transition-all active:scale-[0.98] dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-black/25"
+                            className={cn(discoverHomeMobilePromoRowClass, "pointer-events-auto")}
                           >
-                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10 shadow-lg">
+                            <div className={discoverHomeMobileThumbClass}>
                               <img
                                 src={getServiceCategoryImage(job.service_type)}
                                 alt=""
                                 className="h-full w-full object-cover"
                               />
-                              <div className="pointer-events-none absolute inset-0 bg-black/10" />
+                              <div className="pointer-events-none absolute inset-0 bg-black/5 dark:bg-black/10" />
                             </div>
 
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-[16px] font-black text-white leading-tight">{title}</span>
-                                <span className="shrink-0 rounded-full bg-white/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/85 ring-1 ring-white/10">
+                                <span className="text-[18px] font-black leading-tight text-zinc-900 dark:text-white">{title}</span>
+                                <span className={discoverHomeMobileMetaPillClass}>
                                   matched {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
                                 </span>
                               </div>
-                              <p className="mt-0.5 text-[14px] font-bold text-white/80 truncate leading-tight">{loc}</p>
+                              <p className="mt-0.5 truncate text-[16px] font-bold leading-tight text-zinc-600 dark:text-white/80">{loc}</p>
 
                               <div className="mt-2 flex items-center gap-3">
-                                <span className="text-[12px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1">
+                                <span className="flex items-center gap-1 text-[14px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
                                   Helping {clientName}
                                 </span>
 
                                 {client?.photo_url && (
-                                  <Avatar className="h-7 w-7 border-none shadow-md ring-2 ring-black/20">
+                                  <Avatar className="h-7 w-7 border-none shadow-md ring-2 ring-zinc-200/90 dark:ring-black/20">
                                     <AvatarImage src={client.photo_url} alt={clientName} />
-                                    <AvatarFallback className="bg-zinc-800 text-[10px] font-black text-white">
+                                    <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
                                       {clientName.charAt(0)}
                                     </AvatarFallback>
                                   </Avatar>
                                 )}
                               </div>
                             </div>
-                            <ChevronRight className="h-5 w-5 shrink-0 text-white/70" aria-hidden />
+                            <ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 dark:text-white/70" aria-hidden />
                           </button>
                         );
                       })
                   ) : (
-                    <div className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] border border-zinc-700/40 bg-zinc-900/80 p-4 text-left shadow-lg backdrop-blur-md dark:border-zinc-500/35 dark:bg-zinc-700/85 dark:shadow-black/20">
+                    <div className={discoverHomeMobileEmptyRowClass}>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-bold text-white">No live help</p>
-                        <p className="text-[11px] font-medium text-white/70">Find people who need help nearby</p>
+                        <p className="text-[13px] font-bold text-zinc-900 dark:text-white">No live help</p>
+                        <p className="text-[11px] font-medium text-zinc-500 dark:text-white/70">Find people who need help nearby</p>
                       </div>
                       <button
                         type="button"
@@ -946,7 +972,7 @@ export function DiscoverHomeActionFirst({
                           e.stopPropagation();
                           navigateToWorkBrowseRequests(navigate, profile);
                         }}
-                        className="shrink-0 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/20 transition-colors"
+                        className={discoverHomeMobileEmptyCtaClass}
                       >
                         Find posts
                       </button>
@@ -1125,8 +1151,12 @@ export function DiscoverHomeActionFirst({
             </section>
           )}
           {isHire ? (
-            acceptedRequests.length > 0 ? (
-              <div className="flex flex-col gap-3">
+            <div className="flex min-h-0 min-w-0 flex-col gap-2">
+              <h3 className="shrink-0 px-0.5 text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                My requests
+              </h3>
+            {acceptedRequests.length > 0 ? (
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
                 {acceptedRequests.map((job: any) => {
                   const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
                   const title = formatJobTitle(job);
@@ -1200,10 +1230,15 @@ export function DiscoverHomeActionFirst({
               <div className="rounded-[24px] border border-dashed border-zinc-200/80 bg-zinc-50/50 px-4 py-10 text-center text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30 flex items-center justify-center">
                 No active requests.
               </div>
-            )
+            )}
+            </div>
           ) : (
-            liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
-              <div className="flex flex-col gap-3">
+            <div className="flex min-h-0 min-w-0 flex-col gap-2">
+              <h3 className="shrink-0 px-0.5 text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                Live help
+              </h3>
+            {liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
                 {liveHelpingJobs
                   .filter(j => !dismissedLiveJobIds.includes(j.id))
                   .slice(0, 1)
@@ -1285,7 +1320,8 @@ export function DiscoverHomeActionFirst({
               <div className="rounded-[24px] border border-dashed border-zinc-200/80 bg-zinc-50/50 px-4 py-10 text-center text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30 flex items-center justify-center">
                 No live jobs right now.
               </div>
-            )
+            )}
+            </div>
           )}
         </div>
 
