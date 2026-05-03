@@ -175,7 +175,16 @@ export function DiscoverHomeLatestOwnPosts({
       const postIds = rows.map((p) => p.id);
       const { data: interestRows, error: intErr } = await supabase
         .from("community_post_hire_interests")
-        .select("community_post_id, client_id, created_at, status, job_request_id")
+        .select(
+          `
+          community_post_id,
+          client_id,
+          created_at,
+          status,
+          job_request_id,
+          client:profiles!client_id ( id, photo_url, full_name )
+        `,
+        )
         .in("community_post_id", postIds)
         .in("status", ["pending", "confirmed"])
         .order("created_at", { ascending: false });
@@ -196,6 +205,10 @@ export function DiscoverHomeLatestOwnPosts({
         created_at: string;
         status: string;
         job_request_id: string | null;
+        client:
+          | { id: string; photo_url: string | null; full_name: string | null }
+          | { id: string; photo_url: string | null; full_name: string | null }[]
+          | null;
       }[];
 
       const sortedInterest = [...raw].sort(
@@ -236,31 +249,19 @@ export function DiscoverHomeLatestOwnPosts({
         avatarClientIdsByPost[pid] = ids;
       }
 
-      const allClientIds = Array.from(
-        new Set(Object.values(avatarClientIdsByPost).flat()),
-      );
       const profileMap = new Map<
         string,
         { photo_url: string | null; full_name: string | null }
       >();
-      if (allClientIds.length > 0) {
-        const { data: profs, error: pErr } = await supabase
-          .from("profiles")
-          .select("id, photo_url, full_name")
-          .in("id", allClientIds);
-        if (!pErr && profs) {
-          for (const p of profs) {
-            const row = p as {
-              id: string;
-              photo_url: string | null;
-              full_name: string | null;
-            };
-            profileMap.set(String(row.id), {
-              photo_url: row.photo_url ?? null,
-              full_name: row.full_name ?? null,
-            });
-          }
-        }
+      for (const r of raw) {
+        const cRaw = r.client;
+        const c = Array.isArray(cRaw) ? cRaw[0] : cRaw;
+        const id = c?.id != null ? String(c.id) : "";
+        if (!id || profileMap.has(id)) continue;
+        profileMap.set(id, {
+          photo_url: c?.photo_url ?? null,
+          full_name: c?.full_name ?? null,
+        });
       }
 
       const avatars: Record<

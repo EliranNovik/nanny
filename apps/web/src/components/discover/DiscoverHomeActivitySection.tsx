@@ -143,6 +143,7 @@ export function DiscoverHomeActivitySection({
         "get_community_feed_public",
         {
           p_category: null,
+          p_limit: 80,
         },
       );
       if (error) throw error;

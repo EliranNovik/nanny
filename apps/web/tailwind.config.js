@@ -97,6 +97,11 @@ export default {
             boxShadow: "0 0 26px 8px rgba(16, 185, 129, 0.45)",
           },
         },
+        /** Discover strip avatar live dot — inner element scales (outer holds translate). */
+        "strip-live-dot-breathe": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(0.82)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -108,6 +113,8 @@ export default {
           "dock-post-live-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
         "dock-go-live-glow":
           "dock-go-live-glow 3.5s cubic-bezier(0.45, 0, 0.2, 1) infinite",
+        "strip-live-dot-breathe":
+          "strip-live-dot-breathe 1.75s ease-in-out infinite",
       },
     },
   },

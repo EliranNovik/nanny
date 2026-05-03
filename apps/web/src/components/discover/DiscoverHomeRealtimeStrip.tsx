@@ -189,6 +189,21 @@ const workStripDeclineRoundBtn = cn(
   "h-14 w-14 bg-white text-rose-500 ring-zinc-200 hover:bg-rose-50 dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
 );
 
+/**
+ * Live indicator — anchored on the avatar ring’s upper-right arc (overlaps gradient stroke),
+ * not the layout box corner (which sits above the visible circle on `rounded-full`).
+ */
+function StripAvatarLiveDot() {
+  return (
+    <span
+      className="pointer-events-none absolute left-[78%] top-[9%] z-[4] block size-[0.65rem] -translate-x-1/2 -translate-y-1/2"
+      aria-hidden
+    >
+      <span className="block size-full rounded-full bg-emerald-500 will-change-transform motion-safe:animate-strip-live-dot-breathe dark:bg-emerald-400" />
+    </span>
+  );
+}
+
 /** Hire (“I need help”) = purple ring; work (“Help others”) = green ring — not per-category. */
 function stripAvatarRingClass(mode: "hire" | "work"): string {
   if (mode === "hire") {
@@ -208,7 +223,7 @@ function StripCategoryBadge({
 }) {
   const plus =
     extraLiveCategoryCount > 0 ? (
-      <span className="font-black tabular-nums tracking-tight text-[10px] leading-none text-zinc-900 dark:text-white">
+      <span className="font-black tabular-nums tracking-tight text-[11px] leading-none text-zinc-900 dark:text-white">
         +{extraLiveCategoryCount > 9 ? "9+" : extraLiveCategoryCount}
       </span>
     ) : null;
@@ -216,8 +231,8 @@ function StripCategoryBadge({
   return (
     <span
       className={cn(
-        "pointer-events-none absolute bottom-0.5 left-1/2 z-[2] flex h-7 min-h-7 -translate-x-1/2 items-center justify-center gap-1 rounded-full px-2 shadow-md",
-        plus ? "min-w-[3rem] px-2.5" : "min-w-[2.375rem]",
+        "pointer-events-none absolute bottom-0.5 left-1/2 z-[2] flex h-8 min-h-8 -translate-x-1/2 items-center justify-center gap-1 rounded-full px-2.5 shadow-md",
+        plus ? "min-w-[3.25rem] px-3" : "min-w-[2.625rem]",
         "bg-white dark:bg-zinc-500",
       )}
       aria-hidden
@@ -225,7 +240,7 @@ function StripCategoryBadge({
       {categoryIconNode(
         categoryId,
         cn(
-          "h-3.5 w-3.5 shrink-0 stroke-[2.25] text-zinc-900 dark:text-white",
+          "h-4 w-4 shrink-0 stroke-[2.25] text-zinc-900 dark:text-white",
         ),
       )}
       {plus}
@@ -1107,7 +1122,7 @@ function DiscoverRealtimeStripDetailDialog({
           {work ? (
             <>
               <div className="mb-5 flex w-full gap-5">
-                <div className="flex w-[6.75rem] shrink-0 flex-col items-center gap-2">
+                <div className="flex w-[7.125rem] shrink-0 flex-col items-center gap-2">
                   <button
                     type="button"
                     onClick={goProfile}
@@ -1115,21 +1130,16 @@ function DiscoverRealtimeStripDetailDialog({
                     disabled={!profileUserId}
                     aria-label="View public profile"
                   >
-                    <span
-                      className="absolute right-0.5 top-0.5 z-[3] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white ring-2 ring-white dark:bg-[#121212] dark:ring-[#121212]"
-                      aria-hidden
-                    >
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)]" />
-                    </span>
-                    <div className={cn("rounded-full p-[3px]", stripAvatarRingClass("work"))}>
+                    <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("work"))}>
                       <div className="rounded-full bg-white p-0.5 dark:bg-[#121212]">
-                        <Avatar className="h-[5.25rem] w-[5.25rem] border-0">
+                        <Avatar className="h-[5.5rem] w-[5.5rem] border-0">
                           <AvatarImage src={photoUrl || undefined} className="object-cover" alt="" />
                           <AvatarFallback className="bg-zinc-200 text-xl font-black text-zinc-800 dark:bg-zinc-800 dark:text-white">
                             {(displayName || "?").charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                       </div>
+                      <StripAvatarLiveDot />
                     </div>
                     <StripCategoryBadge categoryId={work.categoryId} />
                   </button>
@@ -1177,25 +1187,20 @@ function DiscoverRealtimeStripDetailDialog({
                 >
                   <div
                     className={cn(
-                      "rounded-full p-[3px]",
+                      "relative overflow-visible rounded-full p-[3px]",
                       hire ? stripAvatarRingClass("hire") : "bg-zinc-400 dark:bg-zinc-600",
                     )}
                   >
                     <div className="rounded-full bg-white p-0.5 dark:bg-[#121212]">
-                      <Avatar className="h-[5.25rem] w-[5.25rem] border-0">
+                      <Avatar className="h-[5.5rem] w-[5.5rem] border-0">
                         <AvatarImage src={photoUrl || undefined} className="object-cover" alt="" />
                         <AvatarFallback className="bg-zinc-200 text-xl font-black text-zinc-800 dark:bg-zinc-800 dark:text-white">
                           {(displayName || "?").charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                     </div>
+                    {hire ? <StripAvatarLiveDot /> : null}
                   </div>
-                  <span
-                    className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white ring-2 ring-white dark:bg-[#121212] dark:ring-[#121212]"
-                    aria-hidden
-                  >
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)]" />
-                  </span>
                   {hire ? (
                     <StripCategoryBadge
                       categoryId={hire.categoryId}
@@ -2099,8 +2104,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
         <div
           className={cn(
-            "flex snap-x snap-mandatory gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-            "md:mx-0 md:flex md:max-w-full md:flex-nowrap md:justify-start md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none",
+            "flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "md:mx-0 md:flex md:max-w-full md:flex-nowrap md:justify-start md:gap-2.5 md:overflow-visible md:px-0 md:pb-0 md:snap-none",
           )}
           role="list"
           aria-label="Requests now near you"
@@ -2112,15 +2117,15 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               role="listitem"
               onClick={() => openWorkDetail(row)}
               className={cn(
-                "flex w-[5.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform",
+                "flex w-[6.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform",
                 "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                "active:scale-[0.97]",
+                "active:scale-[0.97] md:w-[5.5rem]",
               )}
             >
               <div className="relative pb-1">
-                <div className={cn("rounded-full p-[3px]", stripAvatarRingClass("work"))}>
+                <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("work"))}>
                   <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
-                    <Avatar className="h-[4.5rem] w-[4.5rem] border-0 md:h-20 md:w-20">
+                    <Avatar className="h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
                       <AvatarImage
                         src={row.thumbUrl || undefined}
                         className="object-cover"
@@ -2133,13 +2138,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                       </AvatarFallback>
                     </Avatar>
                   </div>
+                  <StripAvatarLiveDot />
                 </div>
-                <span
-                  className="absolute right-0 top-0 flex h-3 w-3 items-center justify-center rounded-full bg-white shadow ring-2 ring-white dark:bg-zinc-900 dark:ring-zinc-900"
-                  aria-hidden
-                >
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)]" />
-                </span>
                 <StripCategoryBadge categoryId={row.categoryId} />
               </div>
               <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
@@ -2221,9 +2221,9 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
       <div
         className={cn(
-          "gap-1 pb-0.5",
+          "gap-2 pb-0.5",
           "flex snap-x snap-mandatory overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "md:mx-0 md:flex md:max-w-full md:flex-nowrap md:justify-start md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none",
+          "md:mx-0 md:flex md:max-w-full md:flex-nowrap md:justify-start md:gap-2.5 md:overflow-visible md:px-0 md:pb-0 md:snap-none",
         )}
         role="list"
       >
@@ -2234,15 +2234,15 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             role="listitem"
             onClick={() => openHireDetail(it)}
             className={cn(
-              "flex w-[5.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform",
+              "flex w-[6.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform",
               "outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              "active:scale-[0.97]",
+              "active:scale-[0.97] md:w-[5.5rem]",
             )}
           >
             <div className="relative pb-1">
-              <div className={cn("rounded-full p-[3px]", stripAvatarRingClass("hire"))}>
+              <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("hire"))}>
                 <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
-                  <Avatar className="h-[4.5rem] w-[4.5rem] border-0 md:h-20 md:w-20">
+                  <Avatar className="h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
                     <AvatarImage
                       src={it.photo || undefined}
                       className="object-cover"
@@ -2255,13 +2255,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                     </AvatarFallback>
                   </Avatar>
                 </div>
+                <StripAvatarLiveDot />
               </div>
-              <span
-                className="absolute right-0 top-0 flex h-3 w-3 items-center justify-center rounded-full bg-white shadow ring-2 ring-white dark:bg-zinc-900 dark:ring-zinc-900"
-                aria-hidden
-              >
-                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)]" />
-              </span>
               <StripCategoryBadge
                 categoryId={it.categoryId}
                 extraLiveCategoryCount={it.extraLiveCategoryCount}

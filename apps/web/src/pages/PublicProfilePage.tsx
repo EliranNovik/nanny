@@ -511,23 +511,23 @@ export default function PublicProfilePage() {
 
     const fetchProfileAndJobs = async () => {
       try {
-        // 1. Fetch Basic Profile
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select(
-            "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
-          )
-          .eq("id", userId)
-          .single();
+        const [{ data: profileData, error: profileError }, { data: freelancerData }] =
+          await Promise.all([
+            supabase
+              .from("profiles")
+              .select(
+                "id, full_name, photo_url, role, is_available_for_jobs, is_verified, city, categories, bio, whatsapp_number_e164, telegram_username, average_rating, total_ratings",
+              )
+              .eq("id", userId)
+              .single(),
+            supabase
+              .from("freelancer_profiles")
+              .select("bio, live_until, live_can_start_in, available_now")
+              .eq("user_id", userId)
+              .maybeSingle(),
+          ]);
 
         if (profileError) throw profileError;
-
-        // 2. Fetch Bio/Freelancer Info if applicable
-        const { data: freelancerData } = await supabase
-          .from("freelancer_profiles")
-          .select("bio, live_until, live_can_start_in, available_now")
-          .eq("user_id", userId)
-          .maybeSingle();
 
         const bio =
           (profileData as { bio?: string | null } | null)?.bio ??
@@ -558,16 +558,8 @@ export default function PublicProfilePage() {
               )
             `;
 
-        const [
-          jobsViewerClient,
-          jobsProfileClient,
-          notifWhenProfileIsHelper,
-          notifWhenViewerIsHelper,
-          reviewsData,
-          mediaData,
-          communityData,
-          postedHelpData,
-        ] = await Promise.all([
+        const runHelperRpcs = canActAsHelperOnPublicProfile(nextProfile);
+        const batchPromises: PromiseLike<unknown>[] = [
           supabase
             .from("job_requests")
             .select(jrSelect)
@@ -606,25 +598,65 @@ export default function PublicProfilePage() {
             .order("sort_order", { ascending: true }),
           supabase
             .from("community_posts")
-            .select("*")
+            .select(
+              "id, category, title, note, expires_at, availability_payload, created_at",
+            )
             .eq("author_id", userId)
-            .order("created_at", { ascending: false }),
+            .order("created_at", { ascending: false })
+            .limit(40),
           supabase
             .from("job_requests")
             .select("id, service_type, status, created_at, location_city")
             .eq("client_id", userId)
             .in("status", ["ready", "notifying", "confirmations_closed"])
-            .order("created_at", { ascending: false }),
-        ]);
+            .order("created_at", { ascending: false })
+            .limit(30),
+        ];
+        if (runHelperRpcs) {
+          batchPromises.push(
+            supabase.rpc("get_helper_chat_response_stats", {
+              p_helper_ids: [userId],
+            }),
+            supabase.rpc("get_helpers_live_help_week_counts", {
+              p_helper_ids: [userId],
+            }),
+          );
+        }
+        const batchResults = await Promise.all(batchPromises);
 
-        // Badge: helper avg response time (client msg → helper reply) — same RPC as HelpersPage.
+        type PgResult = { data: unknown; error: unknown };
+        const [
+          jobsViewerClient,
+          jobsProfileClient,
+          notifWhenProfileIsHelper,
+          notifWhenViewerIsHelper,
+          reviewsData,
+          mediaData,
+          communityData,
+          postedHelpData,
+        ] = batchResults.slice(0, 8) as [
+          PgResult,
+          PgResult,
+          PgResult,
+          PgResult,
+          PgResult,
+          PgResult,
+          PgResult,
+          PgResult,
+        ];
+
+        const statRpc: PgResult = runHelperRpcs
+          ? (batchResults[8] as PgResult)
+          : { data: null, error: null };
+        const weekRpc: PgResult = runHelperRpcs
+          ? (batchResults[9] as PgResult)
+          : { data: null, error: null };
+
         let nextHelperReplyStats: HelperReplyStats | null = null;
-        if (canActAsHelperOnPublicProfile(nextProfile)) {
+        if (runHelperRpcs) {
           try {
-            const { data: statRows, error: statErr } = await supabase.rpc(
-              "get_helper_chat_response_stats",
-              { p_helper_ids: [userId] },
-            );
+            const statRows = statRpc.data as unknown[] | null;
+            const statErr = statRpc.error;
             if (statErr && import.meta.env.DEV) {
               console.warn(
                 "[PublicProfilePage] get_helper_chat_response_stats:",
@@ -670,12 +702,10 @@ export default function PublicProfilePage() {
         setHelperReplyStats(nextHelperReplyStats);
 
         let nextLiveHelpWeek: number | null = null;
-        if (canActAsHelperOnPublicProfile(nextProfile)) {
+        if (runHelperRpcs) {
           try {
-            const { data: weekRows, error: weekErr } = await supabase.rpc(
-              "get_helpers_live_help_week_counts",
-              { p_helper_ids: [userId] },
-            );
+            const weekRows = weekRpc.data as unknown[] | null;
+            const weekErr = weekRpc.error;
             if (weekErr && import.meta.env.DEV) {
               console.warn(
                 "[PublicProfilePage] get_helpers_live_help_week_counts:",
@@ -763,7 +793,7 @@ export default function PublicProfilePage() {
         if (!cancelled) {
           setSharedJobs(shared);
           setReviews((reviewsData.data || []) as unknown as UserReview[]);
-          setMediaItems(mediaData.data || []);
+          setMediaItems((mediaData.data || []) as PublicProfileMediaRow[]);
           setLiveCommunityPosts(communityData.data as LiveCommunityPostRow[]);
           setPostedHelpRequests(
             postedHelpData.data as ProfilePostedHelpRequest[],

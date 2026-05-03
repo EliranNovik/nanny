@@ -10,11 +10,11 @@ import type {
 export function useCommunityPosts(category: string | null) {
   return useQuery<CommunityPostWithMeta[]>({
     queryKey: queryKeys.communityPosts(category),
-    staleTime: 60 * 1000, // 1 minute — live board changes frequently
+    staleTime: 90 * 1000,
     queryFn: async () => {
       const { data: rows, error } = await supabase.rpc(
         "get_community_feed_public",
-        { p_category: category ?? null },
+        { p_category: category ?? null, p_limit: 160 },
       );
       if (error) throw error;
 

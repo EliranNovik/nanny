@@ -1965,11 +1965,49 @@ export function ProfilePostsFeed({
         query = query.contains("tagged_user_ids", [filterTaggedUserId]);
       }
 
-      const { data: profilePostRows, error: ppErr } = await query
+      const limitPosts = limit ?? (userId ? 50 : 100);
+      const limitAvail = limit ?? (userId ? 20 : 50);
+      const profilePostsPromise = query
         .order("created_at", { ascending: sortOrder === "oldest" })
-        .limit(limit ?? (userId ? 50 : 100));
+        .limit(limitPosts);
+
+      const nowIso = new Date().toISOString();
+      const availPromise = !filterLikedByUserId
+        ? (() => {
+            let availQuery = supabase
+              .from("community_posts")
+              .select(
+                "id, category, title, note, expires_at, availability_payload, created_at, author_id",
+              )
+              .eq("status", "active")
+              .gt("expires_at", nowIso);
+            if (userId) {
+              availQuery = availQuery.eq("author_id", userId);
+            } else if (filterAuthorId) {
+              availQuery = availQuery.eq("author_id", filterAuthorId);
+            } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
+              if (resolvedAuthorIds.length > 0) {
+                availQuery = availQuery.in("author_id", resolvedAuthorIds);
+              } else {
+                availQuery = availQuery.eq(
+                  "author_id",
+                  "00000000-0000-0000-0000-000000000000",
+                );
+              }
+            }
+            return availQuery
+              .order("created_at", { ascending: sortOrder === "oldest" })
+              .limit(limitAvail);
+          })()
+        : Promise.resolve({ data: [] as Record<string, unknown>[], error: null });
+
+      const [{ data: profilePostRows, error: ppErr }, availRes] =
+        await Promise.all([profilePostsPromise, availPromise]);
 
       if (ppErr) throw ppErr;
+      if (availRes.error) throw availRes.error;
+      const availRows = !filterLikedByUserId ? (availRes.data ?? []) : [];
+
       const rawPosts = (profilePostRows ?? []) as {
         id: string;
         author_id: string;
@@ -1986,41 +2024,6 @@ export function ProfilePostsFeed({
         rawPosts.sort((a, b) => (idx.get(a.id) ?? 0) - (idx.get(b.id) ?? 0));
       }
 
-      // 3. Fetch availability/community posts (skip for liked-only view)
-      if (filterLikedByUserId) {
-        // fall through with empty availability list
-      }
-      const nowIso = new Date().toISOString();
-      let availRows: any[] | null = null;
-      if (!filterLikedByUserId) {
-        let availQuery = supabase
-          .from("community_posts")
-          .select("id, category, title, note, expires_at, availability_payload, created_at, author_id")
-          .eq("status", "active")
-          .gt("expires_at", nowIso);
-
-        if (userId) {
-          availQuery = availQuery.eq("author_id", userId);
-        } else if (filterAuthorId) {
-          availQuery = availQuery.eq("author_id", filterAuthorId);
-        } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
-          if (resolvedAuthorIds.length > 0) {
-            availQuery = availQuery.in("author_id", resolvedAuthorIds);
-          } else {
-            // No profiles found, but we still need to run a query that returns nothing or handle it.
-            // Since we already checked resolvedAuthorIds for the main posts, we can skip or force no results.
-            availQuery = availQuery.eq("author_id", "00000000-0000-0000-0000-000000000000"); // guaranteed empty
-          }
-        }
-
-        const { data } = await availQuery
-          .order("created_at", { ascending: sortOrder === "oldest" })
-          .limit(limit ?? (userId ? 20 : 50));
-        availRows = data ?? [];
-      } else {
-        availRows = [];
-      }
-
       // 3. Collect all user IDs to resolve profiles
       const allTaggedIds = new Set<string>();
       rawPosts.forEach((p) => p.tagged_user_ids.forEach((id) => allTaggedIds.add(id)));
@@ -2028,88 +2031,87 @@ export function ProfilePostsFeed({
       const profileIds = new Set<string>();
       if (userId) profileIds.add(userId);
       if (currentUserId) profileIds.add(currentUserId);
-      
-      // Also add all authors
-      rawPosts.forEach(p => profileIds.add(p.author_id));
-      (availRows ?? []).forEach(r => profileIds.add(r.author_id as string));
 
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, full_name, photo_url, is_verified")
-        .in("id", [...profileIds, ...allTaggedIds].slice(0, 200));
+      rawPosts.forEach((p) => profileIds.add(p.author_id));
+      availRows.forEach((r) => profileIds.add(r.author_id as string));
 
+      const idList = [...profileIds, ...allTaggedIds].slice(0, 200);
+      const postIds = rawPosts.map((p) => p.id);
+
+      const [profRes, likedRes, engRes, shareRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, full_name, photo_url, is_verified")
+          .in("id", idList),
+        currentUserId && postIds.length > 0
+          ? supabase
+              .from("profile_post_likes")
+              .select("post_id")
+              .eq("user_id", currentUserId)
+              .in("post_id", postIds)
+          : Promise.resolve({ data: [] as { post_id: string }[], error: null }),
+        postIds.length > 0
+          ? supabase.rpc("get_profile_post_engagement_counts", {
+              p_post_ids: postIds,
+            })
+          : Promise.resolve({
+              data: [] as {
+                post_id: string;
+                like_count: number | string;
+                comment_count: number | string;
+              }[],
+              error: null,
+            }),
+        postIds.length > 0
+          ? supabase.rpc("get_profile_post_share_stats", { p_post_ids: postIds })
+          : Promise.resolve({ data: [] as unknown[], error: null }),
+      ]);
+
+      const profilesData = profRes.data;
       const profileMap = new Map<string, ProfileSnippet>(
         (profilesData ?? []).map((p) => [p.id as string, p as ProfileSnippet]),
       );
 
-      // 4. Resolve likes for current user
-      let myLikedPostIds = new Set<string>();
-      if (currentUserId && rawPosts.length > 0) {
-        const postIds = rawPosts.map((p) => p.id);
-        const { data: likedRows } = await supabase
-          .from("profile_post_likes")
-          .select("post_id")
-          .eq("user_id", currentUserId)
-          .in("post_id", postIds);
-        myLikedPostIds = new Set((likedRows ?? []).map((r) => r.post_id as string));
-      }
+      const myLikedPostIds = new Set<string>(
+        (likedRes.data ?? []).map((r) => r.post_id as string),
+      );
 
-      // 5. Get like counts
       const likeCountMap = new Map<string, number>();
-      if (rawPosts.length > 0) {
-        const postIds = rawPosts.map((p) => p.id);
-        // Batch count via individual queries for simplicity  
-        await Promise.all(
-          postIds.map(async (pid) => {
-            const { count } = await supabase
-              .from("profile_post_likes")
-              .select("*", { count: "exact", head: true })
-              .eq("post_id", pid);
-            likeCountMap.set(pid, count ?? 0);
-          }),
-        );
-      }
-
-      // 6. Get comment counts
       const commentCountMap = new Map<string, number>();
-      if (rawPosts.length > 0) {
-        const postIds = rawPosts.map((p) => p.id);
-        await Promise.all(
-          postIds.map(async (pid) => {
-            const { count } = await supabase
-              .from("profile_post_comments")
-              .select("*", { count: "exact", head: true })
-              .eq("post_id", pid);
-            commentCountMap.set(pid, count ?? 0);
-          }),
+      if (engRes.error) {
+        console.warn(
+          "[ProfilePostsFeed] get_profile_post_engagement_counts",
+          engRes.error,
         );
+      } else {
+        for (const row of engRes.data ?? []) {
+          const r = row as {
+            post_id: string;
+            like_count: number | string;
+            comment_count: number | string;
+          };
+          likeCountMap.set(r.post_id, Number(r.like_count));
+          commentCountMap.set(r.post_id, Number(r.comment_count));
+        }
       }
 
-      // 6b. Share tap + distinct sharer counts (batch RPC)
       const shareStatsMap = new Map<
         string,
         { click: number; distinct: number }
       >();
-      if (rawPosts.length > 0) {
-        const postIds = rawPosts.map((p) => p.id);
-        const { data: shareRows, error: shareErr } = await supabase.rpc(
-          "get_profile_post_share_stats",
-          { p_post_ids: postIds },
-        );
-        if (shareErr) {
-          console.warn("[ProfilePostsFeed] get_profile_post_share_stats", shareErr);
-        } else {
-          for (const row of shareRows ?? []) {
-            const r = row as {
-              post_id: string;
-              click_count: number | string;
-              distinct_user_count: number | string;
-            };
-            shareStatsMap.set(r.post_id, {
-              click: Number(r.click_count),
-              distinct: Number(r.distinct_user_count),
-            });
-          }
+      if (shareRes.error) {
+        console.warn("[ProfilePostsFeed] get_profile_post_share_stats", shareRes.error);
+      } else {
+        for (const row of shareRes.data ?? []) {
+          const r = row as {
+            post_id: string;
+            click_count: number | string;
+            distinct_user_count: number | string;
+          };
+          shareStatsMap.set(r.post_id, {
+            click: Number(r.click_count),
+            distinct: Number(r.distinct_user_count),
+          });
         }
       }
 

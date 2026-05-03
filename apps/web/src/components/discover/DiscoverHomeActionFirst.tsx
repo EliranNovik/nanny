@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
+  MoreHorizontal,
   PlayCircle,
   Search,
   UsersRound,
@@ -167,6 +168,7 @@ export function DiscoverHomeActionFirst({
     };
   }, [user?.id, isHire]);
   const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
+  const [quickMoreOpen, setQuickMoreOpen] = useState(false);
   const fetchOpenHelpPool =
     !isHire && !!user?.id && profile?.role !== "freelancer";
   const { data: openHelpRows = [] } = useDiscoverOpenHelpRequests(
@@ -289,54 +291,181 @@ export function DiscoverHomeActionFirst({
   const postLivePulseClass = "";
   const goLivePulseClass = "";
 
-  /** Mobile: three equal shortcut tiles above BottomNav — same destinations as the old actions dialog. */
+  /**
+   * Mobile: icon-only primary + More, stacked on the right above BottomNav; sheet unchanged.
+   */
   function renderQuickActionDockMobile() {
-    const bottomOffset =
-      "bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)]";
-    const badgeClass =
-      "absolute -right-1.5 -top-1.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums text-white shadow-lg bg-red-500 border-none";
+    const dockClass = cn(
+      "pointer-events-auto fixed right-0 z-[140] flex flex-col items-end gap-3 md:hidden",
+      "bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)]",
+      "pr-[max(0.75rem,env(safe-area-inset-right,0px))]",
+    );
 
-    const boxClass = cn(
-      "relative flex min-h-[5.5rem] flex-1 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5",
-      "border-white/10 bg-zinc-950/40 text-white shadow-[0_12px_24px_rgba(0,0,0,0.2)] backdrop-blur-xl transition-transform active:scale-[0.96]",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-      "dark:border-zinc-500/30 dark:bg-zinc-600/70 dark:text-zinc-50 dark:shadow-[0_12px_24px_rgba(0,0,0,0.35)]",
+    const moreMenuCountBadge =
+      "absolute -right-1 -top-1 z-10 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums text-white bg-red-500 shadow-sm";
+
+    const badgeRow =
+      "ml-auto flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums text-white bg-red-500 shadow-sm";
+
+    const fabBase = cn(
+      "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-white shadow-2xl transition-transform active:scale-[0.96]",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-white",
+      "dark:focus-visible:ring-white/35 dark:focus-visible:ring-offset-zinc-950",
+    );
+
+    const hireFabClass = cn(
+      fabBase,
+      "bg-gradient-to-br from-indigo-600 to-violet-700 shadow-indigo-950/40",
+      "focus-visible:ring-indigo-400/45 dark:focus-visible:ring-indigo-200/40",
+      postLivePulseClass,
+    );
+
+    const workGoLiveFabClass = cn(
+      fabBase,
+      "bg-emerald-600 shadow-emerald-950/35",
+      "focus-visible:ring-emerald-400/50 dark:focus-visible:ring-emerald-200/40",
+      goLivePulseClass,
+    );
+
+    const workBrowseFabClass = cn(
+      fabBase,
+      "border border-emerald-500/45 bg-emerald-50 text-emerald-700 shadow-2xl",
+      "focus-visible:ring-emerald-500/35 dark:focus-visible:ring-emerald-200/35",
+      "dark:border-emerald-400/35 dark:bg-zinc-800/95 dark:text-white dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
+    );
+
+    const moreBtnClass = cn(
+      "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full border transition-transform active:scale-[0.96] shadow-2xl",
+      "border-slate-200/90 bg-white text-zinc-700 hover:bg-slate-50",
+      "dark:border-white/12 dark:bg-zinc-800/95 dark:text-white/95 dark:hover:bg-zinc-700/95 dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-white/25 dark:focus-visible:ring-offset-zinc-950",
+    );
+
+    const hireMoreMenuTotal = hireLiveHelperCount + myRequestsCount;
+    const workMoreMenuTotal = isInActive24hGoLiveWindow
+      ? pendingWorkRequestsCount
+      : workLivePostCount + pendingWorkRequestsCount;
+
+    const quickMoreSheet = (
+      <Dialog open={quickMoreOpen} onOpenChange={setQuickMoreOpen}>
+        <DialogContent
+          className={cn(
+            "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
+            "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:max-h-[min(85vh,22rem)] max-md:w-full max-md:translate-y-0",
+            "md:max-w-md",
+          )}
+        >
+          <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-5 py-3.5 backdrop-blur-md">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg font-black tracking-tight">More actions</DialogTitle>
+              <DialogClose className="rounded-full p-2 text-muted-foreground hover:bg-muted active:scale-95">
+                <X className="h-5 w-5" strokeWidth={2.5} />
+              </DialogClose>
+            </div>
+          </DialogHeader>
+          <div className="flex flex-col gap-1 p-2 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+            {isHire ? (
+              <>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
+                  onClick={() => {
+                    setQuickMoreOpen(false);
+                    trackEvent("discover_actions_browse_helpers", { mode: homeMode });
+                    navigateToHelpersBrowse(navigate);
+                  }}
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
+                    <Search className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-bold text-foreground">Find helpers</span>
+                    <span className="text-xs text-muted-foreground">Browse who’s available</span>
+                  </span>
+                  {hireLiveHelperCount > 0 ? (
+                    <span className={badgeRow}>
+                      {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
+                  onClick={() => {
+                    setQuickMoreOpen(false);
+                    setMyRequestsOpen(true);
+                  }}
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-300">
+                    <ClipboardList className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-bold text-foreground">My requests</span>
+                    <span className="text-xs text-muted-foreground">Your open requests</span>
+                  </span>
+                  {myRequestsCount > 0 ? (
+                    <span className={badgeRow}>{myRequestsCount > 9 ? "9+" : myRequestsCount}</span>
+                  ) : null}
+                </button>
+              </>
+            ) : (
+              <>
+                {!isInActive24hGoLiveWindow ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
+                    onClick={() => {
+                      setQuickMoreOpen(false);
+                      trackEvent("discover_actions_browse_requests", { mode: homeMode });
+                      navigateToWorkBrowseRequests(navigate, profile);
+                    }}
+                  >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+                      <UsersRound className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-bold text-foreground">Find posts</span>
+                      <span className="text-xs text-muted-foreground">Live requests near you</span>
+                    </span>
+                    {workLivePostCount > 0 ? (
+                      <span className={badgeRow}>
+                        {workLivePostCount > 99 ? "99+" : workLivePostCount}
+                      </span>
+                    ) : null}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
+                  onClick={() => {
+                    setQuickMoreOpen(false);
+                    setPendingWorkRequestsOpen(true);
+                  }}
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                    <Clock className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-bold text-foreground">Pending</span>
+                    <span className="text-xs text-muted-foreground">Responses to confirm</span>
+                  </span>
+                  {pendingWorkRequestsCount > 0 ? (
+                    <span className={badgeRow}>
+                      {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
+                    </span>
+                  ) : null}
+                </button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     );
 
     if (isHire) {
       return (
-        <div
-          className={cn(
-            "pointer-events-auto fixed inset-x-0 z-[140] md:hidden",
-            bottomOffset,
-          )}
-        >
-          <div className="mx-auto flex w-full max-w-md justify-center gap-2 px-3 sm:max-w-lg">
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent("discover_actions_browse_helpers", { mode: homeMode });
-                navigateToHelpersBrowse(navigate);
-              }}
-              className={boxClass}
-              aria-label={`Find helpers${
-                hireLiveHelperCount > 0 ? ` (${hireLiveHelperCount} live)` : ""
-              }`}
-            >
-              <Search
-                className="h-8 w-8 text-white"
-                strokeWidth={2.6}
-                aria-hidden
-              />
-              <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
-                Find helpers
-              </span>
-              {hireLiveHelperCount > 0 ? (
-                <span className={badgeClass}>
-                  {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
-                </span>
-              ) : null}
-            </button>
+        <>
+          <div className={dockClass}>
             <button
               type="button"
               onClick={() => {
@@ -345,79 +474,56 @@ export function DiscoverHomeActionFirst({
                 navigate(createRequestPath);
                 recordFirstMeaningfulAction("home_primary_create_request");
               }}
-              className={cn(
-                boxClass,
-                postLivePulseClass,
-                "border-transparent bg-indigo-600 text-white shadow-indigo-500/20",
-              )}
+              className={hireFabClass}
               aria-label="Request help now"
             >
-              <Zap className="h-8 w-8 text-white" strokeWidth={2.6} aria-hidden />
-              <span className="text-center text-[13px] font-black uppercase leading-snug tracking-[0.08em]">
-                Request help now
-              </span>
+              <Zap className="h-7 w-7" strokeWidth={2.5} aria-hidden />
             </button>
             <button
               type="button"
-              onClick={() => setMyRequestsOpen(true)}
-              className={boxClass}
-              aria-label={`My requests${
-                myRequestsCount > 0 ? ` (${myRequestsCount})` : ""
-              }`}
+              onClick={() => setQuickMoreOpen(true)}
+              className={moreBtnClass}
+              aria-label="More discover actions"
+              aria-expanded={quickMoreOpen}
             >
-              <ClipboardList
-                className="h-8 w-8 text-white"
-                strokeWidth={2.6}
-                aria-hidden
-              />
-              <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
-                Requests
-              </span>
-              {myRequestsCount > 0 ? (
-                <span className={badgeClass}>
-                  {myRequestsCount > 9 ? "9+" : myRequestsCount}
+              <MoreHorizontal className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+              {hireMoreMenuTotal > 0 ? (
+                <span className={moreMenuCountBadge} aria-hidden>
+                  {hireMoreMenuTotal > 99 ? "99+" : hireMoreMenuTotal}
                 </span>
               ) : null}
             </button>
           </div>
-        </div>
+          {quickMoreSheet}
+        </>
       );
     }
 
+    const workFabIsBrowse = isInActive24hGoLiveWindow;
+
     return (
-      <div
-        className={cn(
-          "pointer-events-auto fixed inset-x-0 z-[140] md:hidden",
-          bottomOffset,
-        )}
-      >
-        <div className="mx-auto flex w-full max-w-md justify-center gap-2 px-3 sm:max-w-lg">
-          <button
-            type="button"
-            onClick={() => {
-              trackEvent("discover_actions_browse_requests", { mode: homeMode });
-              navigateToWorkBrowseRequests(navigate, profile);
-            }}
-            className={boxClass}
-            aria-label={`Find posts${
-              workLivePostCount > 0 ? ` (${workLivePostCount})` : ""
-            }`}
-          >
-            <UsersRound
-              className="h-8 w-8 text-white"
-              strokeWidth={2.6}
-              aria-hidden
-            />
-            <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
-              Find posts
-            </span>
-            {workLivePostCount > 0 ? (
-              <span className={badgeClass}>
-                {workLivePostCount > 99 ? "99+" : workLivePostCount}
-              </span>
-            ) : null}
-          </button>
-          {isInActive24hGoLiveWindow ? null : (
+      <>
+        <div className={dockClass}>
+          {workFabIsBrowse ? (
+            <button
+              type="button"
+              onClick={() => {
+                trackEvent("discover_actions_browse_requests", { mode: homeMode });
+                navigateToWorkBrowseRequests(navigate, profile);
+              }}
+              className={workBrowseFabClass}
+              aria-label={`Find posts${
+                workLivePostCount > 0 ? ` (${workLivePostCount})` : ""
+              }`}
+            >
+              <UsersRound className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+              {workLivePostCount > 0 ? (
+                <span className={moreMenuCountBadge}>
+                  {workLivePostCount > 99 ? "99+" : workLivePostCount}
+                </span>
+              ) : null}
+            </button>
+          ) : (
             <button
               type="button"
               onClick={() => {
@@ -426,47 +532,29 @@ export function DiscoverHomeActionFirst({
                 navigate(workPrimaryPath);
                 recordFirstMeaningfulAction("home_primary_work");
               }}
-              className={cn(
-                boxClass,
-                goLivePulseClass,
-                "border-transparent bg-emerald-600 text-white",
-              )}
+              className={workGoLiveFabClass}
               aria-label="Go live"
             >
-              <PlayCircle
-                className="h-8 w-8 text-white"
-                strokeWidth={2.6}
-                aria-hidden
-              />
-              <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
-                Go live
-              </span>
+              <PlayCircle className="h-7 w-7" strokeWidth={2.5} aria-hidden />
             </button>
           )}
           <button
             type="button"
-            onClick={() => setPendingWorkRequestsOpen(true)}
-            className={boxClass}
-            aria-label={`Pending${
-              pendingWorkRequestsCount > 0 ? ` (${pendingWorkRequestsCount})` : ""
-            }`}
+            onClick={() => setQuickMoreOpen(true)}
+            className={moreBtnClass}
+            aria-label="More discover actions"
+            aria-expanded={quickMoreOpen}
           >
-            <Clock
-              className="h-8 w-8 text-white"
-              strokeWidth={2.6}
-              aria-hidden
-            />
-            <span className="text-center text-[13px] font-black uppercase leading-none tracking-[0.09em]">
-              Pending
-            </span>
-            {pendingWorkRequestsCount > 0 ? (
-              <span className={badgeClass}>
-                {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
+            <MoreHorizontal className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+            {workMoreMenuTotal > 0 ? (
+              <span className={moreMenuCountBadge} aria-hidden>
+                {workMoreMenuTotal > 99 ? "99+" : workMoreMenuTotal}
               </span>
             ) : null}
           </button>
         </div>
-      </div>
+        {quickMoreSheet}
+      </>
     );
   }
 
@@ -536,7 +624,7 @@ export function DiscoverHomeActionFirst({
           >
             <ClipboardList className="h-6 w-6 text-[#7B61FF]" strokeWidth={2.6} aria-hidden />
             <span className="text-[12px] font-black uppercase tracking-wide">
-              Requests
+              My requests
             </span>
             {myRequestsCount > 0 ? (
               <span className={badgeSm}>

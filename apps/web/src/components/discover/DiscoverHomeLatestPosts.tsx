@@ -41,6 +41,7 @@ type RawLatestPostRow = {
   expires_at: string | null;
   author_id: string;
   author: unknown;
+  community_post_images?: PostImage[] | PostImage | null;
 };
 
 /** Supabase may return embedded `profiles` as one object or a one-element array */
@@ -109,12 +110,17 @@ export function DiscoverHomeLatestPosts() {
               id,
               full_name,
               photo_url
-            )
+            ),
+            community_post_images ( post_id, image_url, sort_order )
           `,
         )
         .eq("status", "active")
         .gt("expires_at", nowIso)
         .order("created_at", { ascending: false })
+        .order("sort_order", {
+          foreignTable: "community_post_images",
+          ascending: true,
+        })
         .limit(6);
 
       if (cancelled) return;
@@ -125,35 +131,27 @@ export function DiscoverHomeLatestPosts() {
         return;
       }
 
-      const posts: FeedPost[] = (data ?? []).map((row) =>
-        normalizeFeedPostRow(row as RawLatestPostRow),
-      );
+      const coverByPost = new Map<string, string>();
+      const posts: FeedPost[] = (data ?? []).map((row) => {
+        const r = row as RawLatestPostRow;
+        const imgsRaw = r.community_post_images;
+        const imgs = Array.isArray(imgsRaw)
+          ? imgsRaw
+          : imgsRaw
+            ? [imgsRaw as PostImage]
+            : [];
+        for (const img of imgs) {
+          if (img?.image_url) {
+            coverByPost.set(r.id, img.image_url);
+            break;
+          }
+        }
+        return normalizeFeedPostRow(r);
+      });
       if (posts.length === 0) {
         setRows([]);
         setLoading(false);
         return;
-      }
-
-      const postIds = posts.map((p) => p.id);
-      const { data: imgs, error: imgErr } = await supabase
-        .from("community_post_images")
-        .select("post_id, image_url, sort_order")
-        .in("post_id", postIds)
-        .order("sort_order", { ascending: true });
-
-      if (cancelled) return;
-      if (imgErr) {
-        console.warn(
-          "[DiscoverHomeLatestPosts] community_post_images:",
-          imgErr,
-        );
-      }
-
-      const coverByPost = new Map<string, string>();
-      for (const img of (imgs ?? []) as PostImage[]) {
-        if (!coverByPost.has(img.post_id) && img.image_url) {
-          coverByPost.set(img.post_id, img.image_url);
-        }
       }
 
       const merged: PostCardRow[] = posts.map((p) => ({

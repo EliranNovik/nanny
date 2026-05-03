@@ -25,9 +25,11 @@ export type DiscoverLiveAvatarEntry = {
 export function useDiscoverFeed() {
   return useQuery({
     queryKey: queryKeys.discoverFeed(),
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_community_feed_public", {
         p_category: null,
+        p_limit: 750,
       });
 
       if (error) throw error;
@@ -64,6 +66,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
 
   return useQuery({
     queryKey: qk,
+    staleTime: 90 * 1000,
     queryFn: async () => {
       const nowIso = new Date().toISOString();
       const categoryIds = Array.from(
@@ -102,11 +105,13 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
 
       const next: Record<string, DiscoverLiveAvatarEntry[]> = {};
 
-      const allHelperIds = Array.from(new Set((data || []).map((r) => r.user_id).filter(Boolean)));
+      const allHelperIds = Array.from(
+        new Set((data || []).map((r) => r.user_id).filter(Boolean)),
+      ) as string[];
       const replyStats: Record<string, { avg_seconds: number; sample_count: number }> = {};
       if (allHelperIds.length > 0) {
         const { data: statRows } = await supabase.rpc("get_helper_chat_response_stats", {
-          p_helper_ids: allHelperIds as string[],
+          p_helper_ids: allHelperIds,
         });
         if (Array.isArray(statRows)) {
           for (const sr of statRows) {

@@ -354,25 +354,25 @@ export function BottomNav() {
           className={cn(
             variant === "mobile"
               ? "pointer-events-auto flex min-h-11 max-w-[min(13.5rem,calc(100vw-7rem))] items-center gap-1 rounded-xl py-1 pl-1 pr-1.5 text-left text-slate-900 transition-all hover:opacity-90 active:scale-[0.98] dark:text-white"
-              : "flex max-w-[min(16rem,28vw)] min-h-9 items-center gap-1.5 rounded-xl py-1 pl-1 pr-2 text-left text-slate-900 transition hover:opacity-90 dark:text-white",
+              : "flex max-w-[min(16rem,28vw)] min-h-10 items-center gap-1.5 rounded-xl py-1 pl-1 pr-2 text-left text-slate-900 transition hover:opacity-90 dark:text-white",
           )}
           aria-label={displayCity ? `Current location: ${displayCity}. Tap to change.` : "Set your location"}
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center relative">
+          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center">
             <MapPin
-              className="h-[1.05rem] w-[1.05rem] text-slate-900 dark:text-white"
+              className="h-5 w-5 text-slate-900 dark:text-white"
               strokeWidth={2.25}
               aria-hidden
             />
           </span>
-          <span className="min-w-0 flex-1 truncate text-[13px] leading-tight sm:text-sm">
+          <span className="min-w-0 flex-1 truncate text-[14px] leading-tight sm:text-[15px]">
             <span className="font-bold text-slate-900 dark:text-white">{primary}</span>
             {displayCountry && (
               <span className="font-normal text-slate-600 dark:text-slate-400">, {displayCountry}</span>
             )}
           </span>
           <ChevronDown
-            className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400"
+            className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
             strokeWidth={2.25}
             aria-hidden
           />
@@ -755,10 +755,10 @@ export function BottomNav() {
             <button
               type="button"
               onClick={handleHeaderBack}
-              className="flex h-9 w-9 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
+              className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
               aria-label="Back"
             >
-              <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+              <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
             </button>
           )}
         </div>
@@ -775,10 +775,10 @@ export function BottomNav() {
               <button
                 type="button"
                 onClick={() => setDesktopDiscoverSearchOpen(false)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label="Close search"
               >
-                <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+                <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
               </button>
             </div>
           ) : isDiscoverHome ? (
@@ -793,10 +793,10 @@ export function BottomNav() {
               <button
                 type="button"
                 onClick={() => setDesktopDiscoverSearchOpen(true)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label="Open search"
               >
-                <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+                <Search className="h-6 w-6" strokeWidth={2.25} aria-hidden />
               </button>
             </div>
           ) : (
@@ -821,10 +821,10 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative rounded-xl p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90 md:p-2.5"
+            className="relative rounded-xl p-2.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90 md:p-3"
             aria-label="Notifications"
           >
-            <Bell className="h-5 w-5 md:h-6 md:w-6" />
+            <Bell className="h-6 w-6 md:h-7 md:w-7" />
             {notificationBadgeCount > 0 && (
               <Badge
                 variant="destructive"
@@ -871,7 +871,7 @@ export function BottomNav() {
       }}
       aria-hidden
     >
-      <div className="h-9 w-full" />
+      <div className="h-10 w-full" />
     </div>
   );
 
@@ -926,14 +926,14 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
-            className="p-2 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
+            className="p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
             aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
             aria-expanded={mobileSearchOpen}
           >
             {mobileSearchOpen ? (
-              <X className="h-6 w-6" strokeWidth={2} />
+              <X className="h-7 w-7" strokeWidth={2} />
             ) : (
-              <Search className="h-6 w-6" strokeWidth={2} />
+              <Search className="h-7 w-7" strokeWidth={2} />
             )}
           </button>
         </div>
@@ -941,10 +941,10 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative shrink-0 p-2 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
+            className="relative shrink-0 p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
             aria-label="Notifications"
           >
-            <Bell className="h-6 w-6" strokeWidth={2} />
+            <Bell className="h-7 w-7" strokeWidth={2} />
             {notificationBadgeCount > 0 && (
               <Badge
                 variant="destructive"
@@ -962,7 +962,7 @@ export function BottomNav() {
 
   /** Mobile: back top-left on every page (plain icon on the strip, no pill). */
   const mobileUniversalBackBtnClass =
-    "pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
+    "pointer-events-auto flex h-12 w-12 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
 
   const MobileLeftHeaderCluster = (
     <div
@@ -1030,7 +1030,7 @@ export function BottomNav() {
           className={mobileUniversalBackBtnClass}
           aria-label="Back"
         >
-          <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
+          <ChevronLeft className="h-7 w-7" strokeWidth={2.25} />
         </button>
       )}
     </div>

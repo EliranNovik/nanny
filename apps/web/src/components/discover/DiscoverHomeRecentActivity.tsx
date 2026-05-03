@@ -138,8 +138,18 @@ export function DiscoverHomeRecentActivity({
         community_post_id: string;
       }[] = [];
 
+      const hireSentPromise =
+        viewerRole === "client"
+          ? supabase
+              .from("community_post_hire_interests")
+              .select("id, created_at, status, community_post_id")
+              .eq("client_id", uid)
+              .order("created_at", { ascending: false })
+              .limit(12)
+          : Promise.resolve({ data: [] as typeof hireSentRaw, error: null });
+
       if (myPostIds.length > 0) {
-        const [cRes, hRes] = await Promise.all([
+        const [cRes, hRes, sRes] = await Promise.all([
           supabase
             .from("community_post_comments")
             .select("id, body, created_at, author_id, post_id")
@@ -152,6 +162,7 @@ export function DiscoverHomeRecentActivity({
             .in("community_post_id", myPostIds)
             .order("created_at", { ascending: false })
             .limit(12),
+          hireSentPromise,
         ]);
         if (cRes.error)
           console.warn("[DiscoverHomeRecentActivity] comments", cRes.error);
@@ -162,15 +173,11 @@ export function DiscoverHomeRecentActivity({
             hRes.error,
           );
         else hireReceivedRaw = (hRes.data ?? []) as typeof hireReceivedRaw;
-      }
-
-      if (viewerRole === "client") {
-        const sRes = await supabase
-          .from("community_post_hire_interests")
-          .select("id, created_at, status, community_post_id")
-          .eq("client_id", uid)
-          .order("created_at", { ascending: false })
-          .limit(12);
+        if (sRes.error)
+          console.warn("[DiscoverHomeRecentActivity] hire sent", sRes.error);
+        else hireSentRaw = (sRes.data ?? []) as typeof hireSentRaw;
+      } else {
+        const sRes = await hireSentPromise;
         if (sRes.error)
           console.warn("[DiscoverHomeRecentActivity] hire sent", sRes.error);
         else hireSentRaw = (sRes.data ?? []) as typeof hireSentRaw;
