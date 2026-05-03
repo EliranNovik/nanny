@@ -4,10 +4,9 @@ import { formatDistanceToNow } from "date-fns";
 import {
   Heart,
   MessageCircle,
-  Share2,
+  Send,
   Plus,
   X,
-  Send,
   Image as ImageIcon,
   Video as VideoIcon,
   Loader2,
@@ -19,6 +18,7 @@ import {
   BadgeCheck,
   VolumeX,
   Volume2,
+  Bookmark,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -66,6 +66,10 @@ export type ProfilePost = {
   author?: ProfileSnippet;
   like_count: number;
   comment_count: number;
+  /** Total share-button taps recorded (see profile_post_shares). */
+  share_click_count: number;
+  /** Distinct logged-in users who tapped share at least once. */
+  share_distinct_user_count: number;
   liked_by_me: boolean;
   tagged_profiles: ProfileSnippet[];
   source: "post"; // discriminator
@@ -82,6 +86,8 @@ export type AvailabilityPost = {
   author?: ProfileSnippet;
   like_count: number;
   comment_count: number;
+  share_click_count: number;
+  share_distinct_user_count: number;
   liked_by_me: boolean;
   tagged_profiles: ProfileSnippet[];
   source: "availability"; // discriminator
@@ -725,6 +731,7 @@ function PostCard({
   onDeleted,
   globalVideoUnmuted,
   onGlobalVideoUnmutedChange,
+  refreshPostShareStats,
 }: {
   post: FeedPost;
   currentUserId: string | null;
@@ -733,9 +740,15 @@ function PostCard({
   onDeleted: (postId: string) => void;
   globalVideoUnmuted: boolean;
   onGlobalVideoUnmutedChange: (next: boolean) => void;
+  refreshPostShareStats: (postId: string) => void;
 }) {
   const { addToast } = useToast();
+  const { profile: viewerProfile } = useAuth();
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [authorSaved, setAuthorSaved] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [saveNoticeOpen, setSaveNoticeOpen] = useState(false);
+  const saveNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [commentCount, setCommentCount] = useState(post.comment_count);
   const [liking, setLiking] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -754,6 +767,63 @@ function PostCard({
     post.media_type && post.storage_path
       ? publicProfileMediaPublicUrl(post.storage_path)
       : null;
+
+  const canSaveAuthor =
+    Boolean(currentUserId) && post.author_id !== currentUserId;
+
+  useEffect(() => {
+    if (!canSaveAuthor || !currentUserId) {
+      setAuthorSaved(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", currentUserId)
+        .eq("favorite_user_id", post.author_id)
+        .maybeSingle();
+      if (!cancelled) setAuthorSaved(!!data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canSaveAuthor, currentUserId, post.author_id]);
+
+  const savedProfilesHref =
+    viewerProfile?.role === "freelancer"
+      ? "/freelancer/profile/saved"
+      : "/client/profile/saved";
+
+  function clearSaveNoticeTimer() {
+    if (saveNoticeTimerRef.current) {
+      clearTimeout(saveNoticeTimerRef.current);
+      saveNoticeTimerRef.current = null;
+    }
+  }
+
+  useEffect(() => {
+    if (!saveNoticeOpen) {
+      clearSaveNoticeTimer();
+      return;
+    }
+    clearSaveNoticeTimer();
+    saveNoticeTimerRef.current = setTimeout(() => {
+      setSaveNoticeOpen(false);
+      saveNoticeTimerRef.current = null;
+    }, 4800);
+    return () => {
+      clearSaveNoticeTimer();
+    };
+  }, [saveNoticeOpen]);
+
+  const saveBadgeClass = cn(
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-white shadow-lg backdrop-blur-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent disabled:opacity-50",
+    authorSaved
+      ? "border-amber-400/35 bg-black/55 hover:bg-black/65"
+      : "border-white/15 bg-black/40 hover:bg-black/55",
+  );
 
   const isLandscape = mediaOrientation === "landscape";
   // Mobile media sizing:
@@ -812,6 +882,66 @@ function PostCard({
     }
   }
 
+  async function undoSavedProfile(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!currentUserId) return;
+    clearSaveNoticeTimer();
+    setSaveNoticeOpen(false);
+    setFavoriteBusy(true);
+    try {
+      const { error } = await supabase
+        .from("profile_favorites")
+        .delete()
+        .eq("user_id", currentUserId)
+        .eq("favorite_user_id", post.author_id);
+      if (error) throw error;
+      setAuthorSaved(false);
+      addToast({ title: "Removed from saved profiles", variant: "success" });
+    } catch (err) {
+      console.error("[PostCard] undoSavedProfile", err);
+      addToast({ title: "Could not undo", variant: "error" });
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
+
+  async function toggleSaveAuthor(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!currentUserId) {
+      addToast({ title: "Sign in to save profiles", variant: "warning" });
+      return;
+    }
+    if (!canSaveAuthor) return;
+    setFavoriteBusy(true);
+    try {
+      if (authorSaved) {
+        clearSaveNoticeTimer();
+        setSaveNoticeOpen(false);
+        const { error } = await supabase
+          .from("profile_favorites")
+          .delete()
+          .eq("user_id", currentUserId)
+          .eq("favorite_user_id", post.author_id);
+        if (error) throw error;
+        setAuthorSaved(false);
+        addToast({ title: "Removed from saved profiles", variant: "success" });
+      } else {
+        const { error } = await supabase.from("profile_favorites").insert({
+          user_id: currentUserId,
+          favorite_user_id: post.author_id,
+        });
+        if (error) throw error;
+        setAuthorSaved(true);
+        setSaveNoticeOpen(true);
+      }
+    } catch (err) {
+      console.error("[PostCard] toggleSaveAuthor", err);
+      addToast({ title: "Could not update", variant: "error" });
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
+
   async function handleShare() {
     const url = window.location.href;
     try {
@@ -822,8 +952,21 @@ function PostCard({
         addToast({ title: "Link copied!", variant: "success" });
       }
     } catch {
-      // ignore cancelled share
+      // User cancelled native share or clipboard failed
+      return;
     }
+
+    if (post.source !== "post" || !currentUserId) return;
+
+    const { error } = await supabase.from("profile_post_shares").insert({
+      post_id: post.id,
+      user_id: currentUserId,
+    });
+    if (error) {
+      console.error("[PostCard] profile_post_shares insert", error);
+      return;
+    }
+    void refreshPostShareStats(post.id);
   }
 
   async function handleDelete() {
@@ -983,10 +1126,34 @@ function PostCard({
             className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-12 bg-gradient-to-b from-black/35 via-black/12 to-transparent"
             aria-hidden
           />
-          <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between gap-3 p-3">
+          {canSaveAuthor ? (
+            <button
+              type="button"
+              disabled={favoriteBusy}
+              onClick={(e) => void toggleSaveAuthor(e)}
+              title={authorSaved ? "Remove from saved profiles" : "Save profile"}
+              aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
+              aria-pressed={authorSaved}
+              className={cn("pointer-events-auto absolute right-3 top-3 z-[7]", saveBadgeClass)}
+            >
+              {favoriteBusy ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+              ) : (
+                <Bookmark
+                  className={cn(
+                    "h-5 w-5 drop-shadow-sm",
+                    authorSaved && "fill-amber-300 text-amber-200",
+                  )}
+                  strokeWidth={authorSaved ? 0 : 2}
+                  aria-hidden
+                />
+              )}
+            </button>
+          ) : null}
+          <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between gap-2 p-2.5 md:p-3">
             <Link
               to={`/profile/${post.author_id}`}
-              className="group pointer-events-auto inline-flex min-w-0 items-center gap-2 rounded-full pr-2 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              className="group pointer-events-auto inline-flex min-w-0 items-center gap-1.5 rounded-full pr-1.5 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               aria-label={`View ${authorName} profile`}
               onClick={(e) => e.stopPropagation()}
             >
@@ -1011,7 +1178,7 @@ function PostCard({
                   ) : null}
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <time className="text-[15px] font-normal tabular-nums tracking-tight text-white/90 drop-shadow-sm">
+                  <time className="text-[12px] font-semibold tabular-nums tracking-tight text-white/90 drop-shadow-sm">
                     {postedLabel}
                   </time>
                   {isSource ? (
@@ -1124,42 +1291,68 @@ function PostCard({
               }
             }}
           />
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              const el = videoRef.current;
-              if (!el) return;
-              const nextMuted = !el.muted;
-              onGlobalVideoUnmutedChange(!nextMuted);
-              el.muted = nextMuted;
-              if (!nextMuted) {
-                const p = el.play();
-                if (p && typeof (p as Promise<void>).catch === "function") {
-                  (p as Promise<void>).catch(() => {
-                    /* ignore */
-                  });
+          <div className="pointer-events-auto absolute right-3 top-3 z-[7] flex items-center gap-2">
+            {canSaveAuthor ? (
+              <button
+                type="button"
+                disabled={favoriteBusy}
+                onClick={(e) => void toggleSaveAuthor(e)}
+                title={authorSaved ? "Remove from saved profiles" : "Save profile"}
+                aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
+                aria-pressed={authorSaved}
+                className={saveBadgeClass}
+              >
+                {favoriteBusy ? (
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                ) : (
+                  <Bookmark
+                    className={cn(
+                      "h-5 w-5 drop-shadow-sm",
+                      authorSaved && "fill-amber-300 text-amber-200",
+                    )}
+                    strokeWidth={authorSaved ? 0 : 2}
+                    aria-hidden
+                  />
+                )}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const el = videoRef.current;
+                if (!el) return;
+                const nextMuted = !el.muted;
+                onGlobalVideoUnmutedChange(!nextMuted);
+                el.muted = nextMuted;
+                if (!nextMuted) {
+                  const p = el.play();
+                  if (p && typeof (p as Promise<void>).catch === "function") {
+                    (p as Promise<void>).catch(() => {
+                      /* ignore */
+                    });
+                  }
                 }
-              }
-            }}
-            className="pointer-events-auto absolute right-3 top-3 z-[6] flex h-10 w-10 items-center justify-center rounded-full bg-black/35 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/15 hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-            aria-label={videoUnmutedByUser ? "Mute video" : "Unmute video"}
-            title={videoUnmutedByUser ? "Mute" : "Unmute"}
-          >
-            {videoUnmutedByUser ? (
-              <Volume2 className="h-5 w-5" aria-hidden />
-            ) : (
-              <VolumeX className="h-5 w-5" aria-hidden />
-            )}
-          </button>
+              }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/35 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/15 transition-colors hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              aria-label={videoUnmutedByUser ? "Mute video" : "Unmute video"}
+              title={videoUnmutedByUser ? "Mute" : "Unmute"}
+            >
+              {videoUnmutedByUser ? (
+                <Volume2 className="h-5 w-5" aria-hidden />
+              ) : (
+                <VolumeX className="h-5 w-5" aria-hidden />
+              )}
+            </button>
+          </div>
           <div
             className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-12 bg-gradient-to-b from-black/35 via-black/12 to-transparent"
             aria-hidden
           />
-          <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between gap-3 p-3">
+          <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between gap-2 p-2.5 md:p-3">
             <Link
               to={`/profile/${post.author_id}`}
-              className="group pointer-events-auto inline-flex min-w-0 items-center gap-2 rounded-full pr-2 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              className="group pointer-events-auto inline-flex min-w-0 items-center gap-1.5 rounded-full pr-1.5 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               aria-label={`View ${authorName} profile`}
               onClick={(e) => e.stopPropagation()}
             >
@@ -1184,7 +1377,7 @@ function PostCard({
                   ) : null}
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <time className="text-[15px] font-normal tabular-nums tracking-tight text-white/90 drop-shadow-sm">
+                  <time className="text-[12px] font-semibold tabular-nums tracking-tight text-white/90 drop-shadow-sm">
                     {postedLabel}
                   </time>
                   {isSource ? (
@@ -1252,6 +1445,60 @@ function PostCard({
           ) : null}
         </div>
       )}
+
+      {/* Like / comment / share — directly under media (community feed style) */}
+      {showHeaderOnMedia ? (
+        <div className="flex items-center gap-0 bg-transparent px-2 pb-0 pt-0.5 md:px-3 md:pt-1 md:pb-0">
+          <button
+            type="button"
+            disabled={liking || post.source === "availability"}
+            onClick={() => void toggleLike()}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold transition-all",
+              post.liked_by_me
+                ? "text-rose-500"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-rose-500",
+              (liking || post.source === "availability") && "pointer-events-none opacity-50",
+            )}
+            aria-label={post.liked_by_me ? "Unlike" : "Like"}
+          >
+            <Heart
+              className={cn("h-5 w-5 transition-transform", post.liked_by_me && "scale-110 fill-rose-500")}
+              strokeWidth={2.75}
+            />
+            {post.like_count > 0 && (
+              <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCommentsOpen(true)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600"
+            aria-label="Comments"
+          >
+            <MessageCircle className="h-5 w-5" strokeWidth={2.75} />
+            {commentCount > 0 && (
+              <span className="min-w-[1ch] tabular-nums">{commentCount}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            title={
+              post.source === "post"
+                ? `${post.share_click_count} share taps · ${post.share_distinct_user_count} people`
+                : undefined
+            }
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600"
+            aria-label="Share"
+          >
+            <Send className="h-5 w-5" strokeWidth={2.75} />
+            {post.source === "post" && post.share_click_count > 0 ? (
+              <span className="min-w-[1ch] tabular-nums">{post.share_click_count}</span>
+            ) : null}
+          </button>
+        </div>
+      ) : null}
 
       {/* Full-size video modal */}
       {mediaUrl && post.media_type === "video" ? (
@@ -1327,7 +1574,12 @@ function PostCard({
 
       {/* Caption */}
       {post.caption?.trim() && (
-        <div className="px-4 pt-2 pb-0 md:pt-3 md:pb-1">
+        <div
+          className={cn(
+            "px-4 pb-0",
+            showHeaderOnMedia ? "pt-0 md:pt-0.5 md:pb-1" : "pt-2 md:pt-3 md:pb-1",
+          )}
+        >
           <div className="flex items-end justify-between gap-3">
             <button
               type="button"
@@ -1336,7 +1588,7 @@ function PostCard({
               aria-label="Open full post text"
             >
               <p className="line-clamp-2 text-[15px] leading-relaxed text-foreground">
-                <span className="font-black">{authorName}</span>{" "}
+                <span className="font-black lowercase">{authorName}</span>{" "}
                 <span className="mx-1 inline-block align-middle text-[12px] text-muted-foreground">•</span>{" "}
                 {renderCaptionWithMentions(post.caption)}
               </p>
@@ -1375,54 +1627,59 @@ function PostCard({
         </div>
       )}
 
-      {/* Action bar */}
-      <div className="mt-0 flex items-center gap-0 bg-transparent px-2 py-1 md:mt-1.5 md:py-2">
-        {/* Like */}
-        <button
-          type="button"
-          disabled={liking || post.source === "availability"}
-          onClick={() => void toggleLike()}
-          className={cn(
-            "flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition-all",
-            post.liked_by_me
-              ? "text-rose-500"
-              : "text-muted-foreground hover:bg-muted/60 hover:text-rose-500",
-            (liking || post.source === "availability") && "opacity-50 pointer-events-none",
-          )}
-          aria-label={post.liked_by_me ? "Unlike" : "Like"}
-        >
-          <Heart
-            className={cn("h-5 w-5 transition-transform", post.liked_by_me && "fill-rose-500 scale-110")}
-            strokeWidth={2.75}
-          />
-          {post.like_count > 0 && (
-            <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
-          )}
-        </button>
-
-        {/* Comment */}
-        <button
-          type="button"
-          onClick={() => setCommentsOpen(true)}
-          className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted/60 hover:text-orange-600 transition-colors"
-          aria-label="Comments"
-        >
-          <MessageCircle className="h-5 w-5" strokeWidth={2.75} />
-          {commentCount > 0 && (
-            <span className="min-w-[1ch] tabular-nums">{commentCount}</span>
-          )}
-        </button>
-
-        {/* Share */}
-        <button
-          type="button"
-          onClick={() => void handleShare()}
-          className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted/60 hover:text-orange-600 transition-colors"
-          aria-label="Share"
-        >
-          <Share2 className="h-5 w-5" strokeWidth={2.75} />
-        </button>
-      </div>
+      {/* Action bar — below caption when there is no media header */}
+      {!showHeaderOnMedia ? (
+        <div className="mt-0 flex items-center gap-0 bg-transparent px-2 py-1 md:mt-1.5 md:py-2">
+          <button
+            type="button"
+            disabled={liking || post.source === "availability"}
+            onClick={() => void toggleLike()}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition-all",
+              post.liked_by_me
+                ? "text-rose-500"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-rose-500",
+              (liking || post.source === "availability") && "pointer-events-none opacity-50",
+            )}
+            aria-label={post.liked_by_me ? "Unlike" : "Like"}
+          >
+            <Heart
+              className={cn("h-5 w-5 transition-transform", post.liked_by_me && "scale-110 fill-rose-500")}
+              strokeWidth={2.75}
+            />
+            {post.like_count > 0 && (
+              <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCommentsOpen(true)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600"
+            aria-label="Comments"
+          >
+            <MessageCircle className="h-5 w-5" strokeWidth={2.75} />
+            {commentCount > 0 && (
+              <span className="min-w-[1ch] tabular-nums">{commentCount}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            title={
+              post.source === "post"
+                ? `${post.share_click_count} share taps · ${post.share_distinct_user_count} people`
+                : undefined
+            }
+            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600"
+            aria-label="Share"
+          >
+            <Send className="h-5 w-5" strokeWidth={2.75} />
+            {post.source === "post" && post.share_click_count > 0 ? (
+              <span className="min-w-[1ch] tabular-nums">{post.share_click_count}</span>
+            ) : null}
+          </button>
+        </div>
+      ) : null}
 
       {/* Comments dialog */}
       <CommentsDialog
@@ -1443,6 +1700,82 @@ function PostCard({
             });
         }}
       />
+
+      {saveNoticeOpen ? (
+        <div
+          className="fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-[260] flex justify-center px-4 pointer-events-none"
+          aria-live="polite"
+        >
+          <div className="pointer-events-auto w-full max-w-sm animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-300">
+            <div className="rounded-2xl border border-white/10 bg-black/75 p-4 text-white shadow-2xl backdrop-blur-xl ring-1 ring-white/10">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">
+                Saved to
+              </p>
+              <p className="mt-1 text-[15px] font-semibold leading-snug text-white/95">
+                <span className="inline-flex items-center gap-1 align-middle">
+                  <span className="font-bold text-white">{authorName}</span>
+                  {post.author?.is_verified ? (
+                    <BadgeCheck
+                      className="h-[18px] w-[18px] shrink-0"
+                      fill="#0ea5e9"
+                      color="#ffffff"
+                      aria-label="Verified account"
+                    />
+                  ) : null}
+                </span>
+                <span className="font-normal text-white/75">
+                  {" "}
+                  was added to your{" "}
+                  <Link
+                    to={savedProfilesHref}
+                    className="font-semibold text-amber-300/95 underline decoration-amber-400/50 underline-offset-2 hover:text-amber-200"
+                    onClick={() => {
+                      clearSaveNoticeTimer();
+                      setSaveNoticeOpen(false);
+                    }}
+                  >
+                    saved profiles
+                  </Link>
+                  .
+                </span>
+              </p>
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+                <Avatar className="h-11 w-11 shrink-0 ring-2 ring-white/15">
+                  <AvatarImage src={post.author?.photo_url ?? undefined} className="object-cover" alt="" />
+                  <AvatarFallback className="bg-white/10 text-sm font-bold text-white">
+                    {authorName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <p className="truncate text-sm font-bold tracking-tight">{authorName}</p>
+                    {post.author?.is_verified ? (
+                      <BadgeCheck
+                        className="h-[18px] w-[18px] shrink-0"
+                        fill="#0ea5e9"
+                        color="#ffffff"
+                        aria-label="Verified account"
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={favoriteBusy}
+                  className="w-full rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/12 hover:text-white"
+                  onClick={(e) => void undoSavedProfile(e)}
+                >
+                  Undo
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1752,6 +2085,34 @@ export function ProfilePostsFeed({
         );
       }
 
+      // 6b. Share tap + distinct sharer counts (batch RPC)
+      const shareStatsMap = new Map<
+        string,
+        { click: number; distinct: number }
+      >();
+      if (rawPosts.length > 0) {
+        const postIds = rawPosts.map((p) => p.id);
+        const { data: shareRows, error: shareErr } = await supabase.rpc(
+          "get_profile_post_share_stats",
+          { p_post_ids: postIds },
+        );
+        if (shareErr) {
+          console.warn("[ProfilePostsFeed] get_profile_post_share_stats", shareErr);
+        } else {
+          for (const row of shareRows ?? []) {
+            const r = row as {
+              post_id: string;
+              click_count: number | string;
+              distinct_user_count: number | string;
+            };
+            shareStatsMap.set(r.post_id, {
+              click: Number(r.click_count),
+              distinct: Number(r.distinct_user_count),
+            });
+          }
+        }
+      }
+
       // 7. Build profile posts
       const profilePostsFeed: ProfilePost[] = rawPosts.map((p) => ({
         id: p.id,
@@ -1764,6 +2125,8 @@ export function ProfilePostsFeed({
         author: profileMap.get(p.author_id),
         like_count: likeCountMap.get(p.id) ?? 0,
         comment_count: commentCountMap.get(p.id) ?? 0,
+        share_click_count: shareStatsMap.get(p.id)?.click ?? 0,
+        share_distinct_user_count: shareStatsMap.get(p.id)?.distinct ?? 0,
         liked_by_me: myLikedPostIds.has(p.id),
         tagged_profiles: p.tagged_user_ids
           .map((id) => profileMap.get(id))
@@ -1783,6 +2146,8 @@ export function ProfilePostsFeed({
         author: profileMap.get(r.author_id as string),
         like_count: 0,
         comment_count: 0,
+        share_click_count: 0,
+        share_distinct_user_count: 0,
         liked_by_me: false,
         tagged_profiles: [],
         source: "availability",
@@ -1837,6 +2202,40 @@ export function ProfilePostsFeed({
   function handleDeleted(postId: string) {
     setPosts((prev) => prev.filter((p) => p.id !== postId));
   }
+
+  const refreshPostShareStats = useCallback(
+    async (postId: string) => {
+      const { data, error } = await supabase.rpc(
+        "get_profile_post_share_stats",
+        { p_post_ids: [postId] },
+      );
+      if (error) {
+        console.error("[ProfilePostsFeed] refreshPostShareStats", error);
+        return;
+      }
+      const row = (data ?? [])[0] as
+        | {
+            post_id: string;
+            click_count: number | string;
+            distinct_user_count: number | string;
+          }
+        | undefined;
+      const click = Number(row?.click_count ?? 0);
+      const distinct = Number(row?.distinct_user_count ?? 0);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId && p.source === "post"
+            ? {
+                ...p,
+                share_click_count: click,
+                share_distinct_user_count: distinct,
+              }
+            : p,
+        ),
+      );
+    },
+    [supabase],
+  );
 
   if (loading) {
     return (
@@ -1924,6 +2323,7 @@ export function ProfilePostsFeed({
             onDeleted={handleDeleted}
             globalVideoUnmuted={globalVideoUnmuted}
             onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
+            refreshPostShareStats={refreshPostShareStats}
           />
         ))
       )}

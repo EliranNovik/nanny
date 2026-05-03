@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+  type ReactNode,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiPost } from "@/lib/api";
@@ -6,11 +14,11 @@ import { useToast } from "@/components/ui/toast";
 import { queryKeys } from "@/hooks/data/keys";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
@@ -40,7 +48,10 @@ import { sendKnockMessage } from "@/lib/knockMessage";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  ArrowDownCircle,
+  ArrowUpCircle,
   BellRing,
+  Check,
   ChevronDown,
   ChevronRight,
   ClipboardList,
@@ -67,6 +78,8 @@ import {
   DISCOVER_STROKE,
   discoverIcon,
 } from "@/components/discover/discoverHomeIcons";
+
+const JobMapLazy = lazy(() => import("@/components/JobMap"));
 
 /** One full row of cards on desktop (md:grid-cols-5); mobile strip stays compact. */
 const MAX = 5;
@@ -138,6 +151,8 @@ type WorkRowItem = {
   jobPhotoUrls: string[];
   /** job_requests.notes — client request notes */
   jobNotes: string | null;
+  /** Raw `job_requests.service_details` (pickup/delivery addresses, coords, etc.) */
+  serviceDetails: Record<string, unknown> | null;
 };
 
 type HireStripItem = {
@@ -159,6 +174,20 @@ type HireStripItem = {
   is_verified: boolean | null;
   categoryIcon: ReactNode;
 };
+
+/** Match `OpenJobRequestMatchCard` decline / accept round actions (discover request sheet). */
+const workStripRoundActionBtn = cn(
+  "flex items-center justify-center rounded-full shadow-xl transition-all active:scale-90",
+  "ring-1 ring-inset disabled:opacity-50 disabled:pointer-events-none",
+);
+const workStripAcceptRoundBtn = cn(
+  workStripRoundActionBtn,
+  "h-16 w-16 bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600 ring-emerald-400/20",
+);
+const workStripDeclineRoundBtn = cn(
+  workStripRoundActionBtn,
+  "h-14 w-14 bg-white text-rose-500 ring-zinc-200 hover:bg-rose-50 dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
+);
 
 /** Hire (“I need help”) = purple ring; work (“Help others”) = green ring — not per-category. */
 function stripAvatarRingClass(mode: "hire" | "work"): string {
@@ -244,17 +273,17 @@ function DarkMetaBadges({
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {showVerified ? (
-        <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-300">
+        <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
           Verified
         </span>
       ) : null}
       {posted ? (
-        <span className="max-w-[14rem] truncate rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-zinc-300 ring-1 ring-white/10">
+        <span className="max-w-[14rem] truncate rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-zinc-600 ring-1 ring-zinc-200 dark:bg-white/10 dark:text-zinc-300 dark:ring-white/10">
           {posted}
         </span>
       ) : null}
       {dist ? (
-        <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-zinc-200">
+        <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-zinc-700 dark:bg-white/10 dark:text-zinc-200">
           {dist}
         </span>
       ) : null}
@@ -472,7 +501,7 @@ function StripHelperContactDropdown({
         }}
         className={cn(
           "flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-600 py-3.5 text-[15px] font-bold tracking-tight text-white shadow-lg shadow-emerald-950/40 transition hover:bg-emerald-500 active:scale-[0.99]",
-          "outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]",
+          "outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#121212]",
         )}
       >
         Contact now
@@ -487,7 +516,7 @@ function StripHelperContactDropdown({
 
       {menuOpen ? (
         <div
-          className="absolute bottom-[calc(100%+0.4rem)] left-0 right-0 top-auto z-[100] overflow-hidden rounded-2xl border border-zinc-700 bg-[#1a1a1a] py-1.5 text-left shadow-xl ring-1 ring-black/40"
+          className="absolute bottom-[calc(100%+0.4rem)] left-0 right-0 top-auto z-[100] overflow-hidden rounded-2xl border border-zinc-200 bg-white py-1.5 text-left text-zinc-900 shadow-xl ring-1 ring-zinc-200/80 dark:border-zinc-700 dark:bg-[#1a1a1a] dark:text-zinc-100 dark:ring-black/40"
           role="menu"
         >
           {!knockStep ? (
@@ -496,7 +525,7 @@ function StripHelperContactDropdown({
                 <button
                   type="button"
                   role="menuitem"
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-zinc-100 transition hover:bg-white/10"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-zinc-900 transition hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
                   onClick={() => {
                     window.open(`https://wa.me/${digitsWa}`, "_blank");
                     setMenuOpen(false);
@@ -512,7 +541,7 @@ function StripHelperContactDropdown({
                 <button
                   type="button"
                   role="menuitem"
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-zinc-100 transition hover:bg-white/10"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-zinc-900 transition hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
                   onClick={() => {
                     window.open(`https://t.me/${tgUser}`, "_blank");
                     setMenuOpen(false);
@@ -528,10 +557,10 @@ function StripHelperContactDropdown({
                 type="button"
                 role="menuitem"
                 disabled={openingChat}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-zinc-100 transition hover:bg-white/10 disabled:opacity-50"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-100 dark:hover:bg-white/10"
                 onClick={() => void openInternalChat()}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#121212]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-white dark:text-[#121212]">
                   {openingChat ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   ) : (
@@ -543,7 +572,7 @@ function StripHelperContactDropdown({
               <button
                 type="button"
                 role="menuitem"
-                className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-zinc-100 transition hover:bg-white/10"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-zinc-900 transition hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
                 onClick={() => {
                   if (knockCategories.length === 0) {
                     addToast({
@@ -567,13 +596,13 @@ function StripHelperContactDropdown({
             <>
               <button
                 type="button"
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-semibold text-zinc-400 transition hover:bg-white/10 hover:text-zinc-200"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-semibold text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-200"
                 onClick={() => setKnockStep(false)}
               >
                 <ChevronRight className="h-4 w-4 rotate-180" aria-hidden />
                 Back
               </button>
-              <div className="border-t border-zinc-700/90 px-2 pb-1 pt-1">
+              <div className="border-t border-zinc-200 px-2 pb-1 pt-1 dark:border-zinc-700/90">
                 <p className="px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                   Choose category
                 </p>
@@ -584,11 +613,11 @@ function StripHelperContactDropdown({
                       type="button"
                       role="menuitem"
                       disabled={knockSending !== null}
-                      className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold text-zinc-200 transition hover:bg-white/10 disabled:opacity-50"
+                      className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold text-zinc-800 transition hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-200 dark:hover:bg-white/10"
                       onClick={() => void onKnockCategory(id)}
                     >
                       {knockSending === id ? (
-                        <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-zinc-400" aria-hidden />
+                        <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-zinc-500 dark:text-zinc-400" aria-hidden />
                       ) : null}
                       {labelForKnockCategoryId(id)}
                     </button>
@@ -728,15 +757,15 @@ function GSheetRow({
   hint?: ReactNode;
 }) {
   return (
-    <div className="flex w-full items-start gap-3 border-b border-zinc-800/90 py-3.5">
+    <div className="flex w-full items-start gap-3 border-b border-zinc-200/90 py-3.5 dark:border-zinc-800/90">
       <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-sky-500/15 text-sky-400"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-sky-500/12 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400"
         aria-hidden
       >
         <Icon className="h-[22px] w-[22px]" strokeWidth={2} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="text-[15px] font-medium leading-snug text-zinc-100">{children}</div>
+        <div className="text-[15px] font-medium leading-snug text-zinc-900 dark:text-zinc-100">{children}</div>
         {hint ? <div className="mt-0.5 text-[13px] leading-snug text-zinc-500">{hint}</div> : null}
       </div>
       {right ? <div className="shrink-0 pt-0.5">{right}</div> : null}
@@ -759,7 +788,7 @@ function DiscoverStripMediaCarousel({
         {slides.map((s) => (
           <div
             key={s.key}
-            className="relative h-[7.5rem] w-[10.5rem] shrink-0 snap-start overflow-hidden rounded-xl bg-zinc-800 ring-1 ring-white/10"
+            className="relative h-[7.5rem] w-[10.5rem] shrink-0 snap-start overflow-hidden rounded-xl bg-zinc-100 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-white/10"
           >
             {s.kind === "video" ? (
               <>
@@ -794,6 +823,30 @@ type StripDetailDialogProps = {
   variant: "hire" | "work";
 };
 
+/** Sheet header line for incoming requests — matches in-body copy tone. */
+function StripDialogWorkTitle({
+  displayName,
+  work,
+}: {
+  displayName: string;
+  work: WorkRowItem;
+}) {
+  const name = shortDisplayName(displayName) || displayName.trim() || "—";
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-x-1 gap-y-1">
+      <span className="font-bold text-zinc-900 dark:text-white">{name}</span>
+      <span className="font-medium text-zinc-600 dark:text-zinc-400">needs your help in </span>
+      <span className="inline-flex items-center gap-1.5 font-bold text-zinc-900 dark:text-white">
+        {categoryIconNode(
+          work.categoryId,
+          "h-[1.1rem] w-[1.1rem] shrink-0 stroke-[2.25] text-sky-600 sm:h-[1.25rem] sm:w-[1.25rem] dark:text-sky-400",
+        )}
+        <span>{work.title}</span>
+      </span>
+    </span>
+  );
+}
+
 function DiscoverRealtimeStripDetailDialog({
   open,
   onOpenChange,
@@ -806,6 +859,8 @@ function DiscoverRealtimeStripDetailDialog({
   const { addToast } = useToast();
   const queryClient = useQueryClient();
   const [workAction, setWorkAction] = useState<"accept" | "decline" | null>(null);
+  const [pickupMapOpen, setPickupMapOpen] = useState(false);
+  const sheetPullYRef = useRef<number | null>(null);
   const profileUserId = hire?.helperUserId ?? work?.clientId ?? null;
   const photoUrl = hire?.photo ?? work?.thumbUrl ?? null;
   const displayName = hire?.name ?? work?.name ?? "";
@@ -831,6 +886,31 @@ function DiscoverRealtimeStripDetailDialog({
       src,
     }));
   }, [work?.jobPhotoUrls, work?.jobId]);
+
+  const pickupDetail = useMemo(() => {
+    if (!work || work.categoryId !== "pickup_delivery") return null;
+    return parsePickupDeliveryDetails(work.serviceDetails);
+  }, [work]);
+
+  const pickupMapJob = useMemo(() => {
+    if (!work || work.categoryId !== "pickup_delivery") return null;
+    return workRowToMapJob(work);
+  }, [work]);
+
+  const showPickupMapPreview =
+    !!work &&
+    work.categoryId === "pickup_delivery" &&
+    pickupDetail != null &&
+    (pickupDetail.hasRouteCoords ||
+      Boolean((work.cityLine || "").trim() && work.cityLine !== "—"));
+
+  useEffect(() => {
+    if (!open) setPickupMapOpen(false);
+  }, [open]);
+
+  useEffect(() => {
+    setPickupMapOpen(false);
+  }, [work?.jobId]);
 
   const hireLiveCatIds = useMemo(() => {
     const fromDb = hireExtras.data?.liveCategories ?? [];
@@ -862,23 +942,35 @@ function DiscoverRealtimeStripDetailDialog({
     navigate(`/profile/${encodeURIComponent(profileUserId)}`);
   };
 
-  async function handleInboundAccept() {
-    if (!work?.inboundNotifId || !work.jobId) return;
+  async function handleWorkAccept() {
+    if (!work?.jobId) return;
     setWorkAction("accept");
     try {
-      await apiPost(
-        `/api/jobs/${work.jobId}/notifications/${work.inboundNotifId}/open`,
-        {},
-      );
-      await apiPost(`/api/jobs/${work.jobId}/confirm`, {});
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.freelancerRequests(user?.id),
-      });
-      addToast({
-        title: "Job accepted",
-        description: "Moved to pending while the client confirms.",
-        variant: "success",
-      });
+      if (work.inboundNotifId) {
+        await apiPost(
+          `/api/jobs/${work.jobId}/notifications/${work.inboundNotifId}/open`,
+          {},
+        );
+        await apiPost(`/api/jobs/${work.jobId}/confirm`, {});
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.freelancerRequests(user?.id),
+        });
+        addToast({
+          title: "Job accepted",
+          description: "Moved to pending while the client confirms.",
+          variant: "success",
+        });
+      } else {
+        await apiPost(`/api/jobs/${work.jobId}/freelancer-confirm-open`, {});
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.discoverOpenHelpRequests(user?.id),
+        });
+        addToast({
+          title: "Accepted",
+          description: `Waiting for ${(displayName || "the client").trim()}.`,
+          variant: "success",
+        });
+      }
       onOpenChange(false);
     } catch (err: unknown) {
       addToast({
@@ -891,21 +983,33 @@ function DiscoverRealtimeStripDetailDialog({
     }
   }
 
-  async function handleInboundDecline() {
-    if (!work?.inboundNotifId || !work.jobId) return;
+  async function handleWorkDecline() {
+    if (!work?.jobId) return;
     setWorkAction("decline");
     try {
-      await apiPost(`/api/jobs/${work.jobId}/freelancer-decline`, {
-        notifId: work.inboundNotifId,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.freelancerRequests(user?.id),
-      });
-      addToast({
-        title: "Declined",
-        description: "We’ll stop showing you this request.",
-        variant: "success",
-      });
+      if (work.inboundNotifId) {
+        await apiPost(`/api/jobs/${work.jobId}/freelancer-decline`, {
+          notifId: work.inboundNotifId,
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.freelancerRequests(user?.id),
+        });
+        addToast({
+          title: "Declined",
+          description: "We’ll stop showing you this request.",
+          variant: "success",
+        });
+      } else {
+        await apiPost(`/api/jobs/${work.jobId}/freelancer-decline-open`, {});
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.discoverOpenHelpRequests(user?.id),
+        });
+        addToast({
+          title: "Declined",
+          description: "We’ll hide this request from your picks.",
+          variant: "success",
+        });
+      }
       onOpenChange(false);
     } catch (err: unknown) {
       addToast({
@@ -918,69 +1022,110 @@ function DiscoverRealtimeStripDetailDialog({
     }
   }
 
+  function closeSheet() {
+    onOpenChange(false);
+  }
+
+  function onSheetPullTouchStart(e: React.TouchEvent) {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+      return;
+    }
+    sheetPullYRef.current = e.touches[0]?.clientY ?? null;
+  }
+
+  function onSheetPullTouchEnd(e: React.TouchEvent) {
+    if (sheetPullYRef.current == null) return;
+    const start = sheetPullYRef.current;
+    sheetPullYRef.current = null;
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+      return;
+    }
+    const end = e.changedTouches[0]?.clientY;
+    if (end == null) return;
+    if (end - start > 72) {
+      closeSheet();
+    }
+  }
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "flex max-h-[90dvh] flex-col gap-0 overflow-hidden border-0 border-zinc-800 bg-[#121212] p-0 text-zinc-100 shadow-2xl",
+          "flex max-h-[90dvh] flex-col gap-0 overflow-hidden border-0 bg-white p-0 text-zinc-900 shadow-2xl duration-200 dark:border-zinc-800 dark:bg-[#121212] dark:text-zinc-100",
           "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:max-h-[88dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[28px] max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-          "md:max-w-md md:rounded-2xl",
+          // Desktop: right-aligned drawer (overrides default centered DialogContent)
+          "md:fixed md:inset-y-0 md:left-auto md:right-0 md:top-0 md:h-dvh md:max-h-dvh md:max-w-md md:w-full md:translate-x-0 md:translate-y-0",
+          "md:rounded-none md:rounded-l-3xl md:border md:border-zinc-200 md:border-r-0 md:p-0 dark:md:border-zinc-700",
+          "md:duration-300 md:data-[state=open]:animate-in md:data-[state=closed]:animate-out",
+          "md:data-[state=open]:fade-in-0 md:data-[state=closed]:fade-out-0",
+          "md:data-[state=open]:slide-in-from-right-8 md:data-[state=closed]:slide-out-to-right-8",
+          "md:data-[state=open]:zoom-in-100 md:data-[state=closed]:zoom-out-100",
         )}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <DialogHeader className="m-0 flex-1 space-y-0 p-0 text-left">
-            <DialogTitle className="text-left text-[15px] font-bold tracking-tight text-zinc-100">
-              {variant === "hire" ? "Helper" : "Request for your help"}
-            </DialogTitle>
-          </DialogHeader>
-          <DialogClose className="rounded-full p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white">
-            <X className="h-5 w-5" strokeWidth={2.25} />
-            <span className="sr-only">Close</span>
-          </DialogClose>
+        <div
+          className="shrink-0 border-b border-zinc-200 dark:border-zinc-800"
+          onTouchStart={onSheetPullTouchStart}
+          onTouchEnd={onSheetPullTouchEnd}
+        >
+          <div className="flex justify-center px-4 pt-2 max-md:pt-3 md:pt-3">
+            <button
+              type="button"
+              onClick={() => closeSheet()}
+              className="group flex w-full max-w-[10rem] flex-col items-center rounded-2xl py-2 outline-none transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#121212]"
+              aria-label="Close"
+            >
+              <span
+                className="h-1.5 w-14 shrink-0 rounded-full bg-zinc-300 transition group-hover:bg-zinc-400 group-active:bg-zinc-500 dark:bg-zinc-600 dark:group-hover:bg-zinc-500 dark:group-active:bg-zinc-400"
+                aria-hidden
+              />
+              <span className="sr-only">Close sheet</span>
+            </button>
+          </div>
+          <div className="px-4 pb-3 pt-1">
+            <DialogHeader className="m-0 space-y-0 p-0 text-center">
+              <DialogTitle className="text-center text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 sm:text-[16px] dark:text-zinc-100">
+                {variant === "hire" ? (
+                  <span className="font-bold">Your helper</span>
+                ) : work ? (
+                  <StripDialogWorkTitle displayName={displayName} work={work} />
+                ) : (
+                  "Request"
+                )}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
         </div>
-
-        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-zinc-700 md:hidden" aria-hidden />
 
         <div className="flex min-h-0 flex-1 flex-col">
         <div
           className={cn(
             "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-1",
-            hire ? "pb-4" : "pb-6",
+            hire || work ? "pb-4" : "pb-6",
           )}
         >
           {work ? (
             <>
-              <p className="mb-4 text-[17px] font-medium leading-snug tracking-tight text-zinc-200 sm:text-[18px]">
-                <span className="font-bold text-white">{shortDisplayName(displayName) || displayName.trim() || "—"}</span>
-                <span className="text-zinc-400"> needs your help in </span>
-                <span className="inline-flex items-center gap-1.5 font-bold text-white">
-                  {categoryIconNode(
-                    work.categoryId,
-                    "h-[1.15rem] w-[1.15rem] shrink-0 stroke-[2.25] text-sky-400 sm:h-5 sm:w-5",
-                  )}
-                  <span>{work.title}</span>
-                </span>
-              </p>
               <div className="mb-5 flex w-full gap-5">
                 <div className="flex w-[6.75rem] shrink-0 flex-col items-center gap-2">
                   <button
                     type="button"
                     onClick={goProfile}
-                    className="relative rounded-2xl p-1 outline-none ring-offset-2 ring-offset-[#121212] transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:opacity-60"
+                    className="relative rounded-2xl p-1 outline-none ring-offset-2 ring-offset-white transition hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:opacity-60 dark:ring-offset-[#121212] dark:hover:bg-white/5"
                     disabled={!profileUserId}
                     aria-label="View public profile"
                   >
                     <span
-                      className="absolute right-0.5 top-0.5 z-[3] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#121212] ring-2 ring-[#121212]"
+                      className="absolute right-0.5 top-0.5 z-[3] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white ring-2 ring-white dark:bg-[#121212] dark:ring-[#121212]"
                       aria-hidden
                     >
                       <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)]" />
                     </span>
                     <div className={cn("rounded-full p-[3px]", stripAvatarRingClass("work"))}>
-                      <div className="rounded-full bg-[#121212] p-0.5">
+                      <div className="rounded-full bg-white p-0.5 dark:bg-[#121212]">
                         <Avatar className="h-[5.25rem] w-[5.25rem] border-0">
                           <AvatarImage src={photoUrl || undefined} className="object-cover" alt="" />
-                          <AvatarFallback className="bg-zinc-800 text-xl font-black text-white">
+                          <AvatarFallback className="bg-zinc-200 text-xl font-black text-zinc-800 dark:bg-zinc-800 dark:text-white">
                             {(displayName || "?").charAt(0)}
                           </AvatarFallback>
                         </Avatar>
@@ -988,10 +1133,10 @@ function DiscoverRealtimeStripDetailDialog({
                     </div>
                     <StripCategoryBadge categoryId={work.categoryId} />
                   </button>
-                  <div className="flex flex-wrap items-center justify-center gap-x-1 text-[13px] text-zinc-400">
-                    <span className="inline-flex items-center gap-0.5 text-amber-400">
-                      <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" strokeWidth={0} />
-                      <span className="font-semibold text-zinc-200">{ratingLabel(work.average_rating)}</span>
+                  <div className="flex flex-wrap items-center justify-center gap-x-1 text-[13px] text-zinc-500 dark:text-zinc-400">
+                    <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
+                      <Star className="h-4 w-4 shrink-0 fill-amber-600 text-amber-600 dark:fill-amber-400 dark:text-amber-400" strokeWidth={0} />
+                      <span className="font-semibold text-zinc-800 dark:text-zinc-200">{ratingLabel(work.average_rating)}</span>
                     </span>
                     {work.total_ratings ? (
                       <span className="text-zinc-500">({work.total_ratings})</span>
@@ -1010,7 +1155,7 @@ function DiscoverRealtimeStripDetailDialog({
                   <button
                     type="button"
                     onClick={goProfile}
-                    className="mt-4 inline-flex items-center gap-1 text-[14px] font-semibold text-sky-400 hover:text-sky-300 disabled:opacity-50"
+                    className="mt-4 inline-flex items-center gap-1 text-[14px] font-semibold text-sky-600 hover:text-sky-700 disabled:opacity-50 dark:text-sky-400 dark:hover:text-sky-300"
                     disabled={!profileUserId}
                   >
                     View profile
@@ -1026,27 +1171,27 @@ function DiscoverRealtimeStripDetailDialog({
                 <button
                   type="button"
                   onClick={goProfile}
-                  className="relative shrink-0 rounded-2xl p-1 outline-none ring-offset-2 ring-offset-[#121212] transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:opacity-60"
+                  className="relative shrink-0 rounded-2xl p-1 outline-none ring-offset-2 ring-offset-white transition hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:opacity-60 dark:ring-offset-[#121212] dark:hover:bg-white/5"
                   disabled={!profileUserId}
                   aria-label="View public profile"
                 >
                   <div
                     className={cn(
                       "rounded-full p-[3px]",
-                      hire ? stripAvatarRingClass("hire") : "bg-zinc-600",
+                      hire ? stripAvatarRingClass("hire") : "bg-zinc-400 dark:bg-zinc-600",
                     )}
                   >
-                    <div className="rounded-full bg-[#121212] p-0.5">
+                    <div className="rounded-full bg-white p-0.5 dark:bg-[#121212]">
                       <Avatar className="h-[5.25rem] w-[5.25rem] border-0">
                         <AvatarImage src={photoUrl || undefined} className="object-cover" alt="" />
-                        <AvatarFallback className="bg-zinc-800 text-xl font-black text-white">
+                        <AvatarFallback className="bg-zinc-200 text-xl font-black text-zinc-800 dark:bg-zinc-800 dark:text-white">
                           {(displayName || "?").charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                     </div>
                   </div>
                   <span
-                    className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#121212] ring-2 ring-[#121212]"
+                    className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white ring-2 ring-white dark:bg-[#121212] dark:ring-[#121212]"
                     aria-hidden
                   >
                     <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)]" />
@@ -1060,19 +1205,19 @@ function DiscoverRealtimeStripDetailDialog({
                 </button>
 
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-[22px] font-bold leading-[1.2] tracking-tight text-white">
+                  <p className="text-[22px] font-bold leading-[1.2] tracking-tight text-zinc-900 dark:text-white">
                     {displayName.trim() || "—"}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[14px] text-zinc-400">
-                    <span className="inline-flex items-center gap-1 text-amber-400">
-                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" strokeWidth={0} />
-                      <span className="font-semibold text-zinc-200">{ratingLabel(hire?.average_rating)}</span>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[14px] text-zinc-500 dark:text-zinc-400">
+                    <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                      <Star className="h-4 w-4 fill-amber-600 text-amber-600 dark:fill-amber-400 dark:text-amber-400" strokeWidth={0} />
+                      <span className="font-semibold text-zinc-800 dark:text-zinc-200">{ratingLabel(hire?.average_rating)}</span>
                     </span>
                     {hire?.total_ratings ? <span className="text-zinc-500">({hire.total_ratings})</span> : null}
-                    <span className="text-zinc-600">·</span>
-                    <span className="text-zinc-300">{hire?.label}</span>
-                    <span className="text-zinc-600">·</span>
-                    <span className="font-semibold text-emerald-400">Live</span>
+                    <span className="text-zinc-400 dark:text-zinc-600">·</span>
+                    <span className="text-zinc-700 dark:text-zinc-300">{hire?.label}</span>
+                    <span className="text-zinc-400 dark:text-zinc-600">·</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Live</span>
                   </div>
                   <div className="mt-2.5">
                     {hire ? (
@@ -1082,7 +1227,7 @@ function DiscoverRealtimeStripDetailDialog({
                   <button
                     type="button"
                     onClick={goProfile}
-                    className="mt-3 inline-flex items-center gap-1 text-[14px] font-semibold text-sky-400 hover:text-sky-300 disabled:opacity-50"
+                    className="mt-3 inline-flex items-center gap-1 text-[14px] font-semibold text-sky-600 hover:text-sky-700 disabled:opacity-50 dark:text-sky-400 dark:hover:text-sky-300"
                     disabled={!profileUserId}
                   >
                     View profile
@@ -1103,9 +1248,9 @@ function DiscoverRealtimeStripDetailDialog({
                 {hireLiveCatIds.map((cid) => (
                   <span
                     key={cid}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800/90 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 ring-1 ring-white/10"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-semibold text-zinc-800 ring-1 ring-zinc-200 dark:bg-zinc-800/90 dark:text-zinc-200 dark:ring-white/10"
                   >
-                    {categoryIconNode(cid, "h-3.5 w-3.5 shrink-0 stroke-[2.25] text-zinc-400")}
+                    {categoryIconNode(cid, "h-3.5 w-3.5 shrink-0 stroke-[2.25] text-zinc-600 dark:text-zinc-400")}
                     {liveCategoryLabel(cid)}
                   </span>
                 ))}
@@ -1132,7 +1277,7 @@ function DiscoverRealtimeStripDetailDialog({
 
           {/* Info rows — hire */}
           {hire ? (
-            <div className="border-t border-zinc-800 pt-1">
+            <div className="border-t border-zinc-200 pt-1 dark:border-zinc-800">
               {hire.locationLine ? (
                 <GSheetRow icon={MapPin}>{hire.locationLine}</GSheetRow>
               ) : null}
@@ -1156,7 +1301,7 @@ function DiscoverRealtimeStripDetailDialog({
 
           {/* Info rows — work (request) */}
           {work ? (
-            <div className="border-t border-zinc-800 pt-1">
+            <div className="border-t border-zinc-200 pt-1 dark:border-zinc-800">
               <GSheetRow icon={MapPin}>{work.cityLine || "—"}</GSheetRow>
               {work.helpTypeLine ? (
                 <GSheetRow icon={UsersRound} hint="Care / type">
@@ -1183,48 +1328,109 @@ function DiscoverRealtimeStripDetailDialog({
                   {counterpartExtras.data.bio}
                 </GSheetRow>
               ) : null}
+              {work.categoryId === "pickup_delivery" &&
+              pickupDetail &&
+              (pickupDetail.fromAddress || pickupDetail.toAddress) ? (
+                <div className="mt-3 space-y-2.5 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
+                  {pickupDetail.fromAddress ? (
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-white/10">
+                        <ArrowUpCircle className="h-4 w-4 text-orange-500" aria-hidden />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+                          Pickup
+                        </p>
+                        <p className="text-sm font-semibold leading-snug text-zinc-800 dark:text-zinc-100">
+                          {pickupDetail.fromAddress}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                  {pickupDetail.toAddress ? (
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-white/10">
+                        <ArrowDownCircle className="h-4 w-4 text-sky-600" aria-hidden />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+                          Delivery
+                        </p>
+                        <p className="text-sm font-semibold leading-snug text-zinc-800 dark:text-zinc-100">
+                          {pickupDetail.toAddress}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {showPickupMapPreview && pickupMapJob ? (
+                <div className="relative mt-3 h-[7.5rem] overflow-hidden rounded-2xl border border-zinc-200 ring-1 ring-black/[0.04] dark:border-zinc-700 dark:ring-white/10">
+                  <button
+                    type="button"
+                    className="absolute inset-0 z-10 cursor-pointer rounded-2xl bg-transparent p-0 outline-none ring-offset-2 ring-offset-white focus-visible:ring-2 focus-visible:ring-sky-500/60 dark:ring-offset-[#121212]"
+                    onClick={() => setPickupMapOpen(true)}
+                    aria-label="Open full route map"
+                  />
+                  <div className="h-full w-full">
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full min-h-[7.5rem] w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+                          <Loader2 className="h-7 w-7 animate-spin text-zinc-400" aria-hidden />
+                        </div>
+                      }
+                    >
+                      <JobMapLazy job={pickupMapJob} />
+                    </Suspense>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
-          {work ? (
-            <div className="mt-5 space-y-2.5">
-              {work.inboundNotifId ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={workAction !== null}
-                    className="rounded-xl border border-zinc-600 bg-transparent py-3 text-[13px] font-black uppercase tracking-wide text-zinc-200 transition hover:bg-white/5 disabled:opacity-50"
-                    onClick={() => void handleInboundDecline()}
-                  >
-                    {workAction === "decline" ? "…" : "Decline"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={workAction !== null}
-                    className="rounded-xl bg-emerald-600 py-3 text-[13px] font-black uppercase tracking-wide text-white shadow-lg shadow-emerald-950/40 transition hover:bg-emerald-500 disabled:opacity-50 active:scale-[0.99]"
-                    onClick={() => void handleInboundAccept()}
-                  >
-                    {workAction === "accept" ? "…" : "Accept"}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="w-full rounded-xl border border-zinc-600 py-3 text-[13px] font-bold text-zinc-200 transition hover:bg-white/5"
-                  onClick={() => {
-                    onOpenChange(false);
-                    navigate(work.href);
-                  }}
-                >
-                  View request
-                </button>
-              )}
-            </div>
-          ) : null}
         </div>
 
+        {work ? (
+          <div className="shrink-0 border-t border-zinc-200 bg-white px-4 pb-3 pt-3 dark:border-zinc-800 dark:bg-[#121212]">
+            <div className="flex items-center justify-center gap-10 pt-1">
+              <button
+                type="button"
+                className={workStripDeclineRoundBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleWorkDecline();
+                }}
+                disabled={workAction !== null}
+                aria-label="Decline"
+              >
+                {workAction === "decline" ? (
+                  <Loader2 className="h-8 w-8 animate-spin" strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <X className="h-8 w-8" strokeWidth={3} aria-hidden />
+                )}
+              </button>
+              <button
+                type="button"
+                className={workStripAcceptRoundBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleWorkAccept();
+                }}
+                disabled={workAction !== null}
+                aria-label="Accept"
+              >
+                {workAction === "accept" ? (
+                  <Loader2 className="h-10 w-10 animate-spin" strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <Check className="h-10 w-10" strokeWidth={3.5} aria-hidden />
+                )}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {hire ? (
-          <div className="shrink-0 border-t border-zinc-800 bg-[#121212] px-4 pb-3 pt-3">
+          <div className="shrink-0 border-t border-zinc-200 bg-white px-4 pb-3 pt-3 dark:border-zinc-800 dark:bg-[#121212]">
             <StripHelperContactDropdown
               helperUserId={hire.helperUserId}
               helperRole={hireExtras.data?.targetRole ?? null}
@@ -1241,6 +1447,15 @@ function DiscoverRealtimeStripDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+    {pickupMapJob ? (
+      <FullscreenMapModal
+        job={pickupMapJob}
+        isOpen={pickupMapOpen}
+        onClose={() => setPickupMapOpen(false)}
+        sheetPresentation
+      />
+    ) : null}
+    </>
   );
 }
 
@@ -1294,6 +1509,44 @@ function extractJobRequestPhotoUrls(serviceDetails: unknown): string[] {
   return images.filter(
     (u): u is string => typeof u === "string" && u.trim().length > 0,
   );
+}
+
+function normalizeServiceDetailsRecord(raw: unknown): Record<string, unknown> | null {
+  if (raw != null && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  return null;
+}
+
+function parsePickupDeliveryDetails(sd: Record<string, unknown> | null) {
+  if (!sd) {
+    return { fromAddress: "", toAddress: "", hasRouteCoords: false as const };
+  }
+  const fromAddress = typeof sd.from_address === "string" ? sd.from_address.trim() : "";
+  const toAddress = typeof sd.to_address === "string" ? sd.to_address.trim() : "";
+  const fl = Number(sd.from_lat);
+  const fg = Number(sd.from_lng);
+  const tl = Number(sd.to_lat);
+  const tg = Number(sd.to_lng);
+  const hasRouteCoords =
+    Number.isFinite(fl) &&
+    Number.isFinite(fg) &&
+    Number.isFinite(tl) &&
+    Number.isFinite(tg);
+  return { fromAddress, toAddress, hasRouteCoords };
+}
+
+/** Minimal job row shape for `JobMap` / `FullscreenMapModal` on discover request sheet. */
+function workRowToMapJob(work: WorkRowItem): Record<string, unknown> {
+  const sd = work.serviceDetails ?? {};
+  const city = (work.cityLine || "").trim();
+  return {
+    id: work.jobId,
+    client_id: work.clientId,
+    service_type: work.categoryId,
+    location_city: city && city !== "—" ? city : null,
+    service_details: { ...sd },
+  };
 }
 
 function buildHelpTypeFromCareFields(
@@ -1360,6 +1613,7 @@ function mapJobLikeToWorkRow(opts: {
   const jobPhotoUrls = extractJobRequestPhotoUrls(opts.service_details);
   const jobNotesTrim = (opts.notes ?? "").trim();
   const thumb = opts.photo?.trim() || categoryImageSrc(cat ?? null);
+  const serviceDetails = normalizeServiceDetailsRecord(opts.service_details);
   return {
     key: opts.key,
     href: opts.href,
@@ -1383,6 +1637,7 @@ function mapJobLikeToWorkRow(opts: {
     inboundNotifId: opts.inboundNotifId ?? null,
     jobPhotoUrls,
     jobNotes: jobNotesTrim.length > 0 ? jobNotesTrim : null,
+    serviceDetails,
   };
 }
 
@@ -1845,7 +2100,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
         <div
           className={cn(
             "flex snap-x snap-mandatory gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-            "md:mx-0 md:grid md:grid-cols-5 md:grid-rows-1 md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none lg:gap-2",
+            "md:mx-0 md:flex md:max-w-full md:flex-nowrap md:justify-start md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none",
           )}
           role="list"
           aria-label="Requests now near you"
@@ -1859,7 +2114,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               className={cn(
                 "flex w-[5.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform",
                 "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                "active:scale-[0.97] md:w-full",
+                "active:scale-[0.97]",
               )}
             >
               <div className="relative pb-1">
@@ -1968,7 +2223,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
         className={cn(
           "gap-1 pb-0.5",
           "flex snap-x snap-mandatory overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "md:mx-0 md:grid md:grid-cols-5 md:grid-rows-1 md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none lg:gap-2",
+          "md:mx-0 md:flex md:max-w-full md:flex-nowrap md:justify-start md:gap-2 md:overflow-visible md:px-0 md:pb-0 md:snap-none",
         )}
         role="list"
       >
@@ -1981,7 +2236,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             className={cn(
               "flex w-[5.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform",
               "outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              "active:scale-[0.97] md:w-full",
+              "active:scale-[0.97]",
             )}
           >
             <div className="relative pb-1">
