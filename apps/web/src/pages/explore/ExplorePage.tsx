@@ -195,7 +195,7 @@ export default function ExplorePage() {
   return (
     <div
       className={cn(
-        "relative min-h-screen bg-white dark:bg-zinc-950",
+        "relative min-h-screen bg-white dark:bg-background",
         mode === "work"
           ? "pb-8 max-md:pb-[calc(6.85rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] md:pb-10"
           : "pb-8 md:pb-10",
@@ -222,7 +222,7 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      <div className="sticky top-0 z-30 bg-white/95 shadow-[0_1px_0_rgba(0,0,0,0.06)] backdrop-blur-md dark:bg-zinc-950/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)] md:static md:z-auto md:bg-transparent md:shadow-none md:backdrop-blur-none">
+      <div className="sticky top-0 z-30 bg-white/95 shadow-[0_1px_0_rgba(0,0,0,0.06)] backdrop-blur-md dark:bg-background/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)] md:static md:z-auto md:bg-transparent md:shadow-none md:backdrop-blur-none">
         <div className="app-desktop-shell max-md:px-2.5">
           <div className="px-2">
             <ExploreSecondaryUnderlineTabs mode={mode} tab={tab} onTabChange={setTab} />
@@ -234,7 +234,7 @@ export default function ExplorePage() {
       <div
         className={cn(
           "app-desktop-shell max-md:px-2.5",
-          "bg-white dark:bg-zinc-950",
+          "bg-white dark:bg-background",
         )}
       >
         <div className="px-1 pt-3 md:pt-5">
