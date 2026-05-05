@@ -1308,13 +1308,14 @@ export default function ChatPage({
 
   /** Explicit stroke — parent message `<p>` uses `text-white`, which otherwise wins via currentColor on Lucide SVGs. */
   function ReadReceipt({ status }: { status: "sent" | "delivered" | "read" }) {
-    const iconClass = "h-4 w-4 shrink-0 md:h-[1.125rem] md:w-[1.125rem]";
+    /** Single white tick & blue double ticks share the same inline size beside the timestamp. */
+    const receiptIconClass = "h-[1.35rem] w-[1.35rem] shrink-0 md:h-6 md:w-6";
     if (status === "sent") {
       return (
         <Check
-          className={cn(iconClass, "text-white/60")}
+          className={cn(receiptIconClass, "text-white/60")}
           stroke="currentColor"
-          strokeWidth={2.25}
+          strokeWidth={2.35}
         />
       );
     }
@@ -1322,11 +1323,19 @@ export default function ChatPage({
     const readBlue = "#3b82f6";
     if (status === "delivered") {
       return (
-        <CheckCheck className={iconClass} stroke={readBlue} strokeWidth={2.25} />
+        <CheckCheck
+          className={receiptIconClass}
+          stroke={readBlue}
+          strokeWidth={2.35}
+        />
       );
     }
     return (
-      <CheckCheck className={iconClass} stroke={readBlue} strokeWidth={2.25} />
+      <CheckCheck
+        className={receiptIconClass}
+        stroke={readBlue}
+        strokeWidth={2.35}
+      />
     );
   }
 
@@ -2103,8 +2112,9 @@ export default function ChatPage({
         {/* Messages area */}
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto scroll-smooth p-4",
+            "min-h-0 flex-1 overflow-y-auto scroll-smooth pb-4",
             hideBackButton ? "pt-0 md:pt-4" : "pt-20 md:pt-4",
+            "px-1.5 md:p-4",
           )}
           style={{
             WebkitOverflowScrolling: "touch",
@@ -2114,7 +2124,8 @@ export default function ChatPage({
           ref={scrollRef}
         >
           <div>
-            <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-[max(11rem,min(42vh,18rem))] md:pb-32">
+            {/* ~composer height + safe area + small gap — avoid vh-based padding (felt like a huge dead zone on mobile) */}
+            <div className="space-y-4 w-full max-w-none px-0 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.75rem+0.375rem)] md:pb-[calc(6.5rem+0.375rem)]">
               {job && hideBackButton && otherUser ? (
                 <ChatJobContextStrip
                   job={job as JobSummaryRow}
@@ -2150,7 +2161,7 @@ export default function ChatPage({
                       className="space-y-4 chat-scroll-reveal chat-scroll-reveal--center"
                     >
                       {shouldShowDateHeader(index) && (
-                        <div className="my-5 flex justify-center px-2">
+                        <div className="my-5 flex justify-center px-1 md:px-2">
                           <time
                             dateTime={msg.created_at}
                             className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
@@ -2159,13 +2170,13 @@ export default function ChatPage({
                           </time>
                         </div>
                       )}
-                      <div className="flex justify-center px-2">
-                        <div className="max-w-md rounded-lg bg-muted/45 px-4 py-3 text-center text-sm leading-snug text-muted-foreground dark:bg-muted/25 border-none md:px-3 md:py-2 md:text-[13px] whitespace-pre-wrap">
+                      <div className="flex justify-center px-1 md:px-2">
+                        <div className="max-w-md rounded-lg bg-muted/45 px-4 py-3 text-center text-lg leading-snug text-muted-foreground dark:bg-muted/25 border-none md:px-3 md:py-2 md:text-[13px] whitespace-pre-wrap">
                           {msg.body
                             ? linkifyMessageBody(msg.body, chatSystemLinkCn)
                             : null}
-                          <span className="mt-1.5 block text-xs font-medium tabular-nums opacity-80 md:mt-1 md:text-[10px]">
-                            {formatTime(msg.created_at)}
+                          <span className="ml-2.5 inline text-[13px] font-medium tabular-nums opacity-80 md:ml-2 md:text-[11px]">
+                            · {formatTime(msg.created_at)}
                           </span>
                         </div>
                       </div>
@@ -2187,7 +2198,7 @@ export default function ChatPage({
                       )}
                     >
                       {shouldShowDateHeader(index) && (
-                        <div className="my-5 flex justify-center px-2">
+                        <div className="my-5 flex justify-center px-1 md:px-2">
                           <time
                             dateTime={msg.created_at}
                             className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
@@ -2204,7 +2215,7 @@ export default function ChatPage({
                         )}
                       >
                         {!isOwn && (
-                          <Avatar className="h-9 w-9 shrink-0 mb-1 md:h-8 md:w-8">
+                          <Avatar className="hidden h-9 w-9 shrink-0 mb-1 md:flex md:h-8 md:w-8">
                             <AvatarImage
                               src={otherUser?.photo_url || undefined}
                             />
@@ -2216,7 +2227,7 @@ export default function ChatPage({
 
                         <div
                           className={cn(
-                            "flex max-w-[92%] flex-col md:max-w-[70%]",
+                            "flex min-w-0 max-w-[min(88%,18.5rem)] flex-col md:max-w-[70%]",
                             isOwn ? "items-end" : "items-start",
                           )}
                         >
@@ -2253,32 +2264,54 @@ export default function ChatPage({
                                 "relative mt-1 rounded-2xl px-3 py-2 shadow-sm md:px-3 md:py-1.5",
                                 isOwn
                                   ? "rounded-br-none bg-primary text-primary-foreground dark:bg-[hsl(var(--chat-bubble-sent))]"
-                                  : "rounded-bl-none bg-muted/30 dark:bg-card border-none",
+                                  : "rounded-bl-none bg-muted/30 dark:bg-muted border-none",
                               )}
                             >
-                              <p className="inline-block max-w-full whitespace-pre-wrap break-words text-[17px] font-medium leading-snug md:text-[16px]">
+                              <p
+                                className={cn(
+                                  "inline-block max-w-full whitespace-pre-wrap break-words text-[21px] font-medium leading-snug md:text-[16px]",
+                                  isOwn
+                                    ? "text-primary-foreground"
+                                    : "text-foreground",
+                                )}
+                              >
                                 {linkifyMessageBody(
                                   msg.body,
                                   isOwn
                                     ? chatOutgoingLinkCn
                                     : chatIncomingLinkCn,
                                 )}
+                                <span
+                                  className={cn(
+                                    "ml-3 inline-flex items-center gap-1 align-text-bottom whitespace-nowrap text-[13px] font-medium tabular-nums leading-none md:ml-2.5 md:text-[12px]",
+                                    isOwn
+                                      ? "text-primary-foreground/85"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {formatTime(msg.created_at)}
+                                  {isOwn && receiptStatus && (
+                                    <ReadReceipt status={receiptStatus} />
+                                  )}
+                                </span>
                               </p>
                             </div>
                           )}
 
-                          {/* Metadata outside */}
-                          <div
-                            className={cn(
-                              "mt-1.5 flex items-center gap-1 text-xs font-medium tabular-nums text-muted-foreground md:mt-1 md:text-[11px]",
-                              isOwn ? "justify-end" : "justify-start",
-                            )}
-                          >
-                            <span>{formatTime(msg.created_at)}</span>
-                            {isOwn && receiptStatus && (
-                              <ReadReceipt status={receiptStatus} />
-                            )}
-                          </div>
+                          {/* Timestamp only when media has no caption (caption carries time inline). */}
+                          {!msg.body ? (
+                            <div
+                              className={cn(
+                                "mt-2.5 flex items-center gap-1 text-[13px] font-medium tabular-nums text-muted-foreground md:mt-2 md:text-[12px]",
+                                isOwn ? "justify-end" : "justify-start",
+                              )}
+                            >
+                              <span>{formatTime(msg.created_at)}</span>
+                              {isOwn && receiptStatus && (
+                                <ReadReceipt status={receiptStatus} />
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -2296,7 +2329,7 @@ export default function ChatPage({
                     )}
                   >
                     {shouldShowDateHeader(index) && (
-                      <div className="my-5 flex justify-center px-2">
+                      <div className="my-5 flex justify-center px-1 md:px-2">
                         <time
                           dateTime={msg.created_at}
                           className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
@@ -2313,7 +2346,7 @@ export default function ChatPage({
                       )}
                     >
                       {!isOwn && (
-                        <Avatar className="h-9 w-9 shrink-0 mb-1 md:h-8 md:w-8">
+                        <Avatar className="hidden h-9 w-9 shrink-0 mb-1 md:flex md:h-8 md:w-8">
                           <AvatarImage
                             src={otherUser?.photo_url || undefined}
                           />
@@ -2325,7 +2358,7 @@ export default function ChatPage({
 
                       <div
                         className={cn(
-                          "max-w-[92%] space-y-1 md:max-w-[70%]",
+                          "flex min-w-0 max-w-[min(88%,18.5rem)] flex-col space-y-1 md:max-w-[70%]",
                           isOwn ? "items-end" : "items-start",
                         )}
                       >
@@ -2334,7 +2367,7 @@ export default function ChatPage({
                             "group relative rounded-2xl px-3 py-2 shadow-sm md:px-3 md:py-1.5",
                             isOwn
                               ? "rounded-br-none bg-primary text-primary-foreground shadow-sm dark:bg-[hsl(var(--chat-bubble-sent))]"
-                              : "rounded-bl-none bg-muted/30 dark:bg-card border-none",
+                              : "rounded-bl-none bg-muted/30 dark:bg-muted border-none",
                           )}
                         >
                           {/* Attachment Display */}
@@ -2347,7 +2380,7 @@ export default function ChatPage({
                                 className="flex items-center gap-2 rounded-lg border border-dashed border-blue-500/25 bg-muted/50 p-2 transition-colors hover:bg-muted md:p-1.5"
                               >
                                 <File className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 md:h-4 md:w-4" />
-                                <span className="max-w-[min(12rem,55vw)] truncate text-base font-medium text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300 md:max-w-[150px] md:text-sm">
+                                <span className="max-w-[min(12rem,55vw)] truncate text-xl font-medium text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300 md:max-w-[150px] md:text-sm">
                                   {msg.attachment_name || "Download File"}
                                 </span>
                               </a>
@@ -2357,7 +2390,7 @@ export default function ChatPage({
                           {msg.body && matchIntro ? (
                             <div
                               className={cn(
-                                "rounded-xl border px-2.5 py-2 text-base md:px-2.5 md:py-1.5 md:text-sm",
+                                "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
                                 isOwn
                                   ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground"
                                   : "bg-muted/50 text-foreground border-none",
@@ -2367,24 +2400,24 @@ export default function ChatPage({
                                 Match
                               </p>
                               <p className="mt-1 font-semibold">{matchIntro.category}</p>
-                              <p className="text-sm opacity-90 md:text-xs">
+                              <p className="inline-block max-w-full text-lg opacity-90 md:text-xs">
                                 {matchIntro.location} · {matchIntro.time}
+                                <span
+                                  className={cn(
+                                    "ml-3 whitespace-nowrap text-[13px] font-medium tabular-nums md:ml-2.5 md:text-[12px]",
+                                    isOwn
+                                      ? "text-primary-foreground/85"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {formatTime(msg.created_at)}
+                                </span>
                               </p>
-                              <span
-                                className={cn(
-                                  "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom text-xs font-medium tabular-nums md:text-[11px]",
-                                  isOwn
-                                    ? "text-primary-foreground/80"
-                                    : "text-muted-foreground",
-                                )}
-                              >
-                                {formatTime(msg.created_at)}
-                              </span>
                             </div>
                           ) : msg.body ? (
                             <p
                               className={cn(
-                                "inline-block max-w-full whitespace-pre-wrap break-words text-[17px] font-medium leading-snug md:text-[16px]",
+                                "inline-block max-w-full whitespace-pre-wrap break-words text-[21px] font-medium leading-snug md:text-[16px]",
                                 isOwn
                                   ? "text-primary-foreground"
                                   : "text-foreground",
@@ -2398,7 +2431,7 @@ export default function ChatPage({
                               )}
                               <span
                                 className={cn(
-                                  "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom text-xs font-medium tabular-nums leading-none md:text-[11px]",
+                                  "ml-3 inline-flex items-center gap-1 align-text-bottom whitespace-nowrap text-[13px] font-medium tabular-nums leading-none md:ml-2.5 md:text-[12px]",
                                   isOwn
                                     ? "text-primary-foreground/85"
                                     : "text-muted-foreground",
@@ -2414,13 +2447,13 @@ export default function ChatPage({
                             msg.attachment_url && (
                               <div
                                 className={cn(
-                                  "mt-1 flex flex-wrap items-center gap-1",
+                                  "mt-2 flex flex-wrap items-center gap-1 pt-px",
                                   isOwn ? "justify-end" : "justify-start",
                                 )}
                               >
                                 <span
                                   className={cn(
-                                    "inline-flex items-center gap-0.5 text-xs font-medium tabular-nums leading-none md:text-[11px]",
+                                    "inline-flex items-center gap-1 text-[13px] font-medium tabular-nums leading-none md:text-[12px]",
                                     isOwn
                                       ? "text-primary-foreground/85"
                                       : "text-muted-foreground",

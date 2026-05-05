@@ -47,6 +47,11 @@ export function ChatComposer({
     "shadow-none focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
   );
 
+  const phrasesPanelBase =
+    "absolute bottom-[calc(100%+10px)] z-40 overflow-y-auto rounded-2xl border border-border/50 bg-background/95 shadow-lg backdrop-blur-lg dark:bg-zinc-900/95 p-2";
+  const phraseItemClass =
+    "w-full rounded-xl px-4 py-3.5 text-left text-[17px] font-medium leading-snug text-foreground transition-colors hover:bg-muted/85 active:bg-muted dark:hover:bg-zinc-800/90 md:px-3.5 md:py-3 md:text-[15px]";
+
   const phrases = [
     "I'm on my way",
     "Available now",
@@ -108,7 +113,12 @@ export function ChatComposer({
         {filePreview}
         
         {showPhrases && (
-          <div className="absolute bottom-[calc(100%+8px)] left-3 z-40 w-64 max-h-60 overflow-y-auto rounded-2xl border border-border/50 bg-background/95 p-1 shadow-lg backdrop-blur-lg dark:bg-zinc-900/95">
+          <div
+            className={cn(
+              phrasesPanelBase,
+              "left-3 right-3 max-h-[min(52vh,24rem)]",
+            )}
+          >
             {phrases.map((p) => (
               <button
                 key={p}
@@ -117,7 +127,7 @@ export function ChatComposer({
                   setNewMessage(p);
                   setShowPhrases(false);
                 }}
-                className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80 dark:hover:bg-zinc-800/80"
+                className={phraseItemClass}
               >
                 {p}
               </button>
@@ -200,7 +210,12 @@ export function ChatComposer({
         {filePreview}
 
         {showPhrases && (
-          <div className="absolute bottom-[calc(100%+8px)] left-5 z-40 w-64 max-h-60 overflow-y-auto rounded-2xl border border-border/50 bg-background/95 p-1 shadow-lg backdrop-blur-lg dark:bg-zinc-900/95">
+          <div
+            className={cn(
+              phrasesPanelBase,
+              "left-5 w-[min(26rem,calc(100%-2.5rem))] max-h-[min(60vh,28rem)]",
+            )}
+          >
             {phrases.map((p) => (
               <button
                 key={p}
@@ -209,7 +224,7 @@ export function ChatComposer({
                   setNewMessage(p);
                   setShowPhrases(false);
                 }}
-                className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80 dark:hover:bg-zinc-800/80"
+                className={phraseItemClass}
               >
                 {p}
               </button>
