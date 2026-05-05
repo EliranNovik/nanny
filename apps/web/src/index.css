@@ -49,7 +49,8 @@
     --card-foreground: 20 15% 15%;
     --popover: 0 0% 96%;
     --popover-foreground: 20 15% 15%;
-    --primary: 25 95% 53%;
+    /* Deeper orange — calmer on chat bubbles and primary actions */
+    --primary: 24 90% 46%;
     --primary-foreground: 0 0% 100%;
     --secondary: 180 45% 85%;
     --secondary-foreground: 180 45% 25%;
@@ -61,7 +62,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 25 95% 53%;
+    --ring: 24 90% 46%;
     --radius: 0.75rem;
   }
 
@@ -73,7 +74,7 @@
     --card-foreground: 210 25% 96%;
     --popover: 222 14% 13%;
     --popover-foreground: 210 25% 96%;
-    --primary: 25 95% 53%;
+    --primary: 24 84% 50%;
     --primary-foreground: 0 0% 100%;
     --secondary: 215 18% 18%;
     --secondary-foreground: 210 28% 92%;
@@ -85,7 +86,9 @@
     --destructive-foreground: 0 0% 100%;
     --border: 222 10% 26%;
     --input: 222 11% 22%;
-    --ring: 25 95% 53%;
+    --ring: 24 84% 50%;
+    /* Outgoing chat bubbles: deeper orange than --primary for contrast on dark UI */
+    --chat-bubble-sent: 22 72% 36%;
   }
 }
 
@@ -632,6 +635,98 @@ input[type="range"].slider::-moz-range-thumb:hover {
 
 .animate-stagger>*:nth-child(6) {
   animation-delay: 250ms;
+}
+
+/**
+ * Chat thread: each message row eases in as it enters the thread scroll box
+ * (scroll-driven animation), similar to first-party Messages / SMS clients.
+ */
+@supports (animation-timeline: view()) {
+  @keyframes chat-scroll-reveal-kf {
+    from {
+      opacity: 0;
+      transform: translate3d(var(--chat-reveal-x, 0), var(--chat-reveal-y, 0.5rem), 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .chat-scroll-reveal {
+    --chat-reveal-x: 0;
+    --chat-reveal-y: 0.5rem;
+    animation-name: chat-scroll-reveal-kf;
+    animation-duration: auto;
+    animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-timeline: view(block);
+    animation-range: entry -15% entry 58%;
+  }
+
+  .chat-scroll-reveal--sent {
+    --chat-reveal-x: 11px;
+    --chat-reveal-y: 9px;
+  }
+
+  .chat-scroll-reveal--received {
+    --chat-reveal-x: -11px;
+    --chat-reveal-y: 9px;
+  }
+
+  .chat-scroll-reveal--center {
+    --chat-reveal-x: 0;
+    --chat-reveal-y: 12px;
+  }
+}
+
+/* No scroll timelines: subtle one-shot reveal on mount (Firefox and older Safari). */
+@supports not (animation-timeline: view()) {
+  @keyframes chat-mount-reveal-kf {
+    from {
+      opacity: 0;
+      transform: translate3d(var(--chat-reveal-x, 0), var(--chat-reveal-y, 0.35rem), 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .chat-scroll-reveal {
+    --chat-reveal-x: 0;
+    --chat-reveal-y: 0.35rem;
+    animation: chat-mount-reveal-kf 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .chat-scroll-reveal--sent {
+    --chat-reveal-x: 11px;
+    --chat-reveal-y: 6px;
+  }
+
+  .chat-scroll-reveal--received {
+    --chat-reveal-x: -11px;
+    --chat-reveal-y: 6px;
+  }
+
+  .chat-scroll-reveal--center {
+    --chat-reveal-x: 0;
+    --chat-reveal-y: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .chat-scroll-reveal,
+  .chat-scroll-reveal--sent,
+  .chat-scroll-reveal--received,
+  .chat-scroll-reveal--center {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 /* Gradient backgrounds */

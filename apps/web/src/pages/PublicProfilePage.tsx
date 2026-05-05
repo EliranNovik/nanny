@@ -1145,7 +1145,7 @@ export default function PublicProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-black">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-orange-600" />
       </div>
     );
@@ -1153,7 +1153,7 @@ export default function PublicProfilePage() {
 
   if (!profile) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white p-6 text-center dark:bg-black">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-center">
         <UserCircle className="h-16 w-16 text-slate-200 dark:text-slate-800" />
         <h2 className="text-xl font-black text-slate-900 dark:text-white">
           Profile not found
@@ -1167,7 +1167,7 @@ export default function PublicProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black pb-24 md:pb-8">
+    <div className="min-h-screen bg-background pb-24 md:pb-8">
       {/* 
         Sticky Header (Mobile & Desktop)
         Used for back button and profile name breadcrumb. 
@@ -1178,7 +1178,7 @@ export default function PublicProfilePage() {
       */}
 
       {/* Desktop Hero section — hidden on mobile */}
-      <div className="hidden md:block bg-white/50 dark:bg-zinc-950/20 pt-20 pb-4 md:pt-24 md:pb-8 border-b border-slate-200/50 dark:border-white/5">
+      <div className="hidden md:block bg-white/50 dark:bg-background/50 pt-20 pb-4 md:pt-24 md:pb-8 border-b border-slate-200/50 dark:border-white/5">
         <div className="app-desktop-shell px-4">
           <div className="flex flex-col md:flex-row gap-6 md:items-start">
             {/* Avatar block — hidden on mobile hero layout to move it below header */}
@@ -1356,7 +1356,7 @@ export default function PublicProfilePage() {
       ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
         {/* Profile Hero Header Info (Below header bar) */}
-        <div className="px-5 pb-6 pt-[max(2.75rem,calc(env(safe-area-inset-top,0px)+2.5rem))] bg-white dark:bg-black">
+        <div className="px-5 pb-6 pt-[max(2.75rem,calc(env(safe-area-inset-top,0px)+2.5rem))] bg-background">
           <div className="flex gap-4 items-start mb-6">
             <div className="h-36 w-36 shrink-0">
               {profile.photo_url ? (
@@ -1532,7 +1532,7 @@ export default function PublicProfilePage() {
         {/* New Mobile Sections using TabsContent Logic */}
         <Tabs value={profileMediaTab} onValueChange={(v) => setProfileMediaTab(v as ProfileMediaSectionTab)} className="w-full">
            {/* Tab selection pill */}
-           <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl dark:bg-black/80 border-b border-slate-100 dark:border-white/5 py-1">
+           <div className="sticky top-0 z-30 border-b border-slate-100 bg-white/80 backdrop-blur-xl dark:border-white/5 dark:bg-background/80 py-1">
               <div className="relative grid grid-cols-4 h-11 w-full max-w-sm mx-auto items-center p-1">
                  <div className={cn("absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-full bg-orange-600 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-lg shadow-orange-500/20", profileMediaTab === "posts" && "translate-x-0", profileMediaTab === "images" && "translate-x-full", profileMediaTab === "videos" && "translate-x-[200%]", profileMediaTab === "about" && "translate-x-[300%]")} />
                  {[
@@ -1603,7 +1603,7 @@ export default function PublicProfilePage() {
            </TabsContent>
 
            <TabsContent value="posts" className="m-0 focus-visible:outline-none">
-              <div className="bg-white dark:bg-black pt-1">
+              <div className="bg-background pt-1">
                  <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} />
               </div>
            </TabsContent>

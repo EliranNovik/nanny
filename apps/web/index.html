@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" />
+    <link rel="icon" type="image/png" href="/brand-mark.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
     <!-- PWA Meta Tags -->
@@ -18,9 +18,9 @@
     <link rel="manifest" href="/manifest.json" />
     
     <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" />
-    <link rel="apple-touch-icon" sizes="512x512" href="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png" />
+    <link rel="apple-touch-icon" href="/brand-mark.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/brand-mark.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/brand-mark.png" />
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,10 +30,24 @@
     <!-- Leaflet CSS for fallback maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     
-    <title>MamaLama - Find Childcare Fast</title>
+    <title>Tebnu - Your Helper for Home & Life</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Replaced on React mount; shows the same logo as AppBootSplash until the bundle runs. -->
+      <div
+        style="min-height:100dvh;display:flex;align-items:center;justify-content:center;background:#ffffff;padding:24px;box-sizing:border-box;"
+      >
+        <img
+          src="/brand-mark.png"
+          alt=""
+          width="280"
+          height="280"
+          decoding="async"
+          style="max-width:min(280px,85vw);max-height:40vh;width:auto;height:auto;object-fit:contain;"
+        />
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

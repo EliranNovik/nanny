@@ -83,7 +83,7 @@ export function LandingDownloadAppPromo() {
             App
           </p>
           <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-            Get MamaLama on your phone
+            Get Tebnu on your phone
           </h2>
           <p className="max-w-sm text-sm font-medium text-white/80 drop-shadow-md">
             Scan the code with your camera to open the app. Use the same login

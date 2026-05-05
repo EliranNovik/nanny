@@ -37,6 +37,16 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const [showPhrases, setShowPhrases] = React.useState(false);
 
+  /** Chat input: readable grey surface, no stroke — stands out on chat background in light & dark */
+  const messageFieldClass = cn(
+    "min-h-[44px] max-h-[min(40vh,280px)] flex-1 resize-none overflow-y-auto",
+    "rounded-2xl border-0 py-2.5 pl-3 pr-3",
+    "bg-zinc-200 text-zinc-900 placeholder:text-zinc-600",
+    "dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400",
+    "text-[16px] font-normal leading-snug",
+    "shadow-none focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+  );
+
   const phrases = [
     "I'm on my way",
     "Available now",
@@ -58,7 +68,7 @@ export function ChatComposer({
   }
 
   const filePreview = selectedFile && (
-    <div className="mb-2 flex w-full max-w-none items-center gap-2 rounded-xl border border-border/50 bg-muted/25 p-2 text-foreground dark:bg-muted/10">
+    <div className="mb-2 flex w-full max-w-none items-center gap-2 rounded-xl border-0 bg-muted/25 p-2 text-foreground dark:bg-muted/15">
       {getFileType(selectedFile.name) === "image" ? (
         <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
       ) : (
@@ -89,8 +99,8 @@ export function ChatComposer({
       {/* Mobile Composer */}
       <div
         className={cn(
-          "lg:hidden fixed left-0 right-0 z-30 bottom-0",
-          "border-t border-border/30 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
+          "lg:hidden fixed bottom-0 left-0 right-0 z-30",
+          "border-none bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
           "px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
           !hideBackButton && mobileView === "steps" && "hidden"
         )}
@@ -159,12 +169,7 @@ export function ChatComposer({
                 (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
               }
             }}
-            className={cn(
-              "min-h-[44px] max-h-[min(40vh,280px)] flex-1 resize-none overflow-y-auto",
-              "rounded-2xl border border-border/50 bg-muted/20 py-2.5 pl-3 pr-3 dark:bg-muted/10",
-              "text-[16px] font-normal leading-snug text-foreground placeholder:text-muted-foreground/65",
-              "shadow-none focus-visible:border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20"
-            )}
+            className={messageFieldClass}
             disabled={sending || uploading}
           />
           <Button
@@ -186,9 +191,9 @@ export function ChatComposer({
       {/* Desktop Composer */}
       <div
         className={cn(
-          "hidden lg:flex lg:flex-col fixed z-30 bottom-0 right-0",
-          "border-t border-border/30 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
-          "px-5 pt-2.5 pb-4",
+          "fixed bottom-0 right-0 z-30 hidden lg:flex lg:flex-col",
+          "border-none bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
+          "px-5 pb-4 pt-2.5",
           hideBackButton ? "md:left-80 lg:left-96 left-0" : "left-[400px]"
         )}
       >
@@ -247,13 +252,7 @@ export function ChatComposer({
                 (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
               }
             }}
-            className={cn(
-              "min-h-[44px] max-h-[min(40vh,280px)] flex-1 resize-none overflow-y-auto",
-              "rounded-2xl border border-border/50 bg-muted/20 py-2.5 pl-3 pr-3 dark:bg-muted/10",
-              "text-[16px] font-normal leading-snug text-foreground placeholder:text-muted-foreground/65",
-              "shadow-none focus-visible:border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20",
-              "md:placeholder:text-sm"
-            )}
+            className={cn(messageFieldClass, "md:placeholder:text-sm")}
             disabled={sending || uploading}
           />
           <Button

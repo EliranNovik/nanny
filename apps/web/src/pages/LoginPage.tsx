@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import { AppBootSplashLogo } from "@/components/AppBootSplash";
 import { Loader2, Sparkles } from "lucide-react";
 import { GoogleIcon } from "@/components/BrandIcons";
+import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -206,7 +208,7 @@ export default function LoginPage() {
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
         <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
         <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <AppBootSplashLogo />
         </main>
       </div>
     );
@@ -237,9 +239,9 @@ export default function LoginPage() {
         {/* Animated Brand Content */}
         <div className="relative z-10 animate-fade-up pointer-events-none">
           <img
-            src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+            src={BRAND_LOGO_SRC}
             alt="MamaLama Logo"
-            className="h-[4.5rem] w-auto rounded-xl mb-10 shadow-2xl saturate-150"
+            className="h-[4.5rem] w-auto mb-10"
           />
           <h1 className="text-[3.25rem] font-black text-white leading-[1.05] tracking-tight mb-5 drop-shadow-xl text-balance">
             Find the perfect <br /> helper in minutes.
@@ -264,9 +266,9 @@ export default function LoginPage() {
             {/* Mobile Branding (Hidden on Desktop) */}
             <div className="lg:hidden text-center mb-10">
               <img
-                src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+                src={BRAND_LOGO_SRC}
                 alt="MamaLama Logo"
-                className="h-[5rem] w-auto mx-auto rounded-2xl shadow-xl mb-5"
+                className="h-[5rem] w-auto mx-auto mb-5"
               />
               <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1.5 font-medium tracking-tight">
                 <Sparkles className="w-4 h-4 text-orange-500" />

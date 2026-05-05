@@ -68,14 +68,19 @@ import {
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import { ChatComposer } from "@/components/chat/ChatComposer";
-import { ChatJobContextStrip } from "@/components/messages/ChatJobContextStrip";
 import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
 import { MatchContextBanner } from "@/components/messages/MatchContextBanner";
-import { isLikelySystemMessage, jobCategoryLabel } from "@/lib/chatJobContext";
+import { ChatJobContextStrip } from "@/components/messages/ChatJobContextStrip";
+import {
+  isLikelySystemMessage,
+  jobCategoryLabel,
+  type JobSummaryRow,
+} from "@/lib/chatJobContext";
 import { getLiveJobBannerFromRow } from "@/lib/liveJobConversationBanner";
 import { parseMatchIntroBody } from "@/lib/matchIntroMessage";
 import { trackEvent } from "@/lib/analytics";
 import { consumePendingChatOpen } from "@/lib/sessionConversionAnalytics";
+import { linkifyMessageBody } from "@/lib/linkifyMessageBody";
 
 interface Message {
   id: string;
@@ -1303,7 +1308,7 @@ export default function ChatPage({
 
   /** Explicit stroke — parent message `<p>` uses `text-white`, which otherwise wins via currentColor on Lucide SVGs. */
   function ReadReceipt({ status }: { status: "sent" | "delivered" | "read" }) {
-    const iconClass = "h-[1.125rem] w-[1.125rem] shrink-0";
+    const iconClass = "h-4 w-4 shrink-0 md:h-[1.125rem] md:w-[1.125rem]";
     if (status === "sent") {
       return (
         <Check
@@ -1313,21 +1318,25 @@ export default function ChatPage({
         />
       );
     }
-    /** Neon green on gradient bubble — explicit hex so parent `text-white` does not override */
-    const neonGreen = "#39ff14";
+    /** Delivered / read ticks — explicit blue so parent bubble text colour does not override */
+    const readBlue = "#3b82f6";
     if (status === "delivered") {
       return (
-        <CheckCheck
-          className={iconClass}
-          stroke={neonGreen}
-          strokeWidth={2.25}
-        />
+        <CheckCheck className={iconClass} stroke={readBlue} strokeWidth={2.25} />
       );
     }
     return (
-      <CheckCheck className={iconClass} stroke={neonGreen} strokeWidth={2.25} />
+      <CheckCheck className={iconClass} stroke={readBlue} strokeWidth={2.25} />
     );
   }
+
+  /** Blue links inside chat bubbles (contrast-adjusted on sent vs received vs system strip). */
+  const chatOutgoingLinkCn =
+    "break-all font-semibold text-sky-200 underline underline-offset-2 decoration-sky-200/55 hover:text-sky-50";
+  const chatIncomingLinkCn =
+    "break-all font-semibold text-blue-600 underline underline-offset-2 decoration-blue-600/35 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:text-blue-300";
+  const chatSystemLinkCn =
+    "break-all font-medium text-blue-600 underline underline-offset-2 decoration-blue-600/35 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300";
 
   // For admin viewing reports: show client initials, otherwise show "S" for Support or user initials
   const otherInitials =
@@ -1390,23 +1399,33 @@ export default function ChatPage({
             </div>
           </div>
         )}
-        <div className="flex-1 flex flex-col min-w-0 bg-background relative pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] lg:pt-0">
-          <div className="absolute top-[max(0.75rem,env(safe-area-inset-top,0px))] lg:top-0 left-0 right-0 z-30 lg:z-10 bg-background/80 backdrop-blur-lg border-b border-border/40 pb-2 lg:pb-0 px-2 lg:px-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
-              <div className="flex flex-col gap-1 flex-1 min-w-0">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-20" />
+        <div
+          className={cn(
+            "relative flex min-h-0 flex-1 min-w-0 flex-col bg-background",
+            hideBackButton
+              ? "pt-0"
+              : "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] lg:pt-0",
+          )}
+        >
+          {/* Extra top bar while loading — omit when MessagesPage provides the fixed mobile header */}
+          {!hideBackButton && (
+            <div className="absolute left-0 right-0 top-[max(0.75rem,env(safe-area-inset-top,0px))] z-30 flex items-center justify-between border-b border-border/40 bg-background/80 px-2 py-2 pb-2 backdrop-blur-lg supports-[backdrop-filter]:bg-background/65 lg:relative lg:top-0 lg:z-10 lg:px-4 lg:pb-0">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 h-full relative" style={{ scrollBehavior: "smooth" }}>
             <div className="flex flex-col gap-6 py-6 pb-[250px]">
               <div className="w-full max-w-[80%] xl:max-w-[70%] mr-auto group">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-end gap-2 relative z-10">
                     <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
-                    <div className="flex flex-col gap-1 px-4 py-[10px] rounded-[18px] rounded-bl-[4px] relative bg-muted/60 min-w-[120px] max-w-full">
+                    <div className="flex flex-col gap-1 rounded-[18px] rounded-bl-[4px] bg-muted/60 px-3 py-2 relative min-w-[120px] max-w-full">
                       <Skeleton className="h-4 w-40 mb-1" />
                       <Skeleton className="h-4 w-24" />
                     </div>
@@ -1416,9 +1435,9 @@ export default function ChatPage({
               <div className="w-full max-w-[80%] xl:max-w-[70%] ml-auto group flex justify-end">
                 <div className="flex flex-col gap-1 items-end">
                   <div className="flex items-end gap-2 relative z-10">
-                     <div className="flex flex-col gap-1 px-4 py-[10px] rounded-[18px] rounded-br-[4px] relative bg-orange-50 dark:bg-orange-950/30 text-slate-800 dark:text-slate-100 min-w-[140px] max-w-full">
-                       <Skeleton className="h-4 w-48 mb-1 bg-orange-200/50 dark:bg-orange-800/30" />
-                       <Skeleton className="h-4 w-32 bg-orange-200/50 dark:bg-orange-800/30" />
+                     <div className="flex min-w-[140px] max-w-full flex-col gap-1 rounded-[18px] rounded-br-[4px] bg-primary/10 px-3 py-2 text-slate-800 dark:bg-primary/15 dark:text-slate-100 relative">
+                       <Skeleton className="mb-1 h-4 w-48 bg-orange-200/70 dark:bg-primary/25" />
+                       <Skeleton className="h-4 w-32 bg-orange-200/70 dark:bg-primary/25" />
                      </div>
                   </div>
                 </div>
@@ -1933,7 +1952,7 @@ export default function ChatPage({
                             </div>
 
                             {job.service_details?.custom && (
-                              <div className="flex flex-col gap-1.5 mt-2 w-full bg-orange-500 rounded-xl px-4 py-3 border-none shadow-sm">
+                              <div className="mt-2 flex w-full flex-col gap-1.5 rounded-xl border-none bg-primary px-3 py-2 shadow-sm">
                                 <span className="font-bold text-white/90 text-[10px] uppercase tracking-widest flex items-center gap-2 underline underline-offset-4 decoration-white/20">
                                   <AlignLeft className="w-3 h-3" />
                                   NOTES
@@ -1976,7 +1995,7 @@ export default function ChatPage({
       >
         {/* Header — viewport-fixed on standalone /chat mobile; hidden when embedded in Messages (parent provides bar) */}
         {!hideBackButton && (
-          <header className="fixed left-0 right-0 top-0 z-20 flex-shrink-0 border-b border-border/20 bg-background/95 px-4 py-3 shadow-none backdrop-blur-md supports-[backdrop-filter]:bg-background/90 md:relative md:top-auto md:z-auto md:bg-transparent md:backdrop-blur-none">
+          <header className="fixed left-0 right-0 top-0 z-20 flex-shrink-0 border-none bg-background/95 px-4 py-3 shadow-none backdrop-blur-md supports-[backdrop-filter]:bg-background/90 md:relative md:top-auto md:z-auto md:bg-transparent md:backdrop-blur-none">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -2084,7 +2103,7 @@ export default function ChatPage({
         {/* Messages area */}
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto p-4",
+            "min-h-0 flex-1 overflow-y-auto scroll-smooth p-4",
             hideBackButton ? "pt-0 md:pt-4" : "pt-20 md:pt-4",
           )}
           style={{
@@ -2098,7 +2117,7 @@ export default function ChatPage({
             <div className="space-y-4 w-full max-w-none px-2 md:px-4 pb-[max(11rem,min(42vh,18rem))] md:pb-32">
               {job && hideBackButton && otherUser ? (
                 <ChatJobContextStrip
-                  job={job}
+                  job={job as JobSummaryRow}
                   participantName={otherUser.full_name || "Partner"}
                   jobHref={liveJobBanner?.href ?? null}
                 />
@@ -2126,18 +2145,26 @@ export default function ChatPage({
                   isLikelySystemMessage(msg.body)
                 ) {
                   return (
-                    <div key={msg.id} className="space-y-4">
+                    <div
+                      key={msg.id}
+                      className="space-y-4 chat-scroll-reveal chat-scroll-reveal--center"
+                    >
                       {shouldShowDateHeader(index) && (
-                        <div className="my-4 flex justify-center">
-                          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                        <div className="my-5 flex justify-center px-2">
+                          <time
+                            dateTime={msg.created_at}
+                            className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
+                          >
                             {formatDate(msg.created_at)}
-                          </span>
+                          </time>
                         </div>
                       )}
                       <div className="flex justify-center px-2">
-                        <div className="max-w-md rounded-lg bg-muted/45 px-3 py-2 text-center text-[13px] leading-snug text-muted-foreground dark:bg-muted/25 border-none">
-                          {msg.body}
-                          <span className="mt-1 block text-[10px] font-medium tabular-nums opacity-80">
+                        <div className="max-w-md rounded-lg bg-muted/45 px-4 py-3 text-center text-sm leading-snug text-muted-foreground dark:bg-muted/25 border-none md:px-3 md:py-2 md:text-[13px] whitespace-pre-wrap">
+                          {msg.body
+                            ? linkifyMessageBody(msg.body, chatSystemLinkCn)
+                            : null}
+                          <span className="mt-1.5 block text-xs font-medium tabular-nums opacity-80 md:mt-1 md:text-[10px]">
                             {formatTime(msg.created_at)}
                           </span>
                         </div>
@@ -2150,12 +2177,23 @@ export default function ChatPage({
 
                 if (isMedia && msg.attachment_url) {
                   return (
-                    <div key={msg.id} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div
+                      key={msg.id}
+                      className={cn(
+                        "space-y-4 chat-scroll-reveal",
+                        isOwn
+                          ? "chat-scroll-reveal--sent"
+                          : "chat-scroll-reveal--received",
+                      )}
+                    >
                       {shouldShowDateHeader(index) && (
-                        <div className="flex justify-center my-4">
-                          <span className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded-full">
+                        <div className="my-5 flex justify-center px-2">
+                          <time
+                            dateTime={msg.created_at}
+                            className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
+                          >
                             {formatDate(msg.created_at)}
-                          </span>
+                          </time>
                         </div>
                       )}
 
@@ -2166,11 +2204,11 @@ export default function ChatPage({
                         )}
                       >
                         {!isOwn && (
-                          <Avatar className="w-8 h-8 flex-shrink-0 mb-1">
+                          <Avatar className="h-9 w-9 shrink-0 mb-1 md:h-8 md:w-8">
                             <AvatarImage
                               src={otherUser?.photo_url || undefined}
                             />
-                            <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                            <AvatarFallback className="text-[11px] font-bold bg-primary/10 text-primary md:text-[10px]">
                               {otherInitials}
                             </AvatarFallback>
                           </Avatar>
@@ -2178,7 +2216,7 @@ export default function ChatPage({
 
                         <div
                           className={cn(
-                            "max-w-[85%] md:max-w-[70%] flex flex-col",
+                            "flex max-w-[92%] flex-col md:max-w-[70%]",
                             isOwn ? "items-end" : "items-start",
                           )}
                         >
@@ -2194,7 +2232,7 @@ export default function ChatPage({
                               <img
                                 src={msg.attachment_url}
                                 alt={msg.attachment_name || "Attachment"}
-                                className="max-w-full rounded-2xl border-none shadow-sm max-h-[320px] object-cover"
+                                className="max-h-[380px] max-w-full rounded-2xl border-none object-cover shadow-sm md:max-h-[320px]"
                               />
                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity bg-black/10 rounded-2xl">
                                 <ImageIcon className="w-8 h-8 text-white drop-shadow-md" />
@@ -2204,7 +2242,7 @@ export default function ChatPage({
                             <video
                               src={msg.attachment_url}
                               controls
-                              className="max-w-full rounded-2xl border-none shadow-sm max-h-[320px] object-cover"
+                              className="max-h-[380px] max-w-full rounded-2xl border-none object-cover shadow-sm md:max-h-[320px]"
                             />
                           )}
 
@@ -2212,14 +2250,19 @@ export default function ChatPage({
                           {msg.body && (
                             <div
                               className={cn(
-                                "rounded-2xl px-3 py-2 shadow-sm relative mt-1",
+                                "relative mt-1 rounded-2xl px-3 py-2 shadow-sm md:px-3 md:py-1.5",
                                 isOwn
-                                  ? "rounded-br-none bg-primary text-primary-foreground"
+                                  ? "rounded-br-none bg-primary text-primary-foreground dark:bg-[hsl(var(--chat-bubble-sent))]"
                                   : "rounded-bl-none bg-muted/30 dark:bg-card border-none",
                               )}
                             >
-                              <p className="inline-block max-w-full text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap">
-                                {msg.body}
+                              <p className="inline-block max-w-full whitespace-pre-wrap break-words text-[17px] font-medium leading-snug md:text-[16px]">
+                                {linkifyMessageBody(
+                                  msg.body,
+                                  isOwn
+                                    ? chatOutgoingLinkCn
+                                    : chatIncomingLinkCn,
+                                )}
                               </p>
                             </div>
                           )}
@@ -2227,7 +2270,7 @@ export default function ChatPage({
                           {/* Metadata outside */}
                           <div
                             className={cn(
-                              "mt-1 flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground",
+                              "mt-1.5 flex items-center gap-1 text-xs font-medium tabular-nums text-muted-foreground md:mt-1 md:text-[11px]",
                               isOwn ? "justify-end" : "justify-start",
                             )}
                           >
@@ -2243,12 +2286,23 @@ export default function ChatPage({
                 }
 
                 return (
-                  <div key={msg.id} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "space-y-4 chat-scroll-reveal",
+                      isOwn
+                        ? "chat-scroll-reveal--sent"
+                        : "chat-scroll-reveal--received",
+                    )}
+                  >
                     {shouldShowDateHeader(index) && (
-                      <div className="flex justify-center my-4">
-                        <span className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded-full">
+                      <div className="my-5 flex justify-center px-2">
+                        <time
+                          dateTime={msg.created_at}
+                          className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
+                        >
                           {formatDate(msg.created_at)}
-                        </span>
+                        </time>
                       </div>
                     )}
 
@@ -2259,11 +2313,11 @@ export default function ChatPage({
                       )}
                     >
                       {!isOwn && (
-                        <Avatar className="w-8 h-8 flex-shrink-0 mb-1">
+                        <Avatar className="h-9 w-9 shrink-0 mb-1 md:h-8 md:w-8">
                           <AvatarImage
                             src={otherUser?.photo_url || undefined}
                           />
-                          <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                          <AvatarFallback className="text-[11px] font-bold bg-primary/10 text-primary md:text-[10px]">
                             {otherInitials}
                           </AvatarFallback>
                         </Avatar>
@@ -2271,15 +2325,15 @@ export default function ChatPage({
 
                       <div
                         className={cn(
-                          "max-w-[85%] md:max-w-[70%] space-y-1",
+                          "max-w-[92%] space-y-1 md:max-w-[70%]",
                           isOwn ? "items-end" : "items-start",
                         )}
                       >
                         <div
                           className={cn(
-                            "rounded-2xl px-3 py-2 shadow-sm relative group",
+                            "group relative rounded-2xl px-3 py-2 shadow-sm md:px-3 md:py-1.5",
                             isOwn
-                              ? "rounded-br-none bg-primary text-primary-foreground shadow-sm"
+                              ? "rounded-br-none bg-primary text-primary-foreground shadow-sm dark:bg-[hsl(var(--chat-bubble-sent))]"
                               : "rounded-bl-none bg-muted/30 dark:bg-card border-none",
                           )}
                         >
@@ -2290,10 +2344,10 @@ export default function ChatPage({
                                 href={msg.attachment_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg hover:bg-muted transition-colors border border-dashed border-primary/20"
+                                className="flex items-center gap-2 rounded-lg border border-dashed border-blue-500/25 bg-muted/50 p-2 transition-colors hover:bg-muted md:p-1.5"
                               >
-                                <File className="w-4 h-4 text-primary" />
-                                <span className="text-sm font-medium underline truncate max-w-[150px]">
+                                <File className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 md:h-4 md:w-4" />
+                                <span className="max-w-[min(12rem,55vw)] truncate text-base font-medium text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300 md:max-w-[150px] md:text-sm">
                                   {msg.attachment_name || "Download File"}
                                 </span>
                               </a>
@@ -2303,22 +2357,22 @@ export default function ChatPage({
                           {msg.body && matchIntro ? (
                             <div
                               className={cn(
-                                "rounded-xl border px-3 py-2 text-sm",
+                                "rounded-xl border px-2.5 py-2 text-base md:px-2.5 md:py-1.5 md:text-sm",
                                 isOwn
                                   ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground"
                                   : "bg-muted/50 text-foreground border-none",
                               )}
                             >
-                              <p className="text-[11px] font-bold uppercase tracking-wide opacity-80">
+                              <p className="text-xs font-bold uppercase tracking-wide opacity-80 md:text-[11px]">
                                 Match
                               </p>
                               <p className="mt-1 font-semibold">{matchIntro.category}</p>
-                              <p className="text-xs opacity-90">
+                              <p className="text-sm opacity-90 md:text-xs">
                                 {matchIntro.location} · {matchIntro.time}
                               </p>
                               <span
                                 className={cn(
-                                  "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom text-[11px] font-medium tabular-nums",
+                                  "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom text-xs font-medium tabular-nums md:text-[11px]",
                                   isOwn
                                     ? "text-primary-foreground/80"
                                     : "text-muted-foreground",
@@ -2330,17 +2384,21 @@ export default function ChatPage({
                           ) : msg.body ? (
                             <p
                               className={cn(
-                                "inline-block max-w-full text-[17px] font-medium leading-relaxed break-words whitespace-pre-wrap",
+                                "inline-block max-w-full whitespace-pre-wrap break-words text-[17px] font-medium leading-snug md:text-[16px]",
                                 isOwn
                                   ? "text-primary-foreground"
                                   : "text-foreground",
                               )}
                             >
-                              {msg.body}
+                              {linkifyMessageBody(
+                                msg.body,
+                                isOwn
+                                  ? chatOutgoingLinkCn
+                                  : chatIncomingLinkCn,
+                              )}
                               <span
                                 className={cn(
-                                  "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom",
-                                  "text-[11px] font-medium tabular-nums leading-none",
+                                  "ml-1.5 inline-flex items-center gap-0.5 align-text-bottom text-xs font-medium tabular-nums leading-none md:text-[11px]",
                                   isOwn
                                     ? "text-primary-foreground/85"
                                     : "text-muted-foreground",
@@ -2362,8 +2420,7 @@ export default function ChatPage({
                               >
                                 <span
                                   className={cn(
-                                    "inline-flex items-center gap-0.5",
-                                    "text-[11px] font-medium tabular-nums leading-none",
+                                    "inline-flex items-center gap-0.5 text-xs font-medium tabular-nums leading-none md:text-[11px]",
                                     isOwn
                                       ? "text-primary-foreground/85"
                                       : "text-muted-foreground",

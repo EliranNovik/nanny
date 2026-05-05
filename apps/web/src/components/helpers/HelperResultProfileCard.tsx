@@ -551,13 +551,13 @@ export function HelperResultProfileCard({
                     "supports-[backdrop-filter]:bg-black/40",
                   )}
                   role="status"
-                  aria-label="Live now, available for jobs"
+                  aria-label="Available now for jobs"
                 >
                   <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
                     <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/35 motion-reduce:animate-none" />
                     <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.85)] ring-2 ring-emerald-400/35" />
                   </span>
-                  <span>Live now</span>
+                  <span>Available now</span>
                 </span>
               ) : null}
 

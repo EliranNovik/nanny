@@ -37,7 +37,7 @@ export default function LandingPage() {
   const showcaseCategories = [
     {
       id: "special_video",
-      title: "Experience MamaLama",
+      title: "Experience Tebnu",
       icon: <Sparkles />,
       image: "/videos/promo-video.mp4",
       phrase: "See How We Make Life Simpler",
@@ -378,7 +378,7 @@ export default function LandingPage() {
               <div className="text-center mb-16 space-y-4 px-1 sm:px-0">
                 <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
                   Experience the{" "}
-                  <span className="text-primary italic">MamaLama</span> Ease
+                  <span className="text-primary italic">Tebnu</span> Ease
                 </h2>
                 <p className="text-slate-500 font-medium text-lg max-w-2xl mx-auto">
                   Find the perfect helper for any task, with all the details at

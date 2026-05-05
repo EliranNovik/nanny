@@ -1293,9 +1293,9 @@ function PostCard({
       className={cn(
         "overflow-hidden transition-all duration-300",
         "bg-white dark:bg-zinc-950/20",
-        "md:rounded-2xl md:border md:border-border/60 md:shadow-md", // Card on desktop
-        "border-b border-slate-100 dark:border-white/5 shadow-none", // Divider on mobile
-        "pb-6 md:pb-0" // Breathing room after action icons on mobile
+        "md:rounded-2xl md:shadow-md",
+        "border-0 shadow-none",
+        "pb-6 md:pb-0", // Breathing room after action icons on mobile
       )}
     >
       {/* Header — in card flow when there is no media; with media, same content is overlaid on the media */}
@@ -2191,7 +2191,7 @@ export function ProfilePostsFeed({
     return (
       <div className="flex flex-col gap-8 md:gap-7">
         {[1, 2].map((i) => (
-          <div key={i} className="bg-white dark:bg-zinc-950/20 md:rounded-2xl border-b md:border border-slate-100 dark:border-white/5 p-4 space-y-4 animate-pulse">
+          <div key={i} className="animate-pulse space-y-4 rounded-none border-0 bg-white p-4 shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-slate-100 dark:bg-white/5" />
               <div className="space-y-2 flex-1">

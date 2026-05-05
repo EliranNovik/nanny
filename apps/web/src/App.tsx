@@ -18,6 +18,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { NotificationListener } from "@/components/NotificationListener";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { SessionAnalyticsInit } from "@/components/SessionAnalyticsInit";
+import { AppBootSplash } from "@/components/AppBootSplash";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
@@ -88,11 +89,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // If we have a user but profile is still loading, allow navigation to proceed
   // The individual pages can handle their own loading states
   if (loading && !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <AppBootSplash />;
   }
 
   if (!user) {
@@ -109,11 +106,7 @@ function RoleRedirect() {
   const { profile, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <AppBootSplash />;
   }
 
   if (!profile) {
@@ -146,11 +139,7 @@ function RootRoute() {
   const navigationType = useNavigationType();
 
   if (loading && !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <AppBootSplash />;
   }
 
   if (!user) {

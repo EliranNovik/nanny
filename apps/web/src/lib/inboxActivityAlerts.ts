@@ -112,7 +112,7 @@ export async function fetchInboxActivityAlerts(
   }
 
   if (profile.role === "freelancer") {
-    // Hire interest on the freelancer's availability posts (community).
+    // Hire interests need post ids first; notifications + live jobs run in parallel with that query.
     const { data: myPosts } = await supabase
       .from("community_posts")
       .select("id")
@@ -123,77 +123,97 @@ export async function fetchInboxActivityAlerts(
     const myPostIds = (myPosts ?? [])
       .map((p) => p.id as string)
       .filter(Boolean);
-    if (myPostIds.length > 0) {
-      const { data: interests, error: iErr } = await supabase
-        .from("community_post_hire_interests")
-        .select("id, created_at, status, community_post_id, client_id")
-        .in("community_post_id", myPostIds)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(20);
 
-      if (iErr) {
-        console.warn("[fetchInboxActivityAlerts] hire interests", iErr);
-      } else if (interests && interests.length > 0) {
-        const clientIds = Array.from(
-          new Set(
-            (interests as any[])
-              .map((r) => r.client_id as string)
-              .filter(Boolean),
-          ),
-        );
-        const { data: clientProfiles } = await supabase
-          .from("profiles")
-          .select("id, full_name, photo_url")
-          .in("id", clientIds);
-
-        const clients = new Map<
-          string,
-          { full_name: string | null; photo_url: string | null }
-        >();
-        for (const p of clientProfiles ?? []) {
-          clients.set(p.id as string, {
-            full_name: (p as any).full_name ?? null,
-            photo_url: (p as any).photo_url ?? null,
+    const hireInterestsPromise =
+      myPostIds.length > 0
+        ? supabase
+            .from("community_post_hire_interests")
+            .select("id, created_at, status, community_post_id, client_id")
+            .in("community_post_id", myPostIds)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+            .limit(20)
+        : Promise.resolve({
+            data: [] as Record<string, unknown>[],
+            error: null as null,
           });
-        }
 
-        for (const r of interests as any[]) {
-          const c = clients.get(r.client_id as string);
-          const name = c?.full_name?.trim() || "Someone";
-          allAlerts.push({
-            id: `hire-${r.id as string}`,
-            type: "hire_interest",
-            title: `${name} wants to connect`,
-            description: "New interest on your availability post.",
-            link: `/availability/post/${encodeURIComponent(r.community_post_id as string)}/hires`,
-            created_at: r.created_at as string | undefined,
-            sender_name: c?.full_name ?? undefined,
-            sender_photo: c?.photo_url ?? undefined,
-            metadata: {
-              table: "community_post_hire_interests",
-              interest_id: r.id,
-              post_id: r.community_post_id,
-            },
-          });
-        }
-      }
-    }
-
-    const { data: notifications } = await supabase
-      .from("job_candidate_notifications")
-      .select(
-        `
+    const [hireRes, notificationsRes, liveJobsRes] = await Promise.all([
+      hireInterestsPromise,
+      supabase
+        .from("job_candidate_notifications")
+        .select(
+          `
             id, created_at, job_id,
             job_requests (
               id, location_city, service_type, care_type, confirm_ends_at, community_post_id
             )
           `,
-      )
-      .eq("freelancer_id", user.id)
-      .in("status", ["pending", "opened"])
-      .order("created_at", { ascending: false });
+        )
+        .eq("freelancer_id", user.id)
+        .in("status", ["pending", "opened"])
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("job_requests")
+        .select("id, status, care_type, updated_at")
+        .eq("selected_freelancer_id", user.id)
+        .in("status", ["locked", "active"])
+        .gte(
+          "updated_at",
+          new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+        )
+        .order("updated_at", { ascending: false }),
+    ]);
 
+    const { data: interests, error: iErr } = hireRes;
+    if (iErr) {
+      console.warn("[fetchInboxActivityAlerts] hire interests", iErr);
+    } else if (interests && interests.length > 0) {
+      const clientIds = Array.from(
+        new Set(
+          (interests as any[])
+            .map((r) => r.client_id as string)
+            .filter(Boolean),
+        ),
+      );
+      const { data: clientProfiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, photo_url")
+        .in("id", clientIds);
+
+      const clients = new Map<
+        string,
+        { full_name: string | null; photo_url: string | null }
+      >();
+      for (const p of clientProfiles ?? []) {
+        clients.set(p.id as string, {
+          full_name: (p as any).full_name ?? null,
+          photo_url: (p as any).photo_url ?? null,
+        });
+      }
+
+      for (const r of interests as any[]) {
+        const c = clients.get(r.client_id as string);
+        const name = c?.full_name?.trim() || "Someone";
+        allAlerts.push({
+          id: `hire-${r.id as string}`,
+          type: "hire_interest",
+          title: `${name} wants to connect`,
+          description: "New interest on your availability post.",
+          link: `/availability/post/${encodeURIComponent(r.community_post_id as string)}/hires`,
+          created_at: r.created_at as string | undefined,
+          sender_name: c?.full_name ?? undefined,
+          sender_photo: c?.photo_url ?? undefined,
+          metadata: {
+            table: "community_post_hire_interests",
+            interest_id: r.id,
+            post_id: r.community_post_id,
+          },
+        });
+      }
+    }
+
+    const { data: notifications } = notificationsRes;
     if (notifications) {
       const now = new Date();
       for (const n of notifications as any[]) {
@@ -219,17 +239,7 @@ export async function fetchInboxActivityAlerts(
       }
     }
 
-    const { data: liveJobs } = await supabase
-      .from("job_requests")
-      .select("id, status, care_type, updated_at")
-      .eq("selected_freelancer_id", user.id)
-      .in("status", ["locked", "active"])
-      .gte(
-        "updated_at",
-        new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-      )
-      .order("updated_at", { ascending: false });
-
+    const { data: liveJobs } = liveJobsRes;
     if (liveJobs) {
       for (const job of liveJobs) {
         allAlerts.push({
@@ -246,11 +256,24 @@ export async function fetchInboxActivityAlerts(
   }
 
   if (profile.role === "client") {
-    const { data: jobs } = await supabase
-      .from("job_requests")
-      .select("id, care_type")
-      .eq("client_id", user.id)
-      .in("status", ["notifying", "confirmations_closed"]);
+    const [{ data: jobs }, { data: communityHires }] = await Promise.all([
+      supabase
+        .from("job_requests")
+        .select("id, care_type")
+        .eq("client_id", user.id)
+        .in("status", ["notifying", "confirmations_closed"]),
+      supabase
+        .from("job_requests")
+        .select("id, service_type, locked_at, community_post_id")
+        .eq("client_id", user.id)
+        .not("community_post_id", "is", null)
+        .in("status", ["locked", "active"])
+        .gte(
+          "locked_at",
+          new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        )
+        .order("locked_at", { ascending: false }),
+    ]);
 
     if (jobs && jobs.length > 0) {
       const jobIds = jobs.map((j) => j.id);
@@ -281,18 +304,6 @@ export async function fetchInboxActivityAlerts(
         }
       }
     }
-
-    const { data: communityHires } = await supabase
-      .from("job_requests")
-      .select("id, service_type, locked_at, community_post_id")
-      .eq("client_id", user.id)
-      .not("community_post_id", "is", null)
-      .in("status", ["locked", "active"])
-      .gte(
-        "locked_at",
-        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      )
-      .order("locked_at", { ascending: false });
 
     for (const job of communityHires || []) {
       const j = job as any;

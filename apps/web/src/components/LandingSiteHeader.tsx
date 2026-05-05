@@ -13,9 +13,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 
 export type LandingSiteHeaderProps = {
-  /** `logo` = fixed MamaLama mark (landing). `back` = return to home (About / Contact). */
+  /** `logo` = fixed Tebnu mark (landing). `back` = return to home (About / Contact). */
   leftCorner?: "logo" | "back";
   /** Omit fixed top-left mark (e.g. login page shows brand in the card). */
   hideLeftLogo?: boolean;
@@ -47,12 +48,12 @@ export function LandingSiteHeader({
             className="fixed top-8 left-8 z-[60] hidden md:flex items-center gap-2 group/logo transition-all duration-300"
           >
             <img
-              src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-              alt="MamaLama Logo"
-              className="h-16 w-auto rounded-xl brightness-110 shadow-lg drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3"
+              src={BRAND_LOGO_SRC}
+              alt="Tebnu"
+              className="h-20 w-auto md:h-24 lg:h-28 transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3"
             />
             <span className="text-xl font-black text-white drop-shadow-md tracking-tighter hidden lg:block opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">
-              MamaLama
+              Tebnu
             </span>
           </Link>
         ) : (

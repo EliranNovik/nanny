@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Mail, MapPin, Loader2, Users, Heart, Check } from "lucide-react";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import { AppBootSplashLogo } from "@/components/AppBootSplash";
 import { getLocationDataFromGps } from "@/lib/location";
 import { cn } from "@/lib/utils";
 import { GoogleIcon } from "@/components/BrandIcons";
+import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 
 type Role = "client" | "freelancer";
 
@@ -176,7 +178,7 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
         <LandingSiteHeader />
         <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <AppBootSplashLogo />
         </main>
       </div>
     );
@@ -579,12 +581,12 @@ export default function OnboardingPage() {
         
         <div className="relative z-10 animate-fade-up pointer-events-none">
           <img
-            src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-            alt="MamaLama Logo"
-            className="h-[4.5rem] w-auto rounded-xl mb-10 shadow-2xl saturate-150"
+            src={BRAND_LOGO_SRC}
+            alt="Tebnu"
+            className="h-28 w-auto xl:h-32 mb-10"
           />
           <h1 className="text-[3.25rem] font-black text-white leading-[1.05] tracking-tight mb-5 drop-shadow-xl text-balance">
-            Join the MamaLama <br /> community.
+            Join the Tebnu <br /> community.
           </h1>
           <p className="text-xl text-white/90 font-medium max-w-md leading-snug drop-shadow-md text-balance">
             Register your profile to connect with trusted locals instantly.
@@ -606,9 +608,9 @@ export default function OnboardingPage() {
             {/* Mobile Branding (Hidden on Desktop) */}
             <div className="lg:hidden text-center mb-10">
               <img
-                src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-                alt="MamaLama Logo"
-                className="h-[4.5rem] w-auto mx-auto rounded-2xl shadow-xl mb-4"
+                src={BRAND_LOGO_SRC}
+                alt="Tebnu"
+                className="h-24 w-auto sm:h-28 mx-auto mb-4"
               />
             </div>
 

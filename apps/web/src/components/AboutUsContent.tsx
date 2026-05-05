@@ -47,7 +47,7 @@ const highlights = [
     bg: "bg-violet-500/10 dark:bg-violet-500/15",
   },
   {
-    title: "Your corner of MamaLama",
+    title: "Your corner of Tebnu",
     description:
       "Families and helpers each get a home base in the app—see who’s reaching out, what’s coming up, and what you’ve shared before. Same village, two views that make sense for how you show up.",
     icon: LayoutDashboard,
@@ -68,7 +68,7 @@ export function AboutUsContent() {
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-300">
               <Sparkles className="h-3.5 w-3.5" />
-              About MamaLama
+              About Tebnu
             </div>
             <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white md:text-5xl lg:text-[3.25rem] lg:leading-[1.1]">
               A softer way for families and{" "}
@@ -78,7 +78,7 @@ export function AboutUsContent() {
               to find each other
             </h1>
             <p className="text-lg font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-              MamaLama isn’t a stiff listings site—it’s a place to meet real
+              Tebnu isn’t a stiff listings site—it’s a place to meet real
               people nearby. Helpers and families each get a simple path in,
               honest profiles, a spot to see who’s connecting with you, chat
               that feels like texting a neighbor, and map-first discovery when
@@ -133,7 +133,7 @@ export function AboutUsContent() {
           <div className="space-y-5 text-base leading-relaxed text-slate-600 dark:text-slate-300">
             <p>
               Needing a hand shouldn’t mean five open tabs and a stressed group
-              chat. MamaLama keeps the story in one place: you put your ask out
+              chat. Tebnu keeps the story in one place: you put your ask out
               there, helpers respond, you sort invites and confirmations
               together, and you can always see what’s happening from your own
               little home in the app—without losing the thread.

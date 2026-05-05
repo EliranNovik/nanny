@@ -22,7 +22,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-const SUPPORT_EMAIL = "support@mamalama.com";
+const SUPPORT_EMAIL = "support@tebnu.com";
 
 const TOPICS = [
   { value: "general", label: "General question" },
@@ -78,7 +78,7 @@ export function ContactUsContent() {
 
     setSubmitting(true);
     const topicLabel = TOPICS.find((t) => t.value === topic)?.label ?? topic;
-    const subject = `[MamaLama] ${topicLabel}`;
+    const subject = `[Tebnu] ${topicLabel}`;
     const body = [
       `Name: ${name.trim()}`,
       `Email: ${email.trim()}`,
@@ -170,7 +170,7 @@ export function ContactUsContent() {
             Contact us
           </h1>
           <p className="text-lg font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-            Questions, worries, or a rough day with the app—tell us. MamaLama is
+            Questions, worries, or a rough day with the app—tell us. Tebnu is
             built for real families and helpers; we read what you send and
             answer with care, not scripts.
           </p>

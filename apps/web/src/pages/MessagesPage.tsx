@@ -40,20 +40,11 @@ import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
 
-/** One muted line under the name: category · city · Done when relevant */
-function inboxRowSubtitle(convo: Conversation): string | null {
+/** City for inbox row: job location first, else other user profile city */
+function inboxRowLocation(convo: Conversation): string | null {
   const profile = convo.other_user_profile;
   const job = convo.job_summary;
-  
   const loc = (job?.location_city || profile?.city || "").trim();
-  const rating = profile?.average_rating;
-  const count = (profile as any)?.total_ratings;
-  
-  const ratingStr = rating && Number(rating) > 0 
-    ? `${Number(rating).toFixed(1)}${count ? ` (${count})` : ""}` 
-    : "New";
-    
-  if (loc) return `${loc} · ${ratingStr}`;
   return loc || null;
 }
 
@@ -72,8 +63,6 @@ interface Conversation {
   other_user_profile?: {
     full_name: string | null;
     photo_url: string | null;
-    average_rating?: number | null;
-    total_ratings?: number | null;
     city?: string | null;
   };
   /** Joined from job_requests for status + preview */
@@ -285,7 +274,7 @@ export default function MessagesPage() {
         convo.client_id === user.id ? convo.freelancer_id : convo.client_id;
       const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, photo_url, average_rating, total_ratings, city")
+        .select("full_name, photo_url, city")
         .eq("id", otherId)
         .single();
       if (!cancelled) {
@@ -304,173 +293,256 @@ export default function MessagesPage() {
   }, [conversationId, user, conversations]);
 
   useEffect(() => {
+    function persistInboxCache(withJobRows: Conversation[]) {
+      if (!user || !profile) return;
+      try {
+        localStorage.setItem(
+          `messages_${user.id}_${profile.role}`,
+          JSON.stringify({
+            timestamp: Date.now(),
+            data: { conversations: withJobRows },
+          }),
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+
+    async function attachJobSummaries(
+      sortedConversations: Conversation[],
+    ): Promise<Conversation[]> {
+      const jobIds = [
+        ...new Set(
+          sortedConversations
+            .map((c) => c.job_id)
+            .filter((id): id is string => !!id),
+        ),
+      ];
+      if (jobIds.length === 0) return sortedConversations;
+      const { data: jobRows } = await supabase
+        .from("job_requests")
+        .select(
+          "id, status, stage, service_type, care_type, location_city, start_at",
+        )
+        .in("id", jobIds);
+      const jm = new Map(
+        (jobRows ?? []).map((j) => [j.id as string, j as JobSummaryRow]),
+      );
+      return sortedConversations.map((c) =>
+        c.job_id && jm.has(c.job_id)
+          ? { ...c, job_summary: jm.get(c.job_id)! }
+          : c,
+      );
+    }
+
+    async function loadConversationsLegacy() {
+      if (!user || !profile) return;
+
+      const { data: convos } = await supabase
+        .from("conversations")
+        .select("id, job_id, client_id, freelancer_id, created_at")
+        .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (!convos || convos.length === 0) {
+        setConversations([]);
+        persistInboxCache([]);
+        return;
+      }
+
+      const conversationsByUser = new Map<string, typeof convos>();
+      for (const convo of convos) {
+        const otherUserId =
+          convo.client_id === user.id ? convo.freelancer_id : convo.client_id;
+
+        if (otherUserId === user.id) continue;
+
+        if (!conversationsByUser.has(otherUserId)) {
+          conversationsByUser.set(otherUserId, []);
+        }
+        conversationsByUser.get(otherUserId)!.push(convo);
+      }
+
+      if (conversationsByUser.size === 0) {
+        setConversations([]);
+        persistInboxCache([]);
+        return;
+      }
+
+      const uniqueOtherIds = Array.from(conversationsByUser.keys());
+      const { data: profilesRows } = await supabase
+        .from("profiles")
+        .select("id, full_name, photo_url, city")
+        .in("id", uniqueOtherIds);
+
+      const profileById = new Map((profilesRows ?? []).map((p) => [p.id, p]));
+
+      const entries = Array.from(conversationsByUser.entries());
+      const BATCH = 8;
+      const enriched: Conversation[] = [];
+
+      for (let i = 0; i < entries.length; i += BATCH) {
+        const slice = entries.slice(i, i + BATCH);
+        const batch = await Promise.all(
+          slice.map(async ([otherUserId, userConversations]) => {
+            const conversationIds = userConversations.map((c) => c.id);
+            const otherProfile = profileById.get(otherUserId);
+
+            const [messagesRes, unreadRes] = await Promise.all([
+              supabase
+                .from("messages")
+                .select(
+                  "body, created_at, sender_id, read_at, read_by, attachment_type, attachment_name, conversation_id",
+                )
+                .in("conversation_id", conversationIds)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+              supabase
+                .from("messages")
+                .select("*", { count: "exact", head: true })
+                .in("conversation_id", conversationIds)
+                .eq("sender_id", otherUserId)
+                .is("read_at", null),
+            ]);
+
+            const row = messagesRes.data;
+            const totalUnread = unreadRes.count ?? 0;
+
+            const mostRecentConversationId =
+              row?.conversation_id || userConversations[0].id;
+            const mostRecentConversation =
+              userConversations.find(
+                (c) => c.id === mostRecentConversationId,
+              ) || userConversations[0];
+
+            const last_message = row
+              ? {
+                  body: row.body,
+                  created_at: row.created_at,
+                  sender_id: row.sender_id,
+                  read_at: row.read_at,
+                  read_by: row.read_by,
+                  attachment_type: row.attachment_type,
+                  attachment_name: row.attachment_name,
+                }
+              : undefined;
+
+            return {
+              ...mostRecentConversation,
+              other_user_id: otherUserId,
+              other_user_profile: {
+                full_name: otherProfile?.full_name || null,
+                photo_url: otherProfile?.photo_url || null,
+                city: otherProfile?.city || null,
+              },
+              last_message,
+              unread_count: totalUnread,
+            } as Conversation;
+          }),
+        );
+        enriched.push(...batch);
+      }
+
+      const sortedConversations = enriched.sort((a, b) => {
+        const timeA = a.last_message?.created_at
+          ? new Date(a.last_message.created_at).getTime()
+          : 0;
+        const timeB = b.last_message?.created_at
+          ? new Date(b.last_message.created_at).getTime()
+          : 0;
+        return timeB - timeA;
+      });
+
+      const withJobRows = await attachJobSummaries(sortedConversations);
+      setConversations(withJobRows);
+      persistInboxCache(withJobRows);
+    }
+
     async function loadConversations() {
       if (!user || !profile) return;
 
       try {
-        // Fetch conversations (cap rows so initial load stays fast)
-        const { data: convos } = await supabase
-          .from("conversations")
-          .select("id, job_id, client_id, freelancer_id, created_at")
-          .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
-          .order("created_at", { ascending: false })
-          .limit(500);
+        const { data: rpcRows, error: rpcError } = await supabase.rpc(
+          "get_messages_inbox_preview",
+          { p_user_id: user.id },
+        );
 
-        if (!convos || convos.length === 0) {
-          setConversations([]);
-          return;
-        }
-
-        const conversationsByUser = new Map<string, typeof convos>();
-        for (const convo of convos) {
-          const otherUserId =
-            convo.client_id === user.id ? convo.freelancer_id : convo.client_id;
-
-          if (otherUserId === user.id) continue;
-
-          if (!conversationsByUser.has(otherUserId)) {
-            conversationsByUser.set(otherUserId, []);
+        if (!rpcError && Array.isArray(rpcRows)) {
+          if (rpcRows.length === 0) {
+            setConversations([]);
+            persistInboxCache([]);
+            return;
           }
-          conversationsByUser.get(otherUserId)!.push(convo);
-        }
 
-        if (conversationsByUser.size === 0) {
-          setConversations([]);
-          return;
-        }
+          const uniqueOtherIds = [
+            ...new Set(
+              (rpcRows as Record<string, unknown>[]).map(
+                (r) => r.other_user_id as string,
+              ),
+            ),
+          ];
+          const { data: profilesRows, error: profErr } = await supabase
+            .from("profiles")
+            .select("id, full_name, photo_url, city")
+            .in("id", uniqueOtherIds);
+          if (profErr) {
+            console.warn("[MessagesPage] profiles after inbox RPC", profErr);
+          }
+          const profileById = new Map(
+            (profilesRows ?? []).map((p) => [p.id, p]),
+          );
 
-        // One profile query for all contacts (was N round-trips)
-        const uniqueOtherIds = Array.from(conversationsByUser.keys());
-        const { data: profilesRows } = await supabase
-          .from("profiles")
-          .select("id, full_name, photo_url, average_rating, total_ratings, city")
-          .in("id", uniqueOtherIds);
-
-        const profileById = new Map((profilesRows ?? []).map((p) => [p.id, p]));
-
-        const entries = Array.from(conversationsByUser.entries());
-        /** Limit parallel Supabase calls per wave (each contact = 2 queries). */
-        const BATCH = 8;
-        const enriched: Conversation[] = [];
-
-        for (let i = 0; i < entries.length; i += BATCH) {
-          const slice = entries.slice(i, i + BATCH);
-          const batch = await Promise.all(
-            slice.map(async ([otherUserId, userConversations]) => {
-              const conversationIds = userConversations.map((c) => c.id);
-              const otherProfile = profileById.get(otherUserId);
-
-              const [messagesRes, unreadRes] = await Promise.all([
-                supabase
-                  .from("messages")
-                  .select(
-                    "body, created_at, sender_id, read_at, read_by, attachment_type, attachment_name, conversation_id",
-                  )
-                  .in("conversation_id", conversationIds)
-                  .order("created_at", { ascending: false })
-                  .limit(1)
-                  .maybeSingle(),
-                supabase
-                  .from("messages")
-                  .select("*", { count: "exact", head: true })
-                  .in("conversation_id", conversationIds)
-                  .eq("sender_id", otherUserId)
-                  .is("read_at", null),
-              ]);
-
-              const row = messagesRes.data;
-              const totalUnread = unreadRes.count ?? 0;
-
-              const mostRecentConversationId =
-                row?.conversation_id || userConversations[0].id;
-              const mostRecentConversation =
-                userConversations.find(
-                  (c) => c.id === mostRecentConversationId,
-                ) || userConversations[0];
-
-              const last_message = row
+          const sortedConversations: Conversation[] = (
+            rpcRows as Record<string, unknown>[]
+          ).map((row) => {
+            const oid = row.other_user_id as string;
+            const op = profileById.get(oid);
+            const lastCreated = row.last_created_at as string | null | undefined;
+            const hasLast = Boolean(lastCreated);
+            return {
+              id: row.conversation_id as string,
+              job_id: (row.job_id as string | null) ?? null,
+              client_id: row.client_id as string,
+              freelancer_id: row.freelancer_id as string,
+              created_at: row.created_at as string,
+              other_user_id: oid,
+              other_user_profile: {
+                full_name: op?.full_name ?? null,
+                photo_url: op?.photo_url ?? null,
+                city: (op?.city as string | null) ?? null,
+              },
+              last_message: hasLast
                 ? {
-                    body: row.body,
-                    created_at: row.created_at,
-                    sender_id: row.sender_id,
-                    read_at: row.read_at,
-                    read_by: row.read_by,
-                    attachment_type: row.attachment_type,
-                    attachment_name: row.attachment_name,
+                    body: (row.last_body as string | null) ?? null,
+                    created_at: lastCreated as string,
+                    sender_id: row.last_sender_id as string,
+                    read_at: (row.last_read_at as string | null) ?? null,
+                    read_by: (row.last_read_by as string | null) ?? null,
+                    attachment_type:
+                      (row.last_attachment_type as string | null) ?? null,
+                    attachment_name:
+                      (row.last_attachment_name as string | null) ?? null,
                   }
-                : undefined;
+                : undefined,
+              unread_count: Number(row.unread_count ?? 0),
+            };
+          });
 
-              return {
-                ...mostRecentConversation,
-                other_user_id: otherUserId,
-                other_user_profile: {
-                  full_name: otherProfile?.full_name || null,
-                  photo_url: otherProfile?.photo_url || null,
-                  average_rating: otherProfile?.average_rating ?? null,
-                  total_ratings: (otherProfile as any)?.total_ratings ?? null,
-                  city: otherProfile?.city || null,
-                },
-                last_message,
-                unread_count: totalUnread,
-              } as Conversation;
-            }),
-          );
-          enriched.push(...batch);
+          const withJobRows = await attachJobSummaries(sortedConversations);
+          setConversations(withJobRows);
+          persistInboxCache(withJobRows);
+          return;
         }
 
-        const sortedConversations = enriched.sort((a, b) => {
-          const timeA = a.last_message?.created_at
-            ? new Date(a.last_message.created_at).getTime()
-            : 0;
-          const timeB = b.last_message?.created_at
-            ? new Date(b.last_message.created_at).getTime()
-            : 0;
-          return timeB - timeA; // Most recent first
-        });
-
-        const jobIds = [
-          ...new Set(
-            sortedConversations
-              .map((c) => c.job_id)
-              .filter((id): id is string => !!id),
-          ),
-        ];
-        let withJobRows = sortedConversations;
-        if (jobIds.length > 0) {
-          const { data: jobRows } = await supabase
-            .from("job_requests")
-            .select(
-              "id, status, stage, service_type, care_type, location_city, start_at",
-            )
-            .in("id", jobIds);
-          const jm = new Map(
-            (jobRows ?? []).map((j) => [j.id as string, j as JobSummaryRow]),
-          );
-          withJobRows = sortedConversations.map((c) =>
-            c.job_id && jm.has(c.job_id)
-              ? { ...c, job_summary: jm.get(c.job_id)! }
-              : c,
+        if (rpcError) {
+          console.warn(
+            "[MessagesPage] get_messages_inbox_preview unavailable, legacy load",
+            rpcError,
           );
         }
-
-        setConversations(withJobRows);
-
-        // Cache the data for instant loading next time
-        if (user && profile) {
-          try {
-            localStorage.setItem(
-              `messages_${user.id}_${profile.role}`,
-              JSON.stringify({
-                timestamp: Date.now(),
-                data: {
-                  conversations: withJobRows,
-                },
-              }),
-            );
-          } catch (e) {
-            // Ignore cache errors
-          }
-        }
+        await loadConversationsLegacy();
       } catch (err) {
         console.error("Error loading conversations:", err);
       }
@@ -751,7 +823,7 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background dark:bg-zinc-950">
+      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background">
         <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
           <div className="z-40 flex shrink-0 border-b border-border/30 bg-background/95 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:bg-transparent md:pt-4">
             <div className="flex items-center gap-3">
@@ -789,7 +861,7 @@ export default function MessagesPage() {
 
   // Show contact panel with conversation list and chat inline
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background dark:bg-zinc-950">
+    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background">
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
         className={cn(
@@ -817,7 +889,10 @@ export default function MessagesPage() {
                     : "/freelancer/home",
                 )
               }
-              className="mt-0.5 shrink-0 md:hidden"
+              className={cn(
+                "mt-0.5 shrink-0 md:hidden",
+                "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
+              )}
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
@@ -956,7 +1031,7 @@ export default function MessagesPage() {
                 </div>
               </div>
             ) : (
-              <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
+              <div className="w-full min-w-0 max-w-full divide-y divide-border/25 overflow-x-hidden dark:divide-white/[0.06]">
                 {chatInboxRows.map((row) => {
                   const convo = row.conversation;
                   const initials =
@@ -967,7 +1042,7 @@ export default function MessagesPage() {
                       .toUpperCase() || "?";
 
                   const isActive = conversationId === convo.id;
-                  const subtitle = inboxRowSubtitle(convo);
+                  const locationLabel = inboxRowLocation(convo);
 
                   return (
                     <div
@@ -1013,17 +1088,20 @@ export default function MessagesPage() {
                             <div className="min-w-0 max-w-full pr-[5.5rem]">
                               <p
                                 className={cn(
-                                  "truncate text-lg font-semibold leading-snug text-foreground md:text-xl",
+                                  "flex min-w-0 items-baseline gap-x-1.5 text-lg font-semibold leading-snug text-foreground md:text-xl",
                                   convo.unread_count > 0 && "text-foreground",
                                 )}
                               >
-                                {convo.other_user_profile?.full_name || "User"}
+                                <span className="min-w-0 truncate">
+                                  {convo.other_user_profile?.full_name ||
+                                    "User"}
+                                </span>
+                                {locationLabel ? (
+                                  <span className="shrink-0 font-normal text-[15px] text-muted-foreground md:text-base">
+                                    · {locationLabel}
+                                  </span>
+                                ) : null}
                               </p>
-                              {subtitle ? (
-                                <p className="mt-1 truncate text-[15px] leading-snug text-muted-foreground md:text-base">
-                                  {subtitle}
-                                </p>
-                              ) : null}
                               {convo.last_message && (
                                 <p
                                   className={cn(
@@ -1288,7 +1366,8 @@ export default function MessagesPage() {
                 {/* Mobile chat bar — fixed to viewport top; conversation scrolls underneath */}
                 <div
                   className={cn(
-                    "z-40 flex shrink-0 items-center gap-2 border-b border-border/30 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
+                    "z-40 flex shrink-0 items-center gap-2",
+                    "bg-background/70 backdrop-blur-xl dark:bg-background/38 supports-[backdrop-filter]:bg-background/45 dark:supports-[backdrop-filter]:bg-background/[0.26]",
                     "fixed left-0 right-0 top-0 md:hidden",
                     "px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
                   )}
@@ -1297,7 +1376,10 @@ export default function MessagesPage() {
                     variant="ghost"
                     size="icon"
                     onClick={handleBackToContacts}
-                    className="shrink-0 self-center"
+                    className={cn(
+                      "shrink-0 self-center",
+                      "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
+                    )}
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </Button>
@@ -1346,7 +1428,10 @@ export default function MessagesPage() {
                             : "/freelancer/home",
                         )
                       }
-                      className="hidden shrink-0 items-center gap-2 text-muted-foreground hover:text-primary transition-colors md:flex"
+                      className={cn(
+                        "hidden shrink-0 items-center gap-2 text-muted-foreground transition-colors hover:text-primary md:flex",
+                        "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
+                      )}
                     >
                       <ChevronLeft className="w-4 h-4" />
                       <span>Back</span>

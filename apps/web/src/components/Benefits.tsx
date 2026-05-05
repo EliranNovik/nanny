@@ -11,6 +11,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 /** Local assets only — avoid `gradient-mesh` on this wrapper (global `.gradient-mesh` uses min-height: 100dvh and breaks the phone mock). */
@@ -284,13 +285,11 @@ function BenefitsHubShowcase() {
                       })}
 
                       <div className="relative z-10 mx-0 flex shrink-0 items-center justify-center">
-                        <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center overflow-hidden rounded-full shadow-md ring-1 ring-black/10">
-                          <img
-                            src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-                            alt=""
-                            className="block h-full w-full scale-[1.08] object-cover"
-                          />
-                        </div>
+                        <img
+                          src={BRAND_LOGO_SRC}
+                          alt=""
+                          className="h-[26px] w-auto max-w-[30px] object-contain"
+                        />
                       </div>
 
                       <div className="flex flex-col items-center justify-center p-0.5 text-slate-500">

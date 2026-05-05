@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { ShieldCheck, Instagram, Facebook, Twitter } from "lucide-react";
 
 export function Footer() {
@@ -15,12 +16,12 @@ export function Footer() {
           <div className="space-y-6">
             <Link to="/" className="flex items-center gap-3 group/footer-logo">
               <img
-                src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
-                alt="MamaLama Logo"
-                className="h-14 w-auto rounded-xl brightness-110 shadow-2xl transition-transform duration-500 group-hover/footer-logo:scale-105"
+                src={BRAND_LOGO_SRC}
+                alt="Tebnu"
+                className="h-14 w-auto transition-transform duration-500 group-hover/footer-logo:scale-105"
               />
               <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
-                MamaLama
+                Tebnu
               </span>
             </Link>
             <p className="text-slate-400 font-medium leading-relaxed max-w-xs">
@@ -160,7 +161,7 @@ export function Footer() {
               </p>
               <div className="flex items-center gap-2 grayscale opacity-50">
                 <img
-                  src="/ChatGPT Image Jan 19, 2026, 08_14_59 PM.png"
+                  src={BRAND_LOGO_SRC}
                   alt=""
                   className="h-6 w-auto"
                 />
@@ -173,7 +174,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-slate-500 text-sm font-medium">
-            &copy; {currentYear} MamaLama Inc. All rights reserved.
+            &copy; {currentYear} Tebnu. All rights reserved.
           </p>
           <div className="flex items-center gap-8 text-slate-500 text-xs font-bold uppercase tracking-widest">
             <Link to="/terms" className="hover:text-white transition-colors">
