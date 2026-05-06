@@ -54,6 +54,7 @@ import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRe
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
 import { DiscoverHomePostedHelpRequests } from "@/components/discover/DiscoverHomePostedHelpRequests";
 import { DiscoverHomeLiveHelperCards } from "@/components/discover/DiscoverHomeLiveHelperCards";
+import { DiscoverHomeReviewsDesktopStrip } from "@/components/discover/DiscoverHomeReviewsDesktopStrip";
 
 type HomeMode = "hire" | "work";
 
@@ -98,9 +99,9 @@ const discoverHomeMobileMetaPillClass =
 const discoverHomeMobileEmptyCtaClass =
   "shrink-0 rounded-full border border-emerald-600/20 bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-900 shadow-sm transition-colors hover:bg-emerald-100 dark:border-white/10 dark:bg-white/15 dark:text-white dark:hover:bg-white/20 dark:shadow-none";
 
-/** Same stack + padding for both hire/work heroes; modest min-height keeps imagery balanced. */
+/** Same stack + padding for both hire/work heroes; flex-1 + shared min-heights keeps both modes aligned in the desktop grid row. */
 const heroInnerClassName =
-  "relative flex min-h-[10rem] flex-col sm:min-h-[12.5rem] md:min-h-[16rem]";
+  "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[12.5rem] md:min-h-[16rem]";
 
 const heroStackClassName =
   "relative z-10 flex min-h-0 flex-1 flex-col justify-start px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:px-7 md:pb-4 md:pt-6";
@@ -1018,15 +1019,15 @@ export function DiscoverHomeActionFirst({
           )}
         >
           {isHire ? (
-            <div className="flex min-h-0 min-w-0 flex-col gap-4">
+            <div className="flex min-h-0 min-w-0 flex-col gap-4 md:h-full">
               <section
                 className={cn(
-                  "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group",
+                  "relative mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:min-h-0",
                   "ring-1 ring-white/10 ring-inset shadow-2xl transition-all duration-500",
                 )}
               >
                 {renderHeroQuickActionsDesktop()}
-                <div className={cn(heroInnerClassName, "md:h-full")}>
+                <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
                   <img
                     src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
                     alt=""
@@ -1076,13 +1077,13 @@ export function DiscoverHomeActionFirst({
           ) : (
             <section
               className={cn(
-                "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group",
+                "relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:h-full md:min-h-0",
                 "ring-1 ring-white/10 ring-inset shadow-2xl transition-all duration-500",
               )}
             >
               {renderHeroQuickActionsDesktop()}
               {renderDesktopWorkLiveBadge()}
-              <div className={cn(heroInnerClassName, "md:h-full")}>
+              <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.work}
                   alt=""
@@ -1315,12 +1316,17 @@ export function DiscoverHomeActionFirst({
           )}
         </div>
 
-        <section className="mt-8 pb-12">
+        <section className="mt-8 pb-0">
           <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             Our community live
           </h2>
           <ProfilePostsFeed limit={5} appearance="discover" />
         </section>
+
+        <DiscoverHomeReviewsDesktopStrip
+          limit={10}
+          className="mt-10 shrink-0 border-t border-slate-200/80 pt-8 pb-12 dark:border-white/10"
+        />
       </div>
 
       {/* My Requests Modal */}

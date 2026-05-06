@@ -5,6 +5,10 @@ import { requireUser } from "./middleware/auth";
 import { jobsRouter } from "./routes/jobs";
 import { devRouter } from "./routes/dev";
 import { adminRouter } from "./routes/admin";
+import {
+  handleLinkPreviewImageGet,
+  linkPreviewRouter,
+} from "./routes/linkPreview";
 
 const app = express();
 
@@ -21,6 +25,8 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 app.use("/api/jobs", requireUser, jobsRouter);
 app.use("/api/dev", requireUser, devRouter);
 app.use("/api/admin", requireUser, adminRouter);
+app.get("/api/link-preview/image", handleLinkPreviewImageGet);
+app.use("/api/link-preview", requireUser, linkPreviewRouter);
 
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => console.log(`🚀 API running on port ${port}`));

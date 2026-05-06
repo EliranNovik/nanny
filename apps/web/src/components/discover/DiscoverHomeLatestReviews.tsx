@@ -1,30 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
 import { ChevronRight, Sparkles, Star, X, BadgeCheck } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import {
+  type DiscoverLatestJobReview,
+  useDiscoverLatestJobReviews,
+} from "@/hooks/data/useDiscoverLatestJobReviews";
 import { useNavigate } from "react-router-dom";
 
-type ReviewRow = {
-  id: string;
-  rating: number;
-  review_text: string | null;
-  created_at: string;
-  reviewer: {
-    id: string;
-    full_name: string | null;
-    photo_url: string | null;
-    is_verified: boolean | null;
-  } | null;
-  reviewee: {
-    id: string;
-    full_name: string | null;
-    photo_url: string | null;
-    is_verified: boolean | null;
-  } | null;
-};
+type ReviewRow = DiscoverLatestJobReview;
 
 function initials(name: string | null | undefined): string {
   const t = String(name ?? "").trim();
@@ -46,11 +31,10 @@ function formatReviewDate(iso: string): string {
 }
 
 export function DiscoverHomeLatestReviews({ limit = 6 }: { limit?: number }) {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<ReviewRow[]>([]);
+  const capped = Math.max(1, Math.min(20, limit));
+  const { loading, rows } = useDiscoverLatestJobReviews(capped);
 
   const gradients = useMemo(
     () => [
@@ -64,66 +48,7 @@ export function DiscoverHomeLatestReviews({ limit = 6 }: { limit?: number }) {
     [],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void (async () => {
-      const q = supabase
-        .from("job_reviews")
-        .select(
-          `
-            id,
-            rating,
-            review_text,
-            created_at,
-            reviewer:profiles!reviewer_id (
-              id,
-              full_name,
-              photo_url,
-              is_verified
-            ),
-            reviewee:profiles!reviewee_id (
-              id,
-              full_name,
-              photo_url,
-              is_verified
-            )
-          `,
-        )
-        .order("created_at", { ascending: false })
-        .limit(Math.max(1, Math.min(20, limit)));
-
-      // Avoid showing reviews about the current user when possible.
-      const res = user?.id ? await q.neq("reviewee_id", user.id) : await q;
-      if (cancelled) return;
-      if (res.error) {
-        console.warn("[DiscoverHomeLatestReviews] job_reviews:", res.error);
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-      const data = (res.data ?? []) as any[];
-      const normalized = data.map((r) => ({
-        ...r,
-        reviewer: r.reviewer || {
-          id: "",
-          full_name: "Anonymous",
-          photo_url: null,
-        },
-        reviewee: r.reviewee || null,
-      })) as ReviewRow[];
-      setRows(normalized);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [limit, user?.id]);
-
-  const visible = useMemo(
-    () => rows.slice(0, Math.max(1, Math.min(20, limit))),
-    [rows, limit],
-  );
+  const visible = useMemo(() => rows.slice(0, capped), [rows, capped]);
   const preview = visible[0] ?? null;
 
   if (loading && visible.length === 0) {

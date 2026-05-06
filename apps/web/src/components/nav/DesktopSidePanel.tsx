@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { cn } from "@/lib/utils";
+import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import {
@@ -255,24 +256,17 @@ export function DesktopSidePanel() {
     >
       {/* Fixed top section to allow popouts to escape overflow clipping */}
       <div className="shrink-0 px-3 pt-4 pb-1">
-        <div className="relative mb-1 flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2 text-foreground">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-muted/70">
-            <img
-              src={encodeURI("/ChatGPT Image May 4, 2026, 04_03_41 PM.png")}
-              alt="Tebnu"
-              className="h-full w-full object-cover"
-              loading="eager"
-              decoding="async"
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-[13px] font-black leading-tight tracking-tight">
-              Tebnu
-            </div>
-            <div className="truncate text-[11px] font-semibold text-muted-foreground">
-              Quick access
-            </div>
-          </div>
+        <div className="relative mb-1 flex items-center gap-1 rounded-2xl bg-muted/40 px-3 py-2 text-foreground">
+          <img
+            src={BRAND_LOGO_SRC}
+            alt="Tebnu"
+            className="h-16 w-auto shrink-0 md:h-[4.5rem]"
+            loading="eager"
+            decoding="async"
+          />
+          <span className="min-w-0 truncate text-[13px] font-black leading-none tracking-tight">
+            Tebnu
+          </span>
 
           <button
             type="button"

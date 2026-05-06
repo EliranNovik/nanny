@@ -35,8 +35,6 @@ import {
   Clock,
   File,
   ImageIcon,
-  Check,
-  CheckCheck,
   MapPin,
   Baby,
   FileText,
@@ -68,6 +66,7 @@ import {
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { ChatLinkPreviewCards } from "@/components/chat/ChatLinkPreviewCards";
 import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
 import { MatchContextBanner } from "@/components/messages/MatchContextBanner";
 import { ChatJobContextStrip } from "@/components/messages/ChatJobContextStrip";
@@ -80,7 +79,12 @@ import { getLiveJobBannerFromRow } from "@/lib/liveJobConversationBanner";
 import { parseMatchIntroBody } from "@/lib/matchIntroMessage";
 import { trackEvent } from "@/lib/analytics";
 import { consumePendingChatOpen } from "@/lib/sessionConversionAnalytics";
-import { linkifyMessageBody } from "@/lib/linkifyMessageBody";
+import { bodyHasNonPreviewText } from "@/lib/chatBodyPreviewText";
+import {
+  extractChatUrlsFromText,
+  linkifyMessageBody,
+  previewHrefOmitSet,
+} from "@/lib/linkifyMessageBody";
 
 interface Message {
   id: string;
@@ -1100,12 +1104,6 @@ export default function ChatPage({
     return current !== prev;
   }
 
-  function getReadReceiptStatus(msg: Message): "sent" | "delivered" | "read" {
-    if (!msg.read_at) return "sent";
-    if (msg.read_by) return "read";
-    return "delivered";
-  }
-
   function formatAgeGroup(group: string): string {
     const map: Record<string, string> = {
       newborn: "0-3 months",
@@ -1316,46 +1314,24 @@ export default function ChatPage({
     jobLocationCity,
   ]);
 
-  /** Explicit stroke — parent message `<p>` uses `text-white`, which otherwise wins via currentColor on Lucide SVGs. */
-  function ReadReceipt({ status }: { status: "sent" | "delivered" | "read" }) {
-    /** Single white tick & blue double ticks share the same inline size beside the timestamp. */
-    const receiptIconClass = "h-[1.35rem] w-[1.35rem] shrink-0 md:h-6 md:w-6";
-    if (status === "sent") {
-      return (
-        <Check
-          className={cn(receiptIconClass, "text-white/60")}
-          stroke="currentColor"
-          strokeWidth={2.35}
-        />
-      );
-    }
-    /** Delivered / read ticks — explicit light blue so parent bubble text colour does not override */
-    const readBlue = "#60a5fa";
-    if (status === "delivered") {
-      return (
-        <CheckCheck
-          className={receiptIconClass}
-          stroke={readBlue}
-          strokeWidth={2.35}
-        />
-      );
-    }
-    return (
-      <CheckCheck
-        className={receiptIconClass}
-        stroke={readBlue}
-        strokeWidth={2.35}
-      />
-    );
-  }
+  /** Paragraph text inside bubbles; avoid `w-full` under flex+(items-end) or % width won’t constrain long URLs */
+  const chatBubbleBodyTextCn =
+    "block min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[19px] font-medium leading-snug md:text-[16px]";
 
-  /** Blue links inside chat bubbles (contrast-adjusted on sent vs received vs system strip). */
-  const chatOutgoingLinkCn =
-    "break-all font-semibold text-sky-200 underline underline-offset-2 decoration-white/40 hover:text-white";
-  const chatIncomingLinkCn =
-    "break-all font-semibold text-[#027eb5] underline underline-offset-2 decoration-[#027eb5]/40 hover:text-[#015f8a] dark:text-[#34b7f1] dark:decoration-[#34b7f1]/40";
+  /** Vivid glossy blue links in all chat bubbles (sent, received, system) — light + dark. */
+  const chatBubbleLinkCn =
+    "inline-block max-w-full align-text-top break-all font-semibold underline underline-offset-[3px] transition-colors duration-150 [overflow-wrap:anywhere] " +
+    "text-[#0284c7] decoration-[#0ea5e9]/65 " +
+    "drop-shadow-[0_0_6px_rgba(14,165,233,0.55)] " +
+    "hover:text-[#0369a1] hover:decoration-[#38bdf8] " +
+    "dark:text-[#7dd3fc] dark:decoration-[#38bdf8]/70 " +
+    "dark:drop-shadow-[0_0_10px_rgba(56,189,248,0.55)] " +
+    "dark:hover:text-[#bae6fd] dark:hover:decoration-[#7dd3fc]";
   const chatSystemLinkCn =
-    "break-all font-medium text-[#027eb5] underline underline-offset-2 decoration-[#027eb5]/40 hover:text-[#015f8a] dark:text-[#34b7f1] dark:hover:text-[#60a5fa]";
+    "inline-block max-w-full align-text-top break-all font-medium text-[#0284c7] underline underline-offset-[3px] transition-colors duration-150 [overflow-wrap:anywhere] decoration-[#0ea5e9]/65 " +
+    "drop-shadow-[0_0_6px_rgba(14,165,233,0.45)] hover:text-[#0369a1] hover:decoration-[#38bdf8] " +
+    "dark:text-[#7dd3fc] dark:decoration-[#38bdf8]/70 dark:drop-shadow-[0_0_10px_rgba(56,189,248,0.45)] " +
+    "dark:hover:text-[#bae6fd]";
 
   // For admin viewing reports: show client initials, otherwise show "S" for Support or user initials
   const otherInitials =
@@ -2122,7 +2098,7 @@ export default function ChatPage({
         {/* Messages area */}
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto scroll-smooth pb-4",
+            "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden scroll-smooth pb-4",
             hideBackButton ? "pt-0 md:pt-4" : "pt-20 md:pt-4",
             "px-3 md:p-4",
           )}
@@ -2133,9 +2109,9 @@ export default function ChatPage({
           }}
           ref={scrollRef}
         >
-          <div>
+          <div className="min-w-0 max-w-full">
             {/* ~composer height + safe area + small gap — avoid vh-based padding (felt like a huge dead zone on mobile) */}
-            <div className="space-y-4 w-full max-w-none px-1 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.75rem+0.375rem)] md:pb-[calc(6.5rem+0.375rem)]">
+            <div className="min-w-0 max-w-full space-y-4 px-1 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.75rem+0.375rem)] md:pb-[calc(6.5rem+0.375rem)]">
               {job && hideBackButton && otherUser ? (
                 <ChatJobContextStrip
                   job={job as JobSummaryRow}
@@ -2155,7 +2131,6 @@ export default function ChatPage({
               )}
               {messages.map((msg, index) => {
                 const isOwn = msg.sender_id === user?.id;
-                const receiptStatus = getReadReceiptStatus(msg);
                 const matchIntro = msg.body
                   ? parseMatchIntroBody(msg.body)
                   : null;
@@ -2191,6 +2166,10 @@ export default function ChatPage({
                   );
                 }
 
+                const linkPreviewUrls = msg.body
+                  ? extractChatUrlsFromText(msg.body, 2)
+                  : [];
+
                 const isMedia = msg.attachment_url && (msg.attachment_type === "image" || msg.attachment_type === "video");
 
                 if (isMedia && msg.attachment_url) {
@@ -2198,7 +2177,7 @@ export default function ChatPage({
                     <div
                       key={msg.id}
                       className={cn(
-                        "space-y-4 chat-scroll-reveal",
+                        "min-w-0 max-w-full space-y-4 chat-scroll-reveal",
                         isOwn
                           ? "chat-scroll-reveal--sent"
                           : "chat-scroll-reveal--received",
@@ -2214,7 +2193,7 @@ export default function ChatPage({
 
                       <div
                         className={cn(
-                          "flex items-end gap-2",
+                          "flex w-full min-w-0 max-w-full items-end gap-2",
                           isOwn ? "flex-row-reverse" : "flex-row",
                         )}
                       >
@@ -2231,14 +2210,20 @@ export default function ChatPage({
 
                         <div
                           className={cn(
-                            "flex min-w-0 max-w-[min(88%,18.5rem)] flex-col md:max-w-[70%]",
-                            isOwn ? "items-end" : "items-start",
+                            "flex w-full min-w-0 max-w-[min(18.5rem,calc(100vw-5rem))] shrink flex-col md:max-w-[70%]",
+                            "items-stretch",
                           )}
                         >
                           {/* Plain Media */}
-                          {msg.attachment_type === "image" ? (
+                          <div
+                            className={cn(
+                              "flex w-full min-w-0 max-w-full",
+                              isOwn ? "justify-end" : "justify-start",
+                            )}
+                          >
+                            {msg.attachment_type === "image" ? (
                               <div
-                                className="relative cursor-pointer group/image transition-transform active:scale-[0.98]"
+                                className="relative max-w-full cursor-pointer group/image transition-transform active:scale-[0.98]"
                                 onClick={() => {
                                   setSelectedImage(msg);
                                   setIsImageModalOpen(true);
@@ -2249,48 +2234,100 @@ export default function ChatPage({
                                   alt={msg.attachment_name || "Attachment"}
                                   className={cn(
                                     "max-h-[380px] max-w-full object-cover shadow-md transition-shadow duration-300 md:max-h-[320px]",
-                                    isOwn ? "rounded-2xl rounded-br-none" : "rounded-2xl rounded-bl-none"
+                                    isOwn
+                                      ? "rounded-2xl rounded-br-none"
+                                      : "rounded-2xl rounded-bl-none",
                                   )}
                                 />
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity bg-black/10 rounded-2xl">
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover/image:opacity-100 rounded-2xl bg-black/10">
                                   <ImageIcon className="w-8 h-8 text-white drop-shadow-md" />
                                 </div>
                               </div>
-                          ) : (
-                            <video
-                              src={msg.attachment_url}
-                              controls
-                              className="max-h-[380px] max-w-full rounded-2xl border-none object-cover shadow-sm md:max-h-[320px]"
-                            />
-                          )}
+                            ) : (
+                              <video
+                                src={msg.attachment_url}
+                                controls
+                                className="max-h-[380px] max-w-full rounded-2xl border-none object-cover shadow-sm md:max-h-[320px]"
+                              />
+                            )}
+                          </div>
 
-                          {/* Text Bubble (if there is text) */}
-                          {msg.body && (
-                            <div
-                              className={cn(
-                                "relative mt-1 px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
-                                isOwn
-                                  ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
-                                  : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
-                              )}
-                            >
-                              <p
+                          <div
+                            className={cn(
+                              "mt-2 flex min-w-0 w-full max-w-full",
+                              isOwn ? "justify-end" : "justify-start",
+                            )}
+                          >
+                            {linkPreviewUrls.length > 0 ? (
+                              <div
                                 className={cn(
-                                  "inline-block max-w-full whitespace-pre-wrap break-words text-[19px] font-medium leading-snug md:text-[16px]",
+                                  "w-full min-w-0 max-w-full overflow-hidden shadow-md transition-all duration-300",
                                   isOwn
-                                    ? "text-white"
-                                    : "text-foreground",
+                                    ? "rounded-2xl rounded-br-none border-t border-white/10 bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white"
+                                    : "rounded-2xl rounded-bl-none border-none bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100",
                                 )}
                               >
-                                {linkifyMessageBody(
-                                  msg.body,
+                                {msg.body &&
+                                  bodyHasNonPreviewText(
+                                    msg.body,
+                                    linkPreviewUrls,
+                                  ) && (
+                                    <div
+                                      className={cn(
+                                        "min-w-0 max-w-full border-b px-3 py-2.5",
+                                        isOwn
+                                          ? "border-white/15"
+                                          : "border-black/10 dark:border-white/10",
+                                      )}
+                                    >
+                                      <p
+                                        className={cn(
+                                          chatBubbleBodyTextCn,
+                                          isOwn
+                                            ? "text-white"
+                                            : "text-foreground",
+                                        )}
+                                      >
+                                        {linkifyMessageBody(
+                                          msg.body,
+                                          chatBubbleLinkCn,
+                                          previewHrefOmitSet(linkPreviewUrls),
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                <div className="min-w-0 max-w-full p-2">
+                                  <ChatLinkPreviewCards
+                                    urls={linkPreviewUrls}
+                                    variant={isOwn ? "sent" : "received"}
+                                    embedded
+                                  />
+                                </div>
+                              </div>
+                            ) : msg.body ? (
+                              <div
+                                className={cn(
+                                  "relative min-w-0 max-w-full w-fit px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
                                   isOwn
-                                    ? chatOutgoingLinkCn
-                                    : chatIncomingLinkCn,
+                                    ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                    : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
                                 )}
-                              </p>
-                            </div>
-                          )}
+                              >
+                                <p
+                                  className={cn(
+                                    chatBubbleBodyTextCn,
+                                    isOwn ? "text-white" : "text-foreground",
+                                  )}
+                                >
+                                  {linkifyMessageBody(
+                                    msg.body,
+                                    chatBubbleLinkCn,
+                                    previewHrefOmitSet(linkPreviewUrls),
+                                  )}
+                                </p>
+                              </div>
+                            ) : null}
+                          </div>
 
                           {/* Timestamp outside bubble */}
                           <div
@@ -2311,7 +2348,7 @@ export default function ChatPage({
                   <div
                     key={msg.id}
                     className={cn(
-                      "space-y-4 chat-scroll-reveal",
+                      "min-w-0 max-w-full space-y-4 chat-scroll-reveal",
                       isOwn
                         ? "chat-scroll-reveal--sent"
                         : "chat-scroll-reveal--received",
@@ -2327,7 +2364,7 @@ export default function ChatPage({
 
                     <div
                       className={cn(
-                        "flex items-end gap-2",
+                        "flex w-full min-w-0 max-w-full items-end gap-2",
                         isOwn ? "flex-row-reverse" : "flex-row",
                       )}
                     >
@@ -2344,69 +2381,192 @@ export default function ChatPage({
 
                       <div
                         className={cn(
-                          "flex min-w-0 max-w-[min(88%,18.5rem)] flex-col space-y-1 md:max-w-[70%]",
-                          isOwn ? "items-end" : "items-start",
+                          "flex w-full min-w-0 max-w-[min(18.5rem,calc(100vw-5rem))] shrink flex-col space-y-1 md:max-w-[70%]",
+                          "items-stretch",
                         )}
                       >
                         <div
                           className={cn(
-                            "group relative px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
-                            isOwn
-                              ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
-                              : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
+                            "flex min-w-0 w-full max-w-full",
+                            isOwn ? "justify-end" : "justify-start",
                           )}
                         >
-                          {/* Attachment Display */}
-                          {msg.attachment_url && (
-                            <div className="mb-2">
-                              <a
-                                href={msg.attachment_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 rounded-lg border border-dashed border-blue-500/25 bg-muted/50 p-2 transition-colors hover:bg-muted md:p-1.5"
+                        {linkPreviewUrls.length > 0 ? (
+                          <div
+                            className={cn(
+                              "group relative w-full min-w-0 max-w-full overflow-hidden shadow-md transition-all duration-300",
+                              isOwn
+                                ? "rounded-2xl rounded-br-none border-t border-white/10 bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white"
+                                : "rounded-2xl rounded-bl-none border-none bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100",
+                            )}
+                          >
+                            {msg.attachment_url && (
+                              <div
+                                className={cn(
+                                  "border-b px-2.5 pb-2 pt-2",
+                                  isOwn
+                                    ? "border-white/15"
+                                    : "border-black/10 dark:border-white/10",
+                                )}
                               >
-                                <File className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 md:h-4 md:w-4" />
-                                <span className="max-w-[min(12rem,55vw)] truncate text-xl font-medium text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300 md:max-w-[150px] md:text-sm">
-                                  {msg.attachment_name || "Download File"}
-                                </span>
-                              </a>
-                            </div>
-                          )}
+                                <a
+                                  href={msg.attachment_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={cn(
+                                    "flex items-center gap-2 rounded-lg border border-dashed p-2 transition-colors md:p-1.5",
+                                    isOwn
+                                      ? "border-white/35 bg-black/15 text-white hover:bg-black/25"
+                                      : "border-blue-500/25 bg-muted/50 hover:bg-muted",
+                                  )}
+                                >
+                                  <File
+                                    className={cn(
+                                      "h-5 w-5 shrink-0 md:h-4 md:w-4",
+                                      isOwn
+                                        ? "text-white/90"
+                                        : "text-blue-600 dark:text-blue-400",
+                                    )}
+                                  />
+                                  <span
+                                    className={cn(
+                                      "max-w-[min(12rem,55vw)] truncate text-xl font-medium underline underline-offset-2 md:max-w-[150px] md:text-sm",
+                                      isOwn
+                                        ? "text-white decoration-white/35 hover:text-white"
+                                        : "text-blue-600 decoration-blue-600/40 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300",
+                                    )}
+                                  >
+                                    {msg.attachment_name || "Download File"}
+                                  </span>
+                                </a>
+                              </div>
+                            )}
 
-                          {msg.body && matchIntro ? (
-                            <div
-                              className={cn(
-                                "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
-                                isOwn
-                                  ? "border-white/20 bg-white/10 text-white"
-                                  : "bg-muted/50 text-foreground border-none",
-                              )}
-                            >
-                              <p className="text-xs font-bold uppercase tracking-wide opacity-80 md:text-[11px]">
-                                Match
-                              </p>
-                              <p className="mt-1 font-semibold">{matchIntro.category}</p>
-                              <p className="inline-block max-w-full text-lg opacity-90 md:text-xs">
-                                {matchIntro.location} · {matchIntro.time}
-                              </p>
+                            {msg.body && matchIntro ? (
+                              <div
+                                className={cn(
+                                  "border-b px-3 py-3",
+                                  isOwn
+                                    ? "border-white/15"
+                                    : "border-black/10 dark:border-white/10",
+                                )}
+                              >
+                                <div
+                                  className={cn(
+                                    "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
+                                    isOwn
+                                      ? "border-white/20 bg-white/10 text-white"
+                                      : "bg-muted/50 text-foreground border-none",
+                                  )}
+                                >
+                                  <p className="text-xs font-bold uppercase tracking-wide opacity-80 md:text-[11px]">
+                                    Match
+                                  </p>
+                                  <p className="mt-1 font-semibold">
+                                    {matchIntro.category}
+                                  </p>
+                                  <p className="inline-block max-w-full text-lg opacity-90 md:text-xs">
+                                    {matchIntro.location} · {matchIntro.time}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : bodyHasNonPreviewText(
+                                  msg.body || "",
+                                  linkPreviewUrls,
+                                ) &&
+                                msg.body ? (
+                              <div
+                                className={cn(
+                                  "min-w-0 max-w-full border-b px-3 py-2.5",
+                                  isOwn
+                                    ? "border-white/15"
+                                    : "border-black/10 dark:border-white/10",
+                                )}
+                              >
+                                <p
+                                  className={cn(
+                                    chatBubbleBodyTextCn,
+                                    isOwn ? "text-white" : "text-foreground",
+                                  )}
+                                >
+                                  {linkifyMessageBody(
+                                    msg.body,
+                                    chatBubbleLinkCn,
+                                    previewHrefOmitSet(linkPreviewUrls),
+                                  )}
+                                </p>
+                              </div>
+                            ) : null}
+
+                            <div className="min-w-0 max-w-full p-2">
+                              <ChatLinkPreviewCards
+                                urls={linkPreviewUrls}
+                                variant={isOwn ? "sent" : "received"}
+                                embedded
+                              />
                             </div>
-                          ) : msg.body ? (
-                            <p
-                              className={cn(
-                                "inline-block max-w-full whitespace-pre-wrap break-words text-[19px] font-medium leading-snug md:text-[16px]",
-                                isOwn
-                                  ? "text-white"
-                                  : "text-foreground",
-                              )}
-                            >
-                              {linkifyMessageBody(
-                                msg.body,
-                                isOwn
-                                  ? chatOutgoingLinkCn
-                                  : chatIncomingLinkCn,
-                              )}
-                            </p>
-                          ) : null}
+                          </div>
+                        ) : (
+                          <div
+                            className={cn(
+                              "group relative min-w-0 max-w-full w-fit px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
+                              isOwn
+                                ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
+                            )}
+                          >
+                            {/* Attachment Display */}
+                            {msg.attachment_url && (
+                              <div className="mb-2">
+                                <a
+                                  href={msg.attachment_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 rounded-lg border border-dashed border-blue-500/25 bg-muted/50 p-2 transition-colors hover:bg-muted md:p-1.5"
+                                >
+                                  <File className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 md:h-4 md:w-4" />
+                                  <span className="max-w-[min(12rem,55vw)] truncate text-xl font-medium text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300 md:max-w-[150px] md:text-sm">
+                                    {msg.attachment_name || "Download File"}
+                                  </span>
+                                </a>
+                              </div>
+                            )}
+
+                            {msg.body && matchIntro ? (
+                              <div
+                                className={cn(
+                                  "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
+                                  isOwn
+                                    ? "border-white/20 bg-white/10 text-white"
+                                    : "bg-muted/50 text-foreground border-none",
+                                )}
+                              >
+                                <p className="text-xs font-bold uppercase tracking-wide opacity-80 md:text-[11px]">
+                                  Match
+                                </p>
+                                <p className="mt-1 font-semibold">
+                                  {matchIntro.category}
+                                </p>
+                                <p className="inline-block max-w-full text-lg opacity-90 md:text-xs">
+                                  {matchIntro.location} · {matchIntro.time}
+                                </p>
+                              </div>
+                            ) : msg.body ? (
+                              <p
+                                className={cn(
+                                  chatBubbleBodyTextCn,
+                                  isOwn ? "text-white" : "text-foreground",
+                                )}
+                              >
+                                {linkifyMessageBody(
+                                  msg.body,
+                                  chatBubbleLinkCn,
+                                  previewHrefOmitSet(linkPreviewUrls),
+                                )}
+                              </p>
+                            ) : null}
+                          </div>
+                        )}
                         </div>
                         {/* Timestamp outside bubble */}
                         <div
