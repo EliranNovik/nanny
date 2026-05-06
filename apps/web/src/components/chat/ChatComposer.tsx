@@ -204,7 +204,11 @@ export function ChatComposer({
           "fixed bottom-0 right-0 z-30 hidden lg:flex lg:flex-col",
           "border-none bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
           "px-5 pb-4 pt-2.5",
-          hideBackButton ? "md:left-80 lg:left-96 left-0" : "left-[400px]"
+          hideBackButton
+            ? // Embedded in `MessagesPage` which also has the DesktopSidePanel (220px) on md+.
+              // Keep the composer width aligned with the chat column only.
+              "left-0 md:left-[540px] lg:left-[604px]"
+            : "left-[400px]",
         )}
       >
         {filePreview}

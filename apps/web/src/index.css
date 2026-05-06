@@ -211,6 +211,28 @@
     }
   }
 
+  /**
+   * Messages: self-contained split layout (contact list + chat) with internal scroll.
+   * - Remove global BottomNav scroll padding (prevents whole-page scroll)
+   * - Fill the viewport and hide overflow so only inner panels scroll
+   */
+  .app-main-scroll-pad:has([data-messages-page]) {
+    padding-bottom: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /**
+   * Messages does NOT show the BottomNav DesktopHeader, so don't reserve header clearance.
+   */
+  .app-content-below-fixed-header:has([data-messages-page]) {
+    padding-top: 0 !important;
+  }
+
   /* Public posts mobile: fixed snap feed already clears BottomNav — drop duplicate scroll-pad */
   @media (max-width: 767.98px) {
     .app-main-scroll-pad:has([data-public-snap-feed-mobile]) {
