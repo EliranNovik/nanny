@@ -58,14 +58,6 @@ export async function sendKnockMessage(opts: {
     };
   }
 
-  const myRole = currentProfileRole;
-  if (!myRole) {
-    return { ok: false, code: "no_role" };
-  }
-  if (myRole !== "client" && myRole !== "freelancer") {
-    return { ok: false, code: "messaging_unavailable" };
-  }
-
   const name = viewerDisplayName(currentProfileName);
   const catLabel = categoryDisplayLabel(categoryId);
   const body = `${name} is reaching for your help in ${catLabel}.`;

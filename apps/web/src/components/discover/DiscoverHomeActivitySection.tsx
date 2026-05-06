@@ -473,8 +473,10 @@ export function DiscoverHomeActivitySection({
       </div>
       <div className="mt-1 space-y-4">
         {feedLoading ? (
-          <div className="flex justify-center py-7">
-            <Loader2 className="h-9 w-9 animate-spin text-orange-500" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-[120px] w-full animate-pulse rounded-[24px] bg-zinc-100 dark:bg-zinc-900 ring-1 ring-black/5 dark:ring-white/5" />
+            ))}
           </div>
         ) : feedPosts.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-orange-500/15 bg-orange-500/[0.04] px-4 py-6 text-center dark:border-orange-500/20 dark:bg-orange-500/[0.06]">
@@ -574,8 +576,10 @@ export function DiscoverHomeActivitySection({
 
       <div className="mt-1 space-y-4">
         {inboundLoading ? (
-          <div className="flex justify-center py-7">
-            <Loader2 className="h-9 w-9 animate-spin text-emerald-600 dark:text-emerald-400" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-[140px] w-full animate-pulse rounded-[24px] bg-zinc-100 dark:bg-zinc-900 ring-1 ring-black/5 dark:ring-white/5" />
+            ))}
           </div>
         ) : inbound.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-6 text-center dark:border-emerald-500/20 dark:bg-emerald-500/[0.06]">

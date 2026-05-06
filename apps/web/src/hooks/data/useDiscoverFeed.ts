@@ -116,11 +116,10 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
 
       if (error) throw error;
 
-      const next: Record<string, DiscoverLiveAvatarEntry[]> = {};
-
       const allHelperIds = Array.from(
         new Set((data || []).map((r) => r.user_id).filter(Boolean)),
       ) as string[];
+
       const replyStats: Record<string, { avg_seconds: number; sample_count: number }> = {};
       if (allHelperIds.length > 0) {
         const { data: statRows } = await supabase.rpc("get_helper_chat_response_stats", {
@@ -138,6 +137,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
         }
       }
 
+      const next: Record<string, DiscoverLiveAvatarEntry[]> = {};
       for (const id of categoryIds) next[id] = [];
       const seen = new Map<string, Set<string>>();
 

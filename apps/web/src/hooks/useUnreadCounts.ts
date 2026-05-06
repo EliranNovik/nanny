@@ -62,20 +62,12 @@ export function useUnreadCounts() {
       if (!user || !profile) return;
 
       try {
-        let conversations;
-        if (profile.role === "client") {
-          const { data } = await supabase
-            .from("conversations")
-            .select("id")
-            .eq("client_id", user.id);
-          conversations = data;
-        } else {
-          const { data } = await supabase
-            .from("conversations")
-            .select("id")
-            .eq("freelancer_id", user.id);
-          conversations = data;
-        }
+        const { data: conversations, error: convErr } = await supabase
+          .from("conversations")
+          .select("id")
+          .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`);
+
+        if (convErr) throw convErr;
 
         if (!conversations || conversations.length === 0) {
           setUnreadMessages(0);
@@ -84,37 +76,16 @@ export function useUnreadCounts() {
 
         const conversationIds = conversations.map((c) => c.id);
 
-        const { data: allMessages } = await supabase
+        // Count messages where sender is NOT me and read_at is null
+        const { count, error } = await supabase
           .from("messages")
-          .select("sender_id, read_at, conversation_id")
-          .in("conversation_id", conversationIds);
+          .select("*", { count: "exact", head: true })
+          .in("conversation_id", conversationIds)
+          .neq("sender_id", user.id)
+          .is("read_at", null);
 
-        if (!allMessages || allMessages.length === 0) {
-          setUnreadMessages(0);
-          return;
-        }
-
-        const { data: convos } = await supabase
-          .from("conversations")
-          .select("id, client_id, freelancer_id")
-          .in("id", conversationIds);
-
-        if (!convos) {
-          setUnreadMessages(0);
-          return;
-        }
-
-        const unreadCount = allMessages.filter((msg) => {
-          const convo = convos.find((c) => c.id === msg.conversation_id);
-          if (!convo) return false;
-
-          const otherUserId =
-            profile.role === "client" ? convo.freelancer_id : convo.client_id;
-
-          return msg.sender_id === otherUserId && !msg.read_at;
-        }).length;
-
-        setUnreadMessages(unreadCount);
+        if (error) throw error;
+        setUnreadMessages(count || 0);
       } catch (error) {
         console.error("Error fetching unread messages:", error);
       }
@@ -186,8 +157,19 @@ export function useUnreadCounts() {
           table: "messages",
         },
         () => {
-          fetchUnreadMessages();
+          void fetchUnreadMessages();
           scheduleActivityInboxFetch();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "conversations",
+        },
+        () => {
+          void fetchUnreadMessages();
         },
       )
       .subscribe();

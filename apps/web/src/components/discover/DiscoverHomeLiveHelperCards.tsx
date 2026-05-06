@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { avatarUrl } from "@/lib/imageTransform";
 import { StarRating } from "@/components/StarRating";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -124,10 +125,10 @@ export function DiscoverHomeLiveHelperCards({
           Helper live near you
         </p>
         <div className={listGridClass}>
-          {Array.from({ length: 3 }, (_, i) => (
+          {Array.from({ length: 4 }, (_, i) => (
             <div
               key={i}
-              className="h-[6.25rem] animate-pulse rounded-[1.25rem] bg-zinc-200/80 dark:bg-zinc-800/80"
+              className="h-[6.25rem] animate-pulse rounded-[1.25rem] bg-zinc-200/60 dark:bg-zinc-800/60"
             />
           ))}
         </div>
@@ -174,7 +175,7 @@ export function DiscoverHomeLiveHelperCards({
                   <div className="relative inline-flex shrink-0">
                     <div className="relative h-16 w-16 shrink-0">
                       <Avatar className="h-16 w-16 overflow-hidden shadow-md">
-                        <AvatarImage src={h.photo_url || undefined} alt="" className="object-cover" />
+                        <AvatarImage src={avatarUrl.sm(h.photo_url)} alt="" className="object-cover" />
                         <AvatarFallback className="bg-zinc-200 text-base font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
                           {name.charAt(0)}
                         </AvatarFallback>

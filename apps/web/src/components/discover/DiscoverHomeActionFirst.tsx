@@ -535,21 +535,20 @@ export function DiscoverHomeActionFirst({
       "absolute -right-0.5 -top-0.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums text-white shadow-md bg-red-500 ring-2 ring-white dark:ring-zinc-900";
 
     const roundBadgeClass = cn(
-      "relative flex aspect-square h-[3.75rem] w-[3.75rem] shrink-0 items-center justify-center rounded-full border p-0 shadow-lg transition-transform active:scale-[0.98]",
-      "bg-white/92 text-slate-900 backdrop-blur-xl ring-1 ring-black/10 hover:bg-white",
-      "dark:border-white/10 dark:bg-zinc-800/92 dark:text-zinc-100 dark:hover:bg-zinc-800",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent focus-visible:ring-emerald-500/35",
+      "relative flex aspect-square h-20 w-20 shrink-0 items-center justify-center rounded-3xl border-0 p-0 shadow-2xl transition-all duration-300 active:scale-[0.96] hover:scale-[1.08] group",
+      "bg-white/10 text-white backdrop-blur-2xl ring-1 ring-white/20 hover:bg-white/20",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent focus-visible:ring-white/50",
     );
 
     const badgeCaptionClass =
-      "max-w-[5.25rem] text-center text-[10px] font-black uppercase leading-tight tracking-[0.06em] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_0_14px_rgba(0,0,0,0.45)]";
+      "max-w-[6rem] text-center text-[11px] font-black uppercase leading-tight tracking-[0.08em] text-white transition-opacity duration-300 group-hover:opacity-100 opacity-90";
 
-    const desktopQuickWrap = "pointer-events-auto absolute bottom-5 right-6 z-[20] hidden items-end gap-3.5 md:flex";
+    const desktopQuickWrap = "pointer-events-auto absolute bottom-7 right-8 z-[20] hidden items-end gap-6 md:flex";
 
     if (isHire) {
       return (
         <div className={desktopQuickWrap}>
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="flex flex-col items-center gap-2.5 group">
             <button
               type="button"
               onClick={(e) => {
@@ -560,7 +559,7 @@ export function DiscoverHomeActionFirst({
               className={roundBadgeClass}
               aria-label="Find helpers"
             >
-              <Search className="h-7 w-7 text-[#7B61FF]" strokeWidth={2.5} aria-hidden />
+              <Search className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
               {hireLiveHelperCount > 0 ? (
                 <span className={countBadgeClass}>
                   {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
@@ -569,7 +568,7 @@ export function DiscoverHomeActionFirst({
             </button>
             <span className={badgeCaptionClass}>Find helpers</span>
           </div>
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="flex flex-col items-center gap-2.5 group">
             <button
               type="button"
               onClick={(e) => {
@@ -582,15 +581,15 @@ export function DiscoverHomeActionFirst({
               className={cn(
                 roundBadgeClass,
                 primaryCtaBreatheClass,
-                "border-transparent bg-gradient-to-br from-indigo-600 to-purple-800 text-white shadow-none ring-indigo-500/25 hover:brightness-110",
+                "border-0 bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-[0_0_30px_rgba(99,102,241,0.4)] ring-white/30 hover:brightness-110",
               )}
               aria-label="Request help now"
             >
-              <Zap className="h-7 w-7 text-white" strokeWidth={2.5} aria-hidden />
+              <Zap className="h-9 w-9 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" strokeWidth={3} aria-hidden />
             </button>
             <span className={badgeCaptionClass}>Post request</span>
           </div>
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="flex flex-col items-center gap-2.5 group">
             <button
               type="button"
               onClick={(e) => {
@@ -600,7 +599,7 @@ export function DiscoverHomeActionFirst({
               className={roundBadgeClass}
               aria-label="My requests"
             >
-              <ClipboardList className="h-7 w-7 text-[#7B61FF]" strokeWidth={2.5} aria-hidden />
+              <ClipboardList className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
               {myRequestsCount > 0 ? (
                 <span className={countBadgeClass}>
                   {myRequestsCount > 9 ? "9+" : myRequestsCount}
@@ -615,7 +614,7 @@ export function DiscoverHomeActionFirst({
 
     return (
       <div className={desktopQuickWrap}>
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex flex-col items-center gap-2.5 group">
           <button
             type="button"
             onClick={(e) => {
@@ -626,7 +625,7 @@ export function DiscoverHomeActionFirst({
             className={roundBadgeClass}
             aria-label="Find posts"
           >
-            <UsersRound className="h-7 w-7 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} aria-hidden />
+            <UsersRound className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
             {workLivePostCount > 0 ? (
               <span className={countBadgeClass}>
                 {workLivePostCount > 99 ? "99+" : workLivePostCount}
@@ -636,7 +635,7 @@ export function DiscoverHomeActionFirst({
           <span className={badgeCaptionClass}>Find posts</span>
         </div>
         {isInActive24hGoLiveWindow ? null : (
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="flex flex-col items-center gap-2.5 group">
             <button
               type="button"
               onClick={(e) => {
@@ -649,16 +648,16 @@ export function DiscoverHomeActionFirst({
               className={cn(
                 roundBadgeClass,
                 primaryCtaBreatheClass,
-                "border-transparent bg-emerald-600 text-white shadow-none ring-emerald-500/30 hover:bg-emerald-600",
+                "border-0 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_30px_rgba(16,185,129,0.4)] ring-white/30 hover:brightness-110",
               )}
               aria-label="Go live"
             >
-              <PlayCircle className="h-7 w-7 text-white" strokeWidth={2.5} aria-hidden />
+              <PlayCircle className="h-9 w-9 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" strokeWidth={3} aria-hidden />
             </button>
             <span className={badgeCaptionClass}>Go live</span>
           </div>
         )}
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex flex-col items-center gap-2.5 group">
           <button
             type="button"
             onClick={(e) => {
@@ -668,7 +667,7 @@ export function DiscoverHomeActionFirst({
             className={roundBadgeClass}
             aria-label="Pending responses"
           >
-            <Clock className="h-7 w-7 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} aria-hidden />
+            <Clock className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
             {pendingWorkRequestsCount > 0 ? (
               <span className={countBadgeClass}>
                 {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
@@ -1022,8 +1021,8 @@ export function DiscoverHomeActionFirst({
             <div className="flex min-h-0 min-w-0 flex-col gap-4">
               <section
                 className={cn(
-                  "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
-                  "ring-1 ring-black/[0.06] ring-inset",
+                  "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group",
+                  "ring-1 ring-white/10 ring-inset shadow-2xl transition-all duration-500",
                 )}
               >
                 {renderHeroQuickActionsDesktop()}
@@ -1031,10 +1030,11 @@ export function DiscoverHomeActionFirst({
                   <img
                     src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
                     alt=""
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
                     decoding="async"
                     {...{ fetchpriority: "high" }}
                   />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-[5]" />
 
                   <div className={heroStackClassName}>
                     <div className={heroTopBlockClassName}>
@@ -1053,10 +1053,9 @@ export function DiscoverHomeActionFirst({
                         </div>
                         <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
                           <h2
-                            className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
+                            className="text-[2.25rem] font-black leading-[1.1] tracking-tight text-white sm:text-[2.75rem]"
                             style={{
-                              textShadow:
-                                "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
+                              textShadow: "0 4px 30px rgba(0,0,0,0.5)",
                             }}
                           >
                             {HIRE.title}
@@ -1077,8 +1076,8 @@ export function DiscoverHomeActionFirst({
           ) : (
             <section
               className={cn(
-                "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none",
-                "ring-1 ring-black/[0.06] ring-inset",
+                "relative mx-auto w-full max-w-full shrink-0 overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group",
+                "ring-1 ring-white/10 ring-inset shadow-2xl transition-all duration-500",
               )}
             >
               {renderHeroQuickActionsDesktop()}
@@ -1087,10 +1086,11 @@ export function DiscoverHomeActionFirst({
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.work}
                   alt=""
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
                   decoding="async"
                   {...{ fetchpriority: "high" }}
                 />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-[5]" />
 
                 <div className={heroStackClassName}>
                   <div className={heroTopBlockClassName}>
@@ -1107,10 +1107,9 @@ export function DiscoverHomeActionFirst({
                       </div>
                       <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
                         <h2
-                          className="text-[1.5rem] font-bold leading-[1.15] tracking-tight text-white sm:text-[1.625rem]"
+                          className="text-[2.25rem] font-black leading-[1.1] tracking-tight text-white sm:text-[2.75rem]"
                           style={{
-                            textShadow:
-                              "0 2px 20px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.45)",
+                            textShadow: "0 4px 30px rgba(0,0,0,0.5)",
                           }}
                         >
                           {workTheme.title}

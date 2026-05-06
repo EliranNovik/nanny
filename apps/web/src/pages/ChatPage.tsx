@@ -283,7 +283,9 @@ export default function ChatPage({
     }
   }, [conversationId, user?.id, clearMatchUrlParams]);
 
-  const [realtimeConvoIds, setRealtimeConvoIds] = useState<string[]>([]);
+  const [realtimeConvoIds, setRealtimeConvoIds] = useState<string[]>(
+    conversationId ? [conversationId] : [],
+  );
   const [realtimeJobId, setRealtimeJobId] = useState<string | null>(null);
 
   useMessagesRealtime({
@@ -608,13 +610,17 @@ export default function ChatPage({
       const msgs = msgPack.messages;
       const multiIdsForSub = msgPack.multiIds;
 
-      setRealtimeConvoIds(
-        multiIdsForSub && multiIdsForSub.length > 0
-          ? multiIdsForSub
-          : conversationId
-            ? [conversationId]
-            : []
-      );
+      setRealtimeConvoIds((prev) => {
+        const next =
+          multiIdsForSub && multiIdsForSub.length > 0
+            ? multiIdsForSub
+            : conversationId
+              ? [conversationId]
+              : [];
+        // Only update state if IDs have actually changed to avoid subscription churn
+        if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+        return next;
+      });
       setRealtimeJobId(convo.job_id);
 
       setOtherUser(profile);

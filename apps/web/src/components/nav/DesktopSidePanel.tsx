@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import {
   type LucideIcon,
@@ -47,6 +49,7 @@ function isExcludedRoute(pathname: string): boolean {
 
 export function DesktopSidePanel() {
   const { user, profile } = useAuth();
+  const { unreadMessages } = useUnreadCounts();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const mountedRef = useRef(false);
@@ -364,6 +367,14 @@ export function DesktopSidePanel() {
                   <span className="text-[13px] font-bold leading-none tracking-tight">
                     {it.label}
                   </span>
+                  {it.label === "Messages" && unreadMessages > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black tabular-nums shadow-sm"
+                    >
+                      {unreadMessages > 9 ? "9+" : unreadMessages}
+                    </Badge>
+                  )}
                 </Link>
               );
             })}

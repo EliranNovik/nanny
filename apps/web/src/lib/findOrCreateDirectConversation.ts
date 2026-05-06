@@ -7,13 +7,16 @@ export async function findOrCreateDirectConversation(params: {
   clientId: string;
   freelancerId: string;
 }): Promise<{ conversationId: string; created: boolean }> {
-  const { clientId, freelancerId } = params;
+  // Unrestricted messaging: anyone can message anyone
+  const [idA, idB] = [clientId, freelancerId].sort();
+  const cId = idA;
+  const fId = idB;
 
   const { data: existing, error: findErr } = await supabase
     .from("conversations")
     .select("id")
-    .eq("client_id", clientId)
-    .eq("freelancer_id", freelancerId)
+    .eq("client_id", cId)
+    .eq("freelancer_id", fId)
     .is("job_id", null)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -28,8 +31,8 @@ export async function findOrCreateDirectConversation(params: {
     .from("conversations")
     .insert({
       job_id: null,
-      client_id: clientId,
-      freelancer_id: freelancerId,
+      client_id: cId,
+      freelancer_id: fId,
     })
     .select("id")
     .single();

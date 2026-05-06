@@ -1,5 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronRight, Clock, Sparkles, UtensilsCrossed, Truck, Baby, Wrench, MessageSquare, MapPin } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import {
+  ChevronRight,
+  Clock,
+  Sparkles,
+  UtensilsCrossed,
+  Truck,
+  Baby,
+  Wrench,
+  MessageSquare,
+  MapPin,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { haversineDistanceKm } from "@/lib/geo";
 import {
@@ -11,9 +21,11 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
-
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { avatarUrl } from "@/lib/imageTransform";
 
 type InboundNotif = {
   id: string;
@@ -78,8 +90,14 @@ function serviceHeroImageSrc(job: { service_type?: string | null }) {
   return "/nanny-mar22.png";
 }
 
+/** Stable sorted key for the comment-count query so React Query caches per job set. */
+function commentCountQueryKey(jobIds: string[]) {
+  return ["pending-comment-counts", [...jobIds].sort().join(",")] as const;
+}
+
 export function ExplorePendingResponses() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data, isLoading } = useFreelancerRequests(user?.id);
   const inbound = (data?.inboundNotifications ?? []) as InboundNotif[];
   const [selectedMapJob, setSelectedMapJob] = useState<any | null>(null);
@@ -89,28 +107,46 @@ export function ExplorePendingResponses() {
     () => inbound.filter((n) => Boolean(n.isConfirmed)),
     [inbound],
   );
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    if (pending.length === 0) return;
-    async function fetchCounts() {
-      const jobIds = pending.map((n) => n.job_id);
+  const pendingJobIds = useMemo(
+    () => pending.map((n) => n.job_id),
+    [pending],
+  );
+
+  const commentCountQK = commentCountQueryKey(pendingJobIds);
+
+  // ─── Comment counts — scoped query (fixes full table scan) ─────────────────
+  const { data: commentCounts = {} } = useQuery<Record<string, number>>({
+    queryKey: commentCountQK,
+    enabled: pendingJobIds.length > 0,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      // FIX: was fetching ALL rows in job_request_comments with no filter.
+      // Now scoped with .in() — only fetches rows for the visible pending jobs.
       const { data: comments } = await supabase
         .from("job_request_comments")
-        .select("job_request_id");
+        .select("job_request_id")
+        .in("job_request_id", pendingJobIds);
 
-      if (comments) {
-        const counts: Record<string, number> = {};
-        for (const c of comments) {
-          if (jobIds.includes(c.job_request_id)) {
-            counts[c.job_request_id] = (counts[c.job_request_id] || 0) + 1;
-          }
-        }
-        setCommentCounts(counts);
+      const counts: Record<string, number> = {};
+      for (const c of comments ?? []) {
+        counts[c.job_request_id] = (counts[c.job_request_id] || 0) + 1;
       }
-    }
-    fetchCounts();
-  }, [pending]);
+      return counts;
+    },
+  });
+
+  // ─── Realtime: invalidate comment counts on any insert/delete ─────────────
+  useRealtimeSubscription(
+    { table: "job_request_comments", event: "*", enabled: pendingJobIds.length > 0 },
+    (payload) => {
+      const jid =
+        (payload.new as any)?.job_request_id ??
+        (payload.old as any)?.job_request_id;
+      if (!jid || !pendingJobIds.includes(jid)) return;
+      void queryClient.invalidateQueries({ queryKey: commentCountQK });
+    },
+  );
 
   const formatModalJobTitle = useCallback((job: any) => formatJobTitle(job), []);
 
@@ -166,7 +202,7 @@ export function ExplorePendingResponses() {
             const imgSrc = serviceHeroImageSrc(job);
             const clientName =
               String(job.profiles?.full_name ?? "").trim() || "Client";
-            
+
             const distanceKm = (() => {
               const vl = user?.user_metadata?.location_lat;
               const vg = user?.user_metadata?.location_lng;
@@ -207,7 +243,7 @@ export function ExplorePendingResponses() {
                     <span className="shrink-0 rounded-full bg-amber-500/12 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-amber-900 dark:text-amber-200">
                       Pending
                     </span>
-                    {commentCounts[job.id] > 0 && (
+                    {(commentCounts[job.id] ?? 0) > 0 && (
                       <span className="shrink-0 flex items-center gap-1 rounded-full bg-zinc-500/15 text-zinc-800 dark:text-zinc-200 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide">
                         <MessageSquare className="w-3.5 h-3.5" />
                         {commentCounts[job.id]}
@@ -219,7 +255,7 @@ export function ExplorePendingResponses() {
                 <div className="mt-3 flex items-center gap-3">
                   <div className={EXPLORE_PAGE_CARD_THUMB} aria-hidden>
                     {imgSrc ? (
-                      <img src={imgSrc} alt="" className="h-full w-full object-cover" />
+                      <img src={imgSrc} alt="" className="h-full w-full object-cover" loading="lazy" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-muted/50">
                         <Clock className="h-8 w-8 text-muted-foreground/50" strokeWidth={2} aria-hidden />
@@ -244,7 +280,7 @@ export function ExplorePendingResponses() {
                     </p>
                     <p className="mt-0.5 flex items-center gap-2 text-[15px] font-medium text-slate-600 sm:text-sm dark:text-zinc-200">
                       <Avatar className="h-6 w-6 shrink-0 border border-slate-200/50 dark:border-white/10">
-                        <AvatarImage src={job.profiles?.photo_url || ""} />
+                        <AvatarImage src={avatarUrl.sm(job.profiles?.photo_url)} />
                         <AvatarFallback className="text-[8px] font-bold">
                           {clientName.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -274,4 +310,3 @@ export function ExplorePendingResponses() {
     </section>
   );
 }
-

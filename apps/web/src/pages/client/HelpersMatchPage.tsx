@@ -300,8 +300,8 @@ export default function HelpersMatchPage() {
   }
 
   async function onInstantMatch(helper: HelperRpcRow) {
-    if (!user?.id || !profile || profile.role !== "client") {
-      addToast({ title: "Sign in as a client", variant: "error" });
+    if (!user?.id) {
+      addToast({ title: "Sign in required", variant: "default" });
       return;
     }
     if (!activeParams || !isServiceCategoryId(activeParams.category)) return;

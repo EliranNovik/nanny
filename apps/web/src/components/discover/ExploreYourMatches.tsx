@@ -445,8 +445,10 @@ export function ExploreYourMatches({
         isOwnRequest={selectedJobDetails?.client_id === user?.id}
       />
       {loading ? (
-        <div className="rounded-xl border-0 bg-zinc-50 px-3 py-4 text-sm text-muted-foreground shadow-sm dark:bg-zinc-900">
-          Loading your matches…
+        <div className={gridClass}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-[120px] w-full animate-pulse rounded-[24px] bg-zinc-100 dark:bg-zinc-900 ring-1 ring-black/5 dark:ring-white/5" />
+          ))}
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-2xl border-0 bg-zinc-50 px-4 py-5 text-center text-sm text-muted-foreground shadow-sm dark:bg-zinc-900/50">

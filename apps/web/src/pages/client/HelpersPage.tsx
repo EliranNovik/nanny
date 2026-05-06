@@ -752,21 +752,15 @@ export default function HelpersPage() {
     );
   };
 
-  /** Only helpers in an active 24h go-live window (`live_until` in the future). */
-  const helpersInLiveWindow = useMemo(
-    () =>
-      results.filter((h) =>
-        isFreelancerInActive24hLiveWindow(h.freelancer_profiles),
-      ),
-    [results],
-  );
+  /** Use all results, not just those in an active 24h window. */
+  const allFilteredHelpers = useMemo(() => results, [results]);
 
   const helpersMatchingCategories = useMemo(
     () =>
-      helpersInLiveWindow.filter((h) =>
+      allFilteredHelpers.filter((h) =>
         helperMatchesSelectedCategories(h, selectedCategories),
       ),
-    [helpersInLiveWindow, selectedCategories],
+    [allFilteredHelpers, selectedCategories],
   );
 
   const galleryFetchKey = useMemo(
@@ -865,9 +859,9 @@ export default function HelpersPage() {
     const id = focusHelperIdFromUrl;
     let idx = helpersMatchingCategories.findIndex((h) => h.id === id);
     if (idx < 0) {
-      const inLive = helpersInLiveWindow.some((h) => h.id === id);
+      const inResults = allFilteredHelpers.some((h) => h.id === id);
       if (
-        inLive &&
+        inResults &&
         selectedCategories.size > 0 &&
         !deepLinkClearedCategoriesRef.current
       ) {
@@ -928,7 +922,7 @@ export default function HelpersPage() {
     loadingFetch,
     helpersMatchingIdsKey,
     helpersMatchingCategories,
-    helpersInLiveWindow,
+    allFilteredHelpers,
     selectedCategories.size,
     setSearchParams,
   ]);
@@ -1294,7 +1288,7 @@ export default function HelpersPage() {
           </div>
         )}
 
-        {hasSearched && helpersInLiveWindow.length > 0 && (
+        {hasSearched && allFilteredHelpers.length > 0 && (
           <div
             className="animate-in fade-in slide-in-from-bottom-4 mx-auto hidden w-full max-w-5xl items-center justify-between px-2 duration-700 md:flex md:max-w-6xl"
           >
@@ -1302,11 +1296,11 @@ export default function HelpersPage() {
               <>
                 {helpersMatchingCategories.length} helper
                 {helpersMatchingCategories.length === 1 ? "" : "s"}
-                <span className="ml-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                  (24h window
+                <span className="ml-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  (matches
                   {selectedCategories.size > 0
                     ? ` · ${selectedCategories.size} categor${selectedCategories.size === 1 ? "y" : "ies"}`
-                    : ""}
+                    : " all categories"}
                   )
                 </span>
               </>
@@ -1356,7 +1350,7 @@ export default function HelpersPage() {
               </CardContent>
             </Card>
           </div>
-        ) : helpersInLiveWindow.length === 0 ? (
+        ) : allFilteredHelpers.length === 0 ? (
           <div
             ref={resultsAnchorRef}
             className="animate-in fade-in slide-in-from-bottom-3 mx-auto w-full max-w-5xl px-2 duration-700 md:max-w-6xl"
@@ -1406,9 +1400,9 @@ export default function HelpersPage() {
                   No helpers match your categories
                 </p>
                 <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
-                  {helpersInLiveWindow.length} live helper
-                  {helpersInLiveWindow.length === 1 ? "" : "s"} found, but none
-                  are live in the categories you selected. Deselect categories or
+                  {allFilteredHelpers.length} helper
+                  {allFilteredHelpers.length === 1 ? "" : "s"} found, but none
+                  match the categories you selected. Deselect categories or
                   pick different ones.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">

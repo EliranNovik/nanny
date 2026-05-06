@@ -164,10 +164,10 @@ export function HelperResultProfileCard({
     [respondsWithinLabel],
   );
 
-  const canStartBadge = useMemo(
-    () => (canStartInLabel ? canStartInLabel : canStartInCardLabel(h.freelancer_profiles?.live_can_start_in)),
-    [canStartInLabel, h.freelancer_profiles?.live_can_start_in],
-  );
+  const canStartBadge = useMemo(() => {
+    if (!isFreelancerInActive24hLiveWindow(h.freelancer_profiles)) return null;
+    return canStartInLabel ? canStartInLabel : canStartInCardLabel(h.freelancer_profiles?.live_can_start_in);
+  }, [canStartInLabel, h.freelancer_profiles]);
 
 
 

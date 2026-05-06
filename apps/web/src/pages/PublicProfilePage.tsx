@@ -43,7 +43,9 @@ import {
 import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
   publicProfileMediaPublicUrl,
+  publicProfileMediaUrl,
 } from "@/lib/publicProfileMedia";
+import { avatarUrl } from "@/lib/imageTransform";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import { VideoLightboxModal } from "@/components/VideoLightboxModal";
@@ -322,45 +324,17 @@ export default function PublicProfilePage() {
       return;
     }
 
-    const myRole = currentProfile.role;
-    const theirRole = profile.role;
-
-    if (myRole !== "client" && myRole !== "freelancer") {
-      addToast({
-        title: "Messaging unavailable",
-        description: "Your account cannot start a chat from here.",
-        variant: "error",
-      });
-      return;
-    }
-    if (theirRole !== "client" && theirRole !== "freelancer") {
-      addToast({
-        title: "Messaging unavailable",
-        description: "You can only message clients or helpers.",
-        variant: "error",
-      });
-      return;
-    }
-    if (myRole === theirRole) {
-      addToast({
-        title: "Messaging unavailable",
-        description:
-          "You can only message someone in the opposite role (client ↔ helper).",
-        variant: "default",
-      });
-      return;
-    }
-
-    const clientId = myRole === "client" ? currentUser.id : userId;
-    const freelancerId = myRole === "freelancer" ? currentUser.id : userId;
+    const [idA, idB] = [currentUser.id, userId].sort();
+    const clientId = idA;
+    const freelancerId = idB;
 
     setOpeningChat(true);
     try {
       const { data: existing, error: findErr } = await supabase
         .from("conversations")
         .select("id")
-        .eq("client_id", clientId)
-        .eq("freelancer_id", freelancerId)
+        .is("job_id", null)
+        .or(`and(client_id.eq.${clientId},freelancer_id.eq.${freelancerId}),and(client_id.eq.${freelancerId},freelancer_id.eq.${clientId})`)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -1183,31 +1157,27 @@ export default function PublicProfilePage() {
           <div className="flex flex-col md:flex-row gap-6 md:items-start">
             {/* Avatar block — hidden on mobile hero layout to move it below header */}
             <div className="hidden md:block h-32 w-32 shrink-0 lg:h-40 lg:w-40">
-              {profile.photo_url ? (
-                <button
-                  type="button"
-                  onClick={() => setProfileMediaLightbox({ urls: [profile.photo_url!], initialIndex: 0 })}
-                  className="relative block h-full w-full overflow-visible rounded-full ring-4 ring-white shadow-xl transition hover:scale-[1.02] active:scale-[0.98] dark:ring-zinc-900"
-                  aria-label="View profile photo full screen"
-                >
-                  <span className="absolute inset-0 overflow-hidden rounded-full">
-                    <img
-                      src={profile.photo_url}
-                      alt={profile.full_name ?? "Profile"}
-                      className="h-full w-full object-cover"
-                      loading="eager"
-                    />
-                  </span>
-                  {profileLiveNowDot}
-                </button>
-              ) : (
-                <div className="relative flex h-full w-full items-center justify-center overflow-visible rounded-full bg-gradient-to-br from-primary/20 via-muted to-primary/10 ring-4 ring-white shadow-xl dark:ring-zinc-900">
-                  <span className="text-4xl font-black uppercase tracking-tight text-primary/60">
-                    {photoInitials}
-                  </span>
-                  {profileLiveNowDot}
+              <button
+                type="button"
+                className="relative block h-full w-full overflow-hidden rounded-full ring-4 ring-white shadow-xl transition hover:scale-[1.02] active:scale-[0.98] dark:ring-zinc-900 bg-muted"
+                onClick={() => profile?.photo_url && setProfileMediaLightbox({ urls: [profile.photo_url!], initialIndex: 0 })}
+                aria-label="View profile photo full screen"
+              >
+                {/* Initials as fallback/underlay */}
+                <div className="absolute inset-0 flex items-center justify-center text-4xl font-black uppercase tracking-tight text-primary/30">
+                  {photoInitials}
                 </div>
-              )}
+
+                {profile?.photo_url && (
+                  <img
+                    src={avatarUrl.lg(profile.photo_url)}
+                    alt={profile.full_name ?? "Profile"}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    fetchpriority="high"
+                  />
+                )}
+                {profileLiveNowDot}
+              </button>
             </div>
 
             <div className="flex-1 min-w-0 pb-2">
@@ -1359,34 +1329,34 @@ export default function PublicProfilePage() {
         <div className="px-5 pb-6 pt-[max(2.75rem,calc(env(safe-area-inset-top,0px)+2.5rem))] bg-background">
           <div className="flex gap-4 items-start mb-6">
             <div className="h-36 w-36 shrink-0">
-              {profile.photo_url ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setProfileMediaLightbox({
-                      urls: [profile.photo_url!],
-                      initialIndex: 0,
-                    })
-                  }
-                  className="relative block h-full w-full overflow-visible rounded-full ring-2 ring-slate-100 shadow-lg shadow-black/5 transition active:scale-[0.98] dark:ring-white/10"
-                  aria-label="View profile photo full screen"
-                >
-                  <span className="absolute inset-0 overflow-hidden rounded-full">
-                    <img
-                      src={profile.photo_url}
-                      alt={profile.full_name ?? "Profile"}
-                      className="h-full w-full object-cover"
-                      loading="eager"
-                    />
-                  </span>
-                  {profileLiveNowDot}
-                </button>
-              ) : (
-                <div className="relative flex h-full w-full items-center justify-center overflow-visible rounded-full bg-slate-100 ring-2 ring-slate-100 shadow-lg shadow-black/5 dark:bg-white/5 dark:ring-white/10">
-                  <span className="text-4xl font-black text-slate-400">{photoInitials}</span>
-                  {profileLiveNowDot}
+              <button
+                type="button"
+                onClick={() =>
+                  profile?.photo_url && setProfileMediaLightbox({
+                    urls: [profile.photo_url!],
+                    initialIndex: 0,
+                  })
+                }
+                className="relative block h-full w-full overflow-hidden rounded-full ring-2 ring-slate-100 shadow-lg shadow-black/5 transition active:scale-[0.98] dark:ring-white/10 bg-muted"
+                aria-label="View profile photo full screen"
+              >
+                {/* Initials as fallback/underlay */}
+                <div className="absolute inset-0 flex items-center justify-center text-4xl font-black text-slate-300 dark:text-white/20">
+                  {photoInitials}
                 </div>
-              )}
+
+                {profile?.photo_url && (
+                  <img
+                    src={avatarUrl.lg(profile.photo_url)}
+                    alt={profile.full_name ?? "Profile"}
+                    className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
+                    fetchpriority="high"
+                    onLoad={(e) => (e.currentTarget.style.opacity = "1")}
+                    style={{ opacity: 0 }}
+                  />
+                )}
+                {profileLiveNowDot}
+              </button>
             </div>
             <div className="flex flex-1 min-w-0 flex-col pt-1">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -1559,7 +1529,7 @@ export default function PublicProfilePage() {
                    {imageRows.map((row, idx) => (
                     <div key={row.id} className="aspect-square relative group">
                        <button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full">
-                          <img src={publicProfileMediaPublicUrl(row.storage_path)} alt="" className="h-full w-full object-cover" />
+                          <img src={publicProfileMediaUrl(row.storage_path, { width: 480, quality: 80 })} alt="" className="h-full w-full object-cover" loading="lazy" />
                        </button>
                        {isOwnProfile && (
                          <button onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center rounded-full bg-black/40 text-white">
@@ -1680,7 +1650,7 @@ export default function PublicProfilePage() {
                               >
                                 <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
                                   <AvatarImage
-                                    src={review.reviewer.photo_url || undefined}
+                                    src={avatarUrl.xs(review.reviewer.photo_url)}
                                     className="object-cover"
                                   />
                                   <AvatarFallback className="bg-transparent text-2xl font-bold text-white">
@@ -1744,7 +1714,8 @@ export default function PublicProfilePage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2 lg:grid-cols-4">
-                    {imageRows.map((row, idx) => (<div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full" aria-label="View photo full screen"><img src={publicProfileMediaPublicUrl(row.storage_path)} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /></button>{isOwnProfile && <button type="button" disabled={uploadingMedia} onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100" aria-label="Remove photo"><Trash2 className="h-4 w-4" /></button>}</div>))}
+                    {imageRows.map((row, idx) => (<div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full" aria-label="View photo full screen"><img src={publicProfileMediaUrl(row.storage_path, { width: 480, quality: 80 })} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" /></button>{isOwnProfile && <button type="button" disabled={uploadingMedia} onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100" aria-label="Remove photo"><Trash2 className="h-4 w-4" /></button>}</div>))}
+
                   </div>
                 )}
               </div>
@@ -1804,7 +1775,7 @@ export default function PublicProfilePage() {
                         <p className="text-sm font-bold italic leading-relaxed line-clamp-3">"{reviews[0].review_text}"</p>
                         <div className="mt-3 flex items-center gap-2">
                             <Avatar className="h-6 w-6">
-                                <AvatarImage src={reviews[0].reviewer.photo_url || ""} />
+                                <AvatarImage src={avatarUrl.xs(reviews[0].reviewer.photo_url)} />
                                 <AvatarFallback>{reviews[0].reviewer.full_name?.slice(0, 1)}</AvatarFallback>
                             </Avatar>
                             <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">{reviews[0].reviewer.full_name}</span>

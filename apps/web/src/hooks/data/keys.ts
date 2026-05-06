@@ -21,6 +21,10 @@ export const queryKeys = {
   discoverOpenHelpRequests: (excludeUserId?: string | null) =>
     [...queryKeys.jobs, "discoverOpen", excludeUserId ?? "none"] as const,
 
+  /** Explore "Live help now" cards — scoped by viewer + mode so hire/work cache independently. */
+  exploreLiveHelp: (userId: string | undefined, mode: "hire" | "work") =>
+    [...queryKeys.jobs, "exploreLiveHelp", userId ?? "anon", mode] as const,
+
   communityPosts: (category: string | null) => [...queryKeys.community, "posts", category] as const,
   postFavorites: (userId?: string, postIds?: string[]) => [...queryKeys.community, "favorites", userId, postIds?.sort().join(",")] as const,
   pendingHireInterests: (userId?: string, postIds?: string[]) => [...queryKeys.community, "hireInterests", userId, postIds?.sort().join(",")] as const,

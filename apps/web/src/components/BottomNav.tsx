@@ -1386,16 +1386,15 @@ export function BottomNav() {
                   >
                     <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
                       <MessageCircle className={bottomNavTabIconClass(isActive)} />
+                      {showMessageBadge && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-black leading-none shadow-sm dark:border-zinc-950 sm:h-5.5 sm:min-w-[22px] sm:text-[11px]"
+                        >
+                          {inboxBadgeCount > 9 ? "9+" : inboxBadgeCount}
+                        </Badge>
+                      )}
                     </div>
-
-                    {showMessageBadge && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -right-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 sm:top-1 sm:right-1 sm:h-7 sm:min-w-7 sm:px-1.5 sm:text-xs"
-                      >
-                        {inboxBadgeCount > 9 ? "9+" : inboxBadgeCount}
-                      </Badge>
-                    )}
                   </Link>
                 );
               })()}

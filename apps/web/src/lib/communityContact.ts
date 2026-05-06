@@ -31,25 +31,10 @@ export async function openCommunityContact(opts: {
   } = opts;
   if (targetUserId === user.id) return;
 
-  if (myRole !== "client" && myRole !== "freelancer") {
-    addToast({ title: "Messaging unavailable", variant: "error" });
-    return;
-  }
-  if (targetRole !== "client" && targetRole !== "freelancer") {
-    addToast({ title: "Messaging unavailable", variant: "error" });
-    return;
-  }
-  if (myRole === targetRole) {
-    addToast({
-      title: "Messaging unavailable",
-      description: "Message someone in the opposite role (client ↔ helper).",
-      variant: "default",
-    });
-    return;
-  }
-
-  const clientId = myRole === "client" ? user.id : targetUserId;
-  const freelancerId = myRole === "freelancer" ? user.id : targetUserId;
+  // Unrestricted messaging: anyone can message anyone
+  const [idA, idB] = [user.id, targetUserId].sort();
+  const clientId = idA;
+  const freelancerId = idB;
 
   try {
     const { data: existing, error: findErr } = await supabase

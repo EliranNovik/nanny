@@ -167,12 +167,14 @@ export default function MessagesPage() {
       } else {
 
 
-        const client_id = profile?.role === "client" ? user.id : selectedUserId;
-        const freelancer_id = profile?.role === "freelancer" ? user.id : selectedUserId;
+        // Deterministic assignment to ensure unique conversation record
+        const [idA, idB] = [user.id, selectedUserId].sort();
+        const client_id = idA;
+        const freelancer_id = idB;
 
         const { data: created } = await supabase
           .from("conversations")
-          .insert({ client_id, freelancer_id })
+          .insert({ client_id, freelancer_id, job_id: null })
           .select("id")
           .single();
 
