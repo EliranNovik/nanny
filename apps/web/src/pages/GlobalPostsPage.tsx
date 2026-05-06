@@ -131,12 +131,13 @@ export default function GlobalPostsPage() {
       </div>
 
       <div className="app-desktop-shell py-6 md:py-8 px-0 md:px-4">
-        <div className="max-w-3xl mx-auto">
+        <div className="mx-auto w-full max-w-3xl md:mx-0 md:max-w-none">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <ProfilePostsFeed
               filterTaggedUserId={showTaggedMe ? user?.id : undefined}
               authorNameFilter={authorSearch}
               sortOrder={sortOrder}
+              appearance="discover"
             />
           </div>
         </div>

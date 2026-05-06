@@ -1319,8 +1319,8 @@ export default function ChatPage({
         />
       );
     }
-    /** Delivered / read ticks — explicit blue so parent bubble text colour does not override */
-    const readBlue = "#3b82f6";
+    /** Delivered / read ticks — explicit light blue so parent bubble text colour does not override */
+    const readBlue = "#60a5fa";
     if (status === "delivered") {
       return (
         <CheckCheck
@@ -2269,7 +2269,7 @@ export default function ChatPage({
                             >
                               <p
                                 className={cn(
-                                  "inline-block max-w-full whitespace-pre-wrap break-words text-[21px] font-medium leading-snug md:text-[16px]",
+                                  "inline-block max-w-full whitespace-pre-wrap break-words text-[19px] font-medium leading-snug md:text-[16px]",
                                   isOwn
                                     ? "text-primary-foreground"
                                     : "text-foreground",
@@ -2417,7 +2417,7 @@ export default function ChatPage({
                           ) : msg.body ? (
                             <p
                               className={cn(
-                                "inline-block max-w-full whitespace-pre-wrap break-words text-[21px] font-medium leading-snug md:text-[16px]",
+                                "inline-block max-w-full whitespace-pre-wrap break-words text-[19px] font-medium leading-snug md:text-[16px]",
                                 isOwn
                                   ? "text-primary-foreground"
                                   : "text-foreground",

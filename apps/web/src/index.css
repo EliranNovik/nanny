@@ -8,6 +8,14 @@
     @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12;
   }
 
+  /**
+   * Desktop layout with fixed side panel:
+   * let pages use the full available width (avoid large centered whitespace).
+   */
+  .app-wide-desktop-content .app-desktop-shell {
+    @apply max-w-none mx-0;
+  }
+
   /** Narrow centered column on md+ (onboarding, auth-style flows). */
   .app-desktop-centered-narrow {
     @apply w-full mx-auto max-w-lg md:max-w-2xl lg:max-w-3xl;

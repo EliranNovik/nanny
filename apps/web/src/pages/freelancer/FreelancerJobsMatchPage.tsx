@@ -22,6 +22,7 @@ import {
   type OpenJobRequestMatchRow,
 } from "@/components/jobs/OpenJobRequestMatchCard";
 import { JobRequestCommentsModal } from "@/components/jobs/JobRequestCommentsModal";
+import { JobRequestCommentsSidePanel } from "@/components/jobs/JobRequestCommentsSidePanel";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
 import {
   GOOGLE_MAPS_LIBRARIES,
@@ -218,6 +219,7 @@ export default function FreelancerJobsMatchPage() {
   const [ratingsByUserId, setRatingsByUserId] = useState<
     Record<string, { average_rating: number | null; total_ratings: number | null }>
   >({});
+  const [liveUntilByUserId, setLiveUntilByUserId] = useState<Record<string, string | null>>({});
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [activeCommentsJobId, setActiveCommentsJobId] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -533,7 +535,7 @@ export default function FreelancerJobsMatchPage() {
         new Set(fetched.map((r) => r.client_id).filter((id) => id !== user.id)),
       ).filter(Boolean);
       if (clientIds.length > 0) {
-        const [mediaRes, profilesRes] = await Promise.all([
+        const [mediaRes, profilesRes, liveRes] = await Promise.all([
           supabase
             .from("public_profile_media")
             .select("id, user_id, media_type, storage_path, sort_order, created_at")
@@ -541,7 +543,11 @@ export default function FreelancerJobsMatchPage() {
           supabase
             .from("profiles")
             .select("id, average_rating, total_ratings")
-            .in("id", clientIds)
+            .in("id", clientIds),
+          supabase
+            .from("freelancer_profiles")
+            .select("user_id, live_until")
+            .in("user_id", clientIds),
         ]);
 
         if (!mediaRes.error) {
@@ -571,6 +577,17 @@ export default function FreelancerJobsMatchPage() {
             };
           }
           setRatingsByUserId(ratingMap);
+        }
+
+        if (!liveRes.error && liveRes.data) {
+          const m: Record<string, string | null> = {};
+          for (const id of clientIds) m[id] = null;
+          for (const fp of liveRes.data as any[]) {
+            const uid = String(fp.user_id ?? "");
+            if (!uid) continue;
+            m[uid] = fp.live_until ?? null;
+          }
+          setLiveUntilByUserId(m);
         }
       }
 
@@ -840,7 +857,7 @@ export default function FreelancerJobsMatchPage() {
             </div>
           </>
         ) : (
-          <div className="max-md:hidden sticky top-[80px] z-40 -mt-4 mb-4 flex justify-center pointer-events-none">
+          <div className="max-md:hidden fixed inset-x-0 bottom-6 z-[140] flex justify-center pointer-events-none">
             <Button
               type="button"
               variant="outline"
@@ -898,6 +915,7 @@ export default function FreelancerJobsMatchPage() {
                         row={r}
                         gallery={galleryByUserId[r.client_id] ?? []}
                         clientRating={ratingsByUserId[r.client_id]}
+                        clientLiveUntil={liveUntilByUserId[r.client_id] ?? null}
                         commentCount={commentCounts[r.id] || 0}
                         onOpenComments={(id) => setActiveCommentsJobId(id)}
                         formatTitle={(st) => formatJobTitle(st || undefined)}
@@ -939,45 +957,62 @@ export default function FreelancerJobsMatchPage() {
             {/* Desktop/tablet: keep grid */}
             <div
               className={cn(
-                "animate-in fade-in slide-in-from-bottom-3 mx-auto hidden w-full max-w-5xl grid-cols-1 gap-5 px-2 duration-700 sm:grid-cols-2 md:grid md:max-w-6xl lg:grid-cols-3",
+                // Desktop: single column rows to make room for right-side comments panel.
+                "animate-in fade-in slide-in-from-bottom-3 mx-auto hidden w-full grid-cols-1 gap-14 px-3 duration-700 md:grid lg:grid-cols-1",
+                // Wide-but-centered container (like Discover): use more space on big screens but keep centered.
+                "md:max-w-[1120px] lg:max-w-[1240px] xl:max-w-[1360px] 2xl:max-w-[1480px]",
+                // Desktop: push the first card a bit lower from the header.
+                "md:pt-6",
                 "max-md:-mt-1 max-md:scroll-mt-0 max-md:gap-4",
               )}
             >
               {filteredRows.map((r) => (
-                <OpenJobRequestMatchCard
-                  key={r.id}
-                  row={r}
-                  gallery={galleryByUserId[r.client_id] ?? []}
-                  clientRating={ratingsByUserId[r.client_id]}
-                  commentCount={commentCounts[r.id] || 0}
-                  onOpenComments={(id) => setActiveCommentsJobId(id)}
-                  formatTitle={(st) => formatJobTitle(st || undefined)}
-                  onOpenProfile={(userId) =>
-                    navigate(`/profile/${encodeURIComponent(userId)}`)
-                  }
-                  onAccept={async (jobId, note) => {
-                    try {
-                      await acceptJob(jobId, r, note);
-                    } catch (e: unknown) {
-                      addToast({
-                        title: "Could not accept",
-                        description: e instanceof Error ? e.message : "Try again.",
-                        variant: "error",
-                      });
-                    }
-                  }}
-                  onDecline={async (jobId) => {
-                    try {
-                      await declineJob(jobId);
-                    } catch (e: unknown) {
-                      addToast({
-                        title: "Could not decline",
-                        description: e instanceof Error ? e.message : "Try again.",
-                        variant: "error",
-                      });
-                    }
-                  }}
-                />
+                <div key={r.id} className="md:flex md:items-start md:gap-16 md:pr-6 lg:pr-10">
+                  <div className="min-w-0 md:flex-1">
+                    <OpenJobRequestMatchCard
+                      row={r}
+                      gallery={galleryByUserId[r.client_id] ?? []}
+                      clientRating={ratingsByUserId[r.client_id]}
+                      clientLiveUntil={liveUntilByUserId[r.client_id] ?? null}
+                      commentCount={commentCounts[r.id] || 0}
+                      onOpenComments={(id) => setActiveCommentsJobId(id)}
+                      formatTitle={(st) => formatJobTitle(st || undefined)}
+                      onOpenProfile={(userId) =>
+                        navigate(`/profile/${encodeURIComponent(userId)}`)
+                      }
+                      onAccept={async (jobId, note) => {
+                        try {
+                          await acceptJob(jobId, r, note);
+                        } catch (e: unknown) {
+                          addToast({
+                            title: "Could not accept",
+                            description:
+                              e instanceof Error ? e.message : "Try again.",
+                            variant: "error",
+                          });
+                        }
+                      }}
+                      onDecline={async (jobId) => {
+                        try {
+                          await declineJob(jobId);
+                        } catch (e: unknown) {
+                          addToast({
+                            title: "Could not decline",
+                            description:
+                              e instanceof Error ? e.message : "Try again.",
+                            variant: "error",
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <JobRequestCommentsSidePanel
+                    jobId={r.id}
+                    user={user}
+                    initialCount={commentCounts[r.id] || 0}
+                  />
+                </div>
               ))}
             </div>
           </>

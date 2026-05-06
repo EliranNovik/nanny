@@ -6,7 +6,7 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-slate-950 text-white py-16 px-6 relative overflow-hidden">
+    <footer className="relative overflow-hidden bg-zinc-100 text-zinc-900 dark:bg-slate-950 dark:text-white py-16 px-6">
       {/* Decorative Gradient Blur */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] -translate-y-1/2"></div>
 
@@ -20,23 +20,23 @@ export function Footer() {
                 alt="Tebnu"
                 className="h-14 w-auto transition-transform duration-500 group-hover/footer-logo:scale-105"
               />
-              <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+              <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-emerald-600 via-emerald-500 to-lime-500 bg-clip-text text-transparent drop-shadow-[0_1px_0_rgba(0,0,0,0.06)] dark:drop-shadow-none">
                 Tebnu
               </span>
             </Link>
-            <p className="text-slate-400 font-medium leading-relaxed max-w-xs">
+            <p className="text-zinc-600 dark:text-slate-400 font-medium leading-relaxed max-w-xs">
               Bringing families and trusted helpers together. The premium
               marketplace for home services.
             </p>
             <div className="flex gap-4">
-              <button className="h-10 w-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary/20 hover:border-primary/50 transition-all">
-                <Instagram className="w-5 h-5 text-slate-300" />
+              <button className="h-10 w-10 rounded-full bg-zinc-900/5 border border-zinc-900/10 dark:bg-white/5 dark:border-white/10 flex items-center justify-center hover:bg-primary/15 hover:border-primary/40 dark:hover:bg-primary/20 dark:hover:border-primary/50 transition-all">
+                <Instagram className="w-5 h-5 text-zinc-700 dark:text-slate-300" />
               </button>
-              <button className="h-10 w-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary/20 hover:border-primary/50 transition-all">
-                <Facebook className="w-5 h-5 text-slate-300" />
+              <button className="h-10 w-10 rounded-full bg-zinc-900/5 border border-zinc-900/10 dark:bg-white/5 dark:border-white/10 flex items-center justify-center hover:bg-primary/15 hover:border-primary/40 dark:hover:bg-primary/20 dark:hover:border-primary/50 transition-all">
+                <Facebook className="w-5 h-5 text-zinc-700 dark:text-slate-300" />
               </button>
-              <button className="h-10 w-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary/20 hover:border-primary/50 transition-all">
-                <Twitter className="w-5 h-5 text-slate-300" />
+              <button className="h-10 w-10 rounded-full bg-zinc-900/5 border border-zinc-900/10 dark:bg-white/5 dark:border-white/10 flex items-center justify-center hover:bg-primary/15 hover:border-primary/40 dark:hover:bg-primary/20 dark:hover:border-primary/50 transition-all">
+                <Twitter className="w-5 h-5 text-zinc-700 dark:text-slate-300" />
               </button>
             </div>
           </div>
@@ -50,7 +50,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/onboarding?role=client"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   Hire a Helper
                 </Link>
@@ -58,7 +58,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/onboarding?role=freelancer"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   Be a Helper
                 </Link>
@@ -66,7 +66,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/services"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   Our Services
                 </Link>
@@ -74,7 +74,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/safety"
-                  className="text-slate-400 hover:text-white font-bold transition-colors flex items-center gap-2"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors flex items-center gap-2"
                 >
                   Safety First{" "}
                   <ShieldCheck className="w-4 h-4 text-green-500" />
@@ -92,7 +92,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/about"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   About Us
                 </Link>
@@ -100,7 +100,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/contact"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   Contact
                 </Link>
@@ -108,7 +108,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/faq"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   FAQ
                 </Link>
@@ -116,7 +116,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/careers"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   Careers
                 </Link>
@@ -133,7 +133,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/terms"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   Terms of Use
                 </Link>
@@ -141,7 +141,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/privacy"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   Privacy Policy
                 </Link>
@@ -149,41 +149,52 @@ export function Footer() {
               <li>
                 <Link
                   to="/cookies"
-                  className="text-slate-400 hover:text-white font-bold transition-colors"
+                  className="text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white font-bold transition-colors"
                 >
                   Cookie Policy
                 </Link>
               </li>
             </ul>
-            <div className="mt-8 pt-8 border-t border-white/5">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">
+            <div className="mt-8 pt-8 border-t border-zinc-900/10 dark:border-white/5">
+              <p className="text-[10px] font-black text-zinc-500 dark:text-slate-500 uppercase tracking-[0.2em] mb-3">
                 Supported by
               </p>
-              <div className="flex items-center gap-2 grayscale opacity-50">
+              <div className="flex items-center gap-2 grayscale opacity-60 dark:opacity-50">
                 <img
                   src={BRAND_LOGO_SRC}
                   alt=""
                   className="h-6 w-auto"
                 />
-                <span className="font-bold text-xs">Security Verified</span>
+                <span className="font-bold text-xs text-zinc-700 dark:text-slate-200">
+                  Security Verified
+                </span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-slate-500 text-sm font-medium">
+        <div className="pt-8 border-t border-zinc-900/10 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-zinc-500 dark:text-slate-500 text-sm font-medium">
             &copy; {currentYear} Tebnu. All rights reserved.
           </p>
-          <div className="flex items-center gap-8 text-slate-500 text-xs font-bold uppercase tracking-widest">
-            <Link to="/terms" className="hover:text-white transition-colors">
+          <div className="flex items-center gap-8 text-zinc-500 dark:text-slate-500 text-xs font-bold uppercase tracking-widest">
+            <Link
+              to="/terms"
+              className="hover:text-zinc-950 dark:hover:text-white transition-colors"
+            >
               Legal
             </Link>
-            <Link to="/privacy" className="hover:text-white transition-colors">
+            <Link
+              to="/privacy"
+              className="hover:text-zinc-950 dark:hover:text-white transition-colors"
+            >
               Privacy
             </Link>
-            <Link to="/contact" className="hover:text-white transition-colors">
+            <Link
+              to="/contact"
+              className="hover:text-zinc-950 dark:hover:text-white transition-colors"
+            >
               Support
             </Link>
           </div>

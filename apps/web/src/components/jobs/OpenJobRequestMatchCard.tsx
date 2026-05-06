@@ -6,7 +6,6 @@ import {
   Clock,
   Loader2,
   MapPin,
-  MessageCircle,
   MessageSquare,
   Sparkles,
   Star,
@@ -23,6 +22,7 @@ import { useToast } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { JOB_CARD_OUTER_CORNER } from "@/components/jobs/jobCardSharedClasses";
+import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 
 export type OpenJobRequestMatchRow = {
   id: string;
@@ -76,15 +76,16 @@ function buildSlides(photoUrl: string | null, gallery: PublicProfileGalleryRow[]
   return [{ key: "summary", kind: "image" as const, src: trimmed }, ...gallerySlides];
 }
 
+function serviceHeroImageSrc(job: { service_type: string | null }) {
+  const t = (job.service_type ?? "").toLowerCase();
+  if (t === "cleaning") return "/cleaning-mar22.png";
+  if (t === "cooking") return "/cooking-mar22.png";
+  if (t === "pickup_delivery") return "/pickup-mar22.png";
+  if (t === "nanny") return "/nanny-mar22.png";
+  if (t === "other_help") return "/other-mar22.png";
+  return "/nanny-mar22.png";
+}
 
-/** Glass icon row overlaid on the hero image */
-const heroOverlayRoundBtn = cn(
-  "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
-  "bg-black/35 text-white shadow-lg backdrop-blur-md ring-1 ring-white/20 transition-colors",
-  "hover:bg-black/45 active:scale-[0.97]",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
-  "disabled:pointer-events-none disabled:opacity-55",
-);
 
 const roundActionBtn = cn(
   "flex items-center justify-center rounded-full shadow-xl transition-all active:scale-90",
@@ -93,19 +94,20 @@ const roundActionBtn = cn(
 
 const acceptRoundBtn = cn(
   roundActionBtn,
-  "h-16 w-16 bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600 ring-emerald-400/20",
+  "h-16 w-16 bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600 ring-emerald-400/20 md:h-20 md:w-20",
 );
 
 const declineRoundBtn = cn(
   roundActionBtn,
-  "h-14 w-14 bg-white text-rose-500 ring-zinc-200 hover:bg-rose-50 dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
+  // No shadow/outline: keep it visually lightweight vs Accept.
+  "h-14 w-14 bg-rose-50 text-rose-600 shadow-none ring-0 hover:bg-rose-100",
+  "dark:bg-rose-950/25 dark:text-rose-300 dark:hover:bg-rose-950/35",
 );
 
 /** Posted-at time on hero — bottom-right, frosted black glass */
 const postedTimeGlassBadge = cn(
-  "pointer-events-none inline-flex items-center gap-1.5 rounded-full border border-white/12",
-  "bg-black/45 px-3 py-1.5 text-white shadow-lg backdrop-blur-xl ring-1 ring-black/20",
-  "md:px-4 md:py-2",
+  "pointer-events-none inline-flex items-center gap-1.5",
+  "px-0 py-0 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]",
 );
 
 
@@ -155,43 +157,21 @@ function CategoryIcon({
 }
 
 /**
- * Category chip beside “Posted …”.
- * Dark mode uses a solid black/zinc glass stack (no `bg-*` + gradient mix) so it always wins over light tints.
+ * Category badge shown on the hero image (top-right).
+ * We keep it readable over photos by using higher opacity + strong text.
  */
-function categoryPanelPillClasses(serviceType: string | null | undefined): string {
+function heroCategoryBadgeClasses(serviceType: string | null | undefined): string {
   const k = (serviceType ?? "").toLowerCase();
-  const darkGlass = cn(
-    "dark:border-white/14 dark:bg-black/70 dark:text-zinc-50 dark:shadow-lg dark:shadow-black/70",
-    "dark:ring-1 dark:ring-inset dark:ring-white/10 dark:backdrop-blur-xl",
+  const base = cn(
+    "inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-black uppercase tracking-wider text-white",
+    "shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/15 md:px-5 md:py-2.5 md:text-[13px]",
   );
-  if (k.includes("clean")) {
-    return cn(
-      "border border-emerald-200/95 bg-emerald-50 text-emerald-950 shadow-sm ring-1 ring-emerald-100/80",
-      darkGlass,
-    );
-  }
-  if (k.includes("cook") || k.includes("chef") || k.includes("food")) {
-    return cn(
-      "border border-amber-200/95 bg-amber-50 text-amber-950 shadow-sm ring-1 ring-amber-100/80",
-      darkGlass,
-    );
-  }
-  if (k.includes("nanny") || k.includes("bab") || k.includes("sit")) {
-    return cn(
-      "border border-rose-200/95 bg-rose-50 text-rose-950 shadow-sm ring-1 ring-rose-100/80",
-      darkGlass,
-    );
-  }
-  if (k.includes("pickup") || k.includes("deliver") || k.includes("truck")) {
-    return cn(
-      "border border-sky-200/95 bg-sky-50 text-sky-950 shadow-sm ring-1 ring-sky-100/80",
-      darkGlass,
-    );
-  }
-  return cn(
-    "border border-violet-200/95 bg-violet-50 text-violet-950 shadow-sm ring-1 ring-violet-100/80",
-    darkGlass,
-  );
+
+  if (k.includes("clean")) return cn(base, "bg-emerald-600/70");
+  if (k.includes("cook") || k.includes("chef") || k.includes("food")) return cn(base, "bg-amber-600/70");
+  if (k.includes("nanny") || k.includes("bab") || k.includes("sit")) return cn(base, "bg-rose-600/70");
+  if (k.includes("pickup") || k.includes("deliver") || k.includes("truck")) return cn(base, "bg-sky-600/70");
+  return cn(base, "bg-violet-600/70");
 }
 
 /** Flatten service_details JSON into short readable lines and extracts notes. */
@@ -264,6 +244,7 @@ export function OpenJobRequestMatchCard({
   onDecline,
   onOpenProfile,
   clientRating,
+  clientLiveUntil,
   variant = "grid",
   commentCount = 0,
   onOpenComments,
@@ -276,6 +257,7 @@ export function OpenJobRequestMatchCard({
   onOpenProfile: (userId: string) => void;
   variant?: "grid" | "fullscreen";
   clientRating?: { average_rating: number | null; total_ratings: number | null } | null;
+  clientLiveUntil?: string | null;
   commentCount?: number;
   onOpenComments?: (jobId: string) => void;
 }) {
@@ -286,26 +268,63 @@ export function OpenJobRequestMatchCard({
   const [chatOpening, setChatOpening] = useState(false);
   const [socialBusy, setSocialBusy] = useState<"wa" | "tg" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const slides = useMemo(
+  const profileSlides = useMemo(
     () => buildSlides(row.client_photo_url, gallery),
     [row.client_photo_url, gallery],
   );
-  const showStrip = slides.length > 1;
+  // Images uploaded to the job request (stored as public URLs in service_details.images)
+  const jobImages = useMemo(() => {
+    const imgs = (row.service_details as Record<string, unknown> | null)?.images;
+    if (!Array.isArray(imgs)) return [] as string[];
+    return (imgs as unknown[]).filter(
+      (u): u is string => typeof u === "string" && u.trim().length > 0,
+    );
+  }, [row.service_details]);
+
+  const heroSlides = useMemo(() => {
+    if (jobImages.length > 0) {
+      return jobImages.map((src, idx) => ({
+        key: `job-${idx}-${src}`,
+        kind: "image" as const,
+        src,
+      }));
+    }
+    const fallback = serviceHeroImageSrc({ service_type: row.service_type });
+    return fallback
+      ? [{ key: "category", kind: "image" as const, src: fallback }]
+      : ([] as Slide[]);
+  }, [jobImages, row.service_type]);
+
+  const showStrip = heroSlides.length > 1;
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showClientGalleryModal, setShowClientGalleryModal] = useState(false);
+  const [clientGalleryStartIndex, setClientGalleryStartIndex] = useState(0);
+  const clientGalleryScrollRef = useRef<HTMLDivElement>(null);
 
   const syncIndex = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const next = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
-    setActiveIndex(Math.max(0, Math.min(slides.length - 1, next)));
-  }, [slides.length]);
+    setActiveIndex(Math.max(0, Math.min(heroSlides.length - 1, next)));
+  }, [heroSlides.length]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ left: 0, behavior: "auto" });
     setActiveIndex(0);
-  }, [row.id, row.client_photo_url, slides.map((s) => s.key).join("|")]);
+  }, [row.id, heroSlides.map((s) => s.key).join("|")]);
+
+  useEffect(() => {
+    if (!showClientGalleryModal) return;
+    const el = clientGalleryScrollRef.current;
+    if (!el) return;
+    // next frame: ensure layout measured before scrolling
+    requestAnimationFrame(() => {
+      const w = Math.max(1, el.clientWidth);
+      el.scrollTo({ left: clientGalleryStartIndex * w, behavior: "auto" });
+    });
+  }, [showClientGalleryModal, clientGalleryStartIndex]);
 
   const accept = useCallback(async () => {
     if (busy) return;
@@ -372,13 +391,6 @@ export function OpenJobRequestMatchCard({
 
   const serviceDetailLines = parsedDetails.badges;
 
-  // Images uploaded to the job request (stored as public URLs in service_details.images)
-  const jobImages = useMemo(() => {
-    const imgs = (row.service_details as Record<string, unknown> | null)?.images;
-    if (!Array.isArray(imgs)) return [] as string[];
-    return (imgs as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0);
-  }, [row.service_details]);
-
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const budgetLine = useMemo(() => {
@@ -400,6 +412,15 @@ export function OpenJobRequestMatchCard({
     return t.length > 200 ? `${t.slice(0, 200).trim()}…` : t;
   }, [row.notes, parsedDetails.notes]);
 
+  const fullNotesText = useMemo(() => {
+    let t = (row.notes || "").trim();
+    if (parsedDetails.notes.length > 0) {
+      const merged = parsedDetails.notes.join("\n\n");
+      t = t ? `${merged}\n\n${t}` : merged;
+    }
+    return t || null;
+  }, [row.notes, parsedDetails.notes]);
+
   const accepted = row.__accepted === true;
 
   const openAcceptCountDisplay = useMemo(() => {
@@ -409,24 +430,58 @@ export function OpenJobRequestMatchCard({
     return Math.max(0, Math.floor(n));
   }, [row.open_accept_count]);
 
-  const [showContactDropdown, setShowContactDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [contactInfo, setContactInfo] = useState<{
+    waNumber: string | null;
+    tgUsername: string | null;
+  } | null>(null);
 
   useEffect(() => {
-    if (!showContactDropdown) return;
-    const clickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowContactDropdown(false);
+    let cancelled = false;
+    const clientId = row.client_id;
+
+    if (!viewerId || !clientId) {
+      setContactInfo(null);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select(
+            "whatsapp_number_e164, share_whatsapp, telegram_username, share_telegram",
+          )
+          .eq("id", clientId)
+          .maybeSingle();
+        if (error) throw error;
+        if (cancelled) return;
+
+        const waNumber =
+          data?.share_whatsapp && data?.whatsapp_number_e164
+            ? String(data.whatsapp_number_e164).trim()
+            : null;
+        const tgUsername =
+          data?.share_telegram && data?.telegram_username
+            ? String(data.telegram_username).trim()
+            : null;
+
+        setContactInfo({
+          waNumber: waNumber || null,
+          tgUsername: tgUsername || null,
+        });
+      } catch {
+        if (!cancelled) setContactInfo(null);
       }
+    })();
+
+    return () => {
+      cancelled = true;
     };
-    window.addEventListener("mousedown", clickOutside);
-    return () => window.removeEventListener("mousedown", clickOutside);
-  }, [showContactDropdown]);
+  }, [row.client_id, viewerId]);
 
   const openDirectChat = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
-      setShowContactDropdown(false);
       if (!viewerId) {
         addToast({
           title: "Sign in required",
@@ -490,8 +545,15 @@ export function OpenJobRequestMatchCard({
   const openWhatsApp = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
-      setShowContactDropdown(false);
       if (!row.client_id) return;
+      if (contactInfo?.waNumber) {
+        window.open(
+          getWhatsAppLink(String(contactInfo.waNumber)),
+          "_blank",
+          "noopener,noreferrer",
+        );
+        return;
+      }
       setSocialBusy("wa");
       try {
         const { data, error } = await supabase
@@ -520,14 +582,21 @@ export function OpenJobRequestMatchCard({
         setSocialBusy(null);
       }
     },
-    [addToast, row.client_id],
+    [addToast, contactInfo?.waNumber, row.client_id],
   );
 
   const openTelegram = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
-      setShowContactDropdown(false);
       if (!row.client_id) return;
+      if (contactInfo?.tgUsername) {
+        window.open(
+          getTelegramLink(String(contactInfo.tgUsername)),
+          "_blank",
+          "noopener,noreferrer",
+        );
+        return;
+      }
       setSocialBusy("tg");
       try {
         const { data, error } = await supabase
@@ -553,10 +622,11 @@ export function OpenJobRequestMatchCard({
         setSocialBusy(null);
       }
     },
-    [addToast, row.client_id],
+    [addToast, contactInfo?.tgUsername, row.client_id],
   );
 
   const [showFullDetailsModal, setShowFullDetailsModal] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
 
   const allDetailItems = useMemo(() => {
     const items: { label: string; value: string }[] = [];
@@ -581,6 +651,7 @@ export function OpenJobRequestMatchCard({
     typeof ratingAvg === "number" && Number.isFinite(ratingAvg)
       ? ratingAvg.toFixed(1)
       : null;
+  const showLiveDot = isFreelancerInActive24hLiveWindow({ live_until: clientLiveUntil ?? null });
 
   return (
     <>
@@ -589,12 +660,13 @@ export function OpenJobRequestMatchCard({
           "group relative flex min-h-0 flex-col overflow-hidden",
           JOB_CARD_OUTER_CORNER,
           "max-md:rounded-[28px]",
+          // Mobile keeps a distinct card surface; desktop blends into page background.
           "bg-white text-slate-900 ring-1 ring-slate-200/80 transition-all duration-500 ease-out",
-          "shadow-lg shadow-slate-900/[0.08]",
+          "shadow-lg shadow-slate-900/[0.08] md:bg-transparent md:ring-0 md:shadow-none",
           "dark:bg-zinc-900 dark:text-zinc-100 dark:ring-white/10 dark:shadow-2xl dark:shadow-black/40",
           variant === "fullscreen"
             ? "h-full shadow-md shadow-slate-900/10 dark:shadow-none dark:ring-0"
-            : "hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/12 dark:hover:shadow-black/50",
+            : "max-md:hover:-translate-y-1 max-md:hover:shadow-xl max-md:hover:shadow-slate-900/12 dark:max-md:hover:shadow-black/50",
         )}
 
         role="article"
@@ -606,13 +678,13 @@ export function OpenJobRequestMatchCard({
             "relative w-full shrink-0 overflow-hidden bg-zinc-900",
             variant === "fullscreen"
               ? "h-[44%] min-h-[14rem] max-h-[50vh]"
-              : "aspect-[4/5] min-h-[18rem] max-h-[28rem]",
+              : "aspect-[16/10] min-h-[14.5rem] max-h-[22rem] md:aspect-[16/9] md:min-h-[15.5rem] md:max-h-[24rem]",
           )}
         >
 
 
 
-          {slides.length === 0 ? (
+          {heroSlides.length === 0 ? (
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
           ) : (
             <div
@@ -626,126 +698,203 @@ export function OpenJobRequestMatchCard({
                 "overscroll-x-contain [-webkit-overflow-scrolling:touch] touch-pan-x",
               )}
             >
-              {slides.map((s, idx) => (
+              {heroSlides.map((s) => (
                 <div
                   key={s.key}
                   className="relative h-full w-full min-w-full max-w-full shrink-0 snap-start snap-always overflow-hidden"
                 >
-                  {/* Slide 0: Full-bleed hero + overlays (same on mobile & desktop — no circular crop on mobile). */}
-                  {idx === 0 ? (
-                    <>
-                      <div className="absolute inset-0 z-0 bg-zinc-900">
-                        {s.kind === "video" ? (
-                          <video src={s.src} className="h-full w-full object-cover" muted playsInline controls />
-                        ) : s.src ? (
-                          <img src={s.src} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
-                        )}
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black/80 via-black/40 to-transparent md:h-40" />
-                      </div>
+                  <div className="absolute inset-0 z-0 bg-zinc-900">
+                    {s.kind === "video" ? (
+                      <video
+                        src={s.src}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                        controls
+                      />
+                    ) : s.src ? (
+                      <img
+                        src={s.src}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        onClick={() => setLightboxSrc(s.src)}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
+                    )}
+                    {/* Top overlay for legibility — image only (sits behind UI) */}
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 z-[10] h-24 bg-gradient-to-b from-black/55 via-black/18 to-transparent md:h-28"
+                      aria-hidden
+                    />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/75 via-black/25 to-transparent md:h-40" />
+                  </div>
 
-                      <div
+                  {/* Top-left: avatar + name + rating (YouTube-style) */}
+                  <div className="absolute left-4 top-4 z-[20]">
+                    <div className="flex items-start gap-3">
+                      <button
+                        type="button"
                         className={cn(
-                          "pointer-events-none absolute inset-x-0 bottom-0 z-[15] flex items-end justify-between gap-3 px-4 pb-4 text-left md:px-6 md:pb-[4.75rem]",
-                          showStrip && "max-md:pb-10",
+                          "pointer-events-auto inline-flex items-center justify-center overflow-hidden rounded-full bg-white/10 shadow-lg backdrop-blur-xl transition hover:bg-white/15",
+                          // Bigger avatar + Tebnu purple outline (matches Discover profile card accent)
+                          "h-16 w-16 ring-4 ring-[#7B61FF]/55 ring-offset-2 ring-offset-white/85 md:h-[74px] md:w-[74px]",
+                          "dark:ring-[#A78BFA]/40 dark:ring-offset-[#121212]/70",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55",
                         )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenProfile(row.client_id);
+                        }}
+                        aria-label={`Open profile: ${(row.client_display_name || "").trim() || "Member"}`}
                       >
-                        <div className="flex min-w-0 flex-1 flex-col items-start gap-2 pr-2">
+                        {showLiveDot ? (
+                          <span className="pointer-events-none absolute right-1.5 top-1.5 z-[2] h-3.5 w-3.5 rounded-full bg-emerald-500 shadow-[0_0_14px_rgba(16,185,129,0.85)] ring-2 ring-white/70" />
+                        ) : null}
+                        {row.client_photo_url ? (
+                          <img
+                            src={row.client_photo_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            draggable={false}
+                          />
+                        ) : (
+                          <span className="text-base font-black text-white">
+                            {((row.client_display_name || "M").trim() || "M")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                        )}
+                      </button>
+
+                      <div className="min-w-0 max-w-[min(22rem,72vw)] pt-0.5">
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            className={cn(
-                              "pointer-events-auto flex max-w-full flex-wrap items-center gap-2.5 text-left touch-manipulation outline-none",
-                              "focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40",
-                            )}
-                            onClick={() => onOpenProfile(row.client_id)}
+                            className="pointer-events-auto truncate text-left text-[16px] font-black tracking-tight text-white drop-shadow hover:underline underline-offset-4 md:text-[17px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenProfile(row.client_id);
+                            }}
                             aria-label={`Open profile: ${(row.client_display_name || "").trim() || "Member"}`}
                           >
-                            <span className="text-3xl font-black tracking-tight text-white drop-shadow-lg md:text-4xl">
-                              {(row.client_display_name || "").trim() || "Member"}
-                            </span>
-                            {row.client_is_verified && (
-                              <BadgeCheck className="h-6 w-6 shrink-0 fill-emerald-500 text-white md:h-8 md:w-8" strokeWidth={2} />
-                            )}
+                            {(row.client_display_name || "").trim() || "Member"}
                           </button>
-
-                          {ratingLine != null && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 backdrop-blur-md ring-1 ring-white/15">
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              <span className="text-base font-bold text-white">{ratingLine}</span>
-                              <span className="text-xs font-medium text-zinc-400">({ratingCount})</span>
-                            </span>
-                          )}
+                          {row.client_is_verified ? (
+                            <BadgeCheck
+                              className="h-5 w-5 shrink-0 fill-emerald-500 text-white drop-shadow md:h-[22px] md:w-[22px]"
+                              aria-label="Verified"
+                              strokeWidth={2}
+                            />
+                          ) : null}
                         </div>
-
-                        {row.created_at ? (
-                          <div className="pointer-events-none shrink-0 self-end">
-                            <div className={postedTimeGlassBadge}>
-                              <Clock className="h-3 w-3 shrink-0 text-white/90 md:h-3.5 md:w-3.5" strokeWidth={2.5} />
-                              <span className="text-[9px] font-black uppercase tracking-widest text-white/95 md:text-[11px]">
-                                {timeAgo(row.created_at)}
-                              </span>
-                            </div>
+                        {ratingLine != null ? (
+                          <div className="mt-0.5 inline-flex items-center gap-2 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-[13px] font-extrabold tabular-nums md:text-[14px]">
+                              {ratingLine}
+                            </span>
+                            <span className="text-[12px] font-semibold text-white/70 tabular-nums md:text-[13px]">
+                              ({Number(ratingCount) || 0})
+                            </span>
                           </div>
                         ) : null}
                       </div>
-
-                    </>
-                  ) : (
-
-
-                    <div className="relative h-full w-full">
-                      {s.kind === "video" ? (
-                        <video
-                          src={s.src}
-                          className="absolute inset-0 h-full w-full bg-black object-cover"
-                          muted
-                          playsInline
-                          controls
-                        />
-                      ) : (
-                        <img src={s.src} alt="" className="absolute inset-0 h-full w-full bg-black object-cover" />
-                      )}
-                      
-                      {/* Gradients for legibility */}
-                      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent z-[10]" />
-                      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/70 to-transparent z-[10]" />
-                      
-                      {/* Bottom Info: Name, Verification, Rating */}
-                      <div className="absolute bottom-6 left-6 z-[20] flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xl font-black text-white drop-shadow-xl md:text-2xl">
-                            {(row.client_display_name || "").trim()}
-                          </p>
-                          {row.client_is_verified && (
-                            <BadgeCheck className="h-5 w-5 fill-emerald-500 text-white md:h-6 md:w-6" strokeWidth={2} />
-                          )}
-                        </div>
-
-                        {/* Rating / Review Badge */}
-                        {ratingLine != null && (
-                          <div className="flex items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 backdrop-blur-md ring-1 ring-white/10">
-                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm font-bold text-white">{ratingLine}</span>
-                            <span className="text-xs font-medium text-zinc-400">({ratingCount})</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {row.created_at ? (
-                        <div className="pointer-events-none absolute bottom-5 right-5 z-[21]">
-                          <div className={postedTimeGlassBadge}>
-                            <Clock className="h-3.5 w-3.5 shrink-0 text-white/90" strokeWidth={2.5} />
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/95">
-                              {timeAgo(row.created_at)}
-                            </span>
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
+                  </div>
 
+                  {/* Bottom-right: posted time */}
+                  {row.created_at ? (
+                    <div className="pointer-events-none absolute bottom-4 right-4 z-[21]">
+                      <div className={postedTimeGlassBadge}>
+                        <Clock
+                          className="h-3.5 w-3.5 shrink-0 text-white/90"
+                          strokeWidth={2.5}
+                        />
+                        <span className="text-[11px] font-black uppercase tracking-widest text-white/95">
+                          {timeAgo(row.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
 
-                  )}
+                  {/* Top-right: category badge (big) */}
+                  <div className="pointer-events-none absolute right-4 top-4 z-[23]">
+                    <div className={heroCategoryBadgeClasses(row.service_type)}>
+                      <CategoryIcon
+                        serviceType={row.service_type}
+                        className="h-4.5 w-4.5 shrink-0 md:h-5 md:w-5"
+                        strokeWidth={2.5}
+                      />
+                      <span className="max-w-[14rem] truncate">
+                        {formatTitle(row.service_type)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom-left: client public profile media mini-carousel */}
+                  {profileSlides.length > 1 ? (
+                    <div className="absolute bottom-4 left-4 z-[22] flex items-end gap-2">
+                      <div className="flex items-center gap-2 rounded-xl bg-black/30 p-2 backdrop-blur-md">
+                        {profileSlides.slice(1, 5).map((s, idx) => {
+                          const absoluteIndex = idx + 1;
+                          return (
+                            <button
+                              key={s.key}
+                              type="button"
+                              className="group relative h-12 w-12 overflow-hidden rounded-xl bg-white/10 shadow-md transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 md:h-14 md:w-14"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setClientGalleryStartIndex(absoluteIndex);
+                                setShowClientGalleryModal(true);
+                              }}
+                              aria-label="Open client gallery"
+                            >
+                              {s.kind === "video" ? (
+                                <>
+                                  <video
+                                    src={s.src}
+                                    className="h-full w-full object-cover"
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                  />
+                                  <span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/20">
+                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/40">
+                                      <span className="ml-[1px] h-0 w-0 border-y-[5px] border-y-transparent border-l-[7px] border-l-white/90" />
+                                    </span>
+                                  </span>
+                                </>
+                              ) : (
+                                <img
+                                  src={s.src}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  draggable={false}
+                                />
+                              )}
+                            </button>
+                          );
+                        })}
+
+                        {profileSlides.length > 5 ? (
+                          <button
+                            type="button"
+                            className="relative h-12 w-12 rounded-xl bg-white/10 text-[12px] font-black text-white shadow-md hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 md:h-14 md:w-14"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClientGalleryStartIndex(1);
+                              setShowClientGalleryModal(true);
+                            }}
+                            aria-label="Open all client media"
+                          >
+                            +{profileSlides.length - 5}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -758,7 +907,7 @@ export function OpenJobRequestMatchCard({
               className="pointer-events-none absolute bottom-4 left-1/2 z-[30] -translate-x-1/2"
             >
               <div className="flex gap-1.5 rounded-full bg-slate-900/10 px-2 py-1.5 backdrop-blur-md dark:bg-black/10">
-                {slides.map((_, idx) => (
+                {heroSlides.map((_, idx) => (
                   <div
                     key={idx}
                     className={cn(
@@ -778,7 +927,8 @@ export function OpenJobRequestMatchCard({
         <div
           className={cn(
             "relative flex min-h-0 flex-1 flex-col border-t p-4 pt-3 md:p-6 md:pt-5",
-            "border-slate-200/90 bg-slate-50 text-slate-900",
+            // Desktop: match page background + remove outlines.
+            "border-slate-200/90 bg-slate-50 text-slate-900 md:border-transparent md:bg-transparent",
             "dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100",
             variant === "grid" &&
               "pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]",
@@ -798,18 +948,141 @@ export function OpenJobRequestMatchCard({
               {dist ? (
                 <span className="tabular-nums text-sm text-slate-500 dark:text-zinc-400">{dist}</span>
               ) : null}
-              <span
-                className={cn(
-                  "inline-flex max-w-[min(100%,12rem)] shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide md:max-w-[14rem] md:gap-2 md:px-3 md:py-1.5 md:text-[11px] md:tracking-wider",
-                  categoryPanelPillClasses(row.service_type),
-                )}
-              >
-                <CategoryIcon serviceType={row.service_type} className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" strokeWidth={2.5} />
-                <span className="min-w-0 truncate">{formatTitle(row.service_type)}</span>
-              </span>
+              {viewerId ? (
+                <div className="ml-auto flex items-center gap-2 md:hidden">
+                  <button
+                    type="button"
+                    className={cn(
+                      "inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition-colors",
+                      "hover:text-slate-900 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2",
+                      "dark:text-zinc-300 dark:hover:text-white dark:focus-visible:ring-offset-zinc-900",
+                    )}
+                    onClick={(e) => void openDirectChat(e)}
+                    disabled={chatOpening}
+                    aria-busy={chatOpening}
+                    aria-label="Contact me"
+                  >
+                    {chatOpening ? (
+                      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    ) : (
+                      <MessageSquare className="h-6 w-6" strokeWidth={2.6} aria-hidden />
+                    )}
+                  </button>
+
+                  {contactInfo?.waNumber ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition-colors",
+                        "hover:text-slate-900 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2",
+                        "dark:text-zinc-300 dark:hover:text-white dark:focus-visible:ring-offset-zinc-900",
+                      )}
+                      onClick={(e) => void openWhatsApp(e)}
+                      disabled={socialBusy != null}
+                      aria-busy={socialBusy === "wa"}
+                      aria-label="Open WhatsApp"
+                    >
+                      {socialBusy === "wa" ? (
+                        <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                      ) : (
+                        <WhatsAppIcon size={26} className="text-emerald-600 dark:text-emerald-400" />
+                      )}
+                    </button>
+                  ) : null}
+
+                  {contactInfo?.tgUsername ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition-colors",
+                        "hover:text-slate-900 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2",
+                        "dark:text-zinc-300 dark:hover:text-white dark:focus-visible:ring-offset-zinc-900",
+                      )}
+                      onClick={(e) => void openTelegram(e)}
+                      disabled={socialBusy != null}
+                      aria-busy={socialBusy === "tg"}
+                      aria-label="Open Telegram"
+                    >
+                      {socialBusy === "tg" ? (
+                        <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                      ) : (
+                        <TelegramIcon size={24} className="text-sky-600 dark:text-sky-400" />
+                      )}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {viewerId ? (
+                <div className="hidden md:ml-auto md:flex items-center gap-3">
+                  <button
+                    type="button"
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full bg-black px-4 py-2 text-[12px] font-black uppercase tracking-wider text-white shadow-lg",
+                      "hover:bg-black/90 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2",
+                      "dark:focus-visible:ring-white/25 dark:focus-visible:ring-offset-zinc-900",
+                      chatOpening && "opacity-75",
+                    )}
+                    onClick={(e) => void openDirectChat(e)}
+                    disabled={chatOpening}
+                    aria-busy={chatOpening}
+                    aria-label="Contact me"
+                  >
+                    {chatOpening ? (
+                      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    ) : (
+                      <MessageSquare className="h-5 w-5" strokeWidth={2.75} aria-hidden />
+                    )}
+                    Contact me
+                  </button>
+
+                  {contactInfo?.waNumber ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex items-center justify-center rounded-full p-2 text-slate-500 transition-colors",
+                        "hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2",
+                        "dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-zinc-200 dark:focus-visible:ring-offset-zinc-900",
+                        socialBusy != null && "opacity-70",
+                      )}
+                      onClick={(e) => void openWhatsApp(e)}
+                      disabled={socialBusy != null}
+                      aria-busy={socialBusy === "wa"}
+                      aria-label="Open WhatsApp"
+                    >
+                      {socialBusy === "wa" ? (
+                        <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                      ) : (
+                        <WhatsAppIcon size={24} className="text-emerald-600 dark:text-emerald-400" />
+                      )}
+                    </button>
+                  ) : null}
+
+                  {contactInfo?.tgUsername ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex items-center justify-center rounded-full p-2 text-slate-500 transition-colors",
+                        "hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2",
+                        "dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-zinc-200 dark:focus-visible:ring-offset-zinc-900",
+                        socialBusy != null && "opacity-70",
+                      )}
+                      onClick={(e) => void openTelegram(e)}
+                      disabled={socialBusy != null}
+                      aria-busy={socialBusy === "tg"}
+                      aria-label="Open Telegram"
+                    >
+                      {socialBusy === "tg" ? (
+                        <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                      ) : (
+                        <TelegramIcon size={22} className="text-sky-600 dark:text-sky-400" />
+                      )}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:gap-x-6 md:gap-y-3">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-3 md:gap-x-6 md:gap-y-3">
               {displayedItems.map((item, idx) => (
                 <div key={idx} className="flex min-w-0 flex-col gap-0.5 md:gap-1">
                   <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 md:text-[11px] md:tracking-[0.2em] dark:text-zinc-500">
@@ -822,15 +1095,70 @@ export function OpenJobRequestMatchCard({
               ))}
             </div>
 
-            {canOpenDetailsModal ? (
-              <div className="mt-4 md:mt-6">
+            {/* Desktop: show notes (1-line collapsed, click to expand). */}
+            {fullNotesText ? (
+              <div className="mt-4 hidden md:block">
                 <button
                   type="button"
-                  className="group flex items-center gap-2 text-[13px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500"
-                  onClick={() => setShowFullDetailsModal(true)}
+                  className={cn(
+                    "w-full rounded-xl bg-zinc-100/70 px-4 py-3 text-left",
+                    "hover:bg-zinc-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "dark:border-white/10 dark:bg-black/20 dark:hover:bg-black/30",
+                  )}
+                  aria-expanded={notesExpanded}
+                  onClick={() => setNotesExpanded((v) => !v)}
                 >
-                  Request Details
-                  <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700/80 dark:text-emerald-400/80">
+                      Notes
+                    </span>
+                    <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
+                      {notesExpanded ? "Less" : "More"}
+                    </span>
+                  </div>
+                  {notesExpanded ? (
+                    <p className="mt-2 whitespace-pre-wrap text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-zinc-200">
+                      {fullNotesText}
+                    </p>
+                  ) : (
+                    <p className="mt-2 line-clamp-1 text-[15px] font-semibold text-slate-800 dark:text-zinc-200">
+                      {fullNotesText}
+                    </p>
+                  )}
+                </button>
+              </div>
+            ) : null}
+
+            {/* Mobile: show notes box and open Request Details modal on tap. */}
+            {canOpenDetailsModal ? (
+              <div className="mt-4 md:hidden">
+                <button
+                  type="button"
+                  className={cn(
+                    "w-full rounded-2xl bg-zinc-100/70 px-4 py-3 text-left",
+                    "hover:bg-zinc-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "dark:border-white/10 dark:bg-black/20 dark:hover:bg-black/30",
+                  )}
+                  onClick={() => setShowFullDetailsModal(true)}
+                  aria-label="Open request details"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700/80 dark:text-emerald-400/80">
+                      Notes
+                    </span>
+                    <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
+                      Tap to open
+                    </span>
+                  </div>
+                  {fullNotesText ? (
+                    <p className="mt-2 line-clamp-2 text-[15px] font-semibold leading-relaxed text-slate-800 dark:text-zinc-200">
+                      {fullNotesText}
+                    </p>
+                  ) : (
+                    <p className="mt-2 line-clamp-2 text-[15px] font-semibold leading-relaxed text-slate-500 dark:text-zinc-400">
+                      Tap to see details
+                    </p>
+                  )}
                 </button>
               </div>
             ) : null}
@@ -885,29 +1213,55 @@ export function OpenJobRequestMatchCard({
                         </span>
                       </div>
                     ) : null}
-                    <button
-                      type="button"
-                      className={cn(acceptRoundBtn, "shrink-0")}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void accept();
-                      }}
-                      disabled={busy != null}
-                      aria-label={
-                        openAcceptCountDisplay > 0
-                          ? `Accept request — ${openAcceptCountDisplay} helper${
-                              openAcceptCountDisplay === 1 ? "" : "s"
-                            } already accepted`
-                          : "Accept request"
-                      }
-                    >
-                      <Check className="h-10 w-10" strokeWidth={3.5} />
-                    </button>
+                    <>
+                      {/* Mobile: round accept button */}
+                      <button
+                        type="button"
+                        className={cn(acceptRoundBtn, "shrink-0 md:hidden")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void accept();
+                        }}
+                        disabled={busy != null}
+                        aria-label={
+                          openAcceptCountDisplay > 0
+                            ? `Accept request — ${openAcceptCountDisplay} helper${
+                                openAcceptCountDisplay === 1 ? "" : "s"
+                              } already accepted`
+                            : "Accept request"
+                        }
+                      >
+                        <Check className="h-10 w-10" strokeWidth={3.5} />
+                      </button>
+
+                      {/* Desktop: text button */}
+                      <button
+                        type="button"
+                        className={cn(
+                          "hidden md:inline-flex items-center gap-2 rounded-full px-6 py-3",
+                          "bg-emerald-500 text-white shadow-xl shadow-emerald-500/20",
+                          "hover:bg-emerald-600 active:bg-emerald-700 active:scale-[0.99]",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          "disabled:pointer-events-none disabled:opacity-60",
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void accept();
+                        }}
+                        disabled={busy != null}
+                        aria-label="Accept request"
+                      >
+                        <Check className="h-5 w-5" strokeWidth={3} aria-hidden />
+                        <span className="text-[12px] font-black uppercase tracking-[0.18em]">
+                          Accept request
+                        </span>
+                      </button>
+                    </>
                   </div>
                   <div className="ml-6 flex shrink-0 items-center gap-3 sm:ml-8 sm:gap-3.5">
                     <button
                       type="button"
-                      className="flex shrink-0 items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-800 dark:text-zinc-500 dark:hover:text-zinc-300"
+                      className="flex shrink-0 items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-800 dark:text-zinc-500 dark:hover:text-zinc-300 md:hidden"
                       onClick={() => onOpenComments?.(row.id)}
                       aria-label="Comments"
                     >
@@ -916,84 +1270,6 @@ export function OpenJobRequestMatchCard({
                         <span className="text-sm font-black tabular-nums">{commentCount}</span>
                       ) : null}
                     </button>
-                    {viewerId ? (
-                    <div className="relative shrink-0" ref={dropdownRef}>
-                      <button
-                        type="button"
-                        className={cn(
-                          "flex shrink-0 items-center justify-center rounded-md p-2 text-slate-500 transition-colors outline-none",
-                          "hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2",
-                          "dark:text-zinc-500 dark:hover:text-zinc-300 dark:focus-visible:ring-offset-zinc-900",
-                          showContactDropdown && "text-emerald-600 dark:text-emerald-400",
-                        )}
-                        aria-label="Contact client"
-                        aria-expanded={showContactDropdown}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowContactDropdown(!showContactDropdown);
-                        }}
-                        disabled={chatOpening}
-                      >
-                        <MessageCircle className="h-5 w-5" strokeWidth={2.25} />
-                      </button>
-
-                      {showContactDropdown ? (
-                        <div
-                          className="absolute bottom-12 right-0 z-[50] flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            className={cn(
-                              heroOverlayRoundBtn,
-                              "h-11 w-11 bg-slate-800 text-white ring-slate-700 dark:bg-zinc-800 dark:ring-zinc-700",
-                            )}
-                            onClick={(e) => void openDirectChat(e)}
-                            disabled={chatOpening}
-                            aria-busy={chatOpening}
-                          >
-                            {chatOpening ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
-                            ) : (
-                              <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            className={cn(
-                              heroOverlayRoundBtn,
-                              "h-11 w-11 bg-slate-800 text-white ring-slate-700 dark:bg-zinc-800 dark:ring-zinc-700",
-                            )}
-                            onClick={(e) => void openWhatsApp(e)}
-                            disabled={socialBusy != null}
-                            aria-busy={socialBusy === "wa"}
-                          >
-                            {socialBusy === "wa" ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
-                            ) : (
-                              <WhatsAppIcon size={22} className="text-white" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            className={cn(
-                              heroOverlayRoundBtn,
-                              "h-11 w-11 bg-slate-800 text-white ring-slate-700 dark:bg-zinc-800 dark:ring-zinc-700",
-                            )}
-                            onClick={(e) => void openTelegram(e)}
-                            disabled={socialBusy != null}
-                            aria-busy={socialBusy === "tg"}
-                          >
-                            {socialBusy === "tg" ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
-                            ) : (
-                              <TelegramIcon size={20} className="text-white" />
-                            )}
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
                   </div>
                 </div>
               </>
@@ -1009,14 +1285,14 @@ export function OpenJobRequestMatchCard({
 
 
 
-      {/* Full Details Modal */}
+      {/* Full Details Modal (mobile only) */}
       {showFullDetailsModal && (
         <div
-          className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/60 backdrop-blur-sm md:items-center"
+          className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/60 backdrop-blur-sm md:hidden"
           onClick={() => setShowFullDetailsModal(false)}
         >
           <div
-            className="relative flex h-[80vh] w-full flex-col rounded-t-[24px] bg-white shadow-2xl animate-in slide-in-from-bottom-6 dark:bg-zinc-900 md:h-auto md:max-h-[85vh] md:max-w-lg md:rounded-[24px]"
+            className="relative flex h-[80vh] w-full flex-col rounded-t-[24px] bg-white shadow-2xl animate-in slide-in-from-bottom-6 dark:bg-zinc-900"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -1108,6 +1384,82 @@ export function OpenJobRequestMatchCard({
           </div>
         </div>
       )}
+
+      {/* Client gallery carousel (job cards stay job-first) */}
+      {showClientGalleryModal && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-start justify-center bg-black/60 backdrop-blur-sm md:items-center"
+          onClick={() => setShowClientGalleryModal(false)}
+        >
+          <div
+            className={cn(
+              "relative flex min-h-0 w-full flex-col overflow-hidden bg-white shadow-2xl dark:bg-zinc-900",
+              // Mobile: open from top, stop above the fixed “Map & search” dock + BottomNav.
+              "max-md:h-[calc(100dvh-(5rem+env(safe-area-inset-bottom,0px)))] max-md:rounded-none max-md:animate-in max-md:fade-in",
+              // Desktop: centered dialog
+              "md:h-[min(85vh,44rem)] md:w-[min(92vw,56rem)] md:max-w-none md:rounded-[24px] md:animate-in md:zoom-in-95",
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+              <div className="min-w-0">
+                <div className="truncate text-base font-black uppercase tracking-tight text-zinc-900 dark:text-white">
+                  Client photos
+                </div>
+                <div className="mt-1 truncate text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                  {(row.client_display_name || "").trim() || "Member"}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                onClick={() => setShowClientGalleryModal(false)}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" strokeWidth={2.5} />
+              </button>
+            </div>
+
+            <div className="relative flex-1 min-h-0 bg-black">
+              <div
+                ref={clientGalleryScrollRef}
+                className={cn(
+                  "absolute inset-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
+                  "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+                  "overscroll-x-contain [-webkit-overflow-scrolling:touch] touch-pan-x",
+                )}
+              >
+                {profileSlides.map((s) => (
+                  <div
+                    key={s.key}
+                    className="relative h-full w-full min-w-full max-w-full shrink-0 snap-start snap-always overflow-hidden"
+                  >
+                    {s.kind === "video" ? (
+                      <video
+                        src={s.src}
+                        className="absolute inset-0 h-full w-full object-contain"
+                        muted
+                        playsInline
+                        controls
+                      />
+                    ) : s.src ? (
+                      <img
+                        src={s.src}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-contain"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lightbox */}
       {lightboxSrc && (
         <div

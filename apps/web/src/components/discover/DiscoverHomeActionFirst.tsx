@@ -995,7 +995,7 @@ export function DiscoverHomeActionFirst({
           <h2 className="mb-4 px-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             Our community live
           </h2>
-          <ProfilePostsFeed limit={5} />
+          <ProfilePostsFeed limit={5} appearance="discover" />
           <div className="mt-6 flex justify-center px-4 pb-8">
             <button
               type="button"
@@ -1320,7 +1320,7 @@ export function DiscoverHomeActionFirst({
           <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             Our community live
           </h2>
-          <ProfilePostsFeed limit={5} />
+          <ProfilePostsFeed limit={5} appearance="discover" />
         </section>
       </div>
 

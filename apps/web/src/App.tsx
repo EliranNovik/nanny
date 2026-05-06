@@ -6,6 +6,7 @@ import {
   Outlet,
   useNavigationType,
   useParams,
+  useLocation,
 } from "react-router-dom";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -80,6 +81,8 @@ import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
 import GlobalPostsPage from "@/pages/GlobalPostsPage";
+import { DesktopSidePanel } from "@/components/nav/DesktopSidePanel";
+import { Footer } from "@/components/Footer";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -163,9 +166,26 @@ function RootRoute() {
  * (safe-area padding inside the strip + h-10 + margins) and the md desktop bar.
  */
 function PageLayoutWithHeader() {
+  const { pathname } = useLocation();
+  const shouldHideDesktopFooter =
+    pathname === "/messages" ||
+    pathname.startsWith("/messages/") ||
+    pathname.startsWith("/chat/");
+
   return (
-    <div className="app-main-scroll-pad app-content-below-fixed-header min-h-[100dvh] min-h-[-webkit-fill-available]">
-      <Outlet />
+    <div className="app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content min-h-[100dvh] min-h-[-webkit-fill-available]">
+      <div className="min-h-[100dvh] min-h-[-webkit-fill-available]">
+        <DesktopSidePanel />
+        {/* On desktop, leave room for the fixed left panel */}
+        <div className="min-w-0 md:pl-[220px]">
+          <Outlet />
+          {!shouldHideDesktopFooter ? (
+            <div className="hidden md:block">
+              <Footer />
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -185,25 +205,24 @@ function AppRoutes() {
       />
       <Route path="/onboarding" element={<OnboardingPage />} />
 
-      <Route
-        path="/messages"
-        element={
-          <ProtectedRoute>
-            <MessagesPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/messages/:conversationId"
-        element={
-          <ProtectedRoute>
-            <MessagesPage />
-          </ProtectedRoute>
-        }
-      />
-
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages/:conversationId"
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/public/posts" element={<PublicCommunityPostsPage />} />
         <Route path="/community/feed" element={<GlobalPostsPage />} />
         {/* Client routes */}

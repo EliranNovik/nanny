@@ -375,6 +375,259 @@ function CommentsDialog({
   );
 }
 
+function CommentsSidePanel({
+  postId,
+  caption,
+  authorName,
+  authorPhotoUrl,
+  initialCount,
+}: {
+  postId: string;
+  caption?: React.ReactNode;
+  authorName?: string;
+  authorPhotoUrl?: string | null;
+  initialCount?: number | null;
+}) {
+  const { user } = useAuth();
+  const { addToast } = useToast();
+  const [comments, setComments] = useState<PostComment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [count, setCount] = useState<number | null>(
+    typeof initialCount === "number" ? initialCount : null,
+  );
+
+  const fetchCount = useCallback(async () => {
+    try {
+      const { count: n, error } = await supabase
+        .from("profile_post_comments")
+        .select("*", { count: "exact", head: true })
+        .eq("post_id", postId);
+      if (error) throw error;
+      setCount(n ?? 0);
+    } catch {
+      setCount(null);
+    }
+  }, [postId]);
+
+  const fetchComments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: rows, error } = await supabase
+        .from("profile_post_comments")
+        .select("id, body, created_at, author_id")
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true })
+        .limit(250);
+      if (error) throw error;
+
+      const list = (rows ?? []) as Omit<PostComment, "author">[];
+      if (list.length === 0) {
+        setComments([]);
+        return;
+      }
+
+      const ids = [...new Set(list.map((r) => r.author_id))];
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name, photo_url, is_verified")
+        .in("id", ids);
+      const map = new Map(
+        (profs ?? []).map((p) => [p.id as string, p as ProfileSnippet]),
+      );
+      setComments(list.map((r) => ({ ...r, author: map.get(r.author_id) })));
+    } catch (e) {
+      console.error("[ProfilePostsFeed] comments panel fetch", e);
+      setComments([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [postId]);
+
+  useEffect(() => {
+    void fetchCount();
+    void fetchComments();
+  }, [fetchCount, fetchComments]);
+
+  async function submitComment() {
+    const body = draft.trim();
+    if (!body || !user?.id) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from("profile_post_comments").insert({
+        post_id: postId,
+        author_id: user.id,
+        body,
+      });
+      if (error) throw error;
+      setDraft("");
+      void fetchCount();
+      void fetchComments();
+    } catch {
+      addToast({ title: "Could not post comment", variant: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <aside className="hidden md:flex w-[380px] lg:w-[460px] xl:w-[520px] 2xl:w-[600px] flex-col">
+      <div className="flex items-center justify-between gap-3 px-1 pb-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="truncate text-base font-black text-foreground">
+              {count == null ? "Comments" : `${count} Comments`}
+            </div>
+          </div>
+          <div className="mt-0.5 text-xs font-semibold text-muted-foreground">
+            {authorName ? `on ${authorName}'s post` : " "}
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="shrink-0"
+          onClick={() => {
+            void fetchCount();
+            void fetchComments();
+          }}
+        >
+          Refresh
+        </Button>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="px-1 pb-5">
+          {caption ? (
+            <div className="pb-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarImage src={authorPhotoUrl ?? undefined} />
+                  <AvatarFallback className="text-xs font-bold">
+                    {(authorName ?? "M").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-bold text-foreground">
+                    {authorName ?? "Member"}
+                  </div>
+                  <div className="truncate text-xs font-semibold text-muted-foreground">
+                    Post caption
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                {caption}
+              </div>
+            </div>
+          ) : null}
+
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+            </div>
+          ) : comments.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              No comments yet. Be the first!
+            </p>
+          ) : (
+            <div className="divide-y divide-border/60">
+              {comments.map((c) => {
+                const name = c.author?.full_name?.trim() || "Member";
+                return (
+                  <div key={c.id} className="flex gap-3 py-4">
+                  <Link
+                    to={c.author?.id ? `/profile/${c.author.id}` : "#"}
+                    className={cn(
+                      "shrink-0 rounded-full outline-none transition-opacity",
+                      c.author?.id
+                        ? "hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        : "pointer-events-none opacity-60",
+                    )}
+                    aria-label={
+                      c.author?.id ? `View ${name} profile` : undefined
+                    }
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={c.author?.photo_url ?? undefined} />
+                      <AvatarFallback className="text-xs font-bold">
+                        {name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="truncate text-[13px] font-bold text-foreground">
+                        {name}
+                      </span>
+                      <time className="shrink-0 text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(c.created_at), {
+                          addSuffix: true,
+                        })}
+                      </time>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                      {c.body}
+                    </p>
+                  </div>
+                </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      <div className="border-t border-border/60 bg-background/80 px-1 pt-3 pb-2">
+        {user ? (
+          <div className="flex items-end gap-2">
+            <Textarea
+              placeholder="Write a comment…"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void submitComment();
+                }
+              }}
+              maxLength={4000}
+              rows={2}
+              className="min-h-[2.5rem] flex-1 resize-none bg-muted/30 text-sm rounded-2xl border border-border/60 px-4 py-3 focus-visible:ring-0 focus-visible:ring-offset-0"
+              disabled={submitting}
+            />
+            <Button
+              type="button"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full bg-orange-600 hover:bg-orange-700 text-white"
+              disabled={submitting || !draft.trim()}
+              onClick={() => void submitComment()}
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 translate-x-[1px]" />
+              )}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-center text-sm text-muted-foreground">
+            <Link
+              to="/login"
+              className="font-semibold text-orange-600 underline underline-offset-2"
+            >
+              Sign in
+            </Link>{" "}
+            to comment.
+          </p>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 // ─── Compose Modal ────────────────────────────────────────────────────────────
 
 export function ComposeModal({
@@ -785,6 +1038,7 @@ function PostCard({
   refreshPostShareStats,
   onOpenMediaReels,
   hidePostLikeButton,
+  appearance,
 }: {
   post: FeedPost;
   currentUserId: string | null;
@@ -797,6 +1051,7 @@ function PostCard({
   onOpenMediaReels: (postId: string) => void;
   /** Liked-posts-only feed (e.g. Saved / Liked) — hide redundant like control. */
   hidePostLikeButton?: boolean;
+  appearance: "default" | "discover";
 }) {
   const { addToast } = useToast();
   const { profile: viewerProfile } = useAuth();
@@ -889,27 +1144,43 @@ function PostCard({
     "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white shadow-lg backdrop-blur-xl transition-colors hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45";
 
   const isLandscape = mediaOrientation === "landscape";
+  const isDiscover = appearance === "discover";
+  const mediaAspectStyle: React.CSSProperties | undefined = mediaAspectRatio
+    ? { aspectRatio: String(mediaAspectRatio) }
+    : undefined;
   // Mobile media sizing:
   // - Portrait: near full screen (Instagram-like)
   // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
-  const mobileMediaBoxClass = isLandscape
-    ? "max-md:w-full"
-    : "max-md:h-[min(76dvh,46rem)]";
-  const mobileMediaStyle: React.CSSProperties | undefined =
-    isLandscape && mediaAspectRatio
-      ? { aspectRatio: String(mediaAspectRatio) }
-      : undefined;
+  const mobileMediaBoxClass = mediaAspectRatio
+    ? cn(
+        "max-md:w-full",
+        // Portrait media can otherwise become extremely tall when width is full.
+        !isLandscape && "max-md:max-h-[min(80dvh,50rem)]",
+      )
+    : isLandscape
+      ? "max-md:w-full"
+      : "max-md:h-[min(76dvh,46rem)]";
+  const mobileMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
 
   // Desktop media sizing:
   // - Portrait: tall and immersive (but still capped)
   // - Landscape: size to the media's real aspect ratio
-  const desktopMediaBoxClass = isLandscape
-    ? "md:w-full"
-    : "md:h-[min(72vh,42rem)]";
-  const desktopMediaStyle: React.CSSProperties | undefined =
-    isLandscape && mediaAspectRatio
-      ? { aspectRatio: String(mediaAspectRatio) }
-      : undefined;
+  const desktopMediaBoxClass = mediaAspectRatio
+    ? cn(
+        "md:w-full",
+        // Cap portrait height so vertical videos/images aren't overwhelmingly tall.
+        !isLandscape && "md:max-h-[min(78vh,42rem)]",
+      )
+    : isLandscape
+      ? "md:w-full"
+      : "md:h-[min(72vh,42rem)]";
+  const desktopDiscoverCardWidthClass = isDiscover
+    ? cn(
+        "md:w-full",
+        isLandscape ? "md:max-w-[820px]" : "md:max-w-[720px]",
+      )
+    : null;
+  const desktopMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
 
   async function toggleLike() {
     if (!currentUserId) {
@@ -1296,6 +1567,9 @@ function PostCard({
         "md:rounded-2xl md:shadow-md",
         "border-0 shadow-none",
         "pb-6 md:pb-0", // Breathing room after action icons on mobile
+        isDiscover &&
+          "md:bg-transparent md:shadow-none md:ring-0 md:outline-none",
+        desktopDiscoverCardWidthClass,
       )}
     >
       {/* Header — in card flow when there is no media; with media, same content is overlaid on the media */}
@@ -1381,9 +1655,11 @@ function PostCard({
         <div
           className={cn(
             "relative mt-0 md:mt-2 overflow-hidden",
-            "bg-muted/40 dark:bg-neutral-900/50",
+            // When media uses object-contain (especially on desktop), show black side panels.
+            "bg-black",
             mobileMediaBoxClass,
             desktopMediaBoxClass,
+            desktopDiscoverCardWidthClass,
           )}
           style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
         >
@@ -1396,7 +1672,13 @@ function PostCard({
             <img
               src={mediaUrl}
               alt=""
-              className={cn("h-full w-full", isLandscape ? "object-contain" : "object-cover")}
+              className={cn(
+                "h-full w-full",
+                isLandscape
+                  ? "object-contain"
+                  : // Mobile: cover (immersive). Desktop: contain (no cropping/zoom).
+                    "object-cover md:object-contain",
+              )}
               loading="lazy"
               onLoad={(e) => {
                 const el = e.currentTarget;
@@ -1456,9 +1738,10 @@ function PostCard({
       {mediaUrl && post.media_type === "video" && (
         <div
           className={cn(
-            "relative mt-0 md:mt-2 overflow-hidden bg-muted/40 dark:bg-neutral-900/50",
+            "relative mt-0 md:mt-2 overflow-hidden bg-black",
             mobileMediaBoxClass,
             desktopMediaBoxClass,
+            desktopDiscoverCardWidthClass,
           )}
           style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
         >
@@ -1472,7 +1755,10 @@ function PostCard({
             preload="metadata"
             className={cn(
               "h-full w-full",
-              isLandscape ? "object-contain" : "object-cover",
+              isLandscape
+                ? "object-contain"
+                : // Mobile: cover (immersive). Desktop: contain (no cropping/zoom).
+                  "object-cover md:object-contain",
               "md:h-full md:w-full",
             )}
             onLoadedMetadata={(e) => {
@@ -1710,6 +1996,8 @@ interface ProfilePostsFeedProps {
   /** Show only posts liked by this user (new social feed). */
   filterLikedByUserId?: string;
   limit?: number;
+  /** Visual context for layout tweaks (e.g. Discover home feed). */
+  appearance?: "default" | "discover";
 }
 
 export function ProfilePostsFeed({
@@ -1721,6 +2009,7 @@ export function ProfilePostsFeed({
   sortOrder = "newest",
   filterLikedByUserId,
   limit,
+  appearance = "default",
 }: ProfilePostsFeedProps) {
   const { user, profile: currentProfile } = useAuth();
   const [globalVideoUnmuted, setGlobalVideoUnmuted] = useState(false);
@@ -2263,21 +2552,71 @@ export function ProfilePostsFeed({
           )}
         </div>
       ) : (
-        posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            currentUserId={user?.id ?? null}
-            onLikeToggle={handleLikeToggle}
-            isOwnFeed={isOwnProfile}
-            onDeleted={handleDeleted}
-            globalVideoUnmuted={globalVideoUnmuted}
-            onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
-            refreshPostShareStats={refreshPostShareStats}
-            onOpenMediaReels={setReelsOpenPostId}
-            hidePostLikeButton={Boolean(filterLikedByUserId)}
-          />
-        ))
+        posts.map((post) => {
+          const isDiscover = appearance === "discover";
+          const isProfilePost = post.source === "post";
+          const shouldShowSideComments = isDiscover && isProfilePost;
+          const authorName = post.author?.full_name?.trim()
+            ? post.author.full_name.trim()
+            : "Member";
+          const caption = isProfilePost && post.caption?.trim()
+            ? renderCaptionWithMentions(post.caption)
+            : undefined;
+
+          if (!shouldShowSideComments) {
+            return (
+              <PostCard
+                key={post.id}
+                post={post}
+                currentUserId={user?.id ?? null}
+                onLikeToggle={handleLikeToggle}
+                isOwnFeed={isOwnProfile}
+                onDeleted={handleDeleted}
+                globalVideoUnmuted={globalVideoUnmuted}
+                onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
+                refreshPostShareStats={refreshPostShareStats}
+                onOpenMediaReels={setReelsOpenPostId}
+                hidePostLikeButton={Boolean(filterLikedByUserId)}
+                appearance={appearance}
+              />
+            );
+          }
+
+          return (
+            <div
+              key={post.id}
+              className={cn(
+                "md:flex md:items-start md:justify-start md:gap-10",
+                // Pull content closer to the side panel; use the available right whitespace.
+                "md:pr-4 lg:pr-8",
+              )}
+            >
+              <div className="min-w-0 md:flex-1">
+                <PostCard
+                  post={post}
+                  currentUserId={user?.id ?? null}
+                  onLikeToggle={handleLikeToggle}
+                  isOwnFeed={isOwnProfile}
+                  onDeleted={handleDeleted}
+                  globalVideoUnmuted={globalVideoUnmuted}
+                  onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
+                  refreshPostShareStats={refreshPostShareStats}
+                  onOpenMediaReels={setReelsOpenPostId}
+                  hidePostLikeButton={Boolean(filterLikedByUserId)}
+                  appearance={appearance}
+                />
+              </div>
+
+              <CommentsSidePanel
+                postId={post.id}
+                caption={caption}
+                authorName={authorName}
+                authorPhotoUrl={post.author?.photo_url ?? null}
+                initialCount={post.comment_count}
+              />
+            </div>
+          );
+        })
       )}
 
       {reelsOpenPostId !== null ? (

@@ -139,7 +139,7 @@ export function AvailabilityStoriesStrip({
     <>
       <div
         className={cn(
-          "-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 pt-0.5",
+          "max-md:-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 pt-0.5 md:mx-0 md:px-0",
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "snap-x snap-mandatory [touch-action:pan-x_pan-y] overscroll-x-contain",
         )}

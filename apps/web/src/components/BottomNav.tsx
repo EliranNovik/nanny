@@ -1151,7 +1151,7 @@ export function BottomNav() {
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         {createPortal(
-          <nav className="fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
+          <nav className="fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none px-0 pb-0 md:hidden">
             <div
               className={cn(
                 // Desktop: keep it pinned to the viewport bottom (no floating gap).
@@ -1202,7 +1202,7 @@ export function BottomNav() {
 
     return (
       <>
-        {!isHelpersFindPage && !isFreelancerJobsMatch ? DesktopHeader : null}
+        {!isHelpersFindPage ? DesktopHeader : null}
         {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
@@ -1210,7 +1210,7 @@ export function BottomNav() {
           <nav
             className={cn(
               /** Body portal: above reels / body overlays (z~119) but below Dialog (z-[130]). #root is z-1 so in-root z-120 could not stack above portaled reels. */
-              "fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:px-0 md:pb-0",
+              "fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:hidden",
             )}
           >
           <div
@@ -1495,7 +1495,7 @@ export function BottomNav() {
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {createPortal(
-          <nav className="fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none px-0 pb-0 md:px-0 md:pb-0">
+          <nav className="fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none px-0 pb-0 md:hidden">
             <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl">
               <div className="flex items-center justify-center px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">
                 <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">

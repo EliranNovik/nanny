@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
@@ -129,9 +129,32 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
   const [conversationIdByJobId, setConversationIdByJobId] = useState<
     Record<string, string>
   >({});
-  const [savedTab, setSavedTab] = useState<"posts" | "profiles">(
-    dataLikedPage ? "posts" : "profiles",
-  );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = useMemo(() => {
+    const raw = searchParams.get("tab");
+    return raw === "posts" || raw === "profiles" ? raw : null;
+  }, [searchParams]);
+  const [savedTab, setSavedTab] = useState<"posts" | "profiles">(() => {
+    return urlTab ?? (dataLikedPage ? "posts" : "profiles");
+  });
+
+  // Keep internal tab in sync with URL (?tab=posts|profiles) so side panel links can open a specific section.
+  useEffect(() => {
+    if (!urlTab) return;
+    setSavedTab(urlTab);
+  }, [urlTab]);
+
+  function setSavedTabAndUrl(next: "posts" | "profiles") {
+    setSavedTab(next);
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev);
+        n.set("tab", next);
+        return n;
+      },
+      { replace: true },
+    );
+  }
 
   function formatSupabaseError(e: unknown): string {
     if (!e) return "Unknown error";
@@ -409,7 +432,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
   useEffect(() => {
     if (loading) return;
     if (profiles.length === 0 && effectivePostCount > 0) {
-      setSavedTab("posts");
+      setSavedTabAndUrl("posts");
     }
   }, [loading, profiles.length, effectivePostCount, dataLikedPage]);
 
@@ -642,7 +665,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
                             ? `Posts, ${likedProfilePosts.length} liked`
                             : `Posts, ${posts.length} saved`
                     }
-                    onClick={() => setSavedTab("posts")}
+                    onClick={() => setSavedTabAndUrl("posts")}
                     className={cn(
                       "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
                       "transition-[color,transform] duration-300 ease-out",
@@ -685,7 +708,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
                           ? "Profiles"
                           : `Profiles, ${profiles.length} saved`
                     }
-                    onClick={() => setSavedTab("profiles")}
+                    onClick={() => setSavedTabAndUrl("profiles")}
                     className={cn(
                       "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
                       "transition-[color,transform] duration-300 ease-out",
@@ -763,7 +786,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
                     type="button"
                     role="tab"
                     aria-selected={savedTab === "posts"}
-                    onClick={() => setSavedTab("posts")}
+                    onClick={() => setSavedTabAndUrl("posts")}
                     className={cn(
                       "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
                       "transition-[color,transform] duration-300 ease-out",
@@ -799,7 +822,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
                     type="button"
                     role="tab"
                     aria-selected={savedTab === "profiles"}
-                    onClick={() => setSavedTab("profiles")}
+                    onClick={() => setSavedTabAndUrl("profiles")}
                     className={cn(
                       "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
                       "transition-[color,transform] duration-300 ease-out",
@@ -857,7 +880,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
           ) : (
             <Tabs
               value={savedTab}
-              onValueChange={(v) => setSavedTab(v as "posts" | "profiles")}
+              onValueChange={(v) => setSavedTabAndUrl(v as "posts" | "profiles")}
               className="w-full"
             >
               <TabsContent value="posts" className="mt-0 outline-none">
