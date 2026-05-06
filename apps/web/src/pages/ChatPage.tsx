@@ -1068,7 +1068,11 @@ export default function ChatPage({
 
   function formatTime(dateStr: string): string {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   }
 
   function formatDate(dateStr: string): string {
@@ -1347,11 +1351,11 @@ export default function ChatPage({
 
   /** Blue links inside chat bubbles (contrast-adjusted on sent vs received vs system strip). */
   const chatOutgoingLinkCn =
-    "break-all font-semibold text-sky-200 underline underline-offset-2 decoration-sky-200/55 hover:text-sky-50";
+    "break-all font-semibold text-sky-200 underline underline-offset-2 decoration-white/40 hover:text-white";
   const chatIncomingLinkCn =
-    "break-all font-semibold text-blue-600 underline underline-offset-2 decoration-blue-600/35 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:text-blue-300";
+    "break-all font-semibold text-[#027eb5] underline underline-offset-2 decoration-[#027eb5]/40 hover:text-[#015f8a] dark:text-[#34b7f1] dark:decoration-[#34b7f1]/40";
   const chatSystemLinkCn =
-    "break-all font-medium text-blue-600 underline underline-offset-2 decoration-blue-600/35 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300";
+    "break-all font-medium text-[#027eb5] underline underline-offset-2 decoration-[#027eb5]/40 hover:text-[#015f8a] dark:text-[#34b7f1] dark:hover:text-[#60a5fa]";
 
   // For admin viewing reports: show client initials, otherwise show "S" for Support or user initials
   const otherInitials =
@@ -2120,7 +2124,7 @@ export default function ChatPage({
           className={cn(
             "min-h-0 flex-1 overflow-y-auto scroll-smooth pb-4",
             hideBackButton ? "pt-0 md:pt-4" : "pt-20 md:pt-4",
-            "px-1.5 md:p-4",
+            "px-3 md:p-4",
           )}
           style={{
             WebkitOverflowScrolling: "touch",
@@ -2131,7 +2135,7 @@ export default function ChatPage({
         >
           <div>
             {/* ~composer height + safe area + small gap — avoid vh-based padding (felt like a huge dead zone on mobile) */}
-            <div className="space-y-4 w-full max-w-none px-0 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.75rem+0.375rem)] md:pb-[calc(6.5rem+0.375rem)]">
+            <div className="space-y-4 w-full max-w-none px-1 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.75rem+0.375rem)] md:pb-[calc(6.5rem+0.375rem)]">
               {job && hideBackButton && otherUser ? (
                 <ChatJobContextStrip
                   job={job as JobSummaryRow}
@@ -2167,13 +2171,10 @@ export default function ChatPage({
                       className="space-y-4 chat-scroll-reveal chat-scroll-reveal--center"
                     >
                       {shouldShowDateHeader(index) && (
-                        <div className="my-5 flex justify-center px-1 md:px-2">
-                          <time
-                            dateTime={msg.created_at}
-                            className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
-                          >
+                        <div className="my-8 flex justify-center">
+                          <span className="rounded-full bg-slate-100/80 px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-muted-foreground/60 shadow-sm backdrop-blur-[2px] dark:bg-slate-800/40 md:text-[10px]">
                             {formatDate(msg.created_at)}
-                          </time>
+                          </span>
                         </div>
                       )}
                       <div className="flex justify-center px-1 md:px-2">
@@ -2204,13 +2205,10 @@ export default function ChatPage({
                       )}
                     >
                       {shouldShowDateHeader(index) && (
-                        <div className="my-5 flex justify-center px-1 md:px-2">
-                          <time
-                            dateTime={msg.created_at}
-                            className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
-                          >
+                        <div className="my-8 flex justify-center">
+                          <span className="rounded-full bg-slate-100/80 px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-muted-foreground/60 shadow-sm backdrop-blur-[2px] dark:bg-slate-800/40 md:text-[10px]">
                             {formatDate(msg.created_at)}
-                          </time>
+                          </span>
                         </div>
                       )}
 
@@ -2239,22 +2237,25 @@ export default function ChatPage({
                         >
                           {/* Plain Media */}
                           {msg.attachment_type === "image" ? (
-                            <div
-                              className="relative cursor-pointer group/image transition-transform active:scale-[0.98]"
-                              onClick={() => {
-                                setSelectedImage(msg);
-                                setIsImageModalOpen(true);
-                              }}
-                            >
-                              <img
-                                src={msg.attachment_url}
-                                alt={msg.attachment_name || "Attachment"}
-                                className="max-h-[380px] max-w-full rounded-2xl border-none object-cover shadow-sm md:max-h-[320px]"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity bg-black/10 rounded-2xl">
-                                <ImageIcon className="w-8 h-8 text-white drop-shadow-md" />
+                              <div
+                                className="relative cursor-pointer group/image transition-transform active:scale-[0.98]"
+                                onClick={() => {
+                                  setSelectedImage(msg);
+                                  setIsImageModalOpen(true);
+                                }}
+                              >
+                                <img
+                                  src={msg.attachment_url}
+                                  alt={msg.attachment_name || "Attachment"}
+                                  className={cn(
+                                    "max-h-[380px] max-w-full object-cover shadow-md transition-shadow duration-300 md:max-h-[320px]",
+                                    isOwn ? "rounded-2xl rounded-br-none" : "rounded-2xl rounded-bl-none"
+                                  )}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity bg-black/10 rounded-2xl">
+                                  <ImageIcon className="w-8 h-8 text-white drop-shadow-md" />
+                                </div>
                               </div>
-                            </div>
                           ) : (
                             <video
                               src={msg.attachment_url}
@@ -2267,17 +2268,17 @@ export default function ChatPage({
                           {msg.body && (
                             <div
                               className={cn(
-                                "relative mt-1 rounded-2xl px-3 py-2 shadow-sm md:px-3 md:py-1.5",
+                                "relative mt-1 px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
                                 isOwn
-                                  ? "rounded-br-none bg-primary text-primary-foreground dark:bg-[hsl(var(--chat-bubble-sent))]"
-                                  : "rounded-bl-none bg-muted/30 dark:bg-muted border-none",
+                                  ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                  : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
                               )}
                             >
                               <p
                                 className={cn(
                                   "inline-block max-w-full whitespace-pre-wrap break-words text-[19px] font-medium leading-snug md:text-[16px]",
                                   isOwn
-                                    ? "text-primary-foreground"
+                                    ? "text-white"
                                     : "text-foreground",
                                 )}
                               >
@@ -2287,37 +2288,19 @@ export default function ChatPage({
                                     ? chatOutgoingLinkCn
                                     : chatIncomingLinkCn,
                                 )}
-                                <span
-                                  className={cn(
-                                    "ml-3 inline-flex items-center gap-1 align-text-bottom whitespace-nowrap text-[13px] font-medium tabular-nums leading-none md:ml-2.5 md:text-[12px]",
-                                    isOwn
-                                      ? "text-primary-foreground/85"
-                                      : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatTime(msg.created_at)}
-                                  {isOwn && receiptStatus && (
-                                    <ReadReceipt status={receiptStatus} />
-                                  )}
-                                </span>
                               </p>
                             </div>
                           )}
 
-                          {/* Timestamp only when media has no caption (caption carries time inline). */}
-                          {!msg.body ? (
-                            <div
-                              className={cn(
-                                "mt-2.5 flex items-center gap-1 text-[13px] font-medium tabular-nums text-muted-foreground md:mt-2 md:text-[12px]",
-                                isOwn ? "justify-end" : "justify-start",
-                              )}
-                            >
-                              <span>{formatTime(msg.created_at)}</span>
-                              {isOwn && receiptStatus && (
-                                <ReadReceipt status={receiptStatus} />
-                              )}
-                            </div>
-                          ) : null}
+                          {/* Timestamp outside bubble */}
+                          <div
+                            className={cn(
+                              "mt-1 flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground",
+                              isOwn ? "justify-end text-white/70" : "justify-start",
+                            )}
+                          >
+                            <span>{formatTime(msg.created_at)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2335,13 +2318,10 @@ export default function ChatPage({
                     )}
                   >
                     {shouldShowDateHeader(index) && (
-                      <div className="my-5 flex justify-center px-1 md:px-2">
-                        <time
-                          dateTime={msg.created_at}
-                          className="text-[12px] font-semibold tabular-nums tracking-wide text-muted-foreground md:text-[11px]"
-                        >
+                      <div className="my-8 flex justify-center">
+                        <span className="rounded-full bg-slate-100/80 px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-muted-foreground/60 shadow-sm backdrop-blur-[2px] dark:bg-slate-800/40 md:text-[10px]">
                           {formatDate(msg.created_at)}
-                        </time>
+                        </span>
                       </div>
                     )}
 
@@ -2370,10 +2350,10 @@ export default function ChatPage({
                       >
                         <div
                           className={cn(
-                            "group relative rounded-2xl px-3 py-2 shadow-sm md:px-3 md:py-1.5",
+                            "group relative px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
                             isOwn
-                              ? "rounded-br-none bg-primary text-primary-foreground shadow-sm dark:bg-[hsl(var(--chat-bubble-sent))]"
-                              : "rounded-bl-none bg-muted/30 dark:bg-muted border-none",
+                              ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                              : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
                           )}
                         >
                           {/* Attachment Display */}
@@ -2398,7 +2378,7 @@ export default function ChatPage({
                               className={cn(
                                 "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
                                 isOwn
-                                  ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground"
+                                  ? "border-white/20 bg-white/10 text-white"
                                   : "bg-muted/50 text-foreground border-none",
                               )}
                             >
@@ -2408,16 +2388,6 @@ export default function ChatPage({
                               <p className="mt-1 font-semibold">{matchIntro.category}</p>
                               <p className="inline-block max-w-full text-lg opacity-90 md:text-xs">
                                 {matchIntro.location} · {matchIntro.time}
-                                <span
-                                  className={cn(
-                                    "ml-3 whitespace-nowrap text-[13px] font-medium tabular-nums md:ml-2.5 md:text-[12px]",
-                                    isOwn
-                                      ? "text-primary-foreground/85"
-                                      : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatTime(msg.created_at)}
-                                </span>
                               </p>
                             </div>
                           ) : msg.body ? (
@@ -2425,7 +2395,7 @@ export default function ChatPage({
                               className={cn(
                                 "inline-block max-w-full whitespace-pre-wrap break-words text-[19px] font-medium leading-snug md:text-[16px]",
                                 isOwn
-                                  ? "text-primary-foreground"
+                                  ? "text-white"
                                   : "text-foreground",
                               )}
                             >
@@ -2435,44 +2405,17 @@ export default function ChatPage({
                                   ? chatOutgoingLinkCn
                                   : chatIncomingLinkCn,
                               )}
-                              <span
-                                className={cn(
-                                  "ml-3 inline-flex items-center gap-1 align-text-bottom whitespace-nowrap text-[13px] font-medium tabular-nums leading-none md:ml-2.5 md:text-[12px]",
-                                  isOwn
-                                    ? "text-primary-foreground/85"
-                                    : "text-muted-foreground",
-                                )}
-                              >
-                                {formatTime(msg.created_at)}
-                                {isOwn && receiptStatus && (
-                                  <ReadReceipt status={receiptStatus} />
-                                )}
-                              </span>
                             </p>
-                          ) : (
-                            msg.attachment_url && (
-                              <div
-                                className={cn(
-                                  "mt-2 flex flex-wrap items-center gap-1 pt-px",
-                                  isOwn ? "justify-end" : "justify-start",
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center gap-1 text-[13px] font-medium tabular-nums leading-none md:text-[12px]",
-                                    isOwn
-                                      ? "text-primary-foreground/85"
-                                      : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatTime(msg.created_at)}
-                                  {isOwn && receiptStatus && (
-                                    <ReadReceipt status={receiptStatus} />
-                                  )}
-                                </span>
-                              </div>
-                            )
+                          ) : null}
+                        </div>
+                        {/* Timestamp outside bubble */}
+                        <div
+                          className={cn(
+                            "mt-1 flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground",
+                            isOwn ? "justify-end text-white/70" : "justify-start",
                           )}
+                        >
+                          <span>{formatTime(msg.created_at)}</span>
                         </div>
                       </div>
                     </div>

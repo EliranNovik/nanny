@@ -17,7 +17,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Bell,
   Briefcase,
-  Loader2,
   MessageSquare,
   X,
   Sparkles,

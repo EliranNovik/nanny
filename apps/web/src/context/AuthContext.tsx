@@ -1088,9 +1088,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    console.log("[AuthContext] Signing out...");
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("[AuthContext] Supabase signOut error (ignoring):", err);
+    }
+    
+    // Manually clear all state immediately to prevent race conditions or loops
+    setUser(null);
+    setSession(null);
     setProfileWithRef(null);
     profileUserIdRef.current = null;
+    
+    // Clear all profile cache from localStorage
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("profile_")) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log("[AuthContext] Local profile cache cleared");
+    } catch (e) {
+      console.warn("[AuthContext] Failed to clear localStorage during sign out", e);
+    }
   }
 
   return (

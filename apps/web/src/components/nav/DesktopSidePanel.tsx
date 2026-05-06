@@ -253,8 +253,8 @@ export function DesktopSidePanel() {
         "border-r border-border/30 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
       )}
     >
-      {/* Independent scroll: panel content scrolls without moving the page */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-4 pb-6">
+      {/* Fixed top section to allow popouts to escape overflow clipping */}
+      <div className="shrink-0 px-3 pt-4 pb-1">
         <div className="relative mb-1 flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2 text-foreground">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-muted/70">
             <img
@@ -298,8 +298,8 @@ export function DesktopSidePanel() {
               <div
                 role="menu"
                 className={cn(
-                  "absolute right-2 top-[calc(100%+10px)] z-[150] w-[14.5rem] overflow-hidden rounded-2xl border border-border/40",
-                  "bg-background/90 backdrop-blur-xl shadow-xl",
+                  "absolute left-[calc(100%+12px)] top-0 z-[150] w-[14.5rem] overflow-hidden rounded-2xl border border-border/40",
+                  "bg-background/90 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2 duration-200",
                 )}
               >
                 <button
@@ -345,6 +345,10 @@ export function DesktopSidePanel() {
             </>
           ) : null}
         </div>
+      </div>
+
+      {/* Independent scroll: panel content scrolls without moving the page */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6">
 
         <div className="mt-2 flex flex-col">
           <nav className="flex w-full flex-col items-stretch gap-1">

@@ -44,7 +44,6 @@ export async function sendKnockMessage(opts: {
   const {
     supabase,
     currentUserId,
-    currentProfileRole,
     currentProfileName,
     targetUserId,
     categoryId,

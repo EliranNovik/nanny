@@ -23,9 +23,7 @@ export async function openCommunityContact(opts: {
   const {
     supabase,
     user,
-    myRole,
     targetUserId,
-    targetRole,
     navigate,
     addToast,
   } = opts;

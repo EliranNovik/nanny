@@ -1173,7 +1173,7 @@ export default function PublicProfilePage() {
                     src={avatarUrl.lg(profile.photo_url)}
                     alt={profile.full_name ?? "Profile"}
                     className="absolute inset-0 h-full w-full object-cover"
-                    fetchpriority="high"
+                    fetchPriority="high"
                   />
                 )}
                 {profileLiveNowDot}
@@ -1350,7 +1350,7 @@ export default function PublicProfilePage() {
                     src={avatarUrl.lg(profile.photo_url)}
                     alt={profile.full_name ?? "Profile"}
                     className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
-                    fetchpriority="high"
+                    fetchPriority="high"
                     onLoad={(e) => (e.currentTarget.style.opacity = "1")}
                     style={{ opacity: 0 }}
                   />

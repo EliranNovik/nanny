@@ -17,7 +17,7 @@ import { openCommunityContact } from "@/lib/communityContact";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { Button } from "@/components/ui/button";
-import { Bell, Loader2, Radio } from "lucide-react";
+import { Bell, Radio } from "lucide-react";
 
 type JobRequestRow = {
   id: string;

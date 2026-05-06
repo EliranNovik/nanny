@@ -26,7 +26,6 @@ import {
   type PublicProfileGalleryRow,
 } from "@/components/helpers/HelperResultProfileCard";
 import { useToast } from "@/components/ui/toast";
-import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import {
   canStartInCardLabel,
   respondsWithinCardLabel,

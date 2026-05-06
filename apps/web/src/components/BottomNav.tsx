@@ -719,8 +719,9 @@ export function BottomNav() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              void signOut();
+            onClick={async () => {
+              console.log("[BottomNav] Desktop Log out clicked");
+              await signOut();
               setDesktopAppMenuOpen(false);
             }}
             className={cn(
@@ -1067,8 +1068,9 @@ export function BottomNav() {
           <Button
             variant="ghost"
             className="justify-start gap-2 w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => {
-              signOut();
+            onClick={async () => {
+              console.log("[BottomNav] Mobile Log out clicked");
+              await signOut();
               setProfileMenuOpen(false);
             }}
           >

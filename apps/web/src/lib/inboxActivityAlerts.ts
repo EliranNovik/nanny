@@ -37,7 +37,7 @@ export async function fetchInboxActivityAlerts(
   const allAlerts: NotificationAlert[] = [];
 
   // 1. Prepare all independent queries
-  const initialFetchPromises: Promise<any>[] = [];
+  const initialFetchPromises: any[] = [];
   const promiseLabels: string[] = [];
 
   if (opts.includeUnreadMessageAlerts) {

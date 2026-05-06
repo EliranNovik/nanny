@@ -8,7 +8,7 @@ export async function findOrCreateDirectConversation(params: {
   freelancerId: string;
 }): Promise<{ conversationId: string; created: boolean }> {
   // Unrestricted messaging: anyone can message anyone
-  const [idA, idB] = [clientId, freelancerId].sort();
+  const [idA, idB] = [params.clientId, params.freelancerId].sort();
   const cId = idA;
   const fId = idB;
 
