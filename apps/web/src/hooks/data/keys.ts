@@ -32,5 +32,13 @@ export const queryKeys = {
   /** Saved profiles (`profile_favorites`) for the current user. */
   profileFavorites: (userId?: string | null) =>
     [...queryKeys.community, "profileFavorites", userId ?? "none"] as const,
+
+  /** Open posted requests authored by the current user's saved profiles. */
+  discoverFavoriteRequests: (userId?: string | null) =>
+    [...queryKeys.jobs, "discoverFavoriteRequests", userId ?? "none"] as const,
+
+  /** Hydrated profile rows for the current user's saved profiles (favorites). */
+  discoverSavedProfiles: (userId?: string | null) =>
+    [...queryKeys.community, "discoverSavedProfiles", userId ?? "none"] as const,
 };
 

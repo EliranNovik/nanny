@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { differenceInDays, differenceInHours, formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronRight,
@@ -19,7 +18,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { trackEvent } from "@/lib/analytics";
@@ -47,13 +45,15 @@ import {
   ALL_HELP_CATEGORY_ID,
   DISCOVER_HOME_CATEGORIES,
   isServiceCategoryId,
-  getServiceCategoryImage,
 } from "@/lib/serviceCategories";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
 import { DiscoverHomePostedHelpRequests } from "@/components/discover/DiscoverHomePostedHelpRequests";
-import { DiscoverHomeLiveHelperCards } from "@/components/discover/DiscoverHomeLiveHelperCards";
+import { DiscoverHomeFavoriteRequests } from "@/components/discover/DiscoverHomeFavoriteRequests";
+import { DiscoverHomeMyOpenRequests } from "@/components/discover/DiscoverHomeMyOpenRequests";
+import { DiscoverHomeSavedProfiles } from "@/components/discover/DiscoverHomeSavedProfiles";
+import { DiscoverHomeMyLiveHelpJobs } from "@/components/discover/DiscoverHomeMyLiveHelpJobs";
 import { DiscoverHomeReviewsDesktopStrip } from "@/components/discover/DiscoverHomeReviewsDesktopStrip";
 
 type HomeMode = "hire" | "work";
@@ -79,26 +79,6 @@ const WORK = {
   primary: "Go live now",
 } as const;
 
-/** Mobile “my request” / “live help” rows — light card, dark glass in dark mode */
-const discoverHomeMobilePromoRowClass = cn(
-  "flex w-full items-center gap-4 rounded-[1.25rem] border-0 bg-zinc-50 p-4 text-left shadow-sm ring-0 backdrop-blur-sm transition-all hover:bg-zinc-50/90 hover:shadow-md active:scale-[0.98]",
-  "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/90 dark:shadow-xl dark:ring-0 dark:backdrop-blur-xl dark:shadow-black/25",
-);
-
-const discoverHomeMobileEmptyRowClass = cn(
-  "flex w-full items-center justify-between gap-3 rounded-[1.25rem] border-0 bg-zinc-50 p-4 text-left shadow-sm ring-0 backdrop-blur-sm hover:bg-zinc-50/90 hover:shadow-md",
-  "dark:border dark:border-zinc-500/35 dark:bg-zinc-700/85 dark:shadow-black/20 dark:ring-0",
-);
-
-const discoverHomeMobileThumbClass =
-  "relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-0 bg-zinc-200/70 shadow-none dark:border dark:border-white/10 dark:bg-white/10 dark:shadow-lg";
-
-const discoverHomeMobileMetaPillClass =
-  "shrink-0 rounded-full border-0 bg-zinc-200/90 px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-zinc-800 ring-0 dark:border dark:border-zinc-500/50 dark:bg-zinc-800/95 dark:text-zinc-100 dark:ring-1 dark:ring-zinc-950/40";
-
-const discoverHomeMobileEmptyCtaClass =
-  "shrink-0 rounded-full border border-emerald-600/20 bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-900 shadow-sm transition-colors hover:bg-emerald-100 dark:border-white/10 dark:bg-white/15 dark:text-white dark:hover:bg-white/20 dark:shadow-none";
-
 /** Same stack + padding for both hire/work heroes; flex-1 + shared min-heights keeps both modes aligned in the desktop grid row. */
 const heroInnerClassName =
   "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[12.5rem] md:min-h-[16rem]";
@@ -110,30 +90,6 @@ const heroTopBlockClassName = "flex max-w-xl flex-col gap-3 md:gap-3.5";
 
 const heroTitleBlockClassName = "max-w-[17rem] space-y-1.5 pr-1 sm:max-w-[19rem]";
 
-function formatJobTitle(job: { service_type?: string }) {
-  if (job.service_type === "cleaning") return "Cleaning";
-  if (job.service_type === "cooking") return "Cooking";
-  if (job.service_type === "pickup_delivery") return "Pickup & Delivery";
-  if (job.service_type === "nanny") return "Nanny";
-  if (job.service_type === "other_help") return "Other Help";
-  return "Help request";
-}
-
-/** Live-help “matched … ago”: full hours if under 24h, else whole days. */
-function formatMatchedAgoDaysOrHours(iso: string | number | Date): string {
-  const then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return "";
-  const now = new Date();
-  const hours = differenceInHours(now, then);
-  if (hours < 0) return "";
-  if (hours < 24) {
-    if (hours < 1) return "less than 1 hour ago";
-    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  }
-  const days = differenceInDays(now, then);
-  const d = Math.max(1, days);
-  return `${d} day${d === 1 ? "" : "s"} ago`;
-}
 
 export function DiscoverHomeActionFirst({
   homeMode,
@@ -144,71 +100,11 @@ export function DiscoverHomeActionFirst({
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const isHire = homeMode === "hire";
-  const { data: liveAvatarsPayload, isPending: liveAvatarsPending } =
-    useDiscoverLiveAvatars(user?.id);
+  const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
-  const liveHelpersForCards = liveAvatarsPayload?.helpersForCards ?? [];
   const { data: frData } = useFreelancerRequests(user?.id);
   const [myRequestsOpen, setMyRequestsOpen] = useState(false);
 
-  const acceptedRequests = useMemo(() => {
-    const jobs = frData?.myOpenRequests ?? [];
-    return jobs.filter((j: any) => (j.acceptedCount || 0) > 0).slice(0, 1);
-  }, [frData]);
-
-  const [liveHelpingJobs, setLiveHelpingJobs] = useState<any[]>([]);
-  const [liveHelpingProfiles, setLiveHelpingProfiles] = useState<Map<string, any>>(new Map());
-  const [dismissedLiveJobIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!user?.id || isHire) {
-      setLiveHelpingJobs([]);
-      setLiveHelpingProfiles(new Map());
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("job_requests")
-        .select("id, created_at, service_type, location_city, client_id, selected_freelancer_id, status")
-        .in("status", ["locked", "active"])
-        .eq("selected_freelancer_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(2);
-      
-      if (cancelled) return;
-      if (error) {
-        console.warn("[DiscoverHomeActionFirst] live helping jobs:", error);
-        return;
-      }
-      
-      const rows = data || [];
-      setLiveHelpingJobs(rows);
-      
-      const clientIds = rows.map((r: any) => r.client_id).filter(Boolean);
-      if (clientIds.length > 0) {
-        const { data: profs, error: profError } = await supabase
-          .from("profiles")
-          .select("id, full_name, photo_url, is_verified")
-          .in("id", clientIds);
-        
-        if (cancelled) return;
-        if (profError) {
-          console.warn("[DiscoverHomeActionFirst] live helping profiles:", profError);
-          return;
-        }
-        
-        const m = new Map<string, any>();
-        for (const p of profs || []) {
-          m.set(p.id, p);
-        }
-        setLiveHelpingProfiles(m);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, isHire]);
   const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
   const [quickMoreOpen, setQuickMoreOpen] = useState(false);
   const fetchOpenHelpPool =
@@ -749,93 +645,10 @@ export function DiscoverHomeActionFirst({
         <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
           {isHire ? (
             <div className="flex flex-col">
-              <h3 className="px-4 pb-2 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
-                My requests
-              </h3>
-              <div className="flex justify-center px-4">
-                <div className="mt-1 w-full max-w-md">
-                  {acceptedRequests.length > 0 ? (
-                    acceptedRequests.slice(0, 1).map((job: any) => {
-                      const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
-                      const title = formatJobTitle(job);
-                      const loc = (job.location_city ?? "").trim() || "Location not set";
-
-                      return (
-                        <button
-                          key={job.id}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/client/jobs/${job.id}/live`);
-                          }}
-                          className={discoverHomeMobilePromoRowClass}
-                        >
-                          <div className={discoverHomeMobileThumbClass}>
-                            <img
-                              src={getServiceCategoryImage(job.service_type)}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                            <div className="pointer-events-none absolute inset-0 bg-black/5 dark:bg-black/10" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[18px] font-black leading-tight text-zinc-900 dark:text-white">{title}</span>
-                              <span className={discoverHomeMobileMetaPillClass}>
-                                {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
-                              </span>
-                            </div>
-                            <p className="mt-0.5 truncate text-[16px] font-bold leading-tight text-zinc-600 dark:text-white/80">{loc}</p>
-
-                            <div className="mt-1.5 flex items-center gap-2.5">
-                              <span className="text-[14px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
-                                {job.acceptedCount} accepted
-                              </span>
-
-                              {avatars.length > 0 && (
-                                <div className="flex -space-x-2 overflow-hidden">
-                                  {avatars.slice(0, 3).map((avatar: any, idx: number) => (
-                                    <Avatar key={avatar.id || idx} className="h-7 w-7 border-none shadow-md ring-2 ring-zinc-200/90 dark:ring-black/20">
-                                      {avatar.photo_url ? (
-                                        <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
-                                      ) : null}
-                                      <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                        {(avatar.full_name || "H").charAt(0)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 dark:text-white/70" aria-hidden />
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className={discoverHomeMobileEmptyRowClass}>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-bold text-zinc-900 dark:text-white">No active requests</p>
-                        <p className="text-[11px] font-medium text-zinc-500 dark:text-white/70">Need help with something?</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(createRequestPath);
-                        }}
-                        className={discoverHomeMobileEmptyCtaClass}
-                      >
-                        Post now
-                      </button>
-                    </div>
-                  )}
-                </div>
+              <div className="w-full px-4 pt-2 pb-2">
+                <DiscoverHomeMyOpenRequests />
               </div>
-
-              {/* Text phrase — below the my-requests card; extra top padding for breathing room */}
-              <div className="w-full px-4 pt-8">
+              <div className="w-full px-4 pt-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -854,10 +667,14 @@ export function DiscoverHomeActionFirst({
                   </button>
                 </div>
               </div>
-              <div className="mx-auto mt-5 w-full max-w-md px-4 pb-2">
-                <DiscoverHomeLiveHelperCards
-                  helpers={liveHelpersForCards}
-                  loading={liveAvatarsPending}
+              <div className="w-full px-4 pt-4 pb-2">
+                <DiscoverHomeSavedProfiles />
+              </div>
+              <div className="w-full px-4 pt-4 pb-2">
+                <DiscoverHomeMyLiveHelpJobs
+                  mode="hire"
+                  exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}
+                  createRequestPath={createRequestPath}
                 />
               </div>
             </div>
@@ -881,92 +698,16 @@ export function DiscoverHomeActionFirst({
                   </div>
                 ) : null}
 
-                <h3 className="mt-3 px-4 pb-2 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
-                  Live help
-                </h3>
-                <div className="mt-0 flex justify-center">
-                  <div className="w-full max-w-md">
-                  {liveHelpingJobs.filter((j) => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
-                    liveHelpingJobs
-                      .filter((j) => !dismissedLiveJobIds.includes(j.id))
-                      .slice(0, 1)
-                      .map((job: any) => {
-                        const client = liveHelpingProfiles.get(job.client_id);
-                        const title = formatJobTitle(job);
-                        const loc = (job.location_city ?? "").trim() || "Location not set";
-                        const clientName = client?.full_name || "Client";
-
-                        return (
-                          <button
-                            key={job.id}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`${explorePath}?mode=work&tab=live_help`);
-                            }}
-                            className={cn(discoverHomeMobilePromoRowClass, "pointer-events-auto")}
-                          >
-                            <div className={discoverHomeMobileThumbClass}>
-                              <img
-                                src={getServiceCategoryImage(job.service_type)}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                              <div className="pointer-events-none absolute inset-0 bg-black/5 dark:bg-black/10" />
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-[18px] font-black leading-tight text-zinc-900 dark:text-white">{title}</span>
-                                <span className={discoverHomeMobileMetaPillClass}>
-                                  matched {formatMatchedAgoDaysOrHours(job.created_at)}
-                                </span>
-                              </div>
-                              <p className="mt-0.5 truncate text-[16px] font-bold leading-tight text-zinc-600 dark:text-white/80">{loc}</p>
-
-                              <div className="mt-2 flex items-center gap-3">
-                                <span className="flex items-center gap-1 text-[14px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
-                                  Helping {clientName}
-                                </span>
-
-                                {client?.photo_url && (
-                                  <Avatar className="h-7 w-7 border-none shadow-md ring-2 ring-zinc-200/90 dark:ring-black/20">
-                                    <AvatarImage src={client.photo_url} alt={clientName} />
-                                    <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                      {clientName.charAt(0)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                )}
-                              </div>
-                            </div>
-                            <ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 dark:text-white/70" aria-hidden />
-                          </button>
-                        );
-                      })
-                  ) : (
-                    <div className={discoverHomeMobileEmptyRowClass}>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-bold text-zinc-900 dark:text-white">No live help</p>
-                        <p className="text-[11px] font-medium text-zinc-500 dark:text-white/70">Find people who need help nearby</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigateToWorkBrowseRequests(navigate, profile);
-                        }}
-                        className={discoverHomeMobileEmptyCtaClass}
-                      >
-                        Find posts
-                      </button>
-                    </div>
-                  )}
-                  </div>
-                </div>
               </div>
 
-              {/* Text phrase — below the live-help card; extra top padding for breathing room */}
-              <div className="w-full px-4 pt-8">
+              <div className="mt-3 w-full px-4">
+                <DiscoverHomeMyLiveHelpJobs
+                  mode="work"
+                  exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
+                />
+              </div>
+
+              <div className="w-full px-4 pt-6">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -985,13 +726,20 @@ export function DiscoverHomeActionFirst({
                   </button>
                 </div>
               </div>
-
-              <DiscoverHomePostedHelpRequests enabled={!isHire} className="w-full px-4 pt-6" />
             </div>
           )}
         </div>
 
-        <section className="mt-10 px-0 md:px-4 pb-24">
+        <DiscoverHomePostedHelpRequests
+          enabled={!isHire}
+          className="w-full px-4 pt-2 pb-2"
+        />
+
+        {!isHire ? (
+          <DiscoverHomeFavoriteRequests className="w-full px-4 pt-4 pb-2" />
+        ) : null}
+
+        <section className="mt-6 px-0 md:px-4 pb-24">
           <h2 className="mb-4 px-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             Our community live
           </h2>
@@ -1128,195 +876,42 @@ export function DiscoverHomeActionFirst({
               </div>
             </section>
           )}
-          {isHire ? (
-            <div className="flex min-h-0 min-w-0 flex-col gap-2">
-              <h3 className="shrink-0 px-0.5 text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">
-                My requests
-              </h3>
-            {acceptedRequests.length > 0 ? (
-              <div className="flex min-h-0 flex-1 flex-col gap-3">
-                {acceptedRequests.map((job: any) => {
-                  const avatars = frData?.confirmedHelperAvatarsByJobId?.[job.id] ?? [];
-                  const title = formatJobTitle(job);
-                  const loc = (job.location_city ?? "").trim() || "Location not set";
-                  
-                  return (
-                    <div
-                      key={job.id}
-                      className="flex flex-col gap-4 rounded-[24px] bg-zinc-50 border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 p-5 shadow-sm text-left transition-all hover:shadow-md h-full justify-between"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide text-emerald-800 dark:text-emerald-400">
-                          Your posted request
-                        </span>
-                      </div>
-
-                      <div className="flex gap-5">
-                        {/* Desktop Category Image */}
-                        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ring-1 ring-black/5 dark:ring-white/10">
-                          <img
-                            src={getServiceCategoryImage(job.service_type)}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[17px] font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">{title}</span>
-                            <span className="text-[13px] font-medium text-muted-foreground">{loc}</span>
-                            <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
-                              posted {formatDistanceToNow(new Date(job.created_at), { addSuffix: true })}
-                            </span>
-                          </div>
-                          
-                          <div className="mt-4 flex items-center gap-3 border-t border-zinc-200/50 dark:border-zinc-800/50 pt-4">
-                            <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                              {job.acceptedCount} accepted
-                            </span>
-                            
-                            {avatars.length > 0 && (
-                              <div className="flex -space-x-1.5 overflow-hidden">
-                                {avatars.slice(0, 3).map((avatar: any, idx: number) => (
-                                  <Avatar key={avatar.id || idx} className="h-7 w-7 border-2 border-white dark:border-zinc-900 shadow-sm">
-                                    {avatar.photo_url ? (
-                                      <AvatarImage src={avatar.photo_url} alt={avatar.full_name || ""} />
-                                    ) : null}
-                                    <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">
-                                      {(avatar.full_name || "H").charAt(0)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/client/jobs/${job.id}/live`)}
-                        className="w-full h-11 flex items-center justify-center rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-zinc-50 dark:text-zinc-900 text-sm font-bold shadow-sm transition-all active:scale-[0.98]"
-                      >
-                        Open Live Job
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-[24px] border border-dashed border-zinc-200/80 bg-zinc-50/50 px-4 py-10 text-center text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30 flex items-center justify-center">
-                No active requests.
-              </div>
-            )}
-            </div>
-          ) : (
-            <div className="flex min-h-0 min-w-0 flex-col gap-2">
-              <h3 className="shrink-0 px-0.5 text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">
-                Live help
-              </h3>
-            {liveHelpingJobs.filter(j => !dismissedLiveJobIds.includes(j.id)).length > 0 ? (
-              <div className="flex min-h-0 flex-1 flex-col gap-3">
-                {liveHelpingJobs
-                  .filter(j => !dismissedLiveJobIds.includes(j.id))
-                  .slice(0, 1)
-                  .map((job: any) => {
-                    const client = liveHelpingProfiles.get(job.client_id);
-                    const title = formatJobTitle(job);
-                    const loc = (job.location_city ?? "").trim() || "Location not set";
-                    const clientName = client?.full_name || "Client";
-                    
-                    return (
-                      <div
-                        key={job.id}
-                        className="flex flex-col gap-4 rounded-[24px] bg-zinc-50 border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 p-5 shadow-sm text-left transition-all hover:shadow-md h-full justify-between"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide text-emerald-800 dark:text-emerald-400">
-                            Live
-                          </span>
-                        </div>
-
-                        <div className="flex gap-5">
-                          {/* Desktop Category Image */}
-                          <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ring-1 ring-black/5 dark:ring-white/10">
-                            <img
-                              src={getServiceCategoryImage(job.service_type)}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-
-                          <div className="flex flex-1 flex-col gap-4">
-                            <div className="flex items-center gap-3">
-                              {client?.photo_url ? (
-                                <Avatar className="h-12 w-12 shadow-sm border border-zinc-200/50 dark:border-zinc-800/50">
-                                  <AvatarImage src={client.photo_url} alt={clientName} />
-                                  <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-sm font-bold">
-                                    {clientName.charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                              ) : (
-                                <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-sm font-bold">
-                                  {clientName.charAt(0)}
-                                </div>
-                              )}
-                              
-                              <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                                <span className="text-[17px] font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight truncate">
-                                  {title}
-                                </span>
-                                <span className="text-[13px] font-medium text-muted-foreground truncate">
-                                  {loc}
-                                </span>
-                                <span className="text-[11px] font-medium text-muted-foreground/80 mt-1">
-                                  matched {formatMatchedAgoDaysOrHours(job.created_at)}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="border-t border-zinc-200/50 dark:border-zinc-800/50 pt-3">
-                              <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                                Helping {clientName}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => navigate(`${explorePath}?mode=work&tab=live_help`)}
-                          className="w-full h-11 flex items-center justify-center rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-zinc-50 dark:text-zinc-900 text-sm font-bold shadow-sm transition-all active:scale-[0.98]"
-                        >
-                          Open live job
-                        </button>
-                      </div>
-                    );
-                  })}
-              </div>
-            ) : (
-              <div className="rounded-[24px] border border-dashed border-zinc-200/80 bg-zinc-50/50 px-4 py-10 text-center text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-900/30 flex items-center justify-center">
-                No live jobs right now.
-              </div>
-            )}
-            </div>
-          )}
+          {!isHire ? (
+            <DiscoverHomeMyLiveHelpJobs
+              mode="work"
+              exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
+              className="min-w-0 px-0.5"
+            />
+          ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden pt-2 flex flex-col gap-2">
+        <div className="min-h-0 overflow-hidden pt-2 flex flex-col gap-2">
           <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
           {isHire ? (
-            <DiscoverHomeLiveHelperCards
-              helpers={liveHelpersForCards}
-              loading={liveAvatarsPending}
-              className="min-w-0 px-0.5 pt-1"
+            <DiscoverHomeMyOpenRequests className="min-w-0 px-0.5 pt-1" />
+          ) : null}
+          {isHire ? (
+            <DiscoverHomeSavedProfiles className="min-w-0 px-0.5 pt-3" />
+          ) : null}
+          {isHire ? (
+            <DiscoverHomeMyLiveHelpJobs
+              mode="hire"
+              exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}
+              createRequestPath={createRequestPath}
+              className="min-w-0 px-0.5 pt-3"
             />
-          ) : (
-            <DiscoverHomePostedHelpRequests enabled className="px-1 pt-1" />
-          )}
+          ) : null}
         </div>
 
-        <section className="mt-8 pb-0">
+        {!isHire ? (
+          <DiscoverHomePostedHelpRequests enabled className="px-1 pt-2 pb-1" />
+        ) : null}
+
+        {!isHire ? (
+          <DiscoverHomeFavoriteRequests className="px-1 pt-4 pb-1" />
+        ) : null}
+
+        <section className="mt-6 pb-0">
           <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             Our community live
           </h2>

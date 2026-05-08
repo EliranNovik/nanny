@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { trackEvent } from "@/lib/analytics";
@@ -12,10 +13,29 @@ import {
 } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { useAuth } from "@/context/AuthContext";
-import { navigateToWorkBrowseRequests } from "@/lib/discoverBrowseNavigate";
-import { useDiscoverOpenHelpRequests } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import { DiscoverProfileSaveBadge } from "@/components/discover/DiscoverProfileSaveBadge";
+import { supabase } from "@/lib/supabase";
+import { queryKeys } from "@/hooks/data/keys";
+import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
 
 const MAX_BOXES = 8;
+
+type FavoriteRequestRow = {
+  id: string;
+  service_type: string | null;
+  location_city: string | null;
+  start_at: string | null;
+  created_at: string | null;
+  shift_hours: string | null;
+  time_duration: string | null;
+  client_id: string;
+  status: string | null;
+  service_details: Record<string, unknown> | null;
+  client_photo_url: string | null;
+  client_display_name: string | null;
+  client_average_rating: number | null;
+  client_total_ratings: number | null;
+};
 
 function titleForServiceType(serviceType: string): string {
   if (serviceType && isServiceCategoryId(serviceType)) {
@@ -25,7 +45,6 @@ function titleForServiceType(serviceType: string): string {
   return s ? s.slice(0, 1).toUpperCase() + s.slice(1) : "Help request";
 }
 
-/** First public image URL uploaded with the request, if any (`service_details.images`). */
 function firstJobImage(
   serviceDetails: Record<string, unknown> | null | undefined,
 ): string | null {
@@ -37,11 +56,6 @@ function firstJobImage(
   return found ?? null;
 }
 
-/**
- * Pretty duration string from snake/underscore values.
- * Numeric ranges keep a hyphen (`5_6_hours` → `5-6 hours`); other underscores
- * become spaces (`full_day` → `full day`).
- */
 function prettyDurationLabel(label: string | null | undefined): string | null {
   if (!label) return null;
   const trimmed = String(label).trim();
@@ -50,15 +64,99 @@ function prettyDurationLabel(label: string | null | undefined): string | null {
 }
 
 /**
- * Airbnb-style horizontal carousel — same shell on mobile and desktop.
- *
- * - Mobile (<sm): edge-to-edge snap carousel, native touch scroll.
- * - Tablet+ (sm/lg): same carousel; arrow controls appear in the section header.
- *
- * Card anatomy: square image with avatar/name/rating overlay on top,
- * save bookmark top-right, posted-time pill bottom-left, and plain text
- * job details rendered on the page background below the image.
+ * Open job requests authored by the viewer's saved profiles
+ * (`profile_favorites` → `job_requests`). Pulls latest posted requests
+ * from saved profiles in a single round trip + a profiles enrichment query.
  */
+function useDiscoverFavoriteRequests(userId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.discoverFavoriteRequests(userId ?? null),
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<FavoriteRequestRow[]> => {
+      if (!userId) return [];
+
+      const { data: favs, error: favErr } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", userId);
+      if (favErr) throw favErr;
+      const favIds = (favs ?? []).map(
+        (r: { favorite_user_id: string }) => r.favorite_user_id,
+      );
+      if (favIds.length === 0) return [];
+
+      const { data: requests, error: reqErr } = await supabase
+        .from("job_requests")
+        .select(
+          "id, service_type, location_city, start_at, created_at, shift_hours, time_duration, client_id, status, service_details",
+        )
+        .in("client_id", favIds)
+        .is("community_post_id", null)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (reqErr) throw reqErr;
+
+      const rows = (requests ?? []) as Array<
+        Omit<
+          FavoriteRequestRow,
+          | "client_photo_url"
+          | "client_display_name"
+          | "client_average_rating"
+          | "client_total_ratings"
+        >
+      >;
+      const open = rows.filter((r) => {
+        if (r.status == null || r.status === "") return true;
+        return isJobOpenForDiscoverListing(String(r.status));
+      });
+      if (open.length === 0) return [];
+
+      const clientIds = [...new Set(open.map((r) => r.client_id))];
+      const { data: profs, error: profErr } = await supabase
+        .from("profiles")
+        .select("id, full_name, photo_url, average_rating, total_ratings")
+        .in("id", clientIds);
+      if (profErr) throw profErr;
+      const profMap = new Map<
+        string,
+        {
+          id: string;
+          full_name: string | null;
+          photo_url: string | null;
+          average_rating: number | null;
+          total_ratings: number | null;
+        }
+      >();
+      for (const p of (profs ?? []) as Array<{
+        id: string;
+        full_name: string | null;
+        photo_url: string | null;
+        average_rating: number | null;
+        total_ratings: number | null;
+      }>) {
+        profMap.set(p.id, p);
+      }
+
+      return open.map((r) => {
+        const p = profMap.get(r.client_id);
+        return {
+          ...r,
+          service_details: (r.service_details ?? null) as Record<
+            string,
+            unknown
+          > | null,
+          client_photo_url: p?.photo_url ?? null,
+          client_display_name: p?.full_name ?? null,
+          client_average_rating: p?.average_rating ?? null,
+          client_total_ratings: p?.total_ratings ?? null,
+        };
+      });
+    },
+  });
+}
+
+/** Same shell as `DiscoverHomePostedHelpRequests` so the two sections feel native to one another. */
 const listContainerClass = cn(
   "flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 scroll-pl-4",
   "-mx-4 px-4 sm:-mx-0 sm:px-0 sm:scroll-pl-0",
@@ -92,20 +190,39 @@ type Props = {
   className?: string;
 };
 
-export function DiscoverHomePostedHelpRequests({
+export function DiscoverHomeFavoriteRequests({
   enabled = true,
   className,
 }: Props) {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
-  const { data: openRequests = [], isLoading: loading } = useDiscoverOpenHelpRequests(
-    enabled,
-    user?.id,
+  const { data: profileFavoriteRows = [] } = useQuery({
+    queryKey: queryKeys.profileFavorites(user?.id ?? null),
+    queryFn: async () => {
+      const uid = user?.id;
+      if (!uid) return [];
+      const { data, error } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", uid);
+      if (error) throw error;
+      return (data ?? []) as { favorite_user_id: string }[];
+    },
+    enabled: !!user?.id,
+    staleTime: 60_000,
+  });
+
+  const favoriteUserIds = useMemo(
+    () => new Set(profileFavoriteRows.map((r) => r.favorite_user_id)),
+    [profileFavoriteRows],
   );
 
-  const visibleRows = useMemo(() => openRequests.slice(0, MAX_BOXES), [openRequests]);
-  const hasMore = openRequests.length > MAX_BOXES;
+  const { data: rows = [], isLoading } = useDiscoverFavoriteRequests(
+    enabled ? user?.id : undefined,
+  );
+
+  const visibleRows = useMemo(() => rows.slice(0, MAX_BOXES), [rows]);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const scrollByDir = useCallback((dir: 1 | -1) => {
@@ -116,13 +233,14 @@ export function DiscoverHomePostedHelpRequests({
   }, []);
 
   if (!enabled) return null;
+  if (!user?.id) return null;
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <section className={cn("w-full", className)} aria-label="Posted help requests">
+      <section className={cn("w-full", className)} aria-label="Your favorites">
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
-            Open requests near you
+            Your favorites
           </p>
         </div>
         <div className={listContainerClass}>
@@ -144,13 +262,13 @@ export function DiscoverHomePostedHelpRequests({
     );
   }
 
-  if (openRequests.length === 0) return null;
+  if (rows.length === 0) return null;
 
   return (
-    <section className={cn("w-full", className)} aria-label="Posted help requests">
+    <section className={cn("w-full", className)} aria-label="Your favorites">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
-          Open requests near you
+          Your favorites
         </p>
         <div className="hidden items-center gap-1.5 md:flex">
           <button
@@ -203,8 +321,9 @@ export function DiscoverHomePostedHelpRequests({
               type="button"
               className={cardBtnClass}
               onClick={() => {
-                trackEvent("discover_posted_help_request_open_match", {
+                trackEvent("discover_favorite_request_open_match", {
                   job_id: r.id,
+                  client_id: r.client_id,
                 });
                 navigate(
                   `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(r.id)}`,
@@ -221,14 +340,14 @@ export function DiscoverHomePostedHelpRequests({
                   decoding="async"
                 />
 
-                {/* Top overlay gradient — improves legibility of the avatar / name / rating row */}
+                {/* Top overlay gradient */}
                 <div
                   className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/60 via-black/30 to-transparent sm:h-14"
                   aria-hidden
                 />
 
                 {/* Avatar + name + rating row — top of the image */}
-                <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-1.5 p-2 sm:gap-1 sm:p-1.5">
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-1.5 p-2 pr-9 sm:gap-1 sm:p-1.5 sm:pr-7">
                   <span className="relative inline-flex shrink-0">
                     <Avatar className="h-8 w-8 overflow-hidden shadow-sm sm:h-7 sm:w-7">
                       <AvatarImage
@@ -271,7 +390,20 @@ export function DiscoverHomePostedHelpRequests({
                   ) : null}
                 </div>
 
-                {/* Posted-time pill — bottom-left, like a "Guest favorite" badge */}
+                {/* Save bookmark — top-right */}
+                {r.client_id ? (
+                  <div className="absolute right-1.5 top-1.5 z-20 sm:right-1 sm:top-1">
+                    <DiscoverProfileSaveBadge
+                      targetUserId={r.client_id}
+                      accent="work"
+                      viewerUserId={user?.id}
+                      favoriteUserIds={favoriteUserIds}
+                      analyticsEvent="discover_favorite_request_save_profile"
+                    />
+                  </div>
+                ) : null}
+
+                {/* Posted-time pill — bottom-left */}
                 {when ? (
                   <span className="absolute bottom-2 left-2 z-10 inline-flex max-w-[85%] items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-zinc-800 shadow-sm backdrop-blur-sm dark:bg-zinc-950/85 dark:text-zinc-100 sm:bottom-1.5 sm:left-1.5 sm:px-1.5 sm:text-[9px]">
                     <span className="line-clamp-1">{when}</span>
@@ -294,7 +426,9 @@ export function DiscoverHomePostedHelpRequests({
                 </span>
                 {durationLabel ? (
                   <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px]">
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">Duration</span>{" "}
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      Duration
+                    </span>{" "}
                     {durationLabel}
                   </span>
                 ) : null}
@@ -302,53 +436,6 @@ export function DiscoverHomePostedHelpRequests({
             </button>
           );
         })}
-
-        {/* "See more" tile — last carousel item */}
-        <button
-          type="button"
-          className={cardBtnClass}
-          aria-label="See all open requests"
-          onClick={() => {
-            trackEvent("discover_posted_help_requests_see_more", {
-              from: "discover_home",
-              truncated: hasMore,
-            });
-            navigateToWorkBrowseRequests(navigate, profile);
-          }}
-        >
-          <div
-            className={cn(
-              imageWrapClass,
-              "ring-1 ring-emerald-200/70 dark:ring-emerald-500/30",
-            )}
-          >
-            <div
-              className="absolute inset-0 bg-gradient-to-br from-emerald-100 via-emerald-50 to-emerald-200/70 dark:from-emerald-900/45 dark:via-emerald-800/40 dark:to-emerald-700/35"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-white/40 blur-2xl dark:bg-emerald-300/15"
-              aria-hidden
-            />
-            <div className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center">
-              <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg ring-4 ring-white/60 transition-transform duration-300 group-hover:scale-105 group-active:scale-95 dark:bg-emerald-500 dark:ring-emerald-700/40 sm:h-12 sm:w-12">
-                <ArrowRight className="h-6 w-6 sm:h-5 sm:w-5" strokeWidth={2.5} aria-hidden />
-              </span>
-              <span className="text-[12px] font-black uppercase tracking-[0.14em] leading-tight text-emerald-900 dark:text-emerald-100">
-                See more
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5">
-            <span className="truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px]">
-              Browse all requests
-            </span>
-            <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px]">
-              Explore the full list
-            </span>
-          </div>
-        </button>
       </div>
     </section>
   );
