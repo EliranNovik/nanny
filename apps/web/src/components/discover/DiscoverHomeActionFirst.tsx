@@ -648,25 +648,6 @@ export function DiscoverHomeActionFirst({
               <div className="w-full px-4 pt-2 pb-2">
                 <DiscoverHomeMyOpenRequests />
               </div>
-              <div className="w-full px-4 pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
-                      {HIRE.title}
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      writeDiscoverHomeIntent("work");
-                    }}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-full bg-slate-100 px-4 py-2.5 text-[13px] font-bold text-slate-700 transition-all active:scale-95 dark:bg-zinc-800 dark:text-zinc-200 border border-slate-200 dark:border-white/5 shadow-sm"
-                  >
-                    Help others?
-                    <ChevronRight className="-mr-0.5 h-4 w-4 opacity-70" aria-hidden />
-                  </button>
-                </div>
-              </div>
               <div className="w-full px-4 pt-4 pb-2">
                 <DiscoverHomeSavedProfiles />
               </div>
@@ -705,26 +686,6 @@ export function DiscoverHomeActionFirst({
                   mode="work"
                   exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
                 />
-              </div>
-
-              <div className="w-full px-4 pt-6">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="text-[1.375rem] font-black leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
-                      {workTheme.title}
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      writeDiscoverHomeIntent("hire");
-                    }}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-full bg-slate-100 px-4 py-2.5 text-[13px] font-bold text-slate-700 transition-all active:scale-95 dark:bg-zinc-800 dark:text-zinc-200 border border-slate-200 dark:border-white/5 shadow-sm"
-                  >
-                    Need help?
-                    <ChevronRight className="-mr-0.5 h-4 w-4 opacity-70" aria-hidden />
-                  </button>
-                </div>
               </div>
             </div>
           )}

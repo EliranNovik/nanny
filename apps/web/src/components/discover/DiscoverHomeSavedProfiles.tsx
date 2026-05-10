@@ -158,7 +158,7 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
     return (
       <section className={cn("w-full", className)} aria-label="Your favorites">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
+          <p className="text-[13px] font-black uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
             Your Favorites
           </p>
         </div>
@@ -185,7 +185,7 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
   return (
     <section className={cn("w-full", className)} aria-label="Your favorites">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
+        <p className="text-[13px] font-black uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
           Your Favorites
         </p>
         <div className="hidden items-center gap-1.5 md:flex">

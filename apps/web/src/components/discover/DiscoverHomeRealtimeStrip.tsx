@@ -47,6 +47,7 @@ import {
   type DiscoverOpenHelpRequestRow,
 } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { sendKnockMessage } from "@/lib/knockMessage";
+import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -177,18 +178,21 @@ type HireStripItem = {
   categoryIcon: ReactNode;
 };
 
-/** Match `OpenJobRequestMatchCard` decline / accept round actions (discover request sheet). */
-const workStripRoundActionBtn = cn(
-  "flex items-center justify-center rounded-full shadow-xl transition-all active:scale-90",
+/** Accept = pill with text + icon. Decline = compact round icon-only button. */
+const workStripPillActionBtn = cn(
+  "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3",
+  "text-[15px] font-semibold tracking-tight shadow-lg transition-all active:scale-[0.97]",
   "ring-1 ring-inset disabled:opacity-50 disabled:pointer-events-none",
 );
-const workStripAcceptRoundBtn = cn(
-  workStripRoundActionBtn,
-  "h-16 w-16 bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600 ring-emerald-400/20",
+const workStripAcceptPillBtn = cn(
+  workStripPillActionBtn,
+  "bg-emerald-500 text-white shadow-emerald-500/25 ring-emerald-400/30 hover:bg-emerald-600",
 );
 const workStripDeclineRoundBtn = cn(
-  workStripRoundActionBtn,
-  "h-14 w-14 bg-white text-rose-500 ring-zinc-200 hover:bg-rose-50 dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
+  "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
+  "bg-white text-rose-500 shadow-lg ring-1 ring-inset ring-rose-200",
+  "transition-all active:scale-90 hover:bg-rose-50 disabled:opacity-50 disabled:pointer-events-none",
+  "dark:bg-zinc-800 dark:text-rose-400 dark:ring-zinc-700",
 );
 
 /**
@@ -918,13 +922,13 @@ function StripDialogWorkTitle({
 }) {
   const name = shortDisplayName(displayName) || displayName.trim() || "—";
   return (
-    <span className="inline-flex flex-wrap items-baseline gap-x-1 gap-y-1">
+    <span className="inline-flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-1 sm:gap-x-1">
       <span className="font-bold text-zinc-900 dark:text-white">{name}</span>
       <span className="font-medium text-zinc-600 dark:text-zinc-400">needs your help in </span>
       <span className="inline-flex items-center gap-1.5 font-bold text-zinc-900 dark:text-white">
         {categoryIconNode(
           work.categoryId,
-          "h-[1.1rem] w-[1.1rem] shrink-0 stroke-[2.25] text-sky-600 sm:h-[1.25rem] sm:w-[1.25rem] dark:text-sky-400",
+          "h-[1.25rem] w-[1.25rem] shrink-0 stroke-[2.25] text-sky-600 sm:h-[1.1rem] sm:w-[1.1rem] dark:text-sky-400",
         )}
         <span>{work.title}</span>
       </span>
@@ -1182,7 +1186,7 @@ function DiscoverRealtimeStripDetailDialog({
           ) : (
             <div className="px-4 pb-4 pt-5">
               <DialogHeader className="m-0 space-y-0 p-0 text-center">
-                <DialogTitle className="text-center text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 sm:text-[16px] dark:text-zinc-100">
+                <DialogTitle className="text-center text-[18px] font-semibold leading-snug tracking-tight text-zinc-900 sm:text-[16px] dark:text-zinc-100">
                   {work ? (
                     <StripDialogWorkTitle displayName={displayName} work={work} />
                   ) : (
@@ -1478,7 +1482,7 @@ function DiscoverRealtimeStripDetailDialog({
 
         {work ? (
           <div className="shrink-0 border-t border-zinc-200 bg-white px-4 pb-3 pt-3 dark:border-zinc-800 dark:bg-[#121212]">
-            <div className="flex items-center justify-center gap-10 pt-1">
+            <div className="flex items-stretch justify-center gap-3 pt-1">
               <button
                 type="button"
                 className={workStripDeclineRoundBtn}
@@ -1490,14 +1494,14 @@ function DiscoverRealtimeStripDetailDialog({
                 aria-label="Decline"
               >
                 {workAction === "decline" ? (
-                  <Loader2 className="h-8 w-8 animate-spin" strokeWidth={2.5} aria-hidden />
+                  <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2.5} aria-hidden />
                 ) : (
-                  <X className="h-8 w-8" strokeWidth={3} aria-hidden />
+                  <X className="h-6 w-6" strokeWidth={2.75} aria-hidden />
                 )}
               </button>
               <button
                 type="button"
-                className={workStripAcceptRoundBtn}
+                className={workStripAcceptPillBtn}
                 onClick={(e) => {
                   e.stopPropagation();
                   void handleWorkAccept();
@@ -1506,10 +1510,11 @@ function DiscoverRealtimeStripDetailDialog({
                 aria-label="Accept"
               >
                 {workAction === "accept" ? (
-                  <Loader2 className="h-10 w-10 animate-spin" strokeWidth={2.5} aria-hidden />
+                  <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2.5} aria-hidden />
                 ) : (
-                  <Check className="h-10 w-10" strokeWidth={3.5} aria-hidden />
+                  <Check className="h-5 w-5" strokeWidth={3} aria-hidden />
                 )}
+                <span>Accept</span>
               </button>
             </div>
           </div>
@@ -2277,6 +2282,25 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               </span>
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              writeDiscoverHomeIntent("hire");
+            }}
+            className={cn(
+              "flex w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 rounded-2xl py-1 transition-transform",
+              "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "active:scale-[0.97] md:w-[5.5rem]",
+            )}
+            aria-label="Switch to Get help now"
+          >
+            <span className="flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-sm md:h-[5.25rem] md:w-[5.25rem] dark:bg-zinc-800 dark:ring-white/10">
+              <ChevronRight className="h-7 w-7 text-slate-600 dark:text-zinc-200" strokeWidth={2.5} aria-hidden />
+            </span>
+            <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-bold leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
+              Need help?
+            </span>
+          </button>
         </div>
       </div>
       <DiscoverRealtimeStripDetailDialog
@@ -2401,6 +2425,25 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             </span>
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => {
+            writeDiscoverHomeIntent("work");
+          }}
+          className={cn(
+            "flex w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 rounded-2xl py-1 transition-transform",
+            "outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "active:scale-[0.97] md:w-[5.5rem]",
+          )}
+          aria-label="Switch to Help others"
+        >
+          <span className="flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-sm md:h-[5.25rem] md:w-[5.25rem] dark:bg-zinc-800 dark:ring-white/10">
+            <ChevronRight className="h-7 w-7 text-slate-600 dark:text-zinc-200" strokeWidth={2.5} aria-hidden />
+          </span>
+          <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-bold leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
+            Help others?
+          </span>
+        </button>
       </div>
     </div>
     <DiscoverRealtimeStripDetailDialog

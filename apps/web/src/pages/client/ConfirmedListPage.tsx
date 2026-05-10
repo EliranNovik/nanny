@@ -15,7 +15,12 @@ import { useTheme } from "@/context/ThemeContext";
 import { useJobRequestsRealtime } from "@/hooks/useJobRequestsRealtime";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { SERVICE_CATEGORIES, isServiceCategoryId } from "@/lib/serviceCategories";
+import {
+  SERVICE_CATEGORIES,
+  isServiceCategoryId,
+  serviceCategoryLabel,
+  getServiceCategoryImage,
+} from "@/lib/serviceCategories";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +39,6 @@ import {
   UploadCloud,
   Plus,
   CheckCircle2,
-  ChevronDown,
   Clock,
   Zap,
 } from "lucide-react";
@@ -161,6 +165,18 @@ function normalizeCityKey(city: string | null | undefined): string | null {
   return t.length > 0 ? t : null;
 }
 
+/** First public image URL uploaded with the request, if any (`service_details.images`). */
+function firstJobImage(
+  serviceDetails: Record<string, unknown> | null | undefined,
+): string | null {
+  const imgs = (serviceDetails as Record<string, unknown> | null)?.images;
+  if (!Array.isArray(imgs)) return null;
+  const found = (imgs as unknown[]).find(
+    (u): u is string => typeof u === "string" && u.trim().length > 0,
+  );
+  return found ?? null;
+}
+
 function clientRequestPin(job: Record<string, unknown> | null | undefined): {
   lat: number;
   lng: number;
@@ -251,17 +267,75 @@ function ElapsedTimer({
   return <>{formatElapsedTime(elapsedSeconds)}</>;
 }
 
+function ConfirmedRequestCommentsPreview({
+  requestComments,
+  onOpenComments,
+}: {
+  requestComments: any[];
+  onOpenComments: () => void;
+}) {
+  return (
+    <div
+      className="cursor-pointer rounded-2xl border border-border/50 bg-background/80 px-3.5 py-3 shadow-sm transition-colors hover:bg-muted/50 dark:bg-background/40"
+      onClick={() => onOpenComments()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenComments();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="mb-2 flex items-center justify-between text-[11px] font-black uppercase tracking-wide text-muted-foreground">
+        <span>Comments ({requestComments.length})</span>
+        <span className="flex items-center text-[10px] font-bold normal-case text-emerald-600">
+          Reply &rsaquo;
+        </span>
+      </div>
+      {requestComments.length > 0 ? (
+        <div className="space-y-3">
+          {requestComments.slice(0, 3).map((c) => (
+            <div key={c.id} className="flex items-start gap-2 text-sm">
+              <Avatar className="h-6 w-6 shrink-0 ring-1 ring-black/5">
+                <AvatarImage src={c.author?.photo_url || undefined} />
+                <AvatarFallback className="text-[8px] font-bold">
+                  {c.author?.full_name?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <span className="mr-1.5 truncate text-xs font-bold text-foreground">
+                  {c.author?.full_name || "Member"}
+                </span>
+                <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                  {c.body}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="py-1 text-xs italic text-muted-foreground/60">
+          No comments yet. Click to reply or add thoughts.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ConfirmedRequestSummaryBody({
   job,
   categoryImageSrc,
   requestComments,
   onOpenComments,
+  hideComments = false,
   imageClassName = "h-[4.75rem] w-[4.75rem] shrink-0 overflow-hidden rounded-2xl bg-background ring-1 ring-border/60 lg:h-20 lg:w-20",
 }: {
   job: any;
   categoryImageSrc: string | null;
   requestComments: any[];
   onOpenComments: () => void;
+  hideComments?: boolean;
   imageClassName?: string;
 }) {
   return (
@@ -329,51 +403,14 @@ function ConfirmedRequestSummaryBody({
         </div>
       ) : null}
 
-      <div
-        className="mt-1 cursor-pointer rounded-2xl border border-border/50 bg-background/80 px-3.5 py-3 shadow-sm transition-colors hover:bg-muted/50 dark:bg-background/40"
-        onClick={() => onOpenComments()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpenComments();
-          }
-        }}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="mb-2 flex items-center justify-between text-[11px] font-black uppercase tracking-wide text-muted-foreground">
-          <span>Comments ({requestComments.length})</span>
-          <span className="flex items-center text-[10px] font-bold normal-case text-emerald-600">
-            Reply &rsaquo;
-          </span>
+      {hideComments ? null : (
+        <div className="mt-1">
+          <ConfirmedRequestCommentsPreview
+            requestComments={requestComments}
+            onOpenComments={onOpenComments}
+          />
         </div>
-        {requestComments.length > 0 ? (
-          <div className="space-y-3">
-            {requestComments.slice(0, 3).map((c) => (
-              <div key={c.id} className="flex items-start gap-2 text-sm">
-                <Avatar className="h-6 w-6 shrink-0 ring-1 ring-black/5">
-                  <AvatarImage src={c.author?.photo_url || undefined} />
-                  <AvatarFallback className="text-[8px] font-bold">
-                    {c.author?.full_name?.charAt(0) || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <span className="mr-1.5 truncate text-xs font-bold text-foreground">
-                    {c.author?.full_name || "Member"}
-                  </span>
-                  <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-                    {c.body}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="py-1 text-xs italic text-muted-foreground/60">
-            No comments yet. Click to reply or add thoughts.
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 }
@@ -506,10 +543,7 @@ function ConfirmedJobMediaSection({
         Photos & videos
       </h3>
       <div className="mt-3">
-        <p className="mb-4 text-sm text-muted-foreground">
-          Upload photos or short videos so helpers can see the space, items, or
-          task before they arrive.
-        </p>
+       
 
         <div className="space-y-6">
           <input
@@ -569,19 +603,16 @@ function ConfirmedJobMediaSection({
               <h4 className="text-lg font-bold text-foreground">
                 Add photos or videos
               </h4>
-              <p className="mt-1 px-2 text-sm text-muted-foreground sm:px-4">
-                Tap to pick from your library or camera — or drop files here
-                (images and MP4 / WebM / MOV).
-              </p>
+              
             </div>
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               type="button"
-              className="mt-2 h-auto gap-2 rounded-2xl px-8 py-6 font-black"
+              className="mt-2 h-9 gap-1.5 rounded-full border-slate-200 bg-white px-4 text-[13px] font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
               disabled={savingDetails}
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4" />
               Add media
             </Button>
 
@@ -660,7 +691,6 @@ function LiveRequestHero({
   liveMapHelpers,
   createdAt,
   startTime,
-  onEditRequest,
   onNavigateToApplicants,
   /** Mobile: map fills a flex parent; timer/cards clear fixed bottom dock */
   mobileFixedDockLayout = false,
@@ -675,7 +705,6 @@ function LiveRequestHero({
   liveMapHelpers: LiveMapHelperSpot[];
   createdAt?: string | null;
   startTime: number;
-  onEditRequest?: () => void;
   onNavigateToApplicants?: () => void;
   mobileFixedDockLayout?: boolean;
   mobileMapCompact?: boolean;
@@ -997,15 +1026,21 @@ function LiveRequestHero({
     );
   }
 
+  const categoryLabel = serviceCategoryLabel(job.service_type ?? null);
+  const categoryImage =
+    firstJobImage(job.service_details ?? null) ??
+    getServiceCategoryImage(job.service_type ?? null);
+
   return (
     <div
       className={cn(
-        "group relative w-full animate-fade-in overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_-28px_rgba(0,0,0,0.65)] ring-1 ring-white/10 md:rounded-[28px]",
+        "group relative w-full animate-fade-in overflow-hidden bg-zinc-950",
+        "md:rounded-[28px] md:border md:border-white/10 md:shadow-[0_24px_80px_-28px_rgba(0,0,0,0.65)] md:ring-1 md:ring-white/10",
         /* Mobile: fixed-dock page — fill flex parent; else capped hero height */
         mobileFixedDockLayout
           ? "mb-0 mt-0 flex h-full w-full min-h-0 flex-1 max-md:max-h-none"
           : "mb-0 mt-0 h-[min(42vh,360px)] min-h-[220px] flex-1 max-md:max-h-[44vh]",
-        "md:mb-0 md:mt-0 md:h-[min(400px,calc(100vh-18rem))] md:max-h-[432px] md:flex-none lg:h-[420px]",
+        "md:mb-0 md:mt-0 md:h-[min(520px,calc(100vh-12rem))] md:max-h-[560px] md:flex-none lg:h-[540px]",
       )}
     >
       <div
@@ -1037,11 +1072,33 @@ function LiveRequestHero({
         aria-hidden
       />
 
+      {/* Mobile — category badge (image + label) so user immediately sees what the request is about */}
+      <div className="pointer-events-none absolute right-3 top-3 z-[15] max-w-[min(46%,13rem)] md:hidden">
+        <div className="flex items-center gap-2 rounded-2xl bg-black/55 p-1.5 pr-3 shadow-lg backdrop-blur-md">
+          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white/10 ring-1 ring-inset ring-white/15">
+            <img
+              src={categoryImage}
+              alt=""
+              className="h-full w-full object-cover"
+              draggable={false}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-black uppercase leading-none tracking-wider text-white/70">
+              Request
+            </p>
+            <p className="mt-1 truncate text-[12.5px] font-bold leading-none text-white">
+              {categoryLabel}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Mobile — elapsed time (+ map actions when provided); dock no longer holds Restart/Stop */}
       {mobileMapBottomActions && !acceptedLead ? (
-        <div className="absolute bottom-3 left-3 right-3 z-30 hidden max-md:flex max-md:items-end max-md:justify-between max-md:gap-2">
+        <div className="absolute bottom-0 left-0 right-0 z-30 hidden max-md:flex max-md:items-end max-md:justify-between max-md:gap-2 max-md:px-2 max-md:pb-1.5">
           <div className="pointer-events-none shrink-0">
-            <div className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/60 px-3 py-1.5 shadow-lg backdrop-blur-md">
+            <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 shadow-lg backdrop-blur-md">
               <Clock className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
               <span className="font-mono text-[13px] font-bold tabular-nums text-white">
                 <ElapsedTimer createdAt={createdAt} startTime={startTime} />
@@ -1078,24 +1135,9 @@ function LiveRequestHero({
         </div>
       )}
 
-      {/* Mobile — edit (pro SaaS header) */}
-      {onEditRequest ? (
-        <div className="pointer-events-auto absolute right-3 top-3 z-20 md:hidden">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-9 rounded-full bg-black/45 px-3 text-xs font-bold text-primary shadow-sm backdrop-blur-md hover:bg-black/55 hover:text-primary"
-            onClick={onEditRequest}
-          >
-            Edit request
-          </Button>
-        </div>
-      ) : null}
-
       {/* Top-left — status + spinner */}
       <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(52%,14rem)] pr-1 sm:left-4 sm:top-4 md:max-w-[min(85%,22rem)]">
-        <div className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-2xl border border-white/12 bg-black/50 px-3 py-2 text-[13px] font-semibold text-white shadow-lg backdrop-blur-md sm:gap-2 sm:px-4 sm:py-2.5 sm:text-[15px] md:border-border/50 md:bg-white/95 md:text-foreground dark:md:bg-zinc-950/95">
+        <div className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-2xl bg-black/50 px-3 py-2 text-[13px] font-semibold text-white shadow-lg backdrop-blur-md sm:gap-2 sm:px-4 sm:py-2.5 sm:text-[15px] md:border md:border-border/50 md:bg-white/95 md:text-foreground dark:md:bg-zinc-950/95">
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-200 md:hidden">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -1116,9 +1158,9 @@ function LiveRequestHero({
         </div>
       </div>
 
-      {/* Top-right — helpers count (desktop / tablet) */}
+      {/* Bottom-right — helpers count (desktop / tablet); moved from top-right to leave room for the request summary overlay */}
       {respondersCount > 0 ? (
-        <div className="pointer-events-none absolute right-4 top-4 z-10 hidden w-[4.85rem] flex-col rounded-2xl border border-sky-500/35 bg-gradient-to-br from-sky-50 to-white px-2.5 py-2 text-center shadow-md backdrop-blur-sm dark:border-sky-500/35 dark:from-sky-950/70 dark:to-zinc-950/95 md:flex">
+        <div className="pointer-events-none absolute bottom-4 right-4 z-10 hidden w-[4.85rem] flex-col rounded-2xl border border-sky-500/35 bg-gradient-to-br from-sky-50 to-white px-2.5 py-2 text-center shadow-md backdrop-blur-sm dark:border-sky-500/35 dark:from-sky-950/70 dark:to-zinc-950/95 md:flex">
           <span className="block text-[9px] font-black uppercase tracking-wide text-sky-900/90 dark:text-sky-200/95">
             Helpers
           </span>
@@ -1338,37 +1380,41 @@ function ConfirmedApplicantHeroTopBadges({
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full",
             "bg-black/25 px-3 py-1.5 shadow-lg backdrop-blur-xl",
-            "text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-white",
+            "text-[10px] font-bold uppercase leading-none tracking-[0.16em] text-white",
             "ring-1 ring-inset ring-white/15",
           )}
           role="status"
-          aria-label="Live now, available for jobs"
+          aria-label="Available now for jobs"
         >
           <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
             <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
           </span>
-          <span className="pr-0.5">Live</span>
+          <span className="pr-0.5">Available now</span>
         </span>
       ) : null}
 
       {canStartBadge ? (
         <span
           className={cn(
-            "inline-flex max-w-[min(100%,11rem)] items-center gap-1.5 whitespace-nowrap rounded-2xl px-2.5 py-2",
-            "bg-gradient-to-br from-emerald-500/95 via-emerald-400/95 to-teal-500/95 text-white",
-            "shadow-xl shadow-emerald-500/20 ring-1 ring-inset ring-white/15",
+            "inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-1.5 pr-4",
+            "bg-black/12 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/15",
           )}
           role="status"
         >
           <Zap
-            className="h-3.5 w-3.5 shrink-0 text-white/95"
-            strokeWidth={2.75}
+            className="h-[1.125rem] w-[1.125rem] shrink-0 text-emerald-400"
+            strokeWidth={2.5}
             aria-hidden
           />
-          <span className="text-[10px] font-black uppercase leading-none tracking-[0.12em]">
-            Ready in {canStartBadge}
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-semibold leading-none text-white/80">
+              Ready in
+            </span>
+            <span className="mt-0.5 text-[13px] font-black leading-none tracking-tight text-white">
+              {canStartBadge.toLowerCase() === "immediately" ? "Now" : canStartBadge}
+            </span>
+          </div>
         </span>
       ) : null}
     </div>
@@ -1409,7 +1455,6 @@ function buildApplicantMediaSlides(
 function ConfirmedApplicantMediaHero({
   userId,
   photoUrl,
-  fullName,
   initials,
   gallery,
   topBadges,
@@ -1418,7 +1463,6 @@ function ConfirmedApplicantMediaHero({
 }: {
   userId: string;
   photoUrl: string | null;
-  fullName: string;
   initials: string;
   gallery: PublicProfileGalleryRow[];
   topBadges: ReactNode;
@@ -1426,7 +1470,6 @@ function ConfirmedApplicantMediaHero({
   respondsWithinLabel?: string | null;
   bottomOverlay: ReactNode;
 }) {
-  const navigate = useNavigate();
   const slides = useMemo(
     () => buildApplicantMediaSlides(photoUrl, gallery),
     [photoUrl, gallery],
@@ -1460,15 +1503,11 @@ function ConfirmedApplicantMediaHero({
   }, [userId, photoUrl, slidesKey]);
 
   return (
-    <button
-      type="button"
+    <div
       className={cn(
-        "relative aspect-[3/4] w-full max-md:max-h-[min(48vh,380px)] max-md:min-h-[200px] shrink-0 overflow-hidden border-0 bg-transparent p-0 text-left",
-        "cursor-pointer rounded-t-[26px] transition-[transform,filter] hover:brightness-[1.02] active:scale-[0.995]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card",
+        "relative aspect-[3/4] w-full max-md:max-h-[min(48vh,380px)] max-md:min-h-[200px] shrink-0 overflow-hidden rounded-t-[26px] bg-transparent text-left",
+        "transition-[transform,filter] group-hover:brightness-[1.02]",
       )}
-      onClick={() => navigate(`/profile/${userId}`)}
-      aria-label={`View public profile of ${fullName}`}
     >
       {showStrip ? (
         <div
@@ -1476,7 +1515,6 @@ function ConfirmedApplicantMediaHero({
           onScroll={() => {
             window.requestAnimationFrame(syncIndex);
           }}
-          onClick={(e) => e.stopPropagation()}
           className={cn(
             "absolute inset-0 z-0 flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden",
             "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
@@ -1588,21 +1626,27 @@ function ConfirmedApplicantMediaHero({
       </div>
 
       {respondsWithinLabel ? (
-        <div className="pointer-events-none absolute bottom-3 right-3 z-[17] max-w-[min(100%-1.5rem,11rem)]">
+        <div className="pointer-events-none absolute right-3 top-3 z-[17] max-w-[min(100%-1.5rem,11rem)]">
           <span
             className={cn(
-              "inline-flex min-h-[4.75rem] min-w-[5.25rem] w-full flex-col items-center justify-center gap-1.5 rounded-2xl px-2.5 py-2.5",
-              "bg-gradient-to-br from-sky-600/55 to-cyan-600/45 text-white backdrop-blur-md",
-              "shadow-lg shadow-black/15",
+              "inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-1.5 pr-4",
+              "bg-black/12 text-white shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/15",
             )}
             role="status"
           >
-            <span className="block text-center text-[11px] font-black uppercase leading-snug tracking-[0.1em]">
-              Responds within
-            </span>
-            <span className="block w-full text-center text-[14px] font-black uppercase leading-none tabular-nums tracking-wide text-white">
-              {respondsWithinLabel}
-            </span>
+            <MessageCircle
+              className="h-[1.125rem] w-[1.125rem] shrink-0 text-purple-300"
+              strokeWidth={2.5}
+              aria-hidden
+            />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-semibold leading-none text-white/80">
+                Replies
+              </span>
+              <span className="mt-0.5 text-[13px] font-black leading-none tracking-tight text-white">
+                {respondsWithinLabel}
+              </span>
+            </div>
           </span>
         </div>
       ) : null}
@@ -1615,7 +1659,7 @@ function ConfirmedApplicantMediaHero({
       <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[3] space-y-2 p-4 pt-16">
         {bottomOverlay}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1685,9 +1729,6 @@ export default function ConfirmedListPage() {
   const [editNotes, setEditNotes] = useState("");
   const [updatingDetails, setUpdatingDetails] = useState(false);
   const [mobileRequestDetailsOpen, setMobileRequestDetailsOpen] =
-    useState(false);
-  /** Bottom sheet: collapsed shows title + status only */
-  const [mobileRequestSheetExpanded, setMobileRequestSheetExpanded] =
     useState(false);
   useAuth();
 
@@ -2336,49 +2377,94 @@ export default function ConfirmedListPage() {
       )}
     >
       <div className="app-desktop-shell flex min-h-0 max-w-6xl flex-1 flex-col pt-4 max-md:!px-3 max-md:overflow-visible max-md:pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] max-md:min-h-0 md:block md:flex-none md:overflow-visible md:pb-10 md:pt-6">
-        {/* Desktop: tighter asymmetric grid — sidebar + map/dashboard (less empty middle) */}
-        <div className="flex min-h-0 flex-1 flex-col animate-fade-in overflow-hidden max-md:min-h-0 max-md:flex-none max-md:overflow-visible md:!overflow-visible md:grid md:grid-cols-[292px,minmax(0,1fr)] md:items-start md:gap-5 md:overflow-visible lg:grid-cols-[minmax(0,318px)_minmax(0,1fr)] lg:gap-6 xl:gap-7">
-          {/* Desktop: Request summary — single elevated panel */}
-          {job ? (
-            <section className="hidden min-h-0 min-w-0 md:block">
-              <div className="flex h-full flex-col rounded-[28px] border border-border/70 bg-muted/35 p-5 shadow-[0_2px_24px_-8px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.04] backdrop-blur-sm dark:bg-muted/25 dark:ring-white/[0.06] lg:p-6">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
-                  Request summary
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={openInlineEdit}
-                  className="text-xs font-bold text-emerald-600 hover:bg-emerald-50/50 hover:text-emerald-700"
-                >
-                  Edit details
-                </Button>
-              </div>
-              <div className="mt-4">
-                <ConfirmedRequestSummaryBody
-                  job={job}
-                  categoryImageSrc={categoryImageSrc}
-                  requestComments={requestComments}
-                  onOpenComments={() => setIsCommentsOpen(true)}
-                />
-              </div>
-              </div>
-            </section>
-          ) : null}
+        {/* Desktop: single column — map full-width with request summary overlaid on top-right */}
+        <div className="flex min-h-0 flex-1 flex-col animate-fade-in overflow-hidden max-md:min-h-0 max-md:flex-none max-md:overflow-visible md:!overflow-visible md:block md:items-start md:gap-5 md:overflow-visible">
 
           {/* Map + live status — primary column */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col max-md:min-h-0 max-md:flex-none">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col max-md:-mx-3 max-md:min-h-0 max-md:flex-none">
             <div
               className={cn(
-                "relative flex min-h-0 w-full flex-col overflow-hidden max-md:rounded-[32px] max-md:transition-[height,max-height,flex-grow,flex-shrink] max-md:duration-300 max-md:ease-out",
+                "relative flex min-h-0 w-full flex-col overflow-hidden max-md:transition-[height,max-height,flex-grow,flex-shrink] max-md:duration-300 max-md:ease-out",
                 job
-                  ? mobileRequestSheetExpanded
-                    ? "max-md:h-[min(36vh,300px)] max-md:max-h-[40vh] max-md:flex-none max-md:shrink-0"
-                    : "max-md:h-[min(44vh,380px)] max-md:min-h-[220px] max-md:flex-none max-md:shrink-0"
+                  ? "max-md:h-[min(44vh,380px)] max-md:min-h-[220px] max-md:flex-none max-md:shrink-0"
                   : "max-md:min-h-[220px] max-md:flex-none",
               )}
             >
+              {/* Desktop: floating timer + Restart/Stop on top of the map (replaces the strip below the map) */}
+              {job && !freelancers.some((f) => f.is_open_job_accepted) ? (
+                <div className="pointer-events-none absolute left-4 top-[4.5rem] z-30 hidden md:block">
+                  <div className="pointer-events-auto inline-flex items-center gap-2 rounded-2xl border border-white/40 bg-background/95 p-1.5 pl-3 shadow-xl backdrop-blur-xl dark:border-white/[0.08] dark:bg-zinc-950/90">
+                    <div className="inline-flex items-center gap-2">
+                      <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                      <span className="font-mono text-[15px] font-bold tabular-nums text-foreground">
+                        <ElapsedTimer
+                          createdAt={job?.created_at}
+                          startTime={startTime}
+                        />
+                      </span>
+                    </div>
+                    <div className="mx-1 h-6 w-px bg-border/60" aria-hidden />
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-9 rounded-xl px-3 text-xs font-bold"
+                      onClick={handleRestartSearch}
+                      disabled={restarting || deleting}
+                    >
+                      {restarting ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      Restart
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-9 rounded-xl px-3 text-xs font-bold text-white [&_svg]:text-white"
+                      onClick={handleStopRequest}
+                      disabled={deleting || restarting}
+                    >
+                      {deleting ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <StopCircle className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      Stop
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Desktop: Request summary — floating card on top-right of the map */}
+              {job ? (
+                <section className="pointer-events-none absolute right-4 top-4 z-30 hidden w-[340px] max-w-[calc(100%-2rem)] md:block lg:w-[360px]">
+                  <div className="pointer-events-auto flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-[24px] border border-white/40 bg-background/95 p-5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.04] backdrop-blur-xl dark:bg-zinc-950/90 dark:border-white/[0.08] dark:ring-white/[0.06]">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+                        Request summary
+                      </h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={openInlineEdit}
+                        className="text-xs font-bold text-emerald-600 hover:bg-emerald-50/50 hover:text-emerald-700"
+                      >
+                        Edit details
+                      </Button>
+                    </div>
+                    <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                      <ConfirmedRequestSummaryBody
+                        job={job}
+                        categoryImageSrc={categoryImageSrc}
+                        requestComments={requestComments}
+                        onOpenComments={() => setIsCommentsOpen(true)}
+                      />
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+
               <LiveRequestHero
                 job={job}
                 freelancers={freelancers}
@@ -2386,10 +2472,9 @@ export default function ConfirmedListPage() {
                 liveMapHelpers={liveMapHelpers}
                 createdAt={job?.created_at}
                 startTime={startTime}
-                onEditRequest={job ? openInlineEdit : undefined}
                 onNavigateToApplicants={navigateToApplicantsMobile}
                 mobileFixedDockLayout={!!job}
-                mobileMapCompact={!!job && mobileRequestSheetExpanded}
+                mobileMapCompact={false}
                 mobileMapBottomActions={
                   job &&
                   !freelancers.some((f) => f.is_open_job_accepted) ? (
@@ -2428,199 +2513,34 @@ export default function ConfirmedListPage() {
               />
             </div>
 
-            {/* Mobile — fixed dock: one shell flush with bottom nav (same bg / width rhythm as BottomNav) */}
+            {/* Mobile — fixed dock: tap opens the full request details modal directly. */}
             {job ? (
-              <div className="pointer-events-none fixed inset-x-0 z-[125] md:hidden bottom-[max(4.375rem,calc(env(safe-area-inset-bottom,0px)+3.25rem))]">
+              <div className="pointer-events-none fixed inset-x-0 z-[125] md:hidden bottom-[max(3.75rem,calc(env(safe-area-inset-bottom,0px)+3.25rem))]">
                 <div className="pointer-events-auto w-full overflow-hidden rounded-t-2xl border border-border/60 border-b-0 bg-background shadow-[0_-2px_20px_-12px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.03] dark:border-white/[0.08] dark:shadow-[0_-4px_28px_-14px_rgba(0,0,0,0.5)] dark:ring-white/[0.05]">
-                  <div
-                    className={cn(
-                      "relative flex flex-col overflow-hidden bg-background",
-                      mobileRequestSheetExpanded
-                        ? "max-h-[min(46vh,380px)] min-h-0"
-                        : "shrink-0",
-                    )}
+                  <button
+                    type="button"
+                    onClick={() => setMobileRequestDetailsOpen(true)}
+                    className="relative flex w-full shrink-0 flex-col bg-background pb-3 pt-1 text-left outline-none transition-colors hover:bg-muted/15 active:bg-muted/25"
+                    aria-label="Add more information to your request"
                   >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMobileRequestSheetExpanded((open) => !open)
-                      }
-                      className="relative w-full shrink-0 pb-3 pt-1 text-left outline-none transition-colors hover:bg-muted/15 active:bg-muted/25"
-                      aria-expanded={mobileRequestSheetExpanded}
-                      aria-label={
-                        mobileRequestSheetExpanded
-                          ? "Collapse request summary"
-                          : "Expand request summary"
-                      }
-                    >
-                      <div
-                        aria-hidden
-                        className="mx-auto mb-2 mt-2 h-1 w-11 shrink-0 rounded-full bg-muted-foreground/35"
-                      />
-                      <div className="relative px-10 pb-1 pt-1 text-center">
-                        <h2 className="text-xl font-black tracking-tight text-foreground">
-                          Your request is active
-                        </h2>
-                        <p className="mt-1 text-sm font-medium leading-relaxed text-muted-foreground">
-                          {liveStatusLine}
-                        </p>
-                        <ChevronDown
-                          className={cn(
-                            "pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-transform duration-300",
-                            mobileRequestSheetExpanded && "rotate-180",
-                          )}
-                          aria-hidden
-                        />
-                      </div>
-                    </button>
-
-                    {mobileRequestSheetExpanded ? (
-                      <div className="flex min-h-0 max-h-[min(40vh,340px)] flex-col overflow-y-auto border-t border-border/50 dark:border-white/[0.06]">
-                        {freelancers.length > 0 ? (
-                          <div className="flex shrink-0 justify-center px-4 pt-3">
-                            <Badge
-                              variant="secondary"
-                              className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-800 dark:text-sky-100"
-                            >
-                              {freelancers.length} helper
-                              {freelancers.length === 1 ? "" : "s"} responding
-                            </Badge>
-                          </div>
-                        ) : null}
-
-                        <div className="shrink-0 px-4 pt-4">
-                          <div className="flex items-start gap-3 rounded-2xl border border-border/50 bg-muted/30 p-3">
-                            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-background ring-1 ring-border/60">
-                              {categoryImageSrc ? (
-                                <img
-                                  src={categoryImageSrc}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-lg">
-                                  {job.service_type === "cleaning" && "🧹"}
-                                  {job.service_type === "cooking" && "👨‍🍳"}
-                                  {job.service_type === "pickup_delivery" && "📦"}
-                                  {job.service_type === "nanny" && "👶"}
-                                  {job.service_type === "other_help" && "🔧"}
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1 pt-0.5">
-                              <p className="line-clamp-2 text-[15px] font-semibold capitalize leading-snug text-foreground">
-                                {job.service_type?.replace("_", " & ")}
-                                {job.service_type === "other_help" &&
-                                  job.service_details?.other_type &&
-                                  ` · ${job.service_details.other_type.replace(/_/g, " ")}`}
-                              </p>
-                              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                {job.location_city ? (
-                                  <span className="inline-flex items-center gap-1">
-                                    <MapPin className="h-3.5 w-3.5 shrink-0" />
-                                    {job.location_city}
-                                  </span>
-                                ) : null}
-                                {job.time_duration ? (
-                                  <span className="inline-flex items-center gap-1 capitalize">
-                                    <Clock className="h-3.5 w-3.5 shrink-0" />
-                                    {job.time_duration.replace(/_/g, " ")}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-3 shrink-0 space-y-2 px-4 pb-4">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-11 w-full rounded-2xl border-border/65 font-semibold"
-                            onClick={() => setMobileRequestDetailsOpen(true)}
-                          >
-                            Full request details
-                          </Button>
-                          {freelancers.length > 0 ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="h-11 w-full rounded-2xl text-sm font-semibold text-primary"
-                              onClick={navigateToApplicantsMobile}
-                            >
-                              {`View helpers (${freelancers.length})`}
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
+                    <div
+                      aria-hidden
+                      className="mx-auto mb-2 mt-2 h-1 w-11 shrink-0 rounded-full bg-muted-foreground/35"
+                    />
+                    <div className="flex flex-col items-center gap-1.5 px-6 pb-1 pt-1 text-center">
+                      <p className="inline-flex items-center justify-center gap-1.5 text-base font-bold leading-snug text-foreground">
+                        <Plus className="h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2.75} aria-hidden />
+                        Add more information
+                      </p>
+                      <p className="sr-only">
+                        {liveStatusLine}
+                      </p>
+                    </div>
+                  </button>
                 </div>
               </div>
             ) : null}
 
-            {/* Desktop — status strip */}
-            <div className="mt-4 hidden md:block md:rounded-[28px] md:border md:border-border/65 md:bg-muted/30 md:p-5 md:shadow-[0_8px_32px_-12px_rgba(0,0,0,0.12)] lg:p-6 dark:bg-muted/20">
-              <div className="flex flex-col gap-1 md:gap-1.5 md:text-left">
-                <h2 className="text-center text-xl font-black tracking-tight md:text-left md:text-[1.65rem]">
-                  Your request is active
-                </h2>
-                <p className="text-center text-sm font-medium leading-relaxed text-muted-foreground md:text-left md:max-w-prose">
-                  {liveStatusLine}
-                </p>
-                <div className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border/50 bg-background/70 px-3 py-2 shadow-sm backdrop-blur-sm md:w-auto md:justify-start dark:bg-background/35">
-                  <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <span className="font-mono text-lg font-bold tabular-nums text-foreground">
-                    <ElapsedTimer
-                      createdAt={job?.created_at}
-                      startTime={startTime}
-                    />
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap justify-center gap-2.5 md:justify-start">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleRestartSearch}
-                  disabled={restarting || deleting}
-                >
-                  {restarting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Restarting...
-                    </>
-                  ) : (
-                    <>
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Restart Search
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="text-white [&_svg]:text-white"
-                  onClick={handleStopRequest}
-                  disabled={deleting || restarting}
-                >
-                  {deleting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Stopping...
-                    </>
-                  ) : (
-                    <>
-                      <StopCircle className="mr-2 h-4 w-4" />
-                      Stop Request
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -2699,38 +2619,60 @@ export default function ConfirmedListPage() {
                   .join("")
                   .toUpperCase() || "?";
 
+              const rateLine =
+                fp?.hourly_rate_min && fp?.hourly_rate_max
+                  ? `₪${fp.hourly_rate_min}–${fp.hourly_rate_max}/hr`
+                  : fp?.hourly_rate_min
+                    ? `From ₪${fp.hourly_rate_min}/hr`
+                    : fp?.hourly_rate_max
+                      ? `Up to ₪${fp.hourly_rate_max}/hr`
+                      : null;
+
               return (
                 <div
                   key={freelancer.id}
+                  role="link"
+                  tabIndex={0}
+                  onClick={() =>
+                    navigate(`/profile/${encodeURIComponent(freelancer.id)}`)
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(
+                        `/profile/${encodeURIComponent(freelancer.id)}`,
+                      );
+                    }
+                  }}
+                  aria-label={`View ${freelancer.full_name ?? "helper"}'s profile`}
                   className={cn(
-                    "flex w-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-white shadow-none",
-                    "max-md:mx-auto max-md:max-w-lg dark:bg-background",
+                    "group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[22px] bg-zinc-950 shadow-2xl shadow-black/40 outline-none transition-transform active:scale-[0.995]",
+                    "focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "max-md:mx-auto max-md:max-w-lg",
                     "md:w-[min(82vw,300px)] md:flex-shrink-0 md:snap-start",
                   )}
                 >
-                  <div className="flex flex-1 flex-col p-0">
-                    <ConfirmedApplicantMediaHero
-                      userId={freelancer.id}
-                      photoUrl={freelancer.photo_url}
-                      fullName={freelancer.full_name ?? ""}
-                      initials={initials}
-                      gallery={galleryByUserId[freelancer.id] ?? []}
-                      topBadges={
-                        <ConfirmedApplicantHeroTopBadges
-                          fp={fp}
-                          liveHelpWeekCount={
-                            liveHelpWeekByHelperId[freelancer.id]
-                          }
-                        />
-                      }
-                      respondsWithinLabel={respondsWithinCardLabel(
-                        helperReplyStatsByHelperId[freelancer.id]
-                          ?.avg_seconds,
-                        helperReplyStatsByHelperId[freelancer.id]?.sample_count,
-                      )}
-                      bottomOverlay={
-                        <>
-                          <div className="flex min-w-0 items-baseline gap-1 text-[22px] font-black leading-tight tracking-tight text-white drop-shadow-md">
+                  <ConfirmedApplicantMediaHero
+                    userId={freelancer.id}
+                    photoUrl={freelancer.photo_url}
+                    initials={initials}
+                    gallery={galleryByUserId[freelancer.id] ?? []}
+                    topBadges={
+                      <ConfirmedApplicantHeroTopBadges
+                        fp={fp}
+                        liveHelpWeekCount={
+                          liveHelpWeekByHelperId[freelancer.id]
+                        }
+                      />
+                    }
+                    respondsWithinLabel={respondsWithinCardLabel(
+                      helperReplyStatsByHelperId[freelancer.id]?.avg_seconds,
+                      helperReplyStatsByHelperId[freelancer.id]?.sample_count,
+                    )}
+                    bottomOverlay={
+                      <>
+                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[22px] font-black leading-tight tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.55)]">
+                          <div className="flex min-w-0 items-baseline gap-1">
                             <h3 className="line-clamp-2 min-w-0">
                               {freelancer.full_name}
                             </h3>
@@ -2742,144 +2684,123 @@ export default function ConfirmedListPage() {
                               />
                             ) : null}
                           </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <StarRating
-                              rating={fp?.rating_avg || 0}
-                              totalRatings={fp?.rating_count || 0}
-                              size="md"
-                              showCount={true}
-                              numberClassName="text-white drop-shadow-sm"
-                              countClassName="text-white/85"
-                              starClassName="text-amber-400 drop-shadow-sm"
-                              emptyStarClassName="text-white/35"
-                            />
-                          </div>
-                        </>
-                      }
-                    />
-
-                    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-3">
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 shrink-0 text-primary/80" />
-                        <span className="truncate">
-                          {freelancer.city || "Location not set"}
-                        </span>
-                      </div>
-
-                      {(fp?.hourly_rate_min || fp?.hourly_rate_max) && (
-                        <p className="text-sm">
-                          <span className="text-muted-foreground">Rate </span>
-                          <span className="font-bold text-foreground">
-                            {fp.hourly_rate_min && fp.hourly_rate_max
-                              ? `₪${fp.hourly_rate_min}–${fp.hourly_rate_max}/hr`
-                              : fp.hourly_rate_min
-                                ? `From ₪${fp.hourly_rate_min}/hr`
-                                : `Up to ₪${fp.hourly_rate_max}/hr`}
-                          </span>
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap gap-1.5">
-                        {fp?.has_first_aid && (
-                          <Badge
-                            variant="success"
-                            className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                          >
-                            🩹 First Aid
-                          </Badge>
-                        )}
-                        {fp?.newborn_experience && (
-                          <Badge
-                            variant="secondary"
-                            className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                          >
-                            👶 Newborn
-                          </Badge>
-                        )}
-                        {fp?.special_needs_experience && (
-                          <Badge
-                            variant="secondary"
-                            className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                          >
-                            💜 Special Needs
-                          </Badge>
-                        )}
-                      </div>
-
-                      {fp?.bio && (
-                        <p className="line-clamp-3 text-sm leading-snug text-muted-foreground">
-                          {fp.bio}
-                        </p>
-                      )}
-
-                      {freelancer.confirmation_note && (
-                        <div
-                          className={cn(
-                            "rounded-2xl border p-3",
-                            freelancer.is_open_job_accepted
-                              ? "border-amber-500/25 bg-amber-500/10"
-                              : "border-primary/25 bg-primary/8",
-                          )}
-                        >
-                          <p
-                            className={cn(
-                              "mb-1 text-[11px] font-bold uppercase tracking-wide",
-                              freelancer.is_open_job_accepted
-                                ? "text-amber-700 dark:text-amber-400"
-                                : "text-primary",
-                            )}
-                          >
-                            Note from helper
-                          </p>
-                          <p
-                            className={cn(
-                              "text-sm leading-snug",
-                              freelancer.is_open_job_accepted
-                                ? "text-amber-900 dark:text-amber-200"
-                                : "text-foreground",
-                            )}
-                          >
-                            {freelancer.confirmation_note}
-                          </p>
+                          {freelancer.city ? (
+                            <span className="line-clamp-1 max-w-full shrink-0 text-[14px] font-semibold leading-tight text-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.45)]">
+                              {freelancer.city}
+                            </span>
+                          ) : null}
                         </div>
-                      )}
-                    </div>
 
-                    <div className="mt-auto flex items-stretch gap-2 border-t border-border/60 bg-muted/40 px-3 py-3 dark:bg-muted/20">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDecline(freelancer.id)}
-                        disabled={
-                          declining === freelancer.id ||
-                          selecting === freelancer.id
-                        }
-                        className="h-11 flex-1 gap-1 rounded-2xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        {declining === freelancer.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <X className="h-4 w-4" />
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                          <StarRating
+                            rating={fp?.rating_avg || 0}
+                            totalRatings={fp?.rating_count || 0}
+                            size="sm"
+                            showCount
+                            numberClassName="text-white drop-shadow-sm"
+                            countClassName="text-white/75"
+                            starClassName="text-amber-400 drop-shadow-sm"
+                            emptyStarClassName="text-white/30"
+                          />
+                          {rateLine ? (
+                            <span className="text-[12px] font-bold tabular-nums text-white/90 drop-shadow-sm">
+                              {rateLine}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {(fp?.has_first_aid || fp?.newborn_experience) && (
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            {fp?.has_first_aid && (
+                              <span className="inline-flex items-center rounded-full bg-emerald-500/85 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md backdrop-blur-md">
+                                🩹 First Aid
+                              </span>
+                            )}
+                            {fp?.newborn_experience && (
+                              <span className="inline-flex items-center rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/15">
+                                👶 Newborn
+                              </span>
+                            )}
+                          </div>
                         )}
-                        Decline
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleSelect(freelancer.id)}
-                        disabled={
-                          selecting === freelancer.id ||
-                          declining === freelancer.id
-                        }
-                        className="h-11 flex-[1.15] gap-1.5 rounded-2xl font-bold shadow-sm"
-                      >
-                        {selecting === freelancer.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <MessageCircle className="h-4 w-4" />
-                        )}
-                        Select & Chat
-                      </Button>
-                    </div>
+
+                        {fp?.bio ? (
+                          <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-white/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]">
+                            {fp.bio}
+                          </p>
+                        ) : null}
+
+                        {freelancer.confirmation_note ? (
+                          <div
+                            className={cn(
+                              "mt-2 rounded-2xl px-3 py-2 backdrop-blur-md",
+                              freelancer.is_open_job_accepted
+                                ? "bg-amber-500/25 ring-1 ring-inset ring-amber-300/30"
+                                : "bg-white/10 ring-1 ring-inset ring-white/15",
+                            )}
+                          >
+                            <p
+                              className={cn(
+                                "mb-0.5 text-[10px] font-black uppercase tracking-wide",
+                                freelancer.is_open_job_accepted
+                                  ? "text-amber-100"
+                                  : "text-white/75",
+                              )}
+                            >
+                              Note from helper
+                            </p>
+                            <p className="line-clamp-2 text-[12.5px] leading-snug text-white">
+                              {freelancer.confirmation_note}
+                            </p>
+                          </div>
+                        ) : null}
+                      </>
+                    }
+                  />
+
+                  <div
+                    className="flex items-stretch gap-2 border-t border-white/10 bg-zinc-950 px-3 py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDecline(freelancer.id);
+                      }}
+                      disabled={
+                        declining === freelancer.id ||
+                        selecting === freelancer.id
+                      }
+                      className="h-11 flex-1 gap-1 rounded-full border-white/15 bg-white/5 text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+                    >
+                      {declining === freelancer.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                      Decline
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelect(freelancer.id);
+                      }}
+                      disabled={
+                        selecting === freelancer.id ||
+                        declining === freelancer.id
+                      }
+                      className="h-11 flex-[1.4] gap-1.5 rounded-full bg-emerald-500 font-bold text-white shadow-lg shadow-emerald-500/25 hover:bg-emerald-600"
+                    >
+                      {selecting === freelancer.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MessageCircle className="h-4 w-4" />
+                      )}
+                      Select & Chat
+                    </Button>
                   </div>
                 </div>
               );
@@ -2892,13 +2813,12 @@ export default function ConfirmedListPage() {
             {[0, 1].map((k) => (
               <div
                 key={k}
-                className="w-full max-w-lg shrink-0 overflow-hidden rounded-[28px] border border-border/40 bg-muted/40 max-md:mx-auto md:w-[min(82vw,300px)] md:snap-start"
+                className="w-full max-w-lg shrink-0 overflow-hidden rounded-[22px] bg-zinc-950 shadow-2xl shadow-black/40 max-md:mx-auto md:w-[min(82vw,300px)] md:snap-start"
               >
-                <div className="aspect-[3/4] bg-muted animate-pulse" />
-                <div className="p-4 space-y-3">
-                  <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
-                  <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
-                  <div className="h-10 rounded-2xl bg-muted animate-pulse" />
+                <div className="aspect-[3/4] bg-zinc-900 animate-pulse" />
+                <div className="flex items-stretch gap-2 border-t border-white/10 px-3 py-3">
+                  <div className="h-11 flex-1 rounded-full bg-zinc-900 animate-pulse" />
+                  <div className="h-11 flex-[1.4] rounded-full bg-zinc-900 animate-pulse" />
                 </div>
               </div>
             ))}
@@ -2994,33 +2914,28 @@ export default function ConfirmedListPage() {
         >
           <DialogContent
             className={cn(
-              "gap-5 overflow-y-auto border border-border/60 bg-background dark:bg-[hsl(var(--card))]",
-              "max-md:inset-0 max-md:left-0 max-md:top-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-none max-md:border-0 max-md:p-5 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pt-[max(1rem,env(safe-area-inset-top))] max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100",
-              "md:left-[50%] md:top-[50%] md:h-auto md:max-h-[85vh] md:w-full md:max-w-lg md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-3xl md:border md:px-6 md:pb-[max(1rem,env(safe-area-inset-bottom))] md:pt-5",
+              "flex flex-col gap-0 overflow-hidden border border-border/60 bg-background p-0 shadow-2xl dark:bg-[hsl(var(--card))]",
+              "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:h-auto max-md:max-h-[92dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[28px] max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:data-[state=open]:slide-in-from-bottom max-md:data-[state=closed]:slide-out-to-bottom max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100",
+              "md:left-[50%] md:top-[50%] md:h-auto md:max-h-[85vh] md:w-full md:max-w-lg md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-3xl md:border",
             )}
           >
-            <DialogHeader className="text-left">
-              <DialogTitle className="text-xl font-black tracking-tight">
-                Full request details
-              </DialogTitle>
-            </DialogHeader>
-            {job ? (
-              <div className="space-y-5">
-                <div className="flex flex-wrap justify-between gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl"
-                    onClick={() => setMobileRequestDetailsOpen(false)}
-                  >
-                    Close
-                  </Button>
+            <div className="shrink-0 border-b border-border/40 bg-background px-5 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4">
+              <div
+                aria-hidden
+                className="mx-auto mb-3 h-1 w-11 shrink-0 rounded-full bg-muted-foreground/35 md:hidden"
+              />
+              <div className="flex items-center justify-between gap-3">
+                <DialogHeader className="m-0 flex-1 min-w-0 space-y-0 p-0 text-left">
+                  <DialogTitle className="text-xl font-black tracking-tight">
+                    Full request details
+                  </DialogTitle>
+                </DialogHeader>
+                {job ? (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="font-bold text-emerald-600"
+                    className="shrink-0 font-bold text-emerald-600"
                     onClick={() => {
                       setMobileRequestDetailsOpen(false);
                       openInlineEdit();
@@ -3028,33 +2943,44 @@ export default function ConfirmedListPage() {
                   >
                     Edit details
                   </Button>
+                ) : null}
+              </div>
+            </div>
+            {job ? (
+              <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <div className="space-y-5">
+                  <ConfirmedRequestSummaryBody
+                    job={job}
+                    categoryImageSrc={categoryImageSrc}
+                    requestComments={requestComments}
+                    onOpenComments={() => setIsCommentsOpen(true)}
+                    hideComments
+                  />
+                  <ConfirmedJobMediaSection
+                    job={job}
+                    jobId={jobId}
+                    uploadInputId="confirmed-job-media-mobile-dialog"
+                    savingDetails={savingDetails}
+                    onChooseFiles={handleFiles}
+                    onRemoveAt={removeJobMediaAtIndex}
+                    setLightboxIndex={setLightboxIndex}
+                  />
+                  <ConfirmedRequestCommentsPreview
+                    requestComments={requestComments}
+                    onOpenComments={() => setIsCommentsOpen(true)}
+                  />
+                  <ConfirmedPageMoreSpecifics
+                    job={job}
+                    onOpenFullscreenMap={() => {
+                      setMobileRequestDetailsOpen(false);
+                      setMapModalOpen(true);
+                    }}
+                  />
+                  <p className="rounded-2xl bg-muted/30 px-3 py-2.5 text-center text-[11px] leading-snug text-muted-foreground">
+                    Long-form notes and bulk edits are still easiest on desktop —
+                    use Edit details for quick changes here.
+                  </p>
                 </div>
-                <ConfirmedRequestSummaryBody
-                  job={job}
-                  categoryImageSrc={categoryImageSrc}
-                  requestComments={requestComments}
-                  onOpenComments={() => setIsCommentsOpen(true)}
-                />
-                <ConfirmedPageMoreSpecifics
-                  job={job}
-                  onOpenFullscreenMap={() => {
-                    setMobileRequestDetailsOpen(false);
-                    setMapModalOpen(true);
-                  }}
-                />
-                <ConfirmedJobMediaSection
-                  job={job}
-                  jobId={jobId}
-                  uploadInputId="confirmed-job-media-mobile-dialog"
-                  savingDetails={savingDetails}
-                  onChooseFiles={handleFiles}
-                  onRemoveAt={removeJobMediaAtIndex}
-                  setLightboxIndex={setLightboxIndex}
-                />
-                <p className="rounded-2xl bg-muted/30 px-3 py-2.5 text-center text-[11px] leading-snug text-muted-foreground">
-                  Long-form notes and bulk edits are still easiest on desktop —
-                  use Edit details for quick changes here.
-                </p>
               </div>
             ) : null}
           </DialogContent>
