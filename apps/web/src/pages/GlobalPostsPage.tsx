@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Search, X, SortDesc, SortAsc } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,17 @@ import { cn } from "@/lib/utils";
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [composeOpen, setComposeOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("compose") === "1" && user) {
+      setComposeOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("compose");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, user]);
 
   const [showTaggedMe, setShowTaggedMe] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
@@ -24,11 +34,10 @@ export default function GlobalPostsPage() {
   } : null;
 
   return (
-    <PageFrame variant="fullBleed" className="bg-white dark:bg-black" frameName="community-feed">
-      <div className="border-b border-slate-200/60 bg-white dark:border-white/5 dark:bg-zinc-950">
+    <PageFrame variant="fullBleed" className="bg-white dark:bg-background" frameName="community-feed">
+      <div className="bg-white dark:bg-background">
         {/* Simple pro header */}
         <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_-20%,rgba(249,115,22,0.08),transparent_55%)]" />
           <div className="app-desktop-shell relative z-10 px-4 pb-4 pt-8 md:px-4 md:pb-5 md:pt-10">
             <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
               <div className="min-w-0">

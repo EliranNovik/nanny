@@ -8,17 +8,21 @@ import {
   Plus,
   X,
   Image as ImageIcon,
-  Video as VideoIcon,
   Loader2,
   AtSign,
   Trash2,
   LayoutGrid,
   Sparkles,
-  SendHorizontal,
   BadgeCheck,
   VolumeX,
   Volume2,
   Bookmark,
+  ChevronUp,
+  ChevronDown,
+  ListChecks,
+  FileText,
+  Megaphone,
+  CalendarDays,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -651,19 +655,37 @@ export function ComposeModal({
   const [tagResults, setTagResults] = useState<ProfileSnippet[]>([]);
   const [taggedUsers, setTaggedUsers] = useState<ProfileSnippet[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  /** Bottom "Add to your post" tray — expanded shows the full action grid; collapsed shows a thin icon row. */
+  const [addToPostExpanded, setAddToPostExpanded] = useState(true);
+  /** True from the moment a file is picked until the <img>/<video> finishes loading the local blob URL. */
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const mediaPreviewRef = useRef<HTMLDivElement>(null);
   const tagTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tagBoxRef = useRef<HTMLDivElement>(null);
+
+  /** Whenever new media is added, smoothly scroll the preview into view so it's immediately visible. */
+  useEffect(() => {
+    if (!mediaPreview) return;
+    const t = window.setTimeout(() => {
+      mediaPreviewRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [mediaPreview]);
 
   function reset() {
     setCaption("");
     setMediaFile(null);
     setMediaPreview(null);
     setMediaKind(null);
+    setMediaLoading(false);
     setTagQuery("");
     setTagResults([]);
     setTaggedUsers([]);
+    setAddToPostExpanded(true);
   }
 
   function handleClose() {
@@ -676,6 +698,24 @@ export function ComposeModal({
     setMediaKind(kind);
     const url = URL.createObjectURL(file);
     setMediaPreview(url);
+    // Show a skeleton until the <img>/<video> reports it's done loading the local blob.
+    setMediaLoading(true);
+    // Auto-collapse the bottom tray so the freshly added preview is immediately visible.
+    setAddToPostExpanded(false);
+  }
+
+  /** Single-input picker that auto-detects whether the file is an image or video (combined Photo/Video button). */
+  function handlePhotoVideoPick(file: File) {
+    const kind: "image" | "video" = file.type.startsWith("video/") ? "video" : "image";
+    handleMedia(file, kind);
+  }
+
+  /** Stub for not-yet-implemented post types (Gif, Poll, Adoption, Lost Notice, Event). */
+  function comingSoon(label: string) {
+    addToast({
+      title: `${label} coming soon`,
+      description: "We're working on this — stay tuned!",
+    });
   }
 
   useEffect(() => {
@@ -767,76 +807,147 @@ export function ComposeModal({
         className={cn(
           "flex flex-col gap-0 p-0 overflow-hidden",
           // Desktop / large screens: centered modal
-          "sm:max-w-lg sm:rounded-2xl sm:max-h-[min(92vh,660px)]",
+          "sm:max-w-lg sm:rounded-2xl sm:max-h-[min(92vh,720px)]",
           // Mobile: bottom sheet
           "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto",
-          "max-md:h-[85vh] max-md:max-h-[85vh]",
+          "max-md:h-[92vh] max-md:max-h-[92vh]",
           "max-md:translate-x-0 max-md:translate-y-0",
           "max-md:rounded-t-[22px] max-md:rounded-b-none",
         )}
       >
-        <DialogHeader className="border-b border-border/60 px-5 py-4">
-          <DialogTitle className="text-base font-bold flex items-center gap-2">
-            <LayoutGrid className="h-5 w-5 text-orange-500" strokeWidth={2} />
-            New post
+        {/* Custom header — X (left), "Create Post" (center), Post button (right) */}
+        <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-3 py-3 sm:px-4">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={submitting}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/60 active:scale-95 disabled:opacity-50"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" strokeWidth={2.25} />
+          </button>
+          <DialogTitle className="text-[17px] font-bold tracking-tight text-foreground">
+            Create Post
           </DialogTitle>
-        </DialogHeader>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={submitting || (!caption.trim() && !mediaFile)}
+            className={cn(
+              "h-9 min-w-[72px] rounded-full px-4 text-sm font-bold transition-all",
+              submitting || (!caption.trim() && !mediaFile)
+                ? "bg-muted text-muted-foreground/70"
+                : "bg-orange-600 text-white shadow-md shadow-orange-500/20 hover:bg-orange-700 active:scale-95",
+            )}
+          >
+            {submitting ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+            ) : (
+              "Post"
+            )}
+          </button>
+        </div>
 
         <ScrollArea className="flex-1">
-          <div className="space-y-4 px-5 py-4">
+          <div className="space-y-3 px-5 py-4">
             {/* Author row */}
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9 ring-2 ring-orange-200 dark:ring-orange-900">
+            <div className="flex items-center gap-2.5">
+              <Avatar className="h-10 w-10">
                 <AvatarImage src={authorProfile.photo_url ?? undefined} />
                 <AvatarFallback className="font-bold text-sm">
                   {(authorProfile.full_name ?? "?").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="font-semibold text-sm text-foreground">
+              <span className="inline-flex items-center gap-1 text-[15px] font-bold text-foreground">
                 {authorProfile.full_name ?? "You"}
+                {authorProfile.is_verified ? (
+                  <BadgeCheck
+                    className="h-4 w-4 fill-sky-500 text-white dark:fill-sky-400"
+                    aria-label="Verified"
+                  />
+                ) : null}
               </span>
             </div>
 
             {/* Caption */}
             <Textarea
-              placeholder="What's on your mind?"
+              placeholder="What do you want to talk about?"
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               maxLength={2200}
               rows={4}
-              className="resize-none bg-transparent border-none shadow-none focus-visible:ring-0 text-base p-0 placeholder:text-muted-foreground/60"
+              className="resize-none bg-transparent border-none shadow-none focus-visible:ring-0 text-[15px] p-0 placeholder:text-muted-foreground/60"
               disabled={submitting}
             />
 
-            {/* Media preview */}
+            {/* Media preview — shown immediately as media is added; skeleton overlays it until the file finishes loading */}
             {mediaPreview && (
-              <div className="relative overflow-hidden rounded-xl bg-black">
+              <div
+                ref={mediaPreviewRef}
+                className="relative overflow-hidden rounded-2xl bg-black ring-1 ring-border/40 shadow-sm animate-in fade-in zoom-in-95 duration-200"
+              >
                 {mediaKind === "image" ? (
                   <img
                     src={mediaPreview}
                     alt="Preview"
-                    className="w-full max-h-64 object-cover"
+                    className={cn(
+                      "w-full max-h-[22rem] object-cover transition-opacity duration-200",
+                      mediaLoading ? "opacity-0" : "opacity-100",
+                    )}
+                    onLoad={() => setMediaLoading(false)}
+                    onError={() => setMediaLoading(false)}
                   />
                 ) : (
                   <video
                     src={mediaPreview}
                     controls
                     playsInline
+                    autoPlay
                     muted
-                    className="w-full max-h-64"
+                    className={cn(
+                      "w-full max-h-[22rem] bg-black transition-opacity duration-200",
+                      mediaLoading ? "opacity-0" : "opacity-100",
+                    )}
+                    onLoadedData={() => setMediaLoading(false)}
+                    onError={() => setMediaLoading(false)}
                   />
                 )}
+
+                {/* Loading skeleton — overlays the preview until the file finishes loading */}
+                {mediaLoading ? (
+                  <div
+                    className="absolute inset-0 flex h-full min-h-[14rem] w-full flex-col items-center justify-center bg-gradient-to-br from-zinc-200 via-zinc-100 to-zinc-200 dark:from-zinc-800 dark:via-zinc-700 dark:to-zinc-800"
+                    aria-busy="true"
+                    aria-label={`Loading ${mediaKind === "image" ? "photo" : "video"}`}
+                  >
+                    <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/30 to-transparent dark:via-white/10" />
+                    <div className="relative flex flex-col items-center gap-2.5">
+                      <Loader2 className="h-7 w-7 animate-spin text-orange-500" strokeWidth={2.5} />
+                      <span className="text-[12px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                        {mediaKind === "image" ? "Loading photo…" : "Loading video…"}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+
                 <button
                   type="button"
                   onClick={() => {
                     setMediaFile(null);
                     setMediaPreview(null);
                     setMediaKind(null);
+                    setMediaLoading(false);
                   }}
-                  className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                  className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white shadow-lg backdrop-blur-md transition-all hover:bg-black/80 active:scale-95"
+                  aria-label="Remove media"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" strokeWidth={2.5} />
                 </button>
+                {!mediaLoading ? (
+                  <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-md backdrop-blur-md">
+                    {mediaKind === "image" ? "Photo" : "Video"}
+                  </span>
+                ) : null}
               </div>
             )}
 
@@ -916,68 +1027,235 @@ export function ComposeModal({
           </div>
         </ScrollArea>
 
-        {/* Footer actions */}
-        <div className="border-t border-border/60 bg-muted/20 px-5 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleMedia(f, "image");
-                e.target.value = "";
-              }}
-            />
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleMedia(f, "video");
-                e.target.value = "";
-              }}
-            />
-            <button
-              type="button"
-              disabled={submitting || !!mediaFile}
-              onClick={() => imageInputRef.current?.click()}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 hover:text-orange-600 transition-colors disabled:opacity-40"
-              title="Add photo"
-            >
-              <ImageIcon className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              disabled={submitting || !!mediaFile}
-              onClick={() => videoInputRef.current?.click()}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 hover:text-orange-600 transition-colors disabled:opacity-40"
-              title="Add video"
-            >
-              <VideoIcon className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={handleClose} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={submitting || (!caption.trim() && !mediaFile)}
-              onClick={() => void handleSubmit()}
-              className="rounded-full bg-orange-600 hover:bg-orange-700 text-white w-10 h-10 p-0 flex items-center justify-center shadow-lg shadow-orange-500/20"
-              title="Share post"
-            >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4 translate-x-0.5" />}
-            </Button>
-          </div>
+        {/* "Add to your post" tray — single combined Photo/Video picker + extra options */}
+        <div className="shrink-0 border-t border-border/60 bg-background">
+          {/* Hidden file input — accepts image OR video from the same picker */}
+          <input
+            ref={mediaInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handlePhotoVideoPick(f);
+              e.target.value = "";
+            }}
+          />
+
+          {addToPostExpanded ? (
+            <div className="px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+              {/* Drag handle (decorative) */}
+              <button
+                type="button"
+                onClick={() => setAddToPostExpanded(false)}
+                aria-label="Collapse add to post"
+                className="mx-auto mb-2 block h-1 w-10 rounded-full bg-muted-foreground/30 transition-colors hover:bg-muted-foreground/50"
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-[15px] font-bold text-foreground">
+                  Add to your post
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAddToPostExpanded(false)}
+                  aria-label="Collapse"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60"
+                >
+                  <ChevronDown className="h-4 w-4" strokeWidth={2.5} />
+                </button>
+              </div>
+
+              {/* 3×2 grid of action cards */}
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
+                <AddPostOptionCard
+                  icon={<ImageIcon className="h-5 w-5" strokeWidth={2.25} />}
+                  label="Photo/Video"
+                  iconBgClass="bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300"
+                  disabled={submitting || !!mediaFile}
+                  onClick={() => mediaInputRef.current?.click()}
+                />
+                <AddPostOptionCard
+                  icon={
+                    <span className="text-[11px] font-black tracking-tight">
+                      GIF
+                    </span>
+                  }
+                  label="Gif"
+                  iconBgClass="bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Gif")}
+                />
+                <AddPostOptionCard
+                  icon={<ListChecks className="h-5 w-5" strokeWidth={2.25} />}
+                  label="Poll"
+                  iconBgClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Poll")}
+                />
+                <AddPostOptionCard
+                  icon={<FileText className="h-5 w-5" strokeWidth={2.25} />}
+                  label="Adoption"
+                  iconBgClass="bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Adoption")}
+                />
+                <AddPostOptionCard
+                  icon={<Megaphone className="h-5 w-5" strokeWidth={2.25} />}
+                  label="Lost Notice"
+                  iconBgClass="bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Lost Notice")}
+                />
+                <AddPostOptionCard
+                  icon={<CalendarDays className="h-5 w-5" strokeWidth={2.25} />}
+                  label="Event"
+                  iconBgClass="bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Event")}
+                />
+              </div>
+            </div>
+          ) : (
+            /* Collapsed: thin row of icons + chevron up */
+            <div className="flex items-center justify-between gap-2 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+              <div className="flex items-center gap-1">
+                <AddPostOptionIcon
+                  icon={<ImageIcon className="h-4 w-4" strokeWidth={2.25} />}
+                  iconBgClass="bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300"
+                  label="Photo/Video"
+                  disabled={submitting || !!mediaFile}
+                  onClick={() => mediaInputRef.current?.click()}
+                />
+                <AddPostOptionIcon
+                  icon={<span className="text-[9px] font-black">GIF</span>}
+                  iconBgClass="bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
+                  label="Gif"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Gif")}
+                />
+                <AddPostOptionIcon
+                  icon={<ListChecks className="h-4 w-4" strokeWidth={2.25} />}
+                  iconBgClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"
+                  label="Poll"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Poll")}
+                />
+                <AddPostOptionIcon
+                  icon={<FileText className="h-4 w-4" strokeWidth={2.25} />}
+                  iconBgClass="bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
+                  label="Adoption"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Adoption")}
+                />
+                <AddPostOptionIcon
+                  icon={<Megaphone className="h-4 w-4" strokeWidth={2.25} />}
+                  iconBgClass="bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300"
+                  label="Lost Notice"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Lost Notice")}
+                />
+                <AddPostOptionIcon
+                  icon={<CalendarDays className="h-4 w-4" strokeWidth={2.25} />}
+                  iconBgClass="bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300"
+                  label="Event"
+                  disabled={submitting}
+                  onClick={() => comingSoon("Event")}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddToPostExpanded(true)}
+                aria-label="Expand add to post"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60"
+              >
+                <ChevronUp className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Card-style action button used in the expanded "Add to your post" grid. */
+function AddPostOptionCard({
+  icon,
+  label,
+  iconBgClass,
+  disabled,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  iconBgClass: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex items-center justify-between gap-2 rounded-2xl border border-border/60 bg-muted/25 px-3 py-2.5 text-left transition-all",
+        "hover:bg-muted/40 active:scale-[0.98] dark:bg-zinc-800/40 dark:hover:bg-zinc-800/60",
+        "disabled:opacity-40 disabled:hover:bg-muted/25 disabled:active:scale-100",
+      )}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+            iconBgClass,
+          )}
+          aria-hidden
+        >
+          {icon}
+        </span>
+        <span className="truncate text-[14px] font-bold text-foreground">
+          {label}
+        </span>
+      </div>
+      <Plus
+        className="h-4 w-4 shrink-0 text-muted-foreground"
+        strokeWidth={2.25}
+        aria-hidden
+      />
+    </button>
+  );
+}
+
+/** Compact icon-only button used in the collapsed row. */
+function AddPostOptionIcon({
+  icon,
+  label,
+  iconBgClass,
+  disabled,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  iconBgClass: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+      className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all",
+        "hover:scale-110 active:scale-95",
+        "disabled:opacity-40 disabled:hover:scale-100",
+        iconBgClass,
+      )}
+    >
+      {icon}
+    </button>
   );
 }
 
@@ -1169,15 +1447,16 @@ function PostCard({
     ? cn(
         "md:w-full",
         // Cap portrait height so vertical videos/images aren't overwhelmingly tall.
-        !isLandscape && "md:max-h-[min(78vh,42rem)]",
+        !isLandscape && "md:max-h-[min(86vh,52rem)]",
       )
     : isLandscape
       ? "md:w-full"
-      : "md:h-[min(72vh,42rem)]";
+      : "md:h-[min(82vh,52rem)]";
+  // Card width: portrait gets narrower so the vertical media fills the box (less black side panels).
   const desktopDiscoverCardWidthClass = isDiscover
     ? cn(
         "md:w-full",
-        isLandscape ? "md:max-w-[820px]" : "md:max-w-[720px]",
+        isLandscape ? "md:max-w-[820px]" : "md:max-w-[520px]",
       )
     : null;
   const desktopMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
@@ -1401,7 +1680,7 @@ function PostCard({
             btnPad,
             post.liked_by_me
               ? "text-rose-500"
-              : "text-muted-foreground hover:bg-muted/60 hover:text-rose-500",
+              : "text-muted-foreground hover:bg-muted/60 hover:text-rose-500 dark:text-white dark:hover:text-rose-400",
             (liking || post.source === "availability") && "pointer-events-none opacity-50",
           )}
           aria-label={post.liked_by_me ? "Unlike" : "Like"}
@@ -1419,7 +1698,7 @@ function PostCard({
           type="button"
           onClick={() => setCommentsOpen(true)}
           className={cn(
-            "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600",
+            "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
             btnPad,
           )}
           aria-label="Comments"
@@ -1438,7 +1717,7 @@ function PostCard({
               : undefined
           }
           className={cn(
-            "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600",
+            "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
             btnPad,
           )}
           aria-label="Share"

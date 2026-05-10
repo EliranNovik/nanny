@@ -21,6 +21,7 @@ import {
   CalendarDays,
   User,
   LayoutGrid,
+  PenSquare,
 } from "lucide-react";
 
 type SavedProfileRow = {
@@ -251,7 +252,7 @@ export function DesktopSidePanel() {
     <aside
       className={cn(
         "hidden md:flex fixed left-0 top-0 bottom-0 z-[200] w-[220px] flex-col",
-        "border-r border-border/30 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
+        "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
       )}
     >
       {/* Fixed top section to allow popouts to escape overflow clipping */}
@@ -273,7 +274,7 @@ export function DesktopSidePanel() {
             onClick={() => setPlusOpen((v) => !v)}
             className={cn(
               "ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-              "bg-background/80 text-foreground ring-1 ring-border/50 shadow-sm backdrop-blur-md transition-colors",
+              "bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors",
               "hover:bg-background active:scale-[0.98]",
             )}
             aria-label="Create"
@@ -292,7 +293,7 @@ export function DesktopSidePanel() {
               <div
                 role="menu"
                 className={cn(
-                  "absolute left-[calc(100%+12px)] top-0 z-[150] w-[14.5rem] overflow-hidden rounded-2xl border border-border/40",
+                  "absolute left-[calc(100%+12px)] top-0 z-[150] w-[14.5rem] overflow-hidden rounded-2xl",
                   "bg-background/90 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2 duration-200",
                 )}
               >
@@ -309,7 +310,6 @@ export function DesktopSidePanel() {
                   <ClipboardList className="h-5 w-5 shrink-0 text-foreground/80" />
                   <span>{canCreateRequest ? "Start request" : "Go live"}</span>
                 </button>
-                <div className="h-px w-full bg-border/30" />
                 <button
                   type="button"
                   role="menuitem"
@@ -322,7 +322,6 @@ export function DesktopSidePanel() {
                   <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
                   <span>Go live</span>
                 </button>
-                <div className="h-px w-full bg-border/30" />
                 <button
                   type="button"
                   role="menuitem"
@@ -334,6 +333,18 @@ export function DesktopSidePanel() {
                 >
                   <Radio className="h-5 w-5 shrink-0 text-foreground/80" />
                   <span>Community posts</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-bold text-foreground hover:bg-muted/50 active:bg-muted/70"
+                  onClick={() => {
+                    setPlusOpen(false);
+                    navigate(`${communityHref}?compose=1`);
+                  }}
+                >
+                  <PenSquare className="h-5 w-5 shrink-0 text-foreground/80" />
+                  <span>Share a post</span>
                 </button>
               </div>
             </>
@@ -379,8 +390,7 @@ export function DesktopSidePanel() {
           </nav>
 
           <div className="mt-auto pt-4">
-            <div className="h-px w-full bg-border/30" />
-            <div className="mt-3 rounded-2xl bg-muted/20 p-2">
+            <div className="rounded-2xl bg-muted/20 p-2">
               {/* Saved profiles */}
               <button
                 type="button"
@@ -425,7 +435,7 @@ export function DesktopSidePanel() {
                         to={`/profile/${p.id}`}
                         className="flex items-center gap-2 rounded-xl px-2 py-2 text-[13px] font-semibold text-foreground hover:bg-muted/35"
                       >
-                        <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted/60 ring-1 ring-border/30">
+                        <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted/60">
                           {p.photo_url ? (
                             <img
                               src={p.photo_url}
@@ -456,8 +466,6 @@ export function DesktopSidePanel() {
                   )}
                 </div>
               ) : null}
-
-              <div className="my-2 h-px w-full bg-border/30" />
 
               {/* Saved posts */}
               <button

@@ -427,7 +427,14 @@ export function ExploreLiveHelpNow({ mode }: { mode: Mode }) {
                     variant="outline"
                     className="h-11 flex-1 rounded-[18px] border-border/70 text-[14px] font-bold text-foreground transition-all hover:bg-muted/50 active:scale-[0.98]"
                     onClick={() => {
-                      navigate(`/client/jobs/${encodeURIComponent(job.id)}/live`);
+                      // Send the user to the page they land on after being matched (which has chat):
+                      //  - hire (client viewing): /client/jobs/:id/live (ConfirmedListPage)
+                      //  - work (helper viewing): /freelancer/jobs/match?focus_job_id=:id (FreelancerJobsMatchPage)
+                      const target =
+                        mode === "hire"
+                          ? `/client/jobs/${encodeURIComponent(job.id)}/live`
+                          : `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(job.id)}`;
+                      navigate(target);
                     }}
                   >
                     <MessageSquare className="mr-2 h-4 w-4" aria-hidden />

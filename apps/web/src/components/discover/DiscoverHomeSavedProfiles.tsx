@@ -37,7 +37,8 @@ const listContainerClass = cn(
 const cardBtnClass = cn(
   "group flex flex-col gap-2.5 text-left",
   "w-[11rem] shrink-0 snap-start",
-  "sm:w-[11.5rem] lg:w-[12rem] sm:gap-2",
+  "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
+  "sm:gap-2 lg:gap-3",
   "focus-visible:outline-none",
 );
 
@@ -166,7 +167,7 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[11rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] lg:w-[12rem] sm:gap-2"
+              className="flex w-[11rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-2 lg:gap-3"
             >
               <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
               <div className="space-y-2 px-0.5 sm:space-y-1.5">
@@ -241,7 +242,7 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
                   <img
                     src={photoUrl}
                     alt=""
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
                     loading="lazy"
                     decoding="async"
                   />
@@ -256,33 +257,39 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
                   </div>
                 )}
 
-                {/* Live indicator — top-right; shown when helper is live within their 24h window */}
+                {/* Live indicator — "Available" badge top-left; shown when helper is live within their 24h window */}
                 {isLive ? (
                   <span
-                    className="absolute right-2 top-2 z-10 flex h-3 w-3 items-center justify-center sm:right-1.5 sm:top-1.5"
+                    className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-emerald-500/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-md backdrop-blur-sm sm:left-1.5 sm:top-1.5 sm:px-1.5 sm:text-[9.5px] lg:left-2.5 lg:top-2.5 lg:px-2.5 lg:py-1 lg:text-[11px] xl:text-[12px]"
                     title="Available now"
                     aria-label="Available now"
                   >
                     <span
-                      className="absolute inset-0 rounded-full bg-emerald-400/70 motion-safe:animate-ping motion-reduce:hidden"
+                      className="relative inline-flex h-1.5 w-1.5 items-center justify-center lg:h-2 lg:w-2"
                       aria-hidden
-                    />
-                    <span
-                      className="relative h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_0_8px_rgba(16,185,129,0.55)] dark:bg-emerald-400 dark:shadow-[0_0_0_2px_rgba(24,24,27,0.95),0_0_8px_rgba(52,211,153,0.55)]"
-                      aria-hidden
-                    />
+                    >
+                      <span
+                        className="absolute inset-0 rounded-full bg-white/80 motion-safe:animate-ping motion-reduce:hidden"
+                        aria-hidden
+                      />
+                      <span
+                        className="relative h-1.5 w-1.5 rounded-full bg-white lg:h-2 lg:w-2"
+                        aria-hidden
+                      />
+                    </span>
+                    Available
                   </span>
                 ) : null}
               </div>
 
-              <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5">
-                <span className="min-w-0 truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px]">
+              <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5 lg:gap-1 lg:px-1">
+                <span className="min-w-0 truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
                   {name}
                 </span>
                 {city ? (
-                  <span className="flex min-w-0 items-center gap-1 truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px]">
+                  <span className="flex min-w-0 items-center gap-1 truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px] lg:gap-1.5">
                     <MapPin
-                      className="h-3 w-3 shrink-0 sm:h-2.5 sm:w-2.5"
+                      className="h-3 w-3 shrink-0 sm:h-2.5 sm:w-2.5 lg:h-3.5 lg:w-3.5 xl:h-4 xl:w-4"
                       strokeWidth={2}
                       aria-hidden
                     />
@@ -290,9 +297,9 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
                   </span>
                 ) : null}
                 {hasRating ? (
-                  <span className="inline-flex items-center gap-1 text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px]">
+                  <span className="inline-flex items-center gap-1 text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px]">
                     <Star
-                      className="h-3 w-3 fill-current text-amber-500 dark:text-amber-400 sm:h-2.5 sm:w-2.5"
+                      className="h-3 w-3 fill-current text-amber-500 dark:text-amber-400 sm:h-2.5 sm:w-2.5 lg:h-3.5 lg:w-3.5 xl:h-4 xl:w-4"
                       strokeWidth={0}
                       aria-hidden
                     />

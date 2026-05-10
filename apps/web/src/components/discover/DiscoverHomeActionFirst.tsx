@@ -161,33 +161,6 @@ export function DiscoverHomeActionFirst({
     !isHire &&
     isFreelancerInActive24hLiveWindow({ live_until: freelancerLiveMeta.live_until });
 
-  const liveUntilMs = useMemo(() => {
-    if (!freelancerLiveMeta.live_until) return null;
-    const t = new Date(freelancerLiveMeta.live_until).getTime();
-    if (Number.isNaN(t)) return null;
-    return t;
-  }, [freelancerLiveMeta.live_until]);
-
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    if (!isInActive24hGoLiveWindow) return;
-    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [isInActive24hGoLiveWindow]);
-
-  const liveRemainingLabel = useMemo(() => {
-    if (!isInActive24hGoLiveWindow || liveUntilMs == null) return null;
-    const liveRemainingMs = Math.max(0, liveUntilMs - nowMs);
-    const totalSeconds = Math.floor(liveRemainingMs / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const mm = String(minutes).padStart(2, "0");
-    const ss = String(seconds).padStart(2, "0");
-    if (hours > 0) return `${hours}:${mm}:${ss}`;
-    return `${minutes}:${ss}`;
-  }, [isInActive24hGoLiveWindow, liveUntilMs, nowMs]);
-
   /** Total live helper slots across Discover home categories (same pool as the strip). */
   const hireLiveHelperCount = useMemo(() => {
     let n = 0;
@@ -578,23 +551,7 @@ export function DiscoverHomeActionFirst({
   }
 
   function renderDesktopWorkLiveBadge() {
-    if (!isInActive24hGoLiveWindow) return null;
-    return (
-      <div className="pointer-events-none absolute right-6 top-6 z-[21] hidden md:block">
-        <div className="inline-flex items-center gap-2 rounded-full border-0 bg-zinc-100 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-800 shadow-none ring-0 backdrop-blur-sm dark:border-transparent dark:bg-black/35 dark:text-white dark:shadow-lg dark:ring-1 dark:ring-inset dark:ring-white/20">
-          <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
-            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
-            <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.65)]" />
-          </span>
-          <span>Live</span>
-          {liveRemainingLabel ? (
-            <span className="rounded-full bg-zinc-200/80 px-2 py-1 text-[11px] font-black tabular-nums tracking-wide dark:bg-white/15">
-              {liveRemainingLabel}
-            </span>
-          ) : null}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const workTheme = WORK;
@@ -661,32 +618,6 @@ export function DiscoverHomeActionFirst({
             </div>
           ) : (
             <div className="flex flex-col">
-              <div className="flex flex-col px-4">
-                {isInActive24hGoLiveWindow ? (
-                  <div className="flex items-center justify-center sm:justify-end">
-                    <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border-0 bg-zinc-100 px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-800 shadow-none ring-0 backdrop-blur-sm dark:border dark:border-zinc-500/30 dark:bg-zinc-600/90 dark:text-white dark:shadow-lg dark:backdrop-blur-md">
-                      <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
-                        <span className="relative block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)]" />
-                      </span>
-                      <span>Live</span>
-                      {liveRemainingLabel ? (
-                        <span className="rounded-full bg-zinc-200/80 px-1.5 py-0.5 text-[11px] font-black tabular-nums tracking-wide dark:bg-white/15">
-                          {liveRemainingLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
-
-              </div>
-
-              <div className="mt-3 w-full px-4">
-                <DiscoverHomeMyLiveHelpJobs
-                  mode="work"
-                  exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
-                />
-              </div>
             </div>
           )}
         </div>
@@ -698,6 +629,15 @@ export function DiscoverHomeActionFirst({
 
         {!isHire ? (
           <DiscoverHomeFavoriteRequests className="w-full px-4 pt-4 pb-2" />
+        ) : null}
+
+        {!isHire ? (
+          <div className="w-full px-4 pt-4 pb-2">
+            <DiscoverHomeMyLiveHelpJobs
+              mode="work"
+              exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
+            />
+          </div>
         ) : null}
 
         <section className="mt-6 px-0 md:px-4 pb-24">
@@ -740,7 +680,7 @@ export function DiscoverHomeActionFirst({
                   <img
                     src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
                     alt=""
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[center_18%] transition-transform duration-700 group-hover:scale-105"
                     decoding="async"
                     {...{ fetchpriority: "high" }}
                   />
@@ -796,7 +736,7 @@ export function DiscoverHomeActionFirst({
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.work}
                   alt=""
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[center_18%] transition-transform duration-700 group-hover:scale-105"
                   decoding="async"
                   {...{ fetchpriority: "high" }}
                 />

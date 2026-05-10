@@ -38,7 +38,6 @@ import {
 } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { trackEvent } from "@/lib/analytics";
-import { LiveAvatarDot } from "@/components/discover/LiveAvatarDot";
 import { DiscoverProfileSaveBadge } from "@/components/discover/DiscoverProfileSaveBadge";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
 import { haversineDistanceKm } from "@/lib/geo";
@@ -1225,7 +1224,6 @@ function DiscoverRealtimeStripDetailDialog({
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      <LiveAvatarDot />
                     </div>
                   </button>
                   <div className="flex flex-wrap items-center justify-center gap-x-1 text-[13px] text-zinc-500 dark:text-zinc-400">
@@ -1284,7 +1282,6 @@ function DiscoverRealtimeStripDetailDialog({
                         </AvatarFallback>
                       </Avatar>
                     </div>
-                    {hire ? <LiveAvatarDot /> : null}
                   </div>
                 </button>
 
@@ -2266,7 +2263,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                       </AvatarFallback>
                     </Avatar>
                   </div>
-                  <LiveAvatarDot />
                 </div>
                 {row.clientId.trim() ? (
                   <DiscoverProfileSaveBadge
@@ -2409,7 +2405,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                     </AvatarFallback>
                   </Avatar>
                 </div>
-                <LiveAvatarDot />
               </div>
               {it.helperUserId.trim() ? (
                 <DiscoverProfileSaveBadge

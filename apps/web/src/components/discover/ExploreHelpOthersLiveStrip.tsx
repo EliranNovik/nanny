@@ -11,8 +11,6 @@ import {
 } from "@/lib/freelancerLiveWindow";
 import { cn } from "@/lib/utils";
 
-const LIVE_SESSION_MS = 24 * 60 * 60 * 1000;
-
 /** Flush with mobile BottomNav: pt-0.5 + row 2.75rem + pb max(0.5rem, safe). */
 const stripBottomFlushClass =
   "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]";
@@ -108,16 +106,17 @@ export function ExploreHelpOthersLiveStrip({
   const isLive = isFreelancerLiveWindowActive(fp);
   const in24h = isFreelancerInActive24hLiveWindow(fp);
 
-  const timerAnchorIso = useMemo(() => {
+  const timerCountdownIso = useMemo(() => {
     if (!isLive) return null;
-    if (in24h && fp?.live_until) {
-      const until = new Date(fp.live_until).getTime();
-      if (Number.isNaN(until)) return fp.updated_at;
-      return new Date(until - LIVE_SESSION_MS).toISOString();
-    }
-    if (fp?.updated_at) return fp.updated_at;
+    if (in24h && fp?.live_until) return fp.live_until;
     return null;
-  }, [isLive, in24h, fp?.live_until, fp?.updated_at]);
+  }, [isLive, in24h, fp?.live_until]);
+
+  const timerElapsedAnchorIso = useMemo(() => {
+    if (!isLive) return null;
+    if (timerCountdownIso) return null;
+    return fp?.updated_at ?? null;
+  }, [isLive, timerCountdownIso, fp?.updated_at]);
 
   const handleGoLive = useCallback(() => {
     if (onGoLive) {
@@ -199,10 +198,11 @@ export function ExploreHelpOthersLiveStrip({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {timerAnchorIso ? (
+              {timerCountdownIso || timerElapsedAnchorIso ? (
                 <div className="rounded-xl bg-emerald-50 px-2.5 py-1.5 text-[14px] font-bold tabular-nums text-emerald-900 shadow-sm ring-1 ring-emerald-600/15 dark:bg-emerald-900/50 dark:text-emerald-100 dark:ring-emerald-400/15">
                   <LiveTimer
-                    createdAt={timerAnchorIso}
+                    countdownTo={timerCountdownIso ?? undefined}
+                    createdAt={timerElapsedAnchorIso ?? undefined}
                     render={({ time }) => <span>{time}</span>}
                   />
                 </div>

@@ -67,7 +67,8 @@ const listContainerClass = cn(
 const cardBtnClass = cn(
   "group flex flex-col gap-2.5 text-left",
   "w-[11rem] shrink-0 snap-start",
-  "sm:w-[11.5rem] lg:w-[12rem] sm:gap-2",
+  "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
+  "sm:gap-2 lg:gap-3",
   "focus-visible:outline-none",
 );
 
@@ -129,7 +130,7 @@ export function DiscoverHomePostedHelpRequests({
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[11rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] lg:w-[12rem] sm:gap-2"
+              className="flex w-[11rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-2 lg:gap-3"
             >
               <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
               <div className="space-y-2 px-0.5 sm:space-y-1.5">
@@ -216,7 +217,7 @@ export function DiscoverHomePostedHelpRequests({
                 <img
                   src={photoUrl}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
                   loading="lazy"
                   decoding="async"
                 />
@@ -228,36 +229,36 @@ export function DiscoverHomePostedHelpRequests({
                 />
 
                 {/* Avatar + name + rating row — top of the image */}
-                <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-1.5 p-2 sm:gap-1 sm:p-1.5">
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-1.5 p-2 sm:gap-1 sm:p-1.5 lg:gap-1.5 lg:p-2 xl:p-2.5">
                   <span className="relative inline-flex shrink-0">
-                    <Avatar className="h-8 w-8 overflow-hidden shadow-sm sm:h-7 sm:w-7">
+                    <Avatar className="h-8 w-8 overflow-hidden shadow-sm sm:h-7 sm:w-7 lg:h-9 lg:w-9 xl:h-10 xl:w-10">
                       <AvatarImage
                         src={r.client_photo_url || undefined}
                         alt=""
                         className="object-cover"
                       />
-                      <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-[9px]">
+                      <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-[9px] lg:text-[11px]">
                         {name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <span
-                      className="pointer-events-none absolute right-0 top-0 block size-2 rounded-full bg-emerald-500 motion-safe:animate-strip-live-dot-breathe dark:bg-emerald-400 sm:size-1.5"
+                      className="pointer-events-none absolute right-0 top-0 block size-2 rounded-full bg-emerald-500 motion-safe:animate-strip-live-dot-breathe dark:bg-emerald-400 sm:size-1.5 lg:size-2 xl:size-2.5"
                       aria-hidden
                     />
                   </span>
                   <span
-                    className="min-w-0 flex-1 truncate text-[12.5px] font-semibold leading-tight text-white sm:text-[11px]"
+                    className="min-w-0 flex-1 truncate text-[12.5px] font-semibold leading-tight text-white sm:text-[11px] lg:text-[13px] xl:text-[14px]"
                     style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
                   >
                     {name}
                   </span>
                   {hasRating ? (
                     <span
-                      className="inline-flex shrink-0 items-center gap-0.5 text-[12px] font-semibold leading-tight text-white sm:text-[10.5px]"
+                      className="inline-flex shrink-0 items-center gap-0.5 text-[12px] font-semibold leading-tight text-white sm:text-[10.5px] lg:text-[12px] xl:text-[13px]"
                       style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
                     >
                       <Star
-                        className="h-3 w-3 fill-current text-white sm:h-2.5 sm:w-2.5"
+                        className="h-3 w-3 fill-current text-white sm:h-2.5 sm:w-2.5 lg:h-3 lg:w-3 xl:h-3.5 xl:w-3.5"
                         strokeWidth={0}
                         aria-hidden
                       />
@@ -273,27 +274,27 @@ export function DiscoverHomePostedHelpRequests({
 
                 {/* Posted-time pill — bottom-left, like a "Guest favorite" badge */}
                 {when ? (
-                  <span className="absolute bottom-2 left-2 z-10 inline-flex max-w-[85%] items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-zinc-800 shadow-sm backdrop-blur-sm dark:bg-zinc-950/85 dark:text-zinc-100 sm:bottom-1.5 sm:left-1.5 sm:px-1.5 sm:text-[9px]">
+                  <span className="absolute bottom-2 left-2 z-10 inline-flex max-w-[85%] items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-zinc-800 shadow-sm backdrop-blur-sm dark:bg-zinc-950/85 dark:text-zinc-100 sm:bottom-1.5 sm:left-1.5 sm:px-1.5 sm:text-[9px] lg:bottom-2 lg:left-2 lg:px-2 lg:py-0.5 lg:text-[10.5px] xl:text-[11px] xl:px-2.5">
                     <span className="line-clamp-1">{when}</span>
                   </span>
                 ) : null}
               </div>
 
               {/* Text on page background — Airbnb-style simple lines */}
-              <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5">
-                <span className="min-w-0 truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px]">
+              <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5 lg:gap-1 lg:px-1">
+                <span className="min-w-0 truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
                   {title}
                 </span>
-                <span className="flex min-w-0 items-center gap-1 truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px]">
+                <span className="flex min-w-0 items-center gap-1 truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px] lg:gap-1.5">
                   <MapPin
-                    className="h-3 w-3 shrink-0 sm:h-2.5 sm:w-2.5"
+                    className="h-3 w-3 shrink-0 sm:h-2.5 sm:w-2.5 lg:h-3.5 lg:w-3.5 xl:h-4 xl:w-4"
                     strokeWidth={2}
                     aria-hidden
                   />
                   <span className="truncate">{loc}</span>
                 </span>
                 {durationLabel ? (
-                  <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px]">
+                  <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px]">
                     <span className="font-medium text-zinc-700 dark:text-zinc-300">Duration</span>{" "}
                     {durationLabel}
                   </span>
@@ -340,11 +341,11 @@ export function DiscoverHomePostedHelpRequests({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5">
-            <span className="truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px]">
+          <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5 lg:gap-1 lg:px-1">
+            <span className="truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
               Browse all requests
             </span>
-            <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px]">
+            <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px]">
               Explore the full list
             </span>
           </div>

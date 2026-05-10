@@ -32,6 +32,7 @@ import {
   ClipboardList,
   UsersRound,
   Radio,
+  PenSquare,
   AlertCircle,
   Rss,
   MapPin,
@@ -1365,6 +1366,19 @@ export function BottomNav() {
                           New
                         </span>
                       </span>
+                    </button>
+                    <div className="h-px w-full bg-white/10" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-3 px-5 py-4 text-left text-[15px] font-bold hover:bg-white/10 active:bg-white/15"
+                      onClick={() => {
+                        setPlusMenuOpen(false);
+                        navigate("/community/feed?compose=1");
+                      }}
+                    >
+                      <PenSquare className="h-6 w-6 shrink-0 text-white/90" aria-hidden />
+                      <span>Share a post</span>
                     </button>
                   </div>
                 ) : null}
