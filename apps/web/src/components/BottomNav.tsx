@@ -1198,10 +1198,14 @@ export function BottomNav() {
       : "/client/profile";
     const homePath = isFreelancer ? "/freelancer/home" : "/client/home";
 
-    const explorePath = isFreelancer
-      ? "/freelancer/explore"
-      : "/client/explore";
-    const isExploreActive = location.pathname.startsWith(explorePath);
+    /**
+     * Explore tab routes to the Community feed (the legacy Explore page is now
+     * reachable from the Profile hub).
+     */
+    const explorePath = "/community/feed";
+    const isExploreActive =
+      location.pathname.startsWith("/community") ||
+      location.pathname.startsWith("/public/posts");
 
     return (
       <>

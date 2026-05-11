@@ -50,6 +50,7 @@ import {
 } from "@/lib/serviceCategories";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
+import { FavoritesPostsSidePanel } from "@/components/discover/FavoritesPostsSidePanel";
 import {
   PostMediaReelsViewer,
   type ReelFeedPost,
@@ -2277,6 +2278,13 @@ interface ProfilePostsFeedProps {
   limit?: number;
   /** Visual context for layout tweaks (e.g. Discover home feed). */
   appearance?: "default" | "discover";
+  /**
+   * What to render in the right-side panel when `appearance === "discover"`.
+   *  - "comments" (default): per-post live comments (used by Community Feed page)
+   *  - "favorites": YouTube-style "From your favorites" + "Most liked" sidebar
+   *    rendered once next to the first post (used by Discovery Home)
+   */
+  discoverSidePanel?: "comments" | "favorites";
 }
 
 export function ProfilePostsFeed({
@@ -2289,6 +2297,7 @@ export function ProfilePostsFeed({
   filterLikedByUserId,
   limit,
   appearance = "default",
+  discoverSidePanel = "comments",
 }: ProfilePostsFeedProps) {
   const { user, profile: currentProfile } = useAuth();
   const [globalVideoUnmuted, setGlobalVideoUnmuted] = useState(false);
@@ -2830,19 +2839,45 @@ export function ProfilePostsFeed({
             </Button>
           )}
         </div>
+      ) : appearance === "discover" && discoverSidePanel === "favorites" ? (
+        // Two-column layout for the whole feed: posts stack on the left,
+        // sidebar spans the full feed height on the right (no extra gaps
+        // between posts when the sidebar is long).
+        <div className="md:flex md:items-start md:justify-start md:gap-10 md:pr-4 lg:pr-8">
+          <div className="min-w-0 space-y-12 md:flex-1 md:space-y-7">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                currentUserId={user?.id ?? null}
+                onLikeToggle={handleLikeToggle}
+                isOwnFeed={isOwnProfile}
+                onDeleted={handleDeleted}
+                globalVideoUnmuted={globalVideoUnmuted}
+                onGlobalVideoUnmutedChange={setGlobalVideoUnmuted}
+                refreshPostShareStats={refreshPostShareStats}
+                onOpenMediaReels={setReelsOpenPostId}
+                hidePostLikeButton={Boolean(filterLikedByUserId)}
+                appearance={appearance}
+              />
+            ))}
+          </div>
+          <FavoritesPostsSidePanel />
+        </div>
       ) : (
         posts.map((post) => {
           const isDiscover = appearance === "discover";
           const isProfilePost = post.source === "post";
-          const shouldShowSideComments = isDiscover && isProfilePost;
+          const shouldShowComments = isDiscover && isProfilePost;
           const authorName = post.author?.full_name?.trim()
             ? post.author.full_name.trim()
             : "Member";
-          const caption = isProfilePost && post.caption?.trim()
-            ? renderCaptionWithMentions(post.caption)
-            : undefined;
+          const caption =
+            isProfilePost && post.caption?.trim()
+              ? renderCaptionWithMentions(post.caption)
+              : undefined;
 
-          if (!shouldShowSideComments) {
+          if (!shouldShowComments) {
             return (
               <PostCard
                 key={post.id}
@@ -2866,7 +2901,6 @@ export function ProfilePostsFeed({
               key={post.id}
               className={cn(
                 "md:flex md:items-start md:justify-start md:gap-10",
-                // Pull content closer to the side panel; use the available right whitespace.
                 "md:pr-4 lg:pr-8",
               )}
             >

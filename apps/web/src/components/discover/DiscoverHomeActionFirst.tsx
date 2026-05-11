@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/hooks/data/keys";
 import {
   ChevronRight,
   ClipboardList,
@@ -47,6 +49,7 @@ import {
   isServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
+import { LiveTimer } from "@/components/LiveTimer";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
 import { DiscoverHomePostedHelpRequests } from "@/components/discover/DiscoverHomePostedHelpRequests";
@@ -81,7 +84,7 @@ const WORK = {
 
 /** Same stack + padding for both hire/work heroes; flex-1 + shared min-heights keeps both modes aligned in the desktop grid row. */
 const heroInnerClassName =
-  "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[12.5rem] md:min-h-[16rem]";
+  "relative flex min-h-[10rem] flex-1 flex-col sm:min-h-[11rem] md:min-h-[12.5rem]";
 
 const heroStackClassName =
   "relative z-10 flex min-h-0 flex-1 flex-col justify-start px-5 pb-4 pt-5 sm:px-6 sm:pb-4 sm:pt-5 md:px-7 md:pb-4 md:pt-6";
@@ -161,6 +164,54 @@ export function DiscoverHomeActionFirst({
     !isHire &&
     isFreelancerInActive24hLiveWindow({ live_until: freelancerLiveMeta.live_until });
 
+  /**
+   * Hero stat — viewer's own "Live help" count, matching the Explore page exactly.
+   * Shares the same `queryKeys.exploreLiveHelp(userId, mode)` cache key as
+   * `ExploreLiveHelpNow` and `DiscoverHomeMyLiveHelpJobs`, returning the same
+   * `{ jobs, profileMap }` shape so we never clobber the shared cache. `select`
+   * derives the count we need without re-fetching.
+   *  - Hire: jobs where the viewer is the client and a helper is currently engaged.
+   *  - Work: jobs where the viewer is the selected helper and is currently helping.
+   */
+  const { data: heroLiveHelpData } = useQuery<
+    { jobs: Array<{ id: string }>; profileMap: Record<string, unknown> },
+    Error,
+    number
+  >({
+    queryKey: queryKeys.exploreLiveHelp(user?.id, homeMode),
+    enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000,
+    queryFn: async () => {
+      if (!user?.id) return { jobs: [], profileMap: {} };
+      const base = supabase
+        .from("job_requests")
+        .select(
+          "id, created_at, service_type, location_city, location_lat, location_lng, client_id, selected_freelancer_id, status",
+        );
+      const filtered = isHire
+        ? base.eq("client_id", user.id)
+        : base.eq("selected_freelancer_id", user.id);
+      const { data, error } = await filtered
+        .in("status", ["locked", "active"])
+        .not("selected_freelancer_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(24);
+      if (error) {
+        console.warn("[DiscoverHomeActionFirst] live help count", error);
+        return { jobs: [], profileMap: {} };
+      }
+      return {
+        jobs: (data ?? []) as Array<{ id: string }>,
+        profileMap: {},
+      };
+    },
+    select: (raw) =>
+      Array.isArray((raw as { jobs?: unknown[] })?.jobs)
+        ? (raw as { jobs: unknown[] }).jobs.length
+        : 0,
+  });
+  const myLiveHelpCount = heroLiveHelpData ?? 0;
+
   /** Total live helper slots across Discover home categories (same pool as the strip). */
   const hireLiveHelperCount = useMemo(() => {
     let n = 0;
@@ -219,34 +270,13 @@ export function DiscoverHomeActionFirst({
   const primaryCtaBreatheClass = "motion-safe:animate-dock-primary-breathe";
 
   /**
-   * Mobile: icon-only primary + More, stacked on the right above BottomNav; sheet unchanged.
+   * Mobile: the More-actions sheet is the only quick-action surface; the
+   * standalone "Find requests" FAB is gone — the action lives inside this sheet
+   * (opened from the 3-dot button on the "You're live" strip).
    */
   function renderQuickActionDockMobile() {
-    const dockClass = cn(
-      "pointer-events-auto fixed right-0 z-[140] flex flex-col items-end gap-3 md:hidden",
-      "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px))+3.5rem+0.5rem)]",
-      "pr-[max(0.75rem,env(safe-area-inset-right,0px))]",
-    );
-
-    const moreMenuCountBadge =
-      "absolute -right-1 -top-1 z-10 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums text-white bg-red-500 shadow-sm";
-
     const badgeRow =
       "ml-auto flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums text-white bg-red-500 shadow-sm";
-
-    const fabBase = cn(
-      "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-white shadow-2xl transition-transform active:scale-[0.96]",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-white",
-      "dark:focus-visible:ring-white/35 dark:focus-visible:ring-offset-zinc-950",
-    );
-
-    const workBrowseFabClass = cn(
-      fabBase,
-      "border border-emerald-500/45 bg-emerald-50 text-emerald-700 shadow-2xl",
-      "focus-visible:ring-emerald-500/35 dark:focus-visible:ring-emerald-200/35",
-      "dark:border-emerald-400/35 dark:bg-zinc-800/95 dark:text-white dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
-      primaryCtaBreatheClass,
-    );
 
     const quickMoreSheet = (
       <Dialog open={quickMoreOpen} onOpenChange={setQuickMoreOpen}>
@@ -312,30 +342,28 @@ export function DiscoverHomeActionFirst({
               </>
             ) : (
               <>
-                {!isInActive24hGoLiveWindow ? (
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
-                    onClick={() => {
-                      setQuickMoreOpen(false);
-                      trackEvent("discover_actions_browse_requests", { mode: homeMode });
-                      navigateToWorkBrowseRequests(navigate, profile);
-                    }}
-                  >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
-                      <UsersRound className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
+                  onClick={() => {
+                    setQuickMoreOpen(false);
+                    trackEvent("discover_actions_browse_requests", { mode: homeMode });
+                    navigateToWorkBrowseRequests(navigate, profile);
+                  }}
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+                    <UsersRound className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-bold text-foreground">Find requests</span>
+                    <span className="text-xs text-muted-foreground">Live requests near you</span>
+                  </span>
+                  {workLivePostCount > 0 ? (
+                    <span className={badgeRow}>
+                      {workLivePostCount > 99 ? "99+" : workLivePostCount}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-bold text-foreground">Find posts</span>
-                      <span className="text-xs text-muted-foreground">Live requests near you</span>
-                    </span>
-                    {workLivePostCount > 0 ? (
-                      <span className={badgeRow}>
-                        {workLivePostCount > 99 ? "99+" : workLivePostCount}
-                      </span>
-                    ) : null}
-                  </button>
-                ) : null}
+                  ) : null}
+                </button>
                 <button
                   type="button"
                   className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
@@ -364,39 +392,10 @@ export function DiscoverHomeActionFirst({
       </Dialog>
     );
 
-    if (isHire) {
-      return <>{quickMoreSheet}</>;
-    }
-
-    const workFabIsBrowse = isInActive24hGoLiveWindow;
-
-    return (
-      <>
-        {workFabIsBrowse ? (
-          <div className={dockClass}>
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent("discover_actions_browse_requests", { mode: homeMode });
-                navigateToWorkBrowseRequests(navigate, profile);
-              }}
-              className={workBrowseFabClass}
-              aria-label={`Find posts${
-                workLivePostCount > 0 ? ` (${workLivePostCount})` : ""
-              }`}
-            >
-              <UsersRound className="h-7 w-7" strokeWidth={2.5} aria-hidden />
-              {workLivePostCount > 0 ? (
-                <span className={moreMenuCountBadge}>
-                  {workLivePostCount > 99 ? "99+" : workLivePostCount}
-                </span>
-              ) : null}
-            </button>
-          </div>
-        ) : null}
-        {quickMoreSheet}
-      </>
-    );
+    // The "Find requests" entry lives exclusively inside the More-actions sheet on
+    // mobile; the standalone floating FAB is intentionally removed (avoids a
+    // duplicate CTA next to the "You're live" strip).
+    return <>{quickMoreSheet}</>;
   }
 
   /** Desktop hero: three round icon badges + captions (no modal). */
@@ -405,15 +404,18 @@ export function DiscoverHomeActionFirst({
       "absolute -right-0.5 -top-0.5 z-10 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums text-white shadow-md bg-red-500 ring-2 ring-white dark:ring-zinc-900";
 
     const roundBadgeClass = cn(
-      "relative flex aspect-square h-20 w-20 shrink-0 items-center justify-center rounded-3xl border-0 p-0 shadow-2xl transition-all duration-300 active:scale-[0.96] hover:scale-[1.08] group",
-      "bg-white/10 text-white backdrop-blur-2xl ring-1 ring-white/20 hover:bg-white/20",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent focus-visible:ring-white/50",
+      "relative flex aspect-square h-16 w-16 shrink-0 items-center justify-center rounded-3xl border-0 p-0 shadow-lg transition-all duration-300 active:scale-[0.96] hover:scale-[1.06] group",
+      // On the page background: subtle slate fill in light mode, white-tinted glass in dark mode.
+      "bg-slate-900/85 text-white ring-1 ring-slate-900/15 hover:bg-slate-900",
+      "dark:bg-white/10 dark:text-white dark:ring-1 dark:ring-white/15 dark:hover:bg-white/15 dark:backdrop-blur-2xl",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950",
     );
 
     const badgeCaptionClass =
-      "max-w-[6rem] text-center text-[11px] font-black uppercase leading-tight tracking-[0.08em] text-white transition-opacity duration-300 group-hover:opacity-100 opacity-90";
+      "max-w-[6rem] text-center text-[11px] font-black uppercase leading-tight tracking-[0.08em] text-slate-700 dark:text-zinc-200 transition-opacity duration-300 group-hover:opacity-100 opacity-90";
 
-    const desktopQuickWrap = "pointer-events-auto absolute bottom-7 right-8 z-[20] hidden items-end gap-6 md:flex";
+    // Quick action buttons live in the right column, on the page background — no longer overlaid on the hero.
+    const desktopQuickWrap = "hidden md:flex md:flex-col md:items-center md:justify-center md:gap-4 md:h-full md:py-1";
 
     if (isHire) {
       return (
@@ -429,7 +431,7 @@ export function DiscoverHomeActionFirst({
               className={roundBadgeClass}
               aria-label="Find helpers"
             >
-              <Search className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
+              <Search className="h-6 w-6 text-white" strokeWidth={3} aria-hidden />
               {hireLiveHelperCount > 0 ? (
                 <span className={countBadgeClass}>
                   {hireLiveHelperCount > 99 ? "99+" : hireLiveHelperCount}
@@ -455,7 +457,7 @@ export function DiscoverHomeActionFirst({
               )}
               aria-label="Request help now"
             >
-              <Zap className="h-9 w-9 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" strokeWidth={3} aria-hidden />
+              <Zap className="h-7 w-7 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" strokeWidth={3} aria-hidden />
             </button>
             <span className={badgeCaptionClass}>Post request</span>
           </div>
@@ -469,7 +471,7 @@ export function DiscoverHomeActionFirst({
               className={roundBadgeClass}
               aria-label="My requests"
             >
-              <ClipboardList className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
+              <ClipboardList className="h-6 w-6 text-white" strokeWidth={3} aria-hidden />
               {myRequestsCount > 0 ? (
                 <span className={countBadgeClass}>
                   {myRequestsCount > 9 ? "9+" : myRequestsCount}
@@ -493,16 +495,16 @@ export function DiscoverHomeActionFirst({
               navigateToWorkBrowseRequests(navigate, profile);
             }}
             className={roundBadgeClass}
-            aria-label="Find posts"
+            aria-label="Find requests"
           >
-            <UsersRound className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
+            <UsersRound className="h-6 w-6 text-white" strokeWidth={3} aria-hidden />
             {workLivePostCount > 0 ? (
               <span className={countBadgeClass}>
                 {workLivePostCount > 99 ? "99+" : workLivePostCount}
               </span>
             ) : null}
           </button>
-          <span className={badgeCaptionClass}>Find posts</span>
+          <span className={badgeCaptionClass}>Find requests</span>
         </div>
         {isInActive24hGoLiveWindow ? null : (
           <div className="flex flex-col items-center gap-2.5 group">
@@ -522,7 +524,7 @@ export function DiscoverHomeActionFirst({
               )}
               aria-label="Go live"
             >
-              <PlayCircle className="h-9 w-9 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" strokeWidth={3} aria-hidden />
+              <PlayCircle className="h-7 w-7 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" strokeWidth={3} aria-hidden />
             </button>
             <span className={badgeCaptionClass}>Go live</span>
           </div>
@@ -537,7 +539,7 @@ export function DiscoverHomeActionFirst({
             className={roundBadgeClass}
             aria-label="Pending responses"
           >
-            <Clock className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
+            <Clock className="h-6 w-6 text-white" strokeWidth={3} aria-hidden />
             {pendingWorkRequestsCount > 0 ? (
               <span className={countBadgeClass}>
                 {pendingWorkRequestsCount > 9 ? "9+" : pendingWorkRequestsCount}
@@ -551,7 +553,115 @@ export function DiscoverHomeActionFirst({
   }
 
   function renderDesktopWorkLiveBadge() {
-    return null;
+    if (isHire) return null;
+    if (!isInActive24hGoLiveWindow) return null;
+    const liveUntil = freelancerLiveMeta.live_until;
+    return (
+      <div className="pointer-events-none absolute right-6 top-6 z-[21] hidden md:block">
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/45 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md">
+          <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/70 motion-reduce:animate-none" />
+            <span className="relative block h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.65)]" />
+          </span>
+          <span>Live</span>
+          {liveUntil ? (
+            <span className="rounded-full bg-white/15 px-2 py-1 text-[11px] font-black tabular-nums tracking-wide">
+              <LiveTimer
+                countdownTo={liveUntil}
+                render={({ time }) => <span>{time}</span>}
+              />
+            </span>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  /**
+   * Desktop-only key-stat pills overlaid on the right side of the hero image.
+   * Clicking a stat deep-links to the matching Explore tab.
+   *  - Hire (Get help now): My requests + Live help
+   *  - Work (Help others): Pending + Live help
+   */
+  function renderHeroStats() {
+    type HeroStat = {
+      label: string;
+      value: number;
+      accent: string;
+      tab: string;
+    };
+    const stats: HeroStat[] = isHire
+      ? [
+          {
+            label: "My requests",
+            value: myRequestsCount,
+            accent: "bg-indigo-500/85",
+            tab: "my_requests",
+          },
+          {
+            label: "Live help",
+            value: myLiveHelpCount,
+            accent: "bg-emerald-500/85",
+            tab: "live_help",
+          },
+        ]
+      : [
+          {
+            label: "Pending",
+            value: pendingWorkRequestsCount,
+            accent: "bg-amber-500/85",
+            tab: "pending",
+          },
+          {
+            label: "Live help",
+            value: myLiveHelpCount,
+            accent: "bg-emerald-500/85",
+            tab: "live_help",
+          },
+        ];
+
+    return (
+      <div className="pointer-events-auto absolute right-7 bottom-6 z-[20] hidden md:flex items-end gap-7">
+        {stats.map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => {
+              trackEvent("discover_hero_stat_click", {
+                mode: homeMode,
+                tab: s.tab,
+              });
+              navigate(`${explorePath}?mode=${homeMode}&tab=${s.tab}`);
+            }}
+            aria-label={`${s.label}: ${s.value}. Open in Explore`}
+            className={cn(
+              "group flex cursor-pointer flex-col items-center rounded-xl px-3 py-1.5 text-center text-white transition-transform duration-150",
+              "hover:-translate-y-0.5 active:scale-[0.97]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-0",
+            )}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className={cn("block h-2 w-2 rounded-full", s.accent)}
+                aria-hidden
+              />
+              <span
+                className="text-[32px] font-black leading-none tabular-nums text-white transition-colors group-hover:text-white"
+                style={{ textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}
+              >
+                {s.value > 999 ? "999+" : s.value}
+              </span>
+            </span>
+            <span
+              className="mt-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-white/95 transition-colors group-hover:text-white"
+              style={{ textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}
+            >
+              {s.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
   }
 
   const workTheme = WORK;
@@ -644,7 +754,7 @@ export function DiscoverHomeActionFirst({
           <h2 className="mb-4 px-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             Our community live
           </h2>
-          <ProfilePostsFeed limit={5} appearance="discover" />
+          <ProfilePostsFeed limit={5} appearance="discover" discoverSidePanel="favorites" />
           <div className="mt-6 flex justify-center px-4 pb-8">
             <button
               type="button"
@@ -663,8 +773,10 @@ export function DiscoverHomeActionFirst({
         <div
           className={cn(
             "grid shrink-0 grid-cols-1 gap-4 md:gap-5 lg:gap-6",
+            // Both tabs: 2-col layout — hero on the left, quick action buttons on the right
+            // (sitting on the page background, not overlaid on the hero).
             user?.id &&
-            "md:grid-cols-[minmax(0,1fr)_min(19rem,32%)] md:items-stretch",
+              "md:grid-cols-[minmax(0,1fr)_min(15rem,24%)] md:items-stretch",
           )}
         >
           {isHire ? (
@@ -672,10 +784,10 @@ export function DiscoverHomeActionFirst({
               <section
                 className={cn(
                   "relative mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:min-h-0",
-                  "ring-1 ring-white/10 ring-inset shadow-2xl transition-all duration-500",
+                  "ring-1 ring-white/10 ring-inset transition-all duration-500",
                 )}
               >
-                {renderHeroQuickActionsDesktop()}
+                {renderHeroStats()}
                 <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
                   <img
                     src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
@@ -727,11 +839,11 @@ export function DiscoverHomeActionFirst({
             <section
               className={cn(
                 "relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:h-full md:min-h-0",
-                "ring-1 ring-white/10 ring-inset shadow-2xl transition-all duration-500",
+                "ring-1 ring-white/10 ring-inset transition-all duration-500",
               )}
             >
-              {renderHeroQuickActionsDesktop()}
               {renderDesktopWorkLiveBadge()}
+              {renderHeroStats()}
               <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
                 <img
                   src={DISCOVER_PRIMARY_HERO_IMAGES.work}
@@ -777,13 +889,7 @@ export function DiscoverHomeActionFirst({
               </div>
             </section>
           )}
-          {!isHire ? (
-            <DiscoverHomeMyLiveHelpJobs
-              mode="work"
-              exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
-              className="min-w-0 px-0.5"
-            />
-          ) : null}
+          {user?.id ? renderHeroQuickActionsDesktop() : null}
         </div>
 
         <div className="min-h-0 overflow-hidden pt-2 flex flex-col gap-2">
@@ -812,11 +918,19 @@ export function DiscoverHomeActionFirst({
           <DiscoverHomeFavoriteRequests className="px-1 pt-4 pb-1" />
         ) : null}
 
+        {!isHire ? (
+          <DiscoverHomeMyLiveHelpJobs
+            mode="work"
+            exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
+            className="min-w-0 px-1 pt-4 pb-1"
+          />
+        ) : null}
+
         <section className="mt-6 pb-0">
           <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             Our community live
           </h2>
-          <ProfilePostsFeed limit={5} appearance="discover" />
+          <ProfilePostsFeed limit={5} appearance="discover" discoverSidePanel="favorites" />
         </section>
 
         <DiscoverHomeReviewsDesktopStrip

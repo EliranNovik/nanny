@@ -18,9 +18,7 @@ import {
   Home,
   Rss,
   MessageCircle,
-  CalendarDays,
   User,
-  LayoutGrid,
   PenSquare,
 } from "lucide-react";
 
@@ -67,15 +65,14 @@ export function DesktopSidePanel() {
   const roleBase =
     profile?.role === "freelancer" ? "/freelancer" : "/client";
   const homeHref = `${roleBase}/home`;
-  const exploreHref = `${roleBase}/explore`;
-  const jobsHref = "/jobs";
-  const calendarHref = "/calendar";
+  const communityHref = "/community/feed";
+  /** Explore now opens the community feed (the full Explore page is reachable via the Profile hub). */
+  const exploreHref = communityHref;
   const messagesHref = "/messages";
   const profileHref =
     profile?.role === "freelancer"
       ? "/freelancer/profile"
       : "/client/profile";
-  const communityHref = "/community/feed";
   const requestHref = "/client/create";
   const goLiveHref = "/availability/post-now";
   const savedHref = `${roleBase}/profile/saved`;
@@ -97,31 +94,14 @@ export function DesktopSidePanel() {
       label: "Explore",
       href: exploreHref,
       icon: Rss,
-      activeMatch: (p) => p.startsWith(exploreHref),
+      activeMatch: (p) =>
+        p.startsWith("/community") || p.startsWith("/public/posts"),
     },
     {
       label: "Messages",
       href: messagesHref,
       icon: MessageCircle,
       activeMatch: (p) => p.startsWith("/messages"),
-    },
-    {
-      label: "Jobs",
-      href: jobsHref,
-      icon: ClipboardList,
-      activeMatch: (p) => p.startsWith("/jobs") || p.startsWith("/client/jobs") || p.startsWith("/freelancer/jobs"),
-    },
-    {
-      label: "Calendar",
-      href: calendarHref,
-      icon: CalendarDays,
-      activeMatch: (p) => p.startsWith("/calendar"),
-    },
-    {
-      label: "Community",
-      href: communityHref,
-      icon: LayoutGrid,
-      activeMatch: (p) => p.startsWith("/community") || p.startsWith("/public/posts"),
     },
     {
       label: "Profile",

@@ -20,6 +20,7 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Activity,
+  LayoutDashboard,
 } from "lucide-react";
 
 export default function FreelancerProfileHub() {
@@ -98,6 +99,12 @@ export default function FreelancerProfileHub() {
           </div>
 
           <div className="rounded-[24px] border border-slate-200/80 dark:border-white/5 bg-white dark:bg-zinc-900 divide-y divide-slate-100 dark:divide-white/5 overflow-hidden shadow-sm">
+            <ProfileMenuRow
+              to="/freelancer/explore"
+              icon={LayoutDashboard}
+              label="My activity"
+              description="Live help, pending responses, and history"
+            />
             <ProfileMenuRow
               to="/recent-activity"
               icon={Activity}

@@ -28,8 +28,11 @@ const stripMoreBtnClass = cn(
   "focus-visible:outline-none focus-visible:ring-0",
 );
 
-const stripMoreBadgeClass =
-  "absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-0.5 text-[10px] font-black tabular-nums leading-none text-white bg-red-500 shadow-sm";
+/** Standalone count pill — sits inline just to the left of the 3-dot button, raised slightly above center. */
+const stripMoreBadgeClass = cn(
+  "flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums leading-none text-white bg-red-500 shadow-sm",
+  "-translate-y-2",
+);
 
 type FreelancerLiveRow = {
   live_until: string | null;
@@ -129,20 +132,25 @@ export function ExploreHelpOthersLiveStrip({
 
   const stripMoreButton =
     onMoreClick != null ? (
-      <button
-        type="button"
-        onClick={onMoreClick}
-        className={stripMoreBtnClass}
-        aria-label="More discover actions"
-        aria-expanded={moreMenuOpen}
-      >
-        <MoreVertical className="h-6 w-6" strokeWidth={2.5} aria-hidden />
+      <div className="ml-auto flex shrink-0 items-center gap-0 -mr-0.5">
         {moreMenuTotal > 0 ? (
-          <span className={stripMoreBadgeClass} aria-hidden>
+          <span
+            className={stripMoreBadgeClass}
+            aria-label={`${moreMenuTotal} updates`}
+          >
             {moreMenuTotal > 99 ? "99+" : moreMenuTotal}
           </span>
         ) : null}
-      </button>
+        <button
+          type="button"
+          onClick={onMoreClick}
+          className={stripMoreBtnClass}
+          aria-label="More discover actions"
+          aria-expanded={moreMenuOpen}
+        >
+          <MoreVertical className="h-6 w-6" strokeWidth={2.5} aria-hidden />
+        </button>
+      </div>
     ) : null;
 
   if (!viewerId) return null;
@@ -174,9 +182,9 @@ export function ExploreHelpOthersLiveStrip({
         {isLive ? (
           <div
             className={cn(
-              "flex items-center gap-3 rounded-2xl border px-3 py-2.5 pl-3.5 shadow-none",
-              "border-emerald-200/90 bg-white text-emerald-950",
-              "dark:border-emerald-400/20 dark:bg-emerald-950/55 dark:text-emerald-50 dark:backdrop-blur-xl",
+              "flex items-center gap-3 rounded-2xl border-0 px-3 py-2.5 pl-3.5 shadow-none",
+              "bg-white text-emerald-950",
+              "dark:bg-emerald-950/55 dark:text-emerald-50 dark:backdrop-blur-xl",
             )}
             role="status"
             aria-live="polite"
@@ -213,9 +221,9 @@ export function ExploreHelpOthersLiveStrip({
         ) : (
           <div
             className={cn(
-              "flex items-center gap-3 rounded-2xl border px-3 py-2.5 pl-3.5 shadow-none",
-              "border-zinc-200 bg-white text-zinc-900",
-              "dark:border-white/10 dark:bg-zinc-900/90 dark:text-zinc-50",
+              "flex items-center gap-3 rounded-2xl border-0 px-3 py-2.5 pl-3.5 shadow-none",
+              "bg-white text-zinc-900",
+              "dark:bg-zinc-900/90 dark:text-zinc-50",
             )}
           >
             <div className="flex min-w-0 flex-1 items-center gap-3">
