@@ -216,7 +216,7 @@ function ChatLinkPreviewTile({
     <div
       className={cn(
         "min-w-0 max-w-full overflow-hidden rounded-xl bg-white dark:bg-zinc-950",
-        embedded ? cn("bg-transparent", tileShell) : "ring-1",
+        embedded ? cn("bg-transparent", tileShell) : tileShell,
       )}
     >
       {imageSrc ? (

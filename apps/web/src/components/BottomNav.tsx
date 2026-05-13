@@ -837,21 +837,10 @@ export function BottomNav() {
               </Badge>
             )}
           </button>
-          {user && (
-            <button
-              type="button"
-              onClick={() => setProfileMenuOpen(true)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center group"
-              aria-label="Open profile"
-            >
-              <Avatar className="h-9 w-9 border border-black/5 dark:border-white/10 shadow-sm transition-transform group-hover:scale-105 group-active:scale-95">
-                <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
-                <AvatarFallback className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800">
-                  {(profile?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </button>
-          )}
+          {/*
+           * Profile avatar lives in the DesktopSidePanel ("Profile" nav row) on
+           * desktop, so the header no longer renders a duplicate avatar button.
+           */}
         </div>
       </div>
     </header>

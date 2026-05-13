@@ -5,6 +5,7 @@ import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { cn } from "@/lib/utils";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/lib/supabase";
 import {
   type LucideIcon,
@@ -340,6 +341,7 @@ export function DesktopSidePanel() {
             {items.map((it) => {
               const active = it.activeMatch(pathname);
               const Icon = it.icon;
+              const isProfileRow = it.label === "Profile";
               return (
                 <Link
                   key={it.href}
@@ -352,7 +354,29 @@ export function DesktopSidePanel() {
                   aria-current={active ? "page" : undefined}
                   title={it.label}
                 >
-                  <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+                  {isProfileRow ? (
+                    <Avatar
+                      className={cn(
+                        "h-7 w-7 shrink-0 border transition-[box-shadow,ring-color] duration-300",
+                        active
+                          ? "border-transparent ring-2 ring-foreground"
+                          : "border-black/10 dark:border-white/15",
+                      )}
+                    >
+                      <AvatarImage
+                        src={profile?.photo_url ?? undefined}
+                        alt=""
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="text-[10px] font-bold bg-slate-100 text-zinc-900 dark:bg-zinc-800 dark:text-white">
+                        {(profile?.full_name ?? user?.email ?? "U")
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+                  )}
                   <span className="text-[13px] font-bold leading-none tracking-tight">
                     {it.label}
                   </span>

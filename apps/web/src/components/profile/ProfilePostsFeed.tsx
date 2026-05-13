@@ -55,6 +55,7 @@ import {
   PostMediaReelsViewer,
   type ReelFeedPost,
 } from "@/components/profile/PostMediaReelsViewer";
+import { PostMediaDesktopViewer } from "@/components/profile/PostMediaDesktopViewer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2306,6 +2307,31 @@ export function ProfilePostsFeed({
   const [composeOpen, setComposeOpen] = useState(false);
   const [reelsOpenPostId, setReelsOpenPostId] = useState<string | null>(null);
   const [reelCommentsPostId, setReelCommentsPostId] = useState<string | null>(null);
+  /**
+   * Track viewport width so we can render the desktop full-size viewer
+   * (`PostMediaDesktopViewer`) on md+ screens and the mobile reels viewer
+   * (`PostMediaReelsViewer`) on smaller screens. Reacts live to resize so the
+   * correct variant always reflects the current viewport.
+   */
+  const [isDesktopViewport, setIsDesktopViewport] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(min-width: 768px)");
+    const onChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setIsDesktopViewport((e as MediaQueryList).matches ?? false);
+    };
+    setIsDesktopViewport(mql.matches);
+    if ("addEventListener" in mql) {
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    }
+    // Safari < 14 fallback
+    (mql as MediaQueryList).addListener(onChange);
+    return () => (mql as MediaQueryList).removeListener(onChange);
+  }, []);
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2933,18 +2959,32 @@ export function ProfilePostsFeed({
       )}
 
       {reelsOpenPostId !== null ? (
-        <PostMediaReelsViewer
-          key={reelsOpenPostId}
-          open
-          posts={posts as unknown as ReelFeedPost[]}
-          initialPostId={reelsOpenPostId}
-          onClose={() => setReelsOpenPostId(null)}
-          currentUserId={user?.id ?? null}
-          onLikeToggle={handleLikeToggle}
-          onRefreshShareStats={refreshPostShareStats}
-          onOpenComments={(postId) => setReelCommentsPostId(postId)}
-          hideLikeButton={Boolean(filterLikedByUserId)}
-        />
+        isDesktopViewport ? (
+          <PostMediaDesktopViewer
+            key={`desktop-${reelsOpenPostId}`}
+            open
+            posts={posts as unknown as ReelFeedPost[]}
+            initialPostId={reelsOpenPostId}
+            onClose={() => setReelsOpenPostId(null)}
+            currentUserId={user?.id ?? null}
+            onLikeToggle={handleLikeToggle}
+            onRefreshShareStats={refreshPostShareStats}
+            hideLikeButton={Boolean(filterLikedByUserId)}
+          />
+        ) : (
+          <PostMediaReelsViewer
+            key={`reels-${reelsOpenPostId}`}
+            open
+            posts={posts as unknown as ReelFeedPost[]}
+            initialPostId={reelsOpenPostId}
+            onClose={() => setReelsOpenPostId(null)}
+            currentUserId={user?.id ?? null}
+            onLikeToggle={handleLikeToggle}
+            onRefreshShareStats={refreshPostShareStats}
+            onOpenComments={(postId) => setReelCommentsPostId(postId)}
+            hideLikeButton={Boolean(filterLikedByUserId)}
+          />
+        )
       ) : null}
 
       <CommentsDialog

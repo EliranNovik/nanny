@@ -2099,7 +2099,21 @@ export default function ChatPage({
         <div
           className={cn(
             "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden scroll-smooth pb-4",
-            hideBackButton ? "pt-0 md:pt-4" : "pt-20 md:pt-4",
+            /**
+             * When embedded inside `MessagesPage` (`hideBackButton`), the
+             * parent renders a translucent floating chat header on both
+             * viewports (a fixed bar on mobile, an absolute overlay on
+             * desktop). The clearance for that header lives here as
+             * *scrollable* top padding, so the first message sits below the
+             * header initially and the bubbles slide UNDER it as the user
+             * scrolls — which is what produces the glassy see-through blur.
+             *
+             *  - Mobile: safe-area-top + ~3.5rem to clear the fixed bar.
+             *  - Desktop: 3.5rem to clear the absolute header.
+             */
+            hideBackButton
+              ? "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] md:pt-[3.5rem]"
+              : "pt-20 md:pt-4",
             "px-3 md:p-4",
           )}
           style={{
@@ -2261,10 +2275,8 @@ export default function ChatPage({
                             {linkPreviewUrls.length > 0 ? (
                               <div
                                 className={cn(
-                                  "w-full min-w-0 max-w-full overflow-hidden shadow-md transition-all duration-300",
-                                  isOwn
-                                    ? "rounded-2xl rounded-br-none border-t border-white/10 bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white"
-                                    : "rounded-2xl rounded-bl-none border-none bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100",
+                                  "flex w-full min-w-0 max-w-full flex-col gap-2",
+                                  isOwn ? "items-end" : "items-start",
                                 )}
                               >
                                 {msg.body &&
@@ -2274,10 +2286,10 @@ export default function ChatPage({
                                   ) && (
                                     <div
                                       className={cn(
-                                        "min-w-0 max-w-full border-b px-3 py-2.5",
+                                        "relative min-w-0 max-w-full w-fit px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
                                         isOwn
-                                          ? "border-white/15"
-                                          : "border-black/10 dark:border-white/10",
+                                          ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                          : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
                                       )}
                                     >
                                       <p
@@ -2296,11 +2308,11 @@ export default function ChatPage({
                                       </p>
                                     </div>
                                   )}
-                                <div className="min-w-0 max-w-full p-2">
+                                <div className="w-full min-w-0 max-w-full">
                                   <ChatLinkPreviewCards
                                     urls={linkPreviewUrls}
                                     variant={isOwn ? "sent" : "received"}
-                                    embedded
+                                    embedded={false}
                                   />
                                 </div>
                               </div>
@@ -2394,19 +2406,17 @@ export default function ChatPage({
                         {linkPreviewUrls.length > 0 ? (
                           <div
                             className={cn(
-                              "group relative w-full min-w-0 max-w-full overflow-hidden shadow-md transition-all duration-300",
-                              isOwn
-                                ? "rounded-2xl rounded-br-none border-t border-white/10 bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white"
-                                : "rounded-2xl rounded-bl-none border-none bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100",
+                              "flex w-full min-w-0 max-w-full flex-col gap-2",
+                              isOwn ? "items-end" : "items-start",
                             )}
                           >
                             {msg.attachment_url && (
                               <div
                                 className={cn(
-                                  "border-b px-2.5 pb-2 pt-2",
+                                  "min-w-0 max-w-full w-fit px-2.5 py-2 shadow-sm transition-all duration-300",
                                   isOwn
-                                    ? "border-white/15"
-                                    : "border-black/10 dark:border-white/10",
+                                    ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                    : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
                                 )}
                               >
                                 <a
@@ -2445,10 +2455,10 @@ export default function ChatPage({
                             {msg.body && matchIntro ? (
                               <div
                                 className={cn(
-                                  "border-b px-3 py-3",
+                                  "min-w-0 max-w-full w-fit px-3 py-3 shadow-sm transition-all duration-300",
                                   isOwn
-                                    ? "border-white/15"
-                                    : "border-black/10 dark:border-white/10",
+                                    ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                    : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
                                 )}
                               >
                                 <div
@@ -2477,10 +2487,10 @@ export default function ChatPage({
                                 msg.body ? (
                               <div
                                 className={cn(
-                                  "min-w-0 max-w-full border-b px-3 py-2.5",
+                                  "relative min-w-0 max-w-full w-fit px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
                                   isOwn
-                                    ? "border-white/15"
-                                    : "border-black/10 dark:border-white/10",
+                                    ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                    : "rounded-2xl rounded-bl-none bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-none",
                                 )}
                               >
                                 <p
@@ -2498,11 +2508,11 @@ export default function ChatPage({
                               </div>
                             ) : null}
 
-                            <div className="min-w-0 max-w-full p-2">
+                            <div className="w-full min-w-0 max-w-full">
                               <ChatLinkPreviewCards
                                 urls={linkPreviewUrls}
                                 variant={isOwn ? "sent" : "received"}
-                                embedded
+                                embedded={false}
                               />
                             </div>
                           </div>

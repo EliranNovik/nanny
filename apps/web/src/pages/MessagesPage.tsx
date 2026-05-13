@@ -843,7 +843,7 @@ export default function MessagesPage() {
             <div className="w-full min-w-0 max-w-full space-y-0.5">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="flex w-full items-center gap-3 px-4 py-4">
-                  <Skeleton className="h-14 w-14 shrink-0 rounded-full" />
+                  <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-1/3" />
                     <Skeleton className="h-3 w-2/3" />
@@ -873,7 +873,8 @@ export default function MessagesPage() {
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
         className={cn(
-          "flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96",
+          /* No side (right) divider — only the top + bottom of the box draw faint horizontal rules. */
+          "flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-transparent md:w-80 lg:w-96",
           "md:flex",
           mobileView === "contacts" ? "flex" : "hidden md:flex",
         )}
@@ -881,7 +882,7 @@ export default function MessagesPage() {
         {/* Header — in document flow (no fixed + duplicate pt — avoids double safe-area gap on mobile) */}
         <div
           className={cn(
-            "z-40 flex shrink-0 border-b border-border/30 bg-background/95 px-4 pb-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
+            "z-40 flex shrink-0 bg-background/95 px-4 pb-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
             "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
             "md:bg-transparent md:backdrop-blur-none",
           )}
@@ -935,7 +936,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Messages vs news */}
-        <div className="shrink-0 border-b border-border/30 px-4 pb-3 pt-1">
+        <div className="shrink-0 px-4 pb-3 pt-1">
           <div
             className="flex rounded-xl bg-muted/50 p-1 dark:bg-zinc-900/80"
             role="tablist"
@@ -1039,8 +1040,8 @@ export default function MessagesPage() {
                 </div>
               </div>
             ) : (
-              <div className="w-full min-w-0 max-w-full divide-y divide-border/25 overflow-x-hidden dark:divide-white/[0.06]">
-                {chatInboxRows.map((row) => {
+              <div className="w-full min-w-0 max-w-full overflow-x-hidden">
+                {chatInboxRows.map((row, index) => {
                   const convo = row.conversation;
                   const initials =
                     convo.other_user_profile?.full_name
@@ -1056,7 +1057,7 @@ export default function MessagesPage() {
                     <div
                       key={row.key}
                       className={cn(
-                        "cursor-pointer px-4 py-4 pr-[max(1rem,env(safe-area-inset-right,0px))] transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 relative border-l-2 border-transparent md:bg-transparent",
+                        "relative cursor-pointer px-4 py-4 pr-[max(1rem,env(safe-area-inset-right,0px))] transition-colors hover:bg-muted/30 dark:hover:bg-zinc-900/50 border-l-2 border-transparent md:bg-transparent",
                         isActive && "bg-muted/50 dark:bg-zinc-900/70 border-l-primary",
                         convo.unread_count > 0 &&
                           !isActive &&
@@ -1064,9 +1065,20 @@ export default function MessagesPage() {
                       )}
                       onClick={() => handleConversationClick(convo.id)}
                     >
+                      {/*
+                        Row divider — indented so it starts after the avatar.
+                        Skipped on the first row so the inbox only shows the
+                        faint top/bottom edges of the box.
+                      */}
+                      {index > 0 ? (
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute left-[5.375rem] right-4 top-0 h-px bg-border/15 dark:bg-white/[0.04] md:left-[4.875rem]"
+                        />
+                      ) : null}
                         <div className="flex min-w-0 items-start gap-3.5">
                           <div className="relative shrink-0 pt-0.5">
-                            <Avatar className="h-16 w-16 flex-shrink-0">
+                            <Avatar className="h-14 w-14 flex-shrink-0 md:h-12 md:w-12">
                               <AvatarImage
                                 src={
                                   convo.other_user_profile?.photo_url ||
@@ -1096,7 +1108,7 @@ export default function MessagesPage() {
                             <div className="min-w-0 max-w-full pr-[5.5rem]">
                               <p
                                 className={cn(
-                                  "flex min-w-0 items-baseline gap-x-1.5 text-lg font-semibold leading-snug text-foreground md:text-xl",
+                                  "flex min-w-0 items-baseline gap-x-1.5 text-[17px] font-semibold leading-snug text-foreground md:text-base",
                                   convo.unread_count > 0 && "text-foreground",
                                 )}
                               >
@@ -1105,7 +1117,7 @@ export default function MessagesPage() {
                                     "User"}
                                 </span>
                                 {locationLabel ? (
-                                  <span className="shrink-0 font-normal text-[15px] text-muted-foreground md:text-base">
+                                  <span className="shrink-0 font-normal text-[13px] text-muted-foreground md:text-sm">
                                     · {locationLabel}
                                   </span>
                                 ) : null}
@@ -1113,7 +1125,7 @@ export default function MessagesPage() {
                               {convo.last_message && (
                                 <p
                                   className={cn(
-                                    "mt-1.5 line-clamp-2 text-[15px] leading-snug text-muted-foreground md:text-base",
+                                    "mt-1 truncate text-[13px] leading-snug text-muted-foreground md:text-sm",
                                     convo.unread_count > 0 &&
                                       "font-medium text-foreground/90",
                                   )}
@@ -1195,7 +1207,7 @@ export default function MessagesPage() {
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="relative shrink-0">
                           {a.sender_photo ? (
-                            <Avatar className="h-14 w-14 flex-shrink-0">
+                            <Avatar className="h-12 w-12 flex-shrink-0">
                               <AvatarImage src={a.sender_photo} />
                               <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
                                 {a.title.charAt(0)}
@@ -1204,7 +1216,7 @@ export default function MessagesPage() {
                           ) : (
                             <div
                               className={cn(
-                                "h-14 w-14 rounded-full flex items-center justify-center",
+                                "h-12 w-12 rounded-full flex items-center justify-center",
                                 a.type === "job_request" &&
                                   "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
                                 a.type === "confirmation" &&
@@ -1215,7 +1227,7 @@ export default function MessagesPage() {
                                   "bg-blue-500/15 text-blue-700 dark:text-blue-400",
                               )}
                             >
-                              <ActivityIcon className="w-6 h-6" />
+                              <ActivityIcon className="h-5 w-5" />
                             </div>
                           )}
                         </div>
@@ -1250,7 +1262,7 @@ export default function MessagesPage() {
 
         {/* Mobile Action Box — messages tab only */}
         {inboxTab === "messages" ? (
-        <div className="flex md:hidden shrink-0 items-center justify-around border-t border-border/30 bg-background/95 px-4 pt-2.5 pb-4 h-[71px]">
+        <div className="flex md:hidden shrink-0 items-center justify-around border-t border-border/20 bg-background/95 px-4 pt-2.5 pb-4 h-[71px] dark:border-white/[0.04]">
           <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
             <DialogTrigger asChild>
               <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground">
@@ -1304,7 +1316,7 @@ export default function MessagesPage() {
         ) : null}
 
         {/* Desktop Tab Bar */}
-        <div className="hidden md:flex shrink-0 items-center justify-around border-t border-border/30 bg-background/95 px-4 pt-2.5 pb-4 h-[71px]">
+        <div className="hidden md:flex shrink-0 items-center justify-around border-t border-border/20 bg-background/95 px-4 pt-2.5 pb-4 h-[71px] dark:border-white/[0.04]">
           <Link
             to={profile?.role === "freelancer" ? "/freelancer/home" : "/client/home"}
             className={cn(
@@ -1370,7 +1382,7 @@ export default function MessagesPage() {
                 .toUpperCase() || "?";
 
             return (
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                 {/* Mobile chat bar — fixed to viewport top; conversation scrolls underneath */}
                 <div
                   className={cn(
@@ -1447,22 +1459,66 @@ export default function MessagesPage() {
                   </div>
                 </div>
 
-                {liveJobHeaderBanner && (
-                  <div className="hidden shrink-0 items-center justify-end border-b border-border/30 bg-background/90 px-4 py-2 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 md:flex dark:bg-background/95">
+                {/*
+                  Desktop chat header — absolutely overlaid so the conversation
+                  scrolls beneath it, mirroring the composer's translucent feel.
+                */}
+                <div
+                  className={cn(
+                    "absolute inset-x-0 top-0 z-20 hidden h-[3.5rem] items-center justify-between gap-3 px-5",
+                    "border-none bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
+                    "md:flex",
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (otherUserId) navigate(`/profile/${otherUserId}`);
+                    }}
+                    disabled={!otherUserId}
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center gap-3 rounded-full text-left transition-opacity",
+                      "hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                      "disabled:pointer-events-none disabled:opacity-60",
+                    )}
+                    aria-label={
+                      otherUserId
+                        ? `View ${otherUserProfile?.full_name || "user"} public profile`
+                        : undefined
+                    }
+                  >
+                    <Avatar className="h-10 w-10 flex-shrink-0">
+                      <AvatarImage
+                        src={otherUserProfile?.photo_url || undefined}
+                      />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {otherInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <h2 className="min-w-0 truncate text-base font-semibold leading-tight text-foreground">
+                      {otherUserProfile?.full_name || "User"}
+                    </h2>
+                  </button>
+                  {liveJobHeaderBanner && (
                     <LiveJobHeaderPill
                       categoryLabel={liveJobHeaderBanner.categoryLabel}
                       href={liveJobHeaderBanner.href}
+                      className="shrink-0"
                     />
-                  </div>
-                )}
-
-                {/* Chat Page area — top inset clears fixed mobile chat header (single row: back + avatar + name + optional pill) */}
-                <div
-                  className={cn(
-                    "relative min-h-0 flex-1 overflow-hidden",
-                    "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] md:pt-0",
                   )}
-                >
+                </div>
+
+                {/*
+                  Chat Page area — wrapper has zero top inset on both viewports
+                  so the message list sits flush against the top of the chat
+                  column and scrolls UNDER the translucent floating header.
+                  The clearance lives inside `ChatPage`'s scroll container
+                  (`pt-[...]`) so the first message is positioned correctly
+                  initially but slides under the header as the user scrolls —
+                  which is what produces the glassy blur on both mobile and
+                  desktop.
+                */}
+                <div className="relative min-h-0 flex-1 overflow-hidden">
                   <div className="messages-chat-container h-full min-h-0">
                     <ChatPage
                       key={conversationId || "none"}
