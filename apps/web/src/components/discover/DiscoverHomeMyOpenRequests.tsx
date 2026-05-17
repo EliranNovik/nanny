@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronLeft, ChevronRight, MapPin, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
@@ -31,7 +31,7 @@ const listContainerClass = cn(
 
 const cardBtnClass = cn(
   "group flex flex-col gap-2.5 text-left",
-  "w-[11rem] shrink-0 snap-start",
+  "w-[12rem] shrink-0 snap-start",
   "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
   "sm:gap-2 lg:gap-3",
   "focus-visible:outline-none",
@@ -107,7 +107,7 @@ export function DiscoverHomeMyOpenRequests({ className }: Props) {
     return (
       <section className={cn("w-full", className)} aria-label="My open requests">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-[13px] font-black uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+          <p className="text-[15px] font-black uppercase tracking-[0.12em] text-zinc-900 dark:text-white">
             My Requests
           </p>
         </div>
@@ -115,7 +115,7 @@ export function DiscoverHomeMyOpenRequests({ className }: Props) {
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[11rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-2 lg:gap-3"
+              className="flex w-[12rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-2 lg:gap-3"
             >
               <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
               <div className="space-y-2 px-0.5 sm:space-y-1.5">
@@ -135,7 +135,7 @@ export function DiscoverHomeMyOpenRequests({ className }: Props) {
   return (
     <section className={cn("w-full", className)} aria-label="My open requests">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-[13px] font-black uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+        <p className="text-[15px] font-black uppercase tracking-[0.12em] text-zinc-900 dark:text-white">
           My Requests
         </p>
         <div className="hidden items-center gap-1.5 md:flex">
@@ -239,13 +239,8 @@ export function DiscoverHomeMyOpenRequests({ className }: Props) {
                   {title}
                 </span>
                 {loc ? (
-                  <span className="flex min-w-0 items-center gap-1 truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px] lg:gap-1.5">
-                    <MapPin
-                      className="h-3 w-3 shrink-0 sm:h-2.5 sm:w-2.5 lg:h-3.5 lg:w-3.5 xl:h-4 xl:w-4"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span className="truncate">{loc}</span>
+                  <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px]">
+                    {loc}
                   </span>
                 ) : null}
                 {durationLabel ? (

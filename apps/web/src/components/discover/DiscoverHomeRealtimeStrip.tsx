@@ -205,6 +205,22 @@ function stripAvatarRingClass(mode: "hire" | "work"): string {
   return "bg-gradient-to-br from-emerald-300 via-emerald-600 to-emerald-900 dark:from-emerald-400 dark:via-emerald-600 dark:to-emerald-800";
 }
 
+const stripCategoryCircleClass =
+  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-14 md:w-14 items-center justify-center rounded-full border transition-all bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55";
+
+const stripCategoryLabelClass =
+  "font-extrabold uppercase tracking-[0.14em] max-md:text-[10.5px] md:text-[9px]";
+
+const stripCategoryCompassClass = "max-md:h-10 max-md:w-10 md:h-9 md:w-9";
+
+const stripCategoryIconShellClass =
+  "flex max-md:h-10 max-md:w-10 md:h-9 md:w-9 items-center justify-center";
+
+const stripCategoryIconSizeClass = "max-md:h-7 max-md:w-7 md:h-6 md:w-6";
+
+const stripHireProfileCardClass =
+  "flex w-[7.5rem] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl border-0 bg-transparent p-2 shadow-none transition-transform dark:border-0 dark:bg-zinc-800/75 dark:shadow-none outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] md:w-[5.5rem] md:gap-0.5 md:rounded-2xl md:border-0 md:bg-transparent md:p-1 md:shadow-none md:dark:bg-transparent";
+
 function pickPrimaryLiveCategory(
   catSet: Set<ServiceCategoryId>,
   preferred: ServiceCategoryId | null,
@@ -2183,16 +2199,15 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             )}
           >
             <div className={cn(
-              "relative h-14 w-14 rounded-full flex items-center justify-center border transition-all",
-              "bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55",
+              stripCategoryCircleClass,
               selectedFilterCategory === "all"
                 ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:text-emerald-300"
                 : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
             )}>
-              <Compass className="h-9 w-9" strokeWidth={2.5} />
+              <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
             </div>
             <span className={cn(
-              "text-[9px] font-extrabold uppercase tracking-[0.14em]",
+              stripCategoryLabelClass,
               selectedFilterCategory === "all" ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-zinc-500"
             )}>All</span>
           </button>
@@ -2208,18 +2223,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 )}
               >
                 <div className={cn(
-                  "relative h-14 w-14 rounded-full flex items-center justify-center border transition-all",
-                  "bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55",
+                  stripCategoryCircleClass,
                   selectedFilterCategory === cat.id
                     ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:text-emerald-300"
                     : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
                 )}>
-                  <span className="h-9 w-9 flex items-center justify-center">
-                    {categoryIconNode(cat.id, "h-6 w-6")}
+                  <span className={stripCategoryIconShellClass}>
+                    {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
                   </span>
                 </div>
                 <span className={cn(
-                  "text-[9px] font-extrabold uppercase tracking-[0.14em]",
+                  stripCategoryLabelClass,
                   selectedFilterCategory === cat.id ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-zinc-500"
                 )}>{cat.label.split(' ')[0]}</span>
               </button>
@@ -2325,16 +2339,15 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           )}
         >
           <div className={cn(
-            "relative h-14 w-14 rounded-full flex items-center justify-center border transition-all",
-            "bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55",
+            stripCategoryCircleClass,
             selectedFilterCategory === "all"
               ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:text-violet-300"
               : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
           )}>
-            <Compass className="h-9 w-9" strokeWidth={2.5} />
+            <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
           </div>
           <span className={cn(
-            "text-[9px] font-extrabold uppercase tracking-[0.14em]",
+            stripCategoryLabelClass,
             selectedFilterCategory === "all" ? "text-violet-700 dark:text-violet-300" : "text-slate-500 dark:text-zinc-500"
           )}>All</span>
         </button>
@@ -2350,18 +2363,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               )}
             >
               <div className={cn(
-                "relative h-14 w-14 rounded-full flex items-center justify-center border transition-all",
-                "bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55",
+                stripCategoryCircleClass,
                 selectedFilterCategory === cat.id
                   ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:text-violet-300"
                   : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
               )}>
-                <span className="h-9 w-9 flex items-center justify-center">
-                  {categoryIconNode(cat.id, "h-6 w-6")}
+                <span className={stripCategoryIconShellClass}>
+                  {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
                 </span>
               </div>
               <span className={cn(
-                "text-[9px] font-extrabold uppercase tracking-[0.14em]",
+                stripCategoryLabelClass,
                 selectedFilterCategory === cat.id ? "text-violet-700 dark:text-violet-300" : "text-slate-500 dark:text-zinc-500"
               )}>{cat.label.split(' ')[0]}</span>
             </button>
@@ -2383,16 +2395,12 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             type="button"
             role="listitem"
             onClick={() => openHireDetail(it)}
-            className={cn(
-              "flex w-[6.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform",
-              "outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              "active:scale-[0.97] md:w-[5.5rem]",
-            )}
+            className={stripHireProfileCardClass}
           >
             <div className="relative inline-flex">
               <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("hire"))}>
                 <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
-                  <Avatar className="h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
+                  <Avatar className="h-[5rem] w-[5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
                     <AvatarImage
                       src={it.photo || undefined}
                       className="object-cover"
@@ -2418,6 +2426,26 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
               {shortDisplayName(it.name)}
             </span>
+            {/* Mobile-only: review stars + category */}
+            <div className="flex w-full flex-col items-center gap-0.5 md:hidden">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold leading-none text-amber-600 dark:text-amber-400">
+                <Star
+                  className="h-3 w-3 fill-amber-400 text-amber-400"
+                  strokeWidth={0}
+                  aria-hidden
+                />
+                <span className="tabular-nums">{ratingLabel(it.average_rating)}</span>
+                {it.total_ratings ? (
+                  <span className="font-medium text-zinc-500 dark:text-zinc-400">
+                    ({it.total_ratings})
+                  </span>
+                ) : null}
+              </span>
+              <span className="inline-flex max-w-full items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                {categoryIconNode(it.categoryId, "h-3 w-3 shrink-0")}
+                <span className="truncate">{serviceCategoryLabel(it.categoryId)}</span>
+              </span>
+            </div>
           </button>
         ))}
         <button
