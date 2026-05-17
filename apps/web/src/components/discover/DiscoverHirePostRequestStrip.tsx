@@ -1,27 +1,20 @@
 import { MoreVertical, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  stripMoreBadgeClass,
+  stripMoreBtnClass,
+  stripShellWidthClass,
+} from "@/components/discover/discoverBottomStripShared";
 
 /** Flush with mobile BottomNav (same as Help others strip). */
 const stripBottomFlushClass =
   "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]";
 
-const stripPostRequestFabClass = cn(
-  "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-none transition-transform active:scale-[0.96]",
-  "motion-safe:animate-dock-primary-breathe bg-gradient-to-br from-indigo-600 to-violet-700",
+const stripMainActionClass = cn(
+  "flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors",
+  "active:bg-zinc-100/90 dark:active:bg-white/[0.06]",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
   "dark:focus-visible:ring-indigo-200/40 dark:focus-visible:ring-offset-zinc-950",
-);
-
-const stripMoreBtnClass = cn(
-  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-0 bg-transparent p-0 text-zinc-600 shadow-none transition-colors active:scale-[0.96]",
-  "hover:bg-zinc-100/90 dark:text-zinc-300 dark:hover:bg-white/10",
-  "focus-visible:outline-none focus-visible:ring-0",
-);
-
-/** Standalone count pill — sits inline just to the left of the 3-dot button, raised slightly above center. */
-const stripMoreBadgeClass = cn(
-  "flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums leading-none text-white bg-red-500 shadow-sm",
-  "-translate-y-2",
 );
 
 type Props = {
@@ -48,7 +41,7 @@ export function DiscoverHirePostRequestStrip({
         "px-3",
       )}
     >
-      <div className="mx-auto max-w-lg">
+      <div className={stripShellWidthClass}>
         <div
           className={cn(
             "flex items-center gap-2 rounded-xl border-0 px-2.5 py-1.5 pl-3 shadow-none",
@@ -56,7 +49,12 @@ export function DiscoverHirePostRequestStrip({
             "dark:bg-zinc-900/90 dark:text-zinc-50",
           )}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+          <button
+            type="button"
+            onClick={onPostRequest}
+            className={stripMainActionClass}
+            aria-label="Post a request — get help from people near you"
+          >
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/12 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-200">
               <Zap className="h-5 w-5" strokeWidth={2.5} aria-hidden />
             </span>
@@ -65,42 +63,28 @@ export function DiscoverHirePostRequestStrip({
                 Post a request
               </p>
               <p className="truncate text-[14px] font-semibold leading-snug text-zinc-500 dark:text-zinc-400">
-                Get help from people near you
+                Get help near you
               </p>
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+          </button>
+          <div className="relative ml-auto shrink-0">
             <button
               type="button"
-              onClick={onPostRequest}
-              className={stripPostRequestFabClass}
-              aria-label="Request help now"
+              onClick={onMoreClick}
+              className={stripMoreBtnClass}
+              aria-label="More discover actions"
+              aria-expanded={moreMenuOpen}
             >
-              <Zap className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+              <MoreVertical className="h-6 w-6" strokeWidth={2.5} aria-hidden />
             </button>
-            <div className="ml-auto flex shrink-0 items-center gap-0 -mr-0.5">
-              {moreMenuTotal > 0 ? (
-                <span
-                  className={stripMoreBadgeClass}
-                  aria-label={`${moreMenuTotal} updates`}
-                >
-                  {moreMenuTotal > 99 ? "99+" : moreMenuTotal}
-                </span>
-              ) : null}
-              <button
-                type="button"
-                onClick={onMoreClick}
-                className={stripMoreBtnClass}
-                aria-label="More discover actions"
-                aria-expanded={moreMenuOpen}
+            {moreMenuTotal > 0 ? (
+              <span
+                className={stripMoreBadgeClass}
+                aria-label={`${moreMenuTotal} updates`}
               >
-                <MoreVertical
-                  className="h-6 w-6"
-                  strokeWidth={2.5}
-                  aria-hidden
-                />
-              </button>
-            </div>
+                {moreMenuTotal > 99 ? "99+" : moreMenuTotal}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>

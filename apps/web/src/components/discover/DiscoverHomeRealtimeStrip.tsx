@@ -206,7 +206,7 @@ function stripAvatarRingClass(mode: "hire" | "work"): string {
 }
 
 const stripCategoryCircleClass =
-  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-14 md:w-14 items-center justify-center rounded-full border transition-all bg-white/85 shadow-sm backdrop-blur-md dark:bg-zinc-900/55";
+  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-14 md:w-14 items-center justify-center rounded-full border transition-all bg-white/85 shadow-sm backdrop-blur-md dark:border-0 dark:bg-zinc-800/75 dark:shadow-none md:dark:bg-zinc-900/55";
 
 const stripCategoryLabelClass =
   "font-extrabold uppercase tracking-[0.14em] max-md:text-[10.5px] md:text-[9px]";
@@ -2201,8 +2201,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             <div className={cn(
               stripCategoryCircleClass,
               selectedFilterCategory === "all"
-                ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:text-emerald-300"
-                : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
+                ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:border-0 dark:text-emerald-300 dark:shadow-none"
+                : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
             )}>
               <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
             </div>
@@ -2225,8 +2225,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                 <div className={cn(
                   stripCategoryCircleClass,
                   selectedFilterCategory === cat.id
-                    ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:text-emerald-300"
-                    : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
+                    ? "border-emerald-500/70 text-emerald-700 shadow-[0_10px_25px_-16px_rgba(16,185,129,0.7)] dark:border-0 dark:text-emerald-300 dark:shadow-none"
+                    : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
                 )}>
                   <span className={stripCategoryIconShellClass}>
                     {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
@@ -2341,8 +2341,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
           <div className={cn(
             stripCategoryCircleClass,
             selectedFilterCategory === "all"
-              ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:text-violet-300"
-              : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
+              ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:border-0 dark:text-violet-300 dark:shadow-none"
+              : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
           )}>
             <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
           </div>
@@ -2365,8 +2365,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               <div className={cn(
                 stripCategoryCircleClass,
                 selectedFilterCategory === cat.id
-                  ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:text-violet-300"
-                  : "border-slate-200/80 text-slate-500 dark:border-white/10 dark:text-zinc-400"
+                  ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:border-0 dark:text-violet-300 dark:shadow-none"
+                  : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
               )}>
                 <span className={stripCategoryIconShellClass}>
                   {categoryIconNode(cat.id, stripCategoryIconSizeClass)}
@@ -2428,9 +2428,9 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             </span>
             {/* Mobile-only: review stars + category */}
             <div className="flex w-full flex-col items-center gap-0.5 md:hidden">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold leading-none text-amber-600 dark:text-amber-400">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold leading-none text-zinc-900 dark:text-zinc-50">
                 <Star
-                  className="h-3 w-3 fill-amber-400 text-amber-400"
+                  className="h-3 w-3 fill-zinc-900 text-zinc-900 dark:fill-zinc-50 dark:text-zinc-50"
                   strokeWidth={0}
                   aria-hidden
                 />
@@ -2441,8 +2441,11 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                   </span>
                 ) : null}
               </span>
-              <span className="inline-flex max-w-full items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-                {categoryIconNode(it.categoryId, "h-3 w-3 shrink-0")}
+              <span className="inline-flex max-w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                {categoryIconNode(
+                  it.categoryId,
+                  "h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400",
+                )}
                 <span className="truncate">{serviceCategoryLabel(it.categoryId)}</span>
               </span>
             </div>

@@ -998,20 +998,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ) {
             // Check if fetch is already in progress
             if (fetchingProfileRef.current !== session.user.id) {
-              // Double-check tab is visible and not in grace period before fetching
-              if (
-                typeof document !== "undefined" &&
-                !document.hidden &&
-                !tabJustBecameVisible
-              ) {
+              const hasProfileForSession =
+                profile &&
+                profile.id === session.user.id &&
+                profileUserIdRef.current === session.user.id;
+              const blockedByHiddenTab =
+                typeof document !== "undefined" && document.hidden;
+              // Grace period only defers refetch when we already have this user's profile.
+              const blockedByVisibilityGrace =
+                tabJustBecameVisible && hasProfileForSession;
+
+              if (!blockedByHiddenTab && !blockedByVisibilityGrace) {
                 console.log(
                   "[AuthContext] User in new session, fetching profile...",
                 );
                 lastProfileFetchTime = Date.now();
                 await fetchProfile(session.user.id);
+              } else if (blockedByHiddenTab) {
+                console.log(
+                  "[AuthContext] Tab is hidden, deferring profile fetch",
+                );
               } else {
                 console.log(
-                  "[AuthContext] Tab is hidden or in grace period, skipping profile fetch",
+                  "[AuthContext] Tab visibility grace period, skipping profile refetch",
                 );
               }
             } else {

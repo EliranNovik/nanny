@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { BadgeCheck, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -19,6 +19,7 @@ type SavedProfileRow = {
   role: string | null;
   average_rating: number | null;
   total_ratings: number | null;
+  is_verified: boolean | null;
 };
 
 /**
@@ -26,8 +27,8 @@ type SavedProfileRow = {
  *
  * Same Airbnb-style square-image-on-top + data-below cards as the other
  * discover carousels. No 24h-live filtering: every saved profile is shown.
- * A pulsing green dot is overlaid on the top-right of cards whose helper is
- * currently live (i.e. `freelancer_profiles.live_until > now()`).
+ * A green dot (live) or red dot (not live) is overlaid top-left when the saved
+ * helper is / is not in the 24h live window (`freelancer_profiles.live_until`).
  */
 const listContainerClass = cn(
   "flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 scroll-pl-4",
@@ -35,12 +36,14 @@ const listContainerClass = cn(
 );
 
 const cardBtnClass = cn(
-  "group flex flex-col gap-2.5 text-left",
+  "group flex flex-col gap-1.5 text-left",
   "w-[12rem] shrink-0 snap-start",
   "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
-  "sm:gap-2 lg:gap-3",
+  "sm:gap-1 lg:gap-1.5",
   "focus-visible:outline-none",
 );
+
+const cardTextBelowClass = "flex flex-col gap-0.5 px-0 sm:gap-0 lg:gap-0.5";
 
 const carouselArrowBtnClass = cn(
   "hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full",
@@ -81,7 +84,7 @@ function useDiscoverSavedProfiles(userId: string | undefined) {
       const { data: profs, error: profErr } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, photo_url, city, role, average_rating, total_ratings",
+          "id, full_name, photo_url, city, role, average_rating, total_ratings, is_verified",
         )
         .in("id", ids);
       if (profErr) throw profErr;
@@ -103,6 +106,8 @@ function useDiscoverSavedProfiles(userId: string | undefined) {
               typeof p.total_ratings === "number"
                 ? (p.total_ratings as number)
                 : null,
+            is_verified:
+              typeof p.is_verified === "boolean" ? (p.is_verified as boolean) : null,
           },
         ]),
       );
@@ -167,10 +172,10 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[12rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-2 lg:gap-3"
+              className="flex w-[12rem] shrink-0 snap-start flex-col gap-1.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-1 lg:gap-1.5"
             >
               <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
-              <div className="space-y-2 px-0.5 sm:space-y-1.5">
+              <div className="space-y-1 px-0 sm:space-y-0.5">
                 <div className="h-3.5 w-2/3 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80 sm:h-3" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60 sm:h-2.5" />
               </div>
@@ -257,35 +262,54 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
                   </div>
                 )}
 
-                {/* Live indicator — "Available" badge top-left; shown when helper is live within their 24h window */}
-                {isLive ? (
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[42%] bg-gradient-to-t from-black/85 via-black/50 to-transparent"
+                  aria-hidden
+                />
+                <div className="absolute inset-x-0 bottom-0 z-[2] px-2.5 pb-2 pt-8 sm:px-2 sm:pb-1.5 sm:pt-7 lg:px-3 lg:pb-2.5 lg:pt-9">
+                  <div className="flex min-w-0 items-center gap-1">
+                    <span className="min-w-0 truncate text-[15px] font-semibold leading-tight text-white drop-shadow-sm sm:text-[13px] lg:text-[16px] xl:text-[17px]">
+                      {name}
+                    </span>
+                    {p.is_verified === true ? (
+                      <BadgeCheck
+                        className="h-4 w-4 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)] sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4"
+                        strokeWidth={2.25}
+                        aria-label="Verified"
+                      />
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Live status — green dot when live, red when not */}
+                <span
+                  className={cn(
+                    "absolute left-2 top-2 z-10 inline-flex items-center justify-center rounded-full p-2 shadow-md backdrop-blur-sm sm:left-1.5 sm:top-1.5 sm:p-2 lg:left-2.5 lg:top-2.5 lg:p-2.5",
+                    isLive ? "bg-emerald-500/95" : "bg-red-500/95",
+                  )}
+                  title={isLive ? "Available now" : "Not live now"}
+                  aria-label={isLive ? "Available now" : "Not live now"}
+                >
                   <span
-                    className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-emerald-500/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-md backdrop-blur-sm sm:left-1.5 sm:top-1.5 sm:px-1.5 sm:text-[9.5px] lg:left-2.5 lg:top-2.5 lg:px-2.5 lg:py-1 lg:text-[11px] xl:text-[12px]"
-                    title="Available now"
-                    aria-label="Available now"
+                    className="relative inline-flex h-2.5 w-2.5 items-center justify-center lg:h-3 lg:w-3"
+                    aria-hidden
                   >
-                    <span
-                      className="relative inline-flex h-1.5 w-1.5 items-center justify-center lg:h-2 lg:w-2"
-                      aria-hidden
-                    >
+                    {isLive ? (
                       <span
                         className="absolute inset-0 rounded-full bg-white/80 motion-safe:animate-ping motion-reduce:hidden"
                         aria-hidden
                       />
-                      <span
-                        className="relative h-1.5 w-1.5 rounded-full bg-white lg:h-2 lg:w-2"
-                        aria-hidden
-                      />
-                    </span>
-                    Available
+                    ) : null}
+                    <span
+                      className="relative h-2.5 w-2.5 rounded-full bg-white lg:h-3 lg:w-3"
+                      aria-hidden
+                    />
                   </span>
-                ) : null}
+                </span>
               </div>
 
-              <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5 lg:gap-1 lg:px-1">
-                <span className="min-w-0 truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
-                  {name}
-                </span>
+              {city || hasRating ? (
+              <div className={cardTextBelowClass}>
                 {city ? (
                   <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px]">
                     {city}
@@ -309,6 +333,7 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
                   </span>
                 ) : null}
               </div>
+              ) : null}
             </button>
           );
         })}

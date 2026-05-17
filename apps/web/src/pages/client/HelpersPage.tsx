@@ -92,6 +92,26 @@ const SEARCH_CIRCLE_STYLE: google.maps.CircleOptions = {
 
 const HELPERS_PAGE_STATE_KEY = "helpers_page_state:v1";
 
+function helpersFetchErrorToast(e: unknown): { title: string; description: string } {
+  const raw =
+    e && typeof e === "object" && "message" in e
+      ? String((e as { message: string }).message)
+      : "An unexpected error occurred.";
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes("networkerror") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("cors request did not succeed")
+  ) {
+    return {
+      title: "Could not reach the server",
+      description:
+        "Check your internet connection. VPNs, firewalls, or ad blockers can block Supabase — try disabling them and search again.",
+    };
+  }
+  return { title: "Error fetching helpers", description: raw };
+}
+
 type FreelancerRow = {
   id: string;
   full_name: string | null;
@@ -267,10 +287,27 @@ function HelpersMapBlock({
   }, []);
 
   if (loadError || !mapsApiKey) {
+    const errText = loadError?.message?.toLowerCase() ?? "";
+    const billingIssue =
+      errText.includes("billing") || errText.includes("billingnotenabled");
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
-        Map unavailable. Set VITE_GOOGLE_MAPS_API_KEY to show the map. You can
-        still search helpers by distance from your profile location.
+        {!mapsApiKey ? (
+          <>
+            Map unavailable. Set <code className="rounded bg-muted px-1">VITE_GOOGLE_MAPS_API_KEY</code>{" "}
+            to show the map. You can still search helpers by distance from your profile location.
+          </>
+        ) : billingIssue ? (
+          <>
+            Google Maps billing is not enabled for this API key. Enable billing in Google Cloud
+            Console, or search without the map — helper results still load.
+          </>
+        ) : (
+          <>
+            Map could not load ({loadError?.message ?? "unknown error"}). You can still search
+            helpers by distance from your profile location.
+          </>
+        )}
       </div>
     );
   }
@@ -646,12 +683,10 @@ export default function HelpersPage() {
         setResults([]);
         setHelperReplyStatsByHelperId({});
         setLiveHelpWeekByHelperId({});
+        const toast = helpersFetchErrorToast(e);
         addToast({
-          title: "Error fetching helpers",
-          description:
-            e && typeof e === "object" && "message" in e
-              ? String((e as { message: string }).message)
-              : "An unexpected error occurred.",
+          title: toast.title,
+          description: toast.description,
           variant: "error" as const,
         });
       } finally {

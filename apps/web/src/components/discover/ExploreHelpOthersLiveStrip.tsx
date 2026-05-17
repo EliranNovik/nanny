@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MoreVertical, PlayCircle, Radio } from "lucide-react";
+import { MoreVertical, Radio } from "lucide-react";
 import { LiveTimer } from "@/components/LiveTimer";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -10,28 +10,21 @@ import {
   isFreelancerLiveWindowActive,
 } from "@/lib/freelancerLiveWindow";
 import { cn } from "@/lib/utils";
+import {
+  stripMoreBadgeClass,
+  stripMoreBtnClass,
+  stripShellWidthClass,
+} from "@/components/discover/discoverBottomStripShared";
 
 /** Flush with mobile BottomNav: pt-0.5 + row 2.75rem + pb max(0.5rem, safe). */
 const stripBottomFlushClass =
   "bottom-[calc(3.25rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]";
 
-const stripGoLiveFabClass = cn(
-  "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-none transition-transform active:scale-[0.96]",
-  "motion-safe:animate-dock-primary-breathe bg-emerald-600",
+const stripMainActionClass = cn(
+  "flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors",
+  "active:bg-zinc-100/90 dark:active:bg-white/[0.06]",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
   "dark:focus-visible:ring-emerald-200/40 dark:focus-visible:ring-offset-zinc-950",
-);
-
-const stripMoreBtnClass = cn(
-  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-0 bg-transparent p-0 text-zinc-600 shadow-none transition-colors active:scale-[0.96]",
-  "hover:bg-zinc-100/90 dark:text-zinc-300 dark:hover:bg-white/10",
-  "focus-visible:outline-none focus-visible:ring-0",
-);
-
-/** Standalone count pill — sits inline just to the left of the 3-dot button, raised slightly above center. */
-const stripMoreBadgeClass = cn(
-  "flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums leading-none text-white bg-red-500 shadow-sm",
-  "-translate-y-2",
 );
 
 type FreelancerLiveRow = {
@@ -132,15 +125,7 @@ export function ExploreHelpOthersLiveStrip({
 
   const stripMoreButton =
     onMoreClick != null ? (
-      <div className="ml-auto flex shrink-0 items-center gap-0 -mr-0.5">
-        {moreMenuTotal > 0 ? (
-          <span
-            className={stripMoreBadgeClass}
-            aria-label={`${moreMenuTotal} updates`}
-          >
-            {moreMenuTotal > 99 ? "99+" : moreMenuTotal}
-          </span>
-        ) : null}
+      <div className="relative ml-auto shrink-0">
         <button
           type="button"
           onClick={onMoreClick}
@@ -150,6 +135,14 @@ export function ExploreHelpOthersLiveStrip({
         >
           <MoreVertical className="h-6 w-6" strokeWidth={2.5} aria-hidden />
         </button>
+        {moreMenuTotal > 0 ? (
+          <span
+            className={stripMoreBadgeClass}
+            aria-label={`${moreMenuTotal} updates`}
+          >
+            {moreMenuTotal > 99 ? "99+" : moreMenuTotal}
+          </span>
+        ) : null}
       </div>
     ) : null;
 
@@ -165,7 +158,12 @@ export function ExploreHelpOthersLiveStrip({
         )}
         aria-hidden
       >
-        <div className="mx-auto h-12 max-w-lg animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
+        <div
+          className={cn(
+            stripShellWidthClass,
+            "h-12 animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80",
+          )}
+        />
       </div>
     );
   }
@@ -178,7 +176,7 @@ export function ExploreHelpOthersLiveStrip({
         "px-3",
       )}
     >
-      <div className="mx-auto max-w-lg">
+      <div className={stripShellWidthClass}>
         {isLive ? (
           <div
             className={cn(
@@ -221,12 +219,17 @@ export function ExploreHelpOthersLiveStrip({
         ) : (
           <div
             className={cn(
-              "flex items-center gap-3 rounded-2xl border-0 px-3 py-2.5 pl-3.5 shadow-none",
+              "flex items-center gap-2 rounded-2xl border-0 px-3 py-2.5 pl-3.5 shadow-none",
               "bg-white text-zinc-900",
               "dark:bg-zinc-900/90 dark:text-zinc-50",
             )}
           >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+            <button
+              type="button"
+              onClick={handleGoLive}
+              className={stripMainActionClass}
+              aria-label="Go live — be seen by others"
+            >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300">
                 <Radio className="h-5 w-5" strokeWidth={2.5} aria-hidden />
               </span>
@@ -238,18 +241,8 @@ export function ExploreHelpOthersLiveStrip({
                   Be seen by others
                 </p>
               </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={handleGoLive}
-                className={stripGoLiveFabClass}
-                aria-label="Go live"
-              >
-                <PlayCircle className="h-7 w-7" strokeWidth={2.5} aria-hidden />
-              </button>
-              {stripMoreButton}
-            </div>
+            </button>
+            {stripMoreButton}
           </div>
         )}
       </div>

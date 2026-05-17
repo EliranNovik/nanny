@@ -90,6 +90,23 @@ const appMenuJobsCountBadgeClassName = cn(
   "dark:border-white/35 dark:bg-white/35 dark:text-zinc-950 dark:shadow-md dark:backdrop-blur-md dark:ring-white/25",
 );
 
+const plusMenuPanelClassName = cn(
+  "absolute bottom-[72px] left-1/2 z-30 flex -translate-x-1/2 flex-col gap-2.5 p-3",
+  "w-[min(20rem,calc(100vw-1.5rem))] rounded-[1.75rem]",
+  "bg-zinc-950/88 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl",
+  "md:bottom-[68px] md:w-[17.5rem] md:gap-2 md:p-2.5",
+);
+
+const plusMenuItemClassName = cn(
+  "flex w-full min-h-[3.5rem] items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left",
+  "text-[16px] font-semibold leading-snug tracking-tight transition-[background,transform] duration-150",
+  "bg-white/[0.07] hover:bg-white/[0.12] active:scale-[0.99] active:bg-white/[0.16]",
+  "md:min-h-[3rem] md:gap-3 md:px-3.5 md:py-3 md:text-[15px]",
+);
+
+const plusMenuIconWrapClassName =
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/12 md:h-9 md:w-9";
+
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
   const location = useLocation();
@@ -1294,37 +1311,29 @@ export function BottomNav() {
                 </button>
 
                 {plusMenuOpen ? (
-                  <div
-                    role="menu"
-                    className={cn(
-                      "absolute bottom-[68px] left-1/2 -translate-x-1/2",
-                      "w-[18rem] overflow-hidden rounded-3xl border shadow-2xl",
-                      "border-white/15 bg-black/55 text-white backdrop-blur-2xl ring-1 ring-inset ring-white/10",
-                      "dark:border-white/20 dark:bg-zinc-950/55 dark:ring-white/10",
-                    )}
-                  >
+                  <div role="menu" className={plusMenuPanelClassName}>
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex w-full items-center gap-3 px-5 py-4 text-left text-[15px] font-bold hover:bg-white/10 active:bg-white/15"
+                      className={plusMenuItemClassName}
                       onClick={() => {
                         setPlusMenuOpen(false);
                         navigate("/client/create");
                       }}
                     >
-                      <ClipboardList className="h-6 w-6 shrink-0 text-white/90" aria-hidden />
+                      <span className={plusMenuIconWrapClassName}>
+                        <ClipboardList className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                      </span>
                       <span>Start request</span>
                     </button>
-                    <div className="h-px w-full bg-white/10" />
                     <button
                       type="button"
                       role="menuitem"
                       disabled={isLiveNow}
                       className={cn(
-                        "flex w-full items-center gap-3 px-5 py-4 text-left text-[15px] font-bold",
-                        isLiveNow
-                          ? "opacity-60 cursor-not-allowed"
-                          : "hover:bg-white/10 active:bg-white/15",
+                        plusMenuItemClassName,
+                        isLiveNow &&
+                          "cursor-not-allowed opacity-55 hover:bg-white/[0.07] active:scale-100",
                       )}
                       onClick={() => {
                         if (isLiveNow) return;
@@ -1332,45 +1341,49 @@ export function BottomNav() {
                         navigate("/availability/post-now");
                       }}
                     >
-                      <UsersRound className="h-6 w-6 shrink-0 text-white/90" aria-hidden />
+                      <span className={plusMenuIconWrapClassName}>
+                        <UsersRound className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                      </span>
                       <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
                         <span>Go live</span>
                         {isLiveNow && freelancerLiveUntil ? (
-                          <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[12px] font-bold tabular-nums">
+                          <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-bold tabular-nums">
                             <LiveTimer createdAt={freelancerLiveUntil} />
                           </span>
                         ) : null}
                       </span>
                     </button>
-                    <div className="h-px w-full bg-white/10" />
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex w-full items-center gap-3 px-5 py-4 text-left text-[15px] font-bold hover:bg-white/10 active:bg-white/15 relative"
+                      className={plusMenuItemClassName}
                       onClick={() => {
                         setPlusMenuOpen(false);
                         navigate("/community/feed");
                       }}
                     >
-                      <Radio className="h-6 w-6 shrink-0 text-white/90" aria-hidden />
+                      <span className={plusMenuIconWrapClassName}>
+                        <Radio className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                      </span>
                       <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
                         <span>Community posts</span>
-                        <span className="shrink-0 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm ring-1 ring-white/20">
+                        <span className="shrink-0 rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
                           New
                         </span>
                       </span>
                     </button>
-                    <div className="h-px w-full bg-white/10" />
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex w-full items-center gap-3 px-5 py-4 text-left text-[15px] font-bold hover:bg-white/10 active:bg-white/15"
+                      className={plusMenuItemClassName}
                       onClick={() => {
                         setPlusMenuOpen(false);
                         navigate("/community/feed?compose=1");
                       }}
                     >
-                      <PenSquare className="h-6 w-6 shrink-0 text-white/90" aria-hidden />
+                      <span className={plusMenuIconWrapClassName}>
+                        <PenSquare className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                      </span>
                       <span>Share a post</span>
                     </button>
                   </div>

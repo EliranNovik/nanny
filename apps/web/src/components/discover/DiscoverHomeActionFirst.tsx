@@ -281,6 +281,7 @@ export function DiscoverHomeActionFirst({
     const quickMoreSheet = (
       <Dialog open={quickMoreOpen} onOpenChange={setQuickMoreOpen}>
         <DialogContent
+          aria-describedby={undefined}
           className={cn(
             "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
             "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:max-h-[min(85vh,22rem)] max-md:w-full max-md:translate-y-0",
@@ -941,7 +942,9 @@ export function DiscoverHomeActionFirst({
 
       {/* My Requests Modal */}
       <Dialog open={myRequestsOpen} onOpenChange={setMyRequestsOpen}>
-        <DialogContent className={cn(
+        <DialogContent
+          aria-describedby={undefined}
+          className={cn(
           "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
           "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:h-[85vh] max-md:w-full max-md:translate-y-0",
           "md:max-h-[min(90vh,48rem)] md:max-w-4xl"
@@ -962,7 +965,9 @@ export function DiscoverHomeActionFirst({
 
       {/* Pending Work Requests Modal */}
       <Dialog open={pendingWorkRequestsOpen} onOpenChange={setPendingWorkRequestsOpen}>
-        <DialogContent className={cn(
+        <DialogContent
+          aria-describedby={undefined}
+          className={cn(
           "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
           "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:h-[85vh] max-md:w-full max-md:translate-y-0",
           "md:max-h-[min(90vh,48rem)] md:max-w-4xl"

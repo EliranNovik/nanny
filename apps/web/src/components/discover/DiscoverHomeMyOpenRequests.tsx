@@ -30,12 +30,14 @@ const listContainerClass = cn(
 );
 
 const cardBtnClass = cn(
-  "group flex flex-col gap-2.5 text-left",
+  "group flex flex-col gap-1.5 text-left",
   "w-[12rem] shrink-0 snap-start",
   "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
-  "sm:gap-2 lg:gap-3",
+  "sm:gap-1 lg:gap-1.5",
   "focus-visible:outline-none",
 );
+
+const cardTextBelowClass = "flex flex-col gap-0.5 px-0 sm:gap-0 lg:gap-0.5";
 
 const carouselArrowBtnClass = cn(
   "hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full",
@@ -52,6 +54,10 @@ const imageWrapClass = cn(
   "transition-transform duration-200 group-hover:shadow-md",
   "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 );
+
+/** Shared pill height for accepted-count + posted-time badges on card images. */
+const requestImageBadgeSizeClass =
+  "inline-flex min-h-[1.75rem] items-center rounded-full px-2 py-1 text-[13px] leading-none sm:min-h-[1.5rem] sm:px-1.5 sm:py-0.5 sm:text-[11px] lg:min-h-[1.75rem] lg:px-2 lg:py-1 lg:text-[12.5px] xl:text-[13.5px]";
 
 function titleForServiceType(serviceType: string | null | undefined): string {
   const t = (serviceType || "").trim();
@@ -115,10 +121,10 @@ export function DiscoverHomeMyOpenRequests({ className }: Props) {
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[12rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-2 lg:gap-3"
+              className="flex w-[12rem] shrink-0 snap-start flex-col gap-1.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-1 lg:gap-1.5"
             >
               <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
-              <div className="space-y-2 px-0.5 sm:space-y-1.5">
+              <div className="space-y-1 px-0 sm:space-y-0.5">
                 <div className="h-3.5 w-2/3 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80 sm:h-3" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60 sm:h-2.5" />
                 <div className="h-3 w-1/3 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60 sm:h-2.5" />
@@ -170,7 +176,10 @@ export function DiscoverHomeMyOpenRequests({ className }: Props) {
           try {
             const createdAt = job.created_at as string | null | undefined;
             if (createdAt) {
-              when = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+              when = formatDistanceToNow(new Date(createdAt), { addSuffix: true }).replace(
+                /^about\s+/i,
+                "",
+              );
             }
           } catch {
             when = "";
@@ -209,33 +218,51 @@ export function DiscoverHomeMyOpenRequests({ className }: Props) {
                   decoding="async"
                 />
 
-                {/* Helpers-accepted count pill — top-left, only when there are accepted helpers */}
-                {acceptedCount > 0 ? (
-                  <span
-                    className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-emerald-600/95 px-2 py-1 text-[13px] font-black text-white shadow-md backdrop-blur-sm sm:left-1.5 sm:top-1.5 sm:gap-0.5 sm:px-1.5 sm:py-0.5 sm:text-[11px] lg:left-2 lg:top-2 lg:gap-1 lg:px-2 lg:py-1 lg:text-[12.5px] xl:text-[13.5px]"
-                    aria-label={`${acceptedCount} accepted`}
-                    title={`${acceptedCount} accepted`}
-                  >
-                    <Users
-                      className="h-3.5 w-3.5 shrink-0 sm:h-3 sm:w-3 lg:h-3.5 lg:w-3.5 xl:h-4 xl:w-4"
-                      strokeWidth={2.75}
-                      aria-hidden
-                    />
-                    <span className="tabular-nums">{acceptedCount}</span>
-                  </span>
-                ) : null}
+                {/* Helpers-accepted count pill — top-left; grey 0 when none, green when accepted */}
+                <span
+                  className={cn(
+                    "absolute left-2 top-2 z-10 gap-1 font-black shadow-md backdrop-blur-sm sm:left-1.5 sm:top-1.5 sm:gap-0.5 lg:left-2 lg:top-2 lg:gap-1",
+                    requestImageBadgeSizeClass,
+                    acceptedCount > 0
+                      ? "bg-emerald-600/95 text-white"
+                      : "bg-zinc-500/90 text-white dark:bg-zinc-600/95",
+                  )}
+                  aria-label={
+                    acceptedCount > 0
+                      ? `${acceptedCount} accepted`
+                      : "No helpers accepted yet"
+                  }
+                  title={
+                    acceptedCount > 0
+                      ? `${acceptedCount} accepted`
+                      : "No helpers accepted yet"
+                  }
+                >
+                  <Users
+                    className="h-3.5 w-3.5 shrink-0 sm:h-3 sm:w-3 lg:h-3.5 lg:w-3.5 xl:h-4 xl:w-4"
+                    strokeWidth={2.75}
+                    aria-hidden
+                  />
+                  <span className="tabular-nums">{acceptedCount}</span>
+                </span>
 
-                {/* Posted-time pill — bottom-left */}
+                {/* Posted-time pill — top-right */}
                 {when ? (
-                  <span className="absolute bottom-2 left-2 z-10 inline-flex max-w-[85%] items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-zinc-800 shadow-sm backdrop-blur-sm dark:bg-zinc-950/85 dark:text-zinc-100 sm:bottom-1.5 sm:left-1.5 sm:px-1.5 sm:text-[9px] lg:bottom-2 lg:left-2 lg:px-2 lg:py-0.5 lg:text-[10.5px] xl:text-[11px] xl:px-2.5">
+                  <span
+                    className={cn(
+                      "absolute right-2 top-2 z-10 max-w-[85%] font-bold uppercase tracking-wide text-zinc-900 shadow-md sm:right-1.5 sm:top-1.5 lg:right-2 lg:top-2",
+                      requestImageBadgeSizeClass,
+                      "bg-white",
+                    )}
+                  >
                     <span className="line-clamp-1">{when}</span>
                   </span>
                 ) : null}
               </div>
 
               {/* Text on page background — Airbnb-style simple lines */}
-              <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5 lg:gap-1 lg:px-1">
-                <span className="min-w-0 truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
+              <div className={cardTextBelowClass}>
+                <span className="min-w-0 truncate text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
                   {title}
                 </span>
                 {loc ? (

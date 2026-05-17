@@ -64,12 +64,14 @@ const listContainerClass = cn(
 );
 
 const cardBtnClass = cn(
-  "group flex flex-col gap-2.5 text-left",
+  "group flex flex-col gap-1.5 text-left",
   "w-[12rem] shrink-0 snap-start",
   "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
-  "sm:gap-2 lg:gap-3",
+  "sm:gap-1 lg:gap-1.5",
   "focus-visible:outline-none",
 );
+
+const cardTextBelowClass = "flex flex-col gap-0.5 px-0 sm:gap-0 lg:gap-0.5";
 
 const carouselArrowBtnClass = cn(
   "hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full",
@@ -229,10 +231,10 @@ export function DiscoverHomeMyLiveHelpJobs({
           {Array.from({ length: 4 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[12rem] shrink-0 snap-start flex-col gap-2.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-2 lg:gap-3"
+              className="flex w-[12rem] shrink-0 snap-start flex-col gap-1.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-1 lg:gap-1.5"
             >
               <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
-              <div className="space-y-2 px-0.5 sm:space-y-1.5">
+              <div className="space-y-1 px-0 sm:space-y-0.5">
                 <div className="h-3.5 w-2/3 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80 sm:h-3" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60 sm:h-2.5" />
               </div>
@@ -397,8 +399,8 @@ export function DiscoverHomeMyLiveHelpJobs({
               </div>
 
               {/* Text on page background — Airbnb-style simple lines */}
-              <div className="flex flex-col gap-1 px-0.5 sm:gap-0.5 lg:gap-1 lg:px-1">
-                <span className="min-w-0 truncate text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
+              <div className={cardTextBelowClass}>
+                <span className="min-w-0 truncate text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
                   {title}
                 </span>
                 {loc ? (
