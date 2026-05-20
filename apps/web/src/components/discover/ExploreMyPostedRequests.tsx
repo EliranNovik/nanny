@@ -69,7 +69,15 @@ function timeAgo(dateStr: string): string {
  * Explore → **My requests**: open client job requests with elapsed timer + accepted-helper count.
  * Card chrome matches {@link ExploreClientHireInterests}.
  */
-export function ExploreMyPostedRequests() {
+const MY_REQUESTS_LIST_GRID_PAGE = "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3";
+const MY_REQUESTS_LIST_GRID_MODAL = "grid grid-cols-1 gap-3 md:grid-cols-2";
+
+export function ExploreMyPostedRequests({
+  variant = "page",
+}: {
+  /** `"modal"` — 2 columns on desktop (discover home sheet). */
+  variant?: "page" | "modal";
+}) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { data, isLoading } = useFreelancerRequests(user?.id);
@@ -124,7 +132,13 @@ export function ExploreMyPostedRequests() {
           ) : null}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={
+            variant === "modal"
+              ? MY_REQUESTS_LIST_GRID_MODAL
+              : MY_REQUESTS_LIST_GRID_PAGE
+          }
+        >
           {jobs.map(
             (job: {
               id: string;

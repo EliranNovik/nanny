@@ -95,7 +95,15 @@ function commentCountQueryKey(jobIds: string[]) {
   return ["pending-comment-counts", [...jobIds].sort().join(",")] as const;
 }
 
-export function ExplorePendingResponses() {
+const PENDING_LIST_GRID_PAGE = "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3";
+const PENDING_LIST_GRID_MODAL = "grid grid-cols-1 gap-3 md:grid-cols-2";
+
+export function ExplorePendingResponses({
+  variant = "page",
+}: {
+  /** `"modal"` — 2 columns on desktop (discover home sheet). */
+  variant?: "page" | "modal";
+}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data, isLoading } = useFreelancerRequests(user?.id);
@@ -194,7 +202,11 @@ export function ExplorePendingResponses() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={
+            variant === "modal" ? PENDING_LIST_GRID_MODAL : PENDING_LIST_GRID_PAGE
+          }
+        >
           {pending.map((n) => {
             const job = n.job_requests;
             const title = formatJobTitle(job);

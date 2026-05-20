@@ -17,6 +17,7 @@ import { ConfigCheck } from "@/components/ConfigCheck";
 import { BottomNav } from "@/components/BottomNav";
 import { ToastProvider } from "@/components/ui/toast";
 import { NotificationListener } from "@/components/NotificationListener";
+import { IncomingRequestToastListener } from "@/components/IncomingRequestToastListener";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { SessionAnalyticsInit } from "@/components/SessionAnalyticsInit";
 import { AppBootSplash } from "@/components/AppBootSplash";
@@ -541,6 +542,7 @@ export default function App() {
                 <DiscoverHomeScrollHeaderProvider>
                   <ReportIssueProvider>
                     <NotificationListener />
+                    <IncomingRequestToastListener />
                     <AppRoutes />
                     <BottomNav />
                     <ReportIssueModal />

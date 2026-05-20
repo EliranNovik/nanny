@@ -14,6 +14,14 @@ import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { useAuth } from "@/context/AuthContext";
 import { navigateToWorkBrowseRequests } from "@/lib/discoverBrowseNavigate";
 import { useDiscoverOpenHelpRequests } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import {
+  discoverRequestClientNameRowClass,
+  discoverRequestClientOverlayClass,
+  discoverRequestPostedTimeBadgeClass,
+  discoverRequestRatingRowClass,
+  discoverRequestTopGradientClass,
+  stripAboutFromDistance,
+} from "@/components/discover/discoverRequestCarouselCardShared";
 
 const MAX_BOXES = 8;
 
@@ -224,39 +232,36 @@ export function DiscoverHomePostedHelpRequests({
                   decoding="async"
                 />
 
-                {/* Top overlay gradient — improves legibility of the avatar / name / rating row */}
-                <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/60 via-black/30 to-transparent sm:h-14"
-                  aria-hidden
-                />
+                <div className={discoverRequestTopGradientClass} aria-hidden />
 
-                {/* Avatar + name + rating row — top of the image */}
-                <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-1.5 p-2 sm:gap-1 sm:p-1.5 lg:gap-1.5 lg:p-2 xl:p-2.5">
-                  <span className="relative inline-flex shrink-0">
-                    <Avatar className="h-8 w-8 overflow-hidden shadow-sm sm:h-7 sm:w-7 lg:h-9 lg:w-9 xl:h-10 xl:w-10">
-                      <AvatarImage
-                        src={r.client_photo_url || undefined}
-                        alt=""
-                        className="object-cover"
+                <div className={discoverRequestClientOverlayClass}>
+                  <div className={discoverRequestClientNameRowClass}>
+                    <span className="relative inline-flex shrink-0">
+                      <Avatar className="h-8 w-8 overflow-hidden shadow-sm sm:h-7 sm:w-7 lg:h-9 lg:w-9 xl:h-10 xl:w-10">
+                        <AvatarImage
+                          src={r.client_photo_url || undefined}
+                          alt=""
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-[9px] lg:text-[11px]">
+                          {name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span
+                        className="pointer-events-none absolute right-0 top-0 block size-2 rounded-full bg-emerald-500 motion-safe:animate-strip-live-dot-breathe dark:bg-emerald-400 sm:size-1.5 lg:size-2 xl:size-2.5"
+                        aria-hidden
                       />
-                      <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-[9px] lg:text-[11px]">
-                        {name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
+                    </span>
                     <span
-                      className="pointer-events-none absolute right-0 top-0 block size-2 rounded-full bg-emerald-500 motion-safe:animate-strip-live-dot-breathe dark:bg-emerald-400 sm:size-1.5 lg:size-2 xl:size-2.5"
-                      aria-hidden
-                    />
-                  </span>
-                  <span
-                    className="min-w-0 flex-1 truncate text-[12.5px] font-semibold leading-tight text-white sm:text-[11px] lg:text-[13px] xl:text-[14px]"
-                    style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
-                  >
-                    {name}
-                  </span>
+                      className="min-w-0 truncate text-[12.5px] font-semibold leading-tight text-white sm:text-[11px] lg:text-[13px] xl:text-[14px]"
+                      style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
+                    >
+                      {name}
+                    </span>
+                  </div>
                   {hasRating ? (
                     <span
-                      className="inline-flex shrink-0 items-center gap-0.5 text-[12px] font-semibold leading-tight text-white sm:text-[10.5px] lg:text-[12px] xl:text-[13px]"
+                      className={discoverRequestRatingRowClass}
                       style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
                     >
                       <Star
@@ -274,10 +279,11 @@ export function DiscoverHomePostedHelpRequests({
                   ) : null}
                 </div>
 
-                {/* Posted-time pill — bottom-left, like a "Guest favorite" badge */}
                 {when ? (
-                  <span className="absolute bottom-2 left-2 z-10 inline-flex max-w-[85%] items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-zinc-800 shadow-sm backdrop-blur-sm dark:bg-zinc-950/85 dark:text-zinc-100 sm:bottom-1.5 sm:left-1.5 sm:px-1.5 sm:text-[9px] lg:bottom-2 lg:left-2 lg:px-2 lg:py-0.5 lg:text-[10.5px] xl:text-[11px] xl:px-2.5">
-                    <span className="line-clamp-1">{when}</span>
+                  <span className={discoverRequestPostedTimeBadgeClass}>
+                    <span className="line-clamp-1">
+                      {stripAboutFromDistance(when)}
+                    </span>
                   </span>
                 ) : null}
               </div>

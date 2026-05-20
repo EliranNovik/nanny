@@ -281,31 +281,15 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
                   </div>
                 </div>
 
-                {/* Live status — green dot when live, red when not */}
+                {/* Live status — solid green (live) or red (not live) */}
                 <span
                   className={cn(
-                    "absolute left-2 top-2 z-10 inline-flex items-center justify-center rounded-full p-2 shadow-md backdrop-blur-sm sm:left-1.5 sm:top-1.5 sm:p-2 lg:left-2.5 lg:top-2.5 lg:p-2.5",
-                    isLive ? "bg-emerald-500/95" : "bg-red-500/95",
+                    "absolute left-2.5 top-2.5 z-10 h-3.5 w-3.5 rounded-full shadow-md sm:left-2 sm:top-2 lg:left-3 lg:top-3 lg:h-4 lg:w-4",
+                    isLive ? "bg-emerald-500" : "bg-red-500",
                   )}
                   title={isLive ? "Available now" : "Not live now"}
                   aria-label={isLive ? "Available now" : "Not live now"}
-                >
-                  <span
-                    className="relative inline-flex h-2.5 w-2.5 items-center justify-center lg:h-3 lg:w-3"
-                    aria-hidden
-                  >
-                    {isLive ? (
-                      <span
-                        className="absolute inset-0 rounded-full bg-white/80 motion-safe:animate-ping motion-reduce:hidden"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <span
-                      className="relative h-2.5 w-2.5 rounded-full bg-white lg:h-3 lg:w-3"
-                      aria-hidden
-                    />
-                  </span>
-                </span>
+                />
               </div>
 
               {city || hasRating ? (

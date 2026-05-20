@@ -80,6 +80,7 @@ import {
   DISCOVER_STROKE,
   discoverIcon,
 } from "@/components/discover/discoverHomeIcons";
+import { discoverRequestPostedTimeBadgeBaseClass } from "@/components/discover/discoverRequestCarouselCardShared";
 
 const JobMapLazy = lazy(() => import("@/components/JobMap"));
 
@@ -861,7 +862,7 @@ function GSheetRow({
   hint?: ReactNode;
 }) {
   return (
-    <div className="flex w-full items-start gap-3 border-b border-zinc-200/90 py-3.5 dark:border-zinc-800/90">
+    <div className="flex w-full items-start gap-3 py-3.5">
       <span
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-sky-500/12 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400"
         aria-hidden
@@ -876,6 +877,9 @@ function GSheetRow({
     </div>
   );
 }
+
+const gSheetRowListClass =
+  "divide-y divide-zinc-200/90 dark:divide-zinc-800/90";
 
 function DiscoverStripMediaCarousel({
   slides,
@@ -1251,6 +1255,18 @@ function DiscoverRealtimeStripDetailDialog({
                       <span className="text-zinc-500">({work.total_ratings})</span>
                     ) : null}
                   </div>
+                  {ageLabel(work.createdAt) ? (
+                    <span
+                      className={cn(
+                        discoverRequestPostedTimeBadgeBaseClass,
+                        "max-w-full text-[10px] sm:text-[10px] lg:text-[11px]",
+                      )}
+                    >
+                      <span className="line-clamp-2 text-center">
+                        {ageLabel(work.createdAt)}
+                      </span>
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="min-w-0 flex-1 pt-1">
@@ -1258,7 +1274,6 @@ function DiscoverRealtimeStripDetailDialog({
                     <DarkMetaBadges
                       distanceKm={work.distanceKm}
                       isVerified={work.is_verified}
-                      postedAtLabel={ageLabel(work.createdAt)}
                     />
                   </div>
                   <button
@@ -1374,7 +1389,7 @@ function DiscoverRealtimeStripDetailDialog({
 
           {/* Info rows — hire */}
           {hire ? (
-            <div className="border-t border-zinc-200 pt-1 dark:border-zinc-800">
+            <div className={gSheetRowListClass}>
               {hire.locationLine ? (
                 <GSheetRow icon={MapPin}>{hire.locationLine}</GSheetRow>
               ) : null}
@@ -1404,7 +1419,7 @@ function DiscoverRealtimeStripDetailDialog({
 
           {/* Info rows — work (request) */}
           {work ? (
-            <div className="border-t border-zinc-200 pt-1 dark:border-zinc-800">
+            <div className={gSheetRowListClass}>
               <GSheetRow icon={MapPin}>{work.cityLine || "—"}</GSheetRow>
               {work.helpTypeLine ? (
                 <GSheetRow icon={UsersRound} hint="Care / type">

@@ -958,7 +958,7 @@ export function DiscoverHomeActionFirst({
             </div>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-zinc-950 p-4">
-            <ExploreMyPostedRequests />
+            <ExploreMyPostedRequests variant="modal" />
           </div>
         </DialogContent>
       </Dialog>
@@ -981,7 +981,7 @@ export function DiscoverHomeActionFirst({
             </div>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-zinc-950 p-4">
-            <ExplorePendingResponses />
+            <ExplorePendingResponses variant="modal" />
           </div>
         </DialogContent>
       </Dialog>
