@@ -1433,13 +1433,13 @@ function PostCard({
   // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
   const mobileMediaBoxClass = mediaAspectRatio
     ? cn(
-        "max-md:w-full",
+        "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]",
         // Portrait media can otherwise become extremely tall when width is full.
         !isLandscape && "max-md:max-h-[min(80dvh,50rem)]",
       )
     : isLandscape
-      ? "max-md:w-full"
-      : "max-md:h-[min(76dvh,46rem)]";
+      ? "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]"
+      : "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:h-[min(76dvh,46rem)] max-md:rounded-[20px]";
   const mobileMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
 
   // Desktop media sizing:
@@ -1447,13 +1447,13 @@ function PostCard({
   // - Landscape: size to the media's real aspect ratio
   const desktopMediaBoxClass = mediaAspectRatio
     ? cn(
-        "md:w-full",
+        "md:w-full md:rounded-xl",
         // Cap portrait height so vertical videos/images aren't overwhelmingly tall.
         !isLandscape && "md:max-h-[min(86vh,52rem)]",
       )
     : isLandscape
-      ? "md:w-full"
-      : "md:h-[min(82vh,52rem)]";
+      ? "md:w-full md:rounded-xl"
+      : "md:h-[min(82vh,52rem)] md:rounded-xl";
   // Card width: portrait gets narrower so the vertical media fills the box (less black side panels).
   const desktopDiscoverCardWidthClass = isDiscover
     ? cn(
@@ -1733,112 +1733,7 @@ function PostCard({
     );
   }
 
-  function renderMediaHeaderOverlay(showVideoMute: boolean) {
-    return (
-      <>
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-[4.5rem] bg-gradient-to-b from-black/50 via-black/18 to-transparent"
-          aria-hidden
-        />
-        <div className="absolute inset-x-0 top-0 z-[6] flex items-start justify-between gap-2 p-2.5 md:p-3">
-          <Link
-            to={`/profile/${post.author_id}`}
-            className="group pointer-events-auto flex min-w-0 flex-1 items-start gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-            aria-label={`View ${authorName} profile`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <PostAuthorAvatar
-              authorName={authorName}
-              photoUrl={post.author?.photo_url ?? undefined}
-              liveUntil={post.author?.live_until}
-              variant="overlay"
-            />
-            <div className="min-w-0 flex-1 flex flex-col gap-0.5 pt-0.5">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate font-black text-xl leading-tight text-white drop-shadow-sm">
-                  {authorName}
-                </span>
-                {post.author?.is_verified ? (
-                  <BadgeCheck
-                    className="h-[18px] w-[18px] shrink-0 drop-shadow-sm"
-                    fill="#0ea5e9"
-                    color="#ffffff"
-                    aria-label="Verified"
-                  />
-                ) : null}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <time className="text-[13px] font-semibold tabular-nums tracking-tight text-white/90 drop-shadow-sm">
-                  {postedLabel}
-                </time>
-                {isSource ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white/95 shadow-sm ring-1 ring-white/25 backdrop-blur-sm">
-                    <Sparkles className="h-3 w-3 text-amber-200" />
-                    {categoryLabel((post as AvailabilityPost).category)}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </Link>
-          <div className="flex shrink-0 items-center gap-2">
-            {canSaveAuthor ? (
-              <button
-                type="button"
-                disabled={favoriteBusy}
-                onClick={(e) => void toggleSaveAuthor(e)}
-                title={authorSaved ? "Remove from saved profiles" : "Save profile"}
-                aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
-                aria-pressed={authorSaved}
-                className={saveBadgeMediaClass}
-              >
-                {favoriteBusy ? (
-                  <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
-                ) : (
-                  <Bookmark
-                    className={cn(
-                      "h-6 w-6 drop-shadow-sm",
-                      authorSaved && "fill-amber-300 text-amber-100",
-                    )}
-                    strokeWidth={authorSaved ? 0 : 2}
-                    aria-hidden
-                  />
-                )}
-              </button>
-            ) : null}
-            {showVideoMute ? (
-              <button
-                type="button"
-                onClick={toggleInlineVideoMute}
-                className={videoMuteMediaClass}
-                aria-label={videoUnmutedByUser ? "Mute video" : "Unmute video"}
-                title={videoUnmutedByUser ? "Mute" : "Unmute"}
-              >
-                {videoUnmutedByUser ? (
-                  <Volume2 className="h-6 w-6" aria-hidden />
-                ) : (
-                  <VolumeX className="h-6 w-6" aria-hidden />
-                )}
-              </button>
-            ) : null}
-            {isOwnFeed && post.source === "post" ? (
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void handleDelete();
-                }}
-                className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/45 text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/20 transition-colors hover:bg-black/55 disabled:opacity-60"
-                aria-label="Delete post"
-              >
-                {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </>
-    );
-  }
+
 
   return (
     <div
@@ -1853,9 +1748,8 @@ function PostCard({
         desktopDiscoverCardWidthClass,
       )}
     >
-      {/* Header — in card flow when there is no media; with media, same content is overlaid on the media */}
-      {!hasMedia ? (
-        <div className="flex items-start gap-3 px-4 pt-4 pb-2">
+      {/* Header — always rendered outside the media block */}
+      <div className="flex items-start gap-3 px-4 pt-4 pb-2">
           <Link to={`/profile/${post.author_id}`} className="shrink-0 self-start">
             <PostAuthorAvatar
               authorName={authorName}
@@ -1929,13 +1823,11 @@ function PostCard({
             ) : null}
           </div>
         </div>
-      ) : null}
-
       {/* Media */}
       {mediaUrl && post.media_type === "image" && (
         <div
           className={cn(
-            "relative mt-0 md:mt-2 overflow-hidden",
+            "relative mt-0 overflow-hidden",
             // When media uses object-contain (especially on desktop), show black side panels.
             "bg-black",
             mobileMediaBoxClass,
@@ -1973,7 +1865,7 @@ function PostCard({
             />
           </button>
 
-          {renderMediaHeaderOverlay(false)}
+
 
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
@@ -2019,7 +1911,7 @@ function PostCard({
       {mediaUrl && post.media_type === "video" && (
         <div
           className={cn(
-            "relative mt-0 md:mt-2 overflow-hidden bg-black",
+            "relative mt-0 overflow-hidden bg-black",
             mobileMediaBoxClass,
             desktopMediaBoxClass,
             desktopDiscoverCardWidthClass,
@@ -2062,7 +1954,21 @@ function PostCard({
             }}
           />
 
-          {renderMediaHeaderOverlay(true)}
+          <div className="absolute top-3 right-3 z-[6]">
+            <button
+              type="button"
+              onClick={toggleInlineVideoMute}
+              className={videoMuteMediaClass}
+              aria-label={videoUnmutedByUser ? "Mute video" : "Unmute video"}
+              title={videoUnmutedByUser ? "Mute" : "Unmute"}
+            >
+              {videoUnmutedByUser ? (
+                <Volume2 className="h-6 w-6" aria-hidden />
+              ) : (
+                <VolumeX className="h-6 w-6" aria-hidden />
+              )}
+            </button>
+          </div>
 
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (

@@ -9,9 +9,9 @@ export const discoverRequestPostedTimeBadgeBaseClass = cn(
 );
 
 export const discoverRequestPostedTimeBadgeClass = cn(
-  "absolute bottom-2 left-2 z-10",
+  "absolute top-2 right-2 z-10",
   discoverRequestPostedTimeBadgeBaseClass,
-  "sm:bottom-1.5 sm:left-1.5 lg:bottom-2 lg:left-2",
+  "sm:top-1.5 sm:right-1.5 lg:top-2 lg:right-2",
 );
 
 export const discoverRequestClientOverlayClass = cn(

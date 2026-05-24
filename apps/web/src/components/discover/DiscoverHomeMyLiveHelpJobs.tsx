@@ -368,34 +368,36 @@ export function DiscoverHomeMyLiveHelpJobs({
                   aria-hidden
                 />
 
-                {/* Other-party avatar + name — top of image */}
-                <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-1.5 p-2 sm:gap-1 sm:p-1.5 lg:gap-1.5 lg:p-2 xl:p-2.5">
-                  <Avatar className="h-8 w-8 overflow-hidden shadow-sm sm:h-7 sm:w-7 lg:h-9 lg:w-9 xl:h-10 xl:w-10">
-                    <AvatarImage
-                      src={otherProfile?.photo_url || undefined}
-                      alt=""
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-[9px] lg:text-[11px]">
-                      {otherName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span
-                    className="min-w-0 flex-1 truncate text-[12.5px] font-semibold leading-tight text-white sm:text-[11px] lg:text-[13px] xl:text-[14px]"
-                    style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
-                  >
-                    {otherName}
+                {/* Other-party avatar + name + Live badge — top of image */}
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-1.5 p-2 sm:gap-1 sm:p-1.5 lg:gap-1.5 lg:p-2 xl:p-2.5">
+                  <div className="flex min-w-0 items-center gap-1.5 sm:gap-1 lg:gap-1.5">
+                    <Avatar className="h-8 w-8 shrink-0 overflow-hidden shadow-sm sm:h-7 sm:w-7 lg:h-9 lg:w-9 xl:h-10 xl:w-10">
+                      <AvatarImage
+                        src={otherProfile?.photo_url || undefined}
+                        alt=""
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-[9px] lg:text-[11px]">
+                        {otherName.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span
+                      className="min-w-0 truncate text-[12.5px] font-semibold leading-tight text-white sm:text-[11px] lg:text-[13px] xl:text-[14px]"
+                      style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
+                    >
+                      {otherName}
+                    </span>
+                  </div>
+
+                  {/* "Live" pill — top-right */}
+                  <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-emerald-600/95 px-2.5 py-1 text-[12px] font-black uppercase tracking-wide text-white shadow-md backdrop-blur-sm sm:gap-1 sm:px-2 sm:py-0.5 sm:text-[10.5px] lg:gap-1.5 lg:px-2.5 lg:py-1 lg:text-[12px] xl:text-[13px] xl:px-3">
+                    <span className="relative flex h-2 w-2 shrink-0 lg:h-2 lg:w-2 xl:h-2.5 xl:w-2.5" aria-hidden>
+                      <span className="absolute inset-0 rounded-full bg-white/70 motion-safe:animate-ping motion-reduce:hidden" />
+                      <span className="relative h-2 w-2 rounded-full bg-white xl:h-2.5 xl:w-2.5" />
+                    </span>
+                    <span>Live</span>
                   </span>
                 </div>
-
-                {/* "Live" pill — bottom-left */}
-                <span className="absolute bottom-2 left-2 z-10 inline-flex max-w-[85%] items-center gap-1.5 rounded-full bg-emerald-600/95 px-2.5 py-1 text-[12px] font-black uppercase tracking-wide text-white shadow-md backdrop-blur-sm sm:bottom-1.5 sm:left-1.5 sm:gap-1 sm:px-2 sm:py-0.5 sm:text-[10.5px] lg:bottom-2 lg:left-2 lg:gap-1.5 lg:px-2.5 lg:py-1 lg:text-[12px] xl:text-[13px] xl:px-3">
-                  <span className="relative flex h-2 w-2 shrink-0 lg:h-2 lg:w-2 xl:h-2.5 xl:w-2.5" aria-hidden>
-                    <span className="absolute inset-0 rounded-full bg-white/70 motion-safe:animate-ping motion-reduce:hidden" />
-                    <span className="relative h-2 w-2 rounded-full bg-white xl:h-2.5 xl:w-2.5" />
-                  </span>
-                  <span>Live</span>
-                </span>
               </div>
 
               {/* Text on page background — Airbnb-style simple lines */}

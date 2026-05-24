@@ -220,7 +220,7 @@ const stripCategoryIconShellClass =
 const stripCategoryIconSizeClass = "max-md:h-7 max-md:w-7 md:h-6 md:w-6";
 
 const stripHireProfileCardClass =
-  "flex w-[7.5rem] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl border-0 bg-transparent p-2 shadow-none transition-transform dark:border-0 dark:bg-zinc-800/75 dark:shadow-none outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] md:w-[5.5rem] md:gap-0.5 md:rounded-2xl md:border-0 md:bg-transparent md:p-1 md:shadow-none md:dark:bg-transparent";
+  "flex w-[7.5rem] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl border-0 bg-transparent p-2 shadow-none transition-transform dark:border-0 dark:bg-zinc-800/75 dark:shadow-none outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]";
 
 function pickPrimaryLiveCategory(
   catSet: Set<ServiceCategoryId>,
@@ -2142,48 +2142,73 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   );
 
   if (items.length === 0) {
+    if (variant === "hire") {
+      return (
+        <>
+          <div className="flex items-center justify-between py-2 px-1">
+            <p className="text-[14px] font-medium text-muted-foreground flex-1 pr-4">
+              No helpers showing as available right now — try{" "}
+              <button
+                type="button"
+                onClick={onBrowseTap}
+                className="font-semibold text-[#7B61FF] hover:underline"
+              >
+                browsing all helpers
+              </button>
+              .
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                writeDiscoverHomeIntent("work");
+              }}
+              className={cn(
+                "flex w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 rounded-2xl py-1 transition-transform",
+                "outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "active:scale-[0.97] md:w-[5.5rem]",
+              )}
+              aria-label="Switch to Help others"
+            >
+              <span className="flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-sm md:h-[5.25rem] md:w-[5.25rem] dark:bg-zinc-800 dark:ring-white/10">
+                <ChevronRight className="h-7 w-7 text-slate-600 dark:text-zinc-200" strokeWidth={2.5} aria-hidden />
+              </span>
+              <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-bold leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
+                Help others?
+              </span>
+            </button>
+          </div>
+          <DiscoverRealtimeStripDetailDialog
+            open={detailOpen}
+            onOpenChange={closeDetail}
+            hire={detailHire}
+            work={detailWork}
+            variant={variant}
+          />
+        </>
+      );
+    }
+
     return (
       <>
-        <div
-          className={cn(
-            "rounded-[1rem] border border-dashed px-4 py-5 dark:bg-zinc-900/40",
-            variant === "hire"
-              ? "border-[#7B61FF]/25 bg-[rgba(123,97,255,0.06)]"
-              : "border-border/50 bg-muted/25",
-          )}
-        >
+        <div className="rounded-[1rem] border border-dashed border-border/50 bg-muted/25 px-4 py-5 dark:bg-zinc-900/40">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-1 flex-col items-center gap-2 text-center text-sm text-muted-foreground sm:items-start sm:text-left">
-              {variant === "hire" ? (
-                <p>
-                  No helpers showing as available right now — try{" "}
-                  <button
-                    type="button"
-                    onClick={onBrowseTap}
-                    className="font-semibold text-[#7B61FF] underline-offset-4 hover:underline"
-                  >
-                    browsing all helpers
-                  </button>
-                  .
-                </p>
-              ) : (
-                <p>
-                  Nothing live right now — open{" "}
-                  <Link
-                    to={explorePath}
-                    className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-4 hover:underline"
-                  >
-                    <Compass
-                      className={cn(discoverIcon.sm, "inline shrink-0")}
-                      strokeWidth={DISCOVER_STROKE}
-                    />
-                    Explore
-                  </Link>
-                  .
-                </p>
-              )}
+              <p>
+                Nothing live right now — open{" "}
+                <Link
+                  to={explorePath}
+                  className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-4 hover:underline"
+                >
+                  <Compass
+                    className={cn(discoverIcon.sm, "inline shrink-0")}
+                    strokeWidth={DISCOVER_STROKE}
+                  />
+                  Explore
+                </Link>
+                .
+              </p>
             </div>
-            {variant === "work" ? BrowseRoundControl : null}
+            {BrowseRoundControl}
           </div>
         </div>
         <DiscoverRealtimeStripDetailDialog
@@ -2441,8 +2466,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
               {shortDisplayName(it.name)}
             </span>
-            {/* Mobile-only: review stars + category */}
-            <div className="flex w-full flex-col items-center gap-0.5 md:hidden">
+            {/* Review stars + category (now visible on desktop too) */}
+            <div className="flex w-full flex-col items-center gap-0.5">
               <span className="inline-flex items-center gap-1 text-[11px] font-bold leading-none text-zinc-900 dark:text-zinc-50">
                 <Star
                   className="h-3 w-3 fill-zinc-900 text-zinc-900 dark:fill-zinc-50 dark:text-zinc-50"

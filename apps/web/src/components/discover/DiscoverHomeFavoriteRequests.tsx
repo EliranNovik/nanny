@@ -399,7 +399,7 @@ export function DiscoverHomeFavoriteRequests({
                 </div>
 
                 {r.client_id ? (
-                  <div className="absolute right-1.5 top-1.5 z-20 sm:right-1 sm:top-1 lg:right-2 lg:top-2">
+                  <div className="absolute right-1.5 bottom-1.5 z-20 sm:right-1 sm:bottom-1 lg:right-2 lg:bottom-2">
                     <DiscoverProfileSaveBadge
                       targetUserId={r.client_id}
                       accent="work"
