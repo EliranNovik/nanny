@@ -1413,12 +1413,6 @@ function PostCard({
       : "border-border/80 bg-muted/85 text-muted-foreground hover:bg-muted hover:text-foreground dark:bg-zinc-800/90 dark:hover:bg-zinc-800",
   );
 
-  const saveBadgeMediaClass = cn(
-    "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-white shadow-lg backdrop-blur-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent disabled:opacity-50",
-    authorSaved
-      ? "border-amber-400/40 bg-black/55 hover:bg-black/65"
-      : "border-white/20 bg-black/45 hover:bg-black/55",
-  );
 
   const videoMuteMediaClass =
     "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white shadow-lg backdrop-blur-xl transition-colors hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45";
