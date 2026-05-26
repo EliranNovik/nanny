@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
@@ -41,6 +42,27 @@ export default function GlobalPostsPage() {
       <div className="app-desktop-shell py-6 md:py-8 px-0 md:px-4">
         <div className="mx-auto w-full max-w-3xl md:mx-0 md:max-w-none">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            {/* Inline Compose Box at the top of Community Feed */}
+            <div className="mb-6 px-4 md:px-0">
+              <button
+                type="button"
+                onClick={openCompose}
+                className="flex w-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 text-left shadow-sm transition-all hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/80"
+              >
+                <Avatar className="h-10 w-10 border border-black/5 dark:border-white/5">
+                  <AvatarImage src={profile?.photo_url || undefined} className="object-cover" />
+                  <AvatarFallback className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    {(profile?.full_name?.charAt(0) || user?.email?.charAt(0) || "U").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex h-10 flex-1 items-center rounded-full bg-zinc-100 px-4 transition-colors dark:bg-zinc-800/80">
+                  <span className="text-[14px] text-zinc-500 dark:text-zinc-400">
+                    Post a new story
+                  </span>
+                </div>
+              </button>
+            </div>
+
             <ProfilePostsFeed appearance="discover" />
           </div>
         </div>

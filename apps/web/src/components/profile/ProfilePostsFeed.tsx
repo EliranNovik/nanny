@@ -1736,7 +1736,7 @@ function PostCard({
         "bg-white dark:bg-zinc-950/20",
         "md:rounded-2xl md:shadow-md",
         "border-0 shadow-none",
-        "pb-6 md:pb-0", // Breathing room after action icons on mobile
+
         isDiscover &&
           "md:bg-transparent md:shadow-none md:ring-0 md:outline-none",
         desktopDiscoverCardWidthClass,
@@ -2718,7 +2718,7 @@ export function ProfilePostsFeed({
   }
 
   return (
-    <div className="space-y-12 md:space-y-7">
+    <div className="space-y-3 md:space-y-2">
       {/* Compose button — own profile only */}
       {isOwnProfile && (
         <div>
@@ -2770,7 +2770,7 @@ export function ProfilePostsFeed({
         // sidebar spans the full feed height on the right (no extra gaps
         // between posts when the sidebar is long).
         <div className="md:flex md:items-start md:justify-start md:gap-10 md:pr-4 lg:pr-8">
-          <div className="min-w-0 space-y-12 md:flex-1 md:space-y-7">
+          <div className="min-w-0 space-y-3 md:flex-1 md:space-y-2">
             {posts.map((post) => (
               <PostCard
                 key={post.id}
