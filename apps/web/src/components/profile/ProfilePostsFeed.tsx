@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/hooks/data/keys";
 import { Link, useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -2202,8 +2204,6 @@ export function ProfilePostsFeed({
 }: ProfilePostsFeedProps) {
   const { user, profile: currentProfile } = useAuth();
   const [globalVideoUnmuted, setGlobalVideoUnmuted] = useState(false);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [reelsOpenPostId, setReelsOpenPostId] = useState<string | null>(null);
   const [reelCommentsPostId, setReelCommentsPostId] = useState<string | null>(null);
@@ -2233,18 +2233,29 @@ export function ProfilePostsFeed({
     return () => (mql as MediaQueryList).removeListener(onChange);
   }, []);
   const navigate = useNavigate();
-  const [refreshKey, setRefreshKey] = useState(0);
+  const queryClient = useQueryClient();
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stable query key — used to invalidate/update the cache in realtime handlers.
+  const qk = useMemo(() => queryKeys.profilePostsFeed({
+    userId,
+    viewerUserId: user?.id,
+    filterTaggedUserId,
+    filterAuthorId,
+    authorNameFilter,
+    sortOrder,
+    filterLikedByUserId,
+    limit,
+  }), [userId, user?.id, filterTaggedUserId, filterAuthorId, authorNameFilter, sortOrder, filterLikedByUserId, limit]);
 
   const scheduleRealtimeRefresh = useCallback(() => {
     if (realtimeRefreshTimeoutRef.current) {
       clearTimeout(realtimeRefreshTimeoutRef.current);
     }
-    // Debounce to avoid storms when multiple rows change rapidly.
     realtimeRefreshTimeoutRef.current = setTimeout(() => {
-      setRefreshKey((prev) => prev + 1);
+      void queryClient.invalidateQueries({ queryKey: qk });
     }, 250);
-  }, []);
+  }, [queryClient, qk]);
 
   // Realtime subscription for live feed updates.
   // We keep it conservative: refresh the feed for post changes, but apply likes/comments in-place.
@@ -2277,7 +2288,8 @@ export function ProfilePostsFeed({
       const row = (payload?.new ?? payload?.old) as { post_id?: string; user_id?: string } | undefined;
       const postId = row?.post_id;
       if (!postId) return;
-      setPosts((prev) => {
+      queryClient.setQueryData<FeedPost[]>(qk, (prev) => {
+        if (!prev) return prev;
         const idx = prev.findIndex((p) => p.source === "post" && p.id === postId);
         if (idx === -1) return prev;
         const next = [...prev];
@@ -2286,13 +2298,8 @@ export function ProfilePostsFeed({
         if (payload?.eventType === "INSERT") {
           next[idx] = { ...p, like_count: p.like_count + 1, liked_by_me: isMe ? true : p.liked_by_me };
         } else if (payload?.eventType === "DELETE") {
-          next[idx] = {
-            ...p,
-            like_count: Math.max(0, p.like_count - 1),
-            liked_by_me: isMe ? false : p.liked_by_me,
-          };
+          next[idx] = { ...p, like_count: Math.max(0, p.like_count - 1), liked_by_me: isMe ? false : p.liked_by_me };
         } else {
-          // For UPDATE/other, safest is to refresh soon.
           scheduleRealtimeRefresh();
           return prev;
         }
@@ -2307,7 +2314,8 @@ export function ProfilePostsFeed({
       const row = (payload?.new ?? payload?.old) as { post_id?: string } | undefined;
       const postId = row?.post_id;
       if (!postId) return;
-      setPosts((prev) => {
+      queryClient.setQueryData<FeedPost[]>(qk, (prev) => {
+        if (!prev) return prev;
         const idx = prev.findIndex((p) => p.source === "post" && p.id === postId);
         if (idx === -1) return prev;
         const next = [...prev];
@@ -2331,8 +2339,7 @@ export function ProfilePostsFeed({
     photo_url: currentProfile?.photo_url ?? null,
   };
 
-  const fetchPosts = useCallback(async () => {
-    setLoading(true);
+  const fetchPosts = useCallback(async (): Promise<FeedPost[]> => {
     try {
       const currentUserId = user?.id ?? null;
       // 0. Resolve author search if name provided
@@ -2358,9 +2365,7 @@ export function ProfilePostsFeed({
         if (likedErr) throw likedErr;
         likedPostIds = (likedRows ?? []).map((r) => r.post_id as string);
         if (likedPostIds.length === 0) {
-          setPosts([]);
-          setLoading(false);
-          return;
+          return [];
         }
       }
 
@@ -2377,9 +2382,7 @@ export function ProfilePostsFeed({
         query = query.eq("author_id", filterAuthorId);
       } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
         if (resolvedAuthorIds.length === 0) {
-          setPosts([]);
-          setLoading(false);
-          return;
+          return [];
         }
         query = query.in("author_id", resolvedAuthorIds);
       }
@@ -2611,11 +2614,10 @@ export function ProfilePostsFeed({
         }
       );
 
-      setPosts(merged);
+      return merged;
     } catch (e) {
       console.error("[ProfilePostsFeed] fetchPosts", e);
-    } finally {
-      setLoading(false);
+      return [];
     }
   }, [
     userId,
@@ -2624,30 +2626,29 @@ export function ProfilePostsFeed({
     filterAuthorId,
     authorNameFilter,
     sortOrder,
-    refreshKey,
+    filterLikedByUserId,
     supabase,
   ]);
 
-  useEffect(() => {
-    void fetchPosts();
-  }, [fetchPosts]);
+  const { data: posts = [], isLoading: loading } = useQuery({
+    queryKey: qk,
+    staleTime: 3 * 60 * 1000, // 3 minutes — served from cache on revisit
+    gcTime: 10 * 60 * 1000,   // keep in cache 10 min after unmount
+    queryFn: fetchPosts,
+  });
 
   function handleLikeToggle(postId: string, newLiked: boolean) {
-    setPosts((prev) =>
-      prev.map((p) =>
+    queryClient.setQueryData<FeedPost[]>(qk, (prev) =>
+      prev?.map((p) =>
         p.id === postId
-          ? {
-            ...p,
-            liked_by_me: newLiked,
-            like_count: Math.max(0, p.like_count + (newLiked ? 1 : -1)),
-          }
+          ? { ...p, liked_by_me: newLiked, like_count: Math.max(0, p.like_count + (newLiked ? 1 : -1)) }
           : p,
       ),
     );
   }
 
   function handleDeleted(postId: string) {
-    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    queryClient.setQueryData<FeedPost[]>(qk, (prev) => prev?.filter((p) => p.id !== postId));
   }
 
   const reelCommentsPost = useMemo(() => {
@@ -2675,19 +2676,15 @@ export function ProfilePostsFeed({
         | undefined;
       const click = Number(row?.click_count ?? 0);
       const distinct = Number(row?.distinct_user_count ?? 0);
-      setPosts((prev) =>
-        prev.map((p) =>
+      queryClient.setQueryData<FeedPost[]>(qk, (prev) =>
+        prev?.map((p) =>
           p.id === postId && p.source === "post"
-            ? {
-                ...p,
-                share_click_count: click,
-                share_distinct_user_count: distinct,
-              }
+            ? { ...p, share_click_count: click, share_distinct_user_count: distinct }
             : p,
         ),
       );
     },
-    [supabase],
+    [supabase, queryClient, qk],
   );
 
   if (loading) {

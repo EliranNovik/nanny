@@ -216,7 +216,7 @@
    * - Remove global BottomNav scroll padding (prevents whole-page scroll)
    * - Fill the viewport and hide overflow so only inner panels scroll
    */
-  .app-main-scroll-pad:has([data-messages-page]) {
+  .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-messages-page]) {
     padding-bottom: 0;
     height: 100dvh;
     max-height: 100dvh;
@@ -229,13 +229,13 @@
   /**
    * Messages does NOT show the BottomNav DesktopHeader, so don't reserve header clearance.
    */
-  .app-content-below-fixed-header:has([data-messages-page]) {
+  .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-messages-page]) {
     padding-top: 0 !important;
   }
 
   /* Public posts mobile: fixed snap feed already clears BottomNav — drop duplicate scroll-pad */
   @media (max-width: 767.98px) {
-    .app-main-scroll-pad:has([data-public-snap-feed-mobile]) {
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-public-snap-feed-mobile]) {
       padding-bottom: 0;
     }
 
@@ -243,7 +243,7 @@
      * Discover home (client/freelancer): single screen — no vertical scroll on the main column.
      * Content fills between fixed app header + BottomNav padding (see .app-main-scroll-pad).
      */
-    .app-main-scroll-pad:has([data-discover-home-page]) {
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-discover-home-page]) {
       height: auto;
       max-height: none;
       min-height: 0;
@@ -253,7 +253,7 @@
   }
 
   @media (min-width: 768px) {
-    .app-main-scroll-pad:has([data-discover-home-page]) {
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-discover-home-page]) {
       height: auto;
       max-height: none;
       overflow: visible;
@@ -265,7 +265,7 @@
    * Client confirmed live request: map + sheet — no full-page scroll on mobile;
    * details live in a dialog / expanded sections (see ConfirmedListPage).
    */
-  .app-main-scroll-pad:has([data-confirmed-live-request-page]) {
+  .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-confirmed-live-request-page]) {
     height: 100dvh;
     max-height: 100dvh;
     min-height: 0;
@@ -276,7 +276,7 @@
   }
 
   @media (min-width: 768px) {
-    .app-main-scroll-pad:has([data-confirmed-live-request-page]) {
+    .app-main-scroll-pad:has(div:not([aria-hidden="true"]) > [data-confirmed-live-request-page]) {
       height: auto;
       max-height: none;
       overflow: visible;
@@ -295,27 +295,27 @@
 
   /* Create job / post availability: mobile app header hidden — #root safe-area only */
   @media (max-width: 767.98px) {
-    .app-content-below-fixed-header:has([data-create-job-no-mobile-header]),
-    .app-content-below-fixed-header:has([data-post-availability-no-mobile-header]),
-    .app-content-below-fixed-header:has([data-find-helpers-no-app-header]),
-    .app-content-below-fixed-header:has([data-freelancer-jobs-match-no-app-header]) {
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header]),
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-post-availability-no-mobile-header]),
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-no-app-header]),
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-no-app-header]) {
       padding-top: 0;
     }
 
     /* Discover home: fixed top padding — tab toggle does not collapse on scroll */
-    .app-content-below-fixed-header:has([data-discover-home-page]) {
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-discover-home-page]) {
       padding-top: calc(0.5rem + 2.25rem + 0.5rem);
     }
 
     /* /jobs: fixed top padding — tab strip does not collapse on scroll */
-    .app-content-below-fixed-header:has([data-unified-jobs-page]) {
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-unified-jobs-page]) {
       padding-top: calc(0.5rem + 2.25rem + 0.5rem);
     }
 
     /**
      * /liked: scroll-linked collapse — `--mobile-shell-collapse-progress` is 0…1 (set on html in JS).
      */
-    .app-content-below-fixed-header:has([data-liked-page]) {
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-liked-page]) {
       padding-top: calc(
         (1 - var(--mobile-shell-collapse-progress, 0)) * (0.5rem + 2.25rem + 0.5rem)
       );
@@ -328,8 +328,8 @@
     }
 
     /* Find helpers: BottomNav desktop header hidden — no reserved top bar */
-    .app-content-below-fixed-header:has([data-find-helpers-no-app-header]),
-    .app-content-below-fixed-header:has([data-freelancer-jobs-match-no-app-header]) {
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-no-app-header]),
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-no-app-header]) {
       padding-top: 0;
     }
   }

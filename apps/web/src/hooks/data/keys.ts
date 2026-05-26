@@ -40,5 +40,29 @@ export const queryKeys = {
   /** Hydrated profile rows for the current user's saved profiles (favorites). */
   discoverSavedProfiles: (userId?: string | null) =>
     [...queryKeys.community, "discoverSavedProfiles", userId ?? "none"] as const,
+
+  /** Community / profile posts feed — scoped by all filter params so different feed contexts cache independently. */
+  profilePostsFeed: (opts: {
+    userId?: string | null;
+    viewerUserId?: string | null;
+    filterTaggedUserId?: string | null;
+    filterAuthorId?: string | null;
+    authorNameFilter?: string | null;
+    sortOrder?: string;
+    filterLikedByUserId?: string | null;
+    limit?: number | null;
+  }) =>
+    [
+      ...queryKeys.community,
+      "profilePostsFeed",
+      opts.userId ?? "all",
+      opts.viewerUserId ?? "anon",
+      opts.filterTaggedUserId ?? "",
+      opts.filterAuthorId ?? "",
+      opts.authorNameFilter ?? "",
+      opts.sortOrder ?? "newest",
+      opts.filterLikedByUserId ?? "",
+      opts.limit ?? 0,
+    ] as const,
 };
 

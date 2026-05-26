@@ -1312,6 +1312,39 @@ export function BottomNav() {
 
                 {plusMenuOpen ? (
                   <div role="menu" className={plusMenuPanelClassName}>
+                    {/* Role-aware shortcut: Find helpers (client) or Find requests (freelancer) */}
+                    {profile?.role === "client" && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={plusMenuItemClassName}
+                        onClick={() => {
+                          setPlusMenuOpen(false);
+                          navigate("/client/helpers");
+                        }}
+                      >
+                        <span className={plusMenuIconWrapClassName}>
+                          <UsersRound className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                        </span>
+                        <span>Find helpers</span>
+                      </button>
+                    )}
+                    {(profile?.role === "freelancer" || (profile?.role === "client" && profile?.is_available_for_jobs)) && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={plusMenuItemClassName}
+                        onClick={() => {
+                          setPlusMenuOpen(false);
+                          navigate("/freelancer/jobs/match");
+                        }}
+                      >
+                        <span className={plusMenuIconWrapClassName}>
+                          <Rss className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                        </span>
+                        <span>Find requests</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       role="menuitem"

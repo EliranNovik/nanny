@@ -8,6 +8,7 @@ import {
   useParams,
   useLocation,
 } from "react-router-dom";
+import { useAuth as _useAuth } from "@/context/AuthContext";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { DiscoverHomeScrollHeaderProvider } from "@/context/DiscoverHomeScrollHeaderContext";
@@ -162,6 +163,45 @@ function RootRoute() {
 }
 
 /**
+ * Pages that should stay mounted across navigation to avoid reload flashes.
+ * They are rendered permanently but hidden via CSS when not on their route.
+ */
+const KEEP_ALIVE_ROUTES = [
+  "/client/helpers",
+  "/freelancer/jobs/match",
+  "/messages",
+];
+
+function KeepAlivePages() {
+  const { pathname } = useLocation();
+  const { user } = _useAuth();
+
+  if (!user) return null;
+
+  return (
+    <>
+      {KEEP_ALIVE_ROUTES.map((route) => {
+        const isActive = pathname === route ||
+          pathname.startsWith(route + "?") ||
+          // Match /messages/:conversationId sub-routes under the /messages keep-alive slot
+          (route === "/messages" && pathname.startsWith("/messages/"));
+        return (
+          <div
+            key={route}
+            aria-hidden={!isActive}
+            style={isActive ? undefined : { display: "none", visibility: "hidden", pointerEvents: "none" }}
+          >
+            {route === "/client/helpers" && <HelpersPage />}
+            {route === "/freelancer/jobs/match" && <FreelancerJobsMatchPage />}
+            {route === "/messages" && <MessagesPage />}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/**
  * Wraps page content with top padding so it clears the fixed BottomNav header.
  * #root already applies env(safe-area-inset-top); pt-14 (~3.5rem) matches the mobile strip
  * (safe-area padding inside the strip + h-10 + margins) and the md desktop bar.
@@ -173,13 +213,23 @@ function PageLayoutWithHeader() {
     pathname.startsWith("/messages/") ||
     pathname.startsWith("/chat/");
 
+  // When on a keep-alive route, render the persistent page instead of the Outlet
+  const isKeepAliveRoute = KEEP_ALIVE_ROUTES.some(
+    (r) => pathname === r ||
+      pathname.startsWith(r + "?") ||
+      (r === "/messages" && pathname.startsWith("/messages/")),
+  );
+
   return (
     <div className="app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content min-h-[100dvh] min-h-[-webkit-fill-available]">
       <div className="min-h-[100dvh] min-h-[-webkit-fill-available]">
         <DesktopSidePanel />
         {/* On desktop, leave room for the fixed left panel */}
         <div className="min-w-0 md:pl-[220px]">
-          <Outlet />
+          {/* Always-mounted keep-alive pages */}
+          <KeepAlivePages />
+          {/* Normal outlet — hidden when a keep-alive route is active */}
+          {!isKeepAliveRoute && <Outlet />}
           {!shouldHideDesktopFooter ? (
             <div className="hidden md:block">
               <Footer />

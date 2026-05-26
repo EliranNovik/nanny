@@ -780,69 +780,69 @@ export function DiscoverHomeActionFirst({
               "md:grid-cols-[minmax(0,1fr)_min(15rem,24%)] md:items-stretch",
           )}
         >
-          {isHire ? (
-            <div className="flex min-h-0 min-w-0 flex-col gap-4 md:h-full">
-              <section
-                className={cn(
-                  "relative mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:min-h-0",
-                  "ring-1 ring-white/10 ring-inset transition-all duration-500",
-                )}
-              >
-                {renderHeroStats()}
-                <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
-                  <img
-                    src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
-                    alt=""
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[center_18%] transition-transform duration-700 group-hover:scale-105"
-                    decoding="async"
-                    {...{ fetchpriority: "high" }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-[5]" />
+          <div className={cn("flex min-h-0 min-w-0 flex-col gap-4 md:h-full", !isHire && "hidden")}>
+            <section
+              className={cn(
+                "relative mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:min-h-0",
+                "ring-1 ring-white/10 ring-inset transition-all duration-500",
+              )}
+            >
+              {renderHeroStats()}
+              <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
+                <img
+                  src={DISCOVER_PRIMARY_HERO_IMAGES.hire}
+                  alt=""
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[center_18%] transition-transform duration-700 group-hover:scale-105"
+                  decoding="async"
+                  {...{ fetchpriority: "high" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-[5]" />
 
-                  <div className={heroStackClassName}>
-                    <div className={heroTopBlockClassName}>
-                      <div className="min-w-0">
-                        {/* Desktop hero actions moved into the bottom Actions menu */}
+                <div className={heroStackClassName}>
+                  <div className={heroTopBlockClassName}>
+                    <div className="min-w-0">
+                      {/* Desktop hero actions moved into the bottom Actions menu */}
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
-                            <Zap
-                              className={cn(discoverIcon.sm, "shrink-0")}
-                              strokeWidth={DISCOVER_STROKE}
-                              aria-hidden
-                            />
-                            {HIRE.badge}
-                          </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md sm:px-3 sm:py-1.5">
+                          <Zap
+                            className={cn(discoverIcon.sm, "shrink-0")}
+                            strokeWidth={DISCOVER_STROKE}
+                            aria-hidden
+                          />
+                          {HIRE.badge}
                         </div>
-                        <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
-                          <h2
-                            className="text-[2.25rem] font-black leading-[1.1] tracking-tight text-white sm:text-[2.75rem]"
-                            style={{
-                              textShadow: "0 4px 30px rgba(0,0,0,0.5)",
-                            }}
-                          >
-                            {HIRE.title}
-                          </h2>
-                          <p
-                            className="whitespace-pre-line text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
-                            style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
-                          >
-                            {HIRE.sub}
-                          </p>
-                        </div>
+                      </div>
+                      <div className={cn(heroTitleBlockClassName, "mt-2 pr-0")}>
+                        <h2
+                          className="text-[2.25rem] font-black leading-[1.1] tracking-tight text-white sm:text-[2.75rem]"
+                          style={{
+                            textShadow: "0 4px 30px rgba(0,0,0,0.5)",
+                          }}
+                        >
+                          {HIRE.title}
+                        </h2>
+                        <p
+                          className="whitespace-pre-line text-[0.875rem] font-normal leading-snug text-white/95 sm:text-[15px]"
+                          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.35)" }}
+                        >
+                          {HIRE.sub}
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
-              </section>
-            </div>
-          ) : (
-            <section
-              className={cn(
-                "relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:h-full md:min-h-0",
-                "ring-1 ring-white/10 ring-inset transition-all duration-500",
-              )}
-            >
+              </div>
+            </section>
+          </div>
+          
+          <section
+            className={cn(
+              "relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden rounded-[28px] text-left md:mx-0 md:max-w-none group md:h-full md:min-h-0",
+              "ring-1 ring-white/10 ring-inset transition-all duration-500",
+              isHire && "hidden"
+            )}
+          >
               {renderDesktopWorkLiveBadge()}
               {renderHeroStats()}
               <div className={cn(heroInnerClassName, "min-h-0 md:h-full")}>
@@ -889,43 +889,34 @@ export function DiscoverHomeActionFirst({
                 </div>
               </div>
             </section>
-          )}
           {user?.id ? renderHeroQuickActionsDesktop() : null}
         </div>
 
         <div className="min-h-0 overflow-hidden pt-2 flex flex-col gap-2">
-          <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
-          {isHire ? (
-            <DiscoverHomeMyOpenRequests className="min-w-0 px-0.5 pt-1" />
-          ) : null}
-          {isHire ? (
-            <DiscoverHomeSavedProfiles className="min-w-0 px-0.5 pt-3" />
-          ) : null}
-          {isHire ? (
-            <DiscoverHomeMyLiveHelpJobs
-              mode="hire"
-              exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}
-              createRequestPath={createRequestPath}
-              className="min-w-0 px-0.5 pt-3"
-            />
-          ) : null}
+          <div className={cn(!isHire && "hidden")}>
+            <DiscoverHomeRealtimeStrip variant="hire" explorePath={explorePath} />
+          </div>
+          <div className={cn(isHire && "hidden")}>
+            <DiscoverHomeRealtimeStrip variant="work" explorePath={explorePath} />
+          </div>
+
+          <DiscoverHomeMyOpenRequests className={cn("min-w-0 px-0.5 pt-1", !isHire && "hidden")} />
+          <DiscoverHomeSavedProfiles className={cn("min-w-0 px-0.5 pt-3", !isHire && "hidden")} />
+          <DiscoverHomeMyLiveHelpJobs
+            mode="hire"
+            exploreLiveHelpPath={`${explorePath}?mode=hire&tab=live_help`}
+            createRequestPath={createRequestPath}
+            className={cn("min-w-0 px-0.5 pt-3", !isHire && "hidden")}
+          />
         </div>
 
-        {!isHire ? (
-          <DiscoverHomePostedHelpRequests enabled className="px-1 pt-2 pb-1" />
-        ) : null}
-
-        {!isHire ? (
-          <DiscoverHomeFavoriteRequests className="px-1 pt-4 pb-1" />
-        ) : null}
-
-        {!isHire ? (
-          <DiscoverHomeMyLiveHelpJobs
-            mode="work"
-            exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
-            className="min-w-0 px-1 pt-4 pb-1"
-          />
-        ) : null}
+        <DiscoverHomePostedHelpRequests enabled className={cn("px-1 pt-2 pb-1", isHire && "hidden")} />
+        <DiscoverHomeFavoriteRequests className={cn("px-1 pt-4 pb-1", isHire && "hidden")} />
+        <DiscoverHomeMyLiveHelpJobs
+          mode="work"
+          exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
+          className={cn("min-w-0 px-1 pt-4 pb-1", isHire && "hidden")}
+        />
 
         <section className="mt-6 pb-0">
           <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
