@@ -281,7 +281,7 @@ function OwnAvailabilityPostCard({
                         src={url}
                         alt=""
                         className="h-full w-full object-cover"
-                        loading="lazy"
+                        loading="eager" decoding="async"
                       />
                     </button>
                   ))}
@@ -307,7 +307,7 @@ function OwnAvailabilityPostCard({
                       src={imageUrls[0]}
                       alt=""
                       className="h-full w-full object-cover"
-                      loading="lazy"
+                      loading="eager" decoding="async"
                     />
                   </button>
                   {!expired && (

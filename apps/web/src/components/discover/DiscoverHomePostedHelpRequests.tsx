@@ -228,8 +228,7 @@ export function DiscoverHomePostedHelpRequests({
                   src={photoUrl}
                   alt=""
                   className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
-                  loading="lazy"
-                  decoding="async"
+                  loading="eager" decoding="async"
                 />
 
                 <div className={discoverRequestTopGradientClass} aria-hidden />

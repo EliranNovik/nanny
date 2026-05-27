@@ -248,8 +248,7 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
                     src={photoUrl}
                     alt=""
                     className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
-                    loading="lazy"
-                    decoding="async"
+                    loading="eager" decoding="async"
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-100 via-zinc-50 to-zinc-200 dark:from-zinc-800 dark:via-zinc-800/70 dark:to-zinc-700/60">

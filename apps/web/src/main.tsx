@@ -7,28 +7,35 @@ import "./index.css";
 document.documentElement.style.removeProperty("overflow-y");
 document.body.style.removeProperty("overflow-y");
 
-// PWA: only register the service worker in production. In dev it intercepts navigations
-// and fetches, which breaks client-side routing (React Router) and Vite HMR.
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
+// PWA: register the service worker in all environments so the media cache
+// (Supabase images) works during dev testing on mobile as well as production.
+// The SW skips navigate requests, so React Router & Vite HMR are unaffected.
+if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {
-        console.log("Service Worker registered:", registration.scope);
-        setInterval(() => {
-          registration.update();
-        }, 60000);
+        // Prompt the new worker to take control immediately so cache updates apply now.
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener("statechange", () => {
+              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: "SKIP_WAITING" });
+              }
+            });
+          }
+        });
+        // Periodic update check every 30 s in dev, every 60 s in prod.
+        const interval = import.meta.env.DEV ? 30_000 : 60_000;
+        setInterval(() => registration.update(), interval);
       })
       .catch((error) => {
-        console.log("Service Worker registration failed:", error);
+        console.warn("[SW] Registration failed:", error);
       });
-  });
-} else if (import.meta.env.DEV && "serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((r) => {
-      r.unregister();
-      console.log("[dev] Service Worker unregistered for SPA routing");
-    });
   });
 }
 

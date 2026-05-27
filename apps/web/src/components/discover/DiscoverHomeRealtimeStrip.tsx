@@ -914,7 +914,7 @@ function DiscoverStripMediaCarousel({
                 </span>
               </>
             ) : (
-              <img src={s.src} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+              <img src={s.src} alt="" className="h-full w-full object-cover" loading="eager" decoding="async" />
             )}
           </div>
         ))}
@@ -2308,8 +2308,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                       <AvatarImage
                         src={row.thumbUrl || undefined}
                         className="object-cover"
-                        loading="lazy"
-                        decoding="async"
+                        loading="eager" decoding="async"
                         alt=""
                       />
                       <AvatarFallback className="text-lg font-bold">
@@ -2444,8 +2443,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
                     <AvatarImage
                       src={it.photo || undefined}
                       className="object-cover"
-                      loading="lazy"
-                      decoding="async"
+                      loading="eager" decoding="async"
                       alt=""
                     />
                     <AvatarFallback className="text-lg font-bold">

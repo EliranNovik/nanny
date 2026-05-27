@@ -1848,7 +1848,8 @@ function PostCard({
                   : // Mobile: cover (immersive). Desktop: contain (no cropping/zoom).
                     "object-cover md:object-contain",
               )}
-              loading="lazy"
+              loading="eager"
+              decoding="async"
               onLoad={(e) => {
                 const el = e.currentTarget;
                 const w = el.naturalWidth || 0;

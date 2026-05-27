@@ -226,8 +226,7 @@ export function DiscoverHomeLatestPosts() {
                 src={post.coverUrl}
                 alt=""
                 className="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
+                loading="eager" decoding="async"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-background">
