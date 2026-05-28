@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, ChevronLeft, Loader2, Search, X, Sparkles } from "lucide-react";
+import { Bell, Loader2, Search, X, Sparkles } from "lucide-react";
+import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { useSmartSearch, type SmartResult } from "@/hooks/useSmartSearch";
 import { Button } from "@/components/ui/button";
 import { SearchResultItem } from "./SearchResultItem";
@@ -91,7 +92,7 @@ export function MobileSmartSearchOverlay({
             onClick={onClose}
             aria-label="Close search"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <HeaderBackChevron />
           </Button>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import {
+  GOOGLE_MAP_EMBED_OPTIONS,
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
 } from "@/lib/googleMapsLoader";
@@ -158,6 +159,7 @@ export function LocationRadiusPicker({
           onClick={handleMapClick}
           onLoad={onMapLoad}
           options={{
+            ...GOOGLE_MAP_EMBED_OPTIONS,
             streetViewControl: false,
             mapTypeControl: false,
             fullscreenControl: false,

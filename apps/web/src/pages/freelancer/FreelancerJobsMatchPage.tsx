@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { Loader2, Navigation, Radar, Search } from "lucide-react";
-import { SERVICE_CATEGORIES } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
 import { isServiceCategoryId } from "@/lib/serviceCategories";
 import {
@@ -25,9 +24,16 @@ import { JobRequestCommentsModal } from "@/components/jobs/JobRequestCommentsMod
 import { JobRequestCommentsSidePanel } from "@/components/jobs/JobRequestCommentsSidePanel";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
 import {
+  GOOGLE_MAP_EMBED_OPTIONS,
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
 } from "@/lib/googleMapsLoader";
+import {
+  BigRadiusSlider,
+  RADIUS_MAX,
+  RADIUS_MIN,
+} from "@/components/search/BigRadiusSlider";
+import { MatchSearchCategoryPicker } from "@/components/search/MatchSearchCategoryPicker";
 
 function canActAsHelper(p: { role?: string; is_available_for_jobs?: boolean } | null | undefined) {
   if (!p?.role) return false;
@@ -49,9 +55,6 @@ const SEARCH_CIRCLE_STYLE: google.maps.CircleOptions = {
 };
 
 const JOBS_MATCH_PAGE_STATE_KEY = "jobs_match_page_state:v1";
-
-const R_MIN = 5;
-const R_MAX = 100;
 
 function formatJobTitle(serviceType?: string) {
   const s = (serviceType || "").replace(/_/g, " ");
@@ -145,6 +148,7 @@ function JobRequestsMapBlock({
       }}
       onClick={onMapClick}
       options={{
+        ...GOOGLE_MAP_EMBED_OPTIONS,
         fullscreenControl: true,
         streetViewControl: false,
         mapTypeControl: false,
@@ -729,46 +733,15 @@ export default function FreelancerJobsMatchPage() {
 
             <div className="mx-auto w-full max-w-lg md:max-w-xl animate-in fade-in zoom-in-95 duration-300">
               <div className="space-y-6 px-1 pt-2 md:px-0 md:pt-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 px-0.5">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                      Categories
-                    </span>
-                    {selectedCategories.size > 0 ? (
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
-                        onClick={() => setSelectedCategories(new Set())}
-                      >
-                        Clear all
-                      </button>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {SERVICE_CATEGORIES.map((cat) => {
-                      const on = selectedCategories.has(cat.id);
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => toggleCategory(cat.id)}
-                          aria-pressed={on}
-                          className={cn(
-                            "rounded-full border px-3 py-1.5 text-left text-xs font-semibold transition-colors",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2",
-                            on
-                              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 dark:border-white/10 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-emerald-900/50",
-                          )}
-                        >
-                          {cat.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <MatchSearchCategoryPicker
+                  labelId="jobs-match-category-label"
+                  theme="emerald"
+                  selectedCategories={selectedCategories}
+                  onToggle={toggleCategory}
+                  onClearAll={() => setSelectedCategories(new Set())}
+                />
 
-                <div className="relative mx-auto w-full max-w-md">
+                <div className="relative mx-auto w-full max-w-md max-md:max-w-none max-md:-mx-3 max-md:w-[calc(100%+1.5rem)]">
                   <div
                     className={cn(
                       "relative aspect-square w-full overflow-hidden rounded-2xl",
@@ -836,19 +809,25 @@ export default function FreelancerJobsMatchPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold">
-                    Prefer radius context: {radiusKm} km
-                  </label>
-                  <input
-                    type="range"
-                    min={R_MIN}
-                    max={R_MAX}
-                    step={5}
+                <div className="space-y-4">
+                  <div className="px-0.5">
+                    <label
+                      htmlFor="jobs-match-radius"
+                      className="text-sm font-bold text-slate-800 dark:text-slate-100"
+                    >
+                      Search radius
+                    </label>
+                  </div>
+                  <BigRadiusSlider
+                    id="jobs-match-radius"
+                    theme="emerald"
                     value={radiusKm}
-                    onChange={(e) => setRadiusKm(Number(e.target.value))}
-                    className="w-full accent-emerald-500"
+                    onChange={setRadiusKm}
                   />
+                  <div className="flex justify-between px-1 text-xs font-bold text-muted-foreground">
+                    <span>{RADIUS_MIN} km</span>
+                    <span>{RADIUS_MAX} km</span>
+                  </div>
                 </div>
 
                 {/* md+: primary CTA in flow. Mobile uses fixed dock below. */}

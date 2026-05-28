@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
-import * as SliderPrimitive from "@radix-ui/react-slider";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
+  GOOGLE_MAP_EMBED_OPTIONS,
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
 } from "@/lib/googleMapsLoader";
@@ -31,7 +31,6 @@ import {
   respondsWithinCardLabel,
 } from "@/lib/liveCanStart";
 import {
-  SERVICE_CATEGORIES,
   type ServiceCategoryId,
   isServiceCategoryId,
 } from "@/lib/serviceCategories";
@@ -41,6 +40,13 @@ import {
   HELPERS_FOCUS_LAT_QUERY,
   HELPERS_FOCUS_LNG_QUERY,
 } from "@/lib/clientAppPaths";
+import {
+  BigRadiusSlider,
+  RADIUS_MAX,
+  RADIUS_MIN,
+  RADIUS_STEP,
+} from "@/components/search/BigRadiusSlider";
+import { MatchSearchCategoryPicker } from "@/components/search/MatchSearchCategoryPicker";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
 const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
@@ -171,61 +177,6 @@ function helperMatchesSelectedCategories(
   return false;
 }
 
-const RADIUS_MIN = 5;
-const RADIUS_MAX = 100;
-const RADIUS_STEP = 5;
-
-function BigRadiusSlider({
-  value,
-  onChange,
-  id,
-}: {
-  value: number;
-  onChange: (km: number) => void;
-  id?: string;
-}) {
-  return (
-    <SliderPrimitive.Root
-      id={id}
-      className="relative flex h-[4.75rem] w-full touch-none select-none items-center py-2"
-      value={[value]}
-      onValueChange={(v) => {
-        const next = v[0] ?? value;
-        onChange(
-          Math.min(
-            RADIUS_MAX,
-            Math.max(RADIUS_MIN, Math.round(next / RADIUS_STEP) * RADIUS_STEP),
-          ),
-        );
-      }}
-      min={RADIUS_MIN}
-      max={RADIUS_MAX}
-      step={RADIUS_STEP}
-      aria-label="Search radius in kilometers"
-    >
-      <SliderPrimitive.Track className="relative h-5 w-full grow overflow-hidden rounded-full bg-orange-100/90 shadow-inner dark:bg-orange-950/35">
-        <SliderPrimitive.Range className="absolute h-full bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
-      </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb
-        className={cn(
-          "flex h-[4.75rem] w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-full border-[3px] border-white",
-          "bg-gradient-to-br from-orange-500 to-amber-500 shadow-xl",
-          "ring-4 ring-orange-500/30 transition-transform hover:scale-[1.03] active:scale-[0.98]",
-          "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-400/60",
-        )}
-        aria-valuetext={`${value} kilometers`}
-      >
-        <span className="text-[1.65rem] font-black leading-none tabular-nums text-white">
-          {value}
-        </span>
-        <span className="mt-0.5 text-[10px] font-bold uppercase leading-none tracking-[0.14em] text-white/90">
-          km
-        </span>
-      </SliderPrimitive.Thumb>
-    </SliderPrimitive.Root>
-  );
-}
-
 type HelpersMapBlockProps = {
   center: { lat: number; lng: number };
   radiusKm: number;
@@ -336,6 +287,7 @@ function HelpersMapBlock({
       }}
       onClick={onMapClick}
       options={{
+        ...GOOGLE_MAP_EMBED_OPTIONS,
         fullscreenControl: true,
         streetViewControl: false,
         mapTypeControl: false,
@@ -1150,60 +1102,16 @@ export default function HelpersPage() {
 
             <div className="mx-auto w-full max-w-lg md:max-w-xl animate-in fade-in zoom-in-95 duration-300">
           <div className="space-y-6 px-1 pt-2 md:px-0 md:pt-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2 px-0.5">
-                <span
-                  id="helpers-category-label"
-                  className="text-sm font-bold text-slate-800 dark:text-slate-100"
-                >
-                  Categories
-                </span>
-                {selectedCategories.size > 0 ? (
-                  <button
-                    type="button"
-                    className="text-xs font-semibold text-orange-600 underline-offset-4 hover:underline dark:text-orange-400"
-                    onClick={() => setSelectedCategories(new Set())}
-                  >
-                    Clear all
-                  </button>
-                ) : null}
-              </div>
-              <p
-                id="helpers-category-hint"
-                className="text-xs text-muted-foreground"
-              >
-               
-              </p>
-              <div
-                className="flex flex-wrap gap-2"
-                role="group"
-                aria-labelledby="helpers-category-label"
-                aria-describedby="helpers-category-hint"
-              >
-                {SERVICE_CATEGORIES.map((cat) => {
-                  const on = selectedCategories.has(cat.id);
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => toggleCategory(cat.id)}
-                      aria-pressed={on}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-left text-xs font-semibold transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60 focus-visible:ring-offset-2",
-                        on
-                          ? "border-orange-500 bg-orange-500 text-white shadow-sm dark:border-orange-400 dark:bg-orange-500"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50/80 dark:border-white/10 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-orange-900/50",
-                      )}
-                    >
-                      {cat.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <MatchSearchCategoryPicker
+              labelId="helpers-category-label"
+              hintId="helpers-category-hint"
+              theme="orange"
+              selectedCategories={selectedCategories}
+              onToggle={toggleCategory}
+              onClearAll={() => setSelectedCategories(new Set())}
+            />
 
-            <div className="relative mx-auto w-full max-w-md">
+            <div className="relative mx-auto w-full max-w-md max-md:max-w-none max-md:-mx-3 max-md:w-[calc(100%+1.5rem)]">
               <div
                 className={cn(
                   "relative aspect-square w-full overflow-hidden rounded-2xl",

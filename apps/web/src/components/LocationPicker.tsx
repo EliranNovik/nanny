@@ -6,6 +6,7 @@ import {
   Autocomplete,
 } from "@react-google-maps/api";
 import {
+  GOOGLE_MAP_EMBED_OPTIONS,
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
 } from "@/lib/googleMapsLoader";
@@ -174,6 +175,7 @@ export function LocationPicker({
               zoom={13}
               onClick={handleMapClick}
               options={{
+                ...GOOGLE_MAP_EMBED_OPTIONS,
                 streetViewControl: false,
                 mapTypeControl: false,
                 fullscreenControl: false,

@@ -13,6 +13,12 @@ export const queryKeys = {
 
   recentMessages: (userId?: string) => [...queryKeys.messages, "recent", userId] as const,
 
+  messagesInbox: (userId?: string, role?: string) =>
+    [...queryKeys.messages, "inbox", userId ?? "anon", role ?? "unknown"] as const,
+
+  chatThread: (userId?: string, conversationId?: string | null) =>
+    [...queryKeys.messages, "thread", userId ?? "anon", conversationId ?? "none"] as const,
+
   userInvitations: (userId?: string) => [...queryKeys.invitations, userId] as const,
 
   discoverFeed: () => [...queryKeys.communityFeed, "discover"] as const,

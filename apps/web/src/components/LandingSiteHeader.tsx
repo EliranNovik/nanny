@@ -9,10 +9,10 @@ import {
   X,
   Home,
   MessageCircle,
-  ChevronLeft,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 
 export type LandingSiteHeaderProps = {
@@ -61,7 +61,7 @@ export function LandingSiteHeader({
             to="/"
             className="fixed top-8 left-8 z-[60] hidden md:flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 border border-white/30 px-4 py-2.5 font-bold text-sm shadow-lg shadow-orange-900/20 transition-all active:scale-[0.98]"
           >
-            <ChevronLeft className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
+            <HeaderBackChevron className="opacity-95" />
             Back to home
           </Link>
         ))}
@@ -74,7 +74,7 @@ export function LandingSiteHeader({
                 to="/"
                 className="md:hidden inline-flex items-center gap-0.5 py-2 pl-1 pr-1 text-sm font-bold text-white hover:text-white/90 active:text-white/80 transition-colors -mr-1"
               >
-                <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden />
+                <HeaderBackChevron />
                 Back
               </Link>
             )}

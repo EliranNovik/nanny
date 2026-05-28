@@ -1425,37 +1425,50 @@ function PostCard({
     ? { aspectRatio: String(mediaAspectRatio) }
     : undefined;
   // Mobile media sizing:
-  // - Portrait: near full screen (Instagram-like)
+  // - Portrait: near full screen (Instagram-like); discover feeds use a shorter cap
   // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
+  const mobilePortraitMaxHeight = isDiscover
+    ? "max-md:max-h-[min(62dvh,38rem)]"
+    : "max-md:max-h-[min(80dvh,50rem)]";
+  const mobilePortraitFallbackHeight = isDiscover
+    ? "max-md:h-[min(60dvh,36rem)]"
+    : "max-md:h-[min(76dvh,46rem)]";
   const mobileMediaBoxClass = mediaAspectRatio
     ? cn(
         "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]",
         // Portrait media can otherwise become extremely tall when width is full.
-        !isLandscape && "max-md:max-h-[min(80dvh,50rem)]",
+        !isLandscape && mobilePortraitMaxHeight,
       )
     : isLandscape
       ? "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]"
-      : "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:h-[min(76dvh,46rem)] max-md:rounded-[20px]";
+      : cn(
+          "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]",
+          mobilePortraitFallbackHeight,
+        );
   const mobileMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
 
   // Desktop media sizing:
-  // - Portrait: tall and immersive (but still capped)
-  // - Landscape: size to the media's real aspect ratio
+  // - Portrait: height-capped box with width derived from aspect ratio (no side letterboxing)
+  // - Landscape: full width, sized to the media's real aspect ratio
+  const portraitDesktopSizingClass = isDiscover
+    ? "md:h-[min(62vh,36rem)] md:max-h-[min(62vh,36rem)] md:w-auto md:max-w-full"
+    : "md:h-[min(82vh,52rem)] md:max-h-[min(82vh,52rem)] md:w-auto md:max-w-full";
   const desktopMediaBoxClass = mediaAspectRatio
     ? cn(
-        "md:w-full md:rounded-xl",
-        // Cap portrait height so vertical videos/images aren't overwhelmingly tall.
-        !isLandscape && "md:max-h-[min(86vh,52rem)]",
+        "md:rounded-xl",
+        isLandscape ? "md:w-full" : portraitDesktopSizingClass,
       )
     : isLandscape
       ? "md:w-full md:rounded-xl"
-      : "md:h-[min(82vh,52rem)] md:rounded-xl";
-  // Card width: portrait gets narrower so the vertical media fills the box (less black side panels).
+      : cn("md:rounded-xl", portraitDesktopSizingClass);
+  const portraitMediaObjectClass = "object-cover";
+  const landscapeMediaObjectClass = "object-contain";
+  const mediaBoxBgClass = isLandscape ? "bg-black" : "bg-transparent";
+  // Discover card width: portrait shrinks to media; landscape spans the column up to a cap.
   const desktopDiscoverCardWidthClass = isDiscover
-    ? cn(
-        "md:w-full",
-        isLandscape ? "md:max-w-[820px]" : "md:max-w-[520px]",
-      )
+    ? isLandscape
+      ? "md:w-full md:max-w-[820px]"
+      : "md:w-fit md:max-w-[520px]"
     : null;
   const desktopMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
 
@@ -1824,11 +1837,9 @@ function PostCard({
         <div
           className={cn(
             "relative mt-0 overflow-hidden",
-            // When media uses object-contain (especially on desktop), show black side panels.
-            "bg-black",
+            mediaBoxBgClass,
             mobileMediaBoxClass,
             desktopMediaBoxClass,
-            desktopDiscoverCardWidthClass,
           )}
           style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
         >
@@ -1843,10 +1854,7 @@ function PostCard({
               alt=""
               className={cn(
                 "h-full w-full",
-                isLandscape
-                  ? "object-contain"
-                  : // Mobile: cover (immersive). Desktop: contain (no cropping/zoom).
-                    "object-cover md:object-contain",
+                isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass,
               )}
               loading="eager"
               decoding="async"
@@ -1908,10 +1916,10 @@ function PostCard({
       {mediaUrl && post.media_type === "video" && (
         <div
           className={cn(
-            "relative mt-0 overflow-hidden bg-black",
+            "relative mt-0 overflow-hidden",
+            mediaBoxBgClass,
             mobileMediaBoxClass,
             desktopMediaBoxClass,
-            desktopDiscoverCardWidthClass,
           )}
           style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
         >
@@ -1925,11 +1933,7 @@ function PostCard({
             preload="metadata"
             className={cn(
               "h-full w-full",
-              isLandscape
-                ? "object-contain"
-                : // Mobile: cover (immersive). Desktop: contain (no cropping/zoom).
-                  "object-cover md:object-contain",
-              "md:h-full md:w-full",
+              isLandscape ? landscapeMediaObjectClass : portraitMediaObjectClass,
             )}
             onLoadedMetadata={(e) => {
               const el = e.currentTarget;
@@ -2700,7 +2704,14 @@ export function ProfilePostsFeed({
                 <div className="h-2 w-16 bg-slate-50 dark:bg-white/5 rounded" />
               </div>
             </div>
-            <div className="w-full bg-slate-50 dark:bg-white/5 rounded-xl max-md:h-[calc(100dvh-5rem-env(safe-area-inset-bottom,0px))] md:h-[min(78vh,46rem)]" />
+            <div
+              className={cn(
+                "w-full rounded-xl bg-slate-50 dark:bg-white/5",
+                appearance === "discover"
+                  ? "max-md:h-[min(60dvh,36rem)] md:h-[min(62vh,36rem)]"
+                  : "max-md:h-[calc(100dvh-5rem-env(safe-area-inset-bottom,0px))] md:h-[min(78vh,46rem)]",
+              )}
+            />
             <div className="space-y-2">
               <div className="h-3 w-full bg-slate-50 dark:bg-white/5 rounded" />
               <div className="h-3 w-2/3 bg-slate-50 dark:bg-white/5 rounded" />

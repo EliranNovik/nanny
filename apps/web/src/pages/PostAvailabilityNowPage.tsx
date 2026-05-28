@@ -4,7 +4,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronLeft, Check } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
+import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
 import {
@@ -203,7 +204,7 @@ export default function PostAvailabilityNowPage() {
                 onClick={handleHeaderBack}
                 aria-label="Back"
               >
-                <ChevronLeft className="h-6 w-6" />
+                <HeaderBackChevron />
               </Button>
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -336,7 +337,7 @@ export default function PostAvailabilityNowPage() {
                 onClick={handleHeaderBack}
                 aria-label="Back"
               >
-                <ChevronLeft className="h-6 w-6" />
+                <HeaderBackChevron />
               </Button>
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -426,7 +427,7 @@ export default function PostAvailabilityNowPage() {
             onClick={handleHeaderBack}
             aria-label="Back"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <HeaderBackChevron />
           </Button>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">

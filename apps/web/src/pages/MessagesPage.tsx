@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -14,15 +14,14 @@ import {
 import {
   persistHiddenChatUserIds,
 } from "@/lib/inboxHiddenChats";
+import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
-import { type JobSummaryRow } from "@/lib/chatJobContext";
 import { useLiveJobConversationBanner } from "@/hooks/useLiveJobConversationBanner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   MessageCircle,
-  ChevronLeft,
   Bell,
   Briefcase,
   MessageSquare,
@@ -39,6 +38,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
+import {
+  useMessagesInbox,
+  type InboxConversation,
+} from "@/hooks/data/useMessagesInbox";
+import { ChatParticipantProfilePeek } from "@/components/messages/ChatParticipantProfilePeek";
 
 /** City for inbox row: job location first, else other user profile city */
 function inboxRowLocation(convo: Conversation): string | null {
@@ -53,33 +57,7 @@ function trimPreviewNoise(body: string | null | undefined): string {
   return body.trim().replace(/^✓+\s*/u, "").trimStart();
 }
 
-interface Conversation {
-  id: string;
-  job_id: string | null;
-  client_id: string;
-  freelancer_id: string;
-  created_at: string;
-  other_user_id?: string;
-  other_user_profile?: {
-    full_name: string | null;
-    photo_url: string | null;
-    city?: string | null;
-  };
-  /** Joined from job_requests for status + preview */
-  job_summary?: JobSummaryRow | null;
-  last_message?:
-    | {
-        body: string | null;
-        created_at: string;
-        sender_id: string;
-        read_at: string | null;
-        read_by: string | null;
-        attachment_type?: string | null;
-        attachment_name?: string | null;
-      }
-    | undefined;
-  unread_count: number;
-}
+type Conversation = InboxConversation;
 
 type InboxRow =
   | { kind: "chat"; key: string; sortAt: number; conversation: Conversation }
@@ -94,26 +72,8 @@ export default function MessagesPage() {
   const conversationId =
     searchParams.get("conversation") ?? params.conversationId ?? null;
 
-  // Try to load cached data immediately
-  const getCachedMessagesData = () => {
-    try {
-      const cached = localStorage.getItem(
-        `messages_${user?.id}_${profile?.role}`,
-      );
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.timestamp && Date.now() - parsed.timestamp < 300000) {
-          return parsed.data;
-        }
-      }
-    } catch (e) {}
-    return null;
-  };
-
-  const cachedData = user && profile ? getCachedMessagesData() : null;
-  const [conversations, setConversations] = useState<Conversation[]>(
-    cachedData?.conversations || [],
-  );
+  const inboxQuery = useMessagesInbox(user?.id, profile?.role);
+  const conversations = inboxQuery.data ?? [];
   const [activityAlerts, setActivityAlerts] = useState<NotificationAlert[]>([]);
   const [dismissedActivityIds, setDismissedActivityIds] = useState<Set<string>>(
     () => new Set(),
@@ -121,8 +81,7 @@ export default function MessagesPage() {
   const [hiddenChatUserIds, setHiddenChatUserIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [loading, setLoading] = useState(!cachedData);
-  const loadConversationsRef = useRef<(() => void) | null>(null);
+  const loading = inboxQuery.isPending && conversations.length === 0;
   const [isManageMode, setIsManageMode] = useState(false);
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -238,7 +197,11 @@ export default function MessagesPage() {
   /** When URL has ?conversation= but list has not loaded that row yet (e.g. new direct chat). */
   const [directChatHeader, setDirectChatHeader] = useState<{
     otherUserId: string;
-    other_user_profile: { full_name: string | null; photo_url: string | null };
+    other_user_profile: {
+      full_name: string | null;
+      photo_url: string | null;
+      city?: string | null;
+    };
   } | null>(null);
 
   // Update mobile view when conversationId changes
@@ -285,6 +248,7 @@ export default function MessagesPage() {
           other_user_profile: {
             full_name: p?.full_name ?? null,
             photo_url: p?.photo_url ?? null,
+            city: p?.city ?? null,
           },
         });
       }
@@ -295,462 +259,144 @@ export default function MessagesPage() {
   }, [conversationId, user, conversations]);
 
   useEffect(() => {
-    function persistInboxCache(withJobRows: Conversation[]) {
-      if (!user || !profile) return;
-      try {
-        localStorage.setItem(
-          `messages_${user.id}_${profile.role}`,
-          JSON.stringify({
-            timestamp: Date.now(),
-            data: { conversations: withJobRows },
-          }),
-        );
-      } catch {
-        /* ignore */
-      }
+    if (!user?.id || !profile) {
+      setActivityAlerts([]);
+      return;
     }
-
-    async function attachJobSummaries(
-      sortedConversations: Conversation[],
-    ): Promise<Conversation[]> {
-      const jobIds = [
-        ...new Set(
-          sortedConversations
-            .map((c) => c.job_id)
-            .filter((id): id is string => !!id),
-        ),
-      ];
-      if (jobIds.length === 0) return sortedConversations;
-      const { data: jobRows } = await supabase
-        .from("job_requests")
-        .select(
-          "id, status, stage, service_type, care_type, location_city, start_at",
-        )
-        .in("id", jobIds);
-      const jm = new Map(
-        (jobRows ?? []).map((j) => [j.id as string, j as JobSummaryRow]),
-      );
-      return sortedConversations.map((c) =>
-        c.job_id && jm.has(c.job_id)
-          ? { ...c, job_summary: jm.get(c.job_id)! }
-          : c,
-      );
-    }
-
-    async function loadConversationsLegacy() {
-      if (!user || !profile) return;
-
-      const { data: convos } = await supabase
-        .from("conversations")
-        .select("id, job_id, client_id, freelancer_id, created_at")
-        .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (!convos || convos.length === 0) {
-        setConversations([]);
-        persistInboxCache([]);
-        return;
-      }
-
-      const conversationsByUser = new Map<string, typeof convos>();
-      for (const convo of convos) {
-        const otherUserId =
-          convo.client_id === user.id ? convo.freelancer_id : convo.client_id;
-
-        if (otherUserId === user.id) continue;
-
-        if (!conversationsByUser.has(otherUserId)) {
-          conversationsByUser.set(otherUserId, []);
-        }
-        conversationsByUser.get(otherUserId)!.push(convo);
-      }
-
-      if (conversationsByUser.size === 0) {
-        setConversations([]);
-        persistInboxCache([]);
-        return;
-      }
-
-      const uniqueOtherIds = Array.from(conversationsByUser.keys());
-      const { data: profilesRows } = await supabase
-        .from("profiles")
-        .select("id, full_name, photo_url, city")
-        .in("id", uniqueOtherIds);
-
-      const profileById = new Map((profilesRows ?? []).map((p) => [p.id, p]));
-
-      const entries = Array.from(conversationsByUser.entries());
-      const BATCH = 8;
-      const enriched: Conversation[] = [];
-
-      for (let i = 0; i < entries.length; i += BATCH) {
-        const slice = entries.slice(i, i + BATCH);
-        const batch = await Promise.all(
-          slice.map(async ([otherUserId, userConversations]) => {
-            const conversationIds = userConversations.map((c) => c.id);
-            const otherProfile = profileById.get(otherUserId);
-
-            const [messagesRes, unreadRes] = await Promise.all([
-              supabase
-                .from("messages")
-                .select(
-                  "body, created_at, sender_id, read_at, read_by, attachment_type, attachment_name, conversation_id",
-                )
-                .in("conversation_id", conversationIds)
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle(),
-              supabase
-                .from("messages")
-                .select("*", { count: "exact", head: true })
-                .in("conversation_id", conversationIds)
-                .eq("sender_id", otherUserId)
-                .is("read_at", null),
-            ]);
-
-            const row = messagesRes.data;
-            const totalUnread = unreadRes.count ?? 0;
-
-            const mostRecentConversationId =
-              row?.conversation_id || userConversations[0].id;
-            const mostRecentConversation =
-              userConversations.find(
-                (c) => c.id === mostRecentConversationId,
-              ) || userConversations[0];
-
-            const last_message = row
-              ? {
-                  body: row.body,
-                  created_at: row.created_at,
-                  sender_id: row.sender_id,
-                  read_at: row.read_at,
-                  read_by: row.read_by,
-                  attachment_type: row.attachment_type,
-                  attachment_name: row.attachment_name,
-                }
-              : undefined;
-
-            return {
-              ...mostRecentConversation,
-              other_user_id: otherUserId,
-              other_user_profile: {
-                full_name: otherProfile?.full_name || null,
-                photo_url: otherProfile?.photo_url || null,
-                city: otherProfile?.city || null,
-              },
-              last_message,
-              unread_count: totalUnread,
-            } as Conversation;
-          }),
-        );
-        enriched.push(...batch);
-      }
-
-      const sortedConversations = enriched.sort((a, b) => {
-        const timeA = a.last_message?.created_at
-          ? new Date(a.last_message.created_at).getTime()
-          : 0;
-        const timeB = b.last_message?.created_at
-          ? new Date(b.last_message.created_at).getTime()
-          : 0;
-        return timeB - timeA;
-      });
-
-      const withJobRows = await attachJobSummaries(sortedConversations);
-      setConversations(withJobRows);
-      persistInboxCache(withJobRows);
-    }
-
-    async function loadConversations() {
-      if (!user || !profile) return;
-
-      try {
-        const { data: rpcRows, error: rpcError } = await supabase.rpc(
-          "get_messages_inbox_preview",
-          { p_user_id: user.id },
-        );
-
-        if (!rpcError && Array.isArray(rpcRows)) {
-          if (rpcRows.length === 0) {
-            setConversations([]);
-            persistInboxCache([]);
-            return;
-          }
-
-          const uniqueOtherIds = [
-            ...new Set(
-              (rpcRows as Record<string, unknown>[]).map(
-                (r) => r.other_user_id as string,
-              ),
-            ),
-          ];
-          const { data: profilesRows, error: profErr } = await supabase
-            .from("profiles")
-            .select("id, full_name, photo_url, city")
-            .in("id", uniqueOtherIds);
-          if (profErr) {
-            console.warn("[MessagesPage] profiles after inbox RPC", profErr);
-          }
-          const profileById = new Map(
-            (profilesRows ?? []).map((p) => [p.id, p]),
-          );
-
-          const sortedConversations: Conversation[] = (
-            rpcRows as Record<string, unknown>[]
-          ).map((row) => {
-            const oid = row.other_user_id as string;
-            const op = profileById.get(oid);
-            const lastCreated = row.last_created_at as string | null | undefined;
-            const hasLast = Boolean(lastCreated);
-            return {
-              id: row.conversation_id as string,
-              job_id: (row.job_id as string | null) ?? null,
-              client_id: row.client_id as string,
-              freelancer_id: row.freelancer_id as string,
-              created_at: row.created_at as string,
-              other_user_id: oid,
-              other_user_profile: {
-                full_name: op?.full_name ?? null,
-                photo_url: op?.photo_url ?? null,
-                city: (op?.city as string | null) ?? null,
-              },
-              last_message: hasLast
-                ? {
-                    body: (row.last_body as string | null) ?? null,
-                    created_at: lastCreated as string,
-                    sender_id: row.last_sender_id as string,
-                    read_at: (row.last_read_at as string | null) ?? null,
-                    read_by: (row.last_read_by as string | null) ?? null,
-                    attachment_type:
-                      (row.last_attachment_type as string | null) ?? null,
-                    attachment_name:
-                      (row.last_attachment_name as string | null) ?? null,
-                  }
-                : undefined,
-              unread_count: Number(row.unread_count ?? 0),
-            };
-          });
-
-          const withJobRows = await attachJobSummaries(sortedConversations);
-          setConversations(withJobRows);
-          persistInboxCache(withJobRows);
-          return;
-        }
-
-        if (rpcError) {
-          console.warn(
-            "[MessagesPage] get_messages_inbox_preview unavailable, legacy load",
-            rpcError,
-          );
-        }
-        await loadConversationsLegacy();
-      } catch (err) {
-        console.error("Error loading conversations:", err);
-      }
-    }
-
-    async function loadActivity() {
-      if (!user?.id || !profile) {
-        setActivityAlerts([]);
-        return;
-      }
+    let cancelled = false;
+    void (async () => {
       try {
         const rows = await fetchInboxActivityAlerts(user, profile, {
           includeUnreadMessageAlerts: false,
         });
-        setActivityAlerts(rows);
+        if (!cancelled) setActivityAlerts(rows);
       } catch (e) {
         console.error("[MessagesPage] activity", e);
-        setActivityAlerts([]);
+        if (!cancelled) setActivityAlerts([]);
       }
-    }
-
-    async function refreshInbox(showSpinner: boolean) {
-      if (!user || !profile) {
-        setConversations([]);
-        setActivityAlerts([]);
-        setLoading(false);
-        return;
-      }
-      if (showSpinner) setLoading(true);
-      try {
-        await Promise.all([loadConversations(), loadActivity()]);
-      } catch (e) {
-        console.error("[MessagesPage] refresh", e);
-      } finally {
-        if (showSpinner) setLoading(false);
-      }
-    }
-
-    loadConversationsRef.current = () => {
-      void refreshInbox(false);
+    })();
+    return () => {
+      cancelled = true;
     };
-    void refreshInbox(!cachedData);
-
-    // Subscribe to new messages and read updates
-    if (user && profile) {
-      const channel = supabase
-        .channel("messages-updates")
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-          },
-          async (payload) => {
-            const newMsg = payload.new as any;
-            const { data: convoData } = await supabase
-              .from("conversations")
-              .select("client_id, freelancer_id")
-              .eq("id", newMsg.conversation_id)
-              .maybeSingle();
-
-            if (convoData && user?.id) {
-              const otherUserId =
-                convoData.client_id === user.id
-                  ? convoData.freelancer_id
-                  : convoData.client_id;
-
-              if (newMsg.sender_id === otherUserId) {
-                setHiddenChatUserIds((prev) => {
-                  if (!prev.has(otherUserId)) return prev;
-                  const next = new Set(prev);
-                  next.delete(otherUserId);
-                  persistHiddenChatUserIds(user.id, next);
-                  return next;
-                });
-              }
-            }
-            void refreshInbox(false);
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "messages",
-          },
-          () => {
-            void refreshInbox(false);
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "conversations",
-          },
-          () => {
-            void refreshInbox(false);
-          },
-        )
-        .subscribe();
-
-      const onActivityChange = () => {
-        loadConversationsRef.current?.();
-      };
-
-      let activityCh: ReturnType<typeof supabase.channel> | null = null;
-      if (profile.role === "freelancer") {
-        activityCh = supabase
-          .channel(`inbox-activity-${user.id}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "job_candidate_notifications",
-              filter: `freelancer_id=eq.${user.id}`,
-            },
-            onActivityChange,
-          )
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "job_requests",
-              filter: `selected_freelancer_id=eq.${user.id}`,
-            },
-            onActivityChange,
-          )
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "job_confirmations",
-              filter: `freelancer_id=eq.${user.id}`,
-            },
-            onActivityChange,
-          );
-        activityCh.subscribe();
-      } else if (profile.role === "client") {
-        activityCh = supabase
-          .channel(`inbox-activity-${user.id}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "job_requests",
-              filter: `client_id=eq.${user.id}`,
-            },
-            onActivityChange,
-          )
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "job_confirmations",
-            },
-            onActivityChange,
-          );
-        activityCh.subscribe();
-      }
-
-      return () => {
-        supabase.removeChannel(channel);
-        if (activityCh) supabase.removeChannel(activityCh);
-      };
-    }
   }, [user, profile]);
 
-  // Reconcile inbox after time away (e.g. dismissed a job confirmation elsewhere)
+  useEffect(() => {
+    if (!user?.id || !profile) return;
+
+    const channel = supabase
+      .channel(`messages-inbox-unhide-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        async (payload) => {
+          const newMsg = payload.new as { conversation_id: string; sender_id: string };
+          const { data: convoData } = await supabase
+            .from("conversations")
+            .select("client_id, freelancer_id")
+            .eq("id", newMsg.conversation_id)
+            .maybeSingle();
+
+          if (!convoData) return;
+          const otherUserId =
+            convoData.client_id === user.id
+              ? convoData.freelancer_id
+              : convoData.client_id;
+
+          if (newMsg.sender_id === otherUserId) {
+            setHiddenChatUserIds((prev) => {
+              if (!prev.has(otherUserId)) return prev;
+              const next = new Set(prev);
+              next.delete(otherUserId);
+              persistHiddenChatUserIds(user.id, next);
+              return next;
+            });
+          }
+        },
+      )
+      .subscribe();
+
+    let activityCh: ReturnType<typeof supabase.channel> | null = null;
+    const onActivityChange = () => {
+      void inboxQuery.refetch();
+    };
+
+    if (profile.role === "freelancer") {
+      activityCh = supabase
+        .channel(`inbox-activity-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "job_candidate_notifications",
+            filter: `freelancer_id=eq.${user.id}`,
+          },
+          onActivityChange,
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "job_requests",
+            filter: `selected_freelancer_id=eq.${user.id}`,
+          },
+          onActivityChange,
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "job_confirmations",
+            filter: `freelancer_id=eq.${user.id}`,
+          },
+          onActivityChange,
+        );
+      activityCh.subscribe();
+    } else if (profile.role === "client") {
+      activityCh = supabase
+        .channel(`inbox-activity-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "job_requests",
+            filter: `client_id=eq.${user.id}`,
+          },
+          onActivityChange,
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "job_confirmations",
+          },
+          onActivityChange,
+        );
+      activityCh.subscribe();
+    }
+
+    return () => {
+      void supabase.removeChannel(channel);
+      if (activityCh) void supabase.removeChannel(activityCh);
+    };
+  }, [user?.id, profile, inboxQuery]);
+
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState === "visible") {
         if (user?.id) {
           setDismissedActivityIds(loadDismissedActivityIds(user.id));
         }
-        loadConversationsRef.current?.();
+        void inboxQuery.refetch();
       }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [user?.id]);
-
-  // Update cache whenever conversations change (from real-time updates or initial load)
-  useEffect(() => {
-    if (user && profile && conversations.length >= 0) {
-      try {
-        localStorage.setItem(
-          `messages_${user.id}_${profile.role}`,
-          JSON.stringify({
-            timestamp: Date.now(),
-            data: { conversations },
-          }),
-        );
-      } catch (e) {
-        // Ignore cache errors
-      }
-    }
-  }, [conversations, user, profile]);
+  }, [user?.id, inboxQuery]);
 
   function formatTime(dateStr: string): string {
     const date = new Date(dateStr);
@@ -903,7 +549,7 @@ export default function MessagesPage() {
                 "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
               )}
             >
-              <ChevronLeft className="w-5 h-5" />
+              <HeaderBackChevron />
             </Button>
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
@@ -1382,7 +1028,7 @@ export default function MessagesPage() {
                 .toUpperCase() || "?";
 
             return (
-              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-100 dark:bg-background">
                 {/* Mobile chat bar — fixed to viewport top; conversation scrolls underneath */}
                 <div
                   className={cn(
@@ -1401,20 +1047,19 @@ export default function MessagesPage() {
                       "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
                     )}
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <HeaderBackChevron />
                   </Button>
                   <div className="flex min-w-0 flex-1 items-center gap-2 self-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (otherUserId) navigate(`/profile/${otherUserId}`);
-                      }}
-                      disabled={!otherUserId}
-                      className="rounded-full shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                      aria-label={
-                        otherUserId
-                          ? `View ${otherUserProfile?.full_name || "user"} public profile`
-                          : undefined
+                    <ChatParticipantProfilePeek
+                      userId={otherUserId}
+                      preview={
+                        otherUserProfile
+                          ? {
+                              full_name: otherUserProfile.full_name,
+                              photo_url: otherUserProfile.photo_url,
+                              city: otherUserProfile.city ?? null,
+                            }
+                          : null
                       }
                     >
                       <Avatar className="h-10 w-10 flex-shrink-0">
@@ -1425,7 +1070,7 @@ export default function MessagesPage() {
                           {otherInitials}
                         </AvatarFallback>
                       </Avatar>
-                    </button>
+                    </ChatParticipantProfilePeek>
                     <div className="min-w-0 flex-1">
                       <h2 className="truncate text-lg font-semibold leading-tight">
                         {otherUserProfile?.full_name || "User"}
@@ -1453,7 +1098,7 @@ export default function MessagesPage() {
                         "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
                       )}
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <HeaderBackChevron className="h-6 w-6" />
                       <span>Back</span>
                     </Button>
                   </div>
@@ -1470,35 +1115,32 @@ export default function MessagesPage() {
                     "md:flex",
                   )}
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (otherUserId) navigate(`/profile/${otherUserId}`);
-                    }}
-                    disabled={!otherUserId}
-                    className={cn(
-                      "flex min-w-0 flex-1 items-center gap-3 rounded-full text-left transition-opacity",
-                      "hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                      "disabled:pointer-events-none disabled:opacity-60",
-                    )}
-                    aria-label={
-                      otherUserId
-                        ? `View ${otherUserProfile?.full_name || "user"} public profile`
-                        : undefined
-                    }
-                  >
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage
-                        src={otherUserProfile?.photo_url || undefined}
-                      />
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {otherInitials}
-                      </AvatarFallback>
-                    </Avatar>
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <ChatParticipantProfilePeek
+                      userId={otherUserId}
+                      preview={
+                        otherUserProfile
+                          ? {
+                              full_name: otherUserProfile.full_name,
+                              photo_url: otherUserProfile.photo_url,
+                              city: otherUserProfile.city ?? null,
+                            }
+                          : null
+                      }
+                    >
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage
+                          src={otherUserProfile?.photo_url || undefined}
+                        />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {otherInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                    </ChatParticipantProfilePeek>
                     <h2 className="min-w-0 truncate text-base font-semibold leading-tight text-foreground">
                       {otherUserProfile?.full_name || "User"}
                     </h2>
-                  </button>
+                  </div>
                   {liveJobHeaderBanner && (
                     <LiveJobHeaderPill
                       categoryLabel={liveJobHeaderBanner.categoryLabel}

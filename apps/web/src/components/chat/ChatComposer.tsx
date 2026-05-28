@@ -1,7 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Paperclip, Send, Loader2, X, File, Image as ImageIcon, MessageSquarePlus } from "lucide-react";
+import { Paperclip, Send, Loader2, MessageSquarePlus } from "lucide-react";
+import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import { cn } from "@/lib/utils";
 
 interface ChatComposerProps {
@@ -43,7 +44,7 @@ export function ChatComposer({
     "rounded-2xl border-0 py-2.5 pl-3 pr-3",
     "bg-zinc-200 text-zinc-900 placeholder:text-zinc-600",
     "dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400",
-    "text-[16px] font-normal leading-snug",
+    "text-[17px] font-normal leading-snug md:text-[18px]",
     "shadow-none focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
   );
 
@@ -65,32 +66,15 @@ export function ChatComposer({
     "Sounds good! See you soon",
   ];
 
-  function getFileType(fileName: string): string {
-    const ext = fileName.split(".").pop()?.toLowerCase() || "";
-    if (["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) return "image";
-    if (["mp4", "webm", "mov", "avi"].includes(ext)) return "video";
-    return "file";
-  }
+  const attachmentPreview = selectedFile ? (
+    <ChatAttachmentPreview
+      file={selectedFile}
+      onRemove={removeSelectedFile}
+      uploading={uploading}
+    />
+  ) : null;
 
-  const filePreview = selectedFile && (
-    <div className="mb-2 flex w-full max-w-none items-center gap-2 rounded-xl border-0 bg-muted/25 p-2 text-foreground dark:bg-muted/15">
-      {getFileType(selectedFile.name) === "image" ? (
-        <ImageIcon className="w-5 h-5 text-primary flex-shrink-0" />
-      ) : (
-        <File className="w-5 h-5 text-primary flex-shrink-0" />
-      )}
-      <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 flex-shrink-0"
-        onClick={removeSelectedFile}
-      >
-        <X className="w-4 h-4" />
-      </Button>
-    </div>
-  );
+  const captionPlaceholder = selectedFile ? "Add a caption…" : "Type a message…";
 
   return (
     <>
@@ -110,8 +94,8 @@ export function ChatComposer({
           !hideBackButton && mobileView === "steps" && "hidden"
         )}
       >
-        {filePreview}
-        
+        {attachmentPreview}
+
         {showPhrases && (
           <div
             className={cn(
@@ -170,7 +154,7 @@ export function ChatComposer({
           <Textarea
             ref={mobileComposerRef}
             rows={1}
-            placeholder={selectedFile ? "Add a message..." : "Type a message..."}
+            placeholder={captionPlaceholder}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => {
@@ -181,6 +165,7 @@ export function ChatComposer({
             }}
             className={messageFieldClass}
             disabled={sending || uploading}
+            aria-label={selectedFile ? "Caption" : "Message"}
           />
           <Button
             type="submit"
@@ -188,6 +173,7 @@ export function ChatComposer({
             variant="ghost"
             className="h-10 w-10 shrink-0 self-end rounded-full text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground active:scale-95 disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary"
             disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
+            aria-label={selectedFile ? "Send attachment" : "Send message"}
           >
             {sending || uploading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -211,7 +197,7 @@ export function ChatComposer({
             : "left-[400px]",
         )}
       >
-        {filePreview}
+        {attachmentPreview}
 
         {showPhrases && (
           <div
@@ -237,6 +223,15 @@ export function ChatComposer({
         )}
 
         <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1">
+          <input
+            ref={fileInputRef}
+            type="file"
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={handleFileSelect}
+            accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+            className="absolute w-0 h-0 opacity-0 overflow-hidden pointer-events-none"
+          />
           <Button
             type="button"
             variant="ghost"
@@ -262,7 +257,7 @@ export function ChatComposer({
           <Textarea
             ref={desktopComposerRef}
             rows={1}
-            placeholder={selectedFile ? "Add a message..." : "Type a message..."}
+            placeholder={captionPlaceholder}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => {
@@ -271,8 +266,9 @@ export function ChatComposer({
                 (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
               }
             }}
-            className={cn(messageFieldClass, "md:placeholder:text-sm")}
+            className={messageFieldClass}
             disabled={sending || uploading}
+            aria-label={selectedFile ? "Caption" : "Message"}
           />
           <Button
             type="submit"
@@ -280,6 +276,7 @@ export function ChatComposer({
             variant="ghost"
             className="h-10 w-10 shrink-0 self-end rounded-full text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground active:scale-95 disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary"
             disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
+            aria-label={selectedFile ? "Send attachment" : "Send message"}
           >
             {sending || uploading ? (
               <Loader2 className="h-5 w-5 animate-spin" />

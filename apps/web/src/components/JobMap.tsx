@@ -6,6 +6,7 @@ import {
   DirectionsRenderer,
 } from "@react-google-maps/api";
 import {
+  GOOGLE_MAP_EMBED_OPTIONS,
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
 } from "@/lib/googleMapsLoader";
@@ -795,6 +796,7 @@ export default function JobMap({
           setMapReady(false);
         }}
         options={{
+          ...GOOGLE_MAP_EMBED_OPTIONS,
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: false,

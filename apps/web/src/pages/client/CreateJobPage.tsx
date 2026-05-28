@@ -37,8 +37,8 @@ import {
   Users,
   UserPlus,
   Dumbbell,
-  ChevronLeft,
 } from "lucide-react";
+import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { cn } from "@/lib/utils";
 import {
   SERVICE_CATEGORIES,
@@ -592,12 +592,12 @@ export default function CreateJobPage() {
                           onClick={handleHeaderBack}
                           aria-label="Back"
                         >
-                          <ChevronLeft className="h-5 w-5 shrink-0" />
+                          <HeaderBackChevron />
                           Back
                         </Button>
                       ) : (
                         <div className={cn(mobileHeroPillClass, "opacity-0 pointer-events-none")}>
-                          <ChevronLeft className="h-5 w-5 shrink-0" />
+                          <HeaderBackChevron />
                           Back
                         </div>
                       )}
@@ -658,12 +658,12 @@ export default function CreateJobPage() {
                       onClick={handleHeaderBack}
                       aria-label="Back"
                     >
-                      <ChevronLeft className="h-5 w-5 shrink-0" />
+                      <HeaderBackChevron />
                       Back
                     </Button>
                   ) : (
                     <div className={cn(mobilePlainHeaderPillClass, "opacity-0 pointer-events-none")}>
-                      <ChevronLeft className="h-5 w-5 shrink-0" />
+                      <HeaderBackChevron />
                       Back
                     </div>
                   )}
@@ -1147,7 +1147,7 @@ export default function CreateJobPage() {
                   className="h-14 w-full text-lg font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 active:scale-[0.98]"
                   onClick={handleHeaderBack}
                 >
-                  <ChevronLeft className="mr-2 h-5 w-5" /> Back
+                  <HeaderBackChevron className="mr-2" /> Back
                 </Button>
               </div>
             )}

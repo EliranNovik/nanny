@@ -11,6 +11,7 @@ import { useDiscoverHomeScrollHeader } from "@/context/DiscoverHomeScrollHeaderC
 import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useMemo } from "react";
+import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
 import {
   badgeCountForJobsTab,
@@ -23,7 +24,6 @@ import {
   MessageCircle,
   Bell,
   ChevronDown,
-  ChevronLeft,
   LogOut,
   Pencil,
   Search,
@@ -778,7 +778,7 @@ export function BottomNav() {
               className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
               aria-label="Back"
             >
-              <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+              <HeaderBackChevron />
             </button>
           )}
         </div>
@@ -1039,7 +1039,7 @@ export function BottomNav() {
           className={mobileUniversalBackBtnClass}
           aria-label="Back"
         >
-          <ChevronLeft className="h-7 w-7" strokeWidth={2.25} />
+          <HeaderBackChevron />
         </button>
       )}
     </div>

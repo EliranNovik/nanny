@@ -26,8 +26,8 @@ type ProfileKnockMenuProps = {
   viewerName: string | null;
   disabled?: boolean;
   className?: string;
-  /** hero = cover image; inline = compact; contact = same size as public profile chat/WA/TG row; glass = frosted black pill (e.g. Find helpers cards) */
-  variant?: "hero" | "inline" | "contact" | "glass";
+  /** hero = cover image; inline = compact; contact = same size as public profile chat/WA/TG row; glass = frosted black pill; peek = chat profile peek row (h-10, orange outline) */
+  variant?: "hero" | "inline" | "contact" | "glass" | "peek";
   /** When `up`, menu opens above the button (avoids overflow clip at bottom of cards). */
   dropdownOpens?: "up" | "down";
   /** Merged onto the toggle button — use for tinted glass helpers cards, etc. */
@@ -117,7 +117,9 @@ export function ProfileKnockMenu({
         ? "h-12 w-12 shrink-0 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95 md:h-11 md:w-11"
         : variant === "glass"
           ? "h-12 w-12 shrink-0 rounded-full bg-black/30 text-white shadow-lg backdrop-blur-2xl transition-colors hover:bg-black/40"
-          : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
+          : variant === "peek"
+            ? "h-10 w-10 shrink-0 rounded-xl border border-primary bg-white text-primary shadow-none hover:bg-orange-50"
+            : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -136,22 +138,21 @@ export function ProfileKnockMenu({
       >
         {sending ? (
           <Loader2
-            className={
-              variant === "hero"
-                ? "h-6 w-6 animate-spin"
-                : "h-6 w-6 animate-spin"
-            }
+            className={cn(
+              "animate-spin",
+              variant === "hero" ? "h-6 w-6" : variant === "peek" ? "h-4 w-4" : "h-6 w-6",
+            )}
             aria-hidden
           />
         ) : (
           <BellRing
-            className={
+            className={cn(
               variant === "hero"
                 ? "h-7 w-7"
-                : variant === "contact" || variant === "glass"
-                  ? "h-6 w-6"
-                  : "h-6 w-6"
-            }
+                : variant === "peek"
+                  ? "h-4 w-4"
+                  : "h-6 w-6",
+            )}
             strokeWidth={2}
             aria-hidden
           />

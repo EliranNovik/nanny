@@ -133,7 +133,7 @@ function ChatLinkPreviewTile({
   const tileShell = embedded
     ? variant === "sent"
       ? "border border-white/20 bg-black/25 shadow-inner backdrop-blur-[2px]"
-      : "border border-black/10 bg-black/[0.08] shadow-inner backdrop-blur-[2px] dark:border-white/10 dark:bg-white/10"
+      : "border border-slate-200/80 bg-white/95 shadow-inner backdrop-blur-[2px] dark:border-white/10 dark:bg-white/10"
     : "shadow-md ring-1 ring-black/10 dark:ring-white/10";
 
   const footerText = embedded

@@ -7,6 +7,7 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 import {
+  GOOGLE_MAP_EMBED_OPTIONS,
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
 } from "@/lib/googleMapsLoader";
@@ -238,6 +239,7 @@ export function DualLocationPicker({
             zoom={fromValue.lat && toValue.lat ? 12 : 13}
             onClick={handleMapClick}
             options={{
+              ...GOOGLE_MAP_EMBED_OPTIONS,
               streetViewControl: false,
               mapTypeControl: false,
               fullscreenControl: false,
