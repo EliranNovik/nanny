@@ -217,6 +217,7 @@ export default function ChatPage({
     if (conversationId) consumePendingChatOpen(conversationId);
   }, [conversationId]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
   const mobileComposerRef = useRef<HTMLTextAreaElement>(null);
   const desktopComposerRef = useRef<HTMLTextAreaElement>(null);
 
@@ -547,7 +548,13 @@ export default function ChatPage({
     const payload = threadQuery.data;
     if (!payload || !user?.id || !conversationId) return;
 
-    isInitialLoadRef.current = true;
+    if (lastHydratedConversationRef.current !== conversationId) {
+      isInitialLoadRef.current = true;
+      stickToBottomRef.current = true;
+      anchorBottomUntilRef.current = Date.now() + 3000;
+      lastHydratedConversationRef.current = conversationId;
+    }
+
     setConversation(payload.conversation);
     setOtherUser(payload.otherUser as Profile | null);
     setJob((payload.job as Job | null) ?? null);
@@ -753,25 +760,80 @@ export default function ChatPage({
   const isInitialLoadRef = useRef(true);
   const pendingSmoothScrollRef = useRef(false);
   const lastAnchoredMessageCountRef = useRef(0);
+  const stickToBottomRef = useRef(true);
+  const anchorBottomUntilRef = useRef(0);
+  const lastHydratedConversationRef = useRef<string | null>(null);
+
+  const shouldStickToBottom = useCallback(() => {
+    return stickToBottomRef.current || Date.now() < anchorBottomUntilRef.current;
+  }, []);
 
   /** Jump to latest message — instant by default (no visible scroll animation). */
   const scrollToBottom = useCallback((smooth = false) => {
+    const behavior = smooth ? "smooth" : "instant";
+
+    const anchor = bottomAnchorRef.current;
+    if (anchor) {
+      try {
+        anchor.scrollIntoView({ block: "end", inline: "nearest", behavior });
+      } catch {
+        anchor.scrollIntoView(false);
+      }
+    }
+
     const root = scrollRef.current;
     if (!root) return;
 
-    const targets: HTMLElement[] = [root];
-    const viewport = root.querySelector(
-      "[data-radix-scroll-area-viewport]",
-    ) as HTMLElement | null;
-    if (viewport) targets.push(viewport);
+    const scrollMax = (el: HTMLElement) =>
+      Math.max(0, el.scrollHeight - el.clientHeight);
 
-    for (const el of targets) {
-      const top = el.scrollHeight;
+    const apply = (el: HTMLElement) => {
+      const top = scrollMax(el);
       if (smooth) {
         el.scrollTo({ top, behavior: "smooth" });
       } else {
         el.scrollTop = top;
       }
+    };
+
+    apply(root);
+    const viewport = root.querySelector(
+      "[data-radix-scroll-area-viewport]",
+    ) as HTMLElement | null;
+    if (viewport) apply(viewport);
+  }, []);
+
+  const runBottomAnchorPass = useCallback(
+    (smooth = false) => {
+      scrollToBottom(smooth);
+      requestAnimationFrame(() => {
+        scrollToBottom(smooth);
+        requestAnimationFrame(() => scrollToBottom(smooth));
+      });
+    },
+    [scrollToBottom],
+  );
+
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    stickToBottomRef.current = true;
+    lastAnchoredMessageCountRef.current = 0;
+    lastHydratedConversationRef.current = null;
+    anchorBottomUntilRef.current = Date.now() + 3000;
+  }, [conversationId]);
+
+  const handleMessagesScroll = useCallback(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const distanceFromBottom =
+      root.scrollHeight - root.scrollTop - root.clientHeight;
+    if (distanceFromBottom > 96) {
+      stickToBottomRef.current = false;
+      anchorBottomUntilRef.current = 0;
+      return;
+    }
+    if (distanceFromBottom < 48) {
+      stickToBottomRef.current = true;
     }
   }, []);
 
@@ -785,7 +847,7 @@ export default function ChatPage({
     }
 
     if (isInitialLoadRef.current) {
-      scrollToBottom(false);
+      runBottomAnchorPass(false);
       isInitialLoadRef.current = false;
       lastAnchoredMessageCountRef.current = messages.length;
       pendingSmoothScrollRef.current = false;
@@ -795,11 +857,66 @@ export default function ChatPage({
     const grew = messages.length > lastAnchoredMessageCountRef.current;
     lastAnchoredMessageCountRef.current = messages.length;
 
-    if (grew || pendingSmoothScrollRef.current) {
-      scrollToBottom(pendingSmoothScrollRef.current);
+    if (
+      (grew || pendingSmoothScrollRef.current) &&
+      shouldStickToBottom()
+    ) {
+      runBottomAnchorPass(pendingSmoothScrollRef.current);
       pendingSmoothScrollRef.current = false;
     }
-  }, [loading, messages, scrollToBottom]);
+  }, [
+    loading,
+    messages,
+    runBottomAnchorPass,
+    shouldStickToBottom,
+  ]);
+
+  // Images, job strip, and mobile layout can grow after first paint — keep pinned briefly.
+  useLayoutEffect(() => {
+    if (loading || messages.length === 0) return;
+    const root = scrollRef.current;
+    const content = root?.firstElementChild;
+    if (!root || !content) return;
+
+    let t1: ReturnType<typeof setTimeout> | undefined;
+    let t2: ReturnType<typeof setTimeout> | undefined;
+
+    const maybeStick = () => {
+      if (shouldStickToBottom()) runBottomAnchorPass(false);
+    };
+
+    const ro = new ResizeObserver(() => maybeStick());
+    ro.observe(content);
+
+    t1 = setTimeout(maybeStick, 0);
+    t2 = setTimeout(maybeStick, 120);
+
+    return () => {
+      ro.disconnect();
+      if (t1) clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+    };
+  }, [
+    conversationId,
+    loading,
+    messages.length,
+    runBottomAnchorPass,
+    shouldStickToBottom,
+  ]);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onViewportChange = () => {
+      if (shouldStickToBottom()) runBottomAnchorPass(false);
+    };
+    vv.addEventListener("resize", onViewportChange);
+    vv.addEventListener("scroll", onViewportChange);
+    return () => {
+      vv.removeEventListener("resize", onViewportChange);
+      vv.removeEventListener("scroll", onViewportChange);
+    };
+  }, [conversationId, runBottomAnchorPass, shouldStickToBottom]);
 
   const prevMobileViewRef = useRef(mobileView);
   useLayoutEffect(() => {
@@ -807,8 +924,18 @@ export default function ChatPage({
     const enteredChat =
       prevMobileViewRef.current !== "chat" && mobileView === "chat";
     prevMobileViewRef.current = mobileView;
-    if (enteredChat) scrollToBottom(false);
-  }, [mobileView, hideBackButton, loading, messages.length, scrollToBottom]);
+    if (enteredChat) {
+      stickToBottomRef.current = true;
+      anchorBottomUntilRef.current = Date.now() + 3000;
+      runBottomAnchorPass(false);
+    }
+  }, [
+    mobileView,
+    hideBackButton,
+    loading,
+    messages.length,
+    runBottomAnchorPass,
+  ]);
 
   // Mark messages as read when viewing
   useEffect(() => {
@@ -2045,6 +2172,7 @@ export default function ChatPage({
             overscrollBehavior: "contain",
           }}
           ref={scrollRef}
+          onScroll={handleMessagesScroll}
         >
           <div className="min-w-0 max-w-full">
             {/* Clearance for fixed composer + safe area (tight gap above input bar) */}
@@ -2537,6 +2665,11 @@ export default function ChatPage({
                   </p>
                 </div>
               )}
+              <div
+                ref={bottomAnchorRef}
+                aria-hidden
+                className="h-px w-full shrink-0"
+              />
             </div>
           </div>
         </div>

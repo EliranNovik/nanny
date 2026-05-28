@@ -118,7 +118,7 @@ export function ProfileKnockMenu({
         : variant === "glass"
           ? "h-12 w-12 shrink-0 rounded-full bg-black/30 text-white shadow-lg backdrop-blur-2xl transition-colors hover:bg-black/40"
           : variant === "peek"
-            ? "h-10 w-10 shrink-0 rounded-xl border border-primary bg-white text-primary shadow-none hover:bg-orange-50"
+            ? "h-10 w-10 shrink-0 rounded-xl border border-primary bg-white text-primary shadow-none hover:bg-orange-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
             : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
 
   return (

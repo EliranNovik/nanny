@@ -90,7 +90,7 @@ function ProfileStarRating({
                   ? "fill-amber-400 text-amber-400"
                   : partial
                     ? "fill-amber-200 text-amber-400"
-                    : "fill-zinc-200 text-zinc-200",
+                    : "fill-zinc-200 text-zinc-200 dark:fill-zinc-600 dark:text-zinc-600",
               )}
               strokeWidth={0}
               aria-hidden
@@ -99,12 +99,16 @@ function ProfileStarRating({
         })}
       </div>
       {count > 0 ? (
-        <span className="text-sm font-semibold tabular-nums text-zinc-800">
+        <span className="text-sm font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">
           {value.toFixed(1)}
-          <span className="ml-1 font-normal text-zinc-500">({count})</span>
+          <span className="ml-1 font-normal text-zinc-500 dark:text-zinc-400">
+            ({count})
+          </span>
         </span>
       ) : (
-        <span className="text-xs font-medium text-zinc-500">No reviews yet</span>
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          No reviews yet
+        </span>
       )}
     </div>
   );
@@ -127,7 +131,7 @@ function ProfileCategories({ categories }: { categories: string[] }) {
           <Badge
             key={catId}
             variant="secondary"
-            className="inline-flex items-center gap-2 rounded-full border-zinc-200/80 bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-700"
+            className="inline-flex items-center gap-2 rounded-full border-zinc-200/80 bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:border-zinc-600/80 dark:bg-zinc-800 dark:text-zinc-200"
           >
             <Icon
               className={cn("h-4 w-4 shrink-0", iconClass)}
@@ -278,8 +282,8 @@ export function ChatParticipantProfilePeek({
   const disabled = !userId;
 
   const panelCard = (
-    <div className="overflow-hidden bg-white text-zinc-900 max-md:rounded-none max-md:rounded-b-2xl max-md:border-x-0 max-md:border-t-0 md:rounded-2xl md:border md:border-zinc-200/90 md:shadow-xl md:ring-1 md:ring-black/5">
-      <div className="relative bg-white px-4 py-4 max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
+    <div className="overflow-hidden bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 max-md:rounded-none max-md:rounded-b-2xl max-md:border-x-0 max-md:border-t-0 md:rounded-2xl md:border md:border-zinc-200/90 md:shadow-xl md:ring-1 md:ring-black/5 dark:md:border-zinc-700/90 dark:md:ring-white/5">
+      <div className="relative bg-white px-4 py-4 dark:bg-zinc-900 max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
         {(showWhatsApp || showTelegram) && !loading ? (
           <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
             {showWhatsApp && profile?.whatsapp_number_e164 ? (
@@ -288,7 +292,7 @@ export function ChatParticipantProfilePeek({
                 variant="outline"
                 size="icon"
                 aria-label="Open WhatsApp"
-                className="h-10 w-10 shrink-0 rounded-full border-emerald-500/30 bg-emerald-50 hover:bg-emerald-100"
+                className="h-10 w-10 shrink-0 rounded-full border-emerald-500/30 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-950/50 dark:hover:bg-emerald-950"
                 onClick={() => {
                   window.open(
                     getWhatsAppLink(profile.whatsapp_number_e164!),
@@ -306,7 +310,7 @@ export function ChatParticipantProfilePeek({
                 variant="outline"
                 size="icon"
                 aria-label="Open Telegram"
-                className="h-10 w-10 shrink-0 rounded-full border-sky-500/30 bg-sky-50 hover:bg-sky-100"
+                className="h-10 w-10 shrink-0 rounded-full border-sky-500/30 bg-sky-50 hover:bg-sky-100 dark:border-sky-500/40 dark:bg-sky-950/50 dark:hover:bg-sky-950"
                 onClick={() => {
                   window.open(
                     getTelegramLink(profile.telegram_username!),
@@ -330,15 +334,15 @@ export function ChatParticipantProfilePeek({
               "pr-14",
           )}
         >
-          <Avatar className="h-[4.5rem] w-[4.5rem] shrink-0 border-2 border-zinc-100 shadow-sm">
+          <Avatar className="h-[4.5rem] w-[4.5rem] shrink-0 border-2 border-zinc-100 shadow-sm dark:border-zinc-700">
             <AvatarImage src={photoUrl} className="object-cover" />
-            <AvatarFallback className="bg-orange-50 text-xl font-bold text-orange-600">
+            <AvatarFallback className="bg-orange-50 text-xl font-bold text-orange-600 dark:bg-orange-950/60 dark:text-orange-400">
               {initials(displayName)}
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <div className="flex items-center gap-1.5">
-              <p className="truncate text-lg font-bold leading-tight text-zinc-900">
+              <p className="truncate text-lg font-bold leading-tight text-zinc-900 dark:text-zinc-50">
                 {displayName}
               </p>
               {profile?.is_verified ? (
@@ -355,7 +359,7 @@ export function ChatParticipantProfilePeek({
               />
             ) : null}
             {city ? (
-              <p className="truncate text-sm leading-tight text-zinc-500">
+              <p className="truncate text-sm leading-tight text-zinc-500 dark:text-zinc-400">
                 {city}
               </p>
             ) : null}
@@ -363,7 +367,7 @@ export function ChatParticipantProfilePeek({
         </div>
       </div>
 
-      <div className="space-y-3 bg-white px-4 py-3">
+      <div className="space-y-3 bg-white px-4 py-3 dark:bg-zinc-900">
         {loading ? (
           <div className="flex items-center justify-center py-4">
             <Loader2
@@ -377,11 +381,11 @@ export function ChatParticipantProfilePeek({
               <ProfileCategories categories={profile.categories} />
             ) : null}
             {profile?.bio?.trim() ? (
-              <p className="line-clamp-4 text-base leading-relaxed text-zinc-600">
+              <p className="line-clamp-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
                 {profile.bio.trim()}
               </p>
             ) : (
-              <p className="text-base text-zinc-500">
+              <p className="text-base text-zinc-500 dark:text-zinc-400">
                 Tap below to view their full profile and posts.
               </p>
             )}
@@ -392,7 +396,7 @@ export function ChatParticipantProfilePeek({
           <Button
             type="button"
             variant="outline"
-            className="h-10 min-h-10 flex-1 rounded-xl border-primary bg-white font-semibold text-primary hover:bg-orange-50 hover:text-primary"
+            className="h-10 min-h-10 flex-1 rounded-xl border-primary bg-white font-semibold text-primary hover:bg-orange-50 hover:text-primary dark:bg-zinc-800 dark:hover:bg-zinc-700"
             onClick={() => {
               setOpen(false);
               navigate(`/profile/${userId}`);
@@ -470,7 +474,7 @@ export function ChatParticipantProfilePeek({
                 className={cn(
                   "fixed inset-x-0 top-0 z-[100] w-full max-w-none",
                   "origin-top animate-in fade-in slide-in-from-top-2 duration-200",
-                  "border-b border-zinc-200/90 shadow-lg",
+                  "border-b border-zinc-200/90 shadow-lg dark:border-zinc-700/90",
                   panelClassName,
                 )}
               >
