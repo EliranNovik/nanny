@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -30,10 +30,16 @@ import {
   Newspaper,
   User,
   PlusSquare,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ChatPage from "./ChatPage";
@@ -62,6 +68,14 @@ type Conversation = InboxConversation;
 type InboxRow =
   | { kind: "chat"; key: string; sortAt: number; conversation: Conversation }
   | { kind: "activity"; key: string; sortAt: number; alert: NotificationAlert };
+
+function shouldOpenMobileChatPane(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.innerWidth >= 768) return false;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("conversation")) return true;
+  return /\/messages\/[^/]+/.test(window.location.pathname);
+}
 
 export default function MessagesPage() {
   const { user, profile } = useAuth();
@@ -108,6 +122,13 @@ export default function MessagesPage() {
       cancelled = true;
     };
   }, [userSearchQuery, user?.id]);
+
+  useEffect(() => {
+    if (!newChatOpen) {
+      setUserSearchQuery("");
+      setUserSearchResults([]);
+    }
+  }, [newChatOpen]);
 
   const handleCreateChat = async (selectedUserId: string) => {
     if (!user) return;
@@ -193,7 +214,9 @@ export default function MessagesPage() {
     user?.id,
   );
 
-  const [mobileView, setMobileView] = useState<"contacts" | "chat">("contacts");
+  const [mobileView, setMobileView] = useState<"contacts" | "chat">(() =>
+    shouldOpenMobileChatPane() ? "chat" : "contacts",
+  );
   /** When URL has ?conversation= but list has not loaded that row yet (e.g. new direct chat). */
   const [directChatHeader, setDirectChatHeader] = useState<{
     otherUserId: string;
@@ -204,17 +227,15 @@ export default function MessagesPage() {
     };
   } | null>(null);
 
-  // Update mobile view when conversationId changes
-  useEffect(() => {
+  // Keep mobile pane in sync with URL (useLayoutEffect avoids one frame with chat hidden).
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 768) return;
     if (conversationId) {
       setInboxTab("messages");
-      if (window.innerWidth < 768) {
-        setMobileView("chat");
-      }
+      setMobileView("chat");
     } else {
-      if (window.innerWidth < 768) {
-        setMobileView("contacts");
-      }
+      setMobileView("contacts");
     }
   }, [conversationId]);
 
@@ -519,20 +540,28 @@ export default function MessagesPage() {
       {/* Contact Panel - Left Sidebar - Always visible on desktop, full page on mobile */}
       <div
         className={cn(
-          /* No side (right) divider — only the top + bottom of the box draw faint horizontal rules. */
-          "flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-transparent md:w-80 lg:w-96",
+          "relative flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-transparent md:w-80 lg:w-96",
           "md:flex",
           mobileView === "contacts" ? "flex" : "hidden md:flex",
         )}
       >
-        {/* Header — in document flow (no fixed + duplicate pt — avoids double safe-area gap on mobile) */}
-        <div
-          className={cn(
-            "z-40 flex shrink-0 bg-background/95 px-4 pb-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 dark:bg-background/95",
-            "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
-            "md:bg-transparent md:backdrop-blur-none",
-          )}
-        >
+        {/*
+          Mobile: fixed frosted top + bottom (WhatsApp-style). Middle list scrolls edge-to-edge
+          with padding so rows pass under the chrome. Desktop: normal in-flow flex column.
+        */}
+        <div className="max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:z-40 md:contents">
+          {/* Header */}
+          <div
+            className={cn(
+              "z-40 flex shrink-0 px-4 pb-3",
+              "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
+              "max-md:border-b max-md:border-border/10 max-md:bg-background/72 max-md:backdrop-blur-2xl",
+              "max-md:supports-[backdrop-filter]:bg-background/48",
+              "max-md:dark:bg-background/58 max-md:dark:supports-[backdrop-filter]:bg-background/38",
+              "md:bg-background/95 md:backdrop-blur-md md:supports-[backdrop-filter]:bg-background/85",
+              "md:dark:bg-background/95 md:border-b-0 md:backdrop-blur-md",
+            )}
+          >
           <div className="flex items-start gap-2 sm:gap-3">
             <Button
               variant="ghost"
@@ -579,12 +608,21 @@ export default function MessagesPage() {
               )}
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Messages vs news */}
-        <div className="shrink-0 px-4 pb-3 pt-1">
+          {/* Messages vs news */}
           <div
-            className="flex rounded-xl bg-muted/50 p-1 dark:bg-zinc-900/80"
+            className={cn(
+              "shrink-0 px-4 pb-3 pt-1",
+              "max-md:border-b max-md:border-border/10 max-md:bg-background/72 max-md:backdrop-blur-2xl",
+              "max-md:supports-[backdrop-filter]:bg-background/48",
+              "max-md:dark:bg-background/58 max-md:dark:supports-[backdrop-filter]:bg-background/38",
+              "max-md:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]",
+              "md:bg-transparent md:shadow-none md:backdrop-blur-none",
+            )}
+          >
+          <div
+            className="flex rounded-xl bg-muted/45 p-1 ring-1 ring-border/10 dark:bg-zinc-900/75 dark:ring-white/5"
             role="tablist"
             aria-label="Inbox sections"
           >
@@ -631,11 +669,23 @@ export default function MessagesPage() {
               ) : null}
             </button>
           </div>
+          </div>
         </div>
 
-        {/* Messages list or activity / news list */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <ScrollArea className="min-h-0 flex-1 bg-transparent [&_[data-radix-scroll-area-viewport]]:min-w-0 [&_[data-radix-scroll-area-viewport]]:max-w-full [&_[data-radix-scroll-area-viewport]]:bg-transparent">
+        {/* Messages list or activity / news list — scrolls under mobile chrome */}
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden max-md:min-h-0">
+          <ScrollArea
+            className={cn(
+              "min-h-0 flex-1 bg-transparent",
+              "[&_[data-radix-scroll-area-viewport]]:min-w-0",
+              "[&_[data-radix-scroll-area-viewport]]:max-w-full",
+              "[&_[data-radix-scroll-area-viewport]]:bg-transparent",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+7.85rem)]",
+              inboxTab === "messages"
+                ? "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]"
+                : "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[max(1rem,env(safe-area-inset-bottom,0px))]",
+            )}
+          >
             {inboxTab === "messages" ? (
               chatInboxRows.length === 0 ? (
               <div className="flex flex-col items-center px-6 py-12 text-center">
@@ -719,12 +769,12 @@ export default function MessagesPage() {
                       {index > 0 ? (
                         <span
                           aria-hidden
-                          className="pointer-events-none absolute left-[5.375rem] right-4 top-0 h-px bg-border/15 dark:bg-white/[0.04] md:left-[4.875rem]"
+                          className="pointer-events-none absolute left-[5.5rem] right-4 top-0 h-px bg-border/70 dark:bg-white/[0.22] md:left-[5.125rem]"
                         />
                       ) : null}
                         <div className="flex min-w-0 items-start gap-3.5">
                           <div className="relative shrink-0 pt-0.5">
-                            <Avatar className="h-14 w-14 flex-shrink-0 md:h-12 md:w-12">
+                            <Avatar className="h-[3.625rem] w-[3.625rem] flex-shrink-0 md:h-[3.25rem] md:w-[3.25rem]">
                               <AvatarImage
                                 src={
                                   convo.other_user_profile?.photo_url ||
@@ -763,7 +813,7 @@ export default function MessagesPage() {
                                     "User"}
                                 </span>
                                 {locationLabel ? (
-                                  <span className="shrink-0 font-normal text-[13px] text-muted-foreground md:text-sm">
+                                  <span className="shrink-0 font-normal text-[15px] text-muted-foreground md:text-[15px]">
                                     · {locationLabel}
                                   </span>
                                 ) : null}
@@ -771,7 +821,7 @@ export default function MessagesPage() {
                               {convo.last_message && (
                                 <p
                                   className={cn(
-                                    "mt-1 truncate text-[13px] leading-snug text-muted-foreground md:text-sm",
+                                    "mt-1 truncate text-[15px] leading-snug text-muted-foreground md:text-[15px]",
                                     convo.unread_count > 0 &&
                                       "font-medium text-foreground/90",
                                   )}
@@ -906,57 +956,42 @@ export default function MessagesPage() {
           </ScrollArea>
         </div>
 
-        {/* Mobile Action Box — messages tab only */}
+        {/* Mobile Action Box — messages tab only; fixed frosted footer */}
         {inboxTab === "messages" ? (
-        <div className="flex md:hidden shrink-0 items-center justify-around border-t border-border/20 bg-background/95 px-4 pt-2.5 pb-4 h-[71px] dark:border-white/[0.04]">
-          <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
-            <DialogTrigger asChild>
-              <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground">
-                <PlusSquare className="h-6 w-6" />
-                <span className="text-[11px] font-medium">New Chat</span>
-              </button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md p-6">
-              <DialogHeader>
-                <DialogTitle>Start a New Chat</DialogTitle>
-              </DialogHeader>
-              <input
-                type="text"
-                placeholder="Search users..."
-                className="w-full mt-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                value={userSearchQuery}
-                onChange={(e) => setUserSearchQuery(e.target.value)}
-              />
-              <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
-                {userSearchResults.map((u) => (
-                  <button
-                    key={u.id}
-                    className="flex w-full items-center gap-3 rounded-lg p-2 hover:bg-muted/50 text-left"
-                    onClick={() => handleCreateChat(u.id)}
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={u.photo_url || ""} />
-                      <AvatarFallback>{u.full_name?.[0] || "?"}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{u.full_name || "User"}</p>
-                      <p className="text-xs text-muted-foreground uppercase">{u.role || ""}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div
+          className={cn(
+            "flex shrink-0 items-center justify-around px-4 md:hidden",
+            "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-40",
+            "max-md:border-t max-md:border-border/10 max-md:bg-background/72 max-md:backdrop-blur-2xl",
+            "max-md:supports-[backdrop-filter]:bg-background/48",
+            "max-md:dark:bg-background/58 max-md:dark:supports-[backdrop-filter]:bg-background/38",
+            "max-md:shadow-[0_-10px_32px_-14px_rgba(0,0,0,0.4)]",
+            "pt-2.5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] min-h-[4.75rem]",
+          )}
+        >
+          <button
+            type="button"
+            className="flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+            onClick={() => setNewChatOpen(true)}
+          >
+            <PlusSquare className="h-6 w-6" />
+            <span className="text-[11px] font-semibold">New Chat</span>
+          </button>
 
           <button
+            type="button"
             onClick={() => setIsManageMode(!isManageMode)}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 transition-colors",
-              isManageMode ? "text-red-500" : "text-muted-foreground hover:text-foreground"
+              "flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-colors active:scale-[0.98]",
+              isManageMode
+                ? "bg-red-500/12 text-red-600 hover:bg-red-500/18 dark:text-red-400"
+                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
             )}
           >
             <Trash2 className="h-6 w-6" />
-            <span className="text-[11px] font-medium">{isManageMode ? "Done" : "Remove"}</span>
+            <span className="text-[11px] font-semibold">
+              {isManageMode ? "Done" : "Remove"}
+            </span>
           </button>
         </div>
         ) : null}
@@ -1033,7 +1068,7 @@ export default function MessagesPage() {
                 <div
                   className={cn(
                     "z-40 flex shrink-0 items-center gap-2",
-                    "bg-background/70 backdrop-blur-xl dark:bg-background/38 supports-[backdrop-filter]:bg-background/45 dark:supports-[backdrop-filter]:bg-background/[0.26]",
+                    "border-b border-border/15 bg-white dark:bg-background",
                     "fixed left-0 right-0 top-0 md:hidden",
                     "px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
                   )}
@@ -1111,7 +1146,7 @@ export default function MessagesPage() {
                 <div
                   className={cn(
                     "absolute inset-x-0 top-0 z-20 hidden h-[3.5rem] items-center justify-between gap-3 px-5",
-                    "border-none bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
+                    "border-b border-border/15 bg-white dark:bg-background",
                     "md:flex",
                   )}
                 >
@@ -1167,6 +1202,10 @@ export default function MessagesPage() {
                       conversationId={conversationId}
                       hideBackButton={true}
                       otherUserId={otherUserId}
+                      chatPaneVisible={
+                        mobileView === "chat" ||
+                        typeof window !== "undefined" && window.innerWidth >= 768
+                      }
                     />
                   </div>
                 </div>
@@ -1187,6 +1226,98 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
+        <DialogContent
+          overlayClassName="max-md:bg-black/45"
+          className={cn(
+            "flex max-h-[min(88dvh,640px)] w-full flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
+            "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:max-h-[min(92dvh,720px)]",
+            "max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[1.5rem] max-md:rounded-b-none",
+            "!max-md:data-[state=open]:slide-in-from-left-0 !max-md:data-[state=open]:slide-in-from-top-0",
+            "!max-md:data-[state=closed]:slide-out-to-left-0 !max-md:data-[state=closed]:slide-out-to-top-0",
+            "!max-md:data-[state=open]:zoom-in-100 !max-md:data-[state=closed]:zoom-out-100",
+            "!max-md:data-[state=open]:slide-in-from-bottom !max-md:data-[state=closed]:slide-out-to-bottom",
+            "md:max-w-md md:rounded-2xl md:p-6",
+          )}
+        >
+          <DialogTitle className="sr-only">Start a new chat</DialogTitle>
+
+          <div className="flex shrink-0 justify-center pt-3 pb-1 md:hidden">
+            <div
+              className="h-1 w-10 rounded-full bg-muted-foreground/35"
+              aria-hidden
+            />
+          </div>
+
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 px-5 py-3.5 md:border-0 md:px-0 md:pb-2 md:pt-0">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-base">
+              New chat
+            </h2>
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </DialogClose>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] pt-1 md:px-0 md:pb-0 md:pt-0">
+            <div className="relative shrink-0">
+              <Search
+                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <input
+                type="search"
+                placeholder="Search by name…"
+                autoComplete="off"
+                className="h-12 w-full rounded-2xl border border-border/50 bg-muted/30 pl-10 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 md:h-11 md:text-sm"
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] md:max-h-60">
+              {userSearchQuery.trim() && userSearchResults.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  No users found
+                </p>
+              ) : null}
+              <div className="space-y-1">
+                {userSearchResults.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-muted/50 active:bg-muted/70"
+                    onClick={() => void handleCreateChat(u.id)}
+                  >
+                    <Avatar className="h-11 w-11 shrink-0">
+                      <AvatarImage src={u.photo_url || ""} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                        {u.full_name?.[0] || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-base font-semibold text-foreground">
+                        {u.full_name || "User"}
+                      </p>
+                      {u.role ? (
+                        <p className="truncate text-sm capitalize text-muted-foreground">
+                          {u.role}
+                        </p>
+                      ) : null}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1428,11 +1428,11 @@ function PostCard({
   // - Portrait: near full screen (Instagram-like); discover feeds use a shorter cap
   // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
   const mobilePortraitMaxHeight = isDiscover
-    ? "max-md:max-h-[min(62dvh,38rem)]"
-    : "max-md:max-h-[min(80dvh,50rem)]";
+    ? "max-md:max-h-[min(76dvh,44rem)]"
+    : "max-md:max-h-[min(90dvh,54rem)]";
   const mobilePortraitFallbackHeight = isDiscover
-    ? "max-md:h-[min(60dvh,36rem)]"
-    : "max-md:h-[min(76dvh,46rem)]";
+    ? "max-md:h-[min(74dvh,42rem)]"
+    : "max-md:h-[min(86dvh,50rem)]";
   const mobileMediaBoxClass = mediaAspectRatio
     ? cn(
         "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]",
@@ -2708,7 +2708,7 @@ export function ProfilePostsFeed({
               className={cn(
                 "w-full rounded-xl bg-slate-50 dark:bg-white/5",
                 appearance === "discover"
-                  ? "max-md:h-[min(60dvh,36rem)] md:h-[min(62vh,36rem)]"
+                  ? "max-md:h-[min(74dvh,42rem)] md:h-[min(62vh,36rem)]"
                   : "max-md:h-[calc(100dvh-5rem-env(safe-area-inset-bottom,0px))] md:h-[min(78vh,46rem)]",
               )}
             />

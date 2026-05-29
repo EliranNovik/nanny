@@ -76,6 +76,13 @@ export function ChatComposer({
 
   const captionPlaceholder = selectedFile ? "Add a caption…" : "Type a message…";
 
+  const composerActionBtnClass = cn(
+    "h-12 w-12 shrink-0 self-end rounded-full",
+    "text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95",
+  );
+  const composerIconClass = "h-[26px] w-[26px]";
+  const composerSendIconClass = "h-[26px] w-[26px]";
+
   return (
     <>
       {showPhrases && (
@@ -89,7 +96,7 @@ export function ChatComposer({
       <div
         className={cn(
           "lg:hidden fixed bottom-0 left-0 right-0 z-30",
-          "border-none bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
+          "border-t border-border/15 bg-white dark:bg-background",
           "px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
           !hideBackButton && mobileView === "steps" && "hidden"
         )}
@@ -119,7 +126,7 @@ export function ChatComposer({
           </div>
         )}
 
-        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1">
+        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
           <input
             ref={fileInputRef}
             type="file"
@@ -133,22 +140,24 @@ export function ChatComposer({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 shrink-0 self-end rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95"
+            className={composerActionBtnClass}
             onClick={() => fileInputRef.current?.click()}
             disabled={sending || uploading}
+            aria-label="Attach file"
           >
-            <Paperclip className="h-[22px] w-[22px]" strokeWidth={1.75} />
+            <Paperclip className={composerIconClass} strokeWidth={1.75} />
           </Button>
 
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 shrink-0 self-end rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95"
+            className={composerActionBtnClass}
             onClick={() => setShowPhrases(!showPhrases)}
             disabled={sending || uploading}
+            aria-label="Quick replies"
           >
-            <MessageSquarePlus className="h-[22px] w-[22px]" strokeWidth={1.75} />
+            <MessageSquarePlus className={composerIconClass} strokeWidth={1.75} />
           </Button>
 
           <Textarea
@@ -171,14 +180,17 @@ export function ChatComposer({
             type="submit"
             size="icon"
             variant="ghost"
-            className="h-10 w-10 shrink-0 self-end rounded-full text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground active:scale-95 disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary"
+            className={cn(
+              composerActionBtnClass,
+              "text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary",
+            )}
             disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             aria-label={selectedFile ? "Send attachment" : "Send message"}
           >
             {sending || uploading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className={cn(composerSendIconClass, "animate-spin")} />
             ) : (
-              <Send className="h-5 w-5" strokeWidth={2} />
+              <Send className={composerSendIconClass} strokeWidth={2} />
             )}
           </Button>
         </form>
@@ -188,7 +200,7 @@ export function ChatComposer({
       <div
         className={cn(
           "fixed bottom-0 right-0 z-30 hidden lg:flex lg:flex-col",
-          "border-none bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70",
+          "border-t border-border/15 bg-white dark:bg-background",
           "px-5 pb-4 pt-2.5",
           hideBackButton
             ? // Embedded in `MessagesPage` which also has the DesktopSidePanel (220px) on md+.
@@ -222,7 +234,7 @@ export function ChatComposer({
           </div>
         )}
 
-        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1">
+        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
           <input
             ref={fileInputRef}
             type="file"
@@ -236,22 +248,24 @@ export function ChatComposer({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 shrink-0 self-end rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95"
+            className={composerActionBtnClass}
             onClick={() => fileInputRef.current?.click()}
             disabled={sending || uploading}
+            aria-label="Attach file"
           >
-            <Paperclip className="h-[22px] w-[22px]" strokeWidth={1.75} />
+            <Paperclip className={composerIconClass} strokeWidth={1.75} />
           </Button>
 
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 shrink-0 self-end rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95"
+            className={composerActionBtnClass}
             onClick={() => setShowPhrases(!showPhrases)}
             disabled={sending || uploading}
+            aria-label="Quick replies"
           >
-            <MessageSquarePlus className="h-[22px] w-[22px]" strokeWidth={1.75} />
+            <MessageSquarePlus className={composerIconClass} strokeWidth={1.75} />
           </Button>
 
           <Textarea
@@ -274,14 +288,17 @@ export function ChatComposer({
             type="submit"
             size="icon"
             variant="ghost"
-            className="h-10 w-10 shrink-0 self-end rounded-full text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground active:scale-95 disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary"
+            className={cn(
+              composerActionBtnClass,
+              "text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary",
+            )}
             disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             aria-label={selectedFile ? "Send attachment" : "Send message"}
           >
             {sending || uploading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className={cn(composerSendIconClass, "animate-spin")} />
             ) : (
-              <Send className="h-5 w-5" strokeWidth={2} />
+              <Send className={composerSendIconClass} strokeWidth={2} />
             )}
           </Button>
         </form>

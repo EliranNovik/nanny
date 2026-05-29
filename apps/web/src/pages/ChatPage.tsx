@@ -184,12 +184,15 @@ interface ChatPageProps {
   conversationId?: string;
   hideBackButton?: boolean;
   otherUserId?: string; // When provided, fetch messages from all conversations with this user
+  /** When embedded in Messages, false while the mobile chat column is `display:none`. */
+  chatPaneVisible?: boolean;
 }
 
 export default function ChatPage({
   conversationId: propConversationId,
   hideBackButton = false,
   otherUserId: propOtherUserId,
+  chatPaneVisible = true,
 }: ChatPageProps = {}) {
   const { conversationId: paramConversationId } = useParams<{
     conversationId?: string;
@@ -544,14 +547,14 @@ export default function ChatPage({
     }
   }, [threadQuery.isError, conversationId, navigate]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const payload = threadQuery.data;
     if (!payload || !user?.id || !conversationId) return;
 
     if (lastHydratedConversationRef.current !== conversationId) {
       isInitialLoadRef.current = true;
       stickToBottomRef.current = true;
-      anchorBottomUntilRef.current = Date.now() + 3000;
+      anchorBottomUntilRef.current = Date.now() + 4500;
       lastHydratedConversationRef.current = conversationId;
     }
 
@@ -571,6 +574,11 @@ export default function ChatPage({
     });
 
     writeThreadCache(user.id, conversationId, payload);
+  }, [threadQuery.data, conversationId, user?.id]);
+
+  useEffect(() => {
+    const payload = threadQuery.data;
+    if (!payload || !user?.id || !conversationId) return;
 
     void fetchCurrencies();
     if (currentUserProfile?.is_admin && payload.conversation.job_id === null) {
@@ -763,55 +771,59 @@ export default function ChatPage({
   const stickToBottomRef = useRef(true);
   const anchorBottomUntilRef = useRef(0);
   const lastHydratedConversationRef = useRef<string | null>(null);
+  const isAnchoringRef = useRef(false);
+  const anchorTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const shouldStickToBottom = useCallback(() => {
     return stickToBottomRef.current || Date.now() < anchorBottomUntilRef.current;
   }, []);
 
-  /** Jump to latest message — instant by default (no visible scroll animation). */
-  const scrollToBottom = useCallback((smooth = false) => {
-    const behavior = smooth ? "smooth" : "instant";
+  const clearAnchorTimers = useCallback(() => {
+    for (const id of anchorTimersRef.current) clearTimeout(id);
+    anchorTimersRef.current = [];
+  }, []);
 
-    const anchor = bottomAnchorRef.current;
-    if (anchor) {
-      try {
-        anchor.scrollIntoView({ block: "end", inline: "nearest", behavior });
-      } catch {
-        anchor.scrollIntoView(false);
-      }
-    }
-
+  /** Scroll the thread container to the latest message (not `scrollIntoView` — unreliable on iOS). */
+  const scrollToBottom = useCallback((smooth = false): boolean => {
     const root = scrollRef.current;
-    if (!root) return;
+    if (!root || root.clientHeight <= 0) return false;
 
-    const scrollMax = (el: HTMLElement) =>
-      Math.max(0, el.scrollHeight - el.clientHeight);
-
-    const apply = (el: HTMLElement) => {
-      const top = scrollMax(el);
-      if (smooth) {
-        el.scrollTo({ top, behavior: "smooth" });
-      } else {
-        el.scrollTop = top;
-      }
-    };
-
-    apply(root);
-    const viewport = root.querySelector(
-      "[data-radix-scroll-area-viewport]",
-    ) as HTMLElement | null;
-    if (viewport) apply(viewport);
+    const top = Math.max(0, root.scrollHeight - root.clientHeight);
+    if (smooth) {
+      root.scrollTo({ top, behavior: "smooth" });
+    } else {
+      root.scrollTop = top;
+    }
+    return true;
   }, []);
 
   const runBottomAnchorPass = useCallback(
     (smooth = false) => {
-      scrollToBottom(smooth);
+      clearAnchorTimers();
+      isAnchoringRef.current = true;
+      stickToBottomRef.current = true;
+
+      const attempt = () => {
+        if (shouldStickToBottom()) scrollToBottom(smooth);
+      };
+
+      attempt();
       requestAnimationFrame(() => {
-        scrollToBottom(smooth);
-        requestAnimationFrame(() => scrollToBottom(smooth));
+        attempt();
+        requestAnimationFrame(attempt);
       });
+
+      const delays = hideBackButton ? [0, 50, 120, 250, 450, 700] : [0, 120, 300];
+      for (const ms of delays) {
+        anchorTimersRef.current.push(setTimeout(attempt, ms));
+      }
+      anchorTimersRef.current.push(
+        setTimeout(() => {
+          isAnchoringRef.current = false;
+        }, hideBackButton ? 750 : 350),
+      );
     },
-    [scrollToBottom],
+    [clearAnchorTimers, hideBackButton, scrollToBottom, shouldStickToBottom],
   );
 
   useEffect(() => {
@@ -819,14 +831,25 @@ export default function ChatPage({
     stickToBottomRef.current = true;
     lastAnchoredMessageCountRef.current = 0;
     lastHydratedConversationRef.current = null;
-    anchorBottomUntilRef.current = Date.now() + 3000;
-  }, [conversationId]);
+    anchorBottomUntilRef.current = Date.now() + 4500;
+    clearAnchorTimers();
+    return () => clearAnchorTimers();
+  }, [conversationId, clearAnchorTimers]);
 
   const handleMessagesScroll = useCallback(() => {
+    if (isAnchoringRef.current) return;
+
     const root = scrollRef.current;
     if (!root) return;
     const distanceFromBottom =
       root.scrollHeight - root.scrollTop - root.clientHeight;
+
+    // While opening a thread, layout/images can briefly report a large gap — don't treat that as the user scrolling up.
+    if (Date.now() < anchorBottomUntilRef.current) {
+      if (distanceFromBottom < 48) stickToBottomRef.current = true;
+      return;
+    }
+
     if (distanceFromBottom > 96) {
       stickToBottomRef.current = false;
       anchorBottomUntilRef.current = 0;
@@ -839,7 +862,7 @@ export default function ChatPage({
 
   // Open chat already at the bottom (before paint). Smooth scroll only when sending.
   useLayoutEffect(() => {
-    if (loading) return;
+    if (loading || !chatPaneVisible) return;
 
     if (messages.length === 0) {
       lastAnchoredMessageCountRef.current = 0;
@@ -865,15 +888,16 @@ export default function ChatPage({
       pendingSmoothScrollRef.current = false;
     }
   }, [
+    chatPaneVisible,
     loading,
     messages,
     runBottomAnchorPass,
     shouldStickToBottom,
   ]);
 
-  // Images, job strip, and mobile layout can grow after first paint — keep pinned briefly.
+  // Images, job strip, and pane visibility can grow after first paint — keep pinned briefly.
   useLayoutEffect(() => {
-    if (loading || messages.length === 0) return;
+    if (loading || messages.length === 0 || !chatPaneVisible) return;
     const root = scrollRef.current;
     const content = root?.firstElementChild;
     if (!root || !content) return;
@@ -882,26 +906,54 @@ export default function ChatPage({
     let t2: ReturnType<typeof setTimeout> | undefined;
 
     const maybeStick = () => {
+      if (!chatPaneVisible || root.clientHeight <= 0) return;
       if (shouldStickToBottom()) runBottomAnchorPass(false);
     };
 
-    const ro = new ResizeObserver(() => maybeStick());
-    ro.observe(content);
+    const roContent = new ResizeObserver(() => maybeStick());
+    roContent.observe(content);
+
+    const roRoot = new ResizeObserver(() => maybeStick());
+    roRoot.observe(root);
 
     t1 = setTimeout(maybeStick, 0);
     t2 = setTimeout(maybeStick, 120);
 
     return () => {
-      ro.disconnect();
+      roContent.disconnect();
+      roRoot.disconnect();
       if (t1) clearTimeout(t1);
       if (t2) clearTimeout(t2);
     };
   }, [
+    chatPaneVisible,
     conversationId,
     loading,
     messages.length,
     runBottomAnchorPass,
     shouldStickToBottom,
+  ]);
+
+  const prevChatPaneVisibleRef = useRef(chatPaneVisible);
+  // Embedded Messages: chat column may be `display:none` on first layout — anchor when it becomes visible.
+  useLayoutEffect(() => {
+    const becameVisible =
+      hideBackButton &&
+      chatPaneVisible &&
+      !prevChatPaneVisibleRef.current;
+    prevChatPaneVisibleRef.current = chatPaneVisible;
+    if (!becameVisible || loading || messages.length === 0) return;
+    stickToBottomRef.current = true;
+    anchorBottomUntilRef.current = Date.now() + 4500;
+    isInitialLoadRef.current = true;
+    runBottomAnchorPass(false);
+  }, [
+    chatPaneVisible,
+    hideBackButton,
+    loading,
+    messages.length,
+    conversationId,
+    runBottomAnchorPass,
   ]);
 
   useEffect(() => {
@@ -926,7 +978,7 @@ export default function ChatPage({
     prevMobileViewRef.current = mobileView;
     if (enteredChat) {
       stickToBottomRef.current = true;
-      anchorBottomUntilRef.current = Date.now() + 3000;
+      anchorBottomUntilRef.current = Date.now() + 4500;
       runBottomAnchorPass(false);
     }
   }, [
@@ -2049,7 +2101,7 @@ export default function ChatPage({
       >
         {/* Header — viewport-fixed on standalone /chat mobile; hidden when embedded in Messages (parent provides bar) */}
         {!hideBackButton && (
-          <header className="fixed left-0 right-0 top-0 z-20 flex-shrink-0 border-none bg-background/95 px-4 py-3 shadow-none backdrop-blur-md supports-[backdrop-filter]:bg-background/90 md:relative md:top-auto md:z-auto md:bg-transparent md:backdrop-blur-none">
+          <header className="fixed left-0 right-0 top-0 z-20 flex-shrink-0 border-b border-border/15 bg-white px-4 py-3 shadow-none dark:bg-background md:relative md:top-auto md:z-auto md:border-b-0 md:bg-transparent">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
