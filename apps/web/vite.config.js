@@ -10,7 +10,6 @@ export default defineConfig({
         allowedHosts: [
             'c46872e6d739.ngrok-free.app',
             '9538501d3d45.ngrok-free.app',
-            '6ca2-2a00-a041-f225-300-11a4-a07c-e100-2873.ngrok-free.app',
             '.ngrok-free.app', // Allow all ngrok subdomains
         ],
     },
@@ -18,17 +17,6 @@ export default defineConfig({
         alias: {
             "@": path.resolve(__dirname, "./src"),
         },
-    },
-    // Ensure service worker and manifest are included in build
-    build: {
-        rollupOptions: {
-            output: {
-                // Ensure service worker is not hashed
-                entryFileNames: 'assets/[name].js',
-                chunkFileNames: 'assets/[name].js',
-                assetFileNames: 'assets/[name].[ext]'
-            }
-        }
     },
     // Public directory files are automatically copied to dist
     publicDir: 'public',

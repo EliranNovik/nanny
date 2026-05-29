@@ -60,3 +60,4 @@ The service worker is automatically registered when the app loads.
 - **Service Worker not registering**: Ensure you're using HTTPS (or localhost for development)
 - **App not installing**: Check that manifest.json is valid and accessible
 - **Icons not showing**: Verify icon paths in manifest.json match actual files
+- **Mobile not picking up new deploys**: The service worker must bypass cache for `/sw.js` and `/index.html`. A `public/_headers` file is included for Netlify/Cloudflare Pages. On other hosts, set `Cache-Control: no-cache` for those paths. After deploying this fix, users may need to close and reopen the installed PWA once.

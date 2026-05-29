@@ -9,13 +9,20 @@ document.body.style.removeProperty("overflow-y");
 
 // PWA: register the service worker in all environments so the media cache
 // (Supabase images) works during dev testing on mobile as well as production.
-// The SW skips navigate requests, so React Router & Vite HMR are unaffected.
+// updateViaCache: 'none' ensures mobile browsers re-fetch sw.js on each update check.
 if ("serviceWorker" in navigator) {
+  let refreshingForServiceWorker = false;
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshingForServiceWorker) return;
+    refreshingForServiceWorker = true;
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { updateViaCache: "none" })
       .then((registration) => {
-        // Prompt the new worker to take control immediately so cache updates apply now.
         if (registration.waiting) {
           registration.waiting.postMessage({ type: "SKIP_WAITING" });
         }
@@ -29,9 +36,13 @@ if ("serviceWorker" in navigator) {
             });
           }
         });
-        // Periodic update check every 30 s in dev, every 60 s in prod.
         const interval = import.meta.env.DEV ? 30_000 : 60_000;
         setInterval(() => registration.update(), interval);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") {
+            void registration.update();
+          }
+        });
       })
       .catch((error) => {
         console.warn("[SW] Registration failed:", error);
