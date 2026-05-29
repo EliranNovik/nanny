@@ -1,11 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
-  discoverSheetDialogContentClassName,
-  discoverSheetInnerCardClassName,
-  DiscoverSheetTopHandle,
+  DiscoverOverlaySnapSheet,
 } from "@/lib/discoverSheetDialog";
 import {
   CommunityPostCard,
@@ -101,38 +98,31 @@ export function AvailabilityStoriesStrip({
   }
 
   const sheetBody = openPost ? (
-    <div className={discoverSheetInnerCardClassName}>
-      <DiscoverSheetTopHandle />
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <SwipeDecisionLayer
-          variant="availability"
-          disabled={swipeBusy}
-          leftStamp={canSendHireInterest ? "HIRE" : "NEXT"}
-          rightStamp="PASS"
-          onSwipeLeft={advanceOrClose}
-          onSwipeRight={canSendHireInterest ? onSwipeHire : advanceOrClose}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
-            <CommunityPostCard
-              post={openPost}
-              user={user}
-              profile={profile}
-              loginRedirect={loginRedirect}
-              favoritedIds={favoritedIds}
-              onToggleFavorite={onToggleFavorite}
-              hiringPostId={hiringPostId}
-              pendingHirePostIds={pendingHirePostIds}
-              onHireFromPost={onHireFromPost}
-              onOpenChat={() => onOpenChat(openPost)}
-              plain
-              iconOnlyActions
-              availabilitySheetComfort
-            />
-          </div>
-        </SwipeDecisionLayer>
-      </div>
-    </div>
+    <SwipeDecisionLayer
+      variant="availability"
+      disabled={swipeBusy}
+      leftStamp={canSendHireInterest ? "HIRE" : "NEXT"}
+      rightStamp="PASS"
+      onSwipeLeft={advanceOrClose}
+      onSwipeRight={canSendHireInterest ? onSwipeHire : advanceOrClose}
+      className="flex flex-col"
+    >
+      <CommunityPostCard
+        post={openPost}
+        user={user}
+        profile={profile}
+        loginRedirect={loginRedirect}
+        favoritedIds={favoritedIds}
+        onToggleFavorite={onToggleFavorite}
+        hiringPostId={hiringPostId}
+        pendingHirePostIds={pendingHirePostIds}
+        onHireFromPost={onHireFromPost}
+        onOpenChat={() => onOpenChat(openPost)}
+        plain
+        iconOnlyActions
+        availabilitySheetComfort
+      />
+    </SwipeDecisionLayer>
   ) : null;
 
   return (
@@ -187,19 +177,17 @@ export function AvailabilityStoriesStrip({
         {trailingSlot}
       </div>
 
-      <Dialog
+      <DiscoverOverlaySnapSheet
         open={stackIndex !== null}
         onOpenChange={(o) => !o && setStackIndex(null)}
+        title={
+          openPost
+            ? `Availability: ${openPost.title || postCategoryLabel(openPost)}`
+            : "Availability post"
+        }
       >
-        <DialogContent className={discoverSheetDialogContentClassName}>
-          <DialogTitle className="sr-only">
-            {openPost
-              ? `Availability: ${openPost.title || postCategoryLabel(openPost)}`
-              : "Availability post"}
-          </DialogTitle>
-          {sheetBody}
-        </DialogContent>
-      </Dialog>
+        {sheetBody}
+      </DiscoverOverlaySnapSheet>
     </>
   );
 }

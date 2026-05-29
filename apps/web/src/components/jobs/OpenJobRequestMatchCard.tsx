@@ -174,6 +174,37 @@ function heroCategoryBadgeClasses(serviceType: string | null | undefined): strin
   return cn(base, "bg-violet-600/70");
 }
 
+function CategoryBadge({
+  serviceType,
+  formatTitle,
+  compact = false,
+}: {
+  serviceType: string | null | undefined;
+  formatTitle: (serviceType: string | null | undefined) => string;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        heroCategoryBadgeClasses(serviceType),
+        compact && "gap-1.5 px-2.5 py-1 text-[10px] shadow-md",
+      )}
+    >
+      <CategoryIcon
+        serviceType={serviceType}
+        className={cn(
+          "shrink-0",
+          compact ? "h-3.5 w-3.5" : "h-4.5 w-4.5 md:h-5 md:w-5",
+        )}
+        strokeWidth={2.5}
+      />
+      <span className={cn("truncate", compact ? "max-w-[9rem]" : "max-w-[14rem]")}>
+        {formatTitle(serviceType)}
+      </span>
+    </div>
+  );
+}
+
 /** Flatten service_details JSON into short readable lines and extracts notes. */
 function parseServiceDetails(raw: unknown): { badges: { label: string; value: string }[]; notes: string[] } {
   if (typeof raw === "string") {
@@ -819,18 +850,12 @@ export function OpenJobRequestMatchCard({
                     </div>
                   ) : null}
 
-                  {/* Top-right: category badge (big) */}
-                  <div className="pointer-events-none absolute right-4 top-4 z-[23]">
-                    <div className={heroCategoryBadgeClasses(row.service_type)}>
-                      <CategoryIcon
-                        serviceType={row.service_type}
-                        className="h-4.5 w-4.5 shrink-0 md:h-5 md:w-5"
-                        strokeWidth={2.5}
-                      />
-                      <span className="max-w-[14rem] truncate">
-                        {formatTitle(row.service_type)}
-                      </span>
-                    </div>
+                  {/* Top-right: category badge (desktop only) */}
+                  <div className="pointer-events-none absolute right-4 top-4 z-[23] hidden md:block">
+                    <CategoryBadge
+                      serviceType={row.service_type}
+                      formatTitle={formatTitle}
+                    />
                   </div>
 
                   {/* Bottom-left: client public profile media mini-carousel */}
@@ -945,6 +970,13 @@ export function OpenJobRequestMatchCard({
               <span className="min-w-0 font-bold text-slate-900 dark:text-zinc-100">
                 {row.location_city || "Anywhere"}
               </span>
+              <div className="shrink-0 md:hidden">
+                <CategoryBadge
+                  serviceType={row.service_type}
+                  formatTitle={formatTitle}
+                  compact
+                />
+              </div>
               {dist ? (
                 <span className="tabular-nums text-sm text-slate-500 dark:text-zinc-400">{dist}</span>
               ) : null}

@@ -2,10 +2,10 @@ import { useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { trackEvent } from "@/lib/analytics";
+import { avatarUrl } from "@/lib/imageTransform";
 import {
   serviceCategoryLabel,
   isServiceCategoryId,
@@ -18,11 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
 import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
 import {
-  discoverRequestClientNameRowClass,
-  discoverRequestClientOverlayClass,
-  discoverRequestPostedTimeBadgeClass,
-  discoverRequestRatingRowClass,
-  discoverRequestTopGradientClass,
+  discoverRequestPostedTimeBadgeCircleClass,
   stripAboutFromDistance,
 } from "@/components/discover/discoverRequestCarouselCardShared";
 
@@ -164,21 +160,22 @@ function useDiscoverFavoriteRequests(userId: string | undefined) {
   });
 }
 
-/** Same shell as `DiscoverHomePostedHelpRequests` so the two sections feel native to one another. */
+/** Match DiscoverHomeSavedProfiles (I need help — Your favorites). */
 const listContainerClass = cn(
-  "flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 scroll-pl-4",
+  "flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 scroll-pl-4",
   "-mx-4 px-4 sm:-mx-0 sm:px-0 sm:scroll-pl-0",
 );
 
 const cardBtnClass = cn(
-  "group flex flex-col gap-1.5 text-left",
-  "w-[12rem] shrink-0 snap-start",
-  "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
+  "group flex flex-col items-center gap-1.5 text-center",
+  "w-[7.75rem] shrink-0 snap-start",
+  "sm:w-[8.25rem] md:w-[9rem] lg:w-[9.75rem] xl:w-[10.5rem]",
   "sm:gap-1 lg:gap-1.5",
   "focus-visible:outline-none",
 );
 
-const cardTextBelowClass = "flex flex-col gap-0.5 px-0 sm:gap-0 lg:gap-0.5";
+const cardTextBelowClass =
+  "flex w-full flex-col items-center gap-0.5 px-0 sm:gap-0 lg:gap-0.5";
 
 const carouselArrowBtnClass = cn(
   "hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full",
@@ -188,12 +185,13 @@ const carouselArrowBtnClass = cn(
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
 );
 
+const favoriteImageShellClass =
+  "relative mx-auto w-full shrink-0 aspect-square";
+
 const imageWrapClass = cn(
-  "relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800/60",
-  "aspect-square",
+  "h-full w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/60",
   "ring-1 ring-black/5 dark:ring-white/5 shadow-sm",
   "transition-transform duration-200 group-hover:shadow-md",
-  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 );
 
 type Props = {
@@ -258,10 +256,10 @@ export function DiscoverHomeFavoriteRequests({
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[12rem] shrink-0 snap-start flex-col gap-1.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-1 lg:gap-1.5"
+              className="flex w-[7.75rem] shrink-0 snap-start flex-col items-center gap-1.5 sm:w-[8.25rem] md:w-[9rem] lg:w-[9.75rem] xl:w-[10.5rem] sm:gap-1 lg:gap-1.5"
             >
-              <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
-              <div className="space-y-1 px-0 sm:space-y-0.5">
+              <div className="aspect-square w-full animate-pulse rounded-full bg-zinc-200/80 dark:bg-zinc-800/80" />
+              <div className="flex w-full flex-col items-center space-y-1 sm:space-y-0.5">
                 <div className="h-3.5 w-2/3 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80 sm:h-3" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60 sm:h-2.5" />
                 <div className="h-3 w-1/3 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60 sm:h-2.5" />
@@ -315,16 +313,15 @@ export function DiscoverHomeFavoriteRequests({
           } catch {
             when = "";
           }
-          const rating = r.client_average_rating ?? 0;
-          const totalRatings = r.client_total_ratings ?? 0;
-          const hasRating = totalRatings > 0 && rating > 0;
           const durationLabel = prettyDurationLabel(
             r.time_duration || r.shift_hours,
           );
 
-          const photoUrl =
+          const clientPhotoUrl = avatarUrl.sm(r.client_photo_url);
+          const categoryPhotoUrl =
             firstJobImage(r.service_details ?? null) ??
             getServiceCategoryImage(r.service_type ?? null);
+          const circlePhotoUrl = clientPhotoUrl || categoryPhotoUrl;
 
           return (
             <button
@@ -342,63 +339,27 @@ export function DiscoverHomeFavoriteRequests({
               }}
               aria-label={`${title} in ${loc} — posted by ${name}`}
             >
-              <div className={imageWrapClass}>
-                <img
-                  src={photoUrl}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
-                  loading="eager" decoding="async"
-                />
-
-                <div className={discoverRequestTopGradientClass} aria-hidden />
-
-                <div className={discoverRequestClientOverlayClass}>
-                  <div className={discoverRequestClientNameRowClass}>
-                    <span className="relative inline-flex shrink-0">
-                      <Avatar className="h-8 w-8 overflow-hidden shadow-sm sm:h-7 sm:w-7 lg:h-9 lg:w-9 xl:h-10 xl:w-10">
-                        <AvatarImage
-                          src={r.client_photo_url || undefined}
-                          alt=""
-                          className="object-cover"
-                        />
-                        <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-[9px] lg:text-[11px]">
-                          {name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span
-                        className="pointer-events-none absolute right-0 top-0 block size-2 rounded-full bg-emerald-500 motion-safe:animate-strip-live-dot-breathe dark:bg-emerald-400 sm:size-1.5 lg:size-2 xl:size-2.5"
-                        aria-hidden
-                      />
-                    </span>
-                    <span
-                      className="min-w-0 truncate text-[12.5px] font-semibold leading-tight text-white sm:text-[11px] lg:text-[13px] xl:text-[14px]"
-                      style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
-                    >
-                      {name}
-                    </span>
-                  </div>
-                  {hasRating ? (
-                    <span
-                      className={discoverRequestRatingRowClass}
-                      style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
-                    >
-                      <Star
-                        className="h-3 w-3 fill-current text-white sm:h-2.5 sm:w-2.5 lg:h-3 lg:w-3 xl:h-3.5 xl:w-3.5"
-                        strokeWidth={0}
-                        aria-hidden
-                      />
-                      <span className="tabular-nums">{rating.toFixed(1)}</span>
-                      {totalRatings > 0 ? (
-                        <span className="font-normal text-white/80">
-                          ({totalRatings})
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : null}
+              <div className={favoriteImageShellClass}>
+                <div className={imageWrapClass}>
+                  {circlePhotoUrl ? (
+                    <img
+                      src={circlePhotoUrl}
+                      alt=""
+                      className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-100 via-zinc-50 to-zinc-200 dark:from-zinc-800 dark:via-zinc-800/70 dark:to-zinc-700/60">
+                      <span className="text-base font-black text-zinc-700 dark:text-white">
+                        {name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {r.client_id ? (
-                  <div className="absolute right-1.5 bottom-1.5 z-20 sm:right-1 sm:bottom-1 lg:right-2 lg:bottom-2">
+                  <div className="absolute right-[8%] bottom-[8%] z-20">
                     <DiscoverProfileSaveBadge
                       targetUserId={r.client_id}
                       accent="work"
@@ -409,7 +370,7 @@ export function DiscoverHomeFavoriteRequests({
                   </div>
                 ) : null}
                 {when ? (
-                  <span className={discoverRequestPostedTimeBadgeClass}>
+                  <span className={discoverRequestPostedTimeBadgeCircleClass}>
                     <span className="line-clamp-1">
                       {stripAboutFromDistance(when)}
                     </span>
@@ -417,7 +378,6 @@ export function DiscoverHomeFavoriteRequests({
                 ) : null}
               </div>
 
-              {/* Text on page background — Airbnb-style simple lines */}
               <div className={cardTextBelowClass}>
                 <span className="min-w-0 truncate text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
                   {title}

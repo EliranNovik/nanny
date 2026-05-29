@@ -14,6 +14,18 @@ export const discoverRequestPostedTimeBadgeClass = cn(
   "sm:top-1.5 sm:right-1.5 lg:top-2 lg:right-2",
 );
 
+/** White pill overlay for round favorite circles (Help others time + I need help Available). */
+export const discoverFavoriteCircleBadgeClass = cn(
+  "pointer-events-none absolute bottom-[8%] left-0 z-10",
+  "inline-flex max-w-[82%] min-h-[1.25rem] items-center rounded-full bg-white px-2.5 py-0.5",
+  "text-[11px] font-bold uppercase leading-none tracking-wide text-zinc-900 shadow-md",
+  "sm:bottom-[8%] sm:left-0 sm:min-h-[1.125rem] sm:px-2 sm:py-0.5 sm:text-[10.5px]",
+);
+
+/** Compact posted-time pill for round favorite circles (Help others — Your favorites). */
+export const discoverRequestPostedTimeBadgeCircleClass =
+  discoverFavoriteCircleBadgeClass;
+
 export const discoverRequestClientOverlayClass = cn(
   "absolute left-2 top-2 z-10 flex max-w-[58%] flex-col gap-0.5",
   "sm:left-1.5 sm:top-1.5 lg:left-2 lg:top-2 lg:gap-1",

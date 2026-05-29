@@ -1,5 +1,98 @@
-import { DialogClose } from "@/components/ui/dialog";
+import { useEffect, useState, type ReactNode } from "react";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { cn } from "@/lib/utils";
+
+/** Sit above the discovery bottom nav on mobile. */
+export const discoverMobileSheetBottomOffset =
+  "bottom-[max(3.75rem,calc(env(safe-area-inset-bottom,0px)+3.25rem))]";
+
+export function useIsMobileViewport() {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 767px)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 767px)");
+    const onChange = () => setIsMobile(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return isMobile;
+}
+
+type DiscoverOverlaySnapSheetProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  children: ReactNode;
+  bottomOffsetClass?: string;
+};
+
+/** Mobile: native swipe snap sheet. Desktop: centered bottom sheet dialog. */
+export function DiscoverOverlaySnapSheet({
+  open,
+  onOpenChange,
+  title,
+  children,
+  bottomOffsetClass = discoverMobileSheetBottomOffset,
+}: DiscoverOverlaySnapSheetProps) {
+  const isMobile = useIsMobileViewport();
+  const [expanded, setExpanded] = useState(true);
+
+  useEffect(() => {
+    if (open) setExpanded(true);
+  }, [open]);
+
+  const dismiss = () => onOpenChange(false);
+
+  if (isMobile) {
+    if (!open) return null;
+    return (
+      <MobileSnapBottomSheet
+        expanded={expanded}
+        onExpandedChange={(next) => {
+          setExpanded(next);
+          if (!next) dismiss();
+        }}
+        onDismiss={dismiss}
+        bottomOffsetClass={bottomOffsetClass}
+        ariaLabel="Drag down to close"
+        collapsed={
+          <div className="flex w-full flex-col items-center bg-card px-4 pb-2 pt-2">
+            <div
+              aria-hidden
+              className="h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/35"
+            />
+            <p className="sr-only">{title}</p>
+          </div>
+        }
+      >
+        <div className="bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          {children}
+        </div>
+      </MobileSnapBottomSheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={discoverSheetDialogContentClassName}>
+        <DialogTitle className="sr-only">{title}</DialogTitle>
+        <div className={discoverSheetInnerCardClassName}>
+          <DiscoverSheetTopHandle />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 /** Outer Radix content: bottom sheet on all breakpoints (slides up from bottom, not from the side). */
 export const discoverSheetDialogContentClassName = cn(

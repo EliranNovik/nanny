@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useJobRequestsRealtime } from "@/hooks/useJobRequestsRealtime";
 import { Button } from "@/components/ui/button";
+import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { useToast } from "@/components/ui/toast";
 import {
   SERVICE_CATEGORIES,
@@ -23,7 +24,6 @@ import {
 } from "@/lib/serviceCategories";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/StarRating";
-import { Badge } from "@/components/ui/badge";
 import {
   BadgeCheck,
   Crown,
@@ -31,7 +31,6 @@ import {
   MapPin,
   Medal,
   MessageCircle,
-  RotateCcw,
   StopCircle,
   Trophy,
   Video,
@@ -528,6 +527,7 @@ function ConfirmedJobMediaSection({
   onChooseFiles,
   onRemoveAt,
   setLightboxIndex,
+  addMediaVariant = "dropzone",
 }: {
   job: any;
   jobId: string | undefined;
@@ -536,105 +536,126 @@ function ConfirmedJobMediaSection({
   onChooseFiles: (files: File[]) => void | Promise<void>;
   onRemoveAt: (idx: number) => void | Promise<void>;
   setLightboxIndex: (idx: number | null) => void;
+  /** Mobile sheet: tap-only add — no drag-and-drop dropzone. */
+  addMediaVariant?: "dropzone" | "button";
 }) {
+  const fileInput = (
+    <input
+      type="file"
+      id={uploadInputId}
+      multiple
+      accept="image/*,video/mp4,video/webm,video/quicktime,video/*"
+      className="hidden"
+      onChange={async (e) => {
+        const picked = e.target.files;
+        if (!picked?.length || !jobId) return;
+        const media = filterJobMediaFiles(Array.from(picked));
+        if (media.length) await onChooseFiles(media);
+        e.target.value = "";
+      }}
+    />
+  );
+
+  const addMediaControl =
+    addMediaVariant === "button" ? (
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 w-full gap-2 rounded-2xl border-border/60 text-[15px] font-semibold"
+        disabled={savingDetails || !jobId}
+        onClick={() => document.getElementById(uploadInputId)?.click()}
+      >
+        {savingDetails ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Plus className="h-4 w-4" />
+        )}
+        {savingDetails ? "Uploading…" : "Add media"}
+      </Button>
+    ) : (
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.currentTarget.classList.add("border-primary", "bg-primary/5");
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.currentTarget.classList.remove("border-primary", "bg-primary/5");
+        }}
+        onDrop={async (e) => {
+          e.preventDefault();
+          e.currentTarget.classList.remove("border-primary", "bg-primary/5");
+          const media = filterJobMediaFiles(Array.from(e.dataTransfer.files));
+          if (media.length > 0 && jobId) await onChooseFiles(media);
+        }}
+        className={cn(
+          "relative group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-border/60 p-8 text-center transition-all duration-300 sm:p-10",
+          "hover:border-primary/50 hover:bg-primary/5",
+          savingDetails && "pointer-events-none opacity-50",
+        )}
+        onClick={() => document.getElementById(uploadInputId)?.click()}
+      >
+        <div className="flex h-20 w-20 items-center justify-center rounded-[1.8rem] bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
+          <UploadCloud className="h-10 w-10" />
+        </div>
+        <div>
+          <h4 className="text-lg font-bold text-foreground">
+            Add photos or videos
+          </h4>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          className="mt-2 h-9 gap-1.5 rounded-full border-slate-200 bg-white px-4 text-[13px] font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          disabled={savingDetails}
+        >
+          <Plus className="h-4 w-4" />
+          Add media
+        </Button>
+
+        {savingDetails && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-background/50 backdrop-blur-[2px]">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                Uploading…
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+
   return (
     <section className="py-6">
       <h3 className="text-sm font-black uppercase tracking-wide text-muted-foreground">
         Photos & videos
       </h3>
       <div className="mt-3">
-       
-
         <div className="space-y-6">
-          <input
-            type="file"
-            id={uploadInputId}
-            multiple
-            accept="image/*,video/mp4,video/webm,video/quicktime,video/*"
-            className="hidden"
-            onChange={async (e) => {
-              const picked = e.target.files;
-              if (!picked?.length || !jobId) return;
-              const media = filterJobMediaFiles(Array.from(picked));
-              if (media.length) await onChooseFiles(media);
-              e.target.value = "";
-            }}
-          />
-
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.currentTarget.classList.add(
-                "border-primary",
-                "bg-primary/5",
-              );
-            }}
-            onDragLeave={(e) => {
-              e.preventDefault();
-              e.currentTarget.classList.remove(
-                "border-primary",
-                "bg-primary/5",
-              );
-            }}
-            onDrop={async (e) => {
-              e.preventDefault();
-              e.currentTarget.classList.remove(
-                "border-primary",
-                "bg-primary/5",
-              );
-              const media = filterJobMediaFiles(
-                Array.from(e.dataTransfer.files),
-              );
-              if (media.length > 0 && jobId) await onChooseFiles(media);
-            }}
-            className={cn(
-              "relative group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-border/60 p-8 text-center transition-all duration-300 sm:p-10",
-              "hover:border-primary/50 hover:bg-primary/5",
-              savingDetails && "pointer-events-none opacity-50",
-            )}
-            onClick={() =>
-              document.getElementById(uploadInputId)?.click()
-            }
-          >
-            <div className="flex h-20 w-20 items-center justify-center rounded-[1.8rem] bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-              <UploadCloud className="h-10 w-10" />
-            </div>
-            <div>
-              <h4 className="text-lg font-bold text-foreground">
-                Add photos or videos
-              </h4>
-              
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              className="mt-2 h-9 gap-1.5 rounded-full border-slate-200 bg-white px-4 text-[13px] font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              disabled={savingDetails}
-            >
-              <Plus className="h-4 w-4" />
-              Add media
-            </Button>
-
-            {savingDetails && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-background/50 backdrop-blur-[2px]">
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-primary">
-                    Uploading…
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+          {fileInput}
+          {addMediaControl}
 
           {job?.service_details?.images &&
             job.service_details.images.length > 0 && (
-              <div className="grid animate-in grid-cols-2 gap-4 duration-700 fade-in slide-in-from-bottom-2 md:grid-cols-4">
+              <div
+                className={cn(
+                  "animate-in duration-700 fade-in slide-in-from-bottom-2",
+                  addMediaVariant === "button"
+                    ? "-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-5 pb-1 pt-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    : "grid grid-cols-2 gap-4 md:grid-cols-4",
+                )}
+              >
                 {job.service_details.images.map((url: string, idx: number) => (
                   <div
                     key={`${url}-${idx}`}
-                    className="group relative aspect-square cursor-zoom-in overflow-hidden rounded-2xl border border-border/60"
+                    className={cn(
+                      "group relative cursor-zoom-in overflow-hidden rounded-2xl border border-border/60",
+                      addMediaVariant === "button"
+                        ? "aspect-[4/5] w-[min(68vw,15rem)] shrink-0 snap-center"
+                        : "aspect-square",
+                    )}
                   >
                     {isVideoMediaUrl(url) ? (
                       <button
@@ -661,10 +682,17 @@ function ConfirmedJobMediaSection({
                         onClick={() => setLightboxIndex(idx)}
                       />
                     )}
-                    <div className="absolute inset-x-0 top-0 z-20 flex justify-end p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div
+                      className={cn(
+                        "absolute inset-x-0 top-0 z-20 flex justify-end p-2",
+                        addMediaVariant === "button"
+                          ? "opacity-100"
+                          : "opacity-0 transition-opacity group-hover:opacity-100",
+                      )}
+                    >
                       <button
                         type="button"
-                        className="scale-90 rounded-full bg-black/50 p-2 text-white shadow-lg backdrop-blur-md transition-all hover:scale-100 hover:bg-black/70"
+                        className="scale-90 rounded-full bg-black/50 p-2 text-white shadow-lg backdrop-blur-md transition-all hover:scale-100 hover:bg-black/70 active:scale-100"
                         onClick={async (e) => {
                           e.stopPropagation();
                           await onRemoveAt(idx);
@@ -696,7 +724,7 @@ function LiveRequestHero({
   mobileFixedDockLayout = false,
   /** Mobile: sheet expanded — short map; timer stays true bottom-left (no tall-map dock offset) */
   mobileMapCompact = false,
-  /** Mobile: Restart / Stop fixed to bottom of map (not the request dock). */
+  /** Mobile: Stop fixed to bottom of map (not the request dock). */
   mobileMapBottomActions,
 }: {
   job: any | null | undefined;
@@ -1094,19 +1122,20 @@ function LiveRequestHero({
         </div>
       </div>
 
-      {/* Mobile — elapsed time (+ map actions when provided); dock no longer holds Restart/Stop */}
+      {/* Mobile — elapsed time + Stop in one bottom bar */}
       {mobileMapBottomActions && !acceptedLead ? (
-        <div className="absolute bottom-0 left-0 right-0 z-30 hidden max-md:flex max-md:items-end max-md:justify-between max-md:gap-2 max-md:px-2 max-md:pb-1.5">
-          <div className="pointer-events-none shrink-0">
-            <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 shadow-lg backdrop-blur-md">
+        <div className="absolute bottom-0 left-0 right-0 z-30 hidden max-md:flex max-md:justify-center max-md:px-2 max-md:pb-1.5">
+          <div className="pointer-events-auto inline-flex w-full max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-black/70 p-1.5 pl-3 shadow-lg backdrop-blur-md">
+            <div className="flex shrink-0 items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
               <span className="font-mono text-[13px] font-bold tabular-nums text-white">
                 <ElapsedTimer createdAt={createdAt} startTime={startTime} />
               </span>
             </div>
-          </div>
-          <div className="pointer-events-auto flex min-w-0 max-w-[62%] flex-1 items-stretch justify-end gap-2">
-            {mobileMapBottomActions}
+            <div className="mx-0.5 h-6 w-px shrink-0 bg-white/20" aria-hidden />
+            <div className="flex min-w-0 flex-1 items-stretch">
+              {mobileMapBottomActions}
+            </div>
           </div>
         </div>
       ) : (
@@ -1384,13 +1413,13 @@ function ConfirmedApplicantHeroTopBadges({
             "ring-1 ring-inset ring-white/15",
           )}
           role="status"
-          aria-label="Available now for jobs"
+          aria-label="Available for jobs"
         >
           <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
             <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60 motion-reduce:animate-none" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
           </span>
-          <span className="pr-0.5">Available now</span>
+          <span className="pr-0.5">Available</span>
         </span>
       ) : null}
 
@@ -1717,7 +1746,6 @@ export default function ConfirmedListPage() {
   const [declining, setDeclining] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
-  const [restarting, setRestarting] = useState(false);
   const [startTime] = useState(Date.now());
   const [job, setJob] = useState<any>(seededJob);
   const [customDetails, setCustomDetails] = useState("");
@@ -2301,24 +2329,6 @@ export default function ConfirmedListPage() {
     }
   }
 
-  async function handleRestartSearch() {
-    if (!jobId) return;
-
-    setRestarting(true);
-    setError("");
-
-    try {
-      await apiPost(`/api/jobs/${jobId}/restart`, {});
-      // Refresh the page to reset timer
-      window.location.reload();
-    } catch (err) {
-      console.error("[ConfirmedListPage] Error restarting search:", err);
-      setError(err instanceof Error ? err.message : "Failed to restart search");
-    } finally {
-      setRestarting(false);
-    }
-  }
-
   const liveStatusLine = useMemo(() => {
     if (!job) return "";
     if (freelancers.some((f) => f.is_open_job_accepted)) {
@@ -2390,7 +2400,7 @@ export default function ConfirmedListPage() {
                   : "max-md:min-h-[220px] max-md:flex-none",
               )}
             >
-              {/* Desktop: floating timer + Restart/Stop on top of the map (replaces the strip below the map) */}
+              {/* Desktop: floating timer + Stop on top of the map */}
               {job && !freelancers.some((f) => f.is_open_job_accepted) ? (
                 <div className="pointer-events-none absolute left-4 top-[4.5rem] z-30 hidden md:block">
                   <div className="pointer-events-auto inline-flex items-center gap-2 rounded-2xl border border-white/40 bg-background/95 p-1.5 pl-3 shadow-xl backdrop-blur-xl dark:border-white/[0.08] dark:bg-zinc-950/90">
@@ -2405,25 +2415,11 @@ export default function ConfirmedListPage() {
                     </div>
                     <div className="mx-1 h-6 w-px bg-border/60" aria-hidden />
                     <Button
-                      variant="default"
-                      size="sm"
-                      className="h-9 rounded-xl px-3 text-xs font-bold"
-                      onClick={handleRestartSearch}
-                      disabled={restarting || deleting}
-                    >
-                      {restarting ? (
-                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                      )}
-                      Restart
-                    </Button>
-                    <Button
                       variant="destructive"
                       size="sm"
                       className="h-9 rounded-xl px-3 text-xs font-bold text-white [&_svg]:text-white"
                       onClick={handleStopRequest}
-                      disabled={deleting || restarting}
+                      disabled={deleting}
                     >
                       {deleting ? (
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -2478,68 +2474,24 @@ export default function ConfirmedListPage() {
                 mobileMapBottomActions={
                   job &&
                   !freelancers.some((f) => f.is_open_job_accepted) ? (
-                    <>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="h-10 min-w-0 flex-1 rounded-xl px-2 text-[11px] font-bold shadow-md sm:text-xs"
-                        onClick={handleRestartSearch}
-                        disabled={restarting || deleting}
-                      >
-                        {restarting ? (
-                          <Loader2 className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin sm:mr-2 sm:h-4 sm:w-4" />
-                        ) : (
-                          <RotateCcw className="mr-1 h-3.5 w-3.5 shrink-0 sm:mr-2 sm:h-4 sm:w-4" />
-                        )}
-                        Restart
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-10 min-w-0 flex-1 rounded-xl px-2 text-[11px] font-bold text-white shadow-md sm:text-xs [&_svg]:text-white"
-                        onClick={handleStopRequest}
-                        disabled={deleting || restarting}
-                      >
-                        {deleting ? (
-                          <Loader2 className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin sm:mr-2 sm:h-4 sm:w-4" />
-                        ) : (
-                          <StopCircle className="mr-1 h-3.5 w-3.5 shrink-0 sm:mr-2 sm:h-4 sm:w-4" />
-                        )}
-                        Stop
-                      </Button>
-                    </>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-9 w-full min-w-0 rounded-xl px-3 text-[11px] font-bold text-white shadow-md sm:text-xs [&_svg]:text-white"
+                      onClick={handleStopRequest}
+                      disabled={deleting}
+                    >
+                      {deleting ? (
+                        <Loader2 className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin sm:mr-2 sm:h-4 sm:w-4" />
+                      ) : (
+                        <StopCircle className="mr-1 h-3.5 w-3.5 shrink-0 sm:mr-2 sm:h-4 sm:w-4" />
+                      )}
+                      Stop
+                    </Button>
                   ) : undefined
                 }
               />
             </div>
-
-            {/* Mobile — fixed dock: tap opens the full request details modal directly. */}
-            {job ? (
-              <div className="pointer-events-none fixed inset-x-0 z-[125] md:hidden bottom-[max(3.75rem,calc(env(safe-area-inset-bottom,0px)+3.25rem))]">
-                <div className="pointer-events-auto w-full overflow-hidden rounded-t-2xl border border-border/60 border-b-0 bg-background shadow-[0_-2px_20px_-12px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.03] dark:border-white/[0.08] dark:shadow-[0_-4px_28px_-14px_rgba(0,0,0,0.5)] dark:ring-white/[0.05]">
-                  <button
-                    type="button"
-                    onClick={() => setMobileRequestDetailsOpen(true)}
-                    className="relative flex w-full shrink-0 flex-col bg-background pb-3 pt-1 text-left outline-none transition-colors hover:bg-muted/15 active:bg-muted/25"
-                    aria-label="Add more information to your request"
-                  >
-                    <div
-                      aria-hidden
-                      className="mx-auto mb-2 mt-2 h-1 w-11 shrink-0 rounded-full bg-muted-foreground/35"
-                    />
-                    <div className="flex flex-col items-center gap-1.5 px-6 pb-1 pt-1 text-center">
-                      <p className="inline-flex items-center justify-center gap-1.5 text-base font-bold leading-snug text-foreground">
-                        <Plus className="h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2.75} aria-hidden />
-                        Add more information
-                      </p>
-                      <p className="sr-only">
-                        {liveStatusLine}
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            ) : null}
 
           </div>
         </div>
@@ -2552,39 +2504,6 @@ export default function ConfirmedListPage() {
 
         <div className="mt-8 border-t border-border/50 md:mt-10" />
 
-        {job && jobId && freelancers.length > 0 && (
-          <div
-            className={cn(
-              "mb-4 md:mb-6 md:rounded-2xl md:border md:border-border/50 md:bg-muted/25 md:p-4 dark:bg-muted/15",
-            )}
-          >
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-              Live interest
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {freelancers.slice(0, 10).map((f) => {
-                const initials =
-                  f.full_name
-                    ?.split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase() || "?";
-                return (
-                  <Avatar
-                    key={f.id}
-                    className="h-12 w-12 border-2 border-orange-400/35"
-                  >
-                    <AvatarImage src={f.photo_url || undefined} />
-                    <AvatarFallback className="text-xs font-bold">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Freelancer cards — directly under action buttons */}
         {freelancers.length > 0 && (
           <div className="mb-3 flex items-center gap-2">
@@ -2592,11 +2511,6 @@ export default function ConfirmedListPage() {
               {freelancers.length} helper{freelancers.length !== 1 ? "s" : ""}{" "}
               available
             </span>
-            {freelancers.length > 1 && (
-              <Badge variant="secondary" className="text-xs">
-                +{freelancers.length - 1} more
-              </Badge>
-            )}
           </div>
         )}
         <div
@@ -2908,83 +2822,94 @@ export default function ConfirmedListPage() {
             />
           </Suspense>
         )}
-        <Dialog
-          open={mobileRequestDetailsOpen}
-          onOpenChange={setMobileRequestDetailsOpen}
-        >
-          <DialogContent
-            className={cn(
-              "flex flex-col gap-0 overflow-hidden border border-border/60 bg-background p-0 shadow-2xl dark:bg-[hsl(var(--card))]",
-              "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:h-auto max-md:max-h-[92dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[28px] max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:data-[state=open]:slide-in-from-bottom max-md:data-[state=closed]:slide-out-to-bottom max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100",
-              "md:left-[50%] md:top-[50%] md:h-auto md:max-h-[85vh] md:w-full md:max-w-lg md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-3xl md:border",
-            )}
+        {job ? (
+          <MobileSnapBottomSheet
+            expanded={mobileRequestDetailsOpen}
+            onExpandedChange={setMobileRequestDetailsOpen}
+            bottomOffsetClass="bottom-[max(3.75rem,calc(env(safe-area-inset-bottom,0px)+3.25rem))]"
+            ariaLabel="Drag to expand or collapse request details"
+            collapsed={
+              mobileRequestDetailsOpen ? (
+                <div className="flex w-full flex-col items-center bg-background px-4 pb-2 pt-2">
+                  <div
+                    aria-hidden
+                    className="h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/35"
+                  />
+                  <p className="sr-only">Swipe down to close request details</p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMobileRequestDetailsOpen(true)}
+                  className="flex w-full flex-col bg-background pb-3 pt-1 text-left outline-none transition-colors hover:bg-muted/15 active:bg-muted/25"
+                  aria-expanded={false}
+                  aria-label="Add more information to your request"
+                >
+                  <div
+                    aria-hidden
+                    className="mx-auto mb-2 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/35"
+                  />
+                  <div className="flex flex-col items-center gap-1.5 px-6 pb-1 pt-1 text-center">
+                    <p className="text-base font-bold leading-snug text-foreground">
+                      Add more information
+                    </p>
+                    <p className="sr-only">{liveStatusLine}</p>
+                  </div>
+                </button>
+              )
+            }
           >
-            <div className="shrink-0 border-b border-border/40 bg-background px-5 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4">
-              <div
-                aria-hidden
-                className="mx-auto mb-3 h-1 w-11 shrink-0 rounded-full bg-muted-foreground/35 md:hidden"
-              />
+            <div className="shrink-0 border-b border-border/40 bg-background px-5 pb-3 pt-1">
               <div className="flex items-center justify-between gap-3">
-                <DialogHeader className="m-0 flex-1 min-w-0 space-y-0 p-0 text-left">
-                  <DialogTitle className="text-xl font-black tracking-tight">
-                    Full request details
-                  </DialogTitle>
-                </DialogHeader>
-                {job ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 font-bold text-emerald-600"
-                    onClick={() => {
-                      setMobileRequestDetailsOpen(false);
-                      openInlineEdit();
-                    }}
-                  >
-                    Edit details
-                  </Button>
-                ) : null}
+                <h2 className="text-xl font-black tracking-tight text-foreground">
+                  Full request details
+                </h2>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 font-bold text-emerald-600"
+                  onClick={() => {
+                    setMobileRequestDetailsOpen(false);
+                    openInlineEdit();
+                  }}
+                >
+                  Edit details
+                </Button>
               </div>
             </div>
-            {job ? (
-              <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[max(1rem,env(safe-area-inset-bottom))]">
-                <div className="space-y-5">
-                  <ConfirmedRequestSummaryBody
-                    job={job}
-                    categoryImageSrc={categoryImageSrc}
-                    requestComments={requestComments}
-                    onOpenComments={() => setIsCommentsOpen(true)}
-                    hideComments
-                  />
-                  <ConfirmedJobMediaSection
-                    job={job}
-                    jobId={jobId}
-                    uploadInputId="confirmed-job-media-mobile-dialog"
-                    savingDetails={savingDetails}
-                    onChooseFiles={handleFiles}
-                    onRemoveAt={removeJobMediaAtIndex}
-                    setLightboxIndex={setLightboxIndex}
-                  />
-                  <ConfirmedRequestCommentsPreview
-                    requestComments={requestComments}
-                    onOpenComments={() => setIsCommentsOpen(true)}
-                  />
-                  <ConfirmedPageMoreSpecifics
-                    job={job}
-                    onOpenFullscreenMap={() => {
-                      setMobileRequestDetailsOpen(false);
-                      setMapModalOpen(true);
-                    }}
-                  />
-                  <p className="rounded-2xl bg-muted/30 px-3 py-2.5 text-center text-[11px] leading-snug text-muted-foreground">
-                    Long-form notes and bulk edits are still easiest on desktop —
-                    use Edit details for quick changes here.
-                  </p>
-                </div>
-              </div>
-            ) : null}
-          </DialogContent>
-        </Dialog>
+            <div className="space-y-5 px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]">
+              <ConfirmedRequestSummaryBody
+                job={job}
+                categoryImageSrc={categoryImageSrc}
+                requestComments={requestComments}
+                onOpenComments={() => setIsCommentsOpen(true)}
+                hideComments
+              />
+              <ConfirmedJobMediaSection
+                job={job}
+                jobId={jobId}
+                uploadInputId="confirmed-job-media-mobile-dialog"
+                savingDetails={savingDetails}
+                onChooseFiles={handleFiles}
+                onRemoveAt={removeJobMediaAtIndex}
+                setLightboxIndex={setLightboxIndex}
+                addMediaVariant="button"
+              />
+              <ConfirmedRequestCommentsPreview
+                requestComments={requestComments}
+                onOpenComments={() => setIsCommentsOpen(true)}
+              />
+              <ConfirmedPageMoreSpecifics
+                job={job}
+                onOpenFullscreenMap={() => {
+                  setMobileRequestDetailsOpen(false);
+                  setMapModalOpen(true);
+                }}
+              />
+            </div>
+          </MobileSnapBottomSheet>
+        ) : null}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 border-none bg-white dark:bg-zinc-950 shadow-2xl overflow-hidden rounded-[32px] animate-fade-in">
             <DialogHeader className="p-6 pb-4 border-b border-border/30">

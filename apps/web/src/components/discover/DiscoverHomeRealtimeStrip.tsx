@@ -18,6 +18,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
+import {
+  discoverMobileSheetBottomOffset,
+  useIsMobileViewport,
+} from "@/lib/discoverSheetDialog";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -220,7 +225,7 @@ const stripCategoryIconShellClass =
 const stripCategoryIconSizeClass = "max-md:h-7 max-md:w-7 md:h-6 md:w-6";
 
 const stripHireProfileCardClass =
-  "flex w-[7.5rem] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl border-0 bg-transparent p-2 shadow-none transition-transform dark:border-0 dark:bg-zinc-800/75 dark:shadow-none outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97]";
+  "flex w-[6.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] md:w-[5.5rem]";
 
 function pickPrimaryLiveCategory(
   catSet: Set<ServiceCategoryId>,
@@ -968,7 +973,8 @@ function DiscoverRealtimeStripDetailDialog({
   const queryClient = useQueryClient();
   const [workAction, setWorkAction] = useState<"accept" | "decline" | null>(null);
   const [pickupMapOpen, setPickupMapOpen] = useState(false);
-  const sheetPullYRef = useRef<number | null>(null);
+  const isMobileViewport = useIsMobileViewport();
+  const [sheetExpanded, setSheetExpanded] = useState(true);
   const profileUserId = hire?.helperUserId ?? work?.clientId ?? null;
   const photoUrl = hire?.photo ?? work?.thumbUrl ?? null;
   const displayName = hire?.name ?? work?.name ?? "";
@@ -1014,6 +1020,10 @@ function DiscoverRealtimeStripDetailDialog({
 
   useEffect(() => {
     if (!open) setPickupMapOpen(false);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setSheetExpanded(true);
   }, [open]);
 
   useEffect(() => {
@@ -1134,94 +1144,76 @@ function DiscoverRealtimeStripDetailDialog({
     onOpenChange(false);
   }
 
-  function onSheetPullTouchStart(e: React.TouchEvent) {
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
-      return;
-    }
-    sheetPullYRef.current = e.touches[0]?.clientY ?? null;
-  }
+  const sheetDragHandle = (
+    <div className="flex w-full flex-col items-center bg-white px-4 pb-2 pt-2 dark:bg-[#121212]">
+      <div
+        aria-hidden
+        className="h-1.5 w-14 shrink-0 rounded-full bg-zinc-300 dark:bg-zinc-600"
+      />
+      <p className="sr-only">Drag down to close</p>
+    </div>
+  );
 
-  function onSheetPullTouchEnd(e: React.TouchEvent) {
-    if (sheetPullYRef.current == null) return;
-    const start = sheetPullYRef.current;
-    sheetPullYRef.current = null;
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
-      return;
-    }
-    const end = e.changedTouches[0]?.clientY;
-    if (end == null) return;
-    if (end - start > 72) {
-      closeSheet();
-    }
-  }
-
-  return (
-    <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        onPointerDownOutside={(e) => {
-          // Nested `FullscreenMapModal` portals outside this sheet; without this, Radix treats
-          // map overlay / content as an “outside” interaction and closes the sheet (unmounting the map).
-          if (pickupMapOpen) e.preventDefault();
-        }}
-        onFocusOutside={(e) => {
-          if (pickupMapOpen) e.preventDefault();
-        }}
-        className={cn(
-          "flex max-h-[90dvh] flex-col gap-0 overflow-hidden border-0 bg-white p-0 text-zinc-900 shadow-2xl duration-200 dark:border-zinc-800 dark:bg-[#121212] dark:text-zinc-100",
-          "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:max-h-[88dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[28px] max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-          // Desktop: right-aligned drawer (overrides default centered DialogContent)
-          "md:fixed md:inset-y-0 md:left-auto md:right-0 md:top-0 md:h-dvh md:max-h-dvh md:max-w-md md:w-full md:translate-x-0 md:translate-y-0",
-          "md:rounded-none md:rounded-l-3xl md:border md:border-zinc-200 md:border-r-0 md:p-0 dark:md:border-zinc-700",
-          "md:duration-300 md:data-[state=open]:animate-in md:data-[state=closed]:animate-out",
-          "md:data-[state=open]:fade-in-0 md:data-[state=closed]:fade-out-0",
-          "md:data-[state=open]:slide-in-from-right-8 md:data-[state=closed]:slide-out-to-right-8",
-          "md:data-[state=open]:zoom-in-100 md:data-[state=closed]:zoom-out-100",
-        )}
-      >
-        <div
-          className="shrink-0 pb-1"
-          onTouchStart={onSheetPullTouchStart}
-          onTouchEnd={onSheetPullTouchEnd}
-        >
-          <div className="flex justify-center px-4 pt-2 max-md:pt-3 md:pt-3">
-            <button
-              type="button"
-              onClick={() => closeSheet()}
-              className="group flex w-full max-w-[10rem] flex-col items-center rounded-2xl py-2 outline-none transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#121212]"
-              aria-label="Close"
-            >
-              <span
-                className="h-1.5 w-14 shrink-0 rounded-full bg-zinc-300 transition group-hover:bg-zinc-400 group-active:bg-zinc-500 dark:bg-zinc-600 dark:group-hover:bg-zinc-500 dark:group-active:bg-zinc-400"
-                aria-hidden
-              />
-              <span className="sr-only">Close sheet</span>
-            </button>
-          </div>
-          {variant === "hire" ? (
-            <DialogHeader className="sr-only">
-              <DialogTitle>Helper profile</DialogTitle>
-            </DialogHeader>
+  const sheetHeaderBlock = (
+    <div className="shrink-0 pb-1">
+      {!isMobileViewport ? (
+        <div className="flex justify-center px-4 pt-2 max-md:pt-3 md:pt-3">
+          <button
+            type="button"
+            onClick={() => closeSheet()}
+            className="group flex w-full max-w-[10rem] flex-col items-center rounded-2xl py-2 outline-none transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#121212]"
+            aria-label="Close"
+          >
+            <span
+              className="h-1.5 w-14 shrink-0 rounded-full bg-zinc-300 transition group-hover:bg-zinc-400 group-active:bg-zinc-500 dark:bg-zinc-600 dark:group-hover:bg-zinc-500 dark:group-active:bg-zinc-400"
+              aria-hidden
+            />
+            <span className="sr-only">Close sheet</span>
+          </button>
+        </div>
+      ) : null}
+      {variant === "hire" ? (
+        isMobileViewport ? (
+          <h2 className="sr-only">Helper profile</h2>
+        ) : (
+          <DialogHeader className="sr-only">
+            <DialogTitle>Helper profile</DialogTitle>
+          </DialogHeader>
+        )
+      ) : (
+        <div className="px-4 pb-4 pt-5">
+          {isMobileViewport ? (
+            <h2 className="m-0 space-y-0 p-0 text-center text-[18px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-zinc-100">
+              {work ? (
+                <StripDialogWorkTitle displayName={displayName} work={work} />
+              ) : (
+                "Request"
+              )}
+            </h2>
           ) : (
-            <div className="px-4 pb-4 pt-5">
-              <DialogHeader className="m-0 space-y-0 p-0 text-center">
-                <DialogTitle className="text-center text-[18px] font-semibold leading-snug tracking-tight text-zinc-900 sm:text-[16px] dark:text-zinc-100">
-                  {work ? (
-                    <StripDialogWorkTitle displayName={displayName} work={work} />
-                  ) : (
-                    "Request"
-                  )}
-                </DialogTitle>
-              </DialogHeader>
-            </div>
+            <DialogHeader className="m-0 space-y-0 p-0 text-center">
+              <DialogTitle className="text-center text-[18px] font-semibold leading-snug tracking-tight text-zinc-900 sm:text-[16px] dark:text-zinc-100">
+                {work ? (
+                  <StripDialogWorkTitle displayName={displayName} work={work} />
+                ) : (
+                  "Request"
+                )}
+              </DialogTitle>
+            </DialogHeader>
           )}
         </div>
+      )}
+    </div>
+  );
 
-        <div className="flex min-h-0 flex-1 flex-col">
+  const detailPanelContent = (
+    <div className={cn("flex flex-col", !isMobileViewport && "min-h-0 flex-1")}>
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-1",
+            "px-4 pt-1",
             hire || work ? "pb-4" : "pb-6",
+            !isMobileViewport &&
+              "min-h-0 flex-1 overflow-y-auto overscroll-contain",
           )}
         >
           {work ? (
@@ -1563,9 +1555,54 @@ function DiscoverRealtimeStripDetailDialog({
             />
           </div>
         ) : null}
-        </div>
-      </DialogContent>
-    </Dialog>
+    </div>
+  );
+
+  return (
+    <>
+    {isMobileViewport ? (
+      open ? (
+        <MobileSnapBottomSheet
+          expanded={sheetExpanded}
+          onExpandedChange={(next) => {
+            setSheetExpanded(next);
+            if (!next) closeSheet();
+          }}
+          onDismiss={closeSheet}
+          bottomOffsetClass={discoverMobileSheetBottomOffset}
+          collapsed={sheetDragHandle}
+          ariaLabel="Drag down to close"
+        >
+          <div className="bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))] text-zinc-900 dark:bg-[#121212] dark:text-zinc-100">
+            {sheetHeaderBlock}
+            {detailPanelContent}
+          </div>
+        </MobileSnapBottomSheet>
+      ) : null
+    ) : (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          onPointerDownOutside={(e) => {
+            if (pickupMapOpen) e.preventDefault();
+          }}
+          onFocusOutside={(e) => {
+            if (pickupMapOpen) e.preventDefault();
+          }}
+          className={cn(
+            "flex max-h-[90dvh] flex-col gap-0 overflow-hidden border-0 bg-white p-0 text-zinc-900 shadow-2xl duration-200 dark:border-zinc-800 dark:bg-[#121212] dark:text-zinc-100",
+            "fixed inset-y-0 left-auto right-0 top-0 h-dvh max-h-dvh max-w-md w-full translate-x-0 translate-y-0",
+            "rounded-none rounded-l-3xl border border-zinc-200 border-r-0 p-0 dark:border-zinc-700",
+            "duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
+            "data-[state=open]:slide-in-from-right-8 data-[state=closed]:slide-out-to-right-8",
+            "data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100",
+          )}
+        >
+          {sheetHeaderBlock}
+          {detailPanelContent}
+        </DialogContent>
+      </Dialog>
+    )}
     {pickupMapJob ? (
       <FullscreenMapModal
         job={pickupMapJob}
@@ -2439,7 +2476,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             <div className="relative inline-flex">
               <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("hire"))}>
                 <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
-                  <Avatar className="h-[5rem] w-[5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
+                  <Avatar className="h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
                     <AvatarImage
                       src={it.photo || undefined}
                       className="object-cover"
@@ -2464,29 +2501,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
               {shortDisplayName(it.name)}
             </span>
-            {/* Review stars + category (now visible on desktop too) */}
-            <div className="flex w-full flex-col items-center gap-0.5">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold leading-none text-zinc-900 dark:text-zinc-50">
-                <Star
-                  className="h-3 w-3 fill-zinc-900 text-zinc-900 dark:fill-zinc-50 dark:text-zinc-50"
-                  strokeWidth={0}
-                  aria-hidden
-                />
-                <span className="tabular-nums">{ratingLabel(it.average_rating)}</span>
-                {it.total_ratings ? (
-                  <span className="font-medium text-zinc-500 dark:text-zinc-400">
-                    ({it.total_ratings})
-                  </span>
-                ) : null}
-              </span>
-              <span className="inline-flex max-w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
-                {categoryIconNode(
-                  it.categoryId,
-                  "h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400",
-                )}
-                <span className="truncate">{serviceCategoryLabel(it.categoryId)}</span>
-              </span>
-            </div>
           </button>
         ))}
         <button

@@ -211,7 +211,7 @@ function publicProfileCategoryBadgeIcon(categoryId: string) {
   if (!isServiceCategoryId(id)) {
     return (
       <HelpCircle
-        className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+        className="h-[1.125rem] w-[1.125rem] shrink-0 text-slate-500 dark:text-slate-400"
         strokeWidth={2.25}
         aria-hidden
       />
@@ -220,12 +220,18 @@ function publicProfileCategoryBadgeIcon(categoryId: string) {
   const { Icon, iconClass } = HIRE_CATEGORY_TILE_UI[id];
   return (
     <Icon
-      className={cn("h-4 w-4 shrink-0", iconClass)}
+      className={cn("h-[1.125rem] w-[1.125rem] shrink-0", iconClass)}
       strokeWidth={2.25}
       aria-hidden
     />
   );
 }
+
+const profileCategoryBadgeClass =
+  "inline-flex shrink-0 items-center gap-2 rounded-full border-transparent px-4 py-2 text-[12px] font-black uppercase tracking-wide shadow-none";
+
+const profileCategoryScrollRowClass =
+  "flex gap-2.5 overflow-x-auto scroll-smooth pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 export default function PublicProfilePage() {
   const { userId } = useParams();
@@ -853,6 +859,11 @@ export default function PublicProfilePage() {
   const galleryImageUrls = imageRows.map((r) =>
     publicProfileMediaPublicUrl(r.storage_path),
   );
+  const profileGalleryThumbTransform = {
+    width: 480,
+    quality: 80,
+    resize: "contain" as const,
+  };
 
   const photoInitials = (profile?.full_name || "??")
     .split(" ")
@@ -1207,12 +1218,15 @@ export default function PublicProfilePage() {
                   </div>
                   {helperBadgesRow}
                   {profile.categories && profile.categories.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
+                    <div className={cn("mt-2.5", profileCategoryScrollRowClass)}>
                       {profile.categories.map((cat, i) => (
                         <Badge
                           key={i}
                           variant="secondary"
-                          className="inline-flex items-center gap-1.5 rounded-full border-transparent bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-700 shadow-sm dark:bg-zinc-800/80 dark:text-slate-200"
+                          className={cn(
+                            profileCategoryBadgeClass,
+                            "bg-white/80 text-slate-700 dark:bg-zinc-800/80 dark:text-slate-200",
+                          )}
                         >
                           {publicProfileCategoryBadgeIcon(cat)}
                           {cat.replace(/_/g, " ")}
@@ -1326,8 +1340,8 @@ export default function PublicProfilePage() {
       ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
         {/* Profile Hero Header Info (Below header bar) */}
-        <div className="px-5 pb-6 pt-[max(2.75rem,calc(env(safe-area-inset-top,0px)+2.5rem))] bg-background">
-          <div className="flex gap-4 items-start mb-6">
+        <div className="px-5 pb-4 pt-[max(0.25rem,calc(env(safe-area-inset-top,0px)+2rem))] bg-background">
+          <div className="flex gap-4 items-start mb-4">
             <div className="h-36 w-36 shrink-0">
               <button
                 type="button"
@@ -1386,12 +1400,15 @@ export default function PublicProfilePage() {
           </div>
 
           {profile.categories && profile.categories.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className={cn("-mx-5 mt-2 px-5", profileCategoryScrollRowClass)}>
               {profile.categories.map((cat, i) => (
                 <Badge
                   key={i}
                   variant="secondary"
-                  className="inline-flex items-center gap-1.5 rounded-full border-transparent bg-slate-100/30 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-none dark:bg-white/5 dark:text-white"
+                  className={cn(
+                    profileCategoryBadgeClass,
+                    "bg-slate-100/30 text-slate-950 dark:bg-white/5 dark:text-white",
+                  )}
                 >
                   {publicProfileCategoryBadgeIcon(cat)}
                   {cat.replace(/_/g, " ")}
@@ -1399,67 +1416,6 @@ export default function PublicProfilePage() {
               ))}
             </div>
           ) : null}
-
-          {/* Bio (under categories) */}
-          <div className="mt-6">
-            <p className="text-[10px] uppercase font-black tracking-[.2em] text-slate-400 dark:text-slate-500 mb-2 ml-0.5">
-              About me
-            </p>
-            {editingBio && isOwnProfile ? (
-              <div className="space-y-3">
-                <Textarea
-                  value={bioDraft}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    setBioDraft(e.target.value)
-                  }
-                  placeholder="Write a short bio…"
-                  maxLength={700}
-                  rows={4}
-                  className="min-h-[110px] resize-none rounded-2xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-white/10 dark:bg-white/5"
-                  disabled={savingBio}
-                />
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="rounded-full"
-                    onClick={() => {
-                      setEditingBio(false);
-                      setBioDraft(profile.bio ?? "");
-                    }}
-                    disabled={savingBio}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    className="rounded-full"
-                    onClick={() => void saveBio(bioDraft)}
-                    disabled={savingBio}
-                  >
-                    {savingBio ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save bio"}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium text-slate-700 dark:text-white/85 whitespace-pre-wrap">
-                  {profile.bio?.trim() ? profile.bio : "No bio shared yet."}
-                </p>
-                {isOwnProfile ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="shrink-0 rounded-full"
-                    onClick={() => setEditingBio(true)}
-                  >
-                    {!profile.bio?.trim() ? <Plus className="mr-1.5 h-4 w-4" aria-hidden /> : null}
-                    {profile.bio?.trim() ? "Edit bio" : "Add bio"}
-                  </Button>
-                ) : null}
-              </div>
-            )}
-          </div>
 
           {/* Connect Actions */}
           {!isOwnProfile && (
@@ -1527,9 +1483,9 @@ export default function PublicProfilePage() {
               ) : (
                 <div className="grid grid-cols-2 gap-1 px-4">
                    {imageRows.map((row, idx) => (
-                    <div key={row.id} className="aspect-square relative group">
+                    <div key={row.id} className="relative aspect-square overflow-hidden bg-muted">
                        <button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full">
-                          <img src={publicProfileMediaUrl(row.storage_path, { width: 480, quality: 80 })} alt="" className="h-full w-full object-cover" loading="lazy" />
+                          <img src={publicProfileMediaUrl(row.storage_path, profileGalleryThumbTransform)} alt="" className="h-full w-full object-contain" loading="lazy" />
                        </button>
                        {isOwnProfile && (
                          <button onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center rounded-full bg-black/40 text-white">
@@ -1574,7 +1530,7 @@ export default function PublicProfilePage() {
 
            <TabsContent value="posts" className="m-0 focus-visible:outline-none">
               <div className="bg-background pt-1">
-                 <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} />
+                 <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" />
               </div>
            </TabsContent>
 
@@ -1582,12 +1538,63 @@ export default function PublicProfilePage() {
               {/* Bio first */}
               <section>
                  <h2 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400 mb-4 ml-0.5">About Me</h2>
-                 {profile.bio?.trim() ? (
-                    <p className="text-lg font-bold leading-[1.6] text-slate-800 dark:text-slate-100">
-                       {profile.bio}
-                    </p>
+                 {editingBio && isOwnProfile ? (
+                   <div className="space-y-3">
+                     <Textarea
+                       value={bioDraft}
+                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                         setBioDraft(e.target.value)
+                       }
+                       placeholder="Write a short bio…"
+                       maxLength={700}
+                       rows={4}
+                       className="min-h-[110px] resize-none rounded-2xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-white/10 dark:bg-white/5"
+                       disabled={savingBio}
+                     />
+                     <div className="flex items-center justify-end gap-2">
+                       <Button
+                         type="button"
+                         variant="ghost"
+                         className="rounded-full"
+                         onClick={() => {
+                           setEditingBio(false);
+                           setBioDraft(profile.bio ?? "");
+                         }}
+                         disabled={savingBio}
+                       >
+                         Cancel
+                       </Button>
+                       <Button
+                         type="button"
+                         className="rounded-full"
+                         onClick={() => void saveBio(bioDraft)}
+                         disabled={savingBio}
+                       >
+                         {savingBio ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save bio"}
+                       </Button>
+                     </div>
+                   </div>
                  ) : (
-                    <p className="text-sm font-medium text-slate-400 italic">No bio shared yet.</p>
+                   <div className="flex items-start justify-between gap-3">
+                     {profile.bio?.trim() ? (
+                       <p className="text-lg font-bold leading-[1.6] text-slate-800 dark:text-slate-100 whitespace-pre-wrap">
+                         {profile.bio}
+                       </p>
+                     ) : (
+                       <p className="text-sm font-medium text-slate-400 italic">No bio shared yet.</p>
+                     )}
+                     {isOwnProfile ? (
+                       <Button
+                         type="button"
+                         variant="outline"
+                         className="shrink-0 rounded-full"
+                         onClick={() => setEditingBio(true)}
+                       >
+                         {!profile.bio?.trim() ? <Plus className="mr-1.5 h-4 w-4" aria-hidden /> : null}
+                         {profile.bio?.trim() ? "Edit bio" : "Add bio"}
+                       </Button>
+                     ) : null}
+                   </div>
                  )}
               </section>
 
@@ -1714,7 +1721,7 @@ export default function PublicProfilePage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2 lg:grid-cols-4">
-                    {imageRows.map((row, idx) => (<div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full" aria-label="View photo full screen"><img src={publicProfileMediaUrl(row.storage_path, { width: 480, quality: 80 })} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" /></button>{isOwnProfile && <button type="button" disabled={uploadingMedia} onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100" aria-label="Remove photo"><Trash2 className="h-4 w-4" /></button>}</div>))}
+                    {imageRows.map((row, idx) => (<div key={row.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full" aria-label="View photo full screen"><img src={publicProfileMediaUrl(row.storage_path, profileGalleryThumbTransform)} alt="" className="h-full w-full object-contain" loading="lazy" /></button>{isOwnProfile && <button type="button" disabled={uploadingMedia} onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-md transition hover:bg-black/70 group-hover:opacity-100" aria-label="Remove photo"><Trash2 className="h-4 w-4" /></button>}</div>))}
 
                   </div>
                 )}
@@ -1739,7 +1746,7 @@ export default function PublicProfilePage() {
                 )}
               </div>
             )}
-            {profileMediaTab === "posts" && <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} />}
+            {profileMediaTab === "posts" && <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" />}
             {profileMediaTab === "about" && (
               <div className="rounded-[2.5rem] border border-border/40 bg-card/80 p-10 shadow-xl shadow-black/5">
                 <div className="max-w-2xl">

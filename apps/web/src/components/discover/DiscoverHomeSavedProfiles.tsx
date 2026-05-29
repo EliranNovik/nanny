@@ -10,6 +10,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { avatarUrl } from "@/lib/imageTransform";
 import { trackEvent } from "@/lib/analytics";
 import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
+import { discoverFavoriteCircleBadgeClass } from "@/components/discover/discoverRequestCarouselCardShared";
+
+const favoriteImageShellClass =
+  "relative mx-auto w-full shrink-0 aspect-square";
+
+const imageWrapClass = cn(
+  "h-full w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/60",
+  "ring-1 ring-black/5 dark:ring-white/5 shadow-sm",
+  "transition-transform duration-200 group-hover:shadow-md",
+);
 
 type SavedProfileRow = {
   id: string;
@@ -25,25 +35,23 @@ type SavedProfileRow = {
 /**
  * "Your Favorites" carousel — all saved profiles for the current viewer.
  *
- * Same Airbnb-style square-image-on-top + data-below cards as the other
- * discover carousels. No 24h-live filtering: every saved profile is shown.
- * A green dot (live) or red dot (not live) is overlaid top-left when the saved
- * helper is / is not in the 24h live window (`freelancer_profiles.live_until`).
+ * Round profile photo on top + data-below cards. Live helpers show a white "Available" pill on the image.
  */
 const listContainerClass = cn(
-  "flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 scroll-pl-4",
+  "flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 scroll-pl-4",
   "-mx-4 px-4 sm:-mx-0 sm:px-0 sm:scroll-pl-0",
 );
 
 const cardBtnClass = cn(
-  "group flex flex-col gap-1.5 text-left",
-  "w-[12rem] shrink-0 snap-start",
-  "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
+  "group flex flex-col items-center gap-1.5 text-center",
+  "w-[7.75rem] shrink-0 snap-start",
+  "sm:w-[8.25rem] md:w-[9rem] lg:w-[9.75rem] xl:w-[10.5rem]",
   "sm:gap-1 lg:gap-1.5",
   "focus-visible:outline-none",
 );
 
-const cardTextBelowClass = "flex flex-col gap-0.5 px-0 sm:gap-0 lg:gap-0.5";
+const cardTextBelowClass =
+  "flex w-full flex-col items-center gap-0.5 px-0 sm:gap-0 lg:gap-0.5";
 
 const carouselArrowBtnClass = cn(
   "hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full",
@@ -51,14 +59,6 @@ const carouselArrowBtnClass = cn(
   "hover:bg-zinc-100 hover:shadow active:scale-95",
   "dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
-);
-
-const imageWrapClass = cn(
-  "relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800/60",
-  "aspect-square",
-  "ring-1 ring-black/5 dark:ring-white/5 shadow-sm",
-  "transition-transform duration-200 group-hover:shadow-md",
-  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 );
 
 function useDiscoverSavedProfiles(userId: string | undefined) {
@@ -172,12 +172,12 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[12rem] shrink-0 snap-start flex-col gap-1.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-1 lg:gap-1.5"
+              className="flex w-[7.75rem] shrink-0 snap-start flex-col gap-1 sm:w-[8.25rem] md:w-[9rem] lg:w-[9.75rem] xl:w-[10.5rem]"
             >
-              <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
-              <div className="space-y-1 px-0 sm:space-y-0.5">
-                <div className="h-3.5 w-2/3 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80 sm:h-3" />
-                <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60 sm:h-2.5" />
+              <div className="aspect-square w-full animate-pulse rounded-full bg-zinc-200/80 dark:bg-zinc-800/80" />
+              <div className="space-y-0.5 px-0">
+                <div className="h-3 w-2/3 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
+                <div className="h-2.5 w-1/2 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
               </div>
             </div>
           ))}
@@ -226,7 +226,7 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
               ? Math.floor(p.total_ratings)
               : 0;
           const hasRating = totalRatings > 0 && rating > 0;
-          const photoUrl = avatarUrl.md(p.photo_url);
+          const photoUrl = avatarUrl.sm(p.photo_url);
           const isLive = liveHelperIds.has(p.id);
 
           return (
@@ -242,57 +242,45 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
               }}
               aria-label={`Open profile of ${name}`}
             >
-              <div className={imageWrapClass}>
-                {photoUrl ? (
-                  <img
-                    src={photoUrl}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
-                    loading="eager" decoding="async"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-100 via-zinc-50 to-zinc-200 dark:from-zinc-800 dark:via-zinc-800/70 dark:to-zinc-700/60">
-                    <Avatar className="h-20 w-20">
-                      <AvatarImage src={undefined} alt="" />
-                      <AvatarFallback className="bg-zinc-200 text-2xl font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
-                        {name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                )}
-
-                <div
-                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[42%] bg-gradient-to-t from-black/85 via-black/50 to-transparent"
-                  aria-hidden
-                />
-                <div className="absolute inset-x-0 bottom-0 z-[2] px-2.5 pb-2 pt-8 sm:px-2 sm:pb-1.5 sm:pt-7 lg:px-3 lg:pb-2.5 lg:pt-9">
-                  <div className="flex min-w-0 items-center gap-1">
-                    <span className="min-w-0 truncate text-[15px] font-semibold leading-tight text-white drop-shadow-sm sm:text-[13px] lg:text-[16px] xl:text-[17px]">
-                      {name}
-                    </span>
-                    {p.is_verified === true ? (
-                      <BadgeCheck
-                        className="h-4 w-4 shrink-0 fill-emerald-500 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)] sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4"
-                        strokeWidth={2.25}
-                        aria-label="Verified"
-                      />
-                    ) : null}
-                  </div>
+              <div className={favoriteImageShellClass}>
+                <div className={imageWrapClass}>
+                  {photoUrl ? (
+                    <img
+                      src={photoUrl}
+                      alt=""
+                      className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+                      loading="eager" decoding="async"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-100 via-zinc-50 to-zinc-200 dark:from-zinc-800 dark:via-zinc-800/70 dark:to-zinc-700/60">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={undefined} alt="" />
+                        <AvatarFallback className="bg-zinc-200 text-base font-black text-zinc-700 dark:bg-zinc-800 dark:text-white">
+                          {name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                  )}
                 </div>
 
-                {/* Live status — solid green (live) or red (not live) */}
-                <span
-                  className={cn(
-                    "absolute left-2.5 top-2.5 z-10 h-3.5 w-3.5 rounded-full shadow-md sm:left-2 sm:top-2 lg:left-3 lg:top-3 lg:h-4 lg:w-4",
-                    isLive ? "bg-emerald-500" : "bg-red-500",
-                  )}
-                  title={isLive ? "Available now" : "Not live now"}
-                  aria-label={isLive ? "Available now" : "Not live now"}
-                />
+                {isLive ? (
+                  <span className={discoverFavoriteCircleBadgeClass}>Available</span>
+                ) : null}
               </div>
 
-              {city || hasRating ? (
               <div className={cardTextBelowClass}>
+                <span className="flex min-w-0 items-center justify-center gap-1">
+                  <span className="min-w-0 truncate text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
+                    {name}
+                  </span>
+                  {p.is_verified === true ? (
+                    <BadgeCheck
+                      className="h-4 w-4 shrink-0 fill-emerald-500 text-white sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4"
+                      strokeWidth={2.25}
+                      aria-label="Verified"
+                    />
+                  ) : null}
+                </span>
                 {city ? (
                   <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px]">
                     {city}
@@ -316,7 +304,6 @@ export function DiscoverHomeSavedProfiles({ className }: Props) {
                   </span>
                 ) : null}
               </div>
-              ) : null}
             </button>
           );
         })}

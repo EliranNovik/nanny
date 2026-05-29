@@ -8,11 +8,7 @@ import {
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import {
-  discoverSheetDialogContentClassName,
-  discoverSheetInnerCardClassName,
-  DiscoverSheetTopHandle,
-} from "@/lib/discoverSheetDialog";
+import { DiscoverOverlaySnapSheet, useIsMobileViewport } from "@/lib/discoverSheetDialog";
 import {
   MapPin,
   Clock,
@@ -207,6 +203,8 @@ export function JobDetailsModal({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { user } = useAuth();
   const { addToast } = useToast();
+  const isMobileViewport = useIsMobileViewport();
+  const mobileOverlaySheet = sheetPresentation && isMobileViewport;
   const [profileFavorited, setProfileFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
 
@@ -471,9 +469,10 @@ export function JobDetailsModal({
   const scrollSection = (
     <div
       className={cn(
-        "min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--background))] [-webkit-overflow-scrolling:touch] custom-scrollbar",
-        "space-y-0 px-5 pb-4 pt-5",
+        "space-y-0 bg-[hsl(var(--background))] px-5 pb-4 pt-5",
         showFloatingActionBar && "pb-32",
+        !mobileOverlaySheet &&
+          "custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]",
       )}
     >
       <div className="min-w-0 space-y-0">
@@ -818,10 +817,19 @@ export function JobDetailsModal({
     ) : null;
 
   const modalShellInner = (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <VisuallyHidden>
-        <DialogTitle>{formatJobTitle(job)} Details</DialogTitle>
-      </VisuallyHidden>
+    <div
+      className={cn(
+        "flex flex-col",
+        !mobileOverlaySheet && "min-h-0 flex-1 overflow-hidden",
+      )}
+    >
+      {mobileOverlaySheet ? (
+        <h2 className="sr-only">{formatJobTitle(job)} Details</h2>
+      ) : (
+        <VisuallyHidden>
+          <DialogTitle>{formatJobTitle(job)} Details</DialogTitle>
+        </VisuallyHidden>
+      )}
       {incomingSwipeEnabled ? (
         <>
           <SwipeDecisionLayer
@@ -833,10 +841,18 @@ export function JobDetailsModal({
             onSwipeRight={() => {
               void onConfirm?.();
             }}
-            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+            className={cn(
+              "flex flex-col",
+              !mobileOverlaySheet && "min-h-0 flex-1 overflow-hidden",
+            )}
           >
             {heroSection}
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div
+              className={cn(
+                "relative flex flex-col",
+                !mobileOverlaySheet && "min-h-0 flex-1 overflow-hidden",
+              )}
+            >
               {scrollSection}
               {footerSection}
             </div>
@@ -845,7 +861,12 @@ export function JobDetailsModal({
       ) : (
         <>
           {heroSection}
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            className={cn(
+              "relative flex flex-col",
+              !mobileOverlaySheet && "min-h-0 flex-1 overflow-hidden",
+            )}
+          >
             {scrollSection}
             {footerSection}
           </div>
@@ -856,25 +877,22 @@ export function JobDetailsModal({
 
   const modalBody = modalShellInner;
 
+  if (sheetPresentation) {
+    return (
+      <DiscoverOverlaySnapSheet
+        open={isOpen}
+        onOpenChange={onOpenChange}
+        title={formatJobTitle(job)}
+      >
+        {modalBody}
+      </DiscoverOverlaySnapSheet>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={cn(
-          sheetPresentation
-            ? discoverSheetDialogContentClassName
-            : defaultShellClass,
-        )}
-      >
-        {sheetPresentation ? (
-          <div className={discoverSheetInnerCardClassName}>
-            <DiscoverSheetTopHandle />
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              {modalBody}
-            </div>
-          </div>
-        ) : (
-          modalBody
-        )}
+      <DialogContent className={defaultShellClass}>
+        {modalBody}
       </DialogContent>
     </Dialog>
   );

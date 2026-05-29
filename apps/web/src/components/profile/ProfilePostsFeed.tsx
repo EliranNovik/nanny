@@ -1333,7 +1333,7 @@ function PostCard({
   onOpenMediaReels: (postId: string) => void;
   /** Liked-posts-only feed (e.g. Saved / Liked) — hide redundant like control. */
   hidePostLikeButton?: boolean;
-  appearance: "default" | "discover";
+  appearance: "default" | "discover" | "profile";
 }) {
   const { addToast } = useToast();
   const { profile: viewerProfile } = useAuth();
@@ -1421,18 +1421,23 @@ function PostCard({
 
   const isLandscape = mediaOrientation === "landscape";
   const isDiscover = appearance === "discover";
+  const isProfile = appearance === "profile";
   const mediaAspectStyle: React.CSSProperties | undefined = mediaAspectRatio
     ? { aspectRatio: String(mediaAspectRatio) }
     : undefined;
   // Mobile media sizing:
-  // - Portrait: near full screen (Instagram-like); discover feeds use a shorter cap
+  // - Portrait: near full screen (Instagram-like); discover/profile feeds use shorter caps
   // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
   const mobilePortraitMaxHeight = isDiscover
     ? "max-md:max-h-[min(76dvh,44rem)]"
-    : "max-md:max-h-[min(90dvh,54rem)]";
+    : isProfile
+      ? "max-md:max-h-[min(78dvh,42rem)]"
+      : "max-md:max-h-[min(90dvh,54rem)]";
   const mobilePortraitFallbackHeight = isDiscover
     ? "max-md:h-[min(74dvh,42rem)]"
-    : "max-md:h-[min(86dvh,50rem)]";
+    : isProfile
+      ? "max-md:h-[min(74dvh,40rem)]"
+      : "max-md:h-[min(86dvh,50rem)]";
   const mobileMediaBoxClass = mediaAspectRatio
     ? cn(
         "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]",
@@ -1452,7 +1457,9 @@ function PostCard({
   // - Landscape: full width, sized to the media's real aspect ratio
   const portraitDesktopSizingClass = isDiscover
     ? "md:h-[min(62vh,36rem)] md:max-h-[min(62vh,36rem)] md:w-auto md:max-w-full"
-    : "md:h-[min(82vh,52rem)] md:max-h-[min(82vh,52rem)] md:w-auto md:max-w-full";
+    : isProfile
+      ? "md:h-[min(68vh,40rem)] md:max-h-[min(68vh,40rem)] md:w-auto md:max-w-full"
+      : "md:h-[min(82vh,52rem)] md:max-h-[min(82vh,52rem)] md:w-auto md:max-w-full";
   const desktopMediaBoxClass = mediaAspectRatio
     ? cn(
         "md:rounded-xl",
@@ -1673,12 +1680,18 @@ function PostCard({
   }, [mediaUrl, post.media_type, videoUnmutedByUser]);
 
   function renderEngagementRow() {
-    const btnPad = hasMedia ? "py-1.5" : "py-2.5";
+    const btnPad = hasMedia ? (isProfile ? "py-1" : "py-1.5") : isProfile ? "py-2" : "py-2.5";
     return (
       <div
         className={cn(
           "flex items-center gap-0 bg-transparent px-2 md:px-3",
-          hasMedia ? "pb-0 pt-0.5 md:pt-1 md:pb-0" : "py-1 md:mt-0.5 md:py-2",
+          hasMedia
+            ? isProfile
+              ? "pb-0 pt-0 md:pt-0.5 md:pb-0"
+              : "pb-0 pt-0.5 md:pt-1 md:pb-0"
+            : isProfile
+              ? "py-0.5 md:mt-0.5 md:py-1.5"
+              : "py-1 md:mt-0.5 md:py-2",
         )}
       >
         {!hidePostLikeButton ? (
@@ -1758,7 +1771,12 @@ function PostCard({
       )}
     >
       {/* Header — always rendered outside the media block */}
-      <div className="flex items-start gap-3 px-4 pt-4 pb-2">
+      <div
+        className={cn(
+          "flex items-start gap-3 px-4",
+          isProfile ? "pt-3 pb-1.5" : "pt-4 pb-2",
+        )}
+      >
           <Link to={`/profile/${post.author_id}`} className="shrink-0 self-start">
             <PostAuthorAvatar
               authorName={authorName}
@@ -2185,7 +2203,7 @@ interface ProfilePostsFeedProps {
   filterLikedByUserId?: string;
   limit?: number;
   /** Visual context for layout tweaks (e.g. Discover home feed). */
-  appearance?: "default" | "discover";
+  appearance?: "default" | "discover" | "profile";
   /**
    * What to render in the right-side panel when `appearance === "discover"`.
    *  - "comments" (default): per-post live comments (used by Community Feed page)
@@ -2709,7 +2727,9 @@ export function ProfilePostsFeed({
                 "w-full rounded-xl bg-slate-50 dark:bg-white/5",
                 appearance === "discover"
                   ? "max-md:h-[min(74dvh,42rem)] md:h-[min(62vh,36rem)]"
-                  : "max-md:h-[calc(100dvh-5rem-env(safe-area-inset-bottom,0px))] md:h-[min(78vh,46rem)]",
+                  : appearance === "profile"
+                    ? "max-md:h-[min(74dvh,40rem)] md:h-[min(68vh,40rem)]"
+                    : "max-md:h-[calc(100dvh-5rem-env(safe-area-inset-bottom,0px))] md:h-[min(78vh,46rem)]",
               )}
             />
             <div className="space-y-2">
