@@ -566,7 +566,7 @@ export default function MessagesPage() {
         className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background"
       >
         <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
-          <div className="z-40 flex shrink-0 border-b border-border/30 bg-background/95 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:bg-transparent md:pt-4">
+          <div className="z-40 flex shrink-0 bg-background/95 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:bg-transparent md:pt-4">
             <div className="flex items-center gap-3">
               <Skeleton className="h-8 w-8 rounded-md md:hidden" />
               <div className="min-w-0 flex-1 space-y-1.5">
@@ -624,12 +624,11 @@ export default function MessagesPage() {
             className={cn(
               "z-40 flex shrink-0 items-center gap-2 px-4 pb-3 sm:gap-3",
               "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
-              "max-md:border-b max-md:border-border/5 max-md:bg-background/40 max-md:backdrop-blur-2xl",
-              "max-md:supports-[backdrop-filter]:bg-background/28",
-              "max-md:dark:bg-background/35 max-md:dark:supports-[backdrop-filter]:bg-background/22",
-              "max-md:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)]",
-              "md:bg-background/70 md:backdrop-blur-md md:supports-[backdrop-filter]:bg-background/55",
-              "md:dark:bg-background/70 md:border-b-0 md:shadow-none md:backdrop-blur-md",
+              "max-md:bg-background/25 max-md:backdrop-blur-xl",
+              "max-md:supports-[backdrop-filter]:bg-background/16",
+              "max-md:dark:bg-background/20 max-md:dark:supports-[backdrop-filter]:bg-background/12",
+              "md:bg-background/45 md:backdrop-blur-md md:supports-[backdrop-filter]:bg-background/32",
+              "md:dark:bg-background/45 md:shadow-none md:backdrop-blur-md",
             )}
           >
             <Button

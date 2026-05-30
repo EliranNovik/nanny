@@ -12,7 +12,6 @@ import {
 import { cn } from "@/lib/utils";
 import { DiscoverMobileStripPill } from "@/components/discover/DiscoverMobileStripPill";
 import {
-  stripBottomFlushClass,
   stripFabPillClusterClass,
   stripLiveTimerClass,
 } from "@/components/discover/discoverBottomStripShared";
