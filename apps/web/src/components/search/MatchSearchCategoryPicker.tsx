@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
 import {
   SERVICE_CATEGORIES,
   type ServiceCategoryId,
@@ -11,7 +12,6 @@ type MatchSearchCategoryPickerProps = {
   onToggle: (id: ServiceCategoryId) => void;
   onClearAll: () => void;
   theme?: MatchSearchCategoryPickerTheme;
-  labelId?: string;
   hintId?: string;
 };
 
@@ -25,12 +25,12 @@ const CHIP_BY_THEME: Record<
   { on: string; off: string }
 > = {
   orange: {
-    on: "border-orange-500 bg-orange-500 text-white shadow-sm dark:border-orange-400 dark:bg-orange-500",
-    off: "border-slate-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50/80 dark:border-white/10 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-orange-900/50",
+    on: "border-orange-500 bg-orange-500 text-white shadow-sm dark:border-0 dark:bg-orange-500",
+    off: "border-slate-200 bg-white text-slate-700 hover:border-orange-300 hover:bg-orange-50/80 dark:border-0 dark:bg-zinc-600/55 dark:text-zinc-100 dark:hover:border-0 dark:hover:bg-zinc-500/60",
   },
   emerald: {
-    on: "border-emerald-600 bg-emerald-600 text-white shadow-sm",
-    off: "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 dark:border-white/10 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-emerald-900/50",
+    on: "border-emerald-600 bg-emerald-600 text-white shadow-sm dark:border-0 dark:bg-emerald-600",
+    off: "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 dark:border-0 dark:bg-zinc-600/55 dark:text-zinc-100 dark:hover:border-0 dark:hover:bg-zinc-500/60",
   },
 };
 
@@ -44,21 +44,14 @@ export function MatchSearchCategoryPicker({
   onToggle,
   onClearAll,
   theme = "orange",
-  labelId = "match-search-category-label",
   hintId,
 }: MatchSearchCategoryPickerProps) {
   const chips = CHIP_BY_THEME[theme];
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2 px-0.5">
-        <span
-          id={labelId}
-          className="text-sm font-bold text-slate-800 dark:text-slate-100"
-        >
-          Categories
-        </span>
-        {selectedCategories.size > 0 ? (
+      {selectedCategories.size > 0 ? (
+        <div className="flex items-center justify-end gap-2 px-0.5">
           <button
             type="button"
             className={cn(
@@ -69,8 +62,8 @@ export function MatchSearchCategoryPicker({
           >
             Clear all
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div
         className={cn(
           "flex flex-nowrap gap-2.5 overflow-x-auto pb-1",
@@ -78,11 +71,12 @@ export function MatchSearchCategoryPicker({
           "md:[scrollbar-width:thin]",
         )}
         role="group"
-        aria-labelledby={labelId}
+        aria-label="Categories"
         {...(hintId ? { "aria-describedby": hintId } : {})}
       >
         {SERVICE_CATEGORIES.map((cat) => {
           const on = selectedCategories.has(cat.id);
+          const { Icon, iconClass } = HIRE_CATEGORY_TILE_UI[cat.id];
           return (
             <button
               key={cat.id}
@@ -90,12 +84,17 @@ export function MatchSearchCategoryPicker({
               onClick={() => onToggle(cat.id)}
               aria-pressed={on}
               className={cn(
-                "shrink-0 whitespace-nowrap rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors",
+                "inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                 FOCUS_RING_BY_THEME[theme],
                 on ? chips.on : chips.off,
               )}
             >
+              <Icon
+                className={cn("h-4 w-4 shrink-0", on ? "text-white" : iconClass)}
+                strokeWidth={2.25}
+                aria-hidden
+              />
               {cat.label}
             </button>
           );

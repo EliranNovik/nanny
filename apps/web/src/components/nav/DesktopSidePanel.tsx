@@ -6,21 +6,22 @@ import { cn } from "@/lib/utils";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LiveTimer } from "@/components/LiveTimer";
 import { supabase } from "@/lib/supabase";
+import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import {
   type LucideIcon,
   Plus,
-  ClipboardList,
   BadgeCheck,
   Bookmark,
   ChevronDown,
   UsersRound,
-  Radio,
   Home,
   Rss,
   MessageCircle,
   User,
   PenSquare,
+  Zap,
 } from "lucide-react";
 
 type SavedProfileRow = {
@@ -61,6 +62,9 @@ export function DesktopSidePanel() {
   const [savedPosts, setSavedPosts] = useState<SavedPostRow[]>([]);
   const [savedProfilesLoading, setSavedProfilesLoading] = useState(false);
   const [savedPostsLoading, setSavedPostsLoading] = useState(false);
+  const [freelancerLiveUntil, setFreelancerLiveUntil] = useState<string | null>(
+    null,
+  );
 
   // NOTE: Don't early-return before hooks below (hook order must not change across renders).
   const roleBase =
@@ -76,13 +80,22 @@ export function DesktopSidePanel() {
       : "/client/profile";
   const requestHref = "/client/create";
   const goLiveHref = "/availability/post-now";
+  const findHelpersHref = "/client/helpers";
+  const findRequestsHref = "/freelancer/jobs/match";
   const savedHref = `${roleBase}/profile/saved`;
+
+  const isClient = profile?.role === "client";
+  const isFreelancer = profile?.role === "freelancer";
+  const isLiveNow =
+    isFreelancer &&
+    isFreelancerInActive24hLiveWindow({ live_until: freelancerLiveUntil });
+
+  const plusMenuItemClassName =
+    "flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-bold text-foreground transition-colors hover:bg-muted/50 active:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-55";
 
   const openSaved = (tab: "profiles" | "posts") => {
     navigate(`${savedHref}?tab=${tab}`);
   };
-
-  const canCreateRequest = profile?.role === "client";
 
   const items: NavItem[] = [
     {
@@ -124,6 +137,29 @@ export function DesktopSidePanel() {
       mountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    const viewerId = profile?.id;
+    if (!viewerId) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("freelancer_profiles")
+        .select("live_until")
+        .eq("user_id", viewerId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.warn("[DesktopSidePanel] live_until:", error);
+        setFreelancerLiveUntil(null);
+        return;
+      }
+      setFreelancerLiveUntil(data?.live_until ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
 
   const loadSavedProfiles = useCallback(async () => {
     if (!user?.id) return;
@@ -275,50 +311,78 @@ export function DesktopSidePanel() {
                 role="menu"
                 className={cn(
                   "absolute left-[calc(100%+12px)] top-0 z-[150] w-[14.5rem] overflow-hidden rounded-2xl",
-                  "bg-background/90 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2 duration-200",
+                  "bg-background/95 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2 duration-200",
                 )}
               >
+                {isClient ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={plusMenuItemClassName}
+                    onClick={() => {
+                      setPlusOpen(false);
+                      navigate(findHelpersHref);
+                    }}
+                  >
+                    <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
+                    <span>Find helpers</span>
+                  </button>
+                ) : null}
+                {isFreelancer ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={plusMenuItemClassName}
+                    onClick={() => {
+                      setPlusOpen(false);
+                      navigate(findRequestsHref);
+                    }}
+                  >
+                    <Rss className="h-5 w-5 shrink-0 text-foreground/80" />
+                    <span>Find requests</span>
+                  </button>
+                ) : null}
+                {isClient ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={plusMenuItemClassName}
+                    onClick={() => {
+                      setPlusOpen(false);
+                      navigate(requestHref);
+                    }}
+                  >
+                    <Zap className="h-5 w-5 shrink-0 text-foreground/80" strokeWidth={2.5} />
+                    <span>Start request</span>
+                  </button>
+                ) : null}
+                {isFreelancer ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={isLiveNow}
+                    className={plusMenuItemClassName}
+                    onClick={() => {
+                      if (isLiveNow) return;
+                      setPlusOpen(false);
+                      navigate(goLiveHref);
+                    }}
+                  >
+                    <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                      <span>Go live</span>
+                      {isLiveNow && freelancerLiveUntil ? (
+                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold tabular-nums">
+                          <LiveTimer createdAt={freelancerLiveUntil} />
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   role="menuitem"
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-bold text-foreground hover:bg-muted/50 active:bg-muted/70"
-                  onClick={() => {
-                    setPlusOpen(false);
-                    if (canCreateRequest) navigate(requestHref);
-                    else navigate(goLiveHref);
-                  }}
-                >
-                  <ClipboardList className="h-5 w-5 shrink-0 text-foreground/80" />
-                  <span>{canCreateRequest ? "Start request" : "Go live"}</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-bold text-foreground hover:bg-muted/50 active:bg-muted/70"
-                  onClick={() => {
-                    setPlusOpen(false);
-                    navigate(goLiveHref);
-                  }}
-                >
-                  <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
-                  <span>Go live</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-bold text-foreground hover:bg-muted/50 active:bg-muted/70"
-                  onClick={() => {
-                    setPlusOpen(false);
-                    navigate(communityHref);
-                  }}
-                >
-                  <Radio className="h-5 w-5 shrink-0 text-foreground/80" />
-                  <span>Community posts</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-bold text-foreground hover:bg-muted/50 active:bg-muted/70"
+                  className={plusMenuItemClassName}
                   onClick={() => {
                     setPlusOpen(false);
                     navigate(`${communityHref}?compose=1`);

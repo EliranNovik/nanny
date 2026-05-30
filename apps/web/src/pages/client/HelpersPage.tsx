@@ -7,6 +7,7 @@ import {
   GOOGLE_MAP_EMBED_OPTIONS,
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
+  MAP_SEARCH_CIRCLE_FIT_PADDING,
 } from "@/lib/googleMapsLoader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,11 +43,13 @@ import {
 } from "@/lib/clientAppPaths";
 import {
   BigRadiusSlider,
+  mapRadiusSliderGlassShellClass,
   RADIUS_MAX,
   RADIUS_MIN,
   RADIUS_STEP,
 } from "@/components/search/BigRadiusSlider";
 import { MatchSearchCategoryPicker } from "@/components/search/MatchSearchCategoryPicker";
+import { setMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 
 const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
 const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
@@ -226,7 +229,7 @@ function HelpersMapBlock({
 
     const bounds = circle.getBounds();
     if (bounds) {
-      map.fitBounds(bounds, 48);
+      map.fitBounds(bounds, MAP_SEARCH_CIRCLE_FIT_PADDING);
     }
   }, [mapReady, center.lat, center.lng, radiusKm]);
 
@@ -288,10 +291,6 @@ function HelpersMapBlock({
       onClick={onMapClick}
       options={{
         ...GOOGLE_MAP_EMBED_OPTIONS,
-        fullscreenControl: true,
-        streetViewControl: false,
-        mapTypeControl: false,
-        clickableIcons: false,
       }}
     >
       <Marker
@@ -801,6 +800,12 @@ export default function HelpersPage() {
 
   /** Full search UI until the first successful search; after that, hide when collapsed to FAB. */
   const showSearchChrome = !hasSearched || !searchChromeCollapsed;
+
+  useEffect(() => {
+    setMatchSearchChromeVisible(showSearchChrome);
+    return () => setMatchSearchChromeVisible(true);
+  }, [showSearchChrome]);
+
   const mobileSnapRef = useRef<HTMLDivElement | null>(null);
   const [mobileSnapIndex, setMobileSnapIndex] = useState(0);
   const pendingRestoreScrollTopRef = useRef<number | null>(null);
@@ -1061,7 +1066,8 @@ export default function HelpersPage() {
 
   return (
     <div
-      data-find-helpers-no-app-header=""
+      data-find-helpers-page=""
+      {...(!showSearchChrome ? { "data-find-helpers-cards-view": "" } : {})}
       className={cn(
         "min-h-screen bg-background",
         /* Room for mobile fixed dock above BottomNav (md+ keeps normal padding). */
@@ -1078,32 +1084,9 @@ export default function HelpersPage() {
       >
         {showSearchChrome ? (
           <>
-            <div className="mx-auto w-full max-w-lg px-2 text-center md:max-w-2xl animate-in fade-in slide-in-from-top-2 duration-300">
-              <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
-                Find helpers
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Only helpers who are live in a 24-hour availability window appear
-                here.
-              </p>
-            </div>
-
-            {hasSearched ? (
-              <div className="mx-auto w-full max-w-lg px-2 md:max-w-2xl">
-                <p className="text-center text-xs font-semibold text-muted-foreground">
-                  {helpersMatchingCategories.length} helper
-                  {helpersMatchingCategories.length === 1 ? "" : "s"} match
-                  {selectedCategories.size > 0
-                    ? " your filters"
-                    : " this search"}
-                </p>
-              </div>
-            ) : null}
-
-            <div className="mx-auto w-full max-w-lg md:max-w-xl animate-in fade-in zoom-in-95 duration-300">
+            <div className="mx-auto w-full max-w-lg md:max-w-3xl animate-in fade-in zoom-in-95 duration-300">
           <div className="space-y-6 px-1 pt-2 md:px-0 md:pt-4">
             <MatchSearchCategoryPicker
-              labelId="helpers-category-label"
               hintId="helpers-category-hint"
               theme="orange"
               selectedCategories={selectedCategories}
@@ -1111,10 +1094,10 @@ export default function HelpersPage() {
               onClearAll={() => setSelectedCategories(new Set())}
             />
 
-            <div className="relative mx-auto w-full max-w-md max-md:max-w-none max-md:-mx-3 max-md:w-[calc(100%+1.5rem)]">
+            <div className="relative mx-auto w-full max-w-md md:max-w-2xl max-md:max-w-none max-md:-mx-3 max-md:w-[calc(100%+1.5rem)]">
               <div
                 className={cn(
-                  "relative aspect-square w-full overflow-hidden rounded-2xl",
+                  "google-map-embed-minimal relative aspect-square w-full overflow-hidden rounded-2xl md:aspect-[16/10]",
                   "shadow-md shadow-black/10 dark:shadow-black/30",
                 )}
               >
@@ -1136,9 +1119,8 @@ export default function HelpersPage() {
                   disabled={locating}
                   aria-label="Use my location"
                   className={cn(
-                    "absolute left-2.5 top-2.5 z-[12] flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-full border border-white/55",
-                    "bg-white/35 px-2.5 py-1.5 text-left shadow-sm backdrop-blur-xl",
-                    "text-[10px] font-bold uppercase leading-none tracking-[0.12em] text-slate-900",
+                    "absolute left-2.5 top-2.5 z-[12] flex h-9 w-9 items-center justify-center rounded-full border border-white/55",
+                    "bg-white/35 shadow-sm backdrop-blur-xl",
                     "ring-1 ring-inset ring-white/50 transition-colors",
                     "hover:bg-white/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                     "disabled:pointer-events-none disabled:opacity-60",
@@ -1146,15 +1128,14 @@ export default function HelpersPage() {
                 >
                   {locating ? (
                     <Loader2
-                      className="h-3.5 w-3.5 shrink-0 animate-spin"
+                      className="h-4 w-4 shrink-0 animate-spin"
                       aria-hidden
                     />
                   ) : (
-                    <Navigation className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <Navigation className="h-4 w-4 shrink-0" aria-hidden />
                   )}
-                  <span className="min-w-0 truncate">My location</span>
                 </button>
-                <div className="pointer-events-auto absolute inset-x-2.5 bottom-2.5 z-[12]">
+                <div className="pointer-events-auto absolute bottom-6 left-2.5 z-[12] w-[calc(50%-0.625rem)]">
                   <div className="relative">
                     <Search
                       className="pointer-events-none absolute left-3 top-1/2 z-[2] h-4 w-4 -translate-y-1/2 text-slate-600/90 dark:text-slate-800/80"
@@ -1182,26 +1163,15 @@ export default function HelpersPage() {
                     />
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="px-0.5">
-                <label
-                  htmlFor="helpers-radius"
-                  className="text-sm font-bold text-slate-800 dark:text-slate-100"
-                >
-                
-                </label>
-              </div>
-              <BigRadiusSlider
-                id="helpers-radius"
-                value={radiusKm}
-                onChange={setRadiusKm}
-              />
-              <div className="flex justify-between px-1 text-xs font-bold text-muted-foreground">
-                <span>{RADIUS_MIN} km</span>
-                <span>{RADIUS_MAX} km</span>
+                <div className={mapRadiusSliderGlassShellClass}>
+                  <BigRadiusSlider
+                    id="helpers-radius"
+                    value={radiusKm}
+                    onChange={setRadiusKm}
+                    orientation="vertical"
+                    variant="glass"
+                  />
+                </div>
               </div>
             </div>
 

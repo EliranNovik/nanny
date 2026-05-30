@@ -27,13 +27,14 @@ import {
   GOOGLE_MAP_EMBED_OPTIONS,
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
+  MAP_SEARCH_CIRCLE_FIT_PADDING,
 } from "@/lib/googleMapsLoader";
 import {
   BigRadiusSlider,
-  RADIUS_MAX,
-  RADIUS_MIN,
+  mapRadiusSliderGlassShellClass,
 } from "@/components/search/BigRadiusSlider";
 import { MatchSearchCategoryPicker } from "@/components/search/MatchSearchCategoryPicker";
+import { setMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 
 function canActAsHelper(p: { role?: string; is_available_for_jobs?: boolean } | null | undefined) {
   if (!p?.role) return false;
@@ -106,7 +107,7 @@ function JobRequestsMapBlock({
     }
 
     const bounds = circle.getBounds();
-    if (bounds) map.fitBounds(bounds, 48);
+    if (bounds) map.fitBounds(bounds, MAP_SEARCH_CIRCLE_FIT_PADDING);
   }, [mapReady, center.lat, center.lng, radiusKm]);
 
   useEffect(() => {
@@ -149,10 +150,6 @@ function JobRequestsMapBlock({
       onClick={onMapClick}
       options={{
         ...GOOGLE_MAP_EMBED_OPTIONS,
-        fullscreenControl: true,
-        streetViewControl: false,
-        mapTypeControl: false,
-        clickableIcons: false,
       }}
     >
       <Marker
@@ -241,6 +238,12 @@ export default function FreelancerJobsMatchPage() {
   }, [rows, searchQuery]);
 
   const showSearchChrome = !hasSearched || !searchChromeCollapsed;
+
+  useEffect(() => {
+    setMatchSearchChromeVisible(showSearchChrome);
+    return () => setMatchSearchChromeVisible(true);
+  }, [showSearchChrome]);
+
   /** Mobile: full-bleed swipe deck — drop shell top padding so the fixed card stack can sit higher. */
   const mobileSwipeDeckActive = hasSearched && searchChromeCollapsed;
   const mobileSnapRef = useRef<HTMLDivElement | null>(null);
@@ -419,7 +422,7 @@ export default function FreelancerJobsMatchPage() {
       size="lg"
       disabled={loading || selectedCategories.size === 0}
       onClick={() => void runSearch()}
-      className="h-14 w-full rounded-2xl text-base font-black shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+      className="h-14 w-full rounded-2xl border-0 bg-emerald-600 text-base font-black text-white shadow-lg shadow-emerald-500/25 transition-all hover:bg-emerald-700 hover:scale-[1.01] active:scale-[0.99] disabled:bg-emerald-600/50"
     >
       {loading ? (
         <>
@@ -699,7 +702,8 @@ export default function FreelancerJobsMatchPage() {
 
   return (
     <div
-      data-freelancer-jobs-match-no-app-header=""
+      data-freelancer-jobs-match-page=""
+      {...(!showSearchChrome ? { "data-freelancer-jobs-match-cards-view": "" } : {})}
       className={cn(
         "min-h-screen bg-background",
         "max-md:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] md:pb-8",
@@ -713,38 +717,19 @@ export default function FreelancerJobsMatchPage() {
       >
         {showSearchChrome ? (
           <>
-            <div className="mx-auto w-full max-w-lg px-2 text-center md:max-w-2xl animate-in fade-in slide-in-from-top-2 duration-300">
-              <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white md:text-[32px]">
-                Browse users requests
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Browse open requests near your location.
-              </p>
-            </div>
-
-            {hasSearched ? (
-              <div className="mx-auto w-full max-w-lg px-2 md:max-w-2xl">
-                <p className="text-center text-xs font-semibold text-muted-foreground">
-                  {filteredRows.length} request{filteredRows.length === 1 ? "" : "s"} match
-                  {selectedCategories.size > 0 ? " your filters" : " this search"}
-                </p>
-              </div>
-            ) : null}
-
-            <div className="mx-auto w-full max-w-lg md:max-w-xl animate-in fade-in zoom-in-95 duration-300">
+            <div className="mx-auto w-full max-w-lg md:max-w-3xl animate-in fade-in zoom-in-95 duration-300">
               <div className="space-y-6 px-1 pt-2 md:px-0 md:pt-4">
                 <MatchSearchCategoryPicker
-                  labelId="jobs-match-category-label"
                   theme="emerald"
                   selectedCategories={selectedCategories}
                   onToggle={toggleCategory}
                   onClearAll={() => setSelectedCategories(new Set())}
                 />
 
-                <div className="relative mx-auto w-full max-w-md max-md:max-w-none max-md:-mx-3 max-md:w-[calc(100%+1.5rem)]">
+                <div className="relative mx-auto w-full max-w-md md:max-w-2xl max-md:max-w-none max-md:-mx-3 max-md:w-[calc(100%+1.5rem)]">
                   <div
                     className={cn(
-                      "relative aspect-square w-full overflow-hidden rounded-2xl",
+                      "google-map-embed-minimal relative aspect-square w-full overflow-hidden rounded-2xl md:aspect-[16/10]",
                       "shadow-md shadow-black/10 dark:shadow-black/30",
                     )}
                   >
@@ -766,23 +751,21 @@ export default function FreelancerJobsMatchPage() {
                       disabled={locating}
                       aria-label="Use my location"
                       className={cn(
-                        "absolute left-2.5 top-2.5 z-[12] flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-full border border-white/55",
-                        "bg-white/35 px-2.5 py-1.5 text-left shadow-sm backdrop-blur-xl",
-                        "text-[10px] font-bold uppercase leading-none tracking-[0.12em] text-slate-900",
+                        "absolute left-2.5 top-2.5 z-[12] flex h-9 w-9 items-center justify-center rounded-full border border-white/55",
+                        "bg-white/35 shadow-sm backdrop-blur-xl",
                         "ring-1 ring-inset ring-white/50 transition-colors",
                         "hover:bg-white/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                         "disabled:pointer-events-none disabled:opacity-60",
                       )}
                     >
                       {locating ? (
-                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
                       ) : (
-                        <Navigation className="h-3.5 w-3.5 shrink-0" />
+                        <Navigation className="h-4 w-4 shrink-0" aria-hidden />
                       )}
-                      <span className="min-w-0 truncate">My location</span>
                     </button>
 
-                    <div className="pointer-events-auto absolute inset-x-2.5 bottom-2.5 z-[12]">
+                    <div className="pointer-events-auto absolute bottom-6 left-2.5 z-[12] w-[calc(50%-0.625rem)]">
                       <div className="relative">
                         <Search
                           className="pointer-events-none absolute left-3 top-1/2 z-[2] h-4 w-4 -translate-y-1/2 text-slate-600/90 dark:text-slate-800/80"
@@ -806,27 +789,16 @@ export default function FreelancerJobsMatchPage() {
                         />
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="px-0.5">
-                    <label
-                      htmlFor="jobs-match-radius"
-                      className="text-sm font-bold text-slate-800 dark:text-slate-100"
-                    >
-                      Search radius
-                    </label>
-                  </div>
-                  <BigRadiusSlider
-                    id="jobs-match-radius"
-                    theme="emerald"
-                    value={radiusKm}
-                    onChange={setRadiusKm}
-                  />
-                  <div className="flex justify-between px-1 text-xs font-bold text-muted-foreground">
-                    <span>{RADIUS_MIN} km</span>
-                    <span>{RADIUS_MAX} km</span>
+                    <div className={mapRadiusSliderGlassShellClass}>
+                      <BigRadiusSlider
+                        id="jobs-match-radius"
+                        theme="emerald"
+                        value={radiusKm}
+                        onChange={setRadiusKm}
+                        orientation="vertical"
+                        variant="glass"
+                      />
+                    </div>
                   </div>
                 </div>
 

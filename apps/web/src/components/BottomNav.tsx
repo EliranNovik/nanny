@@ -30,6 +30,7 @@ import {
   Plus,
   X,
   ClipboardList,
+  Zap,
   UsersRound,
   Radio,
   PenSquare,
@@ -70,6 +71,7 @@ import {
   subscribeDiscoverHomeIntent,
   writeDiscoverHomeIntent,
 } from "@/lib/discoverHomeIntent";
+import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { LocationPickerSheet } from "@/components/LocationPickerSheet";
 
@@ -93,19 +95,20 @@ const appMenuJobsCountBadgeClassName = cn(
 const plusMenuPanelClassName = cn(
   "absolute bottom-[72px] left-1/2 z-30 flex -translate-x-1/2 flex-col gap-2.5 p-3",
   "w-[min(20rem,calc(100vw-1.5rem))] rounded-[1.75rem]",
-  "bg-zinc-950/88 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl",
+  "bg-zinc-950/[0.97] text-white shadow-2xl shadow-black/55 backdrop-blur-md",
+  "ring-1 ring-inset ring-white/10",
   "md:bottom-[68px] md:w-[17.5rem] md:gap-2 md:p-2.5",
 );
 
 const plusMenuItemClassName = cn(
   "flex w-full min-h-[3.5rem] items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left",
   "text-[16px] font-semibold leading-snug tracking-tight transition-[background,transform] duration-150",
-  "bg-white/[0.07] hover:bg-white/[0.12] active:scale-[0.99] active:bg-white/[0.16]",
+  "bg-white/10 hover:bg-white/14 active:scale-[0.99] active:bg-white/18",
   "md:min-h-[3rem] md:gap-3 md:px-3.5 md:py-3 md:text-[15px]",
 );
 
 const plusMenuIconWrapClassName =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/12 md:h-9 md:w-9";
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/16 md:h-9 md:w-9";
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
@@ -167,6 +170,8 @@ export function BottomNav() {
   }, [avatars.data]);
 
   const [headerVisible, setHeaderVisible] = useState(true);
+  const [matchSearchChromeVisible, setMatchSearchChromeVisibleState] =
+    useState(true);
   const scrollYRef = useRef(0);
   const headerVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -237,17 +242,16 @@ export function BottomNav() {
         : "/client/profile"
       : null;
   const showProfileBack = profileBackTarget !== null;
-  /** Find helpers: hide app header strips (mobile + desktop) — page is full-bleed */
   const isHelpersFindPage = pathnameNorm === "/client/helpers";
-  /** Find jobs match: full-bleed search chrome — hide floating mobile header row */
   const isFreelancerJobsMatch = pathnameNorm === "/freelancer/jobs/match";
+  /** Find helpers / job match: mobile header on search screen only (cards view hides it). */
+  const isMatchSearchRoute = isHelpersFindPage || isFreelancerJobsMatch;
   /** Create job + post availability: own hero — hide floating mobile header row */
   const hideMobileAppHeaderChrome =
     pathnameNorm === "/client/create" ||
     pathnameNorm === "/availability/post-now" ||
     pathnameNorm === "/community/feed" ||
-    isHelpersFindPage ||
-    isFreelancerJobsMatch;
+    (isMatchSearchRoute && !matchSearchChromeVisible);
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
     pathnameNorm === "/availability" ||
@@ -321,6 +325,14 @@ export function BottomNav() {
       setDesktopDiscoverSearchOpen(false);
     }
   }, [isDiscoverHome, profile?.role]);
+
+  useEffect(() => {
+    if (!isMatchSearchRoute) {
+      setMatchSearchChromeVisibleState(true);
+      return;
+    }
+    return subscribeMatchSearchChromeVisible(setMatchSearchChromeVisibleState);
+  }, [isMatchSearchRoute]);
 
   useEffect(() => {
     function onDocPointerDown(e: PointerEvent) {
@@ -767,8 +779,10 @@ export function BottomNav() {
       data-desktop-header-strip=""
       className="hidden md:block fixed top-0 left-0 right-0 z-50 border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background"
     >
-      <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
-        <div className="flex min-w-0 justify-start items-center gap-1.5">
+      {/* Match PageLayoutWithHeader md:pl-[220px] so header chrome clears the side panel */}
+      <div className="md:pl-[220px]">
+        <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
+        <div className="flex min-w-0 justify-start items-center gap-1.5 md:pl-2">
           {isDiscoverHome ? (
             renderDiscoverHomeLocationChip("desktop")
           ) : (
@@ -858,6 +872,7 @@ export function BottomNav() {
            * Profile avatar lives in the DesktopSidePanel ("Profile" nav row) on
            * desktop, so the header no longer renders a duplicate avatar button.
            */}
+        </div>
         </div>
       </div>
     </header>
@@ -1329,7 +1344,7 @@ export function BottomNav() {
                         <span>Find helpers</span>
                       </button>
                     )}
-                    {(profile?.role === "freelancer" || (profile?.role === "client" && profile?.is_available_for_jobs)) && (
+                    {profile?.role === "freelancer" && (
                       <button
                         type="button"
                         role="menuitem"
@@ -1345,66 +1360,51 @@ export function BottomNav() {
                         <span>Find requests</span>
                       </button>
                     )}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={plusMenuItemClassName}
-                      onClick={() => {
-                        setPlusMenuOpen(false);
-                        navigate("/client/create");
-                      }}
-                    >
-                      <span className={plusMenuIconWrapClassName}>
-                        <ClipboardList className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
-                      </span>
-                      <span>Start request</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={isLiveNow}
-                      className={cn(
-                        plusMenuItemClassName,
-                        isLiveNow &&
-                          "cursor-not-allowed opacity-55 hover:bg-white/[0.07] active:scale-100",
-                      )}
-                      onClick={() => {
-                        if (isLiveNow) return;
-                        setPlusMenuOpen(false);
-                        navigate("/availability/post-now");
-                      }}
-                    >
-                      <span className={plusMenuIconWrapClassName}>
-                        <UsersRound className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
-                      </span>
-                      <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                        <span>Go live</span>
-                        {isLiveNow && freelancerLiveUntil ? (
-                          <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-bold tabular-nums">
-                            <LiveTimer createdAt={freelancerLiveUntil} />
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={plusMenuItemClassName}
-                      onClick={() => {
-                        setPlusMenuOpen(false);
-                        navigate("/community/feed");
-                      }}
-                    >
-                      <span className={plusMenuIconWrapClassName}>
-                        <Radio className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
-                      </span>
-                      <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                        <span>Community posts</span>
-                        <span className="shrink-0 rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-                          New
+                    {profile?.role === "client" && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={plusMenuItemClassName}
+                        onClick={() => {
+                          setPlusMenuOpen(false);
+                          navigate("/client/create");
+                        }}
+                      >
+                        <span className={plusMenuIconWrapClassName}>
+                          <Zap className="h-5 w-5 text-white" strokeWidth={2.5} aria-hidden />
                         </span>
-                      </span>
-                    </button>
+                        <span>Start request</span>
+                      </button>
+                    )}
+                    {profile?.role === "freelancer" && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={isLiveNow}
+                        className={cn(
+                          plusMenuItemClassName,
+                          isLiveNow &&
+                            "cursor-not-allowed opacity-55 hover:bg-white/10 active:scale-100",
+                        )}
+                        onClick={() => {
+                          if (isLiveNow) return;
+                          setPlusMenuOpen(false);
+                          navigate("/availability/post-now");
+                        }}
+                      >
+                        <span className={plusMenuIconWrapClassName}>
+                          <UsersRound className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                        </span>
+                        <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                          <span>Go live</span>
+                          {isLiveNow && freelancerLiveUntil ? (
+                            <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-bold tabular-nums">
+                              <LiveTimer createdAt={freelancerLiveUntil} />
+                            </span>
+                          ) : null}
+                        </span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       role="menuitem"

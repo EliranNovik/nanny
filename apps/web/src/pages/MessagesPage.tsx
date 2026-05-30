@@ -33,6 +33,7 @@ import {
   Search,
   Trash2,
   X,
+  Bookmark,
 } from "lucide-react";
 import {
   Dialog,
@@ -100,6 +101,12 @@ export default function MessagesPage() {
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
+  const [contactSearchQuery, setContactSearchQuery] = useState("");
+  const [contactFilterUnread, setContactFilterUnread] = useState(false);
+  const [contactFilterFavorites, setContactFilterFavorites] = useState(false);
+  const [favoriteUserIds, setFavoriteUserIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   useEffect(() => {
     if (!userSearchQuery.trim()) {
@@ -122,6 +129,32 @@ export default function MessagesPage() {
       cancelled = true;
     };
   }, [userSearchQuery, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setFavoriteUserIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("profile_favorites")
+        .select("favorite_user_id")
+        .eq("user_id", user.id);
+      if (cancelled) return;
+      if (error) {
+        console.warn("[MessagesPage] profile_favorites:", error);
+        setFavoriteUserIds(new Set());
+        return;
+      }
+      setFavoriteUserIds(
+        new Set((data ?? []).map((row) => row.favorite_user_id as string)),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!newChatOpen) {
@@ -185,6 +218,42 @@ export default function MessagesPage() {
     rows.sort((x, y) => y.sortAt - x.sortAt);
     return rows;
   }, [conversations, hiddenChatUserIds]);
+
+  const filteredChatInboxRows = useMemo(() => {
+    const q = contactSearchQuery.trim().toLowerCase();
+    return chatInboxRows.filter((row) => {
+      const convo = row.conversation;
+      if (contactFilterUnread && !(convo.unread_count > 0)) return false;
+      if (contactFilterFavorites) {
+        const oid = convo.other_user_id;
+        if (!oid || !favoriteUserIds.has(oid)) return false;
+      }
+      if (!q) return true;
+      const name = convo.other_user_profile?.full_name?.toLowerCase() ?? "";
+      const loc = inboxRowLocation(convo)?.toLowerCase() ?? "";
+      const preview = trimPreviewNoise(convo.last_message?.body).toLowerCase();
+      return name.includes(q) || loc.includes(q) || preview.includes(q);
+    });
+  }, [
+    chatInboxRows,
+    contactFilterFavorites,
+    contactFilterUnread,
+    contactSearchQuery,
+    favoriteUserIds,
+  ]);
+
+  const hasContactListFilters =
+    contactFilterUnread ||
+    contactFilterFavorites ||
+    contactSearchQuery.trim().length > 0;
+
+  const contactFilterChipClass = (active: boolean) =>
+    cn(
+      "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
+      active
+        ? "bg-primary/10 text-foreground dark:bg-primary/15"
+        : "bg-muted/30 text-muted-foreground hover:bg-muted/45 hover:text-foreground dark:bg-zinc-900/60 dark:hover:text-foreground",
+    );
 
   const activityInboxRows = useMemo((): Extract<InboxRow, { kind: "activity" }>[] => {
     const rows: Extract<InboxRow, { kind: "activity" }>[] = [];
@@ -546,23 +615,23 @@ export default function MessagesPage() {
         )}
       >
         {/*
-          Mobile: fixed frosted top + bottom (WhatsApp-style). Middle list scrolls edge-to-edge
-          with padding so rows pass under the chrome. Desktop: normal in-flow flex column.
+          Mobile: fixed frosted top; middle list scrolls edge-to-edge with padding under the header.
+          Floating see-through actions at the bottom (messages tab).
         */}
         <div className="max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:z-40 md:contents">
-          {/* Header */}
+          {/* Header: back (mobile) + Messages / News tabs */}
           <div
             className={cn(
-              "z-40 flex shrink-0 px-4 pb-3",
+              "z-40 flex shrink-0 items-center gap-2 px-4 pb-3 sm:gap-3",
               "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
-              "max-md:border-b max-md:border-border/10 max-md:bg-background/72 max-md:backdrop-blur-2xl",
-              "max-md:supports-[backdrop-filter]:bg-background/48",
-              "max-md:dark:bg-background/58 max-md:dark:supports-[backdrop-filter]:bg-background/38",
-              "md:bg-background/95 md:backdrop-blur-md md:supports-[backdrop-filter]:bg-background/85",
-              "md:dark:bg-background/95 md:border-b-0 md:backdrop-blur-md",
+              "max-md:border-b max-md:border-border/5 max-md:bg-background/40 max-md:backdrop-blur-2xl",
+              "max-md:supports-[backdrop-filter]:bg-background/28",
+              "max-md:dark:bg-background/35 max-md:dark:supports-[backdrop-filter]:bg-background/22",
+              "max-md:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)]",
+              "md:bg-background/70 md:backdrop-blur-md md:supports-[backdrop-filter]:bg-background/55",
+              "md:dark:bg-background/70 md:border-b-0 md:shadow-none md:backdrop-blur-md",
             )}
           >
-          <div className="flex items-start gap-2 sm:gap-3">
             <Button
               variant="ghost"
               size="icon"
@@ -574,101 +643,60 @@ export default function MessagesPage() {
                 )
               }
               className={cn(
-                "mt-0.5 shrink-0 md:hidden",
+                "shrink-0 md:hidden",
                 "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
               )}
             >
               <HeaderBackChevron />
             </Button>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
-                Inbox
-              </h2>
-              {inboxTab === "messages" ? (
-                <p className="mt-1 text-xs text-muted-foreground" role="status">
-                  {inboxUnreadTotal > 0 ? (
-                    <span className="font-medium text-foreground">
-                      {inboxUnreadTotal} unread
-                    </span>
-                  ) : (
-                    <span>All read</span>
-                  )}
-                </p>
-              ) : visibleActivityAlerts.length > 0 ? (
-                <p className="mt-1 text-xs text-muted-foreground" role="status">
-                  <span>
-                    {visibleActivityAlerts.length} update
-                    {visibleActivityAlerts.length === 1 ? "" : "s"}
+            <div
+              className="flex min-w-0 flex-1 rounded-xl bg-muted/45 p-1 dark:bg-zinc-900/75"
+              role="tablist"
+              aria-label="Inbox sections"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={inboxTab === "messages"}
+                onClick={() => setInboxTab("messages")}
+                className={cn(
+                  "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
+                  inboxTab === "messages"
+                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-white"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+                <span>Messages</span>
+                {inboxUnreadTotal > 0 ? (
+                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
+                    {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
                   </span>
-                </p>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground" role="status">
-                  Nothing new
-                </p>
-              )}
+                ) : null}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={inboxTab === "news"}
+                onClick={() => setInboxTab("news")}
+                className={cn(
+                  "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
+                  inboxTab === "news"
+                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-white"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Newspaper className="h-4 w-4 shrink-0" aria-hidden />
+                <span>News</span>
+                {visibleActivityAlerts.length > 0 ? (
+                  <span className="rounded-full bg-muted-foreground/20 px-1.5 py-0.5 text-[10px] font-bold leading-none text-foreground dark:bg-white/15">
+                    {visibleActivityAlerts.length > 99
+                      ? "99+"
+                      : visibleActivityAlerts.length}
+                  </span>
+                ) : null}
+              </button>
             </div>
-          </div>
-          </div>
-
-          {/* Messages vs news */}
-          <div
-            className={cn(
-              "shrink-0 px-4 pb-3 pt-1",
-              "max-md:border-b max-md:border-border/10 max-md:bg-background/72 max-md:backdrop-blur-2xl",
-              "max-md:supports-[backdrop-filter]:bg-background/48",
-              "max-md:dark:bg-background/58 max-md:dark:supports-[backdrop-filter]:bg-background/38",
-              "max-md:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]",
-              "md:bg-transparent md:shadow-none md:backdrop-blur-none",
-            )}
-          >
-          <div
-            className="flex rounded-xl bg-muted/45 p-1 ring-1 ring-border/10 dark:bg-zinc-900/75 dark:ring-white/5"
-            role="tablist"
-            aria-label="Inbox sections"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={inboxTab === "messages"}
-              onClick={() => setInboxTab("messages")}
-              className={cn(
-                "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
-                inboxTab === "messages"
-                  ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-white"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-              <span>Messages</span>
-              {inboxUnreadTotal > 0 ? (
-                <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
-                  {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
-                </span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={inboxTab === "news"}
-              onClick={() => setInboxTab("news")}
-              className={cn(
-                "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
-                inboxTab === "news"
-                  ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-white"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Newspaper className="h-4 w-4 shrink-0" aria-hidden />
-              <span>News</span>
-              {visibleActivityAlerts.length > 0 ? (
-                <span className="rounded-full bg-muted-foreground/20 px-1.5 py-0.5 text-[10px] font-bold leading-none text-foreground dark:bg-white/15">
-                  {visibleActivityAlerts.length > 99
-                    ? "99+"
-                    : visibleActivityAlerts.length}
-                </span>
-              ) : null}
-            </button>
-          </div>
           </div>
         </div>
 
@@ -680,9 +708,9 @@ export default function MessagesPage() {
               "[&_[data-radix-scroll-area-viewport]]:min-w-0",
               "[&_[data-radix-scroll-area-viewport]]:max-w-full",
               "[&_[data-radix-scroll-area-viewport]]:bg-transparent",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+7.85rem)]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+4.75rem)]",
               inboxTab === "messages"
-                ? "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]"
+                ? "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
                 : "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[max(1rem,env(safe-area-inset-bottom,0px))]",
             )}
           >
@@ -736,8 +764,88 @@ export default function MessagesPage() {
                 </div>
               </div>
             ) : (
+              <>
+                <div className="shrink-0 px-4 pb-3 pt-2 md:pt-3">
+                  <div className="relative">
+                    <Search
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <input
+                      type="search"
+                      placeholder="Search by name or city…"
+                      autoComplete="off"
+                      value={contactSearchQuery}
+                      onChange={(e) => setContactSearchQuery(e.target.value)}
+                      className="h-11 w-full rounded-xl border-0 bg-muted/30 pl-10 pr-10 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-muted/45 dark:bg-zinc-900/60 dark:focus:bg-zinc-900/75 md:text-sm"
+                    />
+                    {contactSearchQuery.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => setContactSearchQuery("")}
+                        className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                        aria-label="Clear search"
+                      >
+                        <X className="h-4 w-4" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="-mx-4 mt-2.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex w-max min-w-full gap-2">
+                      <button
+                        type="button"
+                        aria-pressed={contactFilterUnread}
+                        onClick={() => setContactFilterUnread((v) => !v)}
+                        className={contactFilterChipClass(contactFilterUnread)}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span>Unread</span>
+                        {inboxUnreadTotal > 0 ? (
+                          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none text-primary dark:bg-primary/25">
+                            {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
+                          </span>
+                        ) : null}
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={contactFilterFavorites}
+                        onClick={() => setContactFilterFavorites((v) => !v)}
+                        className={contactFilterChipClass(contactFilterFavorites)}
+                      >
+                        <Bookmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span>Favorites</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {filteredChatInboxRows.length === 0 ? (
+                  <div className="flex flex-col items-center px-6 py-10 text-center">
+                    <p className="text-sm font-semibold text-foreground">
+                      No conversations match
+                    </p>
+                    <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                      Try a different search or turn off a filter.
+                    </p>
+                    {hasContactListFilters ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-4 font-semibold"
+                        onClick={() => {
+                          setContactSearchQuery("");
+                          setContactFilterUnread(false);
+                          setContactFilterFavorites(false);
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : (
               <div className="w-full min-w-0 max-w-full overflow-x-hidden">
-                {chatInboxRows.map((row, index) => {
+                {filteredChatInboxRows.map((row, index) => {
                   const convo = row.conversation;
                   const initials =
                     convo.other_user_profile?.full_name
@@ -769,7 +877,7 @@ export default function MessagesPage() {
                       {index > 0 ? (
                         <span
                           aria-hidden
-                          className="pointer-events-none absolute left-[5.5rem] right-4 top-0 h-px bg-border/70 dark:bg-white/[0.22] md:left-[5.125rem]"
+                          className="pointer-events-none absolute left-[5.5rem] right-4 top-0 h-px bg-border/70 dark:bg-white/[0.08] md:left-[5.125rem]"
                         />
                       ) : null}
                         <div className="flex min-w-0 items-start gap-3.5">
@@ -821,7 +929,7 @@ export default function MessagesPage() {
                               {convo.last_message && (
                                 <p
                                   className={cn(
-                                    "mt-1 truncate text-[15px] leading-snug text-muted-foreground md:text-[15px]",
+                                    "mt-1 truncate text-[16px] leading-snug text-muted-foreground md:text-base",
                                     convo.unread_count > 0 &&
                                       "font-medium text-foreground/90",
                                   )}
@@ -861,8 +969,10 @@ export default function MessagesPage() {
                     );
                   })}
               </div>
-            ))
-            : activityInboxRows.length === 0 ? (
+                )}
+              </>
+            )
+          ) : activityInboxRows.length === 0 ? (
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <Newspaper className="h-8 w-8 text-muted-foreground" />
@@ -954,47 +1064,47 @@ export default function MessagesPage() {
               </div>
             )}
           </ScrollArea>
-        </div>
 
-        {/* Mobile Action Box — messages tab only; fixed frosted footer */}
-        {inboxTab === "messages" ? (
-        <div
-          className={cn(
-            "flex shrink-0 items-center justify-around px-4 md:hidden",
-            "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-40",
-            "max-md:border-t max-md:border-border/10 max-md:bg-background/72 max-md:backdrop-blur-2xl",
-            "max-md:supports-[backdrop-filter]:bg-background/48",
-            "max-md:dark:bg-background/58 max-md:dark:supports-[backdrop-filter]:bg-background/38",
-            "max-md:shadow-[0_-10px_32px_-14px_rgba(0,0,0,0.4)]",
-            "pt-2.5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] min-h-[4.75rem]",
-          )}
-        >
-          <button
-            type="button"
-            className="flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
-            onClick={() => setNewChatOpen(true)}
-          >
-            <PlusSquare className="h-6 w-6" />
-            <span className="text-[11px] font-semibold">New Chat</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsManageMode(!isManageMode)}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-colors active:scale-[0.98]",
-              isManageMode
-                ? "bg-red-500/12 text-red-600 hover:bg-red-500/18 dark:text-red-400"
-                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
-            )}
-          >
-            <Trash2 className="h-6 w-6" />
-            <span className="text-[11px] font-semibold">
-              {isManageMode ? "Done" : "Remove"}
-            </span>
-          </button>
+          {/* Mobile: floating see-through New message + Remove */}
+          {inboxTab === "messages" ? (
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center gap-2.5 px-4 md:hidden",
+                "pb-[max(1rem,env(safe-area-inset-bottom,0px))]",
+              )}
+            >
+              <button
+                type="button"
+                className={cn(
+                  "pointer-events-auto inline-flex items-center gap-2 rounded-full px-4 py-2.5",
+                  "bg-background/45 text-sm font-semibold text-foreground shadow-lg",
+                  "backdrop-blur-2xl supports-[backdrop-filter]:bg-background/38",
+                  "transition-[transform,background-color] active:scale-[0.98]",
+                  "dark:bg-background/55 dark:supports-[backdrop-filter]:bg-background/42",
+                )}
+                onClick={() => setNewChatOpen(true)}
+              >
+                <PlusSquare className="h-5 w-5 shrink-0" aria-hidden />
+                <span>New message</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsManageMode(!isManageMode)}
+                className={cn(
+                  "pointer-events-auto inline-flex items-center gap-2 rounded-full px-4 py-2.5",
+                  "shadow-lg backdrop-blur-2xl transition-[transform,background-color] active:scale-[0.98]",
+                  "text-sm font-semibold supports-[backdrop-filter]:bg-background/38",
+                  isManageMode
+                    ? "bg-red-500/15 text-red-600 dark:bg-red-500/20 dark:text-red-400"
+                    : "bg-background/45 text-foreground dark:bg-background/55 dark:supports-[backdrop-filter]:bg-background/42",
+                )}
+              >
+                <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
+                <span>{isManageMode ? "Done" : "Remove"}</span>
+              </button>
+            </div>
+          ) : null}
         </div>
-        ) : null}
 
         {/* Desktop Tab Bar */}
         <div className="hidden md:flex shrink-0 items-center justify-around border-t border-border/20 bg-background/95 px-4 pt-2.5 pb-4 h-[71px] dark:border-white/[0.04]">
