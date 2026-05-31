@@ -44,6 +44,8 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** Set profile immediately after signup (avoids waiting on a refetch). */
+  applyProfile: (profile: Profile) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -673,6 +675,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function applyProfile(next: Profile) {
+    fetchingProfileRef.current = null;
+    setProfileWithRef(next);
+    profileUserIdRef.current = next.id;
+    try {
+      localStorage.setItem(
+        `profile_${next.id}`,
+        JSON.stringify({ data: next, timestamp: Date.now() }),
+      );
+    } catch {
+      // quota / private mode
+    }
+  }
+
   useEffect(() => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     if (!supabaseUrl || supabaseUrl.includes("your-project-id")) {
@@ -1142,6 +1158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         refreshProfile,
+        applyProfile,
       }}
     >
       {children}

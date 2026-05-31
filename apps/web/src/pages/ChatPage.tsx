@@ -52,6 +52,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { glassBadgeClass, glassIconButtonClass } from "@/lib/glassBadge";
 import { useToast } from "@/components/ui/toast";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { SimpleCalendar } from "@/components/SimpleCalendar";
@@ -73,13 +74,14 @@ import {
 } from "@/lib/serviceCategories";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { ChatFloatingProfileHeader } from "@/components/messages/ChatFloatingProfileHeader";
+import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
 import {
   ChatParticipantProfilePeek,
   type ChatParticipantProfile,
 } from "@/components/messages/ChatParticipantProfilePeek";
 import { getTelegramLink, getWhatsAppLink } from "@/lib/socialContactLinks";
 import { ChatLinkPreviewCards } from "@/components/chat/ChatLinkPreviewCards";
-import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
 import { MatchContextBanner } from "@/components/messages/MatchContextBanner";
 import { ChatJobContextStrip } from "@/components/messages/ChatJobContextStrip";
 import {
@@ -135,6 +137,7 @@ interface Profile {
   rating_avg?: number;
   rating_count?: number;
   categories?: string[];
+  is_verified?: boolean | null;
 }
 
 interface Job {
@@ -1430,7 +1433,7 @@ export default function ChatPage({
 
   const chatAreaBgCn = "bg-zinc-100 dark:bg-background";
   const chatReceivedBubbleCn =
-    "rounded-2xl rounded-bl-none border border-slate-200/80 bg-white text-slate-900 shadow-sm dark:border-none dark:bg-slate-800 dark:text-slate-100";
+    "rounded-2xl rounded-bl-none border border-slate-200/80 bg-white text-slate-900 shadow-sm dark:border-none dark:bg-zinc-800 dark:text-zinc-100";
 
   /** Vivid glossy blue links in all chat bubbles (sent, received, system) — light + dark. */
   const chatBubbleLinkCn =
@@ -1478,6 +1481,7 @@ export default function ChatPage({
         share_whatsapp: otherUser.share_whatsapp,
         share_telegram: otherUser.share_telegram,
         categories: otherUser.categories,
+        is_verified: otherUser.is_verified ?? false,
       }
     : null;
 
@@ -1486,6 +1490,8 @@ export default function ChatPage({
     otherUser?.share_whatsapp && otherUser?.whatsapp_number_e164;
   const showTelegram =
     otherUser?.share_telegram && otherUser?.telegram_username;
+
+  const chatAvatarStatus = useChatHeaderAvatarStatus(otherUser?.id);
 
   if (loading) {
     return (
@@ -1536,7 +1542,7 @@ export default function ChatPage({
                 <div className="flex flex-col gap-1">
                   <div className="flex items-end gap-2 relative z-10">
                     <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
-                    <div className="flex flex-col gap-1 rounded-[18px] rounded-bl-[4px] bg-muted/60 px-3 py-2 relative min-w-[120px] max-w-full">
+                    <div className="flex flex-col gap-1 rounded-[18px] rounded-bl-[4px] bg-muted/60 px-3 py-2 relative min-w-[120px] max-w-full dark:bg-zinc-800">
                       <Skeleton className="h-4 w-40 mb-1" />
                       <Skeleton className="h-4 w-24" />
                     </div>
@@ -2101,65 +2107,64 @@ export default function ChatPage({
       >
         {/* Header — viewport-fixed on standalone /chat mobile; hidden when embedded in Messages (parent provides bar) */}
         {!hideBackButton && (
-          <header className="fixed left-0 right-0 top-0 z-20 flex-shrink-0 border-b border-border/15 bg-white px-4 py-3 shadow-none dark:bg-background md:relative md:top-auto md:z-auto md:border-b-0 md:bg-transparent">
-            <div className="flex items-center gap-3">
+          <header
+            className={cn(
+              "fixed left-0 right-0 top-0 z-20 flex-shrink-0 bg-transparent px-4 pb-2 shadow-none",
+              "pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
+              "md:relative md:top-auto md:z-auto md:min-h-[4.25rem] md:px-5 md:pt-3 md:pb-2",
+            )}
+          >
+            <div className="relative flex min-h-[4.25rem] items-end justify-center md:min-h-0 md:items-center md:justify-center">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  // On mobile, go back to steps; on desktop, navigate to messages
                   if (window.innerWidth < 1024) {
                     setMobileView("steps");
                   } else {
                     navigate("/messages");
                   }
                 }}
-                className="lg:hidden text-black dark:text-white"
+                className={cn(
+                  "absolute left-0 top-0 h-11 w-11 rounded-full lg:hidden",
+                  glassBadgeClass,
+                  glassIconButtonClass,
+                )}
               >
                 <HeaderBackChevron />
               </Button>
 
-              <ChatParticipantProfilePeek
+              <ChatFloatingProfileHeader
                 userId={otherUser?.id}
                 profile={peekProfile}
-              >
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={otherUser?.photo_url || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {otherInitials}
-                  </AvatarFallback>
-                </Avatar>
-              </ChatParticipantProfilePeek>
-
-              <div
-                className="flex-1 min-w-0 cursor-pointer"
-                onClick={() =>
-                  !hideBackButton && setShowContactPanel(!showContactPanel)
-                }
-              >
-                <h2 className="text-[18px] font-bold truncate text-black dark:text-white">
-                  {conversation?.job_id === null
+                displayName={
+                  conversation?.job_id === null
                     ? currentUserProfile?.is_admin
                       ? otherUser?.full_name || "User"
                       : "Support"
-                    : otherUser?.full_name || "User"}
-                </h2>
-              </div>
+                    : otherUser?.full_name || "User"
+                }
+                initials={otherInitials}
+                photoUrl={otherUser?.photo_url}
+                isVerified={Boolean(otherUser?.is_verified)}
+                isLive24h={chatAvatarStatus.isLive24h}
+                hasPostedRequest={chatAvatarStatus.hasPostedRequest}
+                onNameClick={() =>
+                  !hideBackButton && setShowContactPanel(!showContactPanel)
+                }
+              />
 
-              {liveJobBanner && (
-                <LiveJobHeaderPill
-                  categoryLabel={liveJobBanner.categoryLabel}
-                  href={liveJobBanner.href}
-                  className="shrink-0"
-                />
-              )}
-
-              {!hideBackButton && (
-                <div className="flex gap-1">
+              {!hideBackButton && (showWhatsApp || showTelegram) ? (
+                <div className="absolute bottom-2 right-0 flex gap-0.5 md:bottom-auto md:top-1/2 md:-translate-y-1/2">
                   {showWhatsApp && (
                     <Button
                       variant="ghost"
                       size="icon"
+                      className={cn(
+                        "h-9 w-9 rounded-full",
+                        glassBadgeClass,
+                        glassIconButtonClass,
+                      )}
                       onClick={() => {
                         if (otherUser?.whatsapp_number_e164) {
                           window.open(
@@ -2170,13 +2175,18 @@ export default function ChatPage({
                       }}
                       title="Open WhatsApp"
                     >
-                      <WhatsAppIcon className="w-5 h-5 fill-[#25D366]" />
+                      <WhatsAppIcon className="h-5 w-5 fill-[#25D366]" />
                     </Button>
                   )}
                   {showTelegram && (
                     <Button
                       variant="ghost"
                       size="icon"
+                      className={cn(
+                        "h-9 w-9 rounded-full",
+                        glassBadgeClass,
+                        glassIconButtonClass,
+                      )}
                       onClick={() => {
                         if (otherUser?.telegram_username) {
                           window.open(
@@ -2187,11 +2197,11 @@ export default function ChatPage({
                       }}
                       title="Open Telegram"
                     >
-                      <TelegramIcon className="w-5 h-5 fill-[#0088cc]" />
+                      <TelegramIcon className="h-5 w-5 fill-[#0088cc]" />
                     </Button>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
           </header>
         )}
@@ -2214,8 +2224,8 @@ export default function ChatPage({
              *  - Desktop: 3.5rem to clear the absolute header.
              */
             hideBackButton
-              ? "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.5rem)] md:pt-[3.5rem]"
-              : "pt-20 md:pt-4",
+              ? "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-[5rem]"
+              : "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-4",
             "px-3 md:p-4",
           )}
           style={{
@@ -2530,7 +2540,7 @@ export default function ChatPage({
                                     "flex items-center gap-2 rounded-lg border border-dashed p-2 transition-colors md:p-1.5",
                                     isOwn
                                       ? "border-white/35 bg-black/15 text-white hover:bg-black/25"
-                                      : "border-blue-500/25 bg-white/80 hover:bg-white dark:bg-muted/50 dark:hover:bg-muted",
+                                      : "border-blue-500/25 bg-white/80 hover:bg-white dark:bg-zinc-700 dark:hover:bg-zinc-700/90",
                                   )}
                                 >
                                   <File
@@ -2569,7 +2579,7 @@ export default function ChatPage({
                                     "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
                                     isOwn
                                       ? "border-white/20 bg-white/10 text-white"
-                                      : "border-none bg-white/90 text-foreground dark:bg-muted/50",
+                                      : "border-none bg-white/90 text-foreground dark:bg-zinc-700",
                                   )}
                                 >
                                   <p className="text-xs font-bold uppercase tracking-wide opacity-80 md:text-[11px]">
@@ -2651,7 +2661,7 @@ export default function ChatPage({
                                   "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
                                   isOwn
                                     ? "border-white/20 bg-white/10 text-white"
-                                    : "bg-muted/50 text-foreground border-none",
+                                    : "bg-muted/50 text-foreground border-none dark:bg-zinc-700",
                                 )}
                               >
                                 <p className="text-xs font-bold uppercase tracking-wide opacity-80 md:text-[11px]">

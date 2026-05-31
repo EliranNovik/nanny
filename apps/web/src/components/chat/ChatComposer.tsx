@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Paperclip, Send, Loader2, MessageSquarePlus } from "lucide-react";
 import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import { cn } from "@/lib/utils";
+import { bidirectionalInputProps } from "@/lib/textDirection";
 
 interface ChatComposerProps {
   newMessage: string;
@@ -76,6 +77,8 @@ export function ChatComposer({
 
   const captionPlaceholder = selectedFile ? "Add a caption…" : "Type a message…";
 
+  const messageInputProps = bidirectionalInputProps(newMessage, messageFieldClass);
+
   const composerActionBtnClass = cn(
     "h-12 w-12 shrink-0 self-end rounded-full",
     "text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95",
@@ -96,7 +99,7 @@ export function ChatComposer({
       <div
         className={cn(
           "lg:hidden fixed bottom-0 left-0 right-0 z-30",
-          "border-t border-border/15 bg-white dark:bg-background",
+          "border-t border-border/15 bg-white dark:border-t-0 dark:bg-zinc-900",
           "px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
           !hideBackButton && mobileView === "steps" && "hidden"
         )}
@@ -172,7 +175,7 @@ export function ChatComposer({
                 (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
               }
             }}
-            className={messageFieldClass}
+            {...messageInputProps}
             disabled={sending || uploading}
             aria-label={selectedFile ? "Caption" : "Message"}
           />
@@ -200,7 +203,7 @@ export function ChatComposer({
       <div
         className={cn(
           "fixed bottom-0 right-0 z-30 hidden lg:flex lg:flex-col",
-          "border-t border-border/15 bg-white dark:bg-background",
+          "border-t border-border/15 bg-white dark:border-t-0 dark:bg-zinc-900",
           "px-5 pb-4 pt-2.5",
           hideBackButton
             ? // Embedded in `MessagesPage` which also has the DesktopSidePanel (220px) on md+.
@@ -280,7 +283,7 @@ export function ChatComposer({
                 (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
               }
             }}
-            className={messageFieldClass}
+            {...messageInputProps}
             disabled={sending || uploading}
             aria-label={selectedFile ? "Caption" : "Message"}
           />

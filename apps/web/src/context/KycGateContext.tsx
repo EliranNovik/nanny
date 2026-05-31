@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ShieldCheck, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -188,7 +188,12 @@ function KycHourlyReminderDialog({
 export function KycGateProvider({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const userId = profile?.id;
+
+  /** User is already on the dedicated verify step — no floating banner. */
+  const hideReminderOnRoute =
+    pathname === "/onboarding" || pathname.startsWith("/onboarding/");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [hourlyReminderOpen, setHourlyReminderOpen] = useState(false);
@@ -286,7 +291,8 @@ export function KycGateProvider({ children }: { children: ReactNode }) {
     [guardKycAction, openKycRequiredDialog, showKycReminder],
   );
 
-  const showBanner = showKycReminder && !bannerDismissed;
+  const showBanner =
+    showKycReminder && !bannerDismissed && !hideReminderOnRoute;
 
   return (
     <KycGateContext.Provider value={value}>

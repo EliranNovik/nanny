@@ -23,7 +23,7 @@ import {
 type Role = "client" | "freelancer";
 
 export default function OnboardingPage() {
-  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile, applyProfile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
@@ -142,10 +142,19 @@ export default function OnboardingPage() {
               checkInitiatedRef.current = false;
               return;
             }
-            await refreshProfile();
+            const { data: createdProfile } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", user.id)
+              .maybeSingle();
+            if (createdProfile) {
+              applyProfile(createdProfile);
+            }
             setProfileChecked(true);
             setCheckingProfile(false);
+            setCompletingSignup(false);
             navigate("/onboarding/verify", { replace: true });
+            void refreshProfile();
           } catch (createError) {
             console.error("[OnboardingPage] Error committing pending profile", createError);
             setError("Failed to create profile. Please try again.");
@@ -181,6 +190,7 @@ export default function OnboardingPage() {
     profileChecked,
     navigate,
     refreshProfile,
+    applyProfile,
   ]);
 
   const hasPendingSignup =
@@ -527,16 +537,12 @@ export default function OnboardingPage() {
     setProfileChecked(true);
     setCheckingProfile(false);
     setLoading(false);
-
-    await refreshProfile().catch((err) => {
-      console.warn(
-        "[OnboardingPage] Profile refresh failed, but profile was created",
-        err,
-      );
-    });
-
-    navigate("/onboarding/verify", { replace: true });
+    setCompletingSignup(false);
     creatingProfileRef.current = false;
+
+    applyProfile(profileData[0]);
+    navigate("/onboarding/verify", { replace: true });
+    void refreshProfile();
   }
 
   console.log("[OnboardingPage] Rendering onboarding form");

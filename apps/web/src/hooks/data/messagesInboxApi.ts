@@ -12,6 +12,7 @@ export type InboxConversation = {
     full_name: string | null;
     photo_url: string | null;
     city?: string | null;
+    is_verified?: boolean | null;
   };
   job_summary?: JobSummaryRow | null;
   last_message?:
@@ -79,7 +80,7 @@ async function loadInboxLegacy(userId: string): Promise<InboxConversation[]> {
   const uniqueOtherIds = Array.from(conversationsByUser.keys());
   const { data: profilesRows } = await supabase
     .from("profiles")
-    .select("id, full_name, photo_url, city")
+    .select("id, full_name, photo_url, city, is_verified")
     .in("id", uniqueOtherIds);
 
   const profileById = new Map((profilesRows ?? []).map((p) => [p.id, p]));
@@ -138,6 +139,7 @@ async function loadInboxLegacy(userId: string): Promise<InboxConversation[]> {
             full_name: otherProfile?.full_name || null,
             photo_url: otherProfile?.photo_url || null,
             city: otherProfile?.city || null,
+            is_verified: otherProfile?.is_verified ?? null,
           },
           last_message,
           unread_count: unreadRes.count ?? 0,
@@ -178,7 +180,7 @@ export async function fetchMessagesInbox(
     ];
     const { data: profilesRows } = await supabase
       .from("profiles")
-      .select("id, full_name, photo_url, city")
+      .select("id, full_name, photo_url, city, is_verified")
       .in("id", uniqueOtherIds);
 
     const profileById = new Map((profilesRows ?? []).map((p) => [p.id, p]));
@@ -201,6 +203,7 @@ export async function fetchMessagesInbox(
           full_name: op?.full_name ?? null,
           photo_url: op?.photo_url ?? null,
           city: (op?.city as string | null) ?? null,
+          is_verified: (op?.is_verified as boolean | null) ?? null,
         },
         last_message: hasLast
           ? {

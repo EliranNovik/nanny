@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -15,8 +15,6 @@ import {
   persistHiddenChatUserIds,
 } from "@/lib/inboxHiddenChats";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
-import { LiveJobHeaderPill } from "@/components/messages/LiveJobHeaderPill";
-import { useLiveJobConversationBanner } from "@/hooks/useLiveJobConversationBanner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,13 +41,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { glassBadgeClass, glassIconButtonClass } from "@/lib/glassBadge";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
 import {
   useMessagesInbox,
   type InboxConversation,
 } from "@/hooks/data/useMessagesInbox";
-import { ChatParticipantProfilePeek } from "@/components/messages/ChatParticipantProfilePeek";
+import { ChatFloatingProfileHeader } from "@/components/messages/ChatFloatingProfileHeader";
+import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
 
 /** City for inbox row: job location first, else other user profile city */
 function inboxRowLocation(convo: Conversation): string | null {
@@ -77,6 +77,11 @@ function shouldOpenMobileChatPane(): boolean {
   if (params.get("conversation")) return true;
   return /\/messages\/[^/]+/.test(window.location.pathname);
 }
+
+/** Scroll distance (px) over which the inbox search field fully collapses. */
+const INBOX_SEARCH_COLLAPSE_PX = 72;
+/** Expanded search row height used for max-height animation. */
+const INBOX_SEARCH_EXPANDED_PX = 56;
 
 export default function MessagesPage() {
   const { user, profile } = useAuth();
@@ -278,14 +283,40 @@ export default function MessagesPage() {
   }, [conversationId, conversations]);
 
   /** Resolves job from `conversations.id` in DB — inbox row may not match URL conversation id */
-  const liveJobHeaderBanner = useLiveJobConversationBanner(
-    conversationId,
-    user?.id,
-  );
 
   const [mobileView, setMobileView] = useState<"contacts" | "chat">(() =>
     shouldOpenMobileChatPane() ? "chat" : "contacts",
   );
+  const inboxScrollAreaRef = useRef<HTMLDivElement>(null);
+  const [inboxScrollTop, setInboxScrollTop] = useState(0);
+
+  const inboxSearchCollapseProgress = useMemo(
+    () => Math.min(1, Math.max(0, inboxScrollTop / INBOX_SEARCH_COLLAPSE_PX)),
+    [inboxScrollTop],
+  );
+
+  useEffect(() => {
+    if (inboxTab !== "messages") {
+      setInboxScrollTop(0);
+      return;
+    }
+
+    const root = inboxScrollAreaRef.current;
+    if (!root) return;
+
+    const viewport = root.querySelector(
+      "[data-radix-scroll-area-viewport]",
+    ) as HTMLElement | null;
+    if (!viewport) return;
+
+    const onScroll = () => {
+      setInboxScrollTop(viewport.scrollTop);
+    };
+
+    onScroll();
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
+  }, [inboxTab, chatInboxRows.length, mobileView]);
   /** When URL has ?conversation= but list has not loaded that row yet (e.g. new direct chat). */
   const [directChatHeader, setDirectChatHeader] = useState<{
     otherUserId: string;
@@ -293,8 +324,20 @@ export default function MessagesPage() {
       full_name: string | null;
       photo_url: string | null;
       city?: string | null;
+      is_verified?: boolean | null;
     };
   } | null>(null);
+
+  const activeChatOtherUserId = useMemo(() => {
+    if (!conversationId) return null;
+    return (
+      activeConversationForChat?.other_user_id ??
+      directChatHeader?.otherUserId ??
+      null
+    );
+  }, [conversationId, activeConversationForChat, directChatHeader]);
+
+  const chatAvatarStatus = useChatHeaderAvatarStatus(activeChatOtherUserId);
 
   // Keep mobile pane in sync with URL (useLayoutEffect avoids one frame with chat hidden).
   useLayoutEffect(() => {
@@ -329,7 +372,7 @@ export default function MessagesPage() {
         convo.client_id === user.id ? convo.freelancer_id : convo.client_id;
       const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, photo_url, city")
+        .select("full_name, photo_url, city, is_verified")
         .eq("id", otherId)
         .single();
       if (!cancelled) {
@@ -339,6 +382,7 @@ export default function MessagesPage() {
             full_name: p?.full_name ?? null,
             photo_url: p?.photo_url ?? null,
             city: p?.city ?? null,
+            is_verified: p?.is_verified ?? null,
           },
         });
       }
@@ -566,9 +610,9 @@ export default function MessagesPage() {
         className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background"
       >
         <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
-          <div className="z-40 flex shrink-0 bg-background/95 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:bg-transparent md:pt-4">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-8 w-8 rounded-md md:hidden" />
+          <div className="z-40 flex shrink-0 bg-transparent px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4">
+            <div className="flex w-full items-center gap-3">
+              <Skeleton className="h-11 w-11 shrink-0 rounded-full md:hidden" />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <Skeleton className="h-5 w-20" />
                 <Skeleton className="h-3 w-40" />
@@ -619,16 +663,11 @@ export default function MessagesPage() {
           Floating see-through actions at the bottom (messages tab).
         */}
         <div className="max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:z-40 md:contents">
-          {/* Header: back (mobile) + Messages / News tabs */}
+          {/* Header: back (mobile) + Messages / News tabs — floating glass controls */}
           <div
             className={cn(
-              "z-40 flex shrink-0 items-center gap-2 px-4 pb-3 sm:gap-3",
+              "z-40 flex shrink-0 items-center gap-2.5 bg-transparent px-4 pb-3 sm:gap-3",
               "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
-              "max-md:bg-background/25 max-md:backdrop-blur-xl",
-              "max-md:supports-[backdrop-filter]:bg-background/16",
-              "max-md:dark:bg-background/20 max-md:dark:supports-[backdrop-filter]:bg-background/12",
-              "md:bg-background/45 md:backdrop-blur-md md:supports-[backdrop-filter]:bg-background/32",
-              "md:dark:bg-background/45 md:shadow-none md:backdrop-blur-md",
             )}
           >
             <Button
@@ -642,14 +681,20 @@ export default function MessagesPage() {
                 )
               }
               className={cn(
-                "shrink-0 md:hidden",
-                "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
+                "h-11 w-11 shrink-0 rounded-full md:hidden",
+                glassBadgeClass,
+                "text-foreground hover:bg-white/15 active:bg-white/20",
+                "dark:hover:bg-white/10 dark:active:bg-white/15",
+                glassIconButtonClass,
               )}
             >
               <HeaderBackChevron />
             </Button>
             <div
-              className="flex min-w-0 flex-1 rounded-xl bg-muted/45 p-1 dark:bg-zinc-900/75"
+              className={cn(
+                "flex min-w-0 flex-1 rounded-full p-1",
+                glassBadgeClass,
+              )}
               role="tablist"
               aria-label="Inbox sections"
             >
@@ -659,10 +704,10 @@ export default function MessagesPage() {
                 aria-selected={inboxTab === "messages"}
                 onClick={() => setInboxTab("messages")}
                 className={cn(
-                  "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
+                  "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold transition-colors",
                   inboxTab === "messages"
-                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-white"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "bg-background/75 text-foreground shadow-sm backdrop-blur-sm dark:bg-zinc-800/90 dark:text-white"
+                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/[0.06]",
                 )}
               >
                 <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
@@ -679,10 +724,10 @@ export default function MessagesPage() {
                 aria-selected={inboxTab === "news"}
                 onClick={() => setInboxTab("news")}
                 className={cn(
-                  "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
+                  "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold transition-colors",
                   inboxTab === "news"
-                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-white"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "bg-background/75 text-foreground shadow-sm backdrop-blur-sm dark:bg-zinc-800/90 dark:text-white"
+                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/[0.06]",
                 )}
               >
                 <Newspaper className="h-4 w-4 shrink-0" aria-hidden />
@@ -702,8 +747,10 @@ export default function MessagesPage() {
         {/* Messages list or activity / news list — scrolls under mobile chrome */}
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden max-md:min-h-0">
           <ScrollArea
+            ref={inboxScrollAreaRef}
             className={cn(
               "min-h-0 flex-1 bg-transparent",
+              "max-md:[&>[data-orientation=vertical]]:hidden",
               "[&_[data-radix-scroll-area-viewport]]:min-w-0",
               "[&_[data-radix-scroll-area-viewport]]:max-w-full",
               "[&_[data-radix-scroll-area-viewport]]:bg-transparent",
@@ -765,29 +812,51 @@ export default function MessagesPage() {
             ) : (
               <>
                 <div className="shrink-0 px-4 pb-3 pt-2 md:pt-3">
-                  <div className="relative">
-                    <Search
-                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <input
-                      type="search"
-                      placeholder="Search by name or city…"
-                      autoComplete="off"
-                      value={contactSearchQuery}
-                      onChange={(e) => setContactSearchQuery(e.target.value)}
-                      className="h-11 w-full rounded-xl border-0 bg-muted/30 pl-10 pr-10 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-muted/45 dark:bg-zinc-900/60 dark:focus:bg-zinc-900/75 md:text-sm"
-                    />
-                    {contactSearchQuery.trim() ? (
-                      <button
-                        type="button"
-                        onClick={() => setContactSearchQuery("")}
-                        className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                        aria-label="Clear search"
-                      >
-                        <X className="h-4 w-4" aria-hidden />
-                      </button>
-                    ) : null}
+                  <div
+                    className={cn(
+                      "overflow-hidden will-change-[max-height,opacity,transform]",
+                      inboxSearchCollapseProgress >= 1 && "pointer-events-none",
+                    )}
+                    style={{
+                      maxHeight: `${
+                        Math.max(
+                          0,
+                          (1 - inboxSearchCollapseProgress) *
+                            INBOX_SEARCH_EXPANDED_PX,
+                        )
+                      }px`,
+                      opacity: 1 - inboxSearchCollapseProgress,
+                      transform: `translateY(${
+                        -inboxSearchCollapseProgress * 6
+                      }px)`,
+                    }}
+                  >
+                    <div className="relative">
+                      <Search
+                        className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                        aria-hidden
+                      />
+                      <input
+                        type="search"
+                        placeholder="Search by name or city…"
+                        autoComplete="off"
+                        value={contactSearchQuery}
+                        onChange={(e) => setContactSearchQuery(e.target.value)}
+                        className="h-12 w-full rounded-2xl border-0 bg-muted/30 pl-10 pr-10 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-muted/45 dark:bg-zinc-900/60 dark:focus:bg-zinc-900/75 md:text-sm"
+                        tabIndex={inboxSearchCollapseProgress >= 1 ? -1 : 0}
+                        aria-hidden={inboxSearchCollapseProgress >= 1}
+                      />
+                      {contactSearchQuery.trim() ? (
+                        <button
+                          type="button"
+                          onClick={() => setContactSearchQuery("")}
+                          className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                          aria-label="Clear search"
+                        >
+                          <X className="h-4 w-4" aria-hidden />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="-mx-4 mt-2.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <div className="flex w-max min-w-full gap-2">
@@ -1064,43 +1133,54 @@ export default function MessagesPage() {
             )}
           </ScrollArea>
 
-          {/* Mobile: floating see-through New message + Remove */}
+          {/* Mobile: floating glass pill — New message + Remove */}
           {inboxTab === "messages" ? (
             <div
               className={cn(
-                "pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center gap-2.5 px-4 md:hidden",
+                "pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center px-4 md:hidden",
                 "pb-[max(1rem,env(safe-area-inset-bottom,0px))]",
               )}
             >
-              <button
-                type="button"
+              <div
                 className={cn(
-                  "pointer-events-auto inline-flex items-center gap-2 rounded-full px-4 py-2.5",
-                  "bg-background/45 text-sm font-semibold text-foreground shadow-lg",
-                  "backdrop-blur-2xl supports-[backdrop-filter]:bg-background/38",
-                  "transition-[transform,background-color] active:scale-[0.98]",
-                  "dark:bg-background/55 dark:supports-[backdrop-filter]:bg-background/42",
-                )}
-                onClick={() => setNewChatOpen(true)}
-              >
-                <PlusSquare className="h-5 w-5 shrink-0" aria-hidden />
-                <span>New message</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsManageMode(!isManageMode)}
-                className={cn(
-                  "pointer-events-auto inline-flex items-center gap-2 rounded-full px-4 py-2.5",
-                  "shadow-lg backdrop-blur-2xl transition-[transform,background-color] active:scale-[0.98]",
-                  "text-sm font-semibold supports-[backdrop-filter]:bg-background/38",
-                  isManageMode
-                    ? "bg-red-500/15 text-red-600 dark:bg-red-500/20 dark:text-red-400"
-                    : "bg-background/45 text-foreground dark:bg-background/55 dark:supports-[backdrop-filter]:bg-background/42",
+                  "pointer-events-auto inline-flex items-stretch overflow-hidden rounded-full",
+                  "bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.45)]",
+                  "backdrop-blur-3xl backdrop-saturate-[180%]",
+                  "supports-[backdrop-filter]:bg-white/[0.08]",
+                  "dark:bg-white/[0.06] dark:shadow-[0_8px_32px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.12)]",
+                  "dark:supports-[backdrop-filter]:bg-white/[0.05]",
                 )}
               >
-                <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
-                <span>{isManageMode ? "Done" : "Remove"}</span>
-              </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-foreground",
+                    "transition-colors hover:bg-white/10 active:bg-white/15",
+                    "dark:hover:bg-white/[0.06] dark:active:bg-white/10",
+                  )}
+                  onClick={() => setNewChatOpen(true)}
+                >
+                  <PlusSquare className="h-5 w-5 shrink-0" aria-hidden />
+                  <span>New message</span>
+                </button>
+                <div
+                  className="my-2.5 w-px shrink-0 self-stretch bg-white/25 dark:bg-white/10"
+                  aria-hidden
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsManageMode(!isManageMode)}
+                  className={cn(
+                    "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+                    isManageMode
+                      ? "bg-red-500/10 text-red-600 hover:bg-red-500/15 active:bg-red-500/20 dark:text-red-400"
+                      : "text-foreground hover:bg-white/10 active:bg-white/15 dark:hover:bg-white/[0.06] dark:active:bg-white/10",
+                  )}
+                >
+                  <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
+                  <span>{isManageMode ? "Done" : "Remove"}</span>
+                </button>
+              </div>
             </div>
           ) : null}
         </div>
@@ -1173,13 +1253,12 @@ export default function MessagesPage() {
 
             return (
               <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-100 dark:bg-background">
-                {/* Mobile chat bar — fixed to viewport top; conversation scrolls underneath */}
+                {/* Mobile chat bar — floating glass controls; conversation scrolls underneath */}
                 <div
                   className={cn(
-                    "z-40 flex shrink-0 items-center gap-2",
-                    "border-b border-border/15 bg-white dark:bg-background",
+                    "relative z-40 flex min-h-[4.25rem] shrink-0 items-end justify-center bg-transparent",
                     "fixed left-0 right-0 top-0 md:hidden",
-                    "px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
+                    "px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
                   )}
                 >
                   <Button
@@ -1187,111 +1266,58 @@ export default function MessagesPage() {
                     size="icon"
                     onClick={handleBackToContacts}
                     className={cn(
-                      "shrink-0 self-center",
-                      "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
+                      "absolute left-4 top-[max(0.75rem,env(safe-area-inset-top,0px))] h-11 w-11 rounded-full",
+                      glassBadgeClass,
+                      glassIconButtonClass,
                     )}
                   >
                     <HeaderBackChevron />
                   </Button>
-                  <div className="flex min-w-0 flex-1 items-center gap-2 self-center">
-                    <ChatParticipantProfilePeek
-                      userId={otherUserId}
-                      preview={
-                        otherUserProfile
-                          ? {
-                              full_name: otherUserProfile.full_name,
-                              photo_url: otherUserProfile.photo_url,
-                              city: otherUserProfile.city ?? null,
-                            }
-                          : null
-                      }
-                    >
-                      <Avatar className="h-10 w-10 flex-shrink-0">
-                        <AvatarImage
-                          src={otherUserProfile?.photo_url || undefined}
-                        />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {otherInitials}
-                        </AvatarFallback>
-                      </Avatar>
-                    </ChatParticipantProfilePeek>
-                    <div className="min-w-0 flex-1">
-                      <h2 className="truncate text-lg font-semibold leading-tight">
-                        {otherUserProfile?.full_name || "User"}
-                      </h2>
-                    </div>
-                    {liveJobHeaderBanner && (
-                      <LiveJobHeaderPill
-                        categoryLabel={liveJobHeaderBanner.categoryLabel}
-                        href={liveJobHeaderBanner.href}
-                        className="max-w-[min(42vw,9.5rem)] shrink-0 self-center"
-                      />
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        navigate(
-                          profile?.role === "client"
-                            ? "/client/home"
-                            : "/freelancer/home",
-                        )
-                      }
-                      className={cn(
-                        "hidden shrink-0 items-center gap-2 text-muted-foreground transition-colors hover:text-primary md:flex",
-                        "ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 [-webkit-tap-highlight-color:transparent]",
-                      )}
-                    >
-                      <HeaderBackChevron className="h-6 w-6" />
-                      <span>Back</span>
-                    </Button>
-                  </div>
+                  <ChatFloatingProfileHeader
+                    userId={otherUserId}
+                    displayName={otherUserProfile?.full_name || "User"}
+                    initials={otherInitials}
+                    photoUrl={otherUserProfile?.photo_url}
+                    isVerified={Boolean(otherUserProfile?.is_verified)}
+                    isLive24h={chatAvatarStatus.isLive24h}
+                    hasPostedRequest={chatAvatarStatus.hasPostedRequest}
+                    preview={
+                      otherUserProfile
+                        ? {
+                            full_name: otherUserProfile.full_name,
+                            photo_url: otherUserProfile.photo_url,
+                            city: otherUserProfile.city ?? null,
+                          }
+                        : null
+                    }
+                  />
                 </div>
 
-                {/*
-                  Desktop chat header — absolutely overlaid so the conversation
-                  scrolls beneath it, mirroring the composer's translucent feel.
-                */}
+                {/* Desktop chat header — centred floating avatar + name badge */}
                 <div
                   className={cn(
-                    "absolute inset-x-0 top-0 z-20 hidden h-[3.5rem] items-center justify-between gap-3 px-5",
-                    "border-b border-border/15 bg-white dark:bg-background",
+                    "pointer-events-none absolute inset-x-0 top-0 z-20 hidden justify-center bg-transparent px-5 pb-2 pt-3",
                     "md:flex",
                   )}
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <ChatParticipantProfilePeek
-                      userId={otherUserId}
-                      preview={
-                        otherUserProfile
-                          ? {
-                              full_name: otherUserProfile.full_name,
-                              photo_url: otherUserProfile.photo_url,
-                              city: otherUserProfile.city ?? null,
-                            }
-                          : null
-                      }
-                    >
-                      <Avatar className="h-10 w-10 flex-shrink-0">
-                        <AvatarImage
-                          src={otherUserProfile?.photo_url || undefined}
-                        />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {otherInitials}
-                        </AvatarFallback>
-                      </Avatar>
-                    </ChatParticipantProfilePeek>
-                    <h2 className="min-w-0 truncate text-base font-semibold leading-tight text-foreground">
-                      {otherUserProfile?.full_name || "User"}
-                    </h2>
-                  </div>
-                  {liveJobHeaderBanner && (
-                    <LiveJobHeaderPill
-                      categoryLabel={liveJobHeaderBanner.categoryLabel}
-                      href={liveJobHeaderBanner.href}
-                      className="shrink-0"
-                    />
-                  )}
+                  <ChatFloatingProfileHeader
+                    userId={otherUserId}
+                    displayName={otherUserProfile?.full_name || "User"}
+                    initials={otherInitials}
+                    photoUrl={otherUserProfile?.photo_url}
+                    isVerified={Boolean(otherUserProfile?.is_verified)}
+                    isLive24h={chatAvatarStatus.isLive24h}
+                    hasPostedRequest={chatAvatarStatus.hasPostedRequest}
+                    preview={
+                      otherUserProfile
+                        ? {
+                            full_name: otherUserProfile.full_name,
+                            photo_url: otherUserProfile.photo_url,
+                            city: otherUserProfile.city ?? null,
+                          }
+                        : null
+                    }
+                  />
                 </div>
 
                 {/*
