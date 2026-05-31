@@ -11,6 +11,10 @@ import { Loader2, Sparkles } from "lucide-react";
 import { GoogleIcon } from "@/components/BrandIcons";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { needsKycVerification } from "@/lib/kyc";
+import {
+  commitPendingProfile,
+  readPendingProfile,
+} from "@/lib/pendingProfile";
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -18,6 +22,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingProfileResolved, setPendingProfileResolved] = useState(false);
   const {
     signIn,
     signUp,
@@ -37,108 +42,80 @@ export default function LoginPage() {
     }
   }, [searchParams, isSignUp]);
 
-  // Check for pending profile and create it after login
+  useEffect(() => {
+    if (!user) {
+      setPendingProfileResolved(false);
+    }
+  }, [user]);
+
+  // Commit pending profile after email confirmation (legacy /login redirect links)
   useEffect(() => {
     async function handlePendingProfile() {
       if (!user || profile || authLoading) return;
 
-      const pendingProfile = localStorage.getItem("pendingProfile");
-      if (pendingProfile) {
-        try {
-          const profileData = JSON.parse(pendingProfile);
-          console.log(
-            "[LoginPage] Found pending profile, creating...",
-            profileData,
-          );
-
-          // Create the profile
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .upsert({
-              id: user.id,
-              role: profileData.role,
-              full_name: profileData.fullName,
-              city: profileData.city,
-              location_lat: profileData.location_lat ?? null,
-              location_lng: profileData.location_lng ?? null,
-              kyc_status: "not_started",
-            });
-
-          if (profileError) {
-            console.error("[LoginPage] Error creating profile", profileError);
-            // Don't clear pending profile on error, let onboarding handle it
-            return;
-          }
-
-          // If freelancer, also create freelancer_profiles entry
-          if (profileData.role === "freelancer") {
-            await supabase.from("freelancer_profiles").upsert({
-              user_id: user.id,
-            });
-          }
-
-          // Clear pending profile
-          localStorage.removeItem("pendingProfile");
-
-          // Refresh profile to get the new one
-          await refreshProfile();
-        } catch (e) {
-          console.error("[LoginPage] Error handling pending profile", e);
-        }
+      const pending = readPendingProfile();
+      if (!pending) {
+        setPendingProfileResolved(true);
+        return;
       }
+
+      console.log("[LoginPage] Found pending profile, creating...", pending);
+      const result = await commitPendingProfile(user.id);
+      if (!result.ok) {
+        console.error("[LoginPage] Error creating profile", result.error);
+        setPendingProfileResolved(true);
+        return;
+      }
+
+      await refreshProfile();
+      setPendingProfileResolved(true);
     }
 
-    handlePendingProfile();
+    if (user && !profile && !authLoading) {
+      handlePendingProfile();
+    }
   }, [user, profile, authLoading, refreshProfile]);
 
-  // Redirect if already logged in (wait for auth to finish loading)
+  // Redirect if already logged in (wait for auth + pending profile handling)
   useEffect(() => {
     console.log("[LoginPage] useEffect triggered", {
       authLoading,
       hasUser: !!user,
       profile,
+      pendingProfileResolved,
     });
 
-    // Only redirect after loading is complete
-    if (!authLoading && user) {
+    if (!authLoading && user && (profile || pendingProfileResolved)) {
       console.log("[LoginPage] Ready to redirect", { profile });
-      // Small delay to ensure auth state is fully updated and profile creation completes
-      const timer = setTimeout(() => {
-        // Check if there's a redirect parameter
-        const redirectParam = searchParams.get("redirect");
-        const roleParam = searchParams.get("role");
+      const redirectParam = searchParams.get("redirect");
+      const roleParam = searchParams.get("role");
 
-        if (redirectParam) {
-          // Redirect to the specified path, preserving role if present
-          const redirectUrl = roleParam
-            ? `${redirectParam}?role=${roleParam}`
-            : redirectParam;
-          console.log("[LoginPage] Redirecting to", redirectUrl);
-          navigate(redirectUrl, { replace: true });
-        } else if (profile) {
-          if (needsKycVerification(profile)) {
-            console.log("[LoginPage] Redirecting to KYC verification");
-            navigate("/onboarding/verify", { replace: true });
-          } else if (profile.role === "client") {
-            console.log("[LoginPage] Redirecting to /client/home (client)");
-            navigate("/client/home", { replace: true });
-          } else {
-            console.log("[LoginPage] Redirecting to /freelancer/home");
-            navigate("/freelancer/home", { replace: true });
-          }
+      if (redirectParam) {
+        const redirectUrl = roleParam
+          ? `${redirectParam}?role=${roleParam}`
+          : redirectParam;
+        console.log("[LoginPage] Redirecting to", redirectUrl);
+        navigate(redirectUrl, { replace: true });
+      } else if (profile) {
+        if (needsKycVerification(profile)) {
+          console.log("[LoginPage] Redirecting to KYC verification");
+          navigate("/onboarding/verify", { replace: true });
+        } else if (profile.role === "client") {
+          console.log("[LoginPage] Redirecting to /client/home (client)");
+          navigate("/client/home", { replace: true });
         } else {
-          // No profile yet, redirect to onboarding
-          console.log("[LoginPage] Redirecting to /onboarding (no profile)");
-          const redirectUrl = roleParam
-            ? `/onboarding?role=${roleParam}`
-            : "/onboarding";
-          navigate(redirectUrl, { replace: true });
+          console.log("[LoginPage] Redirecting to /freelancer/home");
+          navigate("/freelancer/home", { replace: true });
         }
-      }, 150);
-
-      return () => clearTimeout(timer);
+      } else {
+        console.log("[LoginPage] Redirecting to /onboarding (no profile)");
+        const redirectUrl = roleParam
+          ? `/onboarding?role=${roleParam}`
+          : "/onboarding";
+        navigate(redirectUrl, { replace: true });
+      }
     }
-  }, [user, profile, authLoading, navigate, searchParams]);
+  }, [user, profile, authLoading, pendingProfileResolved, navigate, searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -201,8 +178,11 @@ export default function LoginPage() {
     }
   }
 
-  // Show loading if auth is loading
-  if (authLoading) {
+  // Show loading if auth is loading, or finishing post-email signup
+  if (
+    authLoading ||
+    (user && !profile && !pendingProfileResolved && readPendingProfile())
+  ) {
     console.log("[LoginPage] Showing loading spinner", {
       authLoading,
       hasUser: !!user,
@@ -220,10 +200,14 @@ export default function LoginPage() {
 
   // Don't show login page if already logged in (redirect will happen)
   if (user) {
-    console.log(
-      "[LoginPage] User exists, hiding login form (redirect pending)",
+    return (
+      <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
+        <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
+        <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
+          <AppBootSplashLogo />
+        </main>
+      </div>
     );
-    return null;
   }
 
   console.log("[LoginPage] Rendering login form");

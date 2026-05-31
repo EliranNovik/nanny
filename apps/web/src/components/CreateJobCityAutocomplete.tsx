@@ -4,40 +4,31 @@ import {
   GOOGLE_MAPS_LIBRARIES,
   GOOGLE_MAPS_SCRIPT_ID,
 } from "@/lib/googleMapsLoader";
+import {
+  cityPlaceFromPlace,
+  geocodeCoordsToCityPlace,
+  type CityPlaceSelection,
+} from "@/lib/cityPlace";
+import { getCurrentLocation } from "@/lib/location";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function cityLabelFromPlace(place: google.maps.places.PlaceResult): string {
-  const ac = place.address_components;
-  if (ac?.length) {
-    for (const c of ac) {
-      if (c.types.includes("locality")) return c.long_name;
-    }
-    for (const c of ac) {
-      if (c.types.includes("administrative_area_level_1")) return c.long_name;
-    }
-    for (const c of ac) {
-      if (c.types.includes("sublocality") || c.types.includes("sublocality_level_1")) {
-        return c.long_name;
-      }
-    }
-  }
-  const name = place.name?.trim();
-  if (name) return name;
-  const first = place.formatted_address?.split(",")[0]?.trim();
-  return first || "";
-}
+export type { CityPlaceSelection };
 
 export interface CreateJobCityAutocompleteProps {
   confirmedCity: string;
   isConfirmed: boolean;
-  onPickCity: (city: string) => void;
+  onPickCity: (selection: CityPlaceSelection) => void;
   onInvalidateSelection: () => void;
-  gpsLoading: boolean;
-  onGpsClick: () => void;
+  /** Parent-driven GPS (e.g. OpenStreetMap). Omit to use built-in Google geocoder. */
+  onGpsClick?: () => void;
+  /** Required when `onGpsClick` is provided. Ignored when using built-in GPS. */
+  gpsLoading?: boolean;
   inputClassName?: string;
+  /** Compact styling for onboarding and other dense forms. */
+  size?: "default" | "compact";
   /** When set, copy and validation tone match optional flows (e.g. post availability). */
   variant?: "required" | "optional";
 }
@@ -47,17 +38,21 @@ export function CreateJobCityAutocomplete({
   isConfirmed,
   onPickCity,
   onInvalidateSelection,
-  gpsLoading,
   onGpsClick,
+  gpsLoading: externalGpsLoading = false,
   inputClassName,
+  size = "default",
   variant = "required",
 }: CreateJobCityAutocompleteProps) {
   const isOptional = variant === "optional";
+  const isCompact = size === "compact";
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null);
   const [inputValue, setInputValue] = useState(() =>
     isConfirmed ? confirmedCity : "",
   );
+  const [internalGpsLoading, setInternalGpsLoading] = useState(false);
+  const gpsLoading = onGpsClick ? externalGpsLoading : internalGpsLoading;
   /** Avoid onChange firing after dropdown pick from clearing parent state before confirm lands */
   const suppressInvalidateRef = useRef(false);
   const pacClassBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -103,6 +98,19 @@ export function CreateJobCityAutocomplete({
     }
   }, [isConfirmed, confirmedCity]);
 
+  const applySelection = useCallback(
+    (selection: CityPlaceSelection) => {
+      suppressInvalidateRef.current = true;
+      setInputValue(selection.label);
+      onPickCity(selection);
+      document.body.classList.remove("create-job-city-pac");
+      queueMicrotask(() => {
+        suppressInvalidateRef.current = false;
+      });
+    },
+    [onPickCity],
+  );
+
   const onAcLoad = useCallback((instance: google.maps.places.Autocomplete) => {
     setAutocomplete(instance);
   }, []);
@@ -110,22 +118,38 @@ export function CreateJobCityAutocomplete({
   const onPlaceChanged = useCallback(() => {
     if (!autocomplete) return;
     const place = autocomplete.getPlace();
-    const label = cityLabelFromPlace(place);
-    if (!label) return;
-    suppressInvalidateRef.current = true;
-    setInputValue(label);
-    onPickCity(label);
-    document.body.classList.remove("create-job-city-pac");
-    queueMicrotask(() => {
-      suppressInvalidateRef.current = false;
-    });
-  }, [autocomplete, onPickCity]);
+    const selection = cityPlaceFromPlace(place);
+    if (!selection) return;
+    applySelection(selection);
+  }, [autocomplete, applySelection]);
 
   const handleInputChange = (value: string) => {
     setInputValue(value);
     if (suppressInvalidateRef.current) return;
     onInvalidateSelection();
   };
+
+  const handleGpsClick = useCallback(async () => {
+    if (onGpsClick) {
+      onGpsClick();
+      return;
+    }
+    setInternalGpsLoading(true);
+    try {
+      const { lat, lng } = await getCurrentLocation();
+      const selection = await geocodeCoordsToCityPlace(lat, lng);
+      if (!selection) {
+        return;
+      }
+      applySelection(selection);
+    } finally {
+      setInternalGpsLoading(false);
+    }
+  }, [onGpsClick, applySelection]);
+
+  const fieldHeightClass = isCompact ? "h-10" : "h-14";
+  const textSizeClass = isCompact ? "text-base" : "text-lg";
+  const gpsButtonClass = isCompact ? "h-10 w-10" : "h-14 w-14";
 
   if (loadError) {
     return (
@@ -135,13 +159,16 @@ export function CreateJobCityAutocomplete({
             disabled
             placeholder="City search unavailable"
             className={cn(
-              "h-14 flex-1 border-slate-200/90 bg-white text-lg opacity-80 dark:border-white/[0.12] dark:bg-white/[0.04]",
+              fieldHeightClass,
+              "flex-1 border-slate-200/90 bg-white opacity-80 dark:border-white/[0.12] dark:bg-white/[0.04]",
+              textSizeClass,
               inputClassName,
             )}
           />
         </div>
         <p className="text-sm text-destructive">
-          Google Maps could not load. Add <code className="rounded bg-muted px-1">VITE_GOOGLE_MAPS_API_KEY</code>{" "}
+          Google Maps could not load. Add{" "}
+          <code className="rounded bg-muted px-1">VITE_GOOGLE_MAPS_API_KEY</code>{" "}
           to choose a city from suggestions.
         </p>
       </div>
@@ -150,7 +177,12 @@ export function CreateJobCityAutocomplete({
 
   if (!isLoaded) {
     return (
-      <div className="flex h-14 items-center gap-2 rounded-md border border-slate-200/90 bg-white px-3 dark:border-white/[0.12] dark:bg-white/[0.04]">
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-md border border-slate-200/90 bg-white px-3 dark:border-white/[0.12] dark:bg-white/[0.04]",
+          fieldHeightClass,
+        )}
+      >
         <Loader2 className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" />
         <span className="text-sm text-muted-foreground">Loading city search…</span>
       </div>
@@ -169,18 +201,17 @@ export function CreateJobCityAutocomplete({
           }}
         >
           <Input
-            placeholder={
-              isOptional
-                ? "City (optional) — search and pick"
-                : "Start typing, then pick a city from the list"
-            }
+            id="city"
+            placeholder="Start typing, then pick a city from the list"
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={enablePacStyling}
             onBlur={schedulePacStylingOff}
             autoComplete="off"
             className={cn(
-              "h-14 flex-1 border-slate-200/90 bg-white text-lg shadow-sm ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-primary/35 dark:border-white/[0.12] dark:bg-white/[0.04]",
+              fieldHeightClass,
+              "min-w-0 flex-1 border-slate-200/90 bg-white shadow-sm ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-primary/35 dark:border-white/[0.12] dark:bg-white/[0.04]",
+              textSizeClass,
               inputClassName,
             )}
             aria-invalid={
@@ -192,9 +223,9 @@ export function CreateJobCityAutocomplete({
           type="button"
           variant="outline"
           size="icon"
-          onClick={onGpsClick}
+          onClick={handleGpsClick}
           disabled={gpsLoading}
-          className="h-14 w-14 shrink-0"
+          className={cn("shrink-0", gpsButtonClass)}
           title="Use my current location (sets city from GPS)"
         >
           {gpsLoading ? (
@@ -204,14 +235,19 @@ export function CreateJobCityAutocomplete({
           )}
         </Button>
       </div>
-      <p className="text-sm text-slate-500 dark:text-slate-400">
+      <p
+        className={cn(
+          "text-slate-500 dark:text-slate-400",
+          isCompact ? "text-xs" : "text-sm",
+        )}
+      >
         {isOptional
           ? isConfirmed
             ? "City from the list or GPS is saved. Edit the field to change it."
             : "Optional — pick a city from suggestions or use GPS. You can skip this."
           : isConfirmed
             ? "City selected. Change the text only if you want to pick a different city."
-            : "Choose a city from the suggestions — free text alone is not enough to continue."}
+            : "Choose a city from the suggestions — typing alone is not enough to continue."}
       </p>
     </div>
   );

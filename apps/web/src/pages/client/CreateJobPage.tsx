@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DualLocationPicker } from "@/components/DualLocationPicker";
 import { CreateJobCityAutocomplete } from "@/components/CreateJobCityAutocomplete";
+import type { CityPlaceSelection } from "@/lib/cityPlace";
 import {
   Heart,
   ChevronRight,
@@ -407,10 +408,10 @@ export default function CreateJobPage() {
       ? (CREATE_JOB_STEP_TIPS[step - 1] ?? "")
       : "";
 
-  const selectLocationCity = useCallback((city: string) => {
+  const selectLocationCity = useCallback((selection: CityPlaceSelection) => {
     setJobData((prev) => ({
       ...prev,
-      location_city: city.trim(),
+      location_city: selection.label.trim(),
       location_city_confirmed: true,
     }));
   }, []);

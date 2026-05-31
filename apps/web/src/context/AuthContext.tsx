@@ -14,6 +14,7 @@ interface Profile {
   is_admin?: boolean;
   full_name: string | null;
   city: string | null;
+  city_place_id?: string | null;
   phone: string | null;
   photo_url: string | null;
   /** Set from profile / map onboarding (helpers search, jobs). */

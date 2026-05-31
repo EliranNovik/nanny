@@ -5,13 +5,21 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Mail, MapPin, Loader2, Users, Heart, Check } from "lucide-react";
+import { ArrowRight, Users, Heart, Check } from "lucide-react";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import { AppBootSplashLogo } from "@/components/AppBootSplash";
-import { getLocationDataFromGps } from "@/lib/location";
+import { CreateJobCityAutocomplete } from "@/components/CreateJobCityAutocomplete";
 import { cn } from "@/lib/utils";
 import { GoogleIcon } from "@/components/BrandIcons";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
+import type { CityPlaceSelection } from "@/lib/cityPlace";
+import {
+  clearPendingProfile,
+  commitPendingProfile,
+  readPendingProfile,
+  savePendingProfile,
+} from "@/lib/pendingProfile";
+import { needsKycVerification } from "@/lib/kyc";
 
 type Role = "client" | "freelancer";
 
@@ -23,19 +31,19 @@ export default function OnboardingPage() {
   /** Default: family / hire flow. Use `?role=freelancer` for helpers. */
   const [role, setRole] = useState<Role>("client");
   const [fullName, setFullName] = useState("");
-  const [city, setCity] = useState("");
-  /** Set when user uses "My location" (saved to profiles.location_lat/lng). */
-  const [locationLat, setLocationLat] = useState<number | null>(null);
-  const [locationLng, setLocationLng] = useState<number | null>(null);
-  const [locationLoading, setLocationLoading] = useState(false);
+  const [citySelection, setCitySelection] = useState<CityPlaceSelection | null>(
+    null,
+  );
+  const cityConfirmed = citySelection !== null;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [registrationEmail, setRegistrationEmail] = useState("");
   const [checkingProfile, setCheckingProfile] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
+  const [completingSignup, setCompletingSignup] = useState(false);
   const checkInitiatedRef = useRef(false);
+  const creatingProfileRef = useRef(false);
 
   // Optional: `?role=freelancer` for helper signup (links from marketing)
   useEffect(() => {
@@ -44,6 +52,15 @@ export default function OnboardingPage() {
       setRole(roleParam);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!user) {
+      checkInitiatedRef.current = false;
+      setProfileChecked(false);
+      setCompletingSignup(false);
+      setCheckingProfile(false);
+    }
+  }, [user]);
 
   // Check if profile already exists in database (even if context hasn't loaded it)
   // This should run FIRST before checking for pending profile
@@ -86,66 +103,62 @@ export default function OnboardingPage() {
           );
           setProfileChecked(true);
           setCheckingProfile(false);
-          // Clear any pending profile
-          localStorage.removeItem("pendingProfile");
+          clearPendingProfile();
 
-          // Navigate immediately without waiting for anything
-          if (existingProfile.role === "client") {
-            navigate("/client/home", { replace: true });
-          } else {
-            navigate("/freelancer/home", { replace: true });
-          }
+          const target = needsKycVerification(existingProfile)
+            ? "/onboarding/verify"
+            : existingProfile.role === "client"
+              ? "/client/home"
+              : "/freelancer/home";
+          navigate(target, { replace: true });
 
-          // Try to refresh profile in context in background (don't wait)
-          refreshProfile().catch(() => {
-            // Ignore errors, profile exists in DB
-          });
-
+          refreshProfile().catch(() => {});
           return;
         }
 
-        // No profile exists in DB, check for pending profile
-        const pendingProfile = localStorage.getItem("pendingProfile");
-        if (pendingProfile) {
-          try {
-            const profileData = JSON.parse(pendingProfile);
-            console.log(
-              "[OnboardingPage] Found pending profile, creating...",
-              profileData,
-            );
-            setRole(profileData.role);
-            setFullName(profileData.fullName);
-            setCity(profileData.city);
-            if (typeof profileData.location_lat === "number")
-              setLocationLat(profileData.location_lat);
-            if (typeof profileData.location_lng === "number")
-              setLocationLng(profileData.location_lng);
-            setRegistrationEmail(profileData.email);
-
-            // Create the profile now that user is verified
-            console.log("[OnboardingPage] Calling createProfile...");
-            try {
-              await createProfile();
-              console.log(
-                "[OnboardingPage] createProfile completed successfully",
-              );
-              // Don't set checkingProfile to false here - let createProfile handle navigation
-            } catch (createError) {
-              console.error(
-                "[OnboardingPage] Error in createProfile",
-                createError,
-              );
-              setError("Failed to create profile. Please try again.");
-              setCheckingProfile(false);
-              checkInitiatedRef.current = false; // Allow retry
-            }
-          } catch (e) {
-            console.error("[OnboardingPage] Error parsing pending profile", e);
-            setCheckingProfile(false);
+        const pending = readPendingProfile();
+        if (pending) {
+          console.log(
+            "[OnboardingPage] Found pending profile, creating...",
+            pending,
+          );
+          setRole(pending.role);
+          setFullName(pending.fullName);
+          if (pending.city_place_id) {
+            setCitySelection({
+              label: pending.city,
+              placeId: pending.city_place_id,
+              lat: pending.location_lat ?? null,
+              lng: pending.location_lng ?? null,
+            });
           }
-        } else {
-          setCheckingProfile(false);
+          if (pending.email) setEmail(pending.email);
+
+          setCompletingSignup(true);
+          try {
+            const result = await commitPendingProfile(user.id);
+            if (!result.ok) {
+              setError(result.error);
+              setCompletingSignup(false);
+              setCheckingProfile(false);
+              checkInitiatedRef.current = false;
+              return;
+            }
+            await refreshProfile();
+            setProfileChecked(true);
+            setCheckingProfile(false);
+            navigate("/onboarding/verify", { replace: true });
+          } catch (createError) {
+            console.error("[OnboardingPage] Error committing pending profile", createError);
+            setError("Failed to create profile. Please try again.");
+            setCompletingSignup(false);
+            setCheckingProfile(false);
+            checkInitiatedRef.current = false;
+          }
+          return;
         }
+
+        setCheckingProfile(false);
       } catch (err) {
         console.error("[OnboardingPage] Error in checkExistingProfile", err);
         setCheckingProfile(false);
@@ -172,13 +185,28 @@ export default function OnboardingPage() {
     refreshProfile,
   ]);
 
-  // Show loading while checking authentication (only briefly)
-  if (authLoading) {
+  const hasPendingSignup =
+    Boolean(user && !profile && readPendingProfile()) && !error;
+
+  // Show loading while checking authentication or finishing post-email signup
+  if (
+    authLoading ||
+    completingSignup ||
+    checkingProfile ||
+    hasPendingSignup
+  ) {
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
         <LandingSiteHeader />
         <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
-          <AppBootSplashLogo />
+          <div className="flex flex-col items-center gap-3">
+            <AppBootSplashLogo />
+            {completingSignup || checkingProfile ? (
+              <p className="text-sm text-muted-foreground">
+                Setting up your account…
+              </p>
+            ) : null}
+          </div>
         </main>
       </div>
     );
@@ -200,31 +228,26 @@ export default function OnboardingPage() {
     step,
   });
 
-  async function handleUseMyLocation() {
-    setLocationLoading(true);
-    setError("");
-    try {
-      const { city: resolvedCity, lat, lng } = await getLocationDataFromGps();
-      setCity(resolvedCity);
-      setLocationLat(lat);
-      setLocationLng(lng);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not get your location.");
-    } finally {
-      setLocationLoading(false);
-    }
+  function pendingCityFields() {
+    if (!citySelection?.placeId) return null;
+    return {
+      city: citySelection.label.trim(),
+      city_place_id: citySelection.placeId,
+      location_lat: citySelection.lat,
+      location_lng: citySelection.lng,
+    };
   }
 
   async function handleNameCitySubmit() {
     console.log("[OnboardingPage] handleNameCitySubmit called", {
       role,
       fullName,
-      city,
+      citySelection,
     });
 
-    if (!fullName.trim() || !city.trim()) {
+    if (!fullName.trim() || !citySelection?.placeId) {
       console.log("[OnboardingPage] Validation failed");
-      setError("Please fill in all fields");
+      setError("Please enter your name and pick your city from the list");
       return;
     }
 
@@ -240,18 +263,19 @@ export default function OnboardingPage() {
   }
 
   async function handleGoogleSignUp() {
+    const cityFields = pendingCityFields();
+    if (!cityFields) {
+      setError("Please pick your city from the list before continuing");
+      return;
+    }
+
     setLoading(true);
     setError("");
-    const pendingProfile: Record<string, unknown> = {
+    savePendingProfile({
       role,
       fullName: fullName.trim(),
-      city: city.trim(),
-    };
-    if (locationLat != null && locationLng != null) {
-      pendingProfile.location_lat = locationLat;
-      pendingProfile.location_lng = locationLng;
-    }
-    localStorage.setItem("pendingProfile", JSON.stringify(pendingProfile));
+      ...cityFields,
+    });
 
     const { error: oAuthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -264,16 +288,22 @@ export default function OnboardingPage() {
   }
 
   async function handleRegister() {
+    const cityFields = pendingCityFields();
     console.log("[OnboardingPage] handleRegister called", {
       email,
       password,
       role,
       fullName,
-      city,
+      citySelection,
     });
 
     if (!email.trim() || !password.trim()) {
       setError("Please fill in email and password");
+      return;
+    }
+
+    if (!cityFields) {
+      setError("Please pick your city from the list before continuing");
       return;
     }
 
@@ -285,18 +315,10 @@ export default function OnboardingPage() {
     setLoading(true);
     setError("");
 
-    const emailRedirectTo = `${window.location.origin}/login`;
-
-    // Register the user directly with Supabase to get full response
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
-      {
-        email: email.trim(),
-        password: password,
-        options: {
-          emailRedirectTo,
-        },
-      },
-    );
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password: password,
+    });
 
     if (signUpError) {
       console.error("[OnboardingPage] Sign up error", signUpError);
@@ -307,70 +329,42 @@ export default function OnboardingPage() {
       return;
     }
 
-    // Check if email confirmation is required
-    // If user is null, it means email confirmation is required
     if (!signUpData.user) {
       setError("Failed to create account. Please try again.");
       setLoading(false);
       return;
     }
 
-    // If user exists but session is null, email confirmation is required
-    if (signUpData.user && !signUpData.session) {
-      console.log("[OnboardingPage] Email confirmation required");
-      setRegistrationEmail(email.trim());
-
-      // Save profile data to localStorage to create after email verification
-      const pendingProfile: Record<string, unknown> = {
-        role,
-        fullName: fullName.trim(),
-        city: city.trim(),
+    if (!signUpData.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
-      };
-      if (locationLat != null && locationLng != null) {
-        pendingProfile.location_lat = locationLat;
-        pendingProfile.location_lng = locationLng;
+        password: password,
+      });
+      if (signInError) {
+        setError("Account created but sign-in failed. Please try logging in.");
+        setLoading(false);
+        return;
       }
-      localStorage.setItem("pendingProfile", JSON.stringify(pendingProfile));
-
-      setLoading(false);
-      setStep(3); // Email verification step
-      return;
     }
 
-    // If session exists, user is immediately signed in (email confirmation disabled)
-    // Wait a moment for auth state to update
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Check if user is now available
-    const {
-      data: { user: newUser },
-    } = await supabase.auth.getUser();
-
-    if (!newUser) {
-      setError("Account created but unable to sign in. Please try logging in.");
-      setLoading(false);
-      return;
-    }
-
-    // Now create the profile
     await createProfile();
   }
 
   async function createProfile() {
+    const cityFields = pendingCityFields();
     console.log("[OnboardingPage] createProfile START", {
-      loading,
       role,
       fullName,
-      city,
+      citySelection,
     });
 
-    // Prevent multiple calls
-    if (loading) {
+    if (creatingProfileRef.current) {
       console.log("[OnboardingPage] createProfile already in progress");
       return;
     }
 
+    creatingProfileRef.current = true;
+    setCompletingSignup(true);
     setLoading(true);
     setError("");
 
@@ -384,27 +378,33 @@ export default function OnboardingPage() {
       console.error("[OnboardingPage] Error getting user", userError);
       setError("Unable to get user information. Please try again.");
       setLoading(false);
+      setCompletingSignup(false);
+      creatingProfileRef.current = false;
       return;
     }
     if (!currentUser) {
       console.error("[OnboardingPage] No current user");
       setError("Unable to get user information. Please try again.");
       setLoading(false);
+      setCompletingSignup(false);
+      creatingProfileRef.current = false;
       return;
     }
     console.log("[OnboardingPage] Got user", { userId: currentUser.id });
 
     // Validate required fields
-    if (!fullName.trim() || !city.trim()) {
+    if (!fullName.trim() || !cityFields) {
       console.error("[OnboardingPage] Validation failed", {
         role,
         fullName,
-        city,
+        citySelection,
       });
       setError(
         "Missing required profile information. Please complete the form.",
       );
       setLoading(false);
+      setCompletingSignup(false);
+      creatingProfileRef.current = false;
       return;
     }
     console.log("[OnboardingPage] Validation passed");
@@ -427,33 +427,27 @@ export default function OnboardingPage() {
         "[OnboardingPage] Profile already exists, skipping creation",
         existingProfile,
       );
-      // Clear pending profile
-      localStorage.removeItem("pendingProfile");
+      clearPendingProfile();
       setProfileChecked(true);
       setLoading(false);
+      setCompletingSignup(false);
+      creatingProfileRef.current = false;
 
-      // Try to refresh profile (but don't wait if it times out)
-      refreshProfile().catch((err) => {
-        console.warn(
-          "[OnboardingPage] Profile refresh failed, but profile exists",
-          err,
-        );
-      });
-
-      // Navigate based on role immediately
-      if (existingProfile.role === "client") {
-        navigate("/client/home", { replace: true });
-      } else {
-        navigate("/freelancer/home", { replace: true });
-      }
+      const target = needsKycVerification(existingProfile)
+        ? "/onboarding/verify"
+        : existingProfile.role === "client"
+          ? "/client/home"
+          : "/freelancer/home";
+      navigate(target, { replace: true });
       return;
     }
 
     console.log("[OnboardingPage] Upserting profile...", {
       userId: currentUser.id,
       role,
-      fullName: fullName.trim(),
-      city: city.trim(),
+      full_name: fullName.trim(),
+      city: cityFields.city,
+      city_place_id: cityFields.city_place_id,
     });
 
     // Upsert profile
@@ -461,7 +455,7 @@ export default function OnboardingPage() {
       id: currentUser.id,
       role,
       full_name: fullName.trim(),
-      city: city.trim(),
+      city: cityFields.city,
     });
 
     const { error: profileError, data: profileData } = await supabase
@@ -470,9 +464,10 @@ export default function OnboardingPage() {
         id: currentUser.id,
         role,
         full_name: fullName.trim(),
-        city: city.trim(),
-        location_lat: locationLat,
-        location_lng: locationLng,
+        city: cityFields.city,
+        city_place_id: cityFields.city_place_id,
+        location_lat: cityFields.location_lat,
+        location_lng: cityFields.location_lng,
         kyc_status: "not_started",
       })
       .select();
@@ -488,7 +483,9 @@ export default function OnboardingPage() {
       console.error("[OnboardingPage] Profile creation FAILED", profileError);
       setError(profileError.message);
       setLoading(false);
+      setCompletingSignup(false);
       setCheckingProfile(false);
+      creatingProfileRef.current = false;
       return;
     }
 
@@ -498,7 +495,9 @@ export default function OnboardingPage() {
         "Profile created but unable to verify. Please refresh the page.",
       );
       setLoading(false);
+      setCompletingSignup(false);
       setCheckingProfile(false);
+      creatingProfileRef.current = false;
       return;
     }
 
@@ -527,47 +526,25 @@ export default function OnboardingPage() {
       }
     }
 
-    // Clear pending profile from localStorage
-    localStorage.removeItem("pendingProfile");
+    clearPendingProfile();
     setProfileChecked(true);
     setCheckingProfile(false);
     setLoading(false);
 
-    console.log(
-      "[OnboardingPage] Profile created successfully, navigating NOW...",
-      { role },
-    );
-
-    // Navigate based on role immediately - use window.location as fallback
-    const targetPath = "/onboarding/verify";
-    console.log("[OnboardingPage] Target path:", targetPath);
-
-    // Use window.location immediately for guaranteed navigation
-    console.log("[OnboardingPage] Using window.location.href to navigate");
-    window.location.href = targetPath;
-
-    // Also try React Router navigate as backup (though window.location should work)
-    try {
-      navigate(targetPath, { replace: true });
-    } catch (navError) {
-      console.error(
-        "[OnboardingPage] React Router navigate failed (but window.location should work)",
-        navError,
-      );
-    }
-
-    // Try to refresh profile in background (don't wait)
-    refreshProfile().catch((err) => {
+    await refreshProfile().catch((err) => {
       console.warn(
         "[OnboardingPage] Profile refresh failed, but profile was created",
         err,
       );
     });
+
+    navigate("/onboarding/verify", { replace: true });
+    creatingProfileRef.current = false;
   }
 
   console.log("[OnboardingPage] Rendering onboarding form");
 
-  const progressStep = step; // 1, 2, or 3
+  const progressStep = step;
 
   return (
     <div className="min-h-[100dvh] flex bg-white dark:bg-background">
@@ -616,55 +593,67 @@ export default function OnboardingPage() {
             </div>
 
           {/* Step progress indicator */}
-          {step !== 3 && (
-            <div className="mb-8">
-              <div className="flex items-center justify-between">
-                {[1, 2].map((s) => (
-                  <div key={s} className="flex flex-1 items-center">
-                    <div className={cn(
+          <div className="mb-8">
+            <div className="flex items-center">
+              {[1, 2].map((s) => (
+                <div key={s} className="flex flex-1 items-center last:flex-none">
+                  <div
+                    className={cn(
                       "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
                       progressStep > s
                         ? "bg-primary text-primary-foreground"
                         : progressStep === s
                           ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                          : "bg-muted text-muted-foreground"
-                    )}>
-                      {progressStep > s ? <Check className="h-3.5 w-3.5" /> : s}
-                    </div>
-                    <div className={cn(
-                      "h-0.5 flex-1 mx-2 rounded-full transition-all",
-                      progressStep > s ? "bg-primary" : "bg-muted"
-                    )} />
+                          : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {progressStep > s ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      s
+                    )}
                   </div>
-                ))}
-                <div className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
-                  progressStep === 2
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-muted text-muted-foreground"
-                )}>
-                  3
+                  {s < 2 ? (
+                    <div
+                      className={cn(
+                        "mx-2 h-0.5 flex-1 rounded-full transition-all",
+                        progressStep > s ? "bg-primary" : "bg-muted",
+                      )}
+                    />
+                  ) : null}
                 </div>
-              </div>
-              <div className="flex justify-between mt-1.5">
-                <span className={cn("text-[11px] font-medium", progressStep >= 1 ? "text-primary" : "text-muted-foreground")}>Details</span>
-                <span className={cn("text-[11px] font-medium", progressStep >= 2 ? "text-primary" : "text-muted-foreground")}>Account</span>
-              </div>
+              ))}
             </div>
-          )}
+            <div className="mt-1.5 flex justify-between">
+              <span
+                className={cn(
+                  "text-[11px] font-medium",
+                  progressStep >= 1 ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                Details
+              </span>
+              <span
+                className={cn(
+                  "text-[11px] font-medium",
+                  progressStep >= 2 ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                Account
+              </span>
+            </div>
+          </div>
 
-          {step !== 3 && (
-            <div className="text-center mb-8 md:mb-10">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                {step === 1 ? "Your name and city" : "Create your account"}
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {step === 1
-                  ? "Just the basics — we'll match you with the right people."
-                  : "Almost there. Your account is free and takes seconds."}
-              </p>
-            </div>
-          )}
+          <div className="text-center mb-8 md:mb-10">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {step === 1 ? "Your name and city" : "Create your account"}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {step === 1
+                ? "Just the basics — we'll match you with the right people."
+                : "Almost there. Your account is free and takes seconds."}
+            </p>
+          </div>
 
           {/* Role selector — shown at top of step 1 */}
           {step === 1 && (
@@ -748,45 +737,13 @@ export default function OnboardingPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                    <Input
-                      id="city"
-                      className="min-w-0 flex-1"
-                      placeholder="e.g., Tel Aviv"
-                      value={city}
-                      onChange={(e) => {
-                        setCity(e.target.value);
-                        setLocationLat(null);
-                        setLocationLng(null);
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="shrink-0 gap-2 sm:min-w-[10.5rem]"
-                      disabled={locationLoading}
-                      onClick={handleUseMyLocation}
-                      title="Use device location (saves GPS coordinates)"
-                    >
-                      {locationLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      ) : (
-                        <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                      )}
-                      My location
-                    </Button>
-                  </div>
-                  {locationLat != null && locationLng != null ? (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                      <Check className="h-3 w-3" />
-                      Location saved — helpers nearby will see your request.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Type a city or use{" "}
-                      <span className="font-medium">My location</span> for more precise matching.
-                    </p>
-                  )}
+                  <CreateJobCityAutocomplete
+                    size="compact"
+                    confirmedCity={citySelection?.label ?? ""}
+                    isConfirmed={cityConfirmed}
+                    onPickCity={setCitySelection}
+                    onInvalidateSelection={() => setCitySelection(null)}
+                  />
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -800,7 +757,7 @@ export default function OnboardingPage() {
                   </Button>
                   <Button
                     onClick={handleNameCitySubmit}
-                    disabled={loading}
+                    disabled={loading || !fullName.trim() || !cityConfirmed}
                     className="flex-1"
                   >
                     Continue
@@ -877,44 +834,6 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {step === 3 && (
-              <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm md:p-8">
-                <div className="flex flex-col items-center text-center">
-                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                    <Mail className="h-7 w-7 text-primary" aria-hidden />
-                  </div>
-                  <h2 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                    Check your email
-                  </h2>
-                  <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-                    We sent a confirmation link to{" "}
-                    <span className="font-medium text-foreground">
-                      {registrationEmail || email}
-                    </span>
-                    . Click the link to verify your email — you&apos;ll be signed in automatically and taken to your dashboard.
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Didn&apos;t get it? Check your spam folder or go back and try a different email.
-                  </p>
-                </div>
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      // Do NOT clear pendingProfile — preserve it so the user
-                      // can fix their email and re-register without losing data
-                      setStep(2);
-                    }}
-                    className="flex-1"
-                  >
-                    Change email
-                  </Button>
-                  <Button onClick={() => navigate("/login")} className="flex-1">
-                    Sign in instead
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
         </main>
