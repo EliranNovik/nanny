@@ -36,6 +36,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
+  bidirectionalInputProps,
+  bidirectionalTextProps,
+} from "@/lib/textDirection";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -148,6 +152,7 @@ function renderCaptionWithMentions(caption: string): React.ReactNode {
 function CommentsDialog({
   postId,
   caption,
+  captionText,
   authorName,
   authorPhotoUrl,
   open,
@@ -155,6 +160,7 @@ function CommentsDialog({
 }: {
   postId: string;
   caption?: React.ReactNode;
+  captionText?: string;
   authorName?: string;
   authorPhotoUrl?: string | null;
   open: boolean;
@@ -281,7 +287,12 @@ function CommentsDialog({
                     </div>
                   ) : null}
                 </div>
-                <div className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                <div
+                  {...bidirectionalTextProps(
+                    captionText,
+                    "mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                  )}
+                >
                   {caption}
                 </div>
               </div>
@@ -327,7 +338,12 @@ function CommentsDialog({
                           {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                         </time>
                       </div>
-                      <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                      <p
+                        {...bidirectionalTextProps(
+                          c.body,
+                          "mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                        )}
+                      >
                         {c.body}
                       </p>
                     </div>
@@ -354,7 +370,10 @@ function CommentsDialog({
                 }}
                 maxLength={4000}
                 rows={2}
-                className="min-h-[2.5rem] flex-1 resize-none bg-background text-sm"
+                {...bidirectionalInputProps(
+                  draft,
+                  "min-h-[2.5rem] flex-1 resize-none bg-background text-sm",
+                )}
                 disabled={submitting}
               />
               <Button
@@ -388,12 +407,14 @@ function CommentsDialog({
 function CommentsSidePanel({
   postId,
   caption,
+  captionText,
   authorName,
   authorPhotoUrl,
   initialCount,
 }: {
   postId: string;
   caption?: React.ReactNode;
+  captionText?: string;
   authorName?: string;
   authorPhotoUrl?: string | null;
   initialCount?: number | null;
@@ -528,7 +549,12 @@ function CommentsSidePanel({
                   </div>
                 </div>
               </div>
-              <div className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+              <div
+                {...bidirectionalTextProps(
+                  captionText,
+                  "mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                )}
+              >
                 {caption}
               </div>
             </div>
@@ -578,7 +604,12 @@ function CommentsSidePanel({
                         })}
                       </time>
                     </div>
-                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                    <p
+                      {...bidirectionalTextProps(
+                        c.body,
+                        "mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                      )}
+                    >
                       {c.body}
                     </p>
                   </div>
@@ -605,7 +636,10 @@ function CommentsSidePanel({
               }}
               maxLength={4000}
               rows={2}
-              className="min-h-[2.5rem] flex-1 resize-none bg-muted/30 text-sm rounded-2xl border border-border/60 px-4 py-3 focus-visible:ring-0 focus-visible:ring-offset-0"
+              {...bidirectionalInputProps(
+                draft,
+                "min-h-[2.5rem] flex-1 resize-none bg-muted/30 text-sm rounded-2xl border border-border/60 px-4 py-3 focus-visible:ring-0 focus-visible:ring-offset-0",
+              )}
               disabled={submitting}
             />
             <Button
@@ -891,7 +925,10 @@ export function ComposeModal({
               onChange={(e) => setCaption(e.target.value)}
               maxLength={2200}
               rows={4}
-              className="resize-none bg-transparent border-none shadow-none focus-visible:ring-0 text-[15px] p-0 placeholder:text-muted-foreground/60"
+              {...bidirectionalInputProps(
+                caption,
+                "resize-none bg-transparent border-none shadow-none focus-visible:ring-0 text-[15px] p-0 placeholder:text-muted-foreground/60",
+              )}
               disabled={submitting}
             />
 
@@ -1630,6 +1667,9 @@ function PostCard({
   }
 
   const authorName = post.author?.full_name?.trim() || "User";
+  const captionLayout = post.caption?.trim()
+    ? bidirectionalTextProps(post.caption, "text-left")
+    : null;
   const isSource = post.source === "availability";
   const hasMedia = Boolean(mediaUrl);
 
@@ -2057,10 +2097,16 @@ function PostCard({
             <button
               type="button"
               onClick={() => setCommentsOpen(true)}
-              className="flex-1 text-left"
+              className={cn("flex-1", captionLayout?.className)}
+              dir={captionLayout?.dir}
               aria-label="Open full post text"
             >
-              <p className="line-clamp-2 text-[17px] leading-relaxed text-foreground">
+              <p
+                {...bidirectionalTextProps(
+                  post.caption,
+                  "line-clamp-2 text-[17px] leading-relaxed text-foreground",
+                )}
+              >
                 <span className="text-[18px] font-black lowercase">{authorName}</span>{" "}
                 <span className="mx-1 inline-block align-middle text-[13px] text-muted-foreground">•</span>{" "}
                 {renderCaptionWithMentions(post.caption)}
@@ -2106,6 +2152,7 @@ function PostCard({
       <CommentsDialog
         postId={post.id}
         caption={post.caption?.trim() ? renderCaptionWithMentions(post.caption) : undefined}
+        captionText={post.caption?.trim() || undefined}
         authorName={authorName}
         authorPhotoUrl={post.author?.photo_url ?? null}
         open={commentsOpen}
@@ -2895,6 +2942,7 @@ export function ProfilePostsFeed({
               <CommentsSidePanel
                 postId={post.id}
                 caption={caption}
+                captionText={post.caption?.trim() || undefined}
                 authorName={authorName}
                 authorPhotoUrl={post.author?.photo_url ?? null}
                 initialCount={post.comment_count}
@@ -2940,6 +2988,7 @@ export function ProfilePostsFeed({
             ? renderCaptionWithMentions(reelCommentsPost.caption)
             : undefined
         }
+        captionText={reelCommentsPost?.caption?.trim() || undefined}
         authorName={
           reelCommentsPost?.author?.full_name?.trim()
             ? reelCommentsPost.author.full_name.trim()

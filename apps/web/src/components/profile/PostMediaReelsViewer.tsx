@@ -11,6 +11,10 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ChevronLeft, Heart, MessageCircle, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  bidirectionalClass,
+  bidirectionalTextProps,
+} from "@/lib/textDirection";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
@@ -614,10 +618,19 @@ function ReelSlide({
             <button
               type="button"
               onClick={() => onOpenComments(slide.postId)}
-              className="mt-2 w-full rounded-lg py-1 text-left transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              className={cn(
+                "mt-2 w-full rounded-lg py-1 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+                bidirectionalClass(slide.caption, "text-left"),
+              )}
+              dir={bidirectionalTextProps(slide.caption).dir}
               aria-label="Open comments to read full caption"
             >
-              <p className="line-clamp-2 break-words text-base leading-snug text-white/95 drop-shadow">
+              <p
+                {...bidirectionalTextProps(
+                  slide.caption,
+                  "line-clamp-2 break-words text-base leading-snug text-white/95 drop-shadow",
+                )}
+              >
                 {reelCaptionParts(slide.caption.trim())}
               </p>
             </button>

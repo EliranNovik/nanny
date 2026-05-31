@@ -5,12 +5,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import {
   MessageSquare,
-  Clock,
   ChevronRight,
   BadgeCheck,
   Star,
-  Phone,
-  Send,
   Loader2,
   Image as ImageIcon,
   Video,
@@ -35,10 +32,6 @@ import { StarRating } from "@/components/StarRating";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { isFreelancerLiveWindowActive } from "@/lib/freelancerLiveWindow";
-import {
-  canStartInCardLabel,
-  respondsWithinCardLabel,
-} from "@/lib/liveCanStart";
 
 import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
@@ -47,6 +40,7 @@ import {
 } from "@/lib/publicProfileMedia";
 import { avatarUrl } from "@/lib/imageTransform";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
+import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import { VideoLightboxModal } from "@/components/VideoLightboxModal";
 import { type AvailabilityPayload } from "@/lib/availabilityPosts";
@@ -70,6 +64,11 @@ import {
 import { ProfileKnockMenu } from "@/components/ProfileKnockMenu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  bidirectionalInputProps,
+  bidirectionalTextProps,
+  textDirection,
+} from "@/lib/textDirection";
 
 type PostedHelpEngagement =
   | "idle"
@@ -171,8 +170,6 @@ type FreelancerMeta = {
   available_now?: boolean | null;
 };
 
-type HelperReplyStats = { avg_seconds: number; sample_count: number };
-
 interface UserReview {
   id: string;
   rating: number;
@@ -233,6 +230,197 @@ const profileCategoryBadgeClass =
 const profileCategoryScrollRowClass =
   "flex gap-2.5 overflow-x-auto scroll-smooth pb-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
+function ProfileBioHeader({
+  profile,
+  isOwnProfile,
+  editingBio,
+  setEditingBio,
+  bioDraft,
+  setBioDraft,
+  savingBio,
+  onSave,
+  variant,
+}: {
+  profile: PublicProfile;
+  isOwnProfile: boolean;
+  editingBio: boolean;
+  setEditingBio: (open: boolean) => void;
+  bioDraft: string;
+  setBioDraft: (value: string) => void;
+  savingBio: boolean;
+  onSave: (nextBio: string) => void;
+  variant: "desktop" | "mobile" | "panel";
+}) {
+  const isDesktop = variant === "desktop";
+  const isPanel = variant === "panel";
+  const hasBio = Boolean(profile.bio?.trim());
+  const draftDirection = textDirection(bioDraft);
+
+  if (editingBio && isOwnProfile) {
+    const draftInput = bidirectionalInputProps(
+      bioDraft,
+      cn(
+        "w-full resize-none rounded-2xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-white/10 dark:bg-white/5",
+        isPanel || !isDesktop ? "min-h-[110px]" : "min-h-[88px]",
+      ),
+    );
+
+    return (
+      <div
+        className={cn(
+          "w-full",
+          isPanel ? "space-y-3" : isDesktop ? "mt-2.5 max-w-2xl" : "mt-2",
+        )}
+        dir={draftDirection}
+      >
+        <Textarea
+          value={bioDraft}
+          onChange={(e) => setBioDraft(e.target.value)}
+          placeholder="Write a short bio…"
+          maxLength={700}
+          rows={isPanel ? 4 : isDesktop ? 3 : 4}
+          dir={draftInput.dir}
+          className={draftInput.className}
+          disabled={savingBio}
+        />
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="rounded-full"
+            onClick={() => {
+              setEditingBio(false);
+              setBioDraft(profile.bio ?? "");
+            }}
+            disabled={savingBio}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-full"
+            onClick={() => onSave(bioDraft)}
+            disabled={savingBio}
+          >
+            {savingBio ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Save bio"
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasBio) {
+    const bioTextProps = bidirectionalTextProps(
+      profile.bio,
+      cn(
+        "w-full min-w-0 whitespace-pre-wrap font-medium leading-relaxed text-slate-600 dark:text-slate-300",
+        isPanel
+          ? "text-lg font-bold leading-[1.6] text-slate-800 dark:text-slate-100"
+          : isDesktop
+            ? "text-[15px]"
+            : "line-clamp-4 text-sm",
+      ),
+    );
+
+    if (isPanel) {
+      return (
+        <div className="w-full space-y-3" dir={bioTextProps.dir}>
+          <p {...bioTextProps}>{profile.bio}</p>
+          {isOwnProfile ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit rounded-full"
+              onClick={() => setEditingBio(true)}
+            >
+              Edit bio
+            </Button>
+          ) : null}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={cn(
+          "w-full",
+          isDesktop ? "mt-2.5 max-w-2xl" : "mt-2",
+          bioTextProps.className,
+        )}
+        dir={bioTextProps.dir}
+      >
+        <p {...bioTextProps}>{profile.bio}</p>
+        {isOwnProfile ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-1.5 shrink-0 rounded-full"
+            onClick={() => setEditingBio(true)}
+          >
+            Edit bio
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (!isOwnProfile) {
+    if (!isPanel) return null;
+    return (
+      <p className="text-sm font-medium italic text-slate-400 dark:text-slate-500">
+        No bio shared yet.
+      </p>
+    );
+  }
+
+  if (isPanel && !hasBio) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6 text-center">
+        <UserCircle
+          className="h-12 w-12 text-slate-300 dark:text-slate-600"
+          aria-hidden
+        />
+        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
+          No bio added yet.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="rounded-full"
+          onClick={() => setEditingBio(true)}
+        >
+          <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+          Add bio
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className={cn(
+        "rounded-full border-orange-200 bg-orange-50/80 text-orange-700 hover:bg-orange-100 dark:border-orange-800/60 dark:bg-orange-950/30 dark:text-orange-300 dark:hover:bg-orange-950/50",
+        isDesktop ? "mt-2.5" : "mt-2",
+      )}
+      onClick={() => setEditingBio(true)}
+    >
+      <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+      Add bio
+    </Button>
+  );
+}
+
 export default function PublicProfilePage() {
   const { userId } = useParams();
   const { user: currentUser, profile: currentProfile } = useAuth();
@@ -242,8 +430,6 @@ export default function PublicProfilePage() {
   const [freelancerMeta, setFreelancerMeta] = useState<FreelancerMeta | null>(
     null,
   );
-  const [helperReplyStats, setHelperReplyStats] =
-    useState<HelperReplyStats | null>(null);
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState("");
   const [savingBio, setSavingBio] = useState(false);
@@ -451,7 +637,6 @@ export default function PublicProfilePage() {
     if (cached) {
       setProfile(cached.profile as PublicProfile);
       setFreelancerMeta((cached.freelancerMeta as FreelancerMeta) ?? null);
-      setHelperReplyStats((cached.helperReplyStats as HelperReplyStats) ?? null);
       setSharedJobs(cached.sharedJobs as SharedJob[]);
       setReviews(cached.reviews as UserReview[]);
       setMediaItems(cached.mediaItems as PublicProfileMediaRow[]);
@@ -573,9 +758,6 @@ export default function PublicProfilePage() {
         ];
         if (runHelperRpcs) {
           batchPromises.push(
-            supabase.rpc("get_helper_chat_response_stats", {
-              p_helper_ids: [userId],
-            }),
             supabase.rpc("get_helpers_live_help_week_counts", {
               p_helper_ids: [userId],
             }),
@@ -604,61 +786,9 @@ export default function PublicProfilePage() {
           PgResult,
         ];
 
-        const statRpc: PgResult = runHelperRpcs
+        const weekRpc: PgResult = runHelperRpcs
           ? (batchResults[8] as PgResult)
           : { data: null, error: null };
-        const weekRpc: PgResult = runHelperRpcs
-          ? (batchResults[9] as PgResult)
-          : { data: null, error: null };
-
-        let nextHelperReplyStats: HelperReplyStats | null = null;
-        if (runHelperRpcs) {
-          try {
-            const statRows = statRpc.data as unknown[] | null;
-            const statErr = statRpc.error;
-            if (statErr && import.meta.env.DEV) {
-              console.warn(
-                "[PublicProfilePage] get_helper_chat_response_stats:",
-                statErr,
-              );
-            }
-            if (!statErr && Array.isArray(statRows) && statRows.length > 0) {
-              type StatRow = {
-                helper_id?: string | null;
-                avg_seconds?: number | null;
-                sample_count?: number | null;
-              };
-              let sr: StatRow | undefined;
-              if (statRows.length === 1) {
-                sr = statRows[0] as StatRow;
-              } else {
-                sr = (statRows as StatRow[]).find(
-                  (r) =>
-                    r.helper_id != null && String(r.helper_id) === String(userId),
-                );
-              }
-              if (
-                sr &&
-                sr.helper_id != null &&
-                sr.avg_seconds != null &&
-                sr.sample_count != null
-              ) {
-                nextHelperReplyStats = {
-                  avg_seconds: Number(sr.avg_seconds),
-                  sample_count: Number(sr.sample_count),
-                };
-              }
-            }
-          } catch (e) {
-            if (import.meta.env.DEV) {
-              console.debug(
-                "[PublicProfilePage] get_helper_chat_response_stats failed:",
-                e,
-              );
-            }
-          }
-        }
-        setHelperReplyStats(nextHelperReplyStats);
 
         let nextLiveHelpWeek: number | null = null;
         if (runHelperRpcs) {
@@ -765,7 +895,6 @@ export default function PublicProfilePage() {
               live_can_start_in: freelancerData?.live_can_start_in ?? null,
               available_now: freelancerData?.available_now ?? null,
             },
-            helperReplyStats: nextHelperReplyStats,
             sharedJobs: shared,
             reviews: reviewsData.data,
             mediaItems: mediaData.data,
@@ -875,15 +1004,6 @@ export default function PublicProfilePage() {
   const isLiveNow = showHelperBadges
     ? isFreelancerLiveWindowActive(freelancerMeta)
     : false;
-  const readyInLabel = showHelperBadges
-    ? canStartInCardLabel(freelancerMeta?.live_can_start_in)
-    : null;
-  const respondsWithinLabel = showHelperBadges
-    ? respondsWithinCardLabel(
-        helperReplyStats?.avg_seconds,
-        helperReplyStats?.sample_count,
-      )
-    : null;
 
   const showLiveHelpWeekBadge =
     showHelperBadges &&
@@ -905,12 +1025,9 @@ export default function PublicProfilePage() {
     </span>
   ) : null;
 
-  const helperBadgesRow =
-    readyInLabel ||
-    respondsWithinLabel ||
-    showLiveHelpWeekBadge ? (
+  const helperBadgesRow = showLiveHelpWeekBadge ? (
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {showLiveHelpWeekBadge && liveHelpWeekCount != null ? (
+        {liveHelpWeekCount != null ? (
           <span
             className={cn(
               "relative inline-flex min-w-[7.75rem] flex-col items-stretch gap-0.5 self-start rounded-xl py-2 pl-3",
@@ -961,52 +1078,6 @@ export default function PublicProfilePage() {
             </span>
             <span className="text-center text-[8px] font-bold uppercase tracking-wide text-white/90">
               this week
-            </span>
-          </span>
-        ) : null}
-        {respondsWithinLabel ? (
-          <span
-            className={cn(
-              "inline-flex min-h-[2.75rem] min-w-[4.5rem] flex-col justify-center gap-0.5 rounded-lg px-2 py-1",
-              "bg-gradient-to-br from-sky-600 to-cyan-700 text-white",
-              "shadow-md shadow-sky-900/20 ring-1 ring-inset ring-white/20",
-            )}
-            role="status"
-            title={`Typical reply time ${respondsWithinLabel}`}
-          >
-            <span className="flex items-center gap-1 text-[8px] font-bold uppercase leading-none tracking-wide text-white/90">
-              <MessageSquare
-                className="h-2.5 w-2.5 shrink-0 opacity-95"
-                strokeWidth={2.75}
-                aria-hidden
-              />
-              Responds
-            </span>
-            <span className="text-[11px] font-black tabular-nums leading-none tracking-tight">
-              {respondsWithinLabel}
-            </span>
-          </span>
-        ) : null}
-        {readyInLabel ? (
-          <span
-            className={cn(
-              "inline-flex min-h-[2.75rem] min-w-[4.5rem] flex-col justify-center gap-0.5 rounded-lg px-2 py-1",
-              "bg-gradient-to-br from-amber-500 to-orange-600 text-white",
-              "shadow-md shadow-amber-900/25 ring-1 ring-inset ring-white/25",
-            )}
-            role="status"
-            title={`Can start ${readyInLabel}`}
-          >
-            <span className="flex items-center gap-1 text-[8px] font-bold uppercase leading-none tracking-wide text-white/90">
-              <Clock
-                className="h-2.5 w-2.5 shrink-0 opacity-95"
-                strokeWidth={2.75}
-                aria-hidden
-              />
-              Ready in
-            </span>
-            <span className="text-[11px] font-black tabular-nums leading-none tracking-tight">
-              {readyInLabel}
             </span>
           </span>
         ) : null}
@@ -1216,6 +1287,17 @@ export default function PublicProfilePage() {
                   <div className="mt-1 flex flex-wrap items-center gap-4">
                     <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="md" className="justify-start" />
                   </div>
+                  <ProfileBioHeader
+                    profile={profile}
+                    isOwnProfile={isOwnProfile}
+                    editingBio={editingBio}
+                    setEditingBio={setEditingBio}
+                    bioDraft={bioDraft}
+                    setBioDraft={setBioDraft}
+                    savingBio={savingBio}
+                    onSave={(next) => void saveBio(next)}
+                    variant="desktop"
+                  />
                   {helperBadgesRow}
                   {profile.categories && profile.categories.length > 0 && (
                     <div className={cn("mt-2.5", profileCategoryScrollRowClass)}>
@@ -1238,6 +1320,57 @@ export default function PublicProfilePage() {
 
                 {/* Action buttons */}
                 <div className="flex items-center gap-2 shrink-0 self-start mt-1">
+                  {!isOwnProfile && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void handleOpenDirectChat()}
+                        disabled={openingChat}
+                        className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-slate-950 px-6 text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-black/10 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 dark:bg-white dark:text-black"
+                        title="Messages"
+                        aria-label="Open messages"
+                      >
+                        {openingChat ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MessageSquare className="h-4 w-4 shrink-0" strokeWidth={2} />
+                        )}
+                        Message
+                      </button>
+                      {profile.whatsapp_number ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            window.open(
+                              `https://wa.me/${profile.whatsapp_number}`,
+                              "_blank",
+                            )
+                          }
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 transition-all hover:scale-105 active:scale-95"
+                          title="WhatsApp"
+                          aria-label="WhatsApp"
+                        >
+                          <WhatsAppIcon size={22} className="text-white" />
+                        </button>
+                      ) : null}
+                      {profile.telegram_username ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            window.open(
+                              `https://t.me/${profile.telegram_username}`,
+                              "_blank",
+                            )
+                          }
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                          title="Telegram"
+                          aria-label="Telegram"
+                        >
+                          <TelegramIcon size={22} className="text-white" />
+                        </button>
+                      ) : null}
+                    </>
+                  )}
                   {!isOwnProfile && currentUser && (
                     <button
                       type="button"
@@ -1246,34 +1379,15 @@ export default function PublicProfilePage() {
                       title={profileFavorited ? "Remove from saved" : "Save profile"}
                       aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
                       aria-pressed={profileFavorited}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-800/50 dark:bg-zinc-900/95 dark:text-rose-400"
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-rose-200/90 bg-white/95 text-rose-500 shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-60 dark:border-rose-800/50 dark:bg-zinc-900/95 dark:text-rose-400"
                     >
                       {favoriteBusy
                         ? <Loader2 className="h-5 w-5 animate-spin text-rose-500" aria-hidden />
                         : <Heart className={cn("h-5 w-5", profileFavorited && "fill-rose-500")} strokeWidth={profileFavorited ? 0 : 2.25} aria-hidden />}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => void handleOpenDirectChat()}
-                    disabled={openingChat}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
-                    title="Messages" aria-label="Open messages"
-                  >
-                    {openingChat ? <Loader2 className="h-5 w-5 animate-spin" /> : <MessageSquare className="h-5 w-5" strokeWidth={2} />}
-                  </button>
                   {!isOwnProfile && currentUser && profile.categories && profile.categories.length > 0 && (
                     <ProfileKnockMenu variant="contact" targetUserId={userId!} targetRole={profile.role} categories={profile.categories} viewerId={currentUser.id} viewerRole={currentProfile?.role ?? null} viewerName={currentProfile?.full_name ?? null} />
-                  )}
-                  {profile.whatsapp_number && (
-                    <button type="button" onClick={() => window.open(`https://wa.me/${profile.whatsapp_number}`, "_blank")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 transition-all hover:scale-105 active:scale-95" title="WhatsApp" aria-label="WhatsApp">
-                      <Phone className="h-5 w-5 fill-current" />
-                    </button>
-                  )}
-                  {profile.telegram_username && (
-                    <button type="button" onClick={() => window.open(`https://t.me/${profile.telegram_username}`, "_blank")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95" title="Telegram" aria-label="Telegram">
-                      <Send className="h-5 w-5 translate-x-[-1px] translate-y-[1px] fill-current" />
-                    </button>
                   )}
                 </div>
               </div>
@@ -1395,6 +1509,17 @@ export default function PublicProfilePage() {
               <div className="mt-2 flex items-center gap-1">
                 <StarRating rating={profile.average_rating || 0} totalRatings={profile.total_ratings || 0} size="sm" className="origin-left scale-110" />
               </div>
+              <ProfileBioHeader
+                profile={profile}
+                isOwnProfile={isOwnProfile}
+                editingBio={editingBio}
+                setEditingBio={setEditingBio}
+                bioDraft={bioDraft}
+                setBioDraft={setBioDraft}
+                savingBio={savingBio}
+                onSave={(next) => void saveBio(next)}
+                variant="mobile"
+              />
               {helperBadgesRow}
             </div>
           </div>
@@ -1429,28 +1554,45 @@ export default function PublicProfilePage() {
                   {openingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4 shrink-0" />}
                   Message
                 </button>
-                
-                <div className="flex gap-2">
-                   {profile.whatsapp_number && (
-                    <button type="button" onClick={() => window.open(`https://wa.me/${profile.whatsapp_number}`, "_blank")} className="h-12 w-12 flex items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg active:scale-90 transition-all">
-                      <Phone className="h-5 w-5 fill-current" />
-                    </button>
-                  )}
-                  {profile.telegram_username && (
-                    <button type="button" onClick={() => window.open(`https://t.me/${profile.telegram_username}`, "_blank")} className="h-12 w-12 flex items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg active:scale-90 transition-all">
-                      <Send className="h-5 w-5 fill-current translate-x-[-1px] translate-y-[1px]" />
-                    </button>
-                  )}
-                   <button
+                {profile.whatsapp_number ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(`https://wa.me/${profile.whatsapp_number}`, "_blank")
+                    }
+                    className="h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg active:scale-90 transition-all"
+                    title="WhatsApp"
+                    aria-label="WhatsApp"
+                  >
+                    <WhatsAppIcon size={22} className="text-white" />
+                  </button>
+                ) : null}
+                {profile.telegram_username ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(`https://t.me/${profile.telegram_username}`, "_blank")
+                    }
+                    className="h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg active:scale-90 transition-all"
+                    title="Telegram"
+                    aria-label="Telegram"
+                  >
+                    <TelegramIcon size={22} className="text-white" />
+                  </button>
+                ) : null}
+                {currentUser ? (
+                  <button
                     ref={profileFavoriteButtonRef}
                     type="button"
                     onClick={() => void toggleProfileFavorite()}
                     disabled={favoriteBusy}
-                    className="h-12 w-12 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/10 text-rose-500 shadow-md active:scale-90 transition-all"
+                    className="h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/10 text-rose-500 shadow-md active:scale-90 transition-all"
+                    aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
+                    aria-pressed={profileFavorited}
                   >
                     {favoriteBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className={cn("h-5 w-5", profileFavorited && "fill-rose-500")} />}
                   </button>
-                </div>
+                ) : null}
              </div>
           )}
         </div>
@@ -1535,67 +1677,19 @@ export default function PublicProfilePage() {
            </TabsContent>
 
            <TabsContent value="about" className="m-0 px-5 py-8 focus-visible:outline-none space-y-12">
-              {/* Bio first */}
               <section>
                  <h2 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400 mb-4 ml-0.5">About Me</h2>
-                 {editingBio && isOwnProfile ? (
-                   <div className="space-y-3">
-                     <Textarea
-                       value={bioDraft}
-                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                         setBioDraft(e.target.value)
-                       }
-                       placeholder="Write a short bio…"
-                       maxLength={700}
-                       rows={4}
-                       className="min-h-[110px] resize-none rounded-2xl border border-slate-200 bg-white/80 p-3 text-sm dark:border-white/10 dark:bg-white/5"
-                       disabled={savingBio}
-                     />
-                     <div className="flex items-center justify-end gap-2">
-                       <Button
-                         type="button"
-                         variant="ghost"
-                         className="rounded-full"
-                         onClick={() => {
-                           setEditingBio(false);
-                           setBioDraft(profile.bio ?? "");
-                         }}
-                         disabled={savingBio}
-                       >
-                         Cancel
-                       </Button>
-                       <Button
-                         type="button"
-                         className="rounded-full"
-                         onClick={() => void saveBio(bioDraft)}
-                         disabled={savingBio}
-                       >
-                         {savingBio ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save bio"}
-                       </Button>
-                     </div>
-                   </div>
-                 ) : (
-                   <div className="flex items-start justify-between gap-3">
-                     {profile.bio?.trim() ? (
-                       <p className="text-lg font-bold leading-[1.6] text-slate-800 dark:text-slate-100 whitespace-pre-wrap">
-                         {profile.bio}
-                       </p>
-                     ) : (
-                       <p className="text-sm font-medium text-slate-400 italic">No bio shared yet.</p>
-                     )}
-                     {isOwnProfile ? (
-                       <Button
-                         type="button"
-                         variant="outline"
-                         className="shrink-0 rounded-full"
-                         onClick={() => setEditingBio(true)}
-                       >
-                         {!profile.bio?.trim() ? <Plus className="mr-1.5 h-4 w-4" aria-hidden /> : null}
-                         {profile.bio?.trim() ? "Edit bio" : "Add bio"}
-                       </Button>
-                     ) : null}
-                   </div>
-                 )}
+                 <ProfileBioHeader
+                   profile={profile}
+                   isOwnProfile={isOwnProfile}
+                   editingBio={editingBio}
+                   setEditingBio={setEditingBio}
+                   bioDraft={bioDraft}
+                   setBioDraft={setBioDraft}
+                   savingBio={savingBio}
+                   onSave={(next) => void saveBio(next)}
+                   variant="panel"
+                 />
               </section>
 
               <section className="flex flex-wrap items-baseline gap-x-8 gap-y-2 px-0.5">
@@ -1751,14 +1845,17 @@ export default function PublicProfilePage() {
               <div className="rounded-[2.5rem] border border-border/40 bg-card/80 p-10 shadow-xl shadow-black/5">
                 <div className="max-w-2xl">
                     <h2 className="text-[11px] font-black uppercase tracking-[.25em] text-slate-400 mb-6">Introduction</h2>
-                    {profile.bio?.trim() ? (
-                        <p className="text-xl font-bold leading-relaxed text-slate-800 dark:text-slate-100 whitespace-pre-wrap">{profile.bio}</p>
-                    ) : (
-                        <div className="flex flex-col items-center gap-3 py-8 text-center bg-slate-50/50 dark:bg-white/5 rounded-3xl">
-                            <UserCircle className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
-                            <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No bio added yet.</p>
-                        </div>
-                    )}
+                    <ProfileBioHeader
+                      profile={profile}
+                      isOwnProfile={isOwnProfile}
+                      editingBio={editingBio}
+                      setEditingBio={setEditingBio}
+                      bioDraft={bioDraft}
+                      setBioDraft={setBioDraft}
+                      savingBio={savingBio}
+                      onSave={(next) => void saveBio(next)}
+                      variant="panel"
+                    />
                 </div>
               </div>
             )}

@@ -19,6 +19,10 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  bidirectionalInputProps,
+  bidirectionalTextProps,
+} from "@/lib/textDirection";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -336,7 +340,12 @@ export function PostMediaDesktopViewer({
           {/* Caption — overlay near the bottom */}
           {activeSlide.caption?.trim() ? (
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-7 pb-7 pt-16">
-              <p className="pointer-events-auto max-w-3xl whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white/95 drop-shadow-md">
+              <p
+                {...bidirectionalTextProps(
+                  activeSlide.caption,
+                  "pointer-events-auto max-w-3xl whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white/95 drop-shadow-md",
+                )}
+              >
                 {captionWithMentions(activeSlide.caption.trim())}
               </p>
             </div>
@@ -651,7 +660,12 @@ function DesktopComments({
                           })}
                         </time>
                       </div>
-                      <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                      <p
+                        {...bidirectionalTextProps(
+                          c.body,
+                          "mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                        )}
+                      >
                         {c.body}
                       </p>
                     </div>
@@ -673,7 +687,10 @@ function DesktopComments({
               onKeyDown={onComposerKeyDown}
               maxLength={4000}
               rows={2}
-              className="min-h-[2.75rem] flex-1 resize-none rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+              {...bidirectionalInputProps(
+                draft,
+                "min-h-[2.75rem] flex-1 resize-none rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0",
+              )}
               disabled={submitting}
             />
             <Button
