@@ -37,7 +37,22 @@ PORT=4000
 SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 CORS_ORIGIN=http://localhost:5175
+
+# Didit identity verification (https://business.didit.me)
+DIDIT_API_KEY=your-didit-api-key
+DIDIT_WORKFLOW_ID=your-workflow-uuid-from-console
+DIDIT_WEBHOOK_SECRET=your-webhook-destination-secret
+APP_ORIGIN=http://localhost:5175
 ```
+
+**Production webhook URL (Didit Console → Developers → Webhooks → Add destination):**
+`https://YOUR-API-DOMAIN/api/kyc/webhook`
+
+Subscribe to at least: `status.updated`, `data.updated`
+
+**Note:** `DIDIT_WORKFLOW_ID` is the workflow **UUID** from Didit Console → Workflows (not the public `/u/...` link slug). The hosted link `https://verify.didit.me/u/-mQ_hAf4RVe-6MXsQvrsgw` maps to that workflow internally.
+
+Run migration `db/sql/084_profile_kyc_didit.sql` in Supabase SQL Editor before testing.
 
 **Replace:**
 - `xxxxxxxxxxxxx` with your actual project ID (same as frontend)

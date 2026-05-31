@@ -83,12 +83,20 @@ import PaymentsPage from "@/pages/PaymentsPage";
 import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
 import GlobalPostsPage from "@/pages/GlobalPostsPage";
+import KycVerificationPage from "@/pages/KycVerificationPage";
+import { needsKycVerification } from "@/lib/kyc";
 import { DesktopSidePanel } from "@/components/nav/DesktopSidePanel";
 import { Footer } from "@/components/Footer";
 
 // Protected route wrapper
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+function ProtectedRoute({
+  children,
+  skipKycGate = false,
+}: {
+  children: React.ReactNode;
+  skipKycGate?: boolean;
+}) {
+  const { user, profile, loading } = useAuth();
 
   // Only show loading if we don't have a user yet (initial auth check)
   // If we have a user but profile is still loading, allow navigation to proceed
@@ -99,6 +107,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!skipKycGate && profile && needsKycVerification(profile)) {
+    return <Navigate to="/onboarding/verify" replace />;
   }
 
   // Allow navigation even if profile is still loading
@@ -121,6 +133,10 @@ function RoleRedirect() {
   // Admin users go to admin page
   if (profile.is_admin) {
     return <Navigate to="/admin" replace />;
+  }
+
+  if (needsKycVerification(profile)) {
+    return <Navigate to="/onboarding/verify" replace />;
   }
 
   if (profile.role === "client") {
@@ -255,6 +271,14 @@ function AppRoutes() {
         element={user ? <Navigate to="/" replace /> : <LoginPage />}
       />
       <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route
+        path="/onboarding/verify"
+        element={
+          <ProtectedRoute skipKycGate>
+            <KycVerificationPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* All other routes: layout adds top padding for fixed header */}
       <Route element={<PageLayoutWithHeader />}>

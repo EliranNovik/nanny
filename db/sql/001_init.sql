@@ -93,7 +93,7 @@ create table if not exists public.job_requests (
   confirm_ends_at timestamptz,
 
   -- Final selection
-  selected_freelancer_id uuid references public.profiles(id),
+  selected_freelancer_id uuid references public.profiles(id) on delete set null,
   locked_at timestamptz,
 
   created_at timestamptz not null default now(),

@@ -473,6 +473,7 @@ export default function OnboardingPage() {
         city: city.trim(),
         location_lat: locationLat,
         location_lng: locationLng,
+        kyc_status: "not_started",
       })
       .select();
 
@@ -538,7 +539,7 @@ export default function OnboardingPage() {
     );
 
     // Navigate based on role immediately - use window.location as fallback
-    const targetPath = role === "client" ? "/client/home" : "/freelancer/home";
+    const targetPath = "/onboarding/verify";
     console.log("[OnboardingPage] Target path:", targetPath);
 
     // Use window.location immediately for guaranteed navigation

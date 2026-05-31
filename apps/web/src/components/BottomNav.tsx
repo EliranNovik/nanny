@@ -433,6 +433,7 @@ export function BottomNav() {
     path === "/contact" ||
     path === "/login" ||
     path === "/onboarding" ||
+    path.startsWith("/onboarding/") ||
     path.startsWith("/chat/") ||
     path.startsWith("/messages")
   ) {

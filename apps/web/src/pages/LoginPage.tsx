@@ -10,6 +10,7 @@ import { AppBootSplashLogo } from "@/components/AppBootSplash";
 import { Loader2, Sparkles } from "lucide-react";
 import { GoogleIcon } from "@/components/BrandIcons";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
+import { needsKycVerification } from "@/lib/kyc";
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -60,6 +61,7 @@ export default function LoginPage() {
               city: profileData.city,
               location_lat: profileData.location_lat ?? null,
               location_lng: profileData.location_lng ?? null,
+              kyc_status: "not_started",
             });
 
           if (profileError) {
@@ -114,8 +116,10 @@ export default function LoginPage() {
           console.log("[LoginPage] Redirecting to", redirectUrl);
           navigate(redirectUrl, { replace: true });
         } else if (profile) {
-          // User has a profile, redirect to dashboard based on role
-          if (profile.role === "client") {
+          if (needsKycVerification(profile)) {
+            console.log("[LoginPage] Redirecting to KYC verification");
+            navigate("/onboarding/verify", { replace: true });
+          } else if (profile.role === "client") {
             console.log("[LoginPage] Redirecting to /client/home (client)");
             navigate("/client/home", { replace: true });
           } else {

@@ -28,6 +28,10 @@ interface Profile {
   is_available_for_jobs?: boolean;
   average_rating?: number;
   total_ratings?: number;
+  kyc_status?: string | null;
+  kyc_session_id?: string | null;
+  kyc_verified_at?: string | null;
+  is_verified?: boolean | null;
 }
 
 interface AuthContextType {

@@ -39,11 +39,11 @@ export default function GlobalPostsPage() {
 
   return (
     <PageFrame variant="fullBleed" className="bg-white dark:bg-background" frameName="community-feed">
-      <div className="app-desktop-shell py-6 md:py-8 px-0 md:px-4">
+      <div className="app-desktop-shell px-0 pb-6 pt-2 md:px-4 md:py-8">
         <div className="mx-auto w-full max-w-3xl md:mx-0 md:max-w-none">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
             {/* Inline Compose Box at the top of Community Feed */}
-            <div className="mb-6 px-4 md:px-0">
+            <div className="mb-4 px-4 md:mb-6 md:px-0">
               <button
                 type="button"
                 onClick={openCompose}

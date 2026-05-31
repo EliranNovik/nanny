@@ -298,7 +298,8 @@
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header]),
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-post-availability-no-mobile-header]),
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-cards-view]),
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-cards-view]) {
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-cards-view]),
+    .app-content-below-fixed-header:has([data-page-frame="community-feed"]) {
       padding-top: 0;
     }
 
