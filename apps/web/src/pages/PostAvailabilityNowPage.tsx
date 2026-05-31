@@ -2,11 +2,13 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useKycGate } from "@/context/KycGateContext";
+import { needsKycVerification } from "@/lib/kyc";
 import { useToast } from "@/components/ui/toast";
+import { apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check } from "lucide-react";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
-import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
 import {
   isServiceCategoryId,
@@ -28,6 +30,7 @@ export default function PostAvailabilityNowPage() {
   const categoryParam = searchParams.get("category");
 
   const { user, profile } = useAuth();
+  const { openKycRequiredDialog } = useKycGate();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
 
@@ -115,6 +118,10 @@ export default function PostAvailabilityNowPage() {
 
   const handlePublish = async () => {
     if (!user?.id || !profile) return;
+    if (needsKycVerification(profile)) {
+      openKycRequiredDialog("go_live");
+      return;
+    }
     if (orderedSelected.length === 0) {
       addToast({ title: "Choose at least one category", variant: "warning" });
       return;
@@ -129,34 +136,10 @@ export default function PostAvailabilityNowPage() {
     }
     setSubmitting(true);
     try {
-      const liveUntil = new Date(
-        Date.now() + 24 * 60 * 60 * 1000,
-      ).toISOString();
-      const payload = {
-        live_until: liveUntil,
+      await apiPost("/api/freelancer/go-live", {
         live_categories: orderedSelected,
         live_can_start_in: liveCanStartChoice,
-        available_now: true,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: updated, error: updateErr } = await supabase
-        .from("freelancer_profiles")
-        .update(payload)
-        .eq("user_id", user.id)
-        .select("user_id");
-
-      if (updateErr) throw updateErr;
-
-      if (!updated?.length) {
-        const { error: insertErr } = await supabase
-          .from("freelancer_profiles")
-          .insert({
-            user_id: user.id,
-            ...payload,
-          });
-        if (insertErr) throw insertErr;
-      }
+      });
 
       await queryClient.invalidateQueries({
         queryKey: queryKeys.discoverLiveAvatars(),
@@ -170,9 +153,13 @@ export default function PostAvailabilityNowPage() {
       });
       navigate(mainTabHomePath, { replace: true });
     } catch (e) {
+      const message = e instanceof Error ? e.message : "Try again.";
+      if (message.toLowerCase().includes("verify")) {
+        openKycRequiredDialog("go_live");
+      }
       addToast({
         title: "Could not save",
-        description: e instanceof Error ? e.message : "Try again.",
+        description: message,
         variant: "error",
       });
     } finally {

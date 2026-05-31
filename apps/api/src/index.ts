@@ -5,6 +5,7 @@ import { requireUser } from "./middleware/auth";
 import { jobsRouter } from "./routes/jobs";
 import { devRouter } from "./routes/dev";
 import { adminRouter } from "./routes/admin";
+import { freelancerRouter } from "./routes/freelancer";
 import { kycRouter, handleDiditWebhook } from "./routes/kyc";
 import {
   handleLinkPreviewImageGet,
@@ -39,6 +40,7 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 // Protected routes
 app.use("/api/kyc", requireUser, kycRouter);
 app.use("/api/jobs", requireUser, jobsRouter);
+app.use("/api/freelancer", requireUser, freelancerRouter);
 app.use("/api/dev", requireUser, devRouter);
 app.use("/api/admin", requireUser, adminRouter);
 app.get("/api/link-preview/image", handleLinkPreviewImageGet);

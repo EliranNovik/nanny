@@ -104,6 +104,21 @@ export default function KycVerificationPage() {
     }
   }, [homePath, kycStatus, navigate, profile]);
 
+  async function skipVerification() {
+    setError(null);
+    setBusy(true);
+    try {
+      await apiPost("/api/kyc/skip", {});
+      await refreshProfile();
+      navigate(homePath, { replace: true });
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Could not skip verification";
+      setError(message);
+      setBusy(false);
+    }
+  }
+
   async function startVerification() {
     setError(null);
     setBusy(true);
@@ -271,6 +286,25 @@ export default function KycVerificationPage() {
                 </>
               )}
             </Button>
+          ) : null}
+
+          {!isWaiting && !isReview ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                className="h-11 w-full rounded-2xl text-sm font-semibold text-muted-foreground"
+                disabled={busy}
+                onClick={() => void skipVerification()}
+              >
+                Skip for now
+              </Button>
+              <p className="text-center text-xs leading-relaxed text-muted-foreground">
+                You can explore the app, but you&apos;ll need to verify later to
+                post requests or go live.
+              </p>
+            </>
           ) : null}
 
           <p className="text-center text-xs leading-relaxed text-muted-foreground">

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "../supabase";
 import { findCandidates } from "../logic/match";
 import { AuthenticatedRequest } from "../middleware/auth";
+import { assertKycApproved } from "../lib/kycGate";
 
 export const jobsRouter = Router();
 
@@ -192,6 +193,12 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  const kyc = await assertKycApproved(user.id);
+  if (!kyc.ok) {
+    res.status(403).json({ error: kyc.error, code: kyc.code });
+    return;
+  }
+
   const payload = parsed.data;
 
   // INTEGRITY: budget_max must be >= budget_min if both present
@@ -217,6 +224,14 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
     .single();
 
   if (jobErr) {
+    if (jobErr.message.includes("KYC_REQUIRED")) {
+      res.status(403).json({
+        error:
+          "Verify your identity before posting a request. Complete verification from your account.",
+        code: "KYC_REQUIRED",
+      });
+      return;
+    }
     res.status(500).json({ error: jobErr.message });
     return;
   }

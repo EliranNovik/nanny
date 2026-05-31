@@ -84,7 +84,8 @@ import PastJobDetailsPage from "@/pages/jobs/PastJobDetailsPage";
 import PublicProfilePage from "@/pages/PublicProfilePage";
 import GlobalPostsPage from "@/pages/GlobalPostsPage";
 import KycVerificationPage from "@/pages/KycVerificationPage";
-import { needsKycVerification } from "@/lib/kyc";
+import { KycGateProvider } from "@/context/KycGateContext";
+import { KycRestrictedRoute } from "@/components/KycRestrictedRoute";
 import { DesktopSidePanel } from "@/components/nav/DesktopSidePanel";
 import { Footer } from "@/components/Footer";
 
@@ -96,11 +97,8 @@ function ProtectedRoute({
   children: React.ReactNode;
   skipKycGate?: boolean;
 }) {
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
 
-  // Only show loading if we don't have a user yet (initial auth check)
-  // If we have a user but profile is still loading, allow navigation to proceed
-  // The individual pages can handle their own loading states
   if (loading && !user) {
     return <AppBootSplash />;
   }
@@ -109,12 +107,8 @@ function ProtectedRoute({
     return <Navigate to="/login" replace />;
   }
 
-  if (!skipKycGate && profile && needsKycVerification(profile)) {
-    return <Navigate to="/onboarding/verify" replace />;
-  }
+  void skipKycGate;
 
-  // Allow navigation even if profile is still loading
-  // Pages that need profile will handle their own loading states
   return <>{children}</>;
 }
 
@@ -133,10 +127,6 @@ function RoleRedirect() {
   // Admin users go to admin page
   if (profile.is_admin) {
     return <Navigate to="/admin" replace />;
-  }
-
-  if (needsKycVerification(profile)) {
-    return <Navigate to="/onboarding/verify" replace />;
   }
 
   if (profile.role === "client") {
@@ -369,7 +359,9 @@ function AppRoutes() {
           path="/client/create"
           element={
             <ProtectedRoute>
-              <CreateJobPage />
+              <KycRestrictedRoute action="start_request">
+                <CreateJobPage />
+              </KycRestrictedRoute>
             </ProtectedRoute>
           }
         />
@@ -385,7 +377,9 @@ function AppRoutes() {
           path="/availability/post-now"
           element={
             <ProtectedRoute>
-              <PostAvailabilityNowPage />
+              <KycRestrictedRoute action="go_live">
+                <PostAvailabilityNowPage />
+              </KycRestrictedRoute>
             </ProtectedRoute>
           }
         />
@@ -612,16 +606,18 @@ export default function App() {
             <DocumentScrollOverflowGate />
             <ToastProvider>
               <AuthProvider>
-                <SessionAnalyticsInit />
-                <DiscoverHomeScrollHeaderProvider>
-                  <ReportIssueProvider>
-                    <NotificationListener />
-                    <IncomingRequestToastListener />
-                    <AppRoutes />
-                    <BottomNav />
-                    <ReportIssueModal />
-                  </ReportIssueProvider>
-                </DiscoverHomeScrollHeaderProvider>
+                <KycGateProvider>
+                  <SessionAnalyticsInit />
+                  <DiscoverHomeScrollHeaderProvider>
+                    <ReportIssueProvider>
+                      <NotificationListener />
+                      <IncomingRequestToastListener />
+                      <AppRoutes />
+                      <BottomNav />
+                      <ReportIssueModal />
+                    </ReportIssueProvider>
+                  </DiscoverHomeScrollHeaderProvider>
+                </KycGateProvider>
               </AuthProvider>
             </ToastProvider>
           </BrowserRouter>

@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useKycGate } from "@/context/KycGateContext";
+import { needsKycVerification } from "@/lib/kyc";
 import { useToast } from "@/components/ui/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -649,7 +651,8 @@ export function ComposeModal({
   onPosted: () => void;
   authorProfile: ProfileSnippet;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { openKycRequiredDialog } = useKycGate();
   const { addToast } = useToast();
   const [caption, setCaption] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -766,6 +769,10 @@ export function ComposeModal({
 
   async function handleSubmit() {
     if (!user?.id) return;
+    if (needsKycVerification(profile)) {
+      openKycRequiredDialog("share_post");
+      return;
+    }
     if (!caption.trim() && !mediaFile) {
       addToast({ title: "Add a caption or media", variant: "warning" });
       return;
@@ -799,7 +806,11 @@ export function ComposeModal({
       onClose();
     } catch (e) {
       console.error("[ComposeModal] submit", e);
-      addToast({ title: "Could not post", description: e instanceof Error ? e.message : "Try again.", variant: "error" });
+      const message = e instanceof Error ? e.message : "Try again.";
+      if (message.toLowerCase().includes("verify")) {
+        openKycRequiredDialog("share_post");
+      }
+      addToast({ title: "Could not post", description: message, variant: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -2226,8 +2237,18 @@ export function ProfilePostsFeed({
   discoverSidePanel = "comments",
 }: ProfilePostsFeedProps) {
   const { user, profile: currentProfile } = useAuth();
+  const { guardKycAction } = useKycGate();
+  const navigate = useNavigate();
   const [globalVideoUnmuted, setGlobalVideoUnmuted] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+
+  const openCompose = useCallback(() => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    guardKycAction("share_post", () => setComposeOpen(true));
+  }, [guardKycAction, navigate, user]);
   const [reelsOpenPostId, setReelsOpenPostId] = useState<string | null>(null);
   const [reelCommentsPostId, setReelCommentsPostId] = useState<string | null>(null);
   /**
@@ -2255,7 +2276,6 @@ export function ProfilePostsFeed({
     (mql as MediaQueryList).addListener(onChange);
     return () => (mql as MediaQueryList).removeListener(onChange);
   }, []);
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -2753,10 +2773,7 @@ export function ProfilePostsFeed({
         <div>
           <button
             type="button"
-            onClick={() => {
-              if (!user) { navigate("/login"); return; }
-              setComposeOpen(true);
-            }}
+            onClick={openCompose}
             className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-orange-300 dark:border-orange-800/60 bg-orange-50/60 dark:bg-orange-950/20 px-4 py-3.5 text-left transition-colors hover:bg-orange-100/60 dark:hover:bg-orange-950/40 group"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/50 group-hover:bg-orange-200 dark:group-hover:bg-orange-900 transition-colors">
@@ -2787,7 +2804,7 @@ export function ProfilePostsFeed({
               size="sm"
               variant="outline"
               className="rounded-full border-orange-300 text-orange-600 hover:bg-orange-50"
-              onClick={() => setComposeOpen(true)}
+              onClick={openCompose}
             >
               <Plus className="h-4 w-4 mr-1" />
               Create first post

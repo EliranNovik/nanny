@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Radio } from "lucide-react";
 import { LiveTimer } from "@/components/LiveTimer";
 import { useAuth } from "@/context/AuthContext";
+import { useKycGate } from "@/context/KycGateContext";
 import { supabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -40,6 +41,7 @@ export function ExploreHelpOthersLiveStrip({
 }: Props) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { guardKycAction } = useKycGate();
   const viewerId = profile?.id ?? user?.id ?? null;
 
   const [fp, setFp] = useState<FreelancerLiveRow | null>(null);
@@ -107,8 +109,8 @@ export function ExploreHelpOthersLiveStrip({
       return;
     }
     trackEvent("explore_help_others_go_live_strip", {});
-    navigate("/availability/post-now");
-  }, [navigate, onGoLive]);
+    guardKycAction("go_live", () => navigate("/availability/post-now"));
+  }, [guardKycAction, navigate, onGoLive]);
 
   if (!viewerId) return null;
 

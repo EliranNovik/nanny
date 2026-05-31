@@ -7,6 +7,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useKycGate } from "@/context/KycGateContext";
 import { useDiscoverHomeScrollHeader } from "@/context/DiscoverHomeScrollHeaderContext";
 import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
@@ -112,6 +113,7 @@ const plusMenuIconWrapClassName =
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
+  const { guardKycAction } = useKycGate();
   const location = useLocation();
   const navigate = useNavigate();
   const [jobsSearchParams] = useSearchParams();
@@ -536,8 +538,10 @@ export function BottomNav() {
               type="button"
               className="flex w-full items-center gap-3 py-3.5 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3 md:text-sm"
               onClick={() => {
-                navigate("/availability/post-now");
-                setDesktopAppMenuOpen(false);
+                guardKycAction("go_live", () => {
+                  navigate("/availability/post-now");
+                  setDesktopAppMenuOpen(false);
+                });
               }}
             >
               <UsersRound
@@ -551,8 +555,10 @@ export function BottomNav() {
               type="button"
               className="flex w-full items-center gap-3 py-3.5 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/40 active:bg-muted/55 md:py-3 md:text-sm"
               onClick={() => {
-                navigate("/client/create");
-                setDesktopAppMenuOpen(false);
+                guardKycAction("start_request", () => {
+                  navigate("/client/create");
+                  setDesktopAppMenuOpen(false);
+                });
               }}
             >
               <ClipboardList
@@ -1368,7 +1374,9 @@ export function BottomNav() {
                         className={plusMenuItemClassName}
                         onClick={() => {
                           setPlusMenuOpen(false);
-                          navigate("/client/create");
+                          guardKycAction("start_request", () =>
+                            navigate("/client/create"),
+                          );
                         }}
                       >
                         <span className={plusMenuIconWrapClassName}>
@@ -1390,7 +1398,9 @@ export function BottomNav() {
                         onClick={() => {
                           if (isLiveNow) return;
                           setPlusMenuOpen(false);
-                          navigate("/availability/post-now");
+                          guardKycAction("go_live", () =>
+                            navigate("/availability/post-now"),
+                          );
                         }}
                       >
                         <span className={plusMenuIconWrapClassName}>
@@ -1412,7 +1422,9 @@ export function BottomNav() {
                       className={plusMenuItemClassName}
                       onClick={() => {
                         setPlusMenuOpen(false);
-                        navigate("/community/feed?compose=1");
+                        guardKycAction("share_post", () =>
+                          navigate("/community/feed?compose=1"),
+                        );
                       }}
                     >
                       <span className={plusMenuIconWrapClassName}>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
+import { useKycGate } from "@/context/KycGateContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,18 +10,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
+  const { guardKycAction } = useKycGate();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [composeOpen, setComposeOpen] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get("compose") === "1" && user) {
-      setComposeOpen(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete("compose");
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, setSearchParams, user]);
+    if (searchParams.get("compose") !== "1" || !user) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("compose");
+    setSearchParams(next, { replace: true });
+    guardKycAction("share_post", () => setComposeOpen(true));
+  }, [guardKycAction, searchParams, setSearchParams, user]);
 
   const authorProfile: ProfileSnippet | null = user ? {
     id: user.id,
@@ -34,7 +35,7 @@ export default function GlobalPostsPage() {
       navigate("/login");
       return;
     }
-    setComposeOpen(true);
+    guardKycAction("share_post", () => setComposeOpen(true));
   }
 
   return (

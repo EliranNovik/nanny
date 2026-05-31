@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useKycGate } from "@/context/KycGateContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { cn } from "@/lib/utils";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
@@ -51,6 +52,7 @@ function isExcludedRoute(pathname: string): boolean {
 
 export function DesktopSidePanel() {
   const { user, profile } = useAuth();
+  const { guardKycAction } = useKycGate();
   const { unreadMessages } = useUnreadCounts();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -349,7 +351,9 @@ export function DesktopSidePanel() {
                     className={plusMenuItemClassName}
                     onClick={() => {
                       setPlusOpen(false);
-                      navigate(requestHref);
+                      guardKycAction("start_request", () =>
+                        navigate(requestHref),
+                      );
                     }}
                   >
                     <Zap className="h-5 w-5 shrink-0 text-foreground/80" strokeWidth={2.5} />
@@ -365,7 +369,7 @@ export function DesktopSidePanel() {
                     onClick={() => {
                       if (isLiveNow) return;
                       setPlusOpen(false);
-                      navigate(goLiveHref);
+                      guardKycAction("go_live", () => navigate(goLiveHref));
                     }}
                   >
                     <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
@@ -385,7 +389,9 @@ export function DesktopSidePanel() {
                   className={plusMenuItemClassName}
                   onClick={() => {
                     setPlusOpen(false);
-                    navigate(`${communityHref}?compose=1`);
+                    guardKycAction("share_post", () =>
+                      navigate(`${communityHref}?compose=1`),
+                    );
                   }}
                 >
                   <PenSquare className="h-5 w-5 shrink-0 text-foreground/80" />

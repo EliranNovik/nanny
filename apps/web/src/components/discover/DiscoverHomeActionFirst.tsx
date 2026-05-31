@@ -22,6 +22,7 @@ import {
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useKycGate } from "@/context/KycGateContext";
 import { trackEvent } from "@/lib/analytics";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { supabase } from "@/lib/supabase";
@@ -102,6 +103,7 @@ export function DiscoverHomeActionFirst({
 }: Props) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { guardKycAction } = useKycGate();
   const isHire = homeMode === "hire";
   const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
@@ -448,8 +450,10 @@ export function DiscoverHomeActionFirst({
                 e.stopPropagation();
                 trackEvent("discover_actions_post_request", { mode: homeMode });
                 writeDiscoverHomeIntent("hire");
-                navigate(createRequestPath);
-                recordFirstMeaningfulAction("home_primary_create_request");
+                guardKycAction("start_request", () => {
+                  navigate(createRequestPath);
+                  recordFirstMeaningfulAction("home_primary_create_request");
+                });
               }}
               className={cn(
                 roundBadgeClass,
@@ -515,8 +519,10 @@ export function DiscoverHomeActionFirst({
                 e.stopPropagation();
                 trackEvent("discover_actions_go_live", { mode: homeMode });
                 writeDiscoverHomeIntent("work");
-                navigate(workPrimaryPath);
-                recordFirstMeaningfulAction("home_primary_work");
+                guardKycAction("go_live", () => {
+                  navigate(workPrimaryPath);
+                  recordFirstMeaningfulAction("home_primary_work");
+                });
               }}
               className={cn(
                 roundBadgeClass,
@@ -682,8 +688,10 @@ export function DiscoverHomeActionFirst({
               source: "strip",
             });
             writeDiscoverHomeIntent("hire");
-            navigate(createRequestPath);
-            recordFirstMeaningfulAction("home_primary_create_request");
+            guardKycAction("start_request", () => {
+              navigate(createRequestPath);
+              recordFirstMeaningfulAction("home_primary_create_request");
+            });
           }}
           onMoreClick={() => setQuickMoreOpen(true)}
           moreMenuTotal={hireMoreMenuTotal}
@@ -697,8 +705,10 @@ export function DiscoverHomeActionFirst({
               source: "strip",
             });
             writeDiscoverHomeIntent("work");
-            navigate(workPrimaryPath);
-            recordFirstMeaningfulAction("home_primary_work");
+            guardKycAction("go_live", () => {
+              navigate(workPrimaryPath);
+              recordFirstMeaningfulAction("home_primary_work");
+            });
           }}
           onMoreClick={() => setQuickMoreOpen(true)}
           moreMenuTotal={workMoreMenuTotal}

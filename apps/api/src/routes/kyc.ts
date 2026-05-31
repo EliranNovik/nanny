@@ -117,6 +117,34 @@ kycRouter.post("/session", requireUser, async (req: Request, res: Response) => {
   }
 });
 
+/** Defer verification — user can browse the app but cannot post requests or go live. */
+kycRouter.post("/skip", requireUser, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const profile = await loadProfile(user.id);
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found" });
+      return;
+    }
+
+    if (profile.kyc_status === "approved") {
+      res.json({ kyc_status: "approved", alreadyVerified: true });
+      return;
+    }
+
+    await supabaseAdmin
+      .from("profiles")
+      .update({ kyc_status: "skipped" })
+      .eq("id", user.id);
+
+    res.json({ kyc_status: "skipped" });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to skip verification";
+    console.error("[KYC] skip:", err);
+    res.status(500).json({ error: message });
+  }
+});
+
 /** Poll current verification status (webhook is source of truth; this refreshes from Didit). */
 kycRouter.get("/status", requireUser, async (req: Request, res: Response) => {
   try {

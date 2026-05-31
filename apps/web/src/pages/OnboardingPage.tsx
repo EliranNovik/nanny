@@ -19,7 +19,6 @@ import {
   readPendingProfile,
   savePendingProfile,
 } from "@/lib/pendingProfile";
-import { needsKycVerification } from "@/lib/kyc";
 
 type Role = "client" | "freelancer";
 
@@ -105,9 +104,8 @@ export default function OnboardingPage() {
           setCheckingProfile(false);
           clearPendingProfile();
 
-          const target = needsKycVerification(existingProfile)
-            ? "/onboarding/verify"
-            : existingProfile.role === "client"
+          const target =
+            existingProfile.role === "client"
               ? "/client/home"
               : "/freelancer/home";
           navigate(target, { replace: true });
@@ -433,9 +431,8 @@ export default function OnboardingPage() {
       setCompletingSignup(false);
       creatingProfileRef.current = false;
 
-      const target = needsKycVerification(existingProfile)
-        ? "/onboarding/verify"
-        : existingProfile.role === "client"
+      const target =
+        existingProfile.role === "client"
           ? "/client/home"
           : "/freelancer/home";
       navigate(target, { replace: true });

@@ -10,7 +10,6 @@ import { AppBootSplashLogo } from "@/components/AppBootSplash";
 import { Loader2, Sparkles } from "lucide-react";
 import { GoogleIcon } from "@/components/BrandIcons";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
-import { needsKycVerification } from "@/lib/kyc";
 import {
   commitPendingProfile,
   readPendingProfile,
@@ -96,18 +95,15 @@ export default function LoginPage() {
           : redirectParam;
         console.log("[LoginPage] Redirecting to", redirectUrl);
         navigate(redirectUrl, { replace: true });
-      } else if (profile) {
-        if (needsKycVerification(profile)) {
-          console.log("[LoginPage] Redirecting to KYC verification");
-          navigate("/onboarding/verify", { replace: true });
-        } else if (profile.role === "client") {
-          console.log("[LoginPage] Redirecting to /client/home (client)");
-          navigate("/client/home", { replace: true });
+        } else if (profile) {
+          if (profile.role === "client") {
+            console.log("[LoginPage] Redirecting to /client/home (client)");
+            navigate("/client/home", { replace: true });
+          } else {
+            console.log("[LoginPage] Redirecting to /freelancer/home");
+            navigate("/freelancer/home", { replace: true });
+          }
         } else {
-          console.log("[LoginPage] Redirecting to /freelancer/home");
-          navigate("/freelancer/home", { replace: true });
-        }
-      } else {
         console.log("[LoginPage] Redirecting to /onboarding (no profile)");
         const redirectUrl = roleParam
           ? `/onboarding?role=${roleParam}`

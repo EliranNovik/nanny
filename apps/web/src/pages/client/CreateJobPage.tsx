@@ -7,6 +7,8 @@ import {
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useKycGate } from "@/context/KycGateContext";
+import { needsKycVerification } from "@/lib/kyc";
 import { useToast } from "@/components/ui/toast";
 import { apiPost } from "@/lib/api";
 import { getCityFromLocation } from "@/lib/location";
@@ -234,6 +236,7 @@ export default function CreateJobPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useAuth();
+  const { openKycRequiredDialog } = useKycGate();
   const appliedServiceFromUrl = useRef(false);
   const { addToast } = useToast();
   // Lazy initializer for step - only runs once
@@ -517,6 +520,11 @@ export default function CreateJobPage() {
   }
 
   async function handleSubmit() {
+    if (needsKycVerification(profile)) {
+      openKycRequiredDialog("start_request");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -548,7 +556,11 @@ export default function CreateJobPage() {
       });
     } catch (err) {
       console.error("[CreateJobPage] Error creating job:", err);
-      setError(err instanceof Error ? err.message : "Failed to create job");
+      const message = err instanceof Error ? err.message : "Failed to create job";
+      if (message.toLowerCase().includes("verify")) {
+        openKycRequiredDialog("start_request");
+      }
+      setError(message);
       setLoading(false);
     }
   }
