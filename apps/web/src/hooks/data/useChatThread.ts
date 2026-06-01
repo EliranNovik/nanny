@@ -1,4 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { queryKeys } from "./keys";
 import {
   fetchChatThread,
@@ -8,6 +12,29 @@ import {
 import { readThreadCache, writeThreadCache } from "@/lib/messagesCache";
 
 export type { ChatMessage, ChatThreadPayload };
+
+export async function prefetchChatThread(
+  queryClient: QueryClient,
+  conversationId: string,
+  userId: string,
+  otherUserId?: string,
+): Promise<void> {
+  const threadKey = queryKeys.chatThread(userId, conversationId);
+  await queryClient.prefetchQuery({
+    queryKey: threadKey,
+    queryFn: async () => {
+      const payload = await fetchChatThread(
+        conversationId,
+        userId,
+        otherUserId,
+      );
+      if (!payload) throw new Error("Conversation not found");
+      writeThreadCache(userId, conversationId, payload);
+      return payload;
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+}
 
 export function useChatThread(
   conversationId: string | undefined,
@@ -22,7 +49,6 @@ export function useChatThread(
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 60,
     refetchOnWindowFocus: true,
-    refetchOnMount: "always",
     placeholderData: () => {
       if (!userId || !conversationId) return undefined;
       return readThreadCache<ChatThreadPayload>(userId, conversationId);

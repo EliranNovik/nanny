@@ -33,7 +33,6 @@ import {
   Loader2,
   Clock,
   File,
-  ImageIcon,
   MapPin,
   Baby,
   FileText,
@@ -64,9 +63,13 @@ import { useMessagesRealtime, usePaymentsRealtime } from "@/hooks/useMessagesRea
 import {
   patchChatThreadMessages,
   useChatThread,
+  type ChatThreadPayload,
 } from "@/hooks/data/useChatThread";
+import {
+  fetchOlderChatMessages,
+} from "@/hooks/data/chatThreadApi";
 import { queryKeys } from "@/hooks/data/keys";
-import { writeThreadCache } from "@/lib/messagesCache";
+import { readThreadCache, writeThreadCache } from "@/lib/messagesCache";
 import { useJobRequestsRealtime } from "@/hooks/useJobRequestsRealtime";
 import {
   isServiceCategoryId,
@@ -82,6 +85,18 @@ import {
 } from "@/components/messages/ChatParticipantProfilePeek";
 import { getTelegramLink, getWhatsAppLink } from "@/lib/socialContactLinks";
 import { ChatLinkPreviewCards } from "@/components/chat/ChatLinkPreviewCards";
+import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
+import { ChatDateSeparator } from "@/components/chat/ChatDateSeparator";
+import {
+  chatAreaBgClass,
+  chatBubbleBodyTextCn,
+  chatBubbleLinkCn,
+  chatMessageColumnCn,
+  chatMessageTimestampCn,
+  chatReceivedBubbleCn,
+  chatSentBubbleCn,
+  chatSystemLinkCn,
+} from "@/lib/chatTheme";
 import { MatchContextBanner } from "@/components/messages/MatchContextBanner";
 import { ChatJobContextStrip } from "@/components/messages/ChatJobContextStrip";
 import {
@@ -93,6 +108,7 @@ import { getLiveJobBannerFromRow } from "@/lib/liveJobConversationBanner";
 import { parseMatchIntroBody } from "@/lib/matchIntroMessage";
 import { trackEvent } from "@/lib/analytics";
 import { consumePendingChatOpen } from "@/lib/sessionConversionAnalytics";
+import { bidirectionalTextProps } from "@/lib/textDirection";
 import { bodyHasNonPreviewText } from "@/lib/chatBodyPreviewText";
 import {
   extractChatUrlsFromText,
@@ -189,6 +205,32 @@ interface ChatPageProps {
   otherUserId?: string; // When provided, fetch messages from all conversations with this user
   /** When embedded in Messages, false while the mobile chat column is `display:none`. */
   chatPaneVisible?: boolean;
+}
+
+function mergeThreadMessages(
+  prev: Message[],
+  incoming: Message[],
+  preserveOlder: boolean,
+): Message[] {
+  if (!preserveOlder || prev.length === 0) return incoming;
+  if (incoming.length === 0) return prev;
+
+  const incomingIds = new Set(incoming.map((m) => m.id));
+  const oldestIncomingAt = incoming[0]?.created_at;
+  if (!oldestIncomingAt) return incoming;
+
+  const older = prev.filter(
+    (m) => m.created_at < oldestIncomingAt && !incomingIds.has(m.id),
+  );
+  if (older.length === 0) return incoming;
+
+  const merged = [...older, ...incoming];
+  const seen = new Set<string>();
+  return merged.filter((m) => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
 }
 
 export default function ChatPage({
@@ -315,7 +357,17 @@ export default function ChatPage({
   );
   const [realtimeJobId, setRealtimeJobId] = useState<string | null>(null);
 
-  const loading = threadQuery.isPending && !threadQuery.data;
+  const loading =
+    threadQuery.isPending && !threadQuery.data && messages.length === 0;
+
+  const otherUserIdRef = useRef<string | null>(null);
+  const hasLoadedOlderRef = useRef(false);
+  const isInitialLoadRef = useRef(true);
+  const stickToBottomRef = useRef(true);
+  const anchorBottomUntilRef = useRef(0);
+  const lastHydratedConversationRef = useRef<string | null>(null);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   useMessagesRealtime({
     conversationIds: realtimeConvoIds,
@@ -551,20 +603,85 @@ export default function ChatPage({
   }, [threadQuery.isError, conversationId, navigate]);
 
   useLayoutEffect(() => {
+    if (!conversationId || !user?.id) {
+      setMessages([]);
+      setConversation(null);
+      setOtherUser(null);
+      setJob(null);
+      setHasMoreOlder(false);
+      hasLoadedOlderRef.current = false;
+      otherUserIdRef.current = null;
+      lastHydratedConversationRef.current = null;
+      return;
+    }
+
+    if (lastHydratedConversationRef.current === conversationId) return;
+
+    lastHydratedConversationRef.current = conversationId;
+    hasLoadedOlderRef.current = false;
+    isInitialLoadRef.current = true;
+    stickToBottomRef.current = true;
+    anchorBottomUntilRef.current = Date.now() + 4500;
+
+    const cached = readThreadCache<ChatThreadPayload>(user.id, conversationId);
+    if (cached) {
+      setConversation(cached.conversation as Conversation);
+      setOtherUser(cached.otherUser as Profile | null);
+      setJob((cached.job as Job | null) ?? null);
+      setMessages(cached.messages as Message[]);
+      setHasMoreOlder(cached.hasMoreOlder ?? false);
+      setRealtimeJobId(cached.conversation.job_id);
+      setRealtimeConvoIds(
+        cached.realtimeConvoIds.length > 0
+          ? cached.realtimeConvoIds
+          : [conversationId],
+      );
+      otherUserIdRef.current = cached.otherUserId;
+    } else {
+      setMessages([]);
+      setConversation(null);
+      setOtherUser(null);
+      setJob(null);
+      setHasMoreOlder(false);
+      otherUserIdRef.current = null;
+    }
+  }, [conversationId, user?.id]);
+
+  useLayoutEffect(() => {
     const payload = threadQuery.data;
     if (!payload || !user?.id || !conversationId) return;
 
-    if (lastHydratedConversationRef.current !== conversationId) {
-      isInitialLoadRef.current = true;
-      stickToBottomRef.current = true;
-      anchorBottomUntilRef.current = Date.now() + 4500;
-      lastHydratedConversationRef.current = conversationId;
-    }
-
-    setConversation(payload.conversation);
+    setConversation(payload.conversation as Conversation);
     setOtherUser(payload.otherUser as Profile | null);
     setJob((payload.job as Job | null) ?? null);
-    setMessages(payload.messages as Message[]);
+    let nextHasMoreOlder = payload.hasMoreOlder;
+    setMessages((prev) => {
+      const preserveOlder =
+        hasLoadedOlderRef.current ||
+        (prev.length > payload.messages.length && prev.length > 0);
+      const merged = mergeThreadMessages(
+        prev,
+        payload.messages as Message[],
+        preserveOlder,
+      );
+      if (
+        preserveOlder &&
+        !hasLoadedOlderRef.current &&
+        merged.length > payload.messages.length
+      ) {
+        nextHasMoreOlder = true;
+      }
+      writeThreadCache(user.id, conversationId, {
+        ...payload,
+        messages: merged,
+        hasMoreOlder: nextHasMoreOlder,
+      });
+      return merged;
+    });
+    if (!hasLoadedOlderRef.current) {
+      setHasMoreOlder(nextHasMoreOlder);
+    }
+    otherUserIdRef.current = payload.otherUserId;
     setRealtimeJobId(payload.conversation.job_id);
 
     setRealtimeConvoIds((prev) => {
@@ -575,8 +692,6 @@ export default function ChatPage({
       if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
       return next;
     });
-
-    writeThreadCache(user.id, conversationId, payload);
   }, [threadQuery.data, conversationId, user?.id]);
 
   useEffect(() => {
@@ -768,12 +883,8 @@ export default function ChatPage({
     }
   }
 
-  const isInitialLoadRef = useRef(true);
   const pendingSmoothScrollRef = useRef(false);
   const lastAnchoredMessageCountRef = useRef(0);
-  const stickToBottomRef = useRef(true);
-  const anchorBottomUntilRef = useRef(0);
-  const lastHydratedConversationRef = useRef<string | null>(null);
   const isAnchoringRef = useRef(false);
   const anchorTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -833,17 +944,94 @@ export default function ChatPage({
     isInitialLoadRef.current = true;
     stickToBottomRef.current = true;
     lastAnchoredMessageCountRef.current = 0;
-    lastHydratedConversationRef.current = null;
     anchorBottomUntilRef.current = Date.now() + 4500;
     clearAnchorTimers();
     return () => clearAnchorTimers();
   }, [conversationId, clearAnchorTimers]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (
+      !user?.id ||
+      !conversationId ||
+      loadingOlder ||
+      !hasMoreOlder ||
+      messages.length === 0
+    ) {
+      return;
+    }
+
+    const otherId = otherUserIdRef.current;
+    if (!otherId) return;
+
+    const oldest = messages[0];
+    if (!oldest) return;
+
+    setLoadingOlder(true);
+    const root = scrollRef.current;
+    const prevScrollHeight = root?.scrollHeight ?? 0;
+    const prevScrollTop = root?.scrollTop ?? 0;
+
+    try {
+      const { messages: older, hasMoreOlder: more } = await fetchOlderChatMessages(
+        user.id,
+        otherId,
+        conversationId,
+        oldest.created_at,
+      );
+
+      if (older.length === 0) {
+        setHasMoreOlder(false);
+        return;
+      }
+
+      hasLoadedOlderRef.current = true;
+      setMessages((prev) => {
+        const ids = new Set(prev.map((m) => m.id));
+        const uniqueOlder = older.filter((m) => !ids.has(m.id));
+        const merged = [...uniqueOlder, ...prev];
+        const cached = readThreadCache<ChatThreadPayload>(user.id, conversationId);
+        if (cached) {
+          writeThreadCache(user.id, conversationId, {
+            ...cached,
+            messages: merged,
+            hasMoreOlder: more,
+          });
+        }
+        return merged;
+      });
+      setHasMoreOlder(more);
+
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollTop = el.scrollHeight - prevScrollHeight + prevScrollTop;
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [
+    conversationId,
+    hasMoreOlder,
+    loadingOlder,
+    messages,
+    user?.id,
+  ]);
 
   const handleMessagesScroll = useCallback(() => {
     if (isAnchoringRef.current) return;
 
     const root = scrollRef.current;
     if (!root) return;
+
+    if (
+      root.scrollTop < 120 &&
+      hasMoreOlder &&
+      !loadingOlder &&
+      Date.now() >= anchorBottomUntilRef.current
+    ) {
+      void loadOlderMessages();
+    }
+
     const distanceFromBottom =
       root.scrollHeight - root.scrollTop - root.clientHeight;
 
@@ -861,7 +1049,7 @@ export default function ChatPage({
     if (distanceFromBottom < 48) {
       stickToBottomRef.current = true;
     }
-  }, []);
+  }, [hasMoreOlder, loadOlderMessages, loadingOlder]);
 
   // Open chat already at the bottom (before paint). Smooth scroll only when sending.
   useLayoutEffect(() => {
@@ -1428,27 +1616,6 @@ export default function ChatPage({
   ]);
 
   /** Paragraph text inside bubbles; avoid `w-full` under flex+(items-end) or % width won’t constrain long URLs */
-  const chatBubbleBodyTextCn =
-    "block min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[19px] font-medium leading-snug md:text-[16px]";
-
-  const chatAreaBgCn = "bg-zinc-100 dark:bg-background";
-  const chatReceivedBubbleCn =
-    "rounded-2xl rounded-bl-none border border-slate-200/80 bg-white text-slate-900 shadow-sm dark:border-none dark:bg-zinc-800 dark:text-zinc-100";
-
-  /** Vivid glossy blue links in all chat bubbles (sent, received, system) — light + dark. */
-  const chatBubbleLinkCn =
-    "inline-block max-w-full align-text-top break-all font-semibold underline underline-offset-[3px] transition-colors duration-150 [overflow-wrap:anywhere] " +
-    "text-[#0284c7] decoration-[#0ea5e9]/65 " +
-    "drop-shadow-[0_0_6px_rgba(14,165,233,0.55)] " +
-    "hover:text-[#0369a1] hover:decoration-[#38bdf8] " +
-    "dark:text-[#7dd3fc] dark:decoration-[#38bdf8]/70 " +
-    "dark:drop-shadow-[0_0_10px_rgba(56,189,248,0.55)] " +
-    "dark:hover:text-[#bae6fd] dark:hover:decoration-[#7dd3fc]";
-  const chatSystemLinkCn =
-    "inline-block max-w-full align-text-top break-all font-medium text-[#0284c7] underline underline-offset-[3px] transition-colors duration-150 [overflow-wrap:anywhere] decoration-[#0ea5e9]/65 " +
-    "drop-shadow-[0_0_6px_rgba(14,165,233,0.45)] hover:text-[#0369a1] hover:decoration-[#38bdf8] " +
-    "dark:text-[#7dd3fc] dark:decoration-[#38bdf8]/70 dark:drop-shadow-[0_0_10px_rgba(56,189,248,0.45)] " +
-    "dark:hover:text-[#bae6fd]";
 
   // For admin viewing reports: show client initials, otherwise show "S" for Support or user initials
   const otherInitials =
@@ -1536,7 +1703,7 @@ export default function ChatPage({
               </div>
             </div>
           )}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 h-full relative" style={{ scrollBehavior: "smooth" }}>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 h-full relative max-md:scrollbar-hide" style={{ scrollBehavior: "smooth" }}>
             <div className="flex flex-col gap-6 py-6 pb-[250px]">
               <div className="w-full max-w-[80%] xl:max-w-[70%] mr-auto group">
                 <div className="flex flex-col gap-1">
@@ -1570,7 +1737,7 @@ export default function ChatPage({
     <div
       className={cn(
         "flex overflow-hidden",
-        chatAreaBgCn,
+        chatAreaBgClass,
         hideBackButton
           ? "relative h-full min-h-0 w-full flex-col"
           : "fixed inset-0",
@@ -2100,7 +2267,7 @@ export default function ChatPage({
       <div
         className={cn(
           "relative flex min-h-0 min-w-0 flex-1 flex-col transition-opacity duration-300",
-          chatAreaBgCn,
+          chatAreaBgClass,
           // On mobile: hide when 'steps' view is active
           !hideBackButton && mobileView === "steps" && "hidden lg:flex",
         )}
@@ -2209,24 +2376,17 @@ export default function ChatPage({
         {/* Messages area */}
         <div
           className={cn(
-            "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden scroll-auto",
-            chatAreaBgCn,
+            "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden scroll-auto chat-scroll max-md:scrollbar-hide",
+            chatAreaBgClass,
             /**
-             * When embedded inside `MessagesPage` (`hideBackButton`), the
-             * parent renders a translucent floating chat header on both
-             * viewports (a fixed bar on mobile, an absolute overlay on
-             * desktop). The clearance for that header lives here as
-             * *scrollable* top padding, so the first message sits below the
-             * header initially and the bubbles slide UNDER it as the user
-             * scrolls — which is what produces the glassy see-through blur.
-             *
-             *  - Mobile: safe-area-top + ~3.5rem to clear the fixed bar.
-             *  - Desktop: 3.5rem to clear the absolute header.
+             * Embedded in `MessagesPage`: solid header bar (mobile fixed,
+             * desktop in layout). Mobile needs scroll clearance; desktop
+             * header sits above the scroll area.
              */
             hideBackButton
-              ? "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-[5rem]"
+              ? "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+3.25rem)] md:pt-0"
               : "pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+5.25rem)] md:pt-4",
-            "px-3 md:p-4",
+            "px-5 md:p-4",
           )}
           style={{
             WebkitOverflowScrolling: "touch",
@@ -2238,7 +2398,7 @@ export default function ChatPage({
         >
           <div className="min-w-0 max-w-full">
             {/* Clearance for fixed composer + safe area (tight gap above input bar) */}
-            <div className="min-w-0 max-w-full space-y-4 px-1 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+4.5rem+0.25rem)] md:pb-[calc(4.75rem+0.25rem)]">
+            <div className="min-w-0 max-w-full space-y-5 px-0 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+4.75rem+0.25rem)] md:pb-[calc(4.75rem+0.25rem)]">
               {job && hideBackButton && otherUser ? (
                 <ChatJobContextStrip
                   job={job as JobSummaryRow}
@@ -2256,6 +2416,15 @@ export default function ChatPage({
                   busy={matchActionBusy}
                 />
               )}
+              {loadingOlder ? (
+                <div className="flex justify-center py-3">
+                  <Loader2
+                    className="h-5 w-5 animate-spin text-muted-foreground"
+                    aria-hidden
+                  />
+                  <span className="sr-only">Loading older messages</span>
+                </div>
+              ) : null}
               {messages.map((msg, index) => {
                 const isOwn = msg.sender_id === user?.id;
                 const matchIntro = msg.body
@@ -2272,13 +2441,9 @@ export default function ChatPage({
                       key={msg.id}
                       className="space-y-4 chat-scroll-reveal chat-scroll-reveal--center"
                     >
-                      {shouldShowDateHeader(index) && (
-                        <div className="my-8 flex justify-center">
-                          <span className="rounded-full bg-slate-100/80 px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-muted-foreground/60 shadow-sm backdrop-blur-[2px] dark:bg-slate-800/40 md:text-[10px]">
-                            {formatDate(msg.created_at)}
-                          </span>
-                        </div>
-                      )}
+                      {shouldShowDateHeader(index) ? (
+                        <ChatDateSeparator label={formatDate(msg.created_at)} />
+                      ) : null}
                       <div className="flex justify-center px-1 md:px-2">
                         <div className="max-w-md rounded-lg bg-muted/45 px-4 py-3 text-center text-lg leading-snug text-muted-foreground dark:bg-muted/25 border-none md:px-3 md:py-2 md:text-[13px] whitespace-pre-wrap">
                           {msg.body
@@ -2310,13 +2475,9 @@ export default function ChatPage({
                           : "chat-scroll-reveal--received",
                       )}
                     >
-                      {shouldShowDateHeader(index) && (
-                        <div className="my-8 flex justify-center">
-                          <span className="rounded-full bg-slate-100/80 px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-muted-foreground/60 shadow-sm backdrop-blur-[2px] dark:bg-slate-800/40 md:text-[10px]">
-                            {formatDate(msg.created_at)}
-                          </span>
-                        </div>
-                      )}
+                      {shouldShowDateHeader(index) ? (
+                        <ChatDateSeparator label={formatDate(msg.created_at)} />
+                      ) : null}
 
                       <div
                         className={cn(
@@ -2335,13 +2496,7 @@ export default function ChatPage({
                           </Avatar>
                         )}
 
-                        <div
-                          className={cn(
-                            "flex w-full min-w-0 max-w-[min(18.5rem,calc(100vw-5rem))] shrink flex-col md:max-w-[70%]",
-                            "items-stretch",
-                          )}
-                        >
-                          {/* Plain Media */}
+                        <div className={chatMessageColumnCn(isOwn)}>
                           <div
                             className={cn(
                               "flex w-full min-w-0 max-w-full",
@@ -2349,39 +2504,39 @@ export default function ChatPage({
                             )}
                           >
                             {msg.attachment_type === "image" ? (
-                              <div
-                                className="relative max-w-full cursor-pointer group/image transition-transform active:scale-[0.98]"
-                                onClick={() => {
+                              <ChatMessageMedia
+                                src={msg.attachment_url}
+                                alt={msg.attachment_name || "Attachment"}
+                                type="image"
+                                isOwn={isOwn}
+                                onImageClick={() => {
                                   setSelectedImage(msg);
                                   setIsImageModalOpen(true);
                                 }}
-                              >
-                                <img
-                                  src={msg.attachment_url}
-                                  alt={msg.attachment_name || "Attachment"}
-                                  className={cn(
-                                    "max-h-[380px] max-w-full object-cover shadow-md transition-shadow duration-300 md:max-h-[320px]",
-                                    isOwn
-                                      ? "rounded-2xl rounded-br-none"
-                                      : "rounded-2xl rounded-bl-none",
-                                  )}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover/image:opacity-100 rounded-2xl bg-black/10">
-                                  <ImageIcon className="w-8 h-8 text-white drop-shadow-md" />
-                                </div>
-                              </div>
+                              />
                             ) : (
-                              <video
+                              <ChatMessageMedia
                                 src={msg.attachment_url}
-                                controls
-                                className="max-h-[380px] max-w-full rounded-2xl border-none object-cover shadow-sm md:max-h-[320px]"
+                                type="video"
+                                isOwn={isOwn}
                               />
                             )}
                           </div>
 
+                          {/* Timestamp under media */}
+                          <p
+                            className={cn(
+                              chatMessageTimestampCn,
+                              isOwn ? "pr-1" : "pl-1",
+                            )}
+                          >
+                            {formatTime(msg.created_at)}
+                          </p>
+
+                          {(linkPreviewUrls.length > 0 || msg.body) && (
                           <div
                             className={cn(
-                              "mt-2 flex min-w-0 w-full max-w-full",
+                              "flex min-w-0 w-full max-w-full pt-1",
                               isOwn ? "justify-end" : "justify-start",
                             )}
                           >
@@ -2399,18 +2554,21 @@ export default function ChatPage({
                                   ) && (
                                     <div
                                       className={cn(
-                                        "relative min-w-0 max-w-full w-fit px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
+                                        "relative min-w-0 w-fit transition-all duration-300",
                                         isOwn
-                                          ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                          ? chatSentBubbleCn
                                           : chatReceivedBubbleCn,
                                       )}
                                     >
                                       <p
-                                        className={cn(
-                                          chatBubbleBodyTextCn,
-                                          isOwn
-                                            ? "text-white"
-                                            : "text-foreground",
+                                        {...bidirectionalTextProps(
+                                          msg.body,
+                                          cn(
+                                            chatBubbleBodyTextCn,
+                                            isOwn
+                                              ? "text-white"
+                                              : "text-foreground",
+                                          ),
                                         )}
                                       >
                                         {linkifyMessageBody(
@@ -2432,16 +2590,19 @@ export default function ChatPage({
                             ) : msg.body ? (
                               <div
                                 className={cn(
-                                  "relative min-w-0 max-w-full w-fit px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
+                                  "relative min-w-0 w-fit transition-all duration-300",
                                   isOwn
-                                    ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                    ? chatSentBubbleCn
                                     : chatReceivedBubbleCn,
                                 )}
                               >
                                 <p
-                                  className={cn(
-                                    chatBubbleBodyTextCn,
-                                    isOwn ? "text-white" : "text-foreground",
+                                  {...bidirectionalTextProps(
+                                    msg.body,
+                                    cn(
+                                      chatBubbleBodyTextCn,
+                                      isOwn ? "text-white" : "text-foreground",
+                                    ),
                                   )}
                                 >
                                   {linkifyMessageBody(
@@ -2453,16 +2614,7 @@ export default function ChatPage({
                               </div>
                             ) : null}
                           </div>
-
-                          {/* Timestamp outside bubble */}
-                          <div
-                            className={cn(
-                              "mt-1 flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground",
-                              isOwn ? "justify-end" : "justify-start",
-                            )}
-                          >
-                            <span>{formatTime(msg.created_at)}</span>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2479,13 +2631,9 @@ export default function ChatPage({
                         : "chat-scroll-reveal--received",
                     )}
                   >
-                    {shouldShowDateHeader(index) && (
-                      <div className="my-8 flex justify-center">
-                        <span className="rounded-full bg-slate-100/80 px-4 py-1.5 text-[12px] font-bold uppercase tracking-wider text-muted-foreground/60 shadow-sm backdrop-blur-[2px] dark:bg-slate-800/40 md:text-[10px]">
-                          {formatDate(msg.created_at)}
-                        </span>
-                      </div>
-                    )}
+                    {shouldShowDateHeader(index) ? (
+                      <ChatDateSeparator label={formatDate(msg.created_at)} />
+                    ) : null}
 
                     <div
                       className={cn(
@@ -2504,12 +2652,7 @@ export default function ChatPage({
                         </Avatar>
                       )}
 
-                      <div
-                        className={cn(
-                          "flex w-full min-w-0 max-w-[min(18.5rem,calc(100vw-5rem))] shrink flex-col space-y-1 md:max-w-[70%]",
-                          "items-stretch",
-                        )}
-                      >
+                      <div className={chatMessageColumnCn(isOwn)}>
                         <div
                           className={cn(
                             "flex min-w-0 w-full max-w-full",
@@ -2526,9 +2669,9 @@ export default function ChatPage({
                             {msg.attachment_url && (
                               <div
                                 className={cn(
-                                  "min-w-0 max-w-full w-fit px-2.5 py-2 shadow-sm transition-all duration-300",
+                                  "min-w-0 w-fit transition-all duration-300",
                                   isOwn
-                                    ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                    ? chatSentBubbleCn
                                     : chatReceivedBubbleCn,
                                 )}
                               >
@@ -2568,9 +2711,9 @@ export default function ChatPage({
                             {msg.body && matchIntro ? (
                               <div
                                 className={cn(
-                                  "min-w-0 max-w-full w-fit px-3 py-3 shadow-sm transition-all duration-300",
+                                  "min-w-0 w-fit transition-all duration-300",
                                   isOwn
-                                    ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                    ? chatSentBubbleCn
                                     : chatReceivedBubbleCn,
                                 )}
                               >
@@ -2600,16 +2743,19 @@ export default function ChatPage({
                                 msg.body ? (
                               <div
                                 className={cn(
-                                  "relative min-w-0 max-w-full w-fit px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
+                                  "relative min-w-0 w-fit transition-all duration-300",
                                   isOwn
-                                    ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                    ? chatSentBubbleCn
                                     : chatReceivedBubbleCn,
                                 )}
                               >
                                 <p
-                                  className={cn(
-                                    chatBubbleBodyTextCn,
-                                    isOwn ? "text-white" : "text-foreground",
+                                  {...bidirectionalTextProps(
+                                    msg.body,
+                                    cn(
+                                      chatBubbleBodyTextCn,
+                                      isOwn ? "text-white" : "text-foreground",
+                                    ),
                                   )}
                                 >
                                   {linkifyMessageBody(
@@ -2632,9 +2778,9 @@ export default function ChatPage({
                         ) : (
                           <div
                             className={cn(
-                              "group relative min-w-0 max-w-full w-fit px-3 py-2 shadow-sm transition-all duration-300 md:px-3 md:py-1.5",
+                              "group relative min-w-0 w-fit transition-all duration-300",
                               isOwn
-                                ? "rounded-2xl rounded-br-none bg-gradient-to-br from-[#fb923c] via-[#f97316] to-[#ea580c] text-white shadow-md border-t border-white/10"
+                                ? chatSentBubbleCn
                                 : chatReceivedBubbleCn,
                             )}
                           >
@@ -2676,9 +2822,12 @@ export default function ChatPage({
                               </div>
                             ) : msg.body ? (
                               <p
-                                className={cn(
-                                  chatBubbleBodyTextCn,
-                                  isOwn ? "text-white" : "text-foreground",
+                                {...bidirectionalTextProps(
+                                  msg.body,
+                                  cn(
+                                    chatBubbleBodyTextCn,
+                                    isOwn ? "text-white" : "text-foreground",
+                                  ),
                                 )}
                               >
                                 {linkifyMessageBody(
@@ -2691,15 +2840,15 @@ export default function ChatPage({
                           </div>
                         )}
                         </div>
-                        {/* Timestamp outside bubble */}
-                        <div
+                        {/* Timestamp under bubble */}
+                        <p
                           className={cn(
-                            "mt-1 flex items-center gap-1 text-[11px] font-medium tabular-nums text-muted-foreground",
-                            isOwn ? "justify-end" : "justify-start",
+                            chatMessageTimestampCn,
+                            isOwn ? "pr-1" : "pl-1",
                           )}
                         >
-                          <span>{formatTime(msg.created_at)}</span>
-                        </div>
+                          {formatTime(msg.created_at)}
+                        </p>
                       </div>
                     </div>
                   </div>

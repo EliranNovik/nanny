@@ -50,6 +50,12 @@ import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
   publicProfileMediaPublicUrl,
 } from "@/lib/publicProfileMedia";
+import { scrollToProfilePostWhenReady, shareProfilePost, parseProfilePostShareId } from "@/lib/profilePostShare";
+import { fetchProfilePostById } from "@/lib/fetchProfilePostById";
+import {
+  debugProfilePostDeepLink,
+  warnProfilePostDeepLink,
+} from "@/lib/profilePostDeepLinkDebug";
 import type { AvailabilityPayload } from "@/lib/availabilityPosts";
 import {
   isServiceCategoryId,
@@ -1355,6 +1361,17 @@ function PostAuthorAvatar({
   );
 }
 
+const mediaTaggedAtBadgeClass =
+  "pointer-events-none inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-white shadow-md backdrop-blur-md";
+
+const mediaTaggedUserBadgeClass =
+  "pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md hover:bg-black/45 focus-visible:outline-none focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]";
+
+const mediaTaggedMoreBadgeClass =
+  "pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md hover:bg-black/45 focus-visible:outline-none focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]";
+
+const mediaTaggedAvatarClass = "h-6 w-6 shrink-0";
+
 // ─── Post Card ────────────────────────────────────────────────────────────────
 
 function PostCard({
@@ -1369,6 +1386,7 @@ function PostCard({
   onOpenMediaReels,
   hidePostLikeButton,
   appearance,
+  isFocused = false,
 }: {
   post: FeedPost;
   currentUserId: string | null;
@@ -1382,6 +1400,7 @@ function PostCard({
   /** Liked-posts-only feed (e.g. Saved / Liked) — hide redundant like control. */
   hidePostLikeButton?: boolean;
   appearance: "default" | "discover" | "profile";
+  isFocused?: boolean;
 }) {
   const { addToast } = useToast();
   const { profile: viewerProfile } = useAuth();
@@ -1622,20 +1641,33 @@ function PostCard({
   }
 
   async function handleShare() {
-    const url = window.location.href;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "Check this post", url });
-      } else {
-        await navigator.clipboard.writeText(url);
-        addToast({ title: "Link copied!", variant: "success" });
-      }
-    } catch {
-      // User cancelled native share or clipboard failed
+    if (post.source !== "post") return;
+
+    const result = await shareProfilePost({
+      postId: post.id,
+      authorName: authorName,
+      caption: post.caption,
+      mediaUrl,
+      mediaType: post.media_type,
+    });
+
+    if (result === "cancelled") return;
+    if (result === "copied") {
+      addToast({
+        title: "Link copied",
+        description: "Paste anywhere to share this post.",
+        variant: "success",
+      });
+    } else if (result === "failed") {
+      addToast({
+        title: "Could not share",
+        description: "Try copying the page URL manually.",
+        variant: "error",
+      });
       return;
     }
 
-    if (post.source !== "post" || !currentUserId) return;
+    if (!currentUserId) return;
 
     const { error } = await supabase.from("profile_post_shares").insert({
       post_id: post.id,
@@ -1810,11 +1842,13 @@ function PostCard({
 
   return (
     <div
+      id={post.source === "post" ? `profile-post-${post.id}` : undefined}
       className={cn(
         "overflow-hidden transition-all duration-300",
         "bg-white dark:bg-zinc-950/20",
         "md:rounded-2xl md:shadow-md",
         "border-0 shadow-none",
+        isFocused && "scroll-mt-24 scroll-mb-28",
 
         isDiscover &&
           "md:bg-transparent md:shadow-none md:ring-0 md:outline-none",
@@ -1944,7 +1978,7 @@ function PostCard({
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
             <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
-              <span className="pointer-events-none inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12">
+              <span className={mediaTaggedAtBadgeClass}>
                 <AtSign className="h-4 w-4" aria-hidden />
               </span>
               {(showAllTagged ? post.tagged_profiles : post.tagged_profiles.slice(0, 3)).map((t) => (
@@ -1952,10 +1986,10 @@ function PostCard({
                   key={t.id}
                   to={`/profile/${t.id}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12 hover:bg-black/45"
+                  className={mediaTaggedUserBadgeClass}
                   aria-label={`View tagged user ${t.full_name ?? "member"}`}
                 >
-                  <Avatar className="h-6 w-6 shrink-0 ring-1 ring-white/15">
+                  <Avatar className={mediaTaggedAvatarClass}>
                     <AvatarImage src={t.photo_url ?? undefined} />
                     <AvatarFallback className="bg-white/10 text-[10px] font-black text-white">
                       {(t.full_name ?? "?").charAt(0).toUpperCase()}
@@ -1971,7 +2005,7 @@ function PostCard({
                     e.stopPropagation();
                     setShowAllTagged(true);
                   }}
-                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12 hover:bg-black/45"
+                  className={mediaTaggedMoreBadgeClass}
                   aria-label="Show all tagged users"
                 >
                   <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
@@ -2043,7 +2077,7 @@ function PostCard({
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
             <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
-              <span className="pointer-events-none inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12">
+              <span className={mediaTaggedAtBadgeClass}>
                 <AtSign className="h-4 w-4" aria-hidden />
               </span>
               {(showAllTagged ? post.tagged_profiles : post.tagged_profiles.slice(0, 3)).map((t) => (
@@ -2051,10 +2085,10 @@ function PostCard({
                   key={t.id}
                   to={`/profile/${t.id}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12 hover:bg-black/45"
+                  className={mediaTaggedUserBadgeClass}
                   aria-label={`View tagged user ${t.full_name ?? "member"}`}
                 >
-                  <Avatar className="h-6 w-6 shrink-0 ring-1 ring-white/15">
+                  <Avatar className={mediaTaggedAvatarClass}>
                     <AvatarImage src={t.photo_url ?? undefined} />
                     <AvatarFallback className="bg-white/10 text-[10px] font-black text-white">
                       {(t.full_name ?? "?").charAt(0).toUpperCase()}
@@ -2070,7 +2104,7 @@ function PostCard({
                     e.stopPropagation();
                     setShowAllTagged(true);
                   }}
-                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md ring-1 ring-inset ring-white/12 hover:bg-black/45"
+                  className={mediaTaggedMoreBadgeClass}
                   aria-label="Show all tagged users"
                 >
                   <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
@@ -2269,6 +2303,8 @@ interface ProfilePostsFeedProps {
    *    rendered once next to the first post (used by Discovery Home)
    */
   discoverSidePanel?: "comments" | "favorites";
+  /** Deep link from share URLs (`/community/feed?post=`). */
+  focusPostId?: string | null;
 }
 
 export function ProfilePostsFeed({
@@ -2282,7 +2318,9 @@ export function ProfilePostsFeed({
   limit,
   appearance = "default",
   discoverSidePanel = "comments",
+  focusPostId = null,
 }: ProfilePostsFeedProps) {
+  const normalizedFocusPostId = parseProfilePostShareId(focusPostId);
   const { user, profile: currentProfile } = useAuth();
   const { guardKycAction } = useKycGate();
   const navigate = useNavigate();
@@ -2298,6 +2336,7 @@ export function ProfilePostsFeed({
   }, [guardKycAction, navigate, user]);
   const [reelsOpenPostId, setReelsOpenPostId] = useState<string | null>(null);
   const [reelCommentsPostId, setReelCommentsPostId] = useState<string | null>(null);
+  const deepLinkHandledRef = useRef<string | null>(null);
   /**
    * Track viewport width so we can render the desktop full-size viewer
    * (`PostMediaDesktopViewer`) on md+ screens and the mobile reels viewer
@@ -2717,15 +2756,134 @@ export function ProfilePostsFeed({
     authorNameFilter,
     sortOrder,
     filterLikedByUserId,
+    limit,
     supabase,
   ]);
 
-  const { data: posts = [], isLoading: loading } = useQuery({
+  const { data: posts = [], isPending } = useQuery({
     queryKey: qk,
     staleTime: 3 * 60 * 1000, // 3 minutes — served from cache on revisit
     gcTime: 10 * 60 * 1000,   // keep in cache 10 min after unmount
     queryFn: fetchPosts,
   });
+
+  const focusedPostQueryKey = useMemo(
+    () => queryKeys.profilePostById(normalizedFocusPostId, user?.id),
+    [normalizedFocusPostId, user?.id],
+  );
+
+  const {
+    data: focusedPost,
+    isFetching: focusedPostFetching,
+  } = useQuery({
+    queryKey: focusedPostQueryKey,
+    enabled: Boolean(normalizedFocusPostId),
+    staleTime: 60_000,
+    queryFn: () =>
+      fetchProfilePostById(normalizedFocusPostId!, user?.id ?? null),
+  });
+
+  const displayPosts = useMemo(() => {
+    if (!normalizedFocusPostId) return posts;
+    const match =
+      posts.find((p) => p.id === normalizedFocusPostId) ??
+      (focusedPost?.id === normalizedFocusPostId ? focusedPost : null);
+    if (!match) return posts;
+    const rest = posts.filter((p) => p.id !== normalizedFocusPostId);
+    const next = [match, ...rest];
+    debugProfilePostDeepLink("displayPosts: pinned shared post", {
+      focusPostId: normalizedFocusPostId,
+      matchSource: posts.some((p) => p.id === normalizedFocusPostId)
+        ? "feed"
+        : "focusedPostQuery",
+      displayCount: next.length,
+      firstPostId: next[0]?.id ?? null,
+      feedPostIds: posts.map((p) => p.id).slice(0, 8),
+    });
+    return next;
+  }, [posts, focusedPost, normalizedFocusPostId]);
+
+  /** Deep link from shared URLs: scroll the matching post into view. */
+  useEffect(() => {
+    if (!normalizedFocusPostId) {
+      deepLinkHandledRef.current = null;
+      return;
+    }
+
+    debugProfilePostDeepLink("deepLink effect: tick", {
+      focusPostId: normalizedFocusPostId,
+      isPending,
+      focusedPostFetching,
+      postsCount: posts.length,
+      displayPostsCount: displayPosts.length,
+      displayFirstId: displayPosts[0]?.id ?? null,
+      focusedPostLoaded: Boolean(focusedPost),
+      focusedPostId: focusedPost?.id ?? null,
+      alreadyHandled: deepLinkHandledRef.current === normalizedFocusPostId,
+      feedHasFocusId: posts.some((p) => p.id === normalizedFocusPostId),
+    });
+
+    if (isPending) {
+      debugProfilePostDeepLink("deepLink effect: wait — feed loading");
+      return;
+    }
+
+    const post = displayPosts.find(
+      (p) => p.id === normalizedFocusPostId && p.source === "post",
+    );
+    if (!post) {
+      if (focusedPostFetching) {
+        debugProfilePostDeepLink("deepLink effect: wait — focusedPost query");
+        return;
+      }
+      warnProfilePostDeepLink("deepLink effect: post not in displayPosts", {
+        focusPostId: normalizedFocusPostId,
+        feedPostIds: posts.map((p) => `${p.id}:${p.source}`).slice(0, 12),
+        focusedPostId: focusedPost?.id ?? null,
+      });
+      return;
+    }
+    if (deepLinkHandledRef.current === normalizedFocusPostId) {
+      debugProfilePostDeepLink("deepLink effect: skip — already handled");
+      return;
+    }
+
+    debugProfilePostDeepLink("deepLink effect: start scroll", {
+      focusPostId: normalizedFocusPostId,
+      topInset: appearance === "discover" ? 96 : 12,
+      hasMedia: Boolean(post.media_type && post.storage_path),
+    });
+
+    const cancelScroll = scrollToProfilePostWhenReady(
+      normalizedFocusPostId,
+      {
+        topInset: appearance === "discover" ? 96 : 12,
+        onDone: (found) => {
+          debugProfilePostDeepLink("deepLink effect: scroll finished", {
+            focusPostId: normalizedFocusPostId,
+            found,
+          });
+          if (found) {
+            deepLinkHandledRef.current = normalizedFocusPostId;
+          } else {
+            warnProfilePostDeepLink("deepLink effect: scroll failed", {
+              focusPostId: normalizedFocusPostId,
+            });
+          }
+        },
+      },
+    );
+
+    return cancelScroll;
+  }, [
+    normalizedFocusPostId,
+    isPending,
+    focusedPostFetching,
+    displayPosts,
+    posts,
+    focusedPost,
+    appearance,
+  ]);
 
   function handleLikeToggle(postId: string, newLiked: boolean) {
     queryClient.setQueryData<FeedPost[]>(qk, (prev) =>
@@ -2743,9 +2901,9 @@ export function ProfilePostsFeed({
 
   const reelCommentsPost = useMemo(() => {
     if (!reelCommentsPostId) return undefined;
-    const p = posts.find((x) => x.id === reelCommentsPostId);
+    const p = displayPosts.find((x) => x.id === reelCommentsPostId);
     return p?.source === "post" ? (p as ProfilePost) : undefined;
-  }, [posts, reelCommentsPostId]);
+  }, [displayPosts, reelCommentsPostId]);
 
   const refreshPostShareStats = useCallback(
     async (postId: string) => {
@@ -2777,7 +2935,7 @@ export function ProfilePostsFeed({
     [supabase, queryClient, qk],
   );
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex flex-col gap-8 md:gap-7">
         {[1, 2].map((i) => (
@@ -2834,7 +2992,7 @@ export function ProfilePostsFeed({
       )}
 
       {/* Feed */}
-      {posts.length === 0 ? (
+      {displayPosts.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <LayoutGrid
             className="h-10 w-10 text-slate-300 dark:text-slate-600"
@@ -2864,7 +3022,7 @@ export function ProfilePostsFeed({
         // between posts when the sidebar is long).
         <div className="md:flex md:items-start md:justify-start md:gap-10 md:pr-4 lg:pr-8">
           <div className="min-w-0 space-y-3 md:flex-1 md:space-y-2">
-            {posts.map((post) => (
+            {displayPosts.map((post) => (
               <PostCard
                 key={post.id}
                 post={post}
@@ -2878,13 +3036,14 @@ export function ProfilePostsFeed({
                 onOpenMediaReels={setReelsOpenPostId}
                 hidePostLikeButton={Boolean(filterLikedByUserId)}
                 appearance={appearance}
+                isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
               />
             ))}
           </div>
           <FavoritesPostsSidePanel />
         </div>
       ) : (
-        posts.map((post) => {
+        displayPosts.map((post) => {
           const isDiscover = appearance === "discover";
           const isProfilePost = post.source === "post";
           const shouldShowComments = isDiscover && isProfilePost;
@@ -2911,6 +3070,7 @@ export function ProfilePostsFeed({
                 onOpenMediaReels={setReelsOpenPostId}
                 hidePostLikeButton={Boolean(filterLikedByUserId)}
                 appearance={appearance}
+                isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
               />
             );
           }
@@ -2936,6 +3096,7 @@ export function ProfilePostsFeed({
                   onOpenMediaReels={setReelsOpenPostId}
                   hidePostLikeButton={Boolean(filterLikedByUserId)}
                   appearance={appearance}
+                  isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
                 />
               </div>
 
@@ -2957,7 +3118,7 @@ export function ProfilePostsFeed({
           <PostMediaDesktopViewer
             key={`desktop-${reelsOpenPostId}`}
             open
-            posts={posts as unknown as ReelFeedPost[]}
+            posts={displayPosts as unknown as ReelFeedPost[]}
             initialPostId={reelsOpenPostId}
             onClose={() => setReelsOpenPostId(null)}
             currentUserId={user?.id ?? null}
@@ -2969,7 +3130,7 @@ export function ProfilePostsFeed({
           <PostMediaReelsViewer
             key={`reels-${reelsOpenPostId}`}
             open
-            posts={posts as unknown as ReelFeedPost[]}
+            posts={displayPosts as unknown as ReelFeedPost[]}
             initialPostId={reelsOpenPostId}
             onClose={() => setReelsOpenPostId(null)}
             currentUserId={user?.id ?? null}

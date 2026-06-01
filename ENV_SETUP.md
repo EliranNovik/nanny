@@ -37,6 +37,7 @@ PORT=4000
 SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 CORS_ORIGIN=http://localhost:5175
+WEB_APP_ORIGIN=http://localhost:5175
 
 # Didit identity verification (https://business.didit.me)
 DIDIT_API_KEY=your-didit-api-key
@@ -95,6 +96,45 @@ After setup, you should see:
 - Backend running on http://localhost:4000
 - Frontend running on http://localhost:5175
 - Login page loads successfully
+
+---
+
+## Post link previews (WhatsApp / iMessage)
+
+When someone pastes a shared post link (`/community/feed?post=…`), messengers fetch Open Graph HTML from your **frontend** domain.
+
+### Production URLs (MamaLama on Render)
+
+| Service | URL |
+|---------|-----|
+| Frontend | `https://mamalama.onrender.com` |
+| Backend API | `https://mamalama-backend.onrender.com` |
+
+**Backend** (`mamalama-backend` on Render):
+
+```env
+WEB_APP_ORIGIN=https://mamalama.onrender.com
+CORS_ORIGIN=https://mamalama.onrender.com
+```
+
+**Frontend** (`mamalama` on Render — must be a **Web Service**, not Static Site):
+
+```env
+VITE_API_BASE_URL=https://mamalama-backend.onrender.com
+API_BASE_URL=https://mamalama-backend.onrender.com
+```
+
+Render frontend settings:
+
+- Root directory: `apps/web`
+- Build command: `npm install && npm run build`
+- Start command: `npm start` (runs `server.mjs`, which serves OG HTML to crawlers)
+
+Vercel uses `apps/web/middleware.ts`. Netlify uses `netlify.toml` + edge functions. Render uses `server.mjs`.
+
+After deploy, test with [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) using:
+
+`https://mamalama.onrender.com/community/feed?post={post-uuid}`
 
 ---
 

@@ -6,6 +6,8 @@ import { useKycGate } from "@/context/KycGateContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
+import { parseProfilePostShareId } from "@/lib/profilePostShare";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function GlobalPostsPage() {
@@ -14,6 +16,22 @@ export default function GlobalPostsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [composeOpen, setComposeOpen] = useState(false);
+
+  const rawPostParam = searchParams.get("post");
+  const focusPostId = parseProfilePostShareId(rawPostParam);
+
+  /** Fix corrupted links where messengers glued caption text onto the UUID. */
+  useEffect(() => {
+    if (!rawPostParam || !focusPostId) return;
+    if (rawPostParam.trim() === focusPostId) return;
+    debugProfilePostDeepLink("GlobalPostsPage: sanitize post query param", {
+      rawPostParam,
+      focusPostId,
+    });
+    const next = new URLSearchParams(searchParams);
+    next.set("post", focusPostId);
+    setSearchParams(next, { replace: true });
+  }, [focusPostId, rawPostParam, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (searchParams.get("compose") !== "1" || !user) return;
@@ -38,11 +56,25 @@ export default function GlobalPostsPage() {
     guardKycAction("share_post", () => setComposeOpen(true));
   }
 
+  useEffect(() => {
+    if (!focusPostId) return;
+    debugProfilePostDeepLink("GlobalPostsPage: open shared link", {
+      focusPostId,
+      rawPostParam,
+      href: window.location.href,
+    });
+  }, [focusPostId, rawPostParam]);
+
   return (
     <PageFrame variant="fullBleed" className="bg-white dark:bg-background" frameName="community-feed">
       <div className="app-desktop-shell px-0 pb-6 pt-2 md:px-4 md:py-8">
         <div className="mx-auto w-full max-w-3xl md:mx-0 md:max-w-none">
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <div
+            className={cn(
+              !focusPostId &&
+                "animate-in fade-in slide-in-from-bottom-4 duration-1000",
+            )}
+          >
             {/* Inline Compose Box at the top of Community Feed */}
             <div className="mb-4 px-4 md:mb-6 md:px-0">
               <button
@@ -64,7 +96,10 @@ export default function GlobalPostsPage() {
               </button>
             </div>
 
-            <ProfilePostsFeed appearance="discover" />
+            <ProfilePostsFeed
+              appearance="discover"
+              focusPostId={focusPostId}
+            />
           </div>
         </div>
       </div>

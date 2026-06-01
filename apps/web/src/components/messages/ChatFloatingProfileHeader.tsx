@@ -49,31 +49,46 @@ export function ChatFloatingProfileHeader({
       )}
     >
       <div className="relative z-10 -mb-[1.625rem]">
-        <div
-          className={cn(
-            "relative",
-            hasPostedRequest &&
-              "rounded-full bg-gradient-to-br from-violet-400 via-violet-600 to-violet-900 p-[2.5px] shadow-[0_0_12px_rgba(124,58,237,0.35)] dark:from-violet-300 dark:via-violet-500 dark:to-violet-800",
-          )}
-        >
-          <div
-            className={cn(
-              hasPostedRequest && "rounded-full bg-background p-0.5",
-            )}
-          >
+        <div className="relative inline-flex shrink-0 rounded-full">
+          {hasPostedRequest ? (
+            <span className="inline-flex shrink-0 rounded-full bg-gradient-to-br from-violet-400 via-violet-600 to-violet-900 p-[2.5px] shadow-[0_0_12px_rgba(124,58,237,0.35)] dark:from-violet-300 dark:via-violet-500 dark:to-violet-800">
+              <span className="inline-flex rounded-full bg-background p-[2px]">
+                <ChatParticipantProfilePeek
+                  userId={userId}
+                  preview={preview ?? undefined}
+                  profile={profile ?? undefined}
+                  className="inline-flex shrink-0 rounded-full"
+                >
+                  <Avatar className="h-14 w-14 shadow-md">
+                    <AvatarImage
+                      src={photoUrl || undefined}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary/10 text-base font-semibold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </ChatParticipantProfilePeek>
+              </span>
+            </span>
+          ) : (
             <ChatParticipantProfilePeek
               userId={userId}
               preview={preview ?? undefined}
               profile={profile ?? undefined}
+              className="inline-flex shrink-0 rounded-full"
             >
               <Avatar className="h-14 w-14 shadow-md">
-                <AvatarImage src={photoUrl || undefined} />
+                <AvatarImage
+                  src={photoUrl || undefined}
+                  className="object-cover"
+                />
                 <AvatarFallback className="bg-primary/10 text-base font-semibold text-primary">
                   {initials}
                 </AvatarFallback>
               </Avatar>
             </ChatParticipantProfilePeek>
-          </div>
+          )}
           {isLive24h ? <LiveAvatarDot /> : null}
         </div>
       </div>

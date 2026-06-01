@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
+export const CHAT_MESSAGE_PAGE_SIZE = 50;
+
 export type ChatMessage = {
   id: string;
   conversation_id: string;
@@ -49,13 +51,14 @@ export type ChatThreadPayload = {
   job: Record<string, unknown> | null;
   realtimeConvoIds: string[];
   otherUserId: string;
+  hasMoreOlder: boolean;
 };
 
-async function loadMergedMessages(
+async function resolveConversationIds(
   userId: string,
   otherId: string,
   fallbackConversationId: string,
-): Promise<{ messages: ChatMessage[]; multiIds: string[] }> {
+): Promise<string[]> {
   const { data: allConversations } = await supabase
     .from("conversations")
     .select("id")
@@ -64,22 +67,46 @@ async function loadMergedMessages(
     );
   const ids = (allConversations ?? []).map((c) => c.id);
   if (ids.length === 0) {
-    const { data: fallbackMsgs } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", fallbackConversationId)
-      .order("created_at", { ascending: true });
-    return {
-      messages: (fallbackMsgs ?? []) as ChatMessage[],
-      multiIds: fallbackConversationId ? [fallbackConversationId] : [],
-    };
+    return fallbackConversationId ? [fallbackConversationId] : [];
   }
-  const { data: allMsgs } = await supabase
+  return ids;
+}
+
+async function loadMergedMessages(
+  userId: string,
+  otherId: string,
+  fallbackConversationId: string,
+  options?: { limit?: number; beforeCreatedAt?: string },
+): Promise<{ messages: ChatMessage[]; multiIds: string[]; hasMoreOlder: boolean }> {
+  const limit = options?.limit ?? CHAT_MESSAGE_PAGE_SIZE;
+  const ids = await resolveConversationIds(
+    userId,
+    otherId,
+    fallbackConversationId,
+  );
+
+  if (ids.length === 0) {
+    return { messages: [], multiIds: [], hasMoreOlder: false };
+  }
+
+  let query = supabase
     .from("messages")
     .select("*")
     .in("conversation_id", ids)
-    .order("created_at", { ascending: true });
-  return { messages: (allMsgs ?? []) as ChatMessage[], multiIds: ids };
+    .order("created_at", { ascending: false })
+    .limit(limit + 1);
+
+  if (options?.beforeCreatedAt) {
+    query = query.lt("created_at", options.beforeCreatedAt);
+  }
+
+  const { data: rows } = await query;
+  const fetched = (rows ?? []) as ChatMessage[];
+  const hasMoreOlder = fetched.length > limit;
+  const page = hasMoreOlder ? fetched.slice(0, limit) : fetched;
+  page.reverse();
+
+  return { messages: page, multiIds: ids, hasMoreOlder };
 }
 
 async function loadOtherProfile(otherId: string): Promise<ChatProfile | null> {
@@ -106,6 +133,20 @@ async function loadOtherProfile(otherId: string): Promise<ChatProfile | null> {
   } as ChatProfile;
 }
 
+export async function fetchOlderChatMessages(
+  userId: string,
+  otherId: string,
+  fallbackConversationId: string,
+  beforeCreatedAt: string,
+  limit = CHAT_MESSAGE_PAGE_SIZE,
+): Promise<{ messages: ChatMessage[]; hasMoreOlder: boolean }> {
+  const pack = await loadMergedMessages(userId, otherId, fallbackConversationId, {
+    limit,
+    beforeCreatedAt,
+  });
+  return { messages: pack.messages, hasMoreOlder: pack.hasMoreOlder };
+}
+
 export async function fetchChatThread(
   conversationId: string,
   userId: string,
@@ -124,7 +165,9 @@ export async function fetchChatThread(
     (convo.client_id === userId ? convo.freelancer_id : convo.client_id);
 
   const [msgPack, profile, jobData] = await Promise.all([
-    loadMergedMessages(userId, otherId, conversationId),
+    loadMergedMessages(userId, otherId, conversationId, {
+      limit: CHAT_MESSAGE_PAGE_SIZE,
+    }),
     loadOtherProfile(otherId),
     convo.job_id
       ? supabase
@@ -146,5 +189,6 @@ export async function fetchChatThread(
     job: jobData as Record<string, unknown> | null,
     realtimeConvoIds,
     otherUserId: otherId,
+    hasMoreOlder: msgPack.hasMoreOlder,
   };
 }

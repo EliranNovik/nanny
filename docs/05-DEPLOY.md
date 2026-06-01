@@ -38,6 +38,29 @@
 
 ## Frontend Deployment (Vercel / Netlify)
 
+### Render (MamaLama)
+
+**Frontend** — Web Service (not Static Site, so link previews work):
+
+1. Create Web Service from GitHub
+2. Root Directory: `apps/web`
+3. Build Command: `npm install && npm run build`
+4. Start Command: `npm start`
+5. Environment Variables:
+   ```
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   VITE_API_BASE_URL=https://mamalama-backend.onrender.com
+   API_BASE_URL=https://mamalama-backend.onrender.com
+   ```
+
+**Backend** — Web Service (`apps/api`):
+
+```
+WEB_APP_ORIGIN=https://mamalama.onrender.com
+CORS_ORIGIN=https://mamalama.onrender.com
+```
+
 ### Vercel
 1. Import GitHub repo
 2. Framework Preset: Vite

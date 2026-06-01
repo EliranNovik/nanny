@@ -31,6 +31,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
+import { shareProfilePost } from "@/lib/profilePostShare";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import {
   type ReelFeedPost,
@@ -243,17 +244,33 @@ export function PostMediaDesktopViewer({
 
   const handleShare = useCallback(
     async (postId: string) => {
-      const url = window.location.href;
-      try {
-        if (navigator.share) {
-          await navigator.share({ title: "Check this post", url });
-        } else {
-          await navigator.clipboard.writeText(url);
-          addToast({ title: "Link copied!", variant: "success" });
-        }
-      } catch {
+      const slide = slides.find((s) => s.postId === postId);
+      if (!slide) return;
+
+      const result = await shareProfilePost({
+        postId,
+        authorName: slide.authorName,
+        caption: slide.caption,
+        mediaUrl: slide.mediaUrl,
+        mediaType: slide.mediaType,
+      });
+
+      if (result === "cancelled") return;
+      if (result === "copied") {
+        addToast({
+          title: "Link copied",
+          description: "Paste anywhere to share this post.",
+          variant: "success",
+        });
+      } else if (result === "failed") {
+        addToast({
+          title: "Could not share",
+          description: "Try copying the page URL manually.",
+          variant: "error",
+        });
         return;
       }
+
       if (!currentUserId) return;
       const { error } = await supabase.from("profile_post_shares").insert({
         post_id: postId,
@@ -265,7 +282,7 @@ export function PostMediaDesktopViewer({
       }
       void onRefreshShareStats(postId);
     },
-    [addToast, currentUserId, onRefreshShareStats],
+    [addToast, currentUserId, onRefreshShareStats, slides],
   );
 
   if (!open || !activeSlide) return null;

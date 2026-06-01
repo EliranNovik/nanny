@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
@@ -25,13 +26,14 @@ import {
   MessageSquare,
   Home,
   Rss,
-  Newspaper,
   User,
   PlusSquare,
   Search,
   Trash2,
   X,
   Bookmark,
+  Check,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -48,7 +50,8 @@ import {
   useMessagesInbox,
   type InboxConversation,
 } from "@/hooks/data/useMessagesInbox";
-import { ChatFloatingProfileHeader } from "@/components/messages/ChatFloatingProfileHeader";
+import { prefetchChatThread } from "@/hooks/data/useChatThread";
+import { ChatSimpleHeader } from "@/components/messages/ChatSimpleHeader";
 import { useChatHeaderAvatarStatus } from "@/hooks/useChatHeaderAvatarStatus";
 
 /** City for inbox row: job location first, else other user profile city */
@@ -78,14 +81,25 @@ function shouldOpenMobileChatPane(): boolean {
   return /\/messages\/[^/]+/.test(window.location.pathname);
 }
 
-/** Scroll distance (px) over which the inbox search field fully collapses. */
-const INBOX_SEARCH_COLLAPSE_PX = 72;
-/** Expanded search row height used for max-height animation. */
-const INBOX_SEARCH_EXPANDED_PX = 56;
+function InboxSecuredFooter() {
+  return (
+    <div className="flex items-center justify-center gap-2.5 px-4 py-8 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:py-10">
+      <ShieldCheck
+        className="h-[1.375rem] w-[1.375rem] shrink-0 text-emerald-500 dark:text-emerald-400 md:h-6 md:w-6"
+        aria-hidden
+      />
+      <p className="text-center text-sm font-medium leading-snug text-muted-foreground md:text-[15px]">
+        Secured within{" "}
+        <span className="text-foreground/75 dark:text-white/70">tebnu.com</span>
+      </p>
+    </div>
+  );
+}
 
 export default function MessagesPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams<{ conversationId?: string }>();
   /** `/messages?conversation=` or `/messages/:conversationId` (both routes render this page) */
@@ -287,36 +301,6 @@ export default function MessagesPage() {
   const [mobileView, setMobileView] = useState<"contacts" | "chat">(() =>
     shouldOpenMobileChatPane() ? "chat" : "contacts",
   );
-  const inboxScrollAreaRef = useRef<HTMLDivElement>(null);
-  const [inboxScrollTop, setInboxScrollTop] = useState(0);
-
-  const inboxSearchCollapseProgress = useMemo(
-    () => Math.min(1, Math.max(0, inboxScrollTop / INBOX_SEARCH_COLLAPSE_PX)),
-    [inboxScrollTop],
-  );
-
-  useEffect(() => {
-    if (inboxTab !== "messages") {
-      setInboxScrollTop(0);
-      return;
-    }
-
-    const root = inboxScrollAreaRef.current;
-    if (!root) return;
-
-    const viewport = root.querySelector(
-      "[data-radix-scroll-area-viewport]",
-    ) as HTMLElement | null;
-    if (!viewport) return;
-
-    const onScroll = () => {
-      setInboxScrollTop(viewport.scrollTop);
-    };
-
-    onScroll();
-    viewport.addEventListener("scroll", onScroll, { passive: true });
-    return () => viewport.removeEventListener("scroll", onScroll);
-  }, [inboxTab, chatInboxRows.length, mobileView]);
   /** When URL has ?conversation= but list has not loaded that row yet (e.g. new direct chat). */
   const [directChatHeader, setDirectChatHeader] = useState<{
     otherUserId: string;
@@ -555,7 +539,16 @@ export default function MessagesPage() {
   }
 
   // Handle selecting a conversation
-  const handleConversationClick = (convoId: string) => {
+  const prefetchConversationThread = useCallback(
+    (convoId: string, otherUserId?: string) => {
+      if (!user?.id) return;
+      void prefetchChatThread(queryClient, convoId, user.id, otherUserId);
+    },
+    [queryClient, user?.id],
+  );
+
+  const handleConversationClick = (convoId: string, otherUserId?: string) => {
+    prefetchConversationThread(convoId, otherUserId);
     setSearchParams({ conversation: convoId });
     // On mobile, switch to chat view
     if (window.innerWidth < 768) {
@@ -692,7 +685,7 @@ export default function MessagesPage() {
             </Button>
             <div
               className={cn(
-                "flex min-w-0 flex-1 rounded-full p-1",
+                "ml-auto flex w-auto gap-0.5 rounded-full p-1 md:ml-0 md:min-w-0 md:flex-1 md:gap-0",
                 glassBadgeClass,
               )}
               role="tablist"
@@ -702,18 +695,23 @@ export default function MessagesPage() {
                 type="button"
                 role="tab"
                 aria-selected={inboxTab === "messages"}
+                aria-label={
+                  inboxUnreadTotal > 0
+                    ? `Messages, ${inboxUnreadTotal} unread`
+                    : "Messages"
+                }
                 onClick={() => setInboxTab("messages")}
                 className={cn(
-                  "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold transition-colors",
+                  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors md:min-w-0 md:flex-1 md:gap-2 md:py-2.5 md:text-sm md:font-semibold",
                   inboxTab === "messages"
                     ? "bg-background/75 text-foreground shadow-sm backdrop-blur-sm dark:bg-zinc-800/90 dark:text-white"
                     : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/[0.06]",
                 )}
               >
-                <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-                <span>Messages</span>
+                <MessageCircle className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
+                <span className="hidden md:inline">Messages</span>
                 {inboxUnreadTotal > 0 ? (
-                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
+                  <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground md:static md:translate-none">
                     {inboxUnreadTotal > 99 ? "99+" : inboxUnreadTotal}
                   </span>
                 ) : null}
@@ -722,18 +720,23 @@ export default function MessagesPage() {
                 type="button"
                 role="tab"
                 aria-selected={inboxTab === "news"}
+                aria-label={
+                  visibleActivityAlerts.length > 0
+                    ? `News, ${visibleActivityAlerts.length} items`
+                    : "News"
+                }
                 onClick={() => setInboxTab("news")}
                 className={cn(
-                  "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold transition-colors",
+                  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors md:min-w-0 md:flex-1 md:gap-2 md:py-2.5 md:text-sm md:font-semibold",
                   inboxTab === "news"
                     ? "bg-background/75 text-foreground shadow-sm backdrop-blur-sm dark:bg-zinc-800/90 dark:text-white"
                     : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/[0.06]",
                 )}
               >
-                <Newspaper className="h-4 w-4 shrink-0" aria-hidden />
-                <span>News</span>
+                <Bell className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden />
+                <span className="hidden md:inline">News</span>
                 {visibleActivityAlerts.length > 0 ? (
-                  <span className="rounded-full bg-muted-foreground/20 px-1.5 py-0.5 text-[10px] font-bold leading-none text-foreground dark:bg-white/15">
+                  <span className="absolute -right-0.5 -top-0.5 rounded-full bg-muted-foreground/20 px-1.5 py-0.5 text-[10px] font-bold leading-none text-foreground dark:bg-white/15 md:static md:translate-none">
                     {visibleActivityAlerts.length > 99
                       ? "99+"
                       : visibleActivityAlerts.length}
@@ -747,13 +750,15 @@ export default function MessagesPage() {
         {/* Messages list or activity / news list — scrolls under mobile chrome */}
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden max-md:min-h-0">
           <ScrollArea
-            ref={inboxScrollAreaRef}
             className={cn(
               "min-h-0 flex-1 bg-transparent",
               "max-md:[&>[data-orientation=vertical]]:hidden",
               "[&_[data-radix-scroll-area-viewport]]:min-w-0",
               "[&_[data-radix-scroll-area-viewport]]:max-w-full",
               "[&_[data-radix-scroll-area-viewport]]:bg-transparent",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:[scrollbar-width:none]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:[-ms-overflow-style:none]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:[&::-webkit-scrollbar]:hidden",
               "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+4.75rem)]",
               inboxTab === "messages"
                 ? "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
@@ -762,6 +767,7 @@ export default function MessagesPage() {
           >
             {inboxTab === "messages" ? (
               chatInboxRows.length === 0 ? (
+              <>
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                   <MessageCircle className="h-8 w-8 text-muted-foreground" />
@@ -809,42 +815,23 @@ export default function MessagesPage() {
                   </Button>
                 </div>
               </div>
+              <InboxSecuredFooter />
+              </>
             ) : (
               <>
                 <div className="shrink-0 px-4 pb-3 pt-2 md:pt-3">
-                  <div
-                    className={cn(
-                      "overflow-hidden will-change-[max-height,opacity,transform]",
-                      inboxSearchCollapseProgress >= 1 && "pointer-events-none",
-                    )}
-                    style={{
-                      maxHeight: `${
-                        Math.max(
-                          0,
-                          (1 - inboxSearchCollapseProgress) *
-                            INBOX_SEARCH_EXPANDED_PX,
-                        )
-                      }px`,
-                      opacity: 1 - inboxSearchCollapseProgress,
-                      transform: `translateY(${
-                        -inboxSearchCollapseProgress * 6
-                      }px)`,
-                    }}
-                  >
-                    <div className="relative">
+                  <div className="relative">
                       <Search
                         className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                         aria-hidden
                       />
                       <input
                         type="search"
-                        placeholder="Search by name or city…"
+                        placeholder="Search"
                         autoComplete="off"
                         value={contactSearchQuery}
                         onChange={(e) => setContactSearchQuery(e.target.value)}
-                        className="h-12 w-full rounded-2xl border-0 bg-muted/30 pl-10 pr-10 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-muted/45 dark:bg-zinc-900/60 dark:focus:bg-zinc-900/75 md:text-sm"
-                        tabIndex={inboxSearchCollapseProgress >= 1 ? -1 : 0}
-                        aria-hidden={inboxSearchCollapseProgress >= 1}
+                        className="h-[3.75rem] w-full rounded-2xl border-0 bg-muted/30 pl-10 pr-10 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-muted/45 dark:bg-zinc-900/60 dark:focus:bg-zinc-900/75 md:h-14 md:text-sm"
                       />
                       {contactSearchQuery.trim() ? (
                         <button
@@ -856,7 +843,6 @@ export default function MessagesPage() {
                           <X className="h-4 w-4" aria-hidden />
                         </button>
                       ) : null}
-                    </div>
                   </div>
                   <div className="-mx-4 mt-2.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <div className="flex w-max min-w-full gap-2">
@@ -935,7 +921,24 @@ export default function MessagesPage() {
                           !isActive &&
                           "bg-muted/20 dark:bg-muted/10",
                       )}
-                      onClick={() => handleConversationClick(convo.id)}
+                      onClick={() =>
+                        handleConversationClick(
+                          convo.id,
+                          convo.other_user_id,
+                        )
+                      }
+                      onTouchStart={() =>
+                        prefetchConversationThread(
+                          convo.id,
+                          convo.other_user_id,
+                        )
+                      }
+                      onMouseEnter={() =>
+                        prefetchConversationThread(
+                          convo.id,
+                          convo.other_user_id,
+                        )
+                      }
                     >
                       {/*
                         Row divider — indented so it starts after the avatar.
@@ -1038,12 +1041,14 @@ export default function MessagesPage() {
                   })}
               </div>
                 )}
+                <InboxSecuredFooter />
               </>
             )
           ) : activityInboxRows.length === 0 ? (
+              <>
               <div className="flex flex-col items-center px-6 py-12 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                  <Newspaper className="h-8 w-8 text-muted-foreground" />
+                  <Bell className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 className="mb-2 text-lg font-semibold text-foreground">
                   No updates yet
@@ -1053,7 +1058,10 @@ export default function MessagesPage() {
                   when something needs your attention.
                 </p>
               </div>
+              <InboxSecuredFooter />
+              </>
             ) : (
+              <>
               <div className="w-full min-w-0 max-w-full space-y-0.5 overflow-x-hidden">
                 {activityInboxRows.map((row) => {
                   const a = row.alert;
@@ -1130,55 +1138,53 @@ export default function MessagesPage() {
                   );
                 })}
               </div>
+              <InboxSecuredFooter />
+              </>
             )}
           </ScrollArea>
 
-          {/* Mobile: floating glass pill — New message + Remove */}
+          {/* Mobile: floating glass pill — New message + Remove (icon-only, bottom-right) */}
           {inboxTab === "messages" ? (
             <div
               className={cn(
-                "pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center px-4 md:hidden",
+                "pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-end px-4 md:hidden",
                 "pb-[max(1rem,env(safe-area-inset-bottom,0px))]",
               )}
             >
               <div
                 className={cn(
-                  "pointer-events-auto inline-flex items-stretch overflow-hidden rounded-full",
-                  "bg-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.45)]",
-                  "backdrop-blur-3xl backdrop-saturate-[180%]",
-                  "supports-[backdrop-filter]:bg-white/[0.08]",
-                  "dark:bg-white/[0.06] dark:shadow-[0_8px_32px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.12)]",
-                  "dark:supports-[backdrop-filter]:bg-white/[0.05]",
+                  "pointer-events-auto flex gap-0.5 rounded-full p-1",
+                  glassBadgeClass,
                 )}
               >
                 <button
                   type="button"
+                  aria-label="New message"
                   className={cn(
-                    "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-foreground",
-                    "transition-colors hover:bg-white/10 active:bg-white/15",
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors",
+                    "hover:bg-white/10 active:bg-white/15",
                     "dark:hover:bg-white/[0.06] dark:active:bg-white/10",
                   )}
                   onClick={() => setNewChatOpen(true)}
                 >
                   <PlusSquare className="h-5 w-5 shrink-0" aria-hidden />
-                  <span>New message</span>
                 </button>
-                <div
-                  className="my-2.5 w-px shrink-0 self-stretch bg-white/25 dark:bg-white/10"
-                  aria-hidden
-                />
                 <button
                   type="button"
+                  aria-label={isManageMode ? "Done removing" : "Remove conversations"}
                   onClick={() => setIsManageMode(!isManageMode)}
                   className={cn(
-                    "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors",
                     isManageMode
                       ? "bg-red-500/10 text-red-600 hover:bg-red-500/15 active:bg-red-500/20 dark:text-red-400"
                       : "text-foreground hover:bg-white/10 active:bg-white/15 dark:hover:bg-white/[0.06] dark:active:bg-white/10",
                   )}
                 >
-                  <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
-                  <span>{isManageMode ? "Done" : "Remove"}</span>
+                  {isManageMode ? (
+                    <Check className="h-5 w-5 shrink-0" aria-hidden />
+                  ) : (
+                    <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
+                  )}
                 </button>
               </div>
             </div>
@@ -1252,84 +1258,29 @@ export default function MessagesPage() {
                 .toUpperCase() || "?";
 
             return (
-              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-100 dark:bg-background">
-                {/* Mobile chat bar — floating glass controls; conversation scrolls underneath */}
-                <div
-                  className={cn(
-                    "relative z-40 flex min-h-[4.25rem] shrink-0 items-end justify-center bg-transparent",
-                    "fixed left-0 right-0 top-0 md:hidden",
-                    "px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
-                  )}
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleBackToContacts}
-                    className={cn(
-                      "absolute left-4 top-[max(0.75rem,env(safe-area-inset-top,0px))] h-11 w-11 rounded-full",
-                      glassBadgeClass,
-                      glassIconButtonClass,
-                    )}
-                  >
-                    <HeaderBackChevron />
-                  </Button>
-                  <ChatFloatingProfileHeader
-                    userId={otherUserId}
-                    displayName={otherUserProfile?.full_name || "User"}
-                    initials={otherInitials}
-                    photoUrl={otherUserProfile?.photo_url}
-                    isVerified={Boolean(otherUserProfile?.is_verified)}
-                    isLive24h={chatAvatarStatus.isLive24h}
-                    hasPostedRequest={chatAvatarStatus.hasPostedRequest}
-                    preview={
-                      otherUserProfile
-                        ? {
-                            full_name: otherUserProfile.full_name,
-                            photo_url: otherUserProfile.photo_url,
-                            city: otherUserProfile.city ?? null,
-                          }
-                        : null
-                    }
-                  />
-                </div>
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden chat-screen">
+                <ChatSimpleHeader
+                  userId={otherUserId}
+                  displayName={otherUserProfile?.full_name || "User"}
+                  initials={otherInitials}
+                  photoUrl={otherUserProfile?.photo_url}
+                  isVerified={Boolean(otherUserProfile?.is_verified)}
+                  isLive24h={chatAvatarStatus.isLive24h}
+                  hasPostedRequest={chatAvatarStatus.hasPostedRequest}
+                  preview={
+                    otherUserProfile
+                      ? {
+                          full_name: otherUserProfile.full_name,
+                          photo_url: otherUserProfile.photo_url,
+                          city: otherUserProfile.city ?? null,
+                        }
+                      : null
+                  }
+                  showBackButton
+                  onBack={handleBackToContacts}
+                  className="fixed left-0 right-0 top-0 md:relative md:top-auto"
+                />
 
-                {/* Desktop chat header — centred floating avatar + name badge */}
-                <div
-                  className={cn(
-                    "pointer-events-none absolute inset-x-0 top-0 z-20 hidden justify-center bg-transparent px-5 pb-2 pt-3",
-                    "md:flex",
-                  )}
-                >
-                  <ChatFloatingProfileHeader
-                    userId={otherUserId}
-                    displayName={otherUserProfile?.full_name || "User"}
-                    initials={otherInitials}
-                    photoUrl={otherUserProfile?.photo_url}
-                    isVerified={Boolean(otherUserProfile?.is_verified)}
-                    isLive24h={chatAvatarStatus.isLive24h}
-                    hasPostedRequest={chatAvatarStatus.hasPostedRequest}
-                    preview={
-                      otherUserProfile
-                        ? {
-                            full_name: otherUserProfile.full_name,
-                            photo_url: otherUserProfile.photo_url,
-                            city: otherUserProfile.city ?? null,
-                          }
-                        : null
-                    }
-                  />
-                </div>
-
-                {/*
-                  Chat Page area — wrapper has zero top inset on both viewports
-                  so the message list sits flush against the top of the chat
-                  column and scrolls UNDER the translucent floating header.
-                  The clearance lives inside `ChatPage`'s scroll container
-                  (`pt-[...]`) so the first message is positioned correctly
-                  initially but slides under the header as the user scrolls —
-                  which is what produces the glassy blur on both mobile and
-                  desktop.
-                */}
                 <div className="relative min-h-0 flex-1 overflow-hidden">
                   <div className="messages-chat-container h-full min-h-0">
                     <ChatPage

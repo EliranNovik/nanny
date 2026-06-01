@@ -70,5 +70,13 @@ export const queryKeys = {
       opts.filterLikedByUserId ?? "",
       opts.limit ?? 0,
     ] as const,
+
+  profilePostById: (postId?: string | null, viewerUserId?: string | null) =>
+    [
+      ...queryKeys.community,
+      "profilePostById",
+      postId ?? "",
+      viewerUserId ?? "anon",
+    ] as const,
 };
 

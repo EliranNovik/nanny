@@ -5,6 +5,11 @@ import { Paperclip, Send, Loader2, MessageSquarePlus } from "lucide-react";
 import { ChatAttachmentPreview } from "@/components/chat/ChatAttachmentPreview";
 import { cn } from "@/lib/utils";
 import { bidirectionalInputProps } from "@/lib/textDirection";
+import {
+  chatComposerBarClass,
+  chatComposerFieldClass,
+  chatComposerFieldWrapClass,
+} from "@/lib/chatTheme";
 
 interface ChatComposerProps {
   newMessage: string;
@@ -39,15 +44,8 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const [showPhrases, setShowPhrases] = React.useState(false);
 
-  /** Chat input: readable grey surface, no stroke — stands out on chat background in light & dark */
-  const messageFieldClass = cn(
-    "min-h-[44px] max-h-[min(40vh,280px)] flex-1 resize-none overflow-y-auto",
-    "rounded-2xl border-0 py-2.5 pl-3 pr-3",
-    "bg-zinc-200 text-zinc-900 placeholder:text-zinc-600",
-    "dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400",
-    "text-[17px] font-normal leading-snug md:text-[18px]",
-    "shadow-none focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
-  );
+  /** Chat input inside floating glass composer shell */
+  const messageFieldClass = chatComposerFieldClass;
 
   const phrasesPanelBase =
     "absolute bottom-[calc(100%+10px)] z-40 overflow-y-auto rounded-2xl border border-border/50 bg-background/95 shadow-lg backdrop-blur-lg dark:bg-zinc-900/95 p-2";
@@ -80,11 +78,18 @@ export function ChatComposer({
   const messageInputProps = bidirectionalInputProps(newMessage, messageFieldClass);
 
   const composerActionBtnClass = cn(
-    "h-12 w-12 shrink-0 self-end rounded-full",
+    "h-10 w-10 shrink-0 self-end rounded-full",
     "text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-95",
+    "dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white",
   );
-  const composerIconClass = "h-[26px] w-[26px]";
-  const composerSendIconClass = "h-[26px] w-[26px]";
+  const composerIconClass = "h-6 w-6";
+  const composerSendBtnClass = cn(
+    "h-10 w-10 shrink-0 self-end rounded-full",
+    "bg-orange-500 text-white shadow-lg shadow-orange-500/25",
+    "hover:bg-orange-400 active:scale-95",
+    "disabled:bg-orange-500/40 disabled:text-white/70 disabled:shadow-none",
+  );
+  const composerSendIconClass = "h-5 w-5";
 
   return (
     <>
@@ -99,8 +104,8 @@ export function ChatComposer({
       <div
         className={cn(
           "lg:hidden fixed bottom-0 left-0 right-0 z-30",
-          "border-t border-border/15 bg-white dark:border-t-0 dark:bg-zinc-900",
-          "px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
+          chatComposerBarClass,
+          "px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
           !hideBackButton && mobileView === "steps" && "hidden"
         )}
       >
@@ -129,7 +134,7 @@ export function ChatComposer({
           </div>
         )}
 
-        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
+        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -163,37 +168,35 @@ export function ChatComposer({
             <MessageSquarePlus className={composerIconClass} strokeWidth={1.75} />
           </Button>
 
-          <Textarea
-            ref={mobileComposerRef}
-            rows={1}
-            placeholder={captionPlaceholder}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
-              }
-            }}
-            {...messageInputProps}
-            disabled={sending || uploading}
-            aria-label={selectedFile ? "Caption" : "Message"}
-          />
+          <div className={chatComposerFieldWrapClass}>
+            <Textarea
+              ref={mobileComposerRef}
+              rows={1}
+              placeholder={captionPlaceholder}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
+                }
+              }}
+              {...messageInputProps}
+              disabled={sending || uploading}
+              aria-label={selectedFile ? "Caption" : "Message"}
+            />
+          </div>
           <Button
             type="submit"
             size="icon"
-            variant="ghost"
-            className={cn(
-              composerActionBtnClass,
-              "text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary",
-            )}
+            className={composerSendBtnClass}
             disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             aria-label={selectedFile ? "Send attachment" : "Send message"}
           >
             {sending || uploading ? (
               <Loader2 className={cn(composerSendIconClass, "animate-spin")} />
             ) : (
-              <Send className={composerSendIconClass} strokeWidth={2} />
+              <Send className={composerSendIconClass} strokeWidth={2.25} />
             )}
           </Button>
         </form>
@@ -203,8 +206,8 @@ export function ChatComposer({
       <div
         className={cn(
           "fixed bottom-0 right-0 z-30 hidden lg:flex lg:flex-col",
-          "border-t border-border/15 bg-white dark:border-t-0 dark:bg-zinc-900",
-          "px-5 pb-4 pt-2.5",
+          chatComposerBarClass,
+          "px-5 pb-4 pt-3",
           hideBackButton
             ? // Embedded in `MessagesPage` which also has the DesktopSidePanel (220px) on md+.
               // Keep the composer width aligned with the chat column only.
@@ -237,7 +240,7 @@ export function ChatComposer({
           </div>
         )}
 
-        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-1.5">
+        <form onSubmit={handleSend} className="flex w-full max-w-none items-end gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -271,37 +274,35 @@ export function ChatComposer({
             <MessageSquarePlus className={composerIconClass} strokeWidth={1.75} />
           </Button>
 
-          <Textarea
-            ref={desktopComposerRef}
-            rows={1}
-            placeholder={captionPlaceholder}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
-              }
-            }}
-            {...messageInputProps}
-            disabled={sending || uploading}
-            aria-label={selectedFile ? "Caption" : "Message"}
-          />
+          <div className={chatComposerFieldWrapClass}>
+            <Textarea
+              ref={desktopComposerRef}
+              rows={1}
+              placeholder={captionPlaceholder}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
+                }
+              }}
+              {...messageInputProps}
+              disabled={sending || uploading}
+              aria-label={selectedFile ? "Caption" : "Message"}
+            />
+          </div>
           <Button
             type="submit"
             size="icon"
-            variant="ghost"
-            className={cn(
-              composerActionBtnClass,
-              "text-primary transition-colors hover:!bg-primary hover:!text-primary-foreground disabled:opacity-35 disabled:hover:!bg-transparent disabled:hover:!text-primary",
-            )}
+            className={composerSendBtnClass}
             disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
             aria-label={selectedFile ? "Send attachment" : "Send message"}
           >
             {sending || uploading ? (
               <Loader2 className={cn(composerSendIconClass, "animate-spin")} />
             ) : (
-              <Send className={composerSendIconClass} strokeWidth={2} />
+              <Send className={composerSendIconClass} strokeWidth={2.25} />
             )}
           </Button>
         </form>
