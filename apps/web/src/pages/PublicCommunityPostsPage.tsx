@@ -25,6 +25,7 @@ import {
   usePostFavorites,
   usePendingHireInterests,
 } from "@/hooks/data/useCommunityPosts";
+import { useCommunityPostsLive } from "@/hooks/useCommunityPostsLive";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
 
@@ -80,6 +81,8 @@ export default function PublicCommunityPostsPage() {
 
   // --- Server state via React Query ---
   const { data: posts = [], isLoading: loading } = useCommunityPosts(validCategory);
+
+  useCommunityPostsLive(validCategory);
 
   /** Deep link (e.g. Discover “Helpers available now”): scroll to the matching card once loaded */
   useEffect(() => {

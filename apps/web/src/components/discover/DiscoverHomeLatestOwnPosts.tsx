@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { useAuthorCommunityPostsLive } from "@/hooks/useCommunityPostsLive";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronRight, Clock } from "lucide-react";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
@@ -123,6 +124,11 @@ export function DiscoverHomeLatestOwnPosts({
   const [confirmedJobIdByPostId, setConfirmedJobIdByPostId] = useState<
     Record<string, string>
   >({});
+  const [liveTick, setLiveTick] = useState(0);
+
+  useAuthorCommunityPostsLive(user?.id, () => {
+    setLiveTick((t) => t + 1);
+  });
 
   useEffect(() => {
     if (!user?.id) {
@@ -285,7 +291,7 @@ export function DiscoverHomeLatestOwnPosts({
     return () => {
       cancelled = true;
     };
-  }, [user?.id, variant]);
+  }, [user?.id, variant, liveTick]);
 
   if (!user?.id) return null;
   if (variant === "strip" && !loading && posts.length === 0) return null;

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
 import { formatDistanceToNow } from "date-fns";
 import {
   Heart,
@@ -28,6 +29,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { needsKycVerification } from "@/lib/kyc";
 import { useToast } from "@/components/ui/toast";
@@ -35,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { TEBNU_JOIN_COMMUNITY_BUTTON_CLASS } from "@/lib/tebnuBrandButton";
 import {
   bidirectionalInputProps,
   bidirectionalTextProps,
@@ -63,6 +66,7 @@ import {
   type ServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { useProfilePostsFeedRealtime } from "@/hooks/useProfilePostsFeedRealtime";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { FavoritesPostsSidePanel } from "@/components/discover/FavoritesPostsSidePanel";
 import {
@@ -173,6 +177,7 @@ function CommentsDialog({
   onClose: () => void;
 }) {
   const { user } = useAuth();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { addToast } = useToast();
   const [comments, setComments] = useState<PostComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -232,7 +237,11 @@ function CommentsDialog({
 
   async function submitComment() {
     const body = draft.trim();
-    if (!body || !user?.id) return;
+    if (!body) return;
+    if (!user?.id) {
+      openGuestAuthPrompt({ variant: "engage" });
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase.from("profile_post_comments").insert({
@@ -316,27 +325,28 @@ function CommentsDialog({
                 const name = c.author?.full_name?.trim() || "Member";
                 return (
                   <div key={c.id} className="flex gap-3">
-                    <Link
-                      to={c.author?.id ? `/profile/${c.author.id}` : "#"}
-                      className={cn(
-                        "shrink-0 rounded-full outline-none transition-opacity",
-                        c.author?.id
-                          ? "hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                          : "pointer-events-none opacity-60",
-                      )}
-                      aria-label={c.author?.id ? `View ${name} profile` : undefined}
-                      onClick={() => {
-                        // Close sheet on navigation for a smoother mobile flow.
-                        onClose();
-                      }}
-                    >
-                      <Avatar className="h-8 w-8">
+                    {c.author?.id ? (
+                      <GuestAwareProfileLink
+                        userId={c.author.id}
+                        className="shrink-0 rounded-full outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        aria-label={`View ${name} profile`}
+                        onClick={() => onClose()}
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={c.author?.photo_url ?? undefined} />
+                          <AvatarFallback className="text-xs font-bold">
+                            {name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </GuestAwareProfileLink>
+                    ) : (
+                      <Avatar className="h-8 w-8 shrink-0 opacity-60">
                         <AvatarImage src={c.author?.photo_url ?? undefined} />
                         <AvatarFallback className="text-xs font-bold">
                           {name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                    </Link>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
                         <span className="text-sm font-semibold text-foreground">{name}</span>
@@ -397,12 +407,21 @@ function CommentsDialog({
               </Button>
             </div>
           ) : (
-            <p className="text-center text-sm text-muted-foreground">
-              <Link to="/login" className="font-semibold text-orange-600 underline underline-offset-2">
-                Sign in
-              </Link>{" "}
-              to join the conversation.
-            </p>
+            <div className="space-y-2">
+              <p className="text-center text-sm text-muted-foreground">
+                Join the community to comment and connect with others.
+              </p>
+              <Button
+                type="button"
+                className={cn(
+                  "h-10 w-full rounded-xl font-bold",
+                  TEBNU_JOIN_COMMUNITY_BUTTON_CLASS,
+                )}
+                onClick={() => openGuestAuthPrompt({ variant: "engage" })}
+              >
+                Join the community
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>
@@ -417,6 +436,7 @@ function CommentsSidePanel({
   authorName,
   authorPhotoUrl,
   initialCount,
+  wideLayout = false,
 }: {
   postId: string;
   caption?: React.ReactNode;
@@ -424,8 +444,10 @@ function CommentsSidePanel({
   authorName?: string;
   authorPhotoUrl?: string | null;
   initialCount?: number | null;
+  wideLayout?: boolean;
 }) {
   const { user } = useAuth();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { addToast } = useToast();
   const [comments, setComments] = useState<PostComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -489,7 +511,11 @@ function CommentsSidePanel({
 
   async function submitComment() {
     const body = draft.trim();
-    if (!body || !user?.id) return;
+    if (!body) return;
+    if (!user?.id) {
+      openGuestAuthPrompt({ variant: "engage" });
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase.from("profile_post_comments").insert({
@@ -509,7 +535,14 @@ function CommentsSidePanel({
   }
 
   return (
-    <aside className="hidden md:flex w-[380px] lg:w-[460px] xl:w-[520px] 2xl:w-[600px] flex-col">
+    <aside
+      className={cn(
+        "hidden md:flex flex-col shrink-0",
+        wideLayout
+          ? "min-w-[320px] flex-1 max-w-[640px]"
+          : "w-[380px] lg:w-[460px] xl:w-[520px] 2xl:w-[600px]",
+      )}
+    >
       <div className="flex items-center justify-between gap-3 px-1 pb-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -580,25 +613,27 @@ function CommentsSidePanel({
                 const name = c.author?.full_name?.trim() || "Member";
                 return (
                   <div key={c.id} className="flex gap-3 py-4">
-                  <Link
-                    to={c.author?.id ? `/profile/${c.author.id}` : "#"}
-                    className={cn(
-                      "shrink-0 rounded-full outline-none transition-opacity",
-                      c.author?.id
-                        ? "hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        : "pointer-events-none opacity-60",
-                    )}
-                    aria-label={
-                      c.author?.id ? `View ${name} profile` : undefined
-                    }
-                  >
-                    <Avatar className="h-8 w-8">
+                  {c.author?.id ? (
+                    <GuestAwareProfileLink
+                      userId={c.author.id}
+                      className="shrink-0 rounded-full outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      aria-label={`View ${name} profile`}
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={c.author?.photo_url ?? undefined} />
+                        <AvatarFallback className="text-xs font-bold">
+                          {name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </GuestAwareProfileLink>
+                  ) : (
+                    <Avatar className="h-8 w-8 shrink-0 opacity-60">
                       <AvatarImage src={c.author?.photo_url ?? undefined} />
                       <AvatarFallback className="text-xs font-bold">
                         {name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                  </Link>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
                       <span className="truncate text-[13px] font-bold text-foreground">
@@ -663,15 +698,21 @@ function CommentsSidePanel({
             </Button>
           </div>
         ) : (
-          <p className="text-center text-sm text-muted-foreground">
-            <Link
-              to="/login"
-              className="font-semibold text-orange-600 underline underline-offset-2"
+          <div className="space-y-2 px-3">
+            <p className="text-center text-sm text-muted-foreground">
+              Join the community to comment and connect with others.
+            </p>
+            <Button
+              type="button"
+              className={cn(
+                "h-10 w-full rounded-xl font-bold",
+                TEBNU_JOIN_COMMUNITY_BUTTON_CLASS,
+              )}
+              onClick={() => openGuestAuthPrompt({ variant: "engage" })}
             >
-              Sign in
-            </Link>{" "}
-            to comment.
-          </p>
+              Join the community
+            </Button>
+          </div>
         )}
       </div>
     </aside>
@@ -1362,15 +1403,15 @@ function PostAuthorAvatar({
 }
 
 const mediaTaggedAtBadgeClass =
-  "pointer-events-none inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-white shadow-md backdrop-blur-md";
+  "pointer-events-none inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white shadow-md backdrop-blur-md";
 
 const mediaTaggedUserBadgeClass =
-  "pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md hover:bg-black/45 focus-visible:outline-none focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]";
+  "pointer-events-auto inline-flex max-w-full items-center gap-2.5 rounded-full bg-black/35 px-3 py-2 text-[13px] font-bold text-white shadow-md backdrop-blur-md hover:bg-black/45 focus-visible:outline-none focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]";
 
 const mediaTaggedMoreBadgeClass =
-  "pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 text-[12px] font-bold text-white shadow-md backdrop-blur-md hover:bg-black/45 focus-visible:outline-none focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]";
+  "pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-2 text-[13px] font-bold text-white shadow-md backdrop-blur-md hover:bg-black/45 focus-visible:outline-none focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]";
 
-const mediaTaggedAvatarClass = "h-6 w-6 shrink-0";
+const mediaTaggedAvatarClass = "h-7 w-7 shrink-0";
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
 
@@ -1387,6 +1428,7 @@ function PostCard({
   hidePostLikeButton,
   appearance,
   isFocused = false,
+  discoverWideLayout = false,
 }: {
   post: FeedPost;
   currentUserId: string | null;
@@ -1401,8 +1443,10 @@ function PostCard({
   hidePostLikeButton?: boolean;
   appearance: "default" | "discover" | "profile";
   isFocused?: boolean;
+  discoverWideLayout?: boolean;
 }) {
   const { addToast } = useToast();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { profile: viewerProfile } = useAuth();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [authorSaved, setAuthorSaved] = useState(false);
@@ -1540,15 +1584,19 @@ function PostCard({
   const mediaBoxBgClass = isLandscape ? "bg-black" : "bg-transparent";
   // Discover card width: portrait shrinks to media; landscape spans the column up to a cap.
   const desktopDiscoverCardWidthClass = isDiscover
-    ? isLandscape
-      ? "md:w-full md:max-w-[820px]"
-      : "md:w-fit md:max-w-[520px]"
+    ? discoverWideLayout
+      ? isLandscape
+        ? "md:w-full md:max-w-none"
+        : "md:w-full md:max-w-[720px]"
+      : isLandscape
+        ? "md:w-full md:max-w-[820px]"
+        : "md:w-fit md:max-w-[520px]"
     : null;
   const desktopMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
 
   async function toggleLike() {
     if (!currentUserId) {
-      addToast({ title: "Sign in to like posts", variant: "warning" });
+      openGuestAuthPrompt({ variant: "engage" });
       return;
     }
     if (post.source !== "post") return; // availability posts don't have likes for now
@@ -1606,7 +1654,7 @@ function PostCard({
   async function toggleSaveAuthor(e: React.MouseEvent) {
     e.stopPropagation();
     if (!currentUserId) {
-      addToast({ title: "Sign in to save profiles", variant: "warning" });
+      openGuestAuthPrompt({ variant: "engage" });
       return;
     }
     if (!canSaveAuthor) return;
@@ -1844,14 +1892,11 @@ function PostCard({
     <div
       id={post.source === "post" ? `profile-post-${post.id}` : undefined}
       className={cn(
-        "overflow-hidden transition-all duration-300",
-        "bg-white dark:bg-zinc-950/20",
-        "md:rounded-2xl md:shadow-md",
-        "border-0 shadow-none",
+        "overflow-hidden transition-all duration-300 border-0",
+        isDiscover
+          ? "bg-transparent shadow-none ring-0 outline-none dark:bg-transparent"
+          : "bg-white shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md",
         isFocused && "scroll-mt-24 scroll-mb-28",
-
-        isDiscover &&
-          "md:bg-transparent md:shadow-none md:ring-0 md:outline-none",
         desktopDiscoverCardWidthClass,
       )}
     >
@@ -1862,22 +1907,27 @@ function PostCard({
           isProfile ? "pt-3 pb-1.5" : "pt-4 pb-2",
         )}
       >
-          <Link to={`/profile/${post.author_id}`} className="shrink-0 self-start">
+          <GuestAwareProfileLink
+            userId={post.author_id}
+            className="shrink-0 self-start"
+            aria-label={`View ${authorName} profile`}
+          >
             <PostAuthorAvatar
               authorName={authorName}
               photoUrl={post.author?.photo_url ?? undefined}
               liveUntil={post.author?.live_until}
               variant="card"
             />
-          </Link>
+          </GuestAwareProfileLink>
           <div className="min-w-0 flex-1 flex flex-col gap-0.5 pt-0.5">
             <div className="flex min-w-0 items-center gap-1.5">
-              <Link
-                to={`/profile/${post.author_id}`}
+              <GuestAwareProfileLink
+                userId={post.author_id}
                 className="truncate font-black text-xl leading-tight text-foreground hover:underline underline-offset-2"
+                aria-label={`View ${authorName} profile`}
               >
                 {authorName}
-              </Link>
+              </GuestAwareProfileLink>
               {post.author?.is_verified ? (
                 <BadgeCheck
                   className="h-[18px] w-[18px] shrink-0"
@@ -1979,12 +2029,12 @@ function PostCard({
           {post.tagged_profiles.length > 0 ? (
             <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
               <span className={mediaTaggedAtBadgeClass}>
-                <AtSign className="h-4 w-4" aria-hidden />
+                <AtSign className="h-5 w-5" aria-hidden />
               </span>
               {(showAllTagged ? post.tagged_profiles : post.tagged_profiles.slice(0, 3)).map((t) => (
-                <Link
+                <GuestAwareProfileLink
                   key={t.id}
-                  to={`/profile/${t.id}`}
+                  userId={t.id}
                   onClick={(e) => e.stopPropagation()}
                   className={mediaTaggedUserBadgeClass}
                   aria-label={`View tagged user ${t.full_name ?? "member"}`}
@@ -1996,7 +2046,7 @@ function PostCard({
                     </AvatarFallback>
                   </Avatar>
                   <span className="truncate">{t.full_name ?? "Member"}</span>
-                </Link>
+                </GuestAwareProfileLink>
               ))}
               {!showAllTagged && post.tagged_profiles.length > 3 ? (
                 <button
@@ -2008,7 +2058,7 @@ function PostCard({
                   className={mediaTaggedMoreBadgeClass}
                   aria-label="Show all tagged users"
                 >
-                  <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
+                  <Plus className="h-5 w-5" strokeWidth={3} aria-hidden />
                   {post.tagged_profiles.length - 3}
                 </button>
               ) : null}
@@ -2078,12 +2128,12 @@ function PostCard({
           {post.tagged_profiles.length > 0 ? (
             <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
               <span className={mediaTaggedAtBadgeClass}>
-                <AtSign className="h-4 w-4" aria-hidden />
+                <AtSign className="h-5 w-5" aria-hidden />
               </span>
               {(showAllTagged ? post.tagged_profiles : post.tagged_profiles.slice(0, 3)).map((t) => (
-                <Link
+                <GuestAwareProfileLink
                   key={t.id}
-                  to={`/profile/${t.id}`}
+                  userId={t.id}
                   onClick={(e) => e.stopPropagation()}
                   className={mediaTaggedUserBadgeClass}
                   aria-label={`View tagged user ${t.full_name ?? "member"}`}
@@ -2095,7 +2145,7 @@ function PostCard({
                     </AvatarFallback>
                   </Avatar>
                   <span className="truncate">{t.full_name ?? "Member"}</span>
-                </Link>
+                </GuestAwareProfileLink>
               ))}
               {!showAllTagged && post.tagged_profiles.length > 3 ? (
                 <button
@@ -2107,7 +2157,7 @@ function PostCard({
                   className={mediaTaggedMoreBadgeClass}
                   aria-label="Show all tagged users"
                 >
-                  <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
+                  <Plus className="h-5 w-5" strokeWidth={3} aria-hidden />
                   {post.tagged_profiles.length - 3}
                 </button>
               ) : null}
@@ -2165,9 +2215,9 @@ function PostCard({
         <div className="flex flex-wrap items-center gap-1.5 px-4 pt-2">
           <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           {post.tagged_profiles.map((t) => (
-            <Link
+            <GuestAwareProfileLink
               key={t.id}
-              to={`/profile/${t.id}`}
+              userId={t.id}
               className="inline-flex items-center gap-2 rounded-full bg-orange-50 dark:bg-orange-950/50 px-3 py-1.5 text-sm font-black text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/60 transition-colors shadow-sm"
             >
               <Avatar className="h-7 w-7 border border-orange-200/50 dark:border-orange-800/30 shadow-inner">
@@ -2175,7 +2225,7 @@ function PostCard({
                 <AvatarFallback className="text-[11px] font-bold">{(t.full_name ?? "?").charAt(0)}</AvatarFallback>
               </Avatar>
               <span className="pr-1">{t.full_name}</span>
-            </Link>
+            </GuestAwareProfileLink>
           ))}
         </div>
       )}
@@ -2305,6 +2355,8 @@ interface ProfilePostsFeedProps {
   discoverSidePanel?: "comments" | "favorites";
   /** Deep link from share URLs (`/community/feed?post=`). */
   focusPostId?: string | null;
+  /** Wider post + comments columns for guest community feed on desktop. */
+  expandDiscoverLayout?: boolean;
 }
 
 export function ProfilePostsFeed({
@@ -2319,21 +2371,22 @@ export function ProfilePostsFeed({
   appearance = "default",
   discoverSidePanel = "comments",
   focusPostId = null,
+  expandDiscoverLayout = false,
 }: ProfilePostsFeedProps) {
   const normalizedFocusPostId = parseProfilePostShareId(focusPostId);
   const { user, profile: currentProfile } = useAuth();
   const { guardKycAction } = useKycGate();
-  const navigate = useNavigate();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const [globalVideoUnmuted, setGlobalVideoUnmuted] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
 
   const openCompose = useCallback(() => {
     if (!user) {
-      navigate("/login");
+      openGuestAuthPrompt({ variant: "create" });
       return;
     }
     guardKycAction("share_post", () => setComposeOpen(true));
-  }, [guardKycAction, navigate, user]);
+  }, [guardKycAction, openGuestAuthPrompt, user]);
   const [reelsOpenPostId, setReelsOpenPostId] = useState<string | null>(null);
   const [reelCommentsPostId, setReelCommentsPostId] = useState<string | null>(null);
   const deepLinkHandledRef = useRef<string | null>(null);
@@ -2363,7 +2416,6 @@ export function ProfilePostsFeed({
     return () => (mql as MediaQueryList).removeListener(onChange);
   }, []);
   const queryClient = useQueryClient();
-  const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Stable query key — used to invalidate/update the cache in realtime handlers.
   const qk = useMemo(() => queryKeys.profilePostsFeed({
@@ -2377,42 +2429,22 @@ export function ProfilePostsFeed({
     limit,
   }), [userId, user?.id, filterTaggedUserId, filterAuthorId, authorNameFilter, sortOrder, filterLikedByUserId, limit]);
 
-  const scheduleRealtimeRefresh = useCallback(() => {
-    if (realtimeRefreshTimeoutRef.current) {
-      clearTimeout(realtimeRefreshTimeoutRef.current);
-    }
-    realtimeRefreshTimeoutRef.current = setTimeout(() => {
-      void queryClient.invalidateQueries({ queryKey: qk });
-    }, 250);
-  }, [queryClient, qk]);
+  useProfilePostsFeedRealtime({
+    queryClient,
+    queryKey: qk,
+    viewerUserId: user?.id ?? null,
+    userId,
+    filterTaggedUserId,
+    filterAuthorId,
+    authorNameFilter,
+    sortOrder,
+    filterLikedByUserId,
+    limit,
+  });
 
-  // Realtime subscription for live feed updates.
-  // We keep it conservative: refresh the feed for post changes, but apply likes/comments in-place.
-  const realtimeEnabled =
-    !authorNameFilter && !filterTaggedUserId && !filterAuthorId && !filterLikedByUserId;
-
+  // Likes + comments: patch cache in place (no full refetch).
   useRealtimeSubscription(
-    {
-      table: "profile_posts",
-      event: "*",
-      filter: userId ? `author_id=eq.${userId}` : undefined,
-      enabled: realtimeEnabled,
-    },
-    () => scheduleRealtimeRefresh(),
-  );
-
-  useRealtimeSubscription(
-    {
-      table: "community_posts",
-      event: "*",
-      filter: userId ? `author_id=eq.${userId}` : undefined,
-      enabled: realtimeEnabled,
-    },
-    () => scheduleRealtimeRefresh(),
-  );
-
-  useRealtimeSubscription(
-    { table: "profile_post_likes", event: "*", enabled: realtimeEnabled },
+    { table: "profile_post_likes", event: "*" },
     (payload) => {
       const row = (payload?.new ?? payload?.old) as { post_id?: string; user_id?: string } | undefined;
       const postId = row?.post_id;
@@ -2429,7 +2461,7 @@ export function ProfilePostsFeed({
         } else if (payload?.eventType === "DELETE") {
           next[idx] = { ...p, like_count: Math.max(0, p.like_count - 1), liked_by_me: isMe ? false : p.liked_by_me };
         } else {
-          scheduleRealtimeRefresh();
+          void queryClient.invalidateQueries({ queryKey: qk, refetchType: "active" });
           return prev;
         }
         return next;
@@ -2438,7 +2470,7 @@ export function ProfilePostsFeed({
   );
 
   useRealtimeSubscription(
-    { table: "profile_post_comments", event: "*", enabled: realtimeEnabled },
+    { table: "profile_post_comments", event: "*" },
     (payload) => {
       const row = (payload?.new ?? payload?.old) as { post_id?: string } | undefined;
       const postId = row?.post_id;
@@ -2454,7 +2486,7 @@ export function ProfilePostsFeed({
         } else if (payload?.eventType === "DELETE") {
           next[idx] = { ...p, comment_count: Math.max(0, p.comment_count - 1) };
         } else {
-          scheduleRealtimeRefresh();
+          void queryClient.invalidateQueries({ queryKey: qk, refetchType: "active" });
           return prev;
         }
         return next;
@@ -2762,8 +2794,8 @@ export function ProfilePostsFeed({
 
   const { data: posts = [], isPending } = useQuery({
     queryKey: qk,
-    staleTime: 3 * 60 * 1000, // 3 minutes — served from cache on revisit
-    gcTime: 10 * 60 * 1000,   // keep in cache 10 min after unmount
+    staleTime: 0,
+    gcTime: 10 * 60 * 1000,
     queryFn: fetchPosts,
   });
 
@@ -2939,7 +2971,15 @@ export function ProfilePostsFeed({
     return (
       <div className="flex flex-col gap-8 md:gap-7">
         {[1, 2].map((i) => (
-          <div key={i} className="animate-pulse space-y-4 rounded-none border-0 bg-white p-4 shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md">
+          <div
+            key={i}
+            className={cn(
+              "animate-pulse space-y-4 border-0 p-4",
+              appearance === "discover"
+                ? "rounded-none bg-transparent shadow-none dark:bg-transparent"
+                : "rounded-none bg-white shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md",
+            )}
+          >
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-slate-100 dark:bg-white/5" />
               <div className="space-y-2 flex-1">
@@ -3071,6 +3111,7 @@ export function ProfilePostsFeed({
                 hidePostLikeButton={Boolean(filterLikedByUserId)}
                 appearance={appearance}
                 isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
+                discoverWideLayout={expandDiscoverLayout}
               />
             );
           }
@@ -3079,8 +3120,8 @@ export function ProfilePostsFeed({
             <div
               key={post.id}
               className={cn(
-                "md:flex md:items-start md:justify-start md:gap-10",
-                "md:pr-4 lg:pr-8",
+                "md:flex md:items-start md:justify-start",
+                expandDiscoverLayout ? "md:gap-6 lg:gap-8 xl:gap-10" : "md:gap-10 md:pr-4 lg:pr-8",
               )}
             >
               <div className="min-w-0 md:flex-1">
@@ -3097,6 +3138,7 @@ export function ProfilePostsFeed({
                   hidePostLikeButton={Boolean(filterLikedByUserId)}
                   appearance={appearance}
                   isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
+                  discoverWideLayout={expandDiscoverLayout}
                 />
               </div>
 
@@ -3107,6 +3149,7 @@ export function ProfilePostsFeed({
                 authorName={authorName}
                 authorPhotoUrl={post.author?.photo_url ?? null}
                 initialCount={post.comment_count}
+                wideLayout={expandDiscoverLayout}
               />
             </div>
           );

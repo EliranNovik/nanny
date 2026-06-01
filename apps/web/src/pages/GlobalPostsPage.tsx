@@ -2,18 +2,72 @@ import { useEffect, useState } from "react";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
+import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LandingSiteHeader } from "@/components/LandingSiteHeader";
+import { GuestCommunityFeedAside } from "@/components/GuestCommunityFeedAside";
+import type { User } from "@supabase/supabase-js";
+
+type FeedMainContentProps = {
+  user: User | null;
+  profile: { full_name?: string | null; photo_url?: string | null } | null;
+  focusPostId: string | null;
+  openCompose: () => void;
+  expandDiscoverLayout?: boolean;
+};
+
+function FeedMainContent({
+  user,
+  profile,
+  focusPostId,
+  openCompose,
+  expandDiscoverLayout = false,
+}: FeedMainContentProps) {
+  return (
+    <div
+      className={cn(
+        !focusPostId && "animate-in fade-in slide-in-from-bottom-4 duration-1000",
+      )}
+    >
+      <div className={cn("mb-4 md:mb-6", !expandDiscoverLayout && "px-4 md:px-0")}>
+        <button
+          type="button"
+          onClick={openCompose}
+          className="flex w-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 text-left shadow-sm transition-all hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/80"
+        >
+          <Avatar className="h-10 w-10 border border-black/5 dark:border-white/5">
+            <AvatarImage src={profile?.photo_url || undefined} className="object-cover" />
+            <AvatarFallback className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+              {(profile?.full_name?.charAt(0) || user?.email?.charAt(0) || "U").toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex h-10 flex-1 items-center rounded-full bg-zinc-100 px-4 transition-colors dark:bg-zinc-800/80">
+            <span className="text-[14px] text-zinc-500 dark:text-zinc-400">
+              Post a new story
+            </span>
+          </div>
+        </button>
+      </div>
+
+      <ProfilePostsFeed
+        appearance="discover"
+        focusPostId={focusPostId}
+        expandDiscoverLayout={expandDiscoverLayout}
+      />
+    </div>
+  );
+}
 
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [composeOpen, setComposeOpen] = useState(false);
 
@@ -50,7 +104,7 @@ export default function GlobalPostsPage() {
   /** Click handler reused by the desktop floating CTA. */
   function openCompose() {
     if (!user) {
-      navigate("/login");
+      openGuestAuthPrompt({ variant: "create" });
       return;
     }
     guardKycAction("share_post", () => setComposeOpen(true));
@@ -66,43 +120,46 @@ export default function GlobalPostsPage() {
   }, [focusPostId, rawPostParam]);
 
   return (
-    <PageFrame variant="fullBleed" className="bg-white dark:bg-background" frameName="community-feed">
-      <div className="app-desktop-shell px-0 pb-6 pt-2 md:px-4 md:py-8">
-        <div className="mx-auto w-full max-w-3xl md:mx-0 md:max-w-none">
-          <div
-            className={cn(
-              !focusPostId &&
-                "animate-in fade-in slide-in-from-bottom-4 duration-1000",
-            )}
-          >
-            {/* Inline Compose Box at the top of Community Feed */}
-            <div className="mb-4 px-4 md:mb-6 md:px-0">
-              <button
-                type="button"
-                onClick={openCompose}
-                className="flex w-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 text-left shadow-sm transition-all hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/80"
-              >
-                <Avatar className="h-10 w-10 border border-black/5 dark:border-white/5">
-                  <AvatarImage src={profile?.photo_url || undefined} className="object-cover" />
-                  <AvatarFallback className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                    {(profile?.full_name?.charAt(0) || user?.email?.charAt(0) || "U").toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex h-10 flex-1 items-center rounded-full bg-zinc-100 px-4 transition-colors dark:bg-zinc-800/80">
-                  <span className="text-[14px] text-zinc-500 dark:text-zinc-400">
-                    Post a new story
-                  </span>
-                </div>
-              </button>
-            </div>
+    <PageFrame
+      variant="fullBleed"
+      className="bg-white dark:bg-background"
+      frameName="community-feed"
+      data-community-feed-guest={!user ? "" : undefined}
+    >
+      {!user ? (
+        <LandingSiteHeader
+          hidePostFeedLink
+          scrollWithPage
+          fullWidth
+          hideLeftLogo
+        />
+      ) : null}
 
-            <ProfilePostsFeed
-              appearance="discover"
+      {user ? (
+        <div className="app-desktop-shell px-0 pb-6 pt-2 md:px-4 md:py-8">
+          <div className="mx-auto w-full max-w-3xl md:mx-0 md:max-w-none">
+            <FeedMainContent
+              user={user}
+              profile={profile}
               focusPostId={focusPostId}
+              openCompose={openCompose}
             />
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex w-full items-start pb-6">
+          <GuestCommunityFeedAside />
+          <div className="min-w-0 flex-1 px-4 md:px-6 lg:px-8">
+            <FeedMainContent
+              user={user}
+              profile={profile}
+              focusPostId={focusPostId}
+              openCompose={openCompose}
+              expandDiscoverLayout
+            />
+          </div>
+        </div>
+      )}
 
       {/*
         Floating "Share a post" CTA.
@@ -119,9 +176,9 @@ export default function GlobalPostsPage() {
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         )}
         style={{
-          // Sits comfortably above the mobile BottomNav (row ≈ 3.25rem + safe-area).
-          bottom:
-            "calc(3.25rem + max(0.5rem, env(safe-area-inset-bottom,0px)) + 0.75rem)",
+          bottom: user
+            ? "calc(3.25rem + max(0.5rem, env(safe-area-inset-bottom,0px)) + 0.75rem)"
+            : "calc(0.75rem + env(safe-area-inset-bottom,0px))",
         }}
         aria-label="Share a post"
       >

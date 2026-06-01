@@ -7,7 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
 import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDown,
@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TEBNU_JOIN_COMMUNITY_BUTTON_CLASS } from "@/lib/tebnuBrandButton";
 import {
   bidirectionalInputProps,
   bidirectionalTextProps,
@@ -29,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
+import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import { shareProfilePost } from "@/lib/profilePostShare";
@@ -96,6 +98,7 @@ export function PostMediaDesktopViewer({
   hideLikeButton = false,
 }: Props) {
   const { addToast } = useToast();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
 
   const slides = useMemo(() => {
     return posts
@@ -209,7 +212,7 @@ export function PostMediaDesktopViewer({
   const toggleLike = useCallback(
     async (postId: string, currentlyLiked: boolean) => {
       if (!currentUserId) {
-        addToast({ title: "Sign in to like posts", variant: "warning" });
+        openGuestAuthPrompt({ variant: "engage" });
         return;
       }
       setLikingId(postId);
@@ -239,7 +242,7 @@ export function PostMediaDesktopViewer({
         setLikingId(null);
       }
     },
-    [addToast, currentUserId, onLikeToggle],
+    [addToast, currentUserId, onLikeToggle, openGuestAuthPrompt],
   );
 
   const handleShare = useCallback(
@@ -301,8 +304,8 @@ export function PostMediaDesktopViewer({
       >
         {/* Top bar — author + close */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 bg-gradient-to-b from-black/70 via-black/35 to-transparent px-5 pt-4 pb-10">
-          <Link
-            to={`/profile/${activeSlide.authorId}`}
+          <GuestAwareProfileLink
+            userId={activeSlide.authorId}
             className="pointer-events-auto flex min-w-0 items-center gap-3"
             onClick={onClose}
           >
@@ -339,7 +342,7 @@ export function PostMediaDesktopViewer({
                 {safeIndex + 1} / {slides.length}
               </div>
             </div>
-          </Link>
+          </GuestAwareProfileLink>
           <button
             type="button"
             onClick={onClose}
@@ -537,6 +540,7 @@ function DesktopComments({
   onClose: () => void;
 }) {
   const { addToast } = useToast();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const [comments, setComments] = useState<DesktopCommentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState<number>(initialCount);
@@ -595,7 +599,11 @@ function DesktopComments({
 
   async function submitComment() {
     const body = draft.trim();
-    if (!body || !currentUserId) return;
+    if (!body) return;
+    if (!currentUserId) {
+      openGuestAuthPrompt({ variant: "engage" });
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase.from("profile_post_comments").insert({
@@ -649,23 +657,28 @@ function DesktopComments({
                 const name = c.author?.full_name?.trim() || "Member";
                 return (
                   <div key={c.id} className="flex gap-3 py-3">
-                    <Link
-                      to={c.author?.id ? `/profile/${c.author.id}` : "#"}
-                      className={cn(
-                        "shrink-0 rounded-full outline-none transition-opacity",
-                        c.author?.id
-                          ? "hover:opacity-90"
-                          : "pointer-events-none opacity-60",
-                      )}
-                      onClick={onClose}
-                    >
-                      <Avatar className="h-8 w-8">
+                    {c.author?.id ? (
+                      <GuestAwareProfileLink
+                        userId={c.author.id}
+                        className="shrink-0 rounded-full outline-none transition-opacity hover:opacity-90"
+                        aria-label={`View ${name} profile`}
+                        onClick={onClose}
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={c.author?.photo_url ?? undefined} />
+                          <AvatarFallback className="text-[11px] font-bold">
+                            {name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </GuestAwareProfileLink>
+                    ) : (
+                      <Avatar className="h-8 w-8 shrink-0 opacity-60">
                         <AvatarImage src={c.author?.photo_url ?? undefined} />
                         <AvatarFallback className="text-[11px] font-bold">
                           {name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                    </Link>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
                         <span className="truncate text-[13px] font-bold text-foreground">
@@ -726,15 +739,21 @@ function DesktopComments({
             </Button>
           </div>
         ) : (
-          <p className="text-center text-sm text-muted-foreground">
-            <Link
-              to="/login"
-              className="font-semibold text-orange-600 underline underline-offset-2"
+          <div className="space-y-2">
+            <p className="text-center text-sm text-muted-foreground">
+              Join the community to comment and connect with others.
+            </p>
+            <Button
+              type="button"
+              className={cn(
+                "h-10 w-full rounded-xl font-bold",
+                TEBNU_JOIN_COMMUNITY_BUTTON_CLASS,
+              )}
+              onClick={() => openGuestAuthPrompt({ variant: "engage" })}
             >
-              Sign in
-            </Link>{" "}
-            to join the conversation.
-          </p>
+              Join the community
+            </Button>
+          </div>
         )}
       </div>
     </section>

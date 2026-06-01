@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
 import { ChevronLeft, Heart, MessageCircle, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
+import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import { shareProfilePost } from "@/lib/profilePostShare";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
@@ -99,6 +100,7 @@ export function PostMediaReelsViewer({
   hideLikeButton = false,
 }: Props) {
   const { addToast } = useToast();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [likingId, setLikingId] = useState<string | null>(null);
@@ -185,7 +187,7 @@ export function PostMediaReelsViewer({
 
   async function toggleLike(postId: string, currentlyLiked: boolean) {
     if (!currentUserId) {
-      addToast({ title: "Sign in to like posts", variant: "warning" });
+      openGuestAuthPrompt({ variant: "engage" });
       return;
     }
     setLikingId(postId);
@@ -581,8 +583,8 @@ function ReelSlide({
       >
         <div className="pointer-events-auto max-w-[calc(100%-3.5rem)]">
           <div className="flex items-center gap-2.5">
-            <Link
-              to={`/profile/${slide.authorId}`}
+            <GuestAwareProfileLink
+              userId={slide.authorId}
               className={cn(
                 "shrink-0 rounded-full",
                 !showLiveRing && "ring-1 ring-white/20",
@@ -620,16 +622,16 @@ function ReelSlide({
                   </AvatarFallback>
                 </Avatar>
               )}
-            </Link>
-            <Link
-              to={`/profile/${slide.authorId}`}
+            </GuestAwareProfileLink>
+            <GuestAwareProfileLink
+              userId={slide.authorId}
               className="min-w-0 text-left"
               onClick={(e) => e.stopPropagation()}
             >
               <span className="text-lg font-black lowercase leading-tight text-white drop-shadow-md">
                 {slide.authorName}
               </span>
-            </Link>
+            </GuestAwareProfileLink>
           </div>
           {slide.caption?.trim() ? (
             <button

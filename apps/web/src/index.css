@@ -16,6 +16,17 @@
     @apply max-w-none mx-0;
   }
 
+  /** Guest community feed header — edge-to-edge across the full viewport. */
+  .community-feed-guest-header {
+    width: 100vw;
+    max-width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+
   /** Narrow centered column on md+ (onboarding, auth-style flows). */
   .app-desktop-centered-narrow {
     @apply w-full mx-auto max-w-lg md:max-w-2xl lg:max-w-3xl;
@@ -329,6 +340,15 @@
     }
 
     /* Find helpers / job match: desktop header hidden — no reserved top bar */
+    .app-content-below-fixed-header:has([data-community-feed-guest]) {
+      padding-top: 0;
+    }
+
+    /* Guest community feed: no desktop nav gutter — sidebar slot is used in-page. */
+    .app-content-below-fixed-header:has([data-community-feed-guest]) .md\:pl-\[220px\] {
+      padding-left: 0;
+    }
+
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-page]),
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-page]) {
       padding-top: 0;

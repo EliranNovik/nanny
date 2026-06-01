@@ -70,6 +70,7 @@ import { PageFrame, PageHeader } from "@/components/page-frame";
 import { trackCtaClick } from "@/lib/sessionConversionAnalytics";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import type { NavigateFunction } from "react-router-dom";
+import { useAuthorCommunityPostsLive } from "@/hooks/useCommunityPostsLive";
 
 type ProfileSnippet = {
   id: string;
@@ -597,6 +598,10 @@ export default function CommunityPostsPage() {
   useEffect(() => {
     void loadPosts();
   }, [loadPosts]);
+
+  useAuthorCommunityPostsLive(user?.id, () => {
+    void loadPosts();
+  });
 
   /** Deep link from discover “Your latest posts”: scroll the matching card into view */
   useEffect(() => {

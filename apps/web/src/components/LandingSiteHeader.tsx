@@ -3,17 +3,22 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  LogIn,
   Users,
   Menu,
   X,
   Home,
   MessageCircle,
+  GalleryHorizontal,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
+
+const COMMUNITY_FEED_PATH = "/community/feed";
+
+const navLinkClass =
+  "text-sm font-bold hover:text-white/80 transition-colors";
 
 export type LandingSiteHeaderProps = {
   /** `logo` = fixed Tebnu mark (landing). `back` = return to home (About / Contact). */
@@ -24,6 +29,12 @@ export type LandingSiteHeaderProps = {
   hideLoginCta?: boolean;
   /** Signed-out only: show Home in the right cluster (e.g. login page). */
   homeLinkRight?: boolean;
+  /** Hide Post Feed nav item (e.g. already on `/community/feed`). */
+  hidePostFeedLink?: boolean;
+  /** In document flow — scrolls with the page instead of fixed overlay. */
+  scrollWithPage?: boolean;
+  /** Full-bleed bar (e.g. community feed guest header). */
+  fullWidth?: boolean;
 };
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
@@ -32,6 +43,9 @@ export function LandingSiteHeader({
   hideLeftLogo = false,
   hideLoginCta = false,
   homeLinkRight = false,
+  hidePostFeedLink = false,
+  scrollWithPage = false,
+  fullWidth = false,
 }: LandingSiteHeaderProps) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
@@ -39,9 +53,25 @@ export function LandingSiteHeader({
   const dashboardPath =
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
 
+  const postFeedLinkDesktop = !hidePostFeedLink ? (
+    <Link to={COMMUNITY_FEED_PATH} className={navLinkClass}>
+      Post Feed
+    </Link>
+  ) : null;
+
+  const postFeedLinkMobile = !hidePostFeedLink ? (
+    <Link
+      to={COMMUNITY_FEED_PATH}
+      className="text-xl font-black text-slate-900 flex items-center gap-4"
+      onClick={() => setIsMenuOpen(false)}
+    >
+      <GalleryHorizontal className="w-6 h-6 text-primary" /> Post Feed
+    </Link>
+  ) : null;
+
   return (
     <>
-      {!hideLeftLogo &&
+      {!hideLeftLogo && !scrollWithPage &&
         (leftCorner === "logo" ? (
           <Link
             to="/"
@@ -66,7 +96,16 @@ export function LandingSiteHeader({
           </Link>
         ))}
 
-      <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl min-h-[52px] md:min-h-[60px] bg-gradient-to-r from-orange-500 to-red-600 backdrop-blur-md rounded-full border border-white/20 shadow-2xl flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500">
+      <header
+        className={cn(
+          "min-h-[52px] md:min-h-[60px] bg-gradient-to-r from-orange-500 to-red-600 backdrop-blur-md border border-white/20 flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500",
+          scrollWithPage && fullWidth
+            ? "community-feed-guest-header relative z-auto mb-4 w-full max-w-none rounded-none border-x-0 shadow-md"
+            : scrollWithPage
+              ? "relative z-auto mx-auto mb-4 w-full max-w-5xl rounded-full shadow-2xl"
+              : "fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl rounded-full shadow-2xl",
+        )}
+      >
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-1 sm:gap-2 md:gap-6">
             {leftCorner === "back" && (
@@ -116,41 +155,28 @@ export function LandingSiteHeader({
                     Hi, {profile?.full_name?.split(" ")[0] || "User"}
                   </span>
                 </div>
-                <div className="hidden md:flex items-center gap-8 text-white shrink-0">
-                  <Link
-                    to="/about"
-                    className="text-sm font-bold hover:text-white/80 transition-colors"
-                  >
+                <div className="hidden md:flex items-center gap-6 lg:gap-8 text-white shrink-0">
+                  <Link to="/about" className={navLinkClass}>
                     About Us
                   </Link>
-                  <Link
-                    to="/contact"
-                    className="text-sm font-bold hover:text-white/80 transition-colors"
-                  >
+                  <Link to="/contact" className={navLinkClass}>
                     Contact
                   </Link>
+                  {postFeedLinkDesktop}
                 </div>
               </div>
             ) : (
-              <div className="hidden md:flex items-center gap-8 text-white">
-                <Link
-                  to="/about"
-                  className="text-sm font-bold hover:text-white/80 transition-colors"
-                >
+              <div className="hidden md:flex items-center gap-6 lg:gap-8 text-white">
+                <Link to="/about" className={navLinkClass}>
                   About Us
                 </Link>
-                <Link
-                  to="/contact"
-                  className="text-sm font-bold hover:text-white/80 transition-colors"
-                >
+                <Link to="/contact" className={navLinkClass}>
                   Contact
                 </Link>
+                {postFeedLinkDesktop}
                 {!homeLinkRight ? (
-                  <Link
-                    to="/"
-                    className="flex items-center gap-1.5 text-sm font-bold hover:text-white/80 transition-colors"
-                  >
-                    <Home className="w-4 h-4" /> Home
+                  <Link to="/" className={navLinkClass}>
+                    Home
                   </Link>
                 ) : null}
               </div>
@@ -162,28 +188,34 @@ export function LandingSiteHeader({
               <>
                 <Link
                   to="/"
-                  className="hidden md:inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/10"
+                  className="hidden md:inline-flex rounded-full px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/10"
                 >
-                  <Home className="h-4 w-4 shrink-0" aria-hidden />
                   Home
                 </Link>
                 <Link
                   to="/"
-                  className="md:hidden inline-flex p-2 text-white hover:text-white/90"
-                  aria-label="Home"
+                  className="md:hidden inline-flex px-2 py-2 text-sm font-bold text-white hover:text-white/90"
                 >
-                  <Home className="h-6 w-6" />
+                  Home
                 </Link>
               </>
             ) : null}
             {!hideLoginCta && !user ? (
-              <Button
-                variant="ghost"
-                onClick={() => navigate("/login")}
-                className="text-white hover:bg-white/10 font-bold hidden md:flex rounded-full px-6"
-              >
-                Login
-              </Button>
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate("/login")}
+                  className="text-white hover:bg-white/10 font-bold rounded-full px-3 md:px-5 text-sm"
+                >
+                  Sign in
+                </Button>
+                <Button
+                  onClick={() => navigate("/onboarding")}
+                  className="rounded-full bg-white font-bold text-orange-600 hover:bg-white/90 px-3 md:px-5 text-sm shadow-sm"
+                >
+                  Register
+                </Button>
+              </div>
             ) : user ? (
               <div className="hidden md:flex items-center gap-6 text-white border-l border-white/20 pl-6">
                 <Link
@@ -194,15 +226,7 @@ export function LandingSiteHeader({
                 </Link>
               </div>
             ) : null}
-            {!hideLoginCta && !user ? (
-              <button
-                type="button"
-                onClick={() => navigate("/login")}
-                className="md:hidden p-2 text-white"
-              >
-                <LogIn className="w-6 h-6" />
-              </button>
-            ) : user ? (
+            {user ? (
               <button
                 type="button"
                 onClick={() => navigate(dashboardPath)}
@@ -233,12 +257,13 @@ export function LandingSiteHeader({
               >
                 <MessageCircle className="w-6 h-6 text-primary" /> Contact
               </Link>
+              {postFeedLinkMobile}
               <Link
                 to="/"
-                className="text-xl font-black text-slate-900 flex items-center gap-4"
+                className="text-xl font-black text-slate-900"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <Home className="w-6 h-6 text-primary" /> Home
+                Home
               </Link>
               {(user || !hideLoginCta) && (
                 <>
@@ -254,15 +279,27 @@ export function LandingSiteHeader({
                       Dashboard
                     </Button>
                   ) : (
-                    <Button
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        navigate("/login");
-                      }}
-                      className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg"
-                    >
-                      Get Started
-                    </Button>
+                    <>
+                      <Button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          navigate("/onboarding");
+                        }}
+                        className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg"
+                      >
+                        Register
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          navigate("/login");
+                        }}
+                        className="w-full h-14 rounded-2xl font-bold text-lg"
+                      >
+                        Sign in
+                      </Button>
+                    </>
                   )}
                 </>
               )}

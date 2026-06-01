@@ -85,6 +85,7 @@ import PublicProfilePage from "@/pages/PublicProfilePage";
 import GlobalPostsPage from "@/pages/GlobalPostsPage";
 import KycVerificationPage from "@/pages/KycVerificationPage";
 import { KycGateProvider } from "@/context/KycGateContext";
+import { GuestAuthPromptProvider } from "@/context/GuestAuthPromptContext";
 import { KycRestrictedRoute } from "@/components/KycRestrictedRoute";
 import { DesktopSidePanel } from "@/components/nav/DesktopSidePanel";
 import { Footer } from "@/components/Footer";
@@ -606,6 +607,7 @@ export default function App() {
             <DocumentScrollOverflowGate />
             <ToastProvider>
               <AuthProvider>
+                <GuestAuthPromptProvider>
                 <KycGateProvider>
                   <SessionAnalyticsInit />
                   <DiscoverHomeScrollHeaderProvider>
@@ -618,6 +620,7 @@ export default function App() {
                     </ReportIssueProvider>
                   </DiscoverHomeScrollHeaderProvider>
                 </KycGateProvider>
+                </GuestAuthPromptProvider>
               </AuthProvider>
             </ToastProvider>
           </BrowserRouter>

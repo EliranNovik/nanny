@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { ChevronRight, Radio, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useCommunityBoardPreviewLive } from "@/hooks/useCommunityPostsLive";
+import { fetchCommunityPostWithMetaById } from "@/lib/fetchCommunityPostWithMeta";
 
 type FeedPost = {
   id: string;
@@ -98,6 +100,35 @@ export function DiscoverHomeLatestPosts() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<PostCardRow[]>([]);
+
+  const prependLivePost = useCallback(async (postId: string) => {
+    const hydrated = await fetchCommunityPostWithMetaById(postId);
+    if (!hydrated) return;
+    const coverUrl = hydrated.images[0]?.image_url ?? null;
+    setRows((prev) => {
+      if (prev.some((p) => p.id === postId)) return prev;
+      const next: PostCardRow = {
+        id: hydrated.id,
+        title: hydrated.title,
+        category: hydrated.category,
+        note: hydrated.note,
+        created_at: hydrated.created_at,
+        expires_at: hydrated.expires_at,
+        author_id: hydrated.author_id,
+        author: {
+          id: hydrated.author_id,
+          full_name: hydrated.author_full_name,
+          photo_url: hydrated.author_photo_url,
+        },
+        coverUrl,
+      };
+      return [next, ...prev].slice(0, 6);
+    });
+  }, []);
+
+  useCommunityBoardPreviewLive((postId) => {
+    void prependLivePost(postId);
+  });
 
   useEffect(() => {
     let cancelled = false;

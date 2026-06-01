@@ -13,6 +13,7 @@ import {
   UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDiscoverSidePostsLive } from "@/hooks/useCommunityPostsLive";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
@@ -64,7 +65,7 @@ function useFavoritesPosts(userId: string | undefined) {
   return useQuery({
     queryKey: ["discover-favorites-side-posts", userId ?? null],
     enabled: !!userId,
-    staleTime: 60_000 * 2,
+    staleTime: 0,
     queryFn: async (): Promise<FavoritePostRow[]> => {
       if (!userId) return [];
 
@@ -118,7 +119,7 @@ function useFavoritesPosts(userId: string | undefined) {
 function useMostLikedPosts() {
   return useQuery({
     queryKey: ["discover-most-liked-side-posts"],
-    staleTime: 60_000 * 5,
+    staleTime: 0,
     queryFn: async (): Promise<FavoritePostRow[]> => {
       // Aggregate the latest likes to build a "popular right now" set.
       // 1000 most recent like events is more than enough to surface the top posts
@@ -185,7 +186,7 @@ function useMostLikedPosts() {
 function useMostCommentedPosts() {
   return useQuery({
     queryKey: ["discover-most-commented-side-posts"],
-    staleTime: 60_000 * 5,
+    staleTime: 0,
     queryFn: async (): Promise<FavoritePostRow[]> => {
       // Aggregate the latest comments to surface the most-discussed posts.
       const { data: comments, error: commentsErr } = await supabase
@@ -250,7 +251,7 @@ function useMyOwnPosts(userId: string | undefined) {
   return useQuery({
     queryKey: ["discover-my-own-side-posts", userId ?? null],
     enabled: !!userId,
-    staleTime: 60_000 * 2,
+    staleTime: 0,
     queryFn: async (): Promise<FavoritePostRow[]> => {
       if (!userId) return [];
 
@@ -455,6 +456,7 @@ function EmptyState({
 export function FavoritesPostsSidePanel() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  useDiscoverSidePostsLive(user?.id);
   const { data: favPosts, isLoading: favLoading } = useFavoritesPosts(user?.id);
   const { data: popularPosts, isLoading: popularLoading } = useMostLikedPosts();
   const { data: commentedPosts, isLoading: commentedLoading } =
