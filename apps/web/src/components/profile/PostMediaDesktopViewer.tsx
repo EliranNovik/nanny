@@ -19,7 +19,6 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TEBNU_JOIN_COMMUNITY_BUTTON_CLASS } from "@/lib/tebnuBrandButton";
 import {
   bidirectionalInputProps,
   bidirectionalTextProps,
@@ -681,9 +680,20 @@ function DesktopComments({
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
-                        <span className="truncate text-[13px] font-bold text-foreground">
-                          {name}
-                        </span>
+                        {c.author?.id ? (
+                          <GuestAwareProfileLink
+                            userId={c.author.id}
+                            className="truncate text-[13px] font-bold text-foreground hover:underline underline-offset-2"
+                            aria-label={`View ${name} profile`}
+                            onClick={onClose}
+                          >
+                            {name}
+                          </GuestAwareProfileLink>
+                        ) : (
+                          <span className="truncate text-[13px] font-bold text-foreground">
+                            {name}
+                          </span>
+                        )}
                         <time className="shrink-0 text-[11px] text-muted-foreground">
                           {formatDistanceToNow(new Date(c.created_at), {
                             addSuffix: true,
@@ -747,11 +757,11 @@ function DesktopComments({
               type="button"
               className={cn(
                 "h-10 w-full rounded-xl font-bold",
-                TEBNU_JOIN_COMMUNITY_BUTTON_CLASS,
+                "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
               )}
               onClick={() => openGuestAuthPrompt({ variant: "engage" })}
             >
-              Join the community
+              Sign in / Register
             </Button>
           </div>
         )}

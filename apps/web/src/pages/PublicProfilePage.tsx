@@ -44,6 +44,7 @@ import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { ImageLightboxModal } from "@/components/ImageLightboxModal";
 import { VideoLightboxModal } from "@/components/VideoLightboxModal";
 import { type AvailabilityPayload } from "@/lib/availabilityPosts";
+import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import {
   getServiceCategoryImage,
   isServiceCategoryId,
@@ -629,10 +630,13 @@ export default function PublicProfilePage() {
   }, [currentUser?.id, userId]);
 
   useEffect(() => {
-    if (!userId || !currentUser?.id) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
-    const viewerId = currentUser.id;
-    const cached = readPublicProfileCache(viewerId, userId);
+    const viewerId = currentUser?.id ?? null;
+    const cached = viewerId ? readPublicProfileCache(viewerId, userId) : null;
 
     if (cached) {
       setProfile(cached.profile as PublicProfile);
@@ -682,6 +686,7 @@ export default function PublicProfilePage() {
           bio,
           whatsapp_number: profileData.whatsapp_number_e164,
         };
+        if (cancelled) return;
         setProfile(nextProfile);
         setBioDraft(bio ?? "");
         setFreelancerMeta({
@@ -690,7 +695,95 @@ export default function PublicProfilePage() {
           available_now: freelancerData?.available_now ?? null,
         });
 
-        // 3. Jobs + pending notifications strictly between viewer (A) and profile (B) only.
+        const runHelperRpcs = canActAsHelperOnPublicProfile(nextProfile);
+
+        // Guests: public profile data only (no viewer-specific jobs/notifications).
+        if (!viewerId) {
+          const guestBatch: PromiseLike<unknown>[] = [
+            supabase
+              .from("job_reviews")
+              .select(
+                "id, rating, review_text, created_at, reviewer:profiles!reviewer_id(full_name, photo_url)",
+              )
+              .eq("reviewee_id", userId)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("public_profile_media")
+              .select("*")
+              .eq("user_id", userId)
+              .order("sort_order", { ascending: true }),
+            supabase
+              .from("community_posts")
+              .select(
+                "id, category, title, note, expires_at, availability_payload, created_at",
+              )
+              .eq("author_id", userId)
+              .order("created_at", { ascending: false })
+              .limit(40),
+          ];
+          if (runHelperRpcs) {
+            guestBatch.push(
+              supabase.rpc("get_helpers_live_help_week_counts", {
+                p_helper_ids: [userId],
+              }),
+            );
+          }
+          const guestResults = await Promise.all(guestBatch);
+          type PgResult = { data: unknown; error: unknown };
+          const [reviewsData, mediaData, communityData] = guestResults.slice(
+            0,
+            3,
+          ) as [PgResult, PgResult, PgResult];
+          const weekRpc: PgResult = runHelperRpcs
+            ? (guestResults[3] as PgResult)
+            : { data: null, error: null };
+
+          let nextLiveHelpWeek: number | null = null;
+          if (runHelperRpcs) {
+            try {
+              const weekRows = weekRpc.data as unknown[] | null;
+              const weekErr = weekRpc.error;
+              if (!weekErr && Array.isArray(weekRows)) {
+                for (const wr of weekRows as {
+                  helper_id?: string | null;
+                  live_help_week_count?: number | string | null;
+                }[]) {
+                  if (
+                    !wr.helper_id ||
+                    String(wr.helper_id) !== String(userId) ||
+                    wr.live_help_week_count == null
+                  ) {
+                    continue;
+                  }
+                  const n = Number(wr.live_help_week_count);
+                  if (Number.isFinite(n) && n > 0) {
+                    nextLiveHelpWeek = Math.floor(n);
+                    break;
+                  }
+                }
+              }
+            } catch {
+              /* optional */
+            }
+          }
+
+          if (reviewsData.error) throw reviewsData.error;
+          if (mediaData.error) throw mediaData.error;
+          if (communityData.error) throw communityData.error;
+
+          if (!cancelled) {
+            setLiveHelpWeekCount(nextLiveHelpWeek);
+            setSharedJobs([]);
+            setReviews((reviewsData.data || []) as unknown as UserReview[]);
+            setMediaItems((mediaData.data || []) as PublicProfileMediaRow[]);
+            setLiveCommunityPosts(communityData.data as LiveCommunityPostRow[]);
+            setPostedHelpRequests([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Signed-in viewer: jobs + notifications between viewer (A) and profile (B).
         const profileId = userId;
 
         const jrSelect =
@@ -702,7 +795,6 @@ export default function PublicProfilePage() {
               )
             `;
 
-        const runHelperRpcs = canActAsHelperOnPublicProfile(nextProfile);
         const batchPromises: PromiseLike<unknown>[] = [
           supabase
             .from("job_requests")
@@ -905,6 +997,7 @@ export default function PublicProfilePage() {
       } catch (e: unknown) {
         console.error(e);
         if (!cancelled) {
+          setProfile(null);
           setLoading(false);
           setLiveHelpWeekCount(null);
         }
@@ -1223,7 +1316,19 @@ export default function PublicProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-8">
+    <div
+      className="min-h-screen bg-background pb-24 md:pb-8"
+      data-public-profile-guest={!currentUser ? "" : undefined}
+    >
+      {!currentUser ? (
+        <LandingSiteHeader
+          leftCorner="back"
+          scrollWithPage
+          fullWidth
+          hideLeftLogo
+          className="mb-0"
+        />
+      ) : null}
       {/* 
         Sticky Header (Mobile & Desktop)
         Used for back button and profile name breadcrumb. 
@@ -1234,7 +1339,12 @@ export default function PublicProfilePage() {
       */}
 
       {/* Desktop Hero section — hidden on mobile */}
-      <div className="hidden md:block bg-white/50 dark:bg-background/50 pt-20 pb-4 md:pt-24 md:pb-8 border-b border-slate-200/50 dark:border-white/5">
+      <div
+        className={cn(
+          "hidden md:block bg-white/50 dark:bg-background/50 pb-4 md:pb-8 border-b border-slate-200/50 dark:border-white/5",
+          currentUser ? "pt-20 md:pt-24" : "pt-6 md:pt-8",
+        )}
+      >
         <div className="app-desktop-shell px-4">
           <div className="flex flex-col md:flex-row gap-6 md:items-start">
             {/* Avatar block — hidden on mobile hero layout to move it below header */}
@@ -1346,7 +1456,11 @@ export default function PublicProfilePage() {
                               "_blank",
                             )
                           }
-                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 transition-all hover:scale-105 active:scale-95"
+                          disabled={!currentUser}
+                          className={cn(
+                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 transition-all hover:scale-105 active:scale-95",
+                            !currentUser && "opacity-50 grayscale cursor-not-allowed hover:scale-100 active:scale-100",
+                          )}
                           title="WhatsApp"
                           aria-label="WhatsApp"
                         >
@@ -1362,7 +1476,11 @@ export default function PublicProfilePage() {
                               "_blank",
                             )
                           }
-                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                          disabled={!currentUser}
+                          className={cn(
+                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95",
+                            !currentUser && "opacity-50 grayscale cursor-not-allowed hover:scale-100 active:scale-100",
+                          )}
                           title="Telegram"
                           aria-label="Telegram"
                         >
@@ -1560,7 +1678,11 @@ export default function PublicProfilePage() {
                     onClick={() =>
                       window.open(`https://wa.me/${profile.whatsapp_number}`, "_blank")
                     }
-                    className="h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg active:scale-90 transition-all"
+                    disabled={!currentUser}
+                    className={cn(
+                      "h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg active:scale-90 transition-all",
+                      !currentUser && "opacity-50 grayscale cursor-not-allowed active:scale-100",
+                    )}
                     title="WhatsApp"
                     aria-label="WhatsApp"
                   >
@@ -1573,7 +1695,11 @@ export default function PublicProfilePage() {
                     onClick={() =>
                       window.open(`https://t.me/${profile.telegram_username}`, "_blank")
                     }
-                    className="h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg active:scale-90 transition-all"
+                    disabled={!currentUser}
+                    className={cn(
+                      "h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg active:scale-90 transition-all",
+                      !currentUser && "opacity-50 grayscale cursor-not-allowed active:scale-100",
+                    )}
                     title="Telegram"
                     aria-label="Telegram"
                   >
@@ -1672,7 +1798,7 @@ export default function PublicProfilePage() {
 
            <TabsContent value="posts" className="m-0 focus-visible:outline-none">
               <div className="bg-background pt-1">
-                 <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" />
+                 <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" plainCards={!currentUser} />
               </div>
            </TabsContent>
 
@@ -1840,7 +1966,7 @@ export default function PublicProfilePage() {
                 )}
               </div>
             )}
-            {profileMediaTab === "posts" && <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" />}
+            {profileMediaTab === "posts" && <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" plainCards={!currentUser} />}
             {profileMediaTab === "about" && (
               <div className="rounded-[2.5rem] border border-border/40 bg-card/80 p-10 shadow-xl shadow-black/5">
                 <div className="max-w-2xl">
@@ -1867,26 +1993,127 @@ export default function PublicProfilePage() {
               <div className="flex items-center gap-2.5 mb-5"><Sparkles className="h-4 w-4 text-orange-500 shrink-0" /><h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Public Service Board</h3></div>
               {liveCommunityPosts.length > 0 ? (
                 <div className="space-y-2">
-                  {liveCommunityPosts.map((post) => (<Link key={post.id} to={`/public/posts?post=${encodeURIComponent(post.id)}`} className="flex flex-col gap-1 rounded-2xl p-4 bg-white/60 dark:bg-white/5 border border-slate-100/50 dark:border-white/5 hover:bg-white dark:hover:bg-white/10 transition-all group outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"><div className="flex items-center justify-between gap-2 overflow-hidden"><p className="text-sm font-black text-slate-900 dark:text-white truncate group-hover:text-orange-600 transition-colors uppercase tracking-tight">{post.title}</p><ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform group-hover:translate-x-0.5" /></div><div className="flex items-center gap-2"><Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest h-5 border-transparent bg-slate-100/90 px-2 text-slate-800 dark:bg-white/10 dark:text-slate-200">{livePostCategoryLabel(post.category)}</Badge></div></Link>))}
+                  {liveCommunityPosts.map((post) =>
+                    currentUser ? (
+                      <Link
+                        key={post.id}
+                        to={`/public/posts?post=${encodeURIComponent(post.id)}`}
+                        className="flex flex-col gap-1 rounded-2xl p-4 bg-white/60 dark:bg-white/5 border border-slate-100/50 dark:border-white/5 hover:bg-white dark:hover:bg-white/10 transition-all group outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"
+                      >
+                        <div className="flex items-center justify-between gap-2 overflow-hidden">
+                          <p className="text-sm font-black text-slate-900 dark:text-white truncate group-hover:text-orange-600 transition-colors uppercase tracking-tight">
+                            {post.title}
+                          </p>
+                          <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] font-black uppercase tracking-widest h-5 border-transparent bg-slate-100/90 px-2 text-slate-800 dark:bg-white/10 dark:text-slate-200"
+                          >
+                            {livePostCategoryLabel(post.category)}
+                          </Badge>
+                        </div>
+                      </Link>
+                    ) : (
+                      <div
+                        key={post.id}
+                        className="flex flex-col gap-1 rounded-2xl p-4 bg-slate-50/80 dark:bg-white/5 border border-slate-200/50 dark:border-white/5"
+                      >
+                        <div className="flex items-center justify-between gap-2 overflow-hidden">
+                          <p className="text-sm font-black text-slate-900 dark:text-white truncate uppercase tracking-tight">
+                            {post.title}
+                          </p>
+                          <ChevronRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] font-black uppercase tracking-widest h-5 border-transparent bg-slate-200/70 px-2 text-slate-800 dark:bg-white/10 dark:text-slate-200"
+                          >
+                            {livePostCategoryLabel(post.category)}
+                          </Badge>
+                        </div>
+                      </div>
+                    ),
+                  )}
                 </div>
               ) : <p className="text-xs text-muted-foreground py-2 text-center bg-slate-50/50 dark:bg-white/5 rounded-2xl">No live board posts.</p>}
             </div>
 
-            {reviews.length > 0 && (
-                <div className="rounded-[2rem] border border-border/40 bg-card/80 p-6 shadow-xl shadow-black/5">
-                    <div className="flex items-center gap-2.5 mb-5"><Star className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" /><h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Latest Review</h3></div>
-                    <div className="bg-white/60 dark:bg-white/5 p-4 rounded-2xl border border-slate-100/50 dark:border-white/5">
-                        <p className="text-sm font-bold italic leading-relaxed line-clamp-3">"{reviews[0].review_text}"</p>
-                        <div className="mt-3 flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                                <AvatarImage src={avatarUrl.xs(reviews[0].reviewer.photo_url)} />
-                                <AvatarFallback>{reviews[0].reviewer.full_name?.slice(0, 1)}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">{reviews[0].reviewer.full_name}</span>
-                        </div>
-                    </div>
+            {reviews.length > 0 ? (
+              <div className="rounded-[2rem] border border-border/40 bg-card/80 p-6 shadow-xl shadow-black/5">
+                <div className="flex items-center gap-2.5 mb-5">
+                  <Star className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" />
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                    User Reviews
+                  </h3>
                 </div>
-            )}
+                <div
+                  className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-6 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
+                  role="list"
+                  aria-label="User reviews"
+                >
+                  {reviews.map((review, idx) => {
+                    const gradients = [
+                      "from-blue-400 to-orange-500",
+                      "from-green-400 to-teal-500",
+                      "from-orange-400 to-pink-500",
+                      "from-red-400 to-indigo-500",
+                      "from-orange-400 to-blue-500",
+                    ];
+                    const gradient = gradients[idx % gradients.length];
+                    return (
+                      <div
+                        key={review.id}
+                        role="listitem"
+                        className="group relative flex w-[min(19rem,calc(100vw-2.5rem))] max-w-sm shrink-0 snap-start snap-always flex-col rounded-3xl bg-white p-6 pt-12 shadow-md transition-all duration-500 dark:bg-zinc-900 dark:shadow-black/20"
+                      >
+                        <div
+                          className={cn(
+                            "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110",
+                            gradient,
+                          )}
+                        >
+                          <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
+                            <AvatarImage
+                              src={avatarUrl.xs(review.reviewer.photo_url)}
+                              className="object-cover"
+                            />
+                            <AvatarFallback className="bg-transparent text-2xl font-bold text-white">
+                              {review.reviewer.full_name
+                                ?.slice(0, 2)
+                                .toUpperCase() || "??"}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="flex min-h-0 flex-1 flex-col">
+                          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                            <div className="min-w-0 pr-2">
+                              <h4 className="truncate text-lg font-bold text-gray-900 transition-colors group-hover:text-primary dark:text-white">
+                                {review.reviewer.full_name}
+                              </h4>
+                              <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                                {new Date(review.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
+                              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                              <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">
+                                {review.rating}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="line-clamp-4 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">
+                            {`"${review.review_text || "No comments provided."}"`}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

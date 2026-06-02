@@ -37,7 +37,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { TEBNU_JOIN_COMMUNITY_BUTTON_CLASS } from "@/lib/tebnuBrandButton";
 import {
   bidirectionalInputProps,
   bidirectionalTextProps,
@@ -349,7 +348,20 @@ function CommentsDialog({
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-semibold text-foreground">{name}</span>
+                        {c.author?.id ? (
+                          <GuestAwareProfileLink
+                            userId={c.author.id}
+                            className="text-sm font-semibold text-foreground hover:underline underline-offset-2"
+                            aria-label={`View ${name} profile`}
+                            onClick={() => onClose()}
+                          >
+                            {name}
+                          </GuestAwareProfileLink>
+                        ) : (
+                          <span className="text-sm font-semibold text-foreground">
+                            {name}
+                          </span>
+                        )}
                         <time className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                         </time>
@@ -415,11 +427,11 @@ function CommentsDialog({
                 type="button"
                 className={cn(
                   "h-10 w-full rounded-xl font-bold",
-                  TEBNU_JOIN_COMMUNITY_BUTTON_CLASS,
+                  "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
                 )}
                 onClick={() => openGuestAuthPrompt({ variant: "engage" })}
               >
-                Join the community
+                Sign in / Register
               </Button>
             </div>
           )}
@@ -636,9 +648,19 @@ function CommentsSidePanel({
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="truncate text-[13px] font-bold text-foreground">
-                        {name}
-                      </span>
+                      {c.author?.id ? (
+                        <GuestAwareProfileLink
+                          userId={c.author.id}
+                          className="truncate text-[13px] font-bold text-foreground hover:underline underline-offset-2"
+                          aria-label={`View ${name} profile`}
+                        >
+                          {name}
+                        </GuestAwareProfileLink>
+                      ) : (
+                        <span className="truncate text-[13px] font-bold text-foreground">
+                          {name}
+                        </span>
+                      )}
                       <time className="shrink-0 text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(c.created_at), {
                           addSuffix: true,
@@ -706,11 +728,11 @@ function CommentsSidePanel({
               type="button"
               className={cn(
                 "h-10 w-full rounded-xl font-bold",
-                TEBNU_JOIN_COMMUNITY_BUTTON_CLASS,
+                "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
               )}
               onClick={() => openGuestAuthPrompt({ variant: "engage" })}
             >
-              Join the community
+              Sign in / Register
             </Button>
           </div>
         )}
@@ -1429,6 +1451,7 @@ function PostCard({
   appearance,
   isFocused = false,
   discoverWideLayout = false,
+  plainCard = false,
 }: {
   post: FeedPost;
   currentUserId: string | null;
@@ -1444,6 +1467,7 @@ function PostCard({
   appearance: "default" | "discover" | "profile";
   isFocused?: boolean;
   discoverWideLayout?: boolean;
+  plainCard?: boolean;
 }) {
   const { addToast } = useToast();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
@@ -1533,6 +1557,7 @@ function PostCard({
   const isLandscape = mediaOrientation === "landscape";
   const isDiscover = appearance === "discover";
   const isProfile = appearance === "profile";
+  const isPlainCard = Boolean(plainCard);
   const mediaAspectStyle: React.CSSProperties | undefined = mediaAspectRatio
     ? { aspectRatio: String(mediaAspectRatio) }
     : undefined;
@@ -1893,8 +1918,8 @@ function PostCard({
       id={post.source === "post" ? `profile-post-${post.id}` : undefined}
       className={cn(
         "overflow-hidden transition-all duration-300 border-0",
-        isDiscover
-          ? "bg-transparent shadow-none ring-0 outline-none dark:bg-transparent"
+        isDiscover || isPlainCard
+          ? "bg-transparent shadow-none ring-0 outline-none rounded-none dark:bg-transparent"
           : "bg-white shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md",
         isFocused && "scroll-mt-24 scroll-mb-28",
         desktopDiscoverCardWidthClass,
@@ -2357,6 +2382,8 @@ interface ProfilePostsFeedProps {
   focusPostId?: string | null;
   /** Wider post + comments columns for guest community feed on desktop. */
   expandDiscoverLayout?: boolean;
+  /** Render posts on the page background (no card surface). */
+  plainCards?: boolean;
 }
 
 export function ProfilePostsFeed({
@@ -2372,6 +2399,7 @@ export function ProfilePostsFeed({
   discoverSidePanel = "comments",
   focusPostId = null,
   expandDiscoverLayout = false,
+  plainCards = false,
 }: ProfilePostsFeedProps) {
   const normalizedFocusPostId = parseProfilePostShareId(focusPostId);
   const { user, profile: currentProfile } = useAuth();
@@ -3077,6 +3105,7 @@ export function ProfilePostsFeed({
                 hidePostLikeButton={Boolean(filterLikedByUserId)}
                 appearance={appearance}
                 isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
+                plainCard={plainCards}
               />
             ))}
           </div>
@@ -3112,6 +3141,7 @@ export function ProfilePostsFeed({
                 appearance={appearance}
                 isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
                 discoverWideLayout={expandDiscoverLayout}
+                plainCard={plainCards}
               />
             );
           }

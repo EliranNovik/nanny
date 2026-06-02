@@ -314,6 +314,11 @@
       padding-top: 0;
     }
 
+    /* Guest public profile: header is in-flow — no reserved top bar. */
+    .app-content-below-fixed-header:has([data-public-profile-guest]) {
+      padding-top: 0;
+    }
+
     /* Discover home: fixed top padding — tab toggle does not collapse on scroll */
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-discover-home-page]) {
       padding-top: calc(0.5rem + 2.25rem + 0.5rem);
@@ -346,6 +351,14 @@
 
     /* Guest community feed: no desktop nav gutter — sidebar slot is used in-page. */
     .app-content-below-fixed-header:has([data-community-feed-guest]) .md\:pl-\[220px\] {
+      padding-left: 0;
+    }
+
+    /* Guest public profile: header is in-flow, and sidebar gutter should be removed. */
+    .app-content-below-fixed-header:has([data-public-profile-guest]) {
+      padding-top: 0;
+    }
+    .app-content-below-fixed-header:has([data-public-profile-guest]) .md\:pl-\[220px\] {
       padding-left: 0;
     }
 

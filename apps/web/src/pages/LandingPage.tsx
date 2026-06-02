@@ -20,7 +20,7 @@ import Benefits from "@/components/Benefits";
 import React, { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
-import { LandingDownloadAppPromo } from "@/components/LandingDownloadAppPromo";
+import { GuestCommunityFeedAside } from "@/components/GuestCommunityFeedAside";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
@@ -195,12 +195,19 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-      <LandingSiteHeader />
+      <LandingSiteHeader
+        hideLeftLogo
+        className="md:left-[calc(50%+110px)] md:w-[calc(92%-220px)]"
+      />
+      {/* Desktop: reuse the community-feed guest sidebar */}
+      <div className="hidden md:block fixed left-0 top-0 z-[55]">
+        <GuestCommunityFeedAside className="h-[100dvh] bg-background/70 backdrop-blur-md" />
+      </div>
 
       {/* Bottom-Left Fixed CTAs when scrolled past - Desktop Only */}
       <div
         className={cn(
-          "fixed bottom-8 left-8 z-[60] hidden md:flex items-center gap-4 transition-all duration-500 transform",
+          "fixed bottom-8 left-8 z-[60] hidden md:flex md:left-[calc(220px+2rem)] items-center gap-4 transition-all duration-500 transform",
           showFixedButtons
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-10 pointer-events-none",
@@ -227,7 +234,7 @@ export default function LandingPage() {
       </div>
 
       {/* Main Content - No top padding to allow Hero to flow behind header */}
-      <main className="flex-1 pt-0">
+      <main className="flex-1 pt-0 md:pl-[220px]">
         {/* Full-Screen Hero Section */}
         <section
           ref={heroRef}
@@ -262,14 +269,11 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
-          <div className="relative z-10 w-full px-6 pb-10 pt-12 md:px-0 md:pb-16 md:pt-20 md:pl-8 lg:pl-12 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
-            <LandingDownloadAppPromo />
-          </div>
 
           {/* Right-Aligned Stacked CTAs - Desktop Only */}
           <div
             ref={buttonsRef}
-            className="hidden md:flex absolute right-12 lg:right-32 top-1/2 -translate-y-1/2 flex-col items-center gap-8 z-20"
+            className="hidden md:flex absolute right-12 lg:right-32 top-[78%] -translate-y-1/2 flex-row items-stretch gap-6 z-20"
           >
             <Button
               onClick={handleSearchingForJob}

@@ -504,11 +504,7 @@ function AppRoutes() {
 
         <Route
           path="/profile/:userId"
-          element={
-            <ProtectedRoute>
-              <PublicProfilePage />
-            </ProtectedRoute>
-          }
+          element={<PublicProfilePage />}
         />
 
         {/* Shared routes */}

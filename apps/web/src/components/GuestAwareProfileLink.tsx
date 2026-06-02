@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ export function GuestAwareProfileLink({
 }: GuestAwareProfileLinkProps) {
   const { user } = useAuth();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
+  const location = useLocation();
 
   if (user) {
     return (
@@ -33,6 +34,21 @@ export function GuestAwareProfileLink({
         onClick={onClick}
         title={title}
         aria-label={ariaLabel}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  // On the global community feed, guests can open public profiles.
+  if (location.pathname === "/community/feed") {
+    return (
+      <Link
+        to={`/profile/${userId}`}
+        className={className}
+        onClick={onClick}
+        title={title}
+        aria-label={ariaLabel ?? "View profile"}
       >
         {children}
       </Link>

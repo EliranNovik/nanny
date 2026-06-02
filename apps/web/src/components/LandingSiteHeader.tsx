@@ -25,6 +25,10 @@ export type LandingSiteHeaderProps = {
   leftCorner?: "logo" | "back";
   /** Omit fixed top-left mark (e.g. login page shows brand in the card). */
   hideLeftLogo?: boolean;
+  /** Optional class override for the fixed top-left "Tebnu" text. */
+  leftLogoTextClassName?: string;
+  /** Hide the in-header back button (defaults to visible). */
+  hideBackButton?: boolean;
   /** Omit Login / Get started when already on the sign-in screen. */
   hideLoginCta?: boolean;
   /** Signed-out only: show Home in the right cluster (e.g. login page). */
@@ -35,23 +39,32 @@ export type LandingSiteHeaderProps = {
   scrollWithPage?: boolean;
   /** Full-bleed bar (e.g. community feed guest header). */
   fullWidth?: boolean;
+  className?: string;
 };
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
 export function LandingSiteHeader({
   leftCorner = "logo",
   hideLeftLogo = false,
+  leftLogoTextClassName,
+  hideBackButton = false,
   hideLoginCta = false,
   homeLinkRight = false,
   hidePostFeedLink = false,
   scrollWithPage = false,
   fullWidth = false,
+  className,
 }: LandingSiteHeaderProps) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const dashboardPath =
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
+
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/");
+  };
 
   const postFeedLinkDesktop = !hidePostFeedLink ? (
     <Link to={COMMUNITY_FEED_PATH} className={navLinkClass}>
@@ -82,7 +95,12 @@ export function LandingSiteHeader({
               alt="Tebnu"
               className="h-20 w-auto md:h-24 lg:h-28 transition-transform duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-3"
             />
-            <span className="text-xl font-black text-white drop-shadow-md tracking-tighter hidden lg:block opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">
+            <span
+              className={cn(
+                "text-xl font-black text-white drop-shadow-md tracking-tighter hidden lg:block",
+                leftLogoTextClassName,
+              )}
+            >
               Tebnu
             </span>
           </Link>
@@ -98,25 +116,38 @@ export function LandingSiteHeader({
 
       <header
         className={cn(
-          "min-h-[52px] md:min-h-[60px] bg-gradient-to-r from-orange-500 to-red-600 backdrop-blur-md border border-white/20 flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500",
+          "relative min-h-[52px] md:min-h-[60px] bg-gradient-to-r from-orange-500 to-red-600 backdrop-blur-md border border-white/20 flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500",
           scrollWithPage && fullWidth
             ? "community-feed-guest-header relative z-auto mb-4 w-full max-w-none rounded-none border-x-0 shadow-md"
             : scrollWithPage
               ? "relative z-auto mx-auto mb-4 w-full max-w-5xl rounded-full shadow-2xl"
               : "fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl rounded-full shadow-2xl",
+          className,
         )}
       >
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-1 sm:gap-2 md:gap-6">
-            {leftCorner === "back" && (
-              <Link
-                to="/"
-                className="md:hidden inline-flex items-center gap-0.5 py-2 pl-1 pr-1 text-sm font-bold text-white hover:text-white/90 active:text-white/80 transition-colors -mr-1"
-              >
-                <HeaderBackChevron />
-                Back
-              </Link>
-            )}
+            {!hideBackButton ? (
+              <>
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-white/15 active:scale-[0.99]"
+                  aria-label="Go back"
+                >
+                  <HeaderBackChevron className="opacity-95" />
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white transition-colors hover:bg-white/15 active:scale-[0.99]"
+                  aria-label="Go back"
+                >
+                  <HeaderBackChevron className="opacity-95" />
+                </button>
+              </>
+            ) : null}
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -213,6 +244,16 @@ export function LandingSiteHeader({
                   onClick={() => navigate("/onboarding")}
                   className="rounded-full bg-white font-bold text-orange-600 hover:bg-white/90 px-3 md:px-5 text-sm shadow-sm"
                 >
+                  {!user ? (
+                    <img
+                      src={BRAND_LOGO_SRC}
+                      alt=""
+                      className="mr-2 h-6 w-auto md:h-7"
+                      aria-hidden
+                      loading="eager"
+                      decoding="async"
+                    />
+                  ) : null}
                   Register
                 </Button>
               </div>
