@@ -23,6 +23,7 @@ import {
   User,
   PenSquare,
   Zap,
+  LogOut,
 } from "lucide-react";
 
 type SavedProfileRow = {
@@ -51,7 +52,7 @@ function isExcludedRoute(pathname: string): boolean {
 }
 
 export function DesktopSidePanel() {
-  const { user, profile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { guardKycAction } = useKycGate();
   const { unreadMessages } = useUnreadCounts();
   const { pathname } = useLocation();
@@ -600,6 +601,24 @@ export function DesktopSidePanel() {
             </div>
           </div>
         </div>
+      </div>
+      <div className="shrink-0 p-3 border-t border-border/10">
+        <button
+          type="button"
+          onClick={async () => {
+            await signOut();
+          }}
+          className={cn(
+            "group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors",
+            "text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:hover:bg-red-500/20 active:scale-[0.98]",
+          )}
+          aria-label="Log out"
+        >
+          <LogOut className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+          <span className="text-[13px] font-bold leading-none tracking-tight">
+            Log out
+          </span>
+        </button>
       </div>
     </aside>
   );

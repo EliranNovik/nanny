@@ -24,8 +24,8 @@ export function DiscoverHirePostRequestStrip({
       mainLabel="Post a request — get help from people near you"
       onMainClick={onPostRequest}
       mainAccentClass={cn(
-        "text-indigo-700 focus-visible:ring-indigo-400/50",
-        "dark:text-indigo-200 dark:focus-visible:ring-indigo-200/40",
+        "text-indigo-700 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+        "dark:text-indigo-200 dark:focus-visible:ring-0",
       )}
       onMoreClick={onMoreClick}
       moreMenuTotal={moreMenuTotal}

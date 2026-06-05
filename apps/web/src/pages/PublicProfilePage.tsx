@@ -1119,63 +1119,63 @@ export default function PublicProfilePage() {
   ) : null;
 
   const helperBadgesRow = showLiveHelpWeekBadge ? (
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {liveHelpWeekCount != null ? (
-          <span
-            className={cn(
-              "relative inline-flex min-w-[7.75rem] flex-col items-stretch gap-0.5 self-start rounded-xl py-2 pl-3",
-              liveHelpTier?.kind === "crown" ? "pr-[3.5rem]" : "pr-[2.75rem]",
-              "bg-gradient-to-br from-violet-600/90 to-fuchsia-600/75 text-white shadow-md shadow-violet-900/20 ring-1 ring-inset ring-white/20 dark:from-violet-600/85 dark:to-fuchsia-600/70",
-            )}
-            role="status"
-            title="Completed bookings in the last 7 days"
-            aria-label={`${liveHelpWeekCount} completed live help bookings in the last 7 days`}
-          >
-            {liveHelpTier ? (
-              <span
-                className={cn(
-                  "pointer-events-none absolute right-1 top-1 inline-flex shrink-0 items-center justify-center rounded-full bg-black/28 shadow-md ring-1 ring-inset ring-white/25 backdrop-blur-md",
-                  liveHelpTier.kind === "crown" && "right-0.5 top-0.5 p-1.5",
-                  liveHelpTier.kind === "trophy" && "right-1 top-1 p-1.5",
-                  liveHelpTier.kind === "medal" && "right-1 top-1 p-1.5",
-                )}
-                title={liveHelpTier.title}
-                aria-hidden
-              >
-                {liveHelpTier.kind === "medal" ? (
-                  <Medal
-                    className="h-[15px] w-[15px] text-amber-200 drop-shadow-sm"
-                    strokeWidth={2.25}
-                    aria-hidden
-                  />
-                ) : liveHelpTier.kind === "trophy" ? (
-                  <Trophy
-                    className="h-[22px] w-[22px] text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
-                    strokeWidth={2.35}
-                    aria-hidden
-                  />
-                ) : (
-                  <Crown
-                    className="h-8 w-8 text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.55)]"
-                    strokeWidth={2.25}
-                    aria-hidden
-                  />
-                )}
-              </span>
-            ) : null}
-            <span className="text-center text-[9px] font-black uppercase leading-none tracking-[0.12em]">
-              Live help
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {liveHelpWeekCount != null ? (
+        <span
+          className={cn(
+            "relative inline-flex min-w-[7.75rem] flex-col items-stretch gap-0.5 self-start rounded-xl py-2 pl-3",
+            liveHelpTier?.kind === "crown" ? "pr-[3.5rem]" : "pr-[2.75rem]",
+            "bg-gradient-to-br from-violet-600/90 to-fuchsia-600/75 text-white shadow-md shadow-violet-900/20 ring-1 ring-inset ring-white/20 dark:from-violet-600/85 dark:to-fuchsia-600/70",
+          )}
+          role="status"
+          title="Completed bookings in the last 7 days"
+          aria-label={`${liveHelpWeekCount} completed live help bookings in the last 7 days`}
+        >
+          {liveHelpTier ? (
+            <span
+              className={cn(
+                "pointer-events-none absolute right-1 top-1 inline-flex shrink-0 items-center justify-center rounded-full bg-black/28 shadow-md ring-1 ring-inset ring-white/25 backdrop-blur-md",
+                liveHelpTier.kind === "crown" && "right-0.5 top-0.5 p-1.5",
+                liveHelpTier.kind === "trophy" && "right-1 top-1 p-1.5",
+                liveHelpTier.kind === "medal" && "right-1 top-1 p-1.5",
+              )}
+              title={liveHelpTier.title}
+              aria-hidden
+            >
+              {liveHelpTier.kind === "medal" ? (
+                <Medal
+                  className="h-[15px] w-[15px] text-amber-200 drop-shadow-sm"
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
+              ) : liveHelpTier.kind === "trophy" ? (
+                <Trophy
+                  className="h-[22px] w-[22px] text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
+                  strokeWidth={2.35}
+                  aria-hidden
+                />
+              ) : (
+                <Crown
+                  className="h-8 w-8 text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.55)]"
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
+              )}
             </span>
-            <span className="text-center text-[20px] font-black tabular-nums leading-none tracking-tight">
-              {liveHelpWeekCount}
-            </span>
-            <span className="text-center text-[8px] font-bold uppercase tracking-wide text-white/90">
-              this week
-            </span>
+          ) : null}
+          <span className="text-center text-[9px] font-black uppercase leading-none tracking-[0.12em]">
+            Live help
           </span>
-        ) : null}
-      </div>
-    ) : null;
+          <span className="text-center text-[20px] font-black tabular-nums leading-none tracking-tight">
+            {liveHelpWeekCount}
+          </span>
+          <span className="text-center text-[8px] font-bold uppercase tracking-wide text-white/90">
+            this week
+          </span>
+        </span>
+      ) : null}
+    </div>
+  ) : null;
 
   const desktopTabs = [
     { id: "posts" as const, label: "Social Feed", Icon: LayoutGrid },
@@ -1327,6 +1327,8 @@ export default function PublicProfilePage() {
           fullWidth
           hideLeftLogo
           className="mb-0"
+          variant="glassy"
+          hideBackButtonMobile
         />
       ) : null}
       {/* 
@@ -1662,265 +1664,265 @@ export default function PublicProfilePage() {
 
           {/* Connect Actions */}
           {!isOwnProfile && (
-             <div className="flex items-center gap-3 mt-8">
+            <div className="flex items-center gap-3 mt-8">
+              <button
+                type="button"
+                onClick={() => void handleOpenDirectChat()}
+                disabled={openingChat}
+                className="flex-1 h-12 flex items-center justify-center gap-2 rounded-full bg-slate-950 dark:bg-white text-white dark:text-black font-black text-sm uppercase tracking-widest shadow-xl shadow-black/10 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {openingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4 shrink-0" />}
+                Message
+              </button>
+              {profile.whatsapp_number ? (
                 <button
                   type="button"
-                  onClick={() => void handleOpenDirectChat()}
-                  disabled={openingChat}
-                  className="flex-1 h-12 flex items-center justify-center gap-2 rounded-full bg-slate-950 dark:bg-white text-white dark:text-black font-black text-sm uppercase tracking-widest shadow-xl shadow-black/10 active:scale-95 transition-all disabled:opacity-50"
+                  onClick={() =>
+                    window.open(`https://wa.me/${profile.whatsapp_number}`, "_blank")
+                  }
+                  disabled={!currentUser}
+                  className={cn(
+                    "h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg active:scale-90 transition-all",
+                    !currentUser && "opacity-50 grayscale cursor-not-allowed active:scale-100",
+                  )}
+                  title="WhatsApp"
+                  aria-label="WhatsApp"
                 >
-                  {openingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4 shrink-0" />}
-                  Message
+                  <WhatsAppIcon size={22} className="text-white" />
                 </button>
-                {profile.whatsapp_number ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      window.open(`https://wa.me/${profile.whatsapp_number}`, "_blank")
-                    }
-                    disabled={!currentUser}
-                    className={cn(
-                      "h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg active:scale-90 transition-all",
-                      !currentUser && "opacity-50 grayscale cursor-not-allowed active:scale-100",
-                    )}
-                    title="WhatsApp"
-                    aria-label="WhatsApp"
-                  >
-                    <WhatsAppIcon size={22} className="text-white" />
-                  </button>
-                ) : null}
-                {profile.telegram_username ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      window.open(`https://t.me/${profile.telegram_username}`, "_blank")
-                    }
-                    disabled={!currentUser}
-                    className={cn(
-                      "h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg active:scale-90 transition-all",
-                      !currentUser && "opacity-50 grayscale cursor-not-allowed active:scale-100",
-                    )}
-                    title="Telegram"
-                    aria-label="Telegram"
-                  >
-                    <TelegramIcon size={22} className="text-white" />
-                  </button>
-                ) : null}
-                {currentUser ? (
-                  <button
-                    ref={profileFavoriteButtonRef}
-                    type="button"
-                    onClick={() => void toggleProfileFavorite()}
-                    disabled={favoriteBusy}
-                    className="h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/10 text-rose-500 shadow-md active:scale-90 transition-all"
-                    aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
-                    aria-pressed={profileFavorited}
-                  >
-                    {favoriteBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className={cn("h-5 w-5", profileFavorited && "fill-rose-500")} />}
-                  </button>
-                ) : null}
-             </div>
+              ) : null}
+              {profile.telegram_username ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.open(`https://t.me/${profile.telegram_username}`, "_blank")
+                  }
+                  disabled={!currentUser}
+                  className={cn(
+                    "h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-[#0088cc] text-white shadow-lg active:scale-90 transition-all",
+                    !currentUser && "opacity-50 grayscale cursor-not-allowed active:scale-100",
+                  )}
+                  title="Telegram"
+                  aria-label="Telegram"
+                >
+                  <TelegramIcon size={22} className="text-white" />
+                </button>
+              ) : null}
+              {currentUser ? (
+                <button
+                  ref={profileFavoriteButtonRef}
+                  type="button"
+                  onClick={() => void toggleProfileFavorite()}
+                  disabled={favoriteBusy}
+                  className="h-12 w-12 flex shrink-0 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/10 text-rose-500 shadow-md active:scale-90 transition-all"
+                  aria-label={profileFavorited ? "Remove from saved profiles" : "Save profile to Saved"}
+                  aria-pressed={profileFavorited}
+                >
+                  {favoriteBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className={cn("h-5 w-5", profileFavorited && "fill-rose-500")} />}
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
 
         {/* New Mobile Sections using TabsContent Logic */}
         <Tabs value={profileMediaTab} onValueChange={(v) => setProfileMediaTab(v as ProfileMediaSectionTab)} className="w-full">
-           {/* Tab selection pill */}
-           <div className="sticky top-0 z-30 border-b border-slate-100 bg-white/80 backdrop-blur-xl dark:border-white/5 dark:bg-background/80 py-1">
-              <div className="relative grid grid-cols-4 h-11 w-full max-w-sm mx-auto items-center p-1">
-                 <div className={cn("absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-full bg-orange-600 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-lg shadow-orange-500/20", profileMediaTab === "posts" && "translate-x-0", profileMediaTab === "images" && "translate-x-full", profileMediaTab === "videos" && "translate-x-[200%]", profileMediaTab === "about" && "translate-x-[300%]")} />
-                 {[
-                   { id: "posts", Icon: LayoutGrid },
-                   { id: "images", Icon: ImageIcon },
-                   { id: "videos", Icon: Video },
-                   { id: "about", Icon: UserCircle },
-                 ].map(t => (
-                   <button key={t.id} onClick={() => setProfileMediaTab(t.id as any)} className={cn("relative z-10 flex h-full items-center justify-center transition-colors duration-300", profileMediaTab === t.id ? "text-white" : "text-slate-400 dark:text-zinc-600")}>
-                      <t.Icon className="h-5 w-5" strokeWidth={2.5} />
-                   </button>
-                 ))}
-              </div>
-           </div>
+          {/* Tab selection pill */}
+          <div className="sticky top-0 z-30 border-b border-slate-100 bg-white/80 backdrop-blur-xl dark:border-white/5 dark:bg-background/80 py-1">
+            <div className="relative grid grid-cols-4 h-11 w-full max-w-sm mx-auto items-center p-1">
+              <div className={cn("absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-full bg-orange-600 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-lg shadow-orange-500/20", profileMediaTab === "posts" && "translate-x-0", profileMediaTab === "images" && "translate-x-full", profileMediaTab === "videos" && "translate-x-[200%]", profileMediaTab === "about" && "translate-x-[300%]")} />
+              {[
+                { id: "posts", Icon: LayoutGrid },
+                { id: "images", Icon: ImageIcon },
+                { id: "videos", Icon: Video },
+                { id: "about", Icon: UserCircle },
+              ].map(t => (
+                <button key={t.id} onClick={() => setProfileMediaTab(t.id as any)} className={cn("relative z-10 flex h-full items-center justify-center transition-colors duration-300", profileMediaTab === t.id ? "text-white" : "text-slate-400 dark:text-zinc-600")}>
+                  <t.Icon className="h-5 w-5" strokeWidth={2.5} />
+                </button>
+              ))}
+            </div>
+          </div>
 
-           <TabsContent value="images" className="m-0 focus-visible:outline-none">
-              {imageRows.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center text-slate-300">
-                  <ImageIcon className="h-12 w-12 mb-3 opacity-20" />
-                  <p className="text-xs font-black uppercase tracking-widest opacity-40">No photos</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-1 px-4">
-                   {imageRows.map((row, idx) => (
-                    <div key={row.id} className="relative aspect-square overflow-hidden bg-muted">
-                       <button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full">
-                          <img src={publicProfileMediaUrl(row.storage_path, profileGalleryThumbTransform)} alt="" className="h-full w-full object-contain" loading="lazy" />
-                       </button>
-                       {isOwnProfile && (
-                         <button onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center rounded-full bg-black/40 text-white">
-                            <Plus className="h-3 w-3 rotate-45" strokeWidth={3} />
-                         </button>
-                       )}
-                    </div>
-                   ))}
-                </div>
-              )}
-              {isOwnProfile && (
-                 <div className="p-4 flex justify-center">
-                    <button onClick={() => imageInputRef.current?.click()} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-slate-100 dark:bg-white/5 font-black text-[11px] uppercase tracking-widest text-slate-900 dark:text-white">
-                       <Plus className="h-4 w-4" strokeWidth={3} />
-                       Add a photo
+          <TabsContent value="images" className="m-0 focus-visible:outline-none">
+            {imageRows.length === 0 ? (
+              <div className="py-20 flex flex-col items-center justify-center text-slate-300">
+                <ImageIcon className="h-12 w-12 mb-3 opacity-20" />
+                <p className="text-xs font-black uppercase tracking-widest opacity-40">No photos</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-1 px-4">
+                {imageRows.map((row, idx) => (
+                  <div key={row.id} className="relative aspect-square overflow-hidden bg-muted">
+                    <button type="button" onClick={() => setProfileMediaLightbox({ urls: galleryImageUrls, initialIndex: idx })} className="absolute inset-0 block h-full w-full">
+                      <img src={publicProfileMediaUrl(row.storage_path, profileGalleryThumbTransform)} alt="" className="h-full w-full object-contain" loading="lazy" />
                     </button>
-                 </div>
-              )}
-           </TabsContent>
-
-           <TabsContent value="videos" className="m-0 focus-visible:outline-none">
-              {videoRows.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center text-slate-300">
-                  <Video className="h-12 w-12 mb-3 opacity-20" />
-                  <p className="text-xs font-black uppercase tracking-widest opacity-40">No videos</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1">
-                   {videoRows.map(row => (
-                      <div key={row.id} className="relative aspect-[4/5] bg-black">
-                         <video src={publicProfileMediaPublicUrl(row.storage_path)} className="h-full w-full object-cover" onClick={() => setProfileVideoLightboxUrl(publicProfileMediaPublicUrl(row.storage_path))} />
-                         {isOwnProfile && (
-                            <button onClick={() => void handleDeleteProfileMedia(row)} className="absolute top-4 right-4 h-9 w-9 flex items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md">
-                               <Trash2 className="h-4 w-4" />
-                            </button>
-                         )}
-                      </div>
-                   ))}
-                </div>
-              )}
-           </TabsContent>
-
-           <TabsContent value="posts" className="m-0 focus-visible:outline-none">
-              <div className="bg-background pt-1">
-                 <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" plainCards={!currentUser} />
-              </div>
-           </TabsContent>
-
-           <TabsContent value="about" className="m-0 px-5 py-8 focus-visible:outline-none space-y-12">
-              <section>
-                 <h2 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400 mb-4 ml-0.5">About Me</h2>
-                 <ProfileBioHeader
-                   profile={profile}
-                   isOwnProfile={isOwnProfile}
-                   editingBio={editingBio}
-                   setEditingBio={setEditingBio}
-                   bioDraft={bioDraft}
-                   setBioDraft={setBioDraft}
-                   savingBio={savingBio}
-                   onSave={(next) => void saveBio(next)}
-                   variant="panel"
-                 />
-              </section>
-
-              <section className="flex flex-wrap items-baseline gap-x-8 gap-y-2 px-0.5">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black tabular-nums text-slate-900 dark:text-white">
-                    {helpedOthersCount}
-                  </span>
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    helped others
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black tabular-nums text-slate-900 dark:text-white">
-                    {gotHelpedCount}
-                  </span>
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    got helped
-                  </span>
-                </div>
-              </section>
-
-              {/* History sections moved here */}
-              <section className="space-y-10">
-                 {/* Needs Help — Restored to original styles */}
-                  <div>
-                    <div className="mb-6 flex items-center gap-3 px-2"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10"><HeartHandshake className="h-5 w-5 text-rose-600 dark:text-rose-400" /></div><h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Open Help Requests</h2></div>
-                    <div className="space-y-4">{postedHelpRequests.length > 0 ? postedHelpRequests.map((job) => renderPostedHelpRow(job)) : (<div className="flex flex-col items-center gap-3 px-2 py-4 text-center"><HeartHandshake className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden /><p className="text-sm font-medium text-slate-400 dark:text-slate-500">No open help requests right now.</p></div>)}</div>
-                  </div>
-
-                 {/* User Reviews — Full Restored Design with gradients and floating avatars */}
-                  <div className="pt-4">
-                    <div className="flex items-center gap-3 mb-6 px-2"><div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center"><Star className="w-5 h-5 text-amber-500 fill-amber-500" /></div><h2 className="text-xl font-black tracking-tight uppercase">User Reviews</h2></div>
-                    {reviews.length > 0 ? (
-                      <div
-                        className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-5 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
-                        role="list"
-                        aria-label="User reviews"
-                      >
-                        {reviews.map((review, idx) => {
-                          const gradients = [
-                            "from-blue-400 to-orange-500",
-                            "from-green-400 to-teal-500",
-                            "from-orange-400 to-pink-500",
-                            "from-red-400 to-indigo-500",
-                            "from-orange-400 to-blue-500",
-                          ];
-                          const gradient = gradients[idx % gradients.length];
-                          return (
-                            <div
-                              key={review.id}
-                              role="listitem"
-                              className="group relative flex w-[min(19rem,calc(100vw-2.5rem))] max-w-sm shrink-0 snap-start snap-always flex-col rounded-3xl bg-white p-6 pt-12 shadow-md transition-all duration-500 dark:bg-zinc-900 dark:shadow-black/20"
-                            >
-                              <div
-                                className={cn(
-                                  "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110",
-                                  gradient,
-                                )}
-                              >
-                                <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
-                                  <AvatarImage
-                                    src={avatarUrl.xs(review.reviewer.photo_url)}
-                                    className="object-cover"
-                                  />
-                                  <AvatarFallback className="bg-transparent text-2xl font-bold text-white">
-                                    {review.reviewer.full_name?.slice(0, 2).toUpperCase() || "??"}
-                                  </AvatarFallback>
-                                </Avatar>
-                              </div>
-                              <div className="flex min-h-0 flex-1 flex-col">
-                                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                                  <div className="min-w-0 pr-2">
-                                    <h4 className="truncate text-lg font-bold text-gray-900 transition-colors group-hover:text-primary dark:text-white">
-                                      {review.reviewer.full_name}
-                                    </h4>
-                                    <p className="mt-0.5 text-[11px] font-medium text-slate-400">
-                                      {new Date(review.created_at).toLocaleDateString()}
-                                    </p>
-                                  </div>
-                                  <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
-                                    <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                                    <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">
-                                      {review.rating}
-                                    </span>
-                                  </div>
-                                </div>
-                                <p className="line-clamp-4 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">
-                                  {`"${review.review_text || "No comments provided."}"`}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-3 px-2 py-4 text-center">
-                        <UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
-                        <p className="font-medium text-slate-400 dark:text-slate-500">
-                          No reviews yet for this user
-                        </p>
-                      </div>
+                    {isOwnProfile && (
+                      <button onClick={(e) => { e.stopPropagation(); void handleDeleteProfileMedia(row); }} className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center rounded-full bg-black/40 text-white">
+                        <Plus className="h-3 w-3 rotate-45" strokeWidth={3} />
+                      </button>
                     )}
                   </div>
-              </section>
-           </TabsContent>
+                ))}
+              </div>
+            )}
+            {isOwnProfile && (
+              <div className="p-4 flex justify-center">
+                <button onClick={() => imageInputRef.current?.click()} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-slate-100 dark:bg-white/5 font-black text-[11px] uppercase tracking-widest text-slate-900 dark:text-white">
+                  <Plus className="h-4 w-4" strokeWidth={3} />
+                  Add a photo
+                </button>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="videos" className="m-0 focus-visible:outline-none">
+            {videoRows.length === 0 ? (
+              <div className="py-20 flex flex-col items-center justify-center text-slate-300">
+                <Video className="h-12 w-12 mb-3 opacity-20" />
+                <p className="text-xs font-black uppercase tracking-widest opacity-40">No videos</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {videoRows.map(row => (
+                  <div key={row.id} className="relative aspect-[4/5] bg-black">
+                    <video src={publicProfileMediaPublicUrl(row.storage_path)} className="h-full w-full object-cover" onClick={() => setProfileVideoLightboxUrl(publicProfileMediaPublicUrl(row.storage_path))} />
+                    {isOwnProfile && (
+                      <button onClick={() => void handleDeleteProfileMedia(row)} className="absolute top-4 right-4 h-9 w-9 flex items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="posts" className="m-0 focus-visible:outline-none">
+            <div className="bg-background pt-1">
+              <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" plainCards={!currentUser} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="about" className="m-0 px-5 py-8 focus-visible:outline-none space-y-12">
+            <section>
+              <h2 className="text-[10px] font-black uppercase tracking-[.25em] text-slate-400 mb-4 ml-0.5">About Me</h2>
+              <ProfileBioHeader
+                profile={profile}
+                isOwnProfile={isOwnProfile}
+                editingBio={editingBio}
+                setEditingBio={setEditingBio}
+                bioDraft={bioDraft}
+                setBioDraft={setBioDraft}
+                savingBio={savingBio}
+                onSave={(next) => void saveBio(next)}
+                variant="panel"
+              />
+            </section>
+
+            <section className="flex flex-wrap items-baseline gap-x-8 gap-y-2 px-0.5">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-black tabular-nums text-slate-900 dark:text-white">
+                  {helpedOthersCount}
+                </span>
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  helped others
+                </span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-black tabular-nums text-slate-900 dark:text-white">
+                  {gotHelpedCount}
+                </span>
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  got helped
+                </span>
+              </div>
+            </section>
+
+            {/* History sections moved here */}
+            <section className="space-y-10">
+              {/* Needs Help — Restored to original styles */}
+              <div>
+                <div className="mb-6 flex items-center gap-3 px-2"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10"><HeartHandshake className="h-5 w-5 text-rose-600 dark:text-rose-400" /></div><h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Open Help Requests</h2></div>
+                <div className="space-y-4">{postedHelpRequests.length > 0 ? postedHelpRequests.map((job) => renderPostedHelpRow(job)) : (<div className="flex flex-col items-center gap-3 px-2 py-4 text-center"><HeartHandshake className="h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden /><p className="text-sm font-medium text-slate-400 dark:text-slate-500">No open help requests right now.</p></div>)}</div>
+              </div>
+
+              {/* User Reviews — Full Restored Design with gradients and floating avatars */}
+              <div className="pt-4">
+                <div className="flex items-center gap-3 mb-6 px-2"><div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center"><Star className="w-5 h-5 text-amber-500 fill-amber-500" /></div><h2 className="text-xl font-black tracking-tight uppercase">User Reviews</h2></div>
+                {reviews.length > 0 ? (
+                  <div
+                    className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-5 pb-3 pt-16 [-webkit-overflow-scrolling:touch]"
+                    role="list"
+                    aria-label="User reviews"
+                  >
+                    {reviews.map((review, idx) => {
+                      const gradients = [
+                        "from-blue-400 to-orange-500",
+                        "from-green-400 to-teal-500",
+                        "from-orange-400 to-pink-500",
+                        "from-red-400 to-indigo-500",
+                        "from-orange-400 to-blue-500",
+                      ];
+                      const gradient = gradients[idx % gradients.length];
+                      return (
+                        <div
+                          key={review.id}
+                          role="listitem"
+                          className="group relative flex w-[min(19rem,calc(100vw-2.5rem))] max-w-sm shrink-0 snap-start snap-always flex-col rounded-3xl bg-white p-6 pt-12 shadow-md transition-all duration-500 dark:bg-zinc-900 dark:shadow-black/20"
+                        >
+                          <div
+                            className={cn(
+                              "absolute -top-10 left-6 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110",
+                              gradient,
+                            )}
+                          >
+                            <Avatar className="h-full w-full border-4 border-white dark:border-zinc-900">
+                              <AvatarImage
+                                src={avatarUrl.xs(review.reviewer.photo_url)}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="bg-transparent text-2xl font-bold text-white">
+                                {review.reviewer.full_name?.slice(0, 2).toUpperCase() || "??"}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                          <div className="flex min-h-0 flex-1 flex-col">
+                            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                              <div className="min-w-0 pr-2">
+                                <h4 className="truncate text-lg font-bold text-gray-900 transition-colors group-hover:text-primary dark:text-white">
+                                  {review.reviewer.full_name}
+                                </h4>
+                                <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                                  {new Date(review.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2.5 py-1">
+                                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                                <span className="text-[12px] font-black text-yellow-700 dark:text-yellow-500">
+                                  {review.rating}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="line-clamp-4 text-base italic leading-relaxed text-gray-700 dark:text-slate-300">
+                              {`"${review.review_text || "No comments provided."}"`}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 px-2 py-4 text-center">
+                    <UserIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" aria-hidden />
+                    <p className="font-medium text-slate-400 dark:text-slate-500">
+                      No reviews yet for this user
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -1956,12 +1958,14 @@ export default function PublicProfilePage() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-4">
-                    {videoRows.map((row) => { const videoSrc = publicProfileMediaPublicUrl(row.storage_path); return (
-                      <div key={row.id} className="group relative overflow-hidden rounded-2xl bg-black shadow-lg">
-                        <div role="button" tabIndex={0} onClick={() => setProfileVideoLightboxUrl(videoSrc)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setProfileVideoLightboxUrl(videoSrc); } }} className="cursor-pointer outline-none" aria-label="Open video full screen"><video src={videoSrc} muted playsInline preload="metadata" className="pointer-events-none max-h-[min(70vh,540px)] w-full object-contain" /></div>
-                        {isOwnProfile && <button type="button" disabled={uploadingMedia} onClick={() => void handleDeleteProfileMedia(row)} className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-md transition hover:bg-black/70" aria-label="Remove video"><Trash2 className="h-4 w-4" /></button>}
-                      </div>
-                    ); })}
+                    {videoRows.map((row) => {
+                      const videoSrc = publicProfileMediaPublicUrl(row.storage_path); return (
+                        <div key={row.id} className="group relative overflow-hidden rounded-2xl bg-black shadow-lg">
+                          <div role="button" tabIndex={0} onClick={() => setProfileVideoLightboxUrl(videoSrc)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setProfileVideoLightboxUrl(videoSrc); } }} className="cursor-pointer outline-none" aria-label="Open video full screen"><video src={videoSrc} muted playsInline preload="metadata" className="pointer-events-none max-h-[min(70vh,540px)] w-full object-contain" /></div>
+                          {isOwnProfile && <button type="button" disabled={uploadingMedia} onClick={() => void handleDeleteProfileMedia(row)} className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-md transition hover:bg-black/70" aria-label="Remove video"><Trash2 className="h-4 w-4" /></button>}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1970,18 +1974,18 @@ export default function PublicProfilePage() {
             {profileMediaTab === "about" && (
               <div className="rounded-[2.5rem] border border-border/40 bg-card/80 p-10 shadow-xl shadow-black/5">
                 <div className="max-w-2xl">
-                    <h2 className="text-[11px] font-black uppercase tracking-[.25em] text-slate-400 mb-6">Introduction</h2>
-                    <ProfileBioHeader
-                      profile={profile}
-                      isOwnProfile={isOwnProfile}
-                      editingBio={editingBio}
-                      setEditingBio={setEditingBio}
-                      bioDraft={bioDraft}
-                      setBioDraft={setBioDraft}
-                      savingBio={savingBio}
-                      onSave={(next) => void saveBio(next)}
-                      variant="panel"
-                    />
+                  <h2 className="text-[11px] font-black uppercase tracking-[.25em] text-slate-400 mb-6">Introduction</h2>
+                  <ProfileBioHeader
+                    profile={profile}
+                    isOwnProfile={isOwnProfile}
+                    editingBio={editingBio}
+                    setEditingBio={setEditingBio}
+                    bioDraft={bioDraft}
+                    setBioDraft={setBioDraft}
+                    savingBio={savingBio}
+                    onSave={(next) => void saveBio(next)}
+                    variant="panel"
+                  />
                 </div>
               </div>
             )}

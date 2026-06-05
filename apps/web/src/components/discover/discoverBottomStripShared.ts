@@ -12,19 +12,19 @@ export const stripFabPillClusterClass = cn(
 
 /** Single combined pill for primary action + ⋮. */
 export const stripFabPillClass = cn(
-  "relative flex items-center gap-0 rounded-full shadow-xl ring-1 ring-black/8",
-  "bg-white text-zinc-900 dark:bg-zinc-900/95 dark:text-zinc-50 dark:ring-white/10",
+  "strip-fab-pill relative flex items-center gap-0 rounded-full shadow-xl border border-black/10 [-webkit-tap-highlight-color:transparent] outline-none focus:outline-none focus-within:outline-none",
+  "bg-white text-zinc-900 dark:bg-zinc-900/95 dark:text-zinc-50 dark:border-white/10",
 );
 
 export const stripFabPillMainBtnClass = cn(
-  "flex h-16 w-16 shrink-0 items-center justify-center rounded-l-full transition-transform active:scale-[0.96]",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-offset-0",
+  "strip-fab-pill-main-btn flex h-16 w-16 shrink-0 items-center justify-center rounded-l-full transition-transform active:scale-[0.96] [-webkit-tap-highlight-color:transparent]",
+  "outline-none focus:outline-none focus-visible:outline-none",
 );
 
 export const stripFabPillIconBtnClass = cn(
-  "flex h-16 w-16 shrink-0 items-center justify-center rounded-r-full text-zinc-600 transition-transform active:scale-[0.96]",
+  "strip-fab-pill-icon-btn flex h-16 w-16 shrink-0 items-center justify-center rounded-r-full text-zinc-600 transition-transform active:scale-[0.96] [-webkit-tap-highlight-color:transparent]",
   "hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-white/5",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-offset-0",
+  "outline-none focus:outline-none focus-visible:outline-none",
 );
 
 export const stripFabPillDividerClass = "h-10 w-px shrink-0 bg-zinc-200 dark:bg-white/10";

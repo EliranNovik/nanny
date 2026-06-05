@@ -40,6 +40,8 @@ export type LandingSiteHeaderProps = {
   /** Full-bleed bar (e.g. community feed guest header). */
   fullWidth?: boolean;
   className?: string;
+  variant?: "brand" | "glassy";
+  hideBackButtonMobile?: boolean;
 };
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
@@ -54,6 +56,8 @@ export function LandingSiteHeader({
   scrollWithPage = false,
   fullWidth = false,
   className,
+  variant = "brand",
+  hideBackButtonMobile = false,
 }: LandingSiteHeaderProps) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
@@ -61,13 +65,42 @@ export function LandingSiteHeader({
   const dashboardPath =
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
 
+  const linkColorClass = variant === "glassy"
+    ? "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
+    : "text-white hover:text-white/80";
+
+  const dynamicNavLinkClass = cn(
+    "text-sm font-bold transition-colors",
+    linkColorClass
+  );
+
+  const headerBgClass = variant === "glassy"
+    ? "bg-white/70 dark:bg-zinc-800/40 border-0 shadow-md"
+    : "bg-gradient-to-r from-orange-500 to-red-600 border border-white/20";
+
+  const backBtnClass = variant === "glassy"
+    ? "border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300 dark:hover:bg-zinc-900/60"
+    : "border-white/25 bg-white/10 text-white hover:bg-white/15";
+
+  const menuIconClass = variant === "glassy"
+    ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
+    : "text-white hover:text-white/80";
+
+  const signInBtnClass = variant === "glassy"
+    ? "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
+    : "text-white hover:bg-white/10";
+
+  const navContainerTextClass = variant === "glassy"
+    ? "text-zinc-800 dark:text-zinc-200"
+    : "text-white";
+
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
   };
 
   const postFeedLinkDesktop = !hidePostFeedLink ? (
-    <Link to={COMMUNITY_FEED_PATH} className={navLinkClass}>
+    <Link to={COMMUNITY_FEED_PATH} className={dynamicNavLinkClass}>
       Post Feed
     </Link>
   ) : null;
@@ -116,7 +149,8 @@ export function LandingSiteHeader({
 
       <header
         className={cn(
-          "relative min-h-[52px] md:min-h-[60px] bg-gradient-to-r from-orange-500 to-red-600 backdrop-blur-md border border-white/20 flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500",
+          "relative min-h-[52px] md:min-h-[60px] backdrop-blur-md flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500",
+          headerBgClass,
           scrollWithPage && fullWidth
             ? "community-feed-guest-header relative z-auto mb-4 w-full max-w-none rounded-none border-x-0 shadow-md"
             : scrollWithPage
@@ -132,26 +166,28 @@ export function LandingSiteHeader({
                 <button
                   type="button"
                   onClick={goBack}
-                  className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-white/15 active:scale-[0.99]"
+                  className={cn("hidden md:inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black transition-colors border active:scale-[0.99]", backBtnClass)}
                   aria-label="Go back"
                 >
                   <HeaderBackChevron className="opacity-95" />
                   Back
                 </button>
-                <button
-                  type="button"
-                  onClick={goBack}
-                  className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white transition-colors hover:bg-white/15 active:scale-[0.99]"
-                  aria-label="Go back"
-                >
-                  <HeaderBackChevron className="opacity-95" />
-                </button>
+                {!hideBackButtonMobile ? (
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className={cn("md:hidden inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors border active:scale-[0.99]", backBtnClass)}
+                    aria-label="Go back"
+                  >
+                    <HeaderBackChevron className="opacity-95" />
+                  </button>
+                ) : null}
               </>
             ) : null}
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-white hover:text-white/80 transition-colors shrink-0"
+              className={cn("md:hidden p-2 transition-colors shrink-0", menuIconClass)}
               aria-label="Toggle menu"
             >
               {isMenuOpen ? (
@@ -197,16 +233,16 @@ export function LandingSiteHeader({
                 </div>
               </div>
             ) : (
-              <div className="hidden md:flex items-center gap-6 lg:gap-8 text-white">
-                <Link to="/about" className={navLinkClass}>
+              <div className={cn("hidden md:flex items-center gap-6 lg:gap-8", navContainerTextClass)}>
+                <Link to="/about" className={dynamicNavLinkClass}>
                   About Us
                 </Link>
-                <Link to="/contact" className={navLinkClass}>
+                <Link to="/contact" className={dynamicNavLinkClass}>
                   Contact
                 </Link>
                 {postFeedLinkDesktop}
                 {!homeLinkRight ? (
-                  <Link to="/" className={navLinkClass}>
+                  <Link to="/" className={dynamicNavLinkClass}>
                     Home
                   </Link>
                 ) : null}
@@ -219,13 +255,13 @@ export function LandingSiteHeader({
               <>
                 <Link
                   to="/"
-                  className="hidden md:inline-flex rounded-full px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/10"
+                  className={cn("hidden md:inline-flex rounded-full px-4 py-2 text-sm font-bold transition-colors", signInBtnClass)}
                 >
                   Home
                 </Link>
                 <Link
                   to="/"
-                  className="md:hidden inline-flex px-2 py-2 text-sm font-bold text-white hover:text-white/90"
+                  className={cn("md:hidden inline-flex px-2 py-2 text-sm font-bold", variant === "glassy" ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white" : "text-white hover:text-white/90")}
                 >
                   Home
                 </Link>
@@ -236,15 +272,20 @@ export function LandingSiteHeader({
                 <Button
                   variant="ghost"
                   onClick={() => navigate("/login")}
-                  className="text-white hover:bg-white/10 font-bold rounded-full px-3 md:px-5 text-sm"
+                  className={cn("font-bold rounded-full px-3 md:px-5 text-sm", signInBtnClass)}
                 >
                   Sign in
                 </Button>
                 <Button
                   onClick={() => navigate("/onboarding")}
-                  className="rounded-full bg-white font-bold text-orange-600 hover:bg-white/90 px-3 md:px-5 text-sm shadow-sm"
+                  className={cn(
+                    "rounded-full font-bold px-3 md:px-5 text-sm shadow-sm",
+                    variant === "glassy"
+                      ? "bg-orange-600 text-white hover:bg-orange-700"
+                      : "bg-white text-orange-600 hover:bg-white/90"
+                  )}
                 >
-                  {!user ? (
+                  {!user && variant !== "glassy" ? (
                     <img
                       src={BRAND_LOGO_SRC}
                       alt=""

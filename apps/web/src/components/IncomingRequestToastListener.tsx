@@ -104,11 +104,13 @@ function IncomingRequestToastCard({
   toast,
   onAccept,
   onDecline,
+  onIgnore,
   busy,
 }: {
   toast: IncomingRequestToast;
   onAccept: () => void;
   onDecline: () => void;
+  onIgnore: () => void;
   busy: boolean;
 }) {
   const Icon = categoryIcon(toast.categoryId);
@@ -171,7 +173,7 @@ function IncomingRequestToastCard({
             onClick={onDecline}
             disabled={busy}
             className={cn(
-              "flex-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5",
+              "flex-1 rounded-xl border border-white/15 bg-white/5 px-2 py-2.5 text-center",
               "text-[13px] font-bold text-white/90 transition",
               "hover:bg-white/10 active:scale-[0.98] disabled:opacity-50",
             )}
@@ -180,15 +182,27 @@ function IncomingRequestToastCard({
           </button>
           <button
             type="button"
+            onClick={onIgnore}
+            disabled={busy}
+            className={cn(
+              "flex-1 rounded-xl border border-white/15 bg-white/5 px-2 py-2.5 text-center",
+              "text-[13px] font-bold text-white/90 transition",
+              "hover:bg-white/10 active:scale-[0.98] disabled:opacity-50",
+            )}
+          >
+            Ignore
+          </button>
+          <button
+            type="button"
             onClick={onAccept}
             disabled={busy}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5",
+              "flex flex-[1.2] items-center justify-center gap-1 rounded-xl px-2 py-2.5",
               "bg-gradient-to-r from-emerald-500 to-emerald-600 text-[13px] font-bold text-white shadow-lg shadow-emerald-900/40",
               "transition hover:from-emerald-400 hover:to-emerald-500 active:scale-[0.98] disabled:opacity-50",
             )}
           >
-            <Check className="h-4 w-4" strokeWidth={3} aria-hidden />
+            <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
             Accept
           </button>
         </div>
@@ -455,6 +469,7 @@ export function IncomingRequestToastListener() {
         toast={toast}
         onAccept={() => void handleAccept()}
         onDecline={() => void handleDecline()}
+        onIgnore={() => dismiss()}
         busy={busy}
       />
     </div>

@@ -9,8 +9,9 @@ import { ProfileSubpageLayout } from "@/components/profile/ProfileSubpageLayout"
 import { ViewEditFieldRow } from "@/components/profile/ViewEditFieldRow";
 import { ProfileImageCropModal } from "@/components/profile/ProfileImageCropModal";
 import type { ClientProfileFormContext } from "@/hooks/useClientProfileForm";
-import { Save, Loader2, Camera, X, Navigation, Pencil } from "lucide-react";
+import { Save, Loader2, Camera, X, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CreateJobCityAutocomplete } from "@/components/CreateJobCityAutocomplete";
 
 const inputEdit =
   "w-full border border-border/60 bg-background/80 rounded-lg px-3 py-2.5 text-[15px] shadow-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25";
@@ -31,6 +32,12 @@ export default function ClientProfilePersonalPage() {
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const snapshotRef = useRef<Snapshot | null>(null);
+
+  const isCityValid =
+    !ctx.city.trim() ||
+    (!!ctx.locationRadius.lat &&
+      !!ctx.locationRadius.lng &&
+      ctx.city === ctx.locationRadius.address);
 
   function beginEdit() {
     snapshotRef.current = {
@@ -113,7 +120,7 @@ export default function ClientProfilePersonalPage() {
                 size="sm"
                 className="rounded-full gap-1.5"
                 onClick={saveAndClose}
-                disabled={ctx.saving || ctx.uploading}
+                disabled={ctx.saving || ctx.uploading || !isCityValid}
               >
                 {ctx.saving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -213,32 +220,33 @@ export default function ClientProfilePersonalPage() {
                 >
                   City
                 </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="city"
-                    className={cn(inputEdit, "flex-1")}
-                    value={ctx.city}
-                    onChange={(e) => ctx.setCity(e.target.value)}
-                    placeholder="e.g. Tel Aviv"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="shrink-0 rounded-lg"
-                    onClick={ctx.handleGetLocation}
-                    disabled={ctx.gettingLocation}
-                  >
-                    {ctx.gettingLocation ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Navigation className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Use GPS to set city automatically
-                </p>
+                <CreateJobCityAutocomplete
+                  confirmedCity={ctx.city}
+                  isConfirmed={
+                    !!ctx.locationRadius.lat &&
+                    !!ctx.locationRadius.lng &&
+                    ctx.city === ctx.locationRadius.address
+                  }
+                  onPickCity={(selection) => {
+                    ctx.setCity(selection.label);
+                    ctx.setLocationRadius((prev) => ({
+                      ...prev,
+                      lat: selection.lat ?? undefined,
+                      lng: selection.lng ?? undefined,
+                      address: selection.label,
+                    }));
+                  }}
+                  onInvalidateSelection={() => {
+                    ctx.setLocationRadius((prev) => ({
+                      ...prev,
+                      lat: undefined,
+                      lng: undefined,
+                      address: "",
+                    }));
+                  }}
+                  size="compact"
+                  variant="optional"
+                />
               </>
             }
           />

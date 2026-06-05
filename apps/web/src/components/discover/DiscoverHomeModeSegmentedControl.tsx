@@ -56,7 +56,7 @@ export function DiscoverHomeModeSegmentedControl({
               : "min-h-[52px] sm:min-h-[60px] sm:px-4 md:min-h-[40px] md:gap-1.5 md:px-2.5 md:py-1.5",
             mode === "hire"
               ? cn(
-                  "bg-[#7B61FF] text-white shadow-sm dark:bg-zinc-800 dark:text-zinc-100",
+                  "bg-gradient-to-br from-violet-400 via-violet-600 to-violet-900 dark:from-violet-300 dark:via-violet-500 dark:to-violet-800 text-white shadow-sm",
                 )
               : "bg-transparent text-neutral-900 hover:bg-slate-200/55 dark:hover:bg-zinc-800/55",
           )}
@@ -69,7 +69,7 @@ export function DiscoverHomeModeSegmentedControl({
                 ? "h-[1.05rem] w-[1.05rem]"
                 : "h-7 w-7 sm:h-[1.85rem] sm:w-[1.85rem] md:h-[1.05rem] md:w-[1.05rem]",
               mode === "hire"
-                ? "text-white dark:text-[#7B61FF]"
+                ? "text-white"
                 : "text-slate-400 dark:text-zinc-500",
             )}
             strokeWidth={DISCOVER_STROKE}
@@ -102,7 +102,7 @@ export function DiscoverHomeModeSegmentedControl({
               : "min-h-[52px] sm:min-h-[60px] sm:px-4 md:min-h-[40px] md:gap-1.5 md:px-2.5 md:py-1.5",
             mode === "work"
               ? cn(
-                  "bg-emerald-600 text-white shadow-sm dark:bg-zinc-800 dark:text-zinc-100",
+                  "bg-gradient-to-br from-emerald-300 via-emerald-600 to-emerald-900 dark:from-emerald-400 dark:via-emerald-600 dark:to-emerald-800 text-white shadow-sm",
                 )
               : "bg-transparent text-neutral-900 hover:bg-slate-200/55 dark:hover:bg-zinc-800/55",
           )}
@@ -115,7 +115,7 @@ export function DiscoverHomeModeSegmentedControl({
                 ? "h-[1.05rem] w-[1.05rem]"
                 : "h-7 w-7 sm:h-[1.85rem] sm:w-[1.85rem] md:h-[1.05rem] md:w-[1.05rem]",
               mode === "work"
-                ? "text-white dark:text-emerald-400"
+                ? "text-white"
                 : "text-slate-400 dark:text-zinc-500",
             )}
             strokeWidth={DISCOVER_STROKE}

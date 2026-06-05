@@ -118,6 +118,16 @@ export default function PostAvailabilityNowPage() {
 
   const handlePublish = async () => {
     if (!user?.id || !profile) return;
+    if (profile.location_lat == null || profile.location_lng == null) {
+      addToast({
+        title: "Location settings needed",
+        description:
+          "Please set your city and service area in your profile settings before going live.",
+        variant: "warning",
+      });
+      navigate("/freelancer/profile/services");
+      return;
+    }
     if (needsKycVerification(profile)) {
       openKycRequiredDialog("go_live");
       return;

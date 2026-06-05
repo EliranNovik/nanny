@@ -240,15 +240,11 @@ export default function LandingPage() {
           ref={heroRef}
           className="relative w-full min-h-[90vh] overflow-hidden group/hero"
         >
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
+          <img
+            src="/pexels-silverkblack-36715260.jpg"
+            alt="Hero Background"
             className="absolute inset-0 z-0 min-h-full w-full object-cover transition-transform duration-1000 group-hover/hero:scale-105"
-          >
-            <source src="/videos/hero-bg.mp4" type="video/mp4" />
-          </video>
+          />
 
           {/* Sophisticated Gradients for depth and readability */}
           <div className="absolute inset-0 bg-black/10 z-[1]"></div>

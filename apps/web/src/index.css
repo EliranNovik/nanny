@@ -877,3 +877,23 @@ html.dark .bg-gradient-mesh {
     display: none !important;
   }
 }
+
+/* Remove default focus outline/ring for mobile bottom strip components */
+.strip-fab-pill,
+.strip-fab-pill button,
+.strip-fab-pill div,
+.strip-fab-pill-main-btn,
+.strip-fab-pill-icon-btn {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.strip-fab-pill button:focus,
+.strip-fab-pill button:active,
+.strip-fab-pill-main-btn:focus,
+.strip-fab-pill-main-btn:active,
+.strip-fab-pill-icon-btn:focus,
+.strip-fab-pill-icon-btn:active {
+  outline: none !important;
+  box-shadow: none !important;
+}

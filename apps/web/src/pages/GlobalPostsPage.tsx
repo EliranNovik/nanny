@@ -150,6 +150,8 @@ export default function GlobalPostsPage() {
           fullWidth
           hideLeftLogo
           className="mb-0"
+          variant="glassy"
+          hideBackButtonMobile
         />
       ) : null}
 

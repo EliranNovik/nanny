@@ -278,7 +278,7 @@ export function DiscoverHomeActionFirst({
    */
   function renderQuickActionDockMobile() {
     const badgeRow =
-      "ml-auto flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums text-white bg-red-500 shadow-sm";
+      "ml-auto flex h-8 min-w-[2rem] items-center justify-center rounded-full px-2 text-[15px] font-black tabular-nums text-white bg-red-500 shadow-md";
 
     const quickMoreSheet = (
       <Dialog open={quickMoreOpen} onOpenChange={setQuickMoreOpen}>
@@ -293,9 +293,6 @@ export function DiscoverHomeActionFirst({
           <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-5 py-3.5 backdrop-blur-md">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-lg font-black tracking-tight">More actions</DialogTitle>
-              <DialogClose className="rounded-full p-2 text-muted-foreground hover:bg-muted active:scale-95">
-                <X className="h-5 w-5" strokeWidth={2.5} />
-              </DialogClose>
             </div>
           </DialogHeader>
           <div className="flex flex-col gap-1 p-2 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
@@ -310,12 +307,12 @@ export function DiscoverHomeActionFirst({
                     navigateToHelpersBrowse(navigate);
                   }}
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
-                    <Search className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
+                    <Search className="h-6 w-6" strokeWidth={2.5} aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-bold text-foreground">Find helpers</span>
-                    <span className="text-xs text-muted-foreground">Browse who’s available</span>
+                    <span className="block text-[17px] font-extrabold text-foreground">Find helpers</span>
+                    <span className="text-[13px] text-muted-foreground">Browse who’s available</span>
                   </span>
                   {hireLiveHelperCount > 0 ? (
                     <span className={badgeRow}>
@@ -331,12 +328,12 @@ export function DiscoverHomeActionFirst({
                     setMyRequestsOpen(true);
                   }}
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-300">
-                    <ClipboardList className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-300">
+                    <ClipboardList className="h-6 w-6" strokeWidth={2.5} aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-bold text-foreground">My requests</span>
-                    <span className="text-xs text-muted-foreground">Your open requests</span>
+                    <span className="block text-[17px] font-extrabold text-foreground">My requests</span>
+                    <span className="text-[13px] text-muted-foreground">Your open requests</span>
                   </span>
                   {myRequestsCount > 0 ? (
                     <span className={badgeRow}>{myRequestsCount > 9 ? "9+" : myRequestsCount}</span>
@@ -354,12 +351,12 @@ export function DiscoverHomeActionFirst({
                     navigateToWorkBrowseRequests(navigate, profile);
                   }}
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
-                    <UsersRound className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+                    <UsersRound className="h-6 w-6" strokeWidth={2.5} aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-bold text-foreground">Find requests</span>
-                    <span className="text-xs text-muted-foreground">Live requests near you</span>
+                    <span className="block text-[17px] font-extrabold text-foreground">Find requests</span>
+                    <span className="text-[13px] text-muted-foreground">Live requests near you</span>
                   </span>
                   {workLivePostCount > 0 ? (
                     <span className={badgeRow}>
@@ -375,12 +372,12 @@ export function DiscoverHomeActionFirst({
                     setPendingWorkRequestsOpen(true);
                   }}
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
-                    <Clock className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                    <Clock className="h-6 w-6" strokeWidth={2.5} aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-bold text-foreground">Pending</span>
-                    <span className="text-xs text-muted-foreground">Responses to confirm</span>
+                    <span className="block text-[17px] font-extrabold text-foreground">Pending</span>
+                    <span className="text-[13px] text-muted-foreground">Responses to confirm</span>
                   </span>
                   {pendingWorkRequestsCount > 0 ? (
                     <span className={badgeRow}>

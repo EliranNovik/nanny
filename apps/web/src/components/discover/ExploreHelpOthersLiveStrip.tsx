@@ -159,8 +159,8 @@ export function ExploreHelpOthersLiveStrip({
       mainLabel="Go live — be seen by others"
       onMainClick={handleGoLive}
       mainAccentClass={cn(
-        "text-emerald-700 focus-visible:ring-emerald-400/50",
-        "dark:text-emerald-300 dark:focus-visible:ring-emerald-200/40",
+        "text-emerald-700 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+        "dark:text-emerald-300 dark:focus-visible:ring-0",
       )}
       onMoreClick={onMoreClick}
       moreMenuTotal={moreMenuTotal}

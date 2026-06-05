@@ -30,6 +30,7 @@ import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
 import {
   useDiscoverLiveAvatars,
+  useTopOfflineHelpers,
   type DiscoverLiveAvatarEntry,
 } from "@/hooks/data/useDiscoverFeed";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
@@ -52,6 +53,7 @@ import {
 } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { sendKnockMessage } from "@/lib/knockMessage";
 import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
+import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -163,7 +165,7 @@ type WorkRowItem = {
   serviceDetails: Record<string, unknown> | null;
 };
 
-type HireStripItem = {
+export type HireStripItem = {
   key: string;
   categoryId: ServiceCategoryId;
   /** How many additional live categories beyond categoryId (shown as +N on badge). */
@@ -1873,9 +1875,14 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     setDetailWork(row);
     setDetailOpen(true);
   };
-  const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
+  const { data: liveAvatarsPayload, isLoading: isLoadingLive } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
   const [selectedFilterCategory, setSelectedFilterCategory] = useState<ServiceCategoryId | "all">("all");
+  const { data: offlineHelpers = [], isLoading: isLoadingOffline } = useTopOfflineHelpers(
+    user?.id,
+    selectedFilterCategory,
+    4,
+  );
   const { data: frData } = useFreelancerRequests(
     variant === "work" && user?.id ? user.id : undefined,
   );
@@ -1883,7 +1890,7 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     variant === "work" &&
     !!user?.id &&
     profile?.role !== "freelancer";
-  const { data: openHelpRows = [] } = useDiscoverOpenHelpRequests(
+  const { data: openHelpRows = [], isLoading: isLoadingOpenHelp } = useDiscoverOpenHelpRequests(
     fetchOpenHelpPool,
     user?.id,
   );
@@ -1969,18 +1976,32 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     const used = new Set<string>();
 
     if (selectedFilterCategory === "all") {
+      const allHelpers: { av: DiscoverLiveAvatarEntry; primary: ServiceCategoryId; catSet: Set<ServiceCategoryId> }[] = [];
+      const seenHelpers = new Set<string>();
+
       for (const cat of categoriesToProcess) {
         const cid = cat.id as ServiceCategoryId;
         const avs = categoryAvatars[cid] || [];
-        for (const av of avs.slice(0, 1)) {
+        for (const av of avs) {
           const hid = String(av.helper_user_id ?? "").trim();
-          if (!hid || used.has(hid)) continue;
-          used.add(hid);
+          if (!hid || seenHelpers.has(hid)) continue;
+          seenHelpers.add(hid);
           const catSet = catsByHelper.get(hid) ?? new Set([cid]);
           const primary = pickPrimaryLiveCategory(catSet, null);
-          out.push(toHireStripItem(av, primary, catSet));
-          if (out.length >= MAX) return out;
+          allHelpers.push({ av, primary, catSet });
         }
+      }
+
+      // Sort all helpers by rating (consistent with card listing)
+      allHelpers.sort((a, b) => {
+        const ra = a.av.average_rating != null && Number.isFinite(a.av.average_rating) ? a.av.average_rating : -1;
+        const rb = b.av.average_rating != null && Number.isFinite(b.av.average_rating) ? b.av.average_rating : -1;
+        if (rb !== ra) return rb - ra;
+        return (a.av.full_name || "").localeCompare(b.av.full_name || "");
+      });
+
+      for (const item of allHelpers.slice(0, MAX)) {
+        out.push(toHireStripItem(item.av, item.primary, item.catSet));
       }
       return out;
     }
@@ -2124,7 +2145,53 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     });
   }, [frData, profile?.role, openHelpRows, user?.id, fetchOpenHelpPool, selectedFilterCategory]);
 
-  const items = variant === "hire" ? hireItems : workListRows;
+  const fallbackHireItems = useMemo((): HireStripItem[] => {
+    if (variant !== "hire" || hireItems.length > 0) return [];
+    return offlineHelpers.map((h): HireStripItem => {
+      const helperId = String(h.id).trim();
+      const helperCats = Array.isArray(h.categories)
+        ? h.categories.filter((c: any) => c && isServiceCategoryId(c))
+        : [];
+      const primary = selectedFilterCategory !== "all" && isServiceCategoryId(selectedFilterCategory)
+        ? selectedFilterCategory
+        : (helperCats[0] as ServiceCategoryId || "other_help");
+
+      return {
+        key: `offline-${helperId}`,
+        categoryId: primary,
+        extraLiveCategoryCount: 0,
+        label: serviceCategoryLabel(primary),
+        photo: h.photo_url,
+        name: h.full_name || "?",
+        href: `/profile/${encodeURIComponent(helperId)}?category=${encodeURIComponent(primary)}`,
+        helperUserId: helperId,
+        average_rating: h.average_rating != null ? Number(h.average_rating) : null,
+        total_ratings: h.total_ratings != null ? Number(h.total_ratings) : null,
+        locationLine: h.city || "",
+        can_start_in_label: null,
+        responds_within_label: null,
+        distanceKm: (() => {
+          const vl = profile?.location_lat;
+          const vg = profile?.location_lng;
+          const hl = h.location_lat;
+          const hn = h.location_lng;
+          if (vl != null && vg != null && hl != null && hn != null) {
+            const a = Number(vl), b = Number(vg), c = Number(hl), d = Number(hn);
+            if ([a, b, c, d].every(Number.isFinite)) {
+              return haversineDistanceKm(a, b, c, d);
+            }
+          }
+          return null;
+        })(),
+        is_verified: h.is_verified ?? null,
+        categoryIcon: categoryIconNode(primary),
+      };
+    });
+  }, [variant, hireItems.length, offlineHelpers, selectedFilterCategory, profile]);
+
+  const items = variant === "hire"
+    ? (hireItems.length > 0 ? hireItems : fallbackHireItems)
+    : workListRows;
 
   function onBrowseTap() {
     if (variant === "hire") {
@@ -2178,10 +2245,64 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     </button>
   );
 
+  const isLoading = variant === "hire"
+    ? (isLoadingLive || (hireItems.length === 0 && isLoadingOffline))
+    : (fetchOpenHelpPool ? isLoadingOpenHelp : false);
+
+  if (isLoading) {
+    return (
+      <>
+        <div className="px-4 pb-2 md:hidden">
+          <DiscoverHomeModeSegmentedControl
+            mode={variant}
+            onModeChange={(m) => {
+              void writeDiscoverHomeIntent(m);
+            }}
+            variant="page"
+          />
+        </div>
+        {/* Category Icons Row Skeleton */}
+        <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 shrink-0 animate-pulse">
+              <div className="h-[4.25rem] w-[4.25rem] md:h-14 md:w-14 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-2 w-10 bg-zinc-200 dark:bg-zinc-800 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Profile Circles Loader */}
+        <div className="flex gap-2 pb-0.5 px-1 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex w-[6.25rem] shrink-0 flex-col items-center gap-2 py-1 animate-pulse md:w-[5.5rem]"
+            >
+              <div className="relative overflow-visible rounded-full p-[3px] bg-zinc-100 dark:bg-zinc-800">
+                <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
+                  <div className="h-[5.5rem] w-[5.5rem] md:h-[5.25rem] md:w-[5.25rem] rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                </div>
+              </div>
+              <div className="h-3 w-12 bg-zinc-200 dark:bg-zinc-800 rounded" />
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   if (items.length === 0) {
     if (variant === "hire") {
       return (
         <>
+          <div className="px-4 pb-2 md:hidden">
+            <DiscoverHomeModeSegmentedControl
+              mode={variant}
+              onModeChange={(m) => {
+                void writeDiscoverHomeIntent(m);
+              }}
+              variant="page"
+            />
+          </div>
           <div className="flex items-center justify-between py-2 px-1">
             <p className="text-[14px] font-medium text-muted-foreground flex-1 pr-4">
               No helpers showing as available right now — try{" "}
@@ -2194,26 +2315,8 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               </button>
               .
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                writeDiscoverHomeIntent("work");
-              }}
-              className={cn(
-                "flex w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 rounded-2xl py-1 transition-transform",
-                "outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                "active:scale-[0.97] md:w-[5.5rem]",
-              )}
-              aria-label="Switch to Help others"
-            >
-              <span className="flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-sm md:h-[5.25rem] md:w-[5.25rem] dark:bg-zinc-800 dark:ring-white/10">
-                <ChevronRight className="h-7 w-7 text-slate-600 dark:text-zinc-200" strokeWidth={2.5} aria-hidden />
-              </span>
-              <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-bold leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
-                Help others?
-              </span>
-            </button>
           </div>
+
           <DiscoverRealtimeStripDetailDialog
             open={detailOpen}
             onOpenChange={closeDetail}
@@ -2227,23 +2330,54 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
 
     return (
       <>
+        <div className="px-4 pb-2 md:hidden">
+          <DiscoverHomeModeSegmentedControl
+            mode={variant}
+            onModeChange={(m) => {
+              void writeDiscoverHomeIntent(m);
+            }}
+            variant="page"
+          />
+        </div>
         <div className="rounded-[1rem] border border-dashed border-border/50 bg-muted/25 px-4 py-5 dark:bg-zinc-900/40">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-1 flex-col items-center gap-2 text-center text-sm text-muted-foreground sm:items-start sm:text-left">
-              <p>
-                Nothing live right now — open{" "}
-                <Link
-                  to={explorePath}
-                  className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-4 hover:underline"
-                >
-                  <Compass
-                    className={cn(discoverIcon.sm, "inline shrink-0")}
-                    strokeWidth={DISCOVER_STROKE}
-                  />
-                  Explore
-                </Link>
-                .
-              </p>
+              {profile?.role === "freelancer" ? (
+                <p>
+                  Nothing live right now — change your{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/freelancer/profile/services")}
+                    className="font-semibold text-primary underline underline-offset-4 hover:text-primary/80 inline-flex items-center"
+                  >
+                    services
+                  </button>{" "}
+                  or{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/freelancer/profile/personal")}
+                    className="font-semibold text-primary underline underline-offset-4 hover:text-primary/80 inline-flex items-center"
+                  >
+                    area settings
+                  </button>{" "}
+                  to get more requests.
+                </p>
+              ) : (
+                <p>
+                  Nothing live right now — open{" "}
+                  <Link
+                    to={explorePath}
+                    className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-4 hover:underline"
+                  >
+                    <Compass
+                      className={cn(discoverIcon.sm, "inline shrink-0")}
+                      strokeWidth={DISCOVER_STROKE}
+                    />
+                    Explore
+                  </Link>
+                  .
+                </p>
+              )}
             </div>
             {BrowseRoundControl}
           </div>
@@ -2266,6 +2400,16 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
     return (
       <>
       <div className="space-y-4">
+        {/* Switch buttons of get help now and help others now on mobile */}
+        <div className="px-4 pt-1 md:hidden">
+          <DiscoverHomeModeSegmentedControl
+            mode={variant}
+            onModeChange={(m) => {
+              void writeDiscoverHomeIntent(m);
+            }}
+            variant="page"
+          />
+        </div>
         {/* Category Icons Row - Work Mode */}
         <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
           <button
@@ -2368,25 +2512,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               </span>
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => {
-              writeDiscoverHomeIntent("hire");
-            }}
-            className={cn(
-              "flex w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 rounded-2xl py-1 transition-transform",
-              "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              "active:scale-[0.97] md:w-[5.5rem]",
-            )}
-            aria-label="Switch to Get help now"
-          >
-            <span className="flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-sm md:h-[5.25rem] md:w-[5.25rem] dark:bg-zinc-800 dark:ring-white/10">
-              <ChevronRight className="h-7 w-7 text-slate-600 dark:text-zinc-200" strokeWidth={2.5} aria-hidden />
-            </span>
-            <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-bold leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
-              Need help?
-            </span>
-          </button>
         </div>
       </div>
       <DiscoverRealtimeStripDetailDialog
@@ -2405,6 +2530,16 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   return (
     <>
     <div className="space-y-4">
+      {/* Switch buttons of get help now and help others now on mobile */}
+      <div className="px-4 pt-1 md:hidden">
+        <DiscoverHomeModeSegmentedControl
+          mode={variant}
+          onModeChange={(m) => {
+            void writeDiscoverHomeIntent(m);
+          }}
+          variant="page"
+        />
+      </div>
       {/* Category Icons Row - Hire Mode */}
       <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
         <button
@@ -2503,25 +2638,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             </span>
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => {
-            writeDiscoverHomeIntent("work");
-          }}
-          className={cn(
-            "flex w-[6.25rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 rounded-2xl py-1 transition-transform",
-            "outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            "active:scale-[0.97] md:w-[5.5rem]",
-          )}
-          aria-label="Switch to Help others"
-        >
-          <span className="flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-sm md:h-[5.25rem] md:w-[5.25rem] dark:bg-zinc-800 dark:ring-white/10">
-            <ChevronRight className="h-7 w-7 text-slate-600 dark:text-zinc-200" strokeWidth={2.5} aria-hidden />
-          </span>
-          <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-bold leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
-            Help others?
-          </span>
-        </button>
       </div>
     </div>
     <DiscoverRealtimeStripDetailDialog

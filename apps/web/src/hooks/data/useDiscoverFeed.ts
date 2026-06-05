@@ -148,6 +148,7 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
         bio?: string | null;
         live_categories?: string[] | null;
         live_can_start_in?: string | null;
+        live_until?: string | null;
         profiles?:
           | {
               id: string;
@@ -177,7 +178,10 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
         const prof = Array.isArray(profRaw) ? profRaw[0] : profRaw;
         const authorId = String(prof?.id ?? row.user_id ?? "").trim();
         if (!authorId) continue;
-        if (excludeUserId && authorId === excludeUserId) continue;
+
+        if (excludeUserId && authorId === excludeUserId) {
+          continue;
+        }
 
         const authorCity = prof?.city ?? null;
         const location_line = formatAvailabilityLocationLine(
@@ -225,7 +229,9 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
           if (!seen.has(c)) seen.set(c, new Set());
           const set = seen.get(c)!;
           if (set.has(authorId)) continue;
-          if (next[c].length >= 3) continue;
+          if (next[c].length >= 3) {
+            continue;
+          }
           set.add(authorId);
           next[c].push({
             helper_user_id: authorId,
@@ -256,6 +262,12 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
       );
       for (const id of allTileIds) {
         if (!next[id]) next[id] = [];
+        next[id].sort((a, b) => {
+          const ra = a.average_rating != null && Number.isFinite(a.average_rating) ? a.average_rating : -1;
+          const rb = b.average_rating != null && Number.isFinite(b.average_rating) ? b.average_rating : -1;
+          if (rb !== ra) return rb - ra;
+          return (a.full_name || "").localeCompare(b.full_name || "");
+        });
       }
 
       helpersForCards.sort((a, b) => {
@@ -273,3 +285,116 @@ export function useDiscoverLiveAvatars(excludeUserId?: string | null) {
     },
   });
 }
+
+export function useTopOfflineHelpers(
+  excludeUserId?: string | null,
+  categoryId?: string | null,
+  limit = 4,
+) {
+  return useQuery({
+    queryKey: ["topOfflineHelpers", excludeUserId, categoryId, limit],
+    queryFn: async () => {
+      // 1. Fetch completed/active/locked job requests to rank freelancers by count of live jobs
+      let jobsQuery = supabase
+        .from("job_requests")
+        .select("selected_freelancer_id, service_type")
+        .not("selected_freelancer_id", "is", null)
+        .in("status", ["completed", "active", "locked"]);
+
+      if (categoryId && categoryId !== "all" && categoryId !== ALL_HELP_CATEGORY_ID) {
+        jobsQuery = jobsQuery.eq("service_type", categoryId);
+      }
+
+      const { data: jobsData, error: jobsError } = await jobsQuery;
+      if (jobsError) throw jobsError;
+
+      // Count jobs per helper
+      const counts: Record<string, number> = {};
+      for (const row of jobsData || []) {
+        const fid = row.selected_freelancer_id;
+        if (fid) {
+          counts[fid] = (counts[fid] || 0) + 1;
+        }
+      }
+
+      // Sort by count descending
+      let sortedIds = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+
+      if (excludeUserId) {
+        sortedIds = sortedIds.filter((id) => id !== excludeUserId);
+      }
+
+      let sortedProfiles: any[] = [];
+      if (sortedIds.length > 0) {
+        const { data: profsData, error: profsError } = await supabase
+          .from("profiles")
+          .select(`
+            id,
+            full_name,
+            photo_url,
+            city,
+            location_lat,
+            location_lng,
+            average_rating,
+            total_ratings,
+            is_verified,
+            categories
+          `)
+          .in("id", sortedIds.slice(0, 50))
+          .eq("role", "freelancer");
+
+        if (profsError) throw profsError;
+
+        const profileMap = new Map((profsData || []).map((p) => [p.id, p]));
+        sortedProfiles = sortedIds
+          .map((id) => profileMap.get(id))
+          .filter((p): p is any => !!p);
+      }
+
+      // 2. If we have fewer than limit (e.g. 4) profiles, fill the rest with other top rated freelancers
+      if (sortedProfiles.length < limit) {
+        const existingIds = new Set(sortedProfiles.map((p) => p.id));
+        if (excludeUserId) existingIds.add(excludeUserId);
+
+        let fallbackQuery = supabase
+          .from("profiles")
+          .select(`
+            id,
+            full_name,
+            photo_url,
+            city,
+            location_lat,
+            location_lng,
+            average_rating,
+            total_ratings,
+            is_verified,
+            categories
+          `)
+          .eq("role", "freelancer");
+
+        if (categoryId && categoryId !== "all" && categoryId !== ALL_HELP_CATEGORY_ID) {
+          fallbackQuery = fallbackQuery.contains("categories", [categoryId]);
+        }
+
+        const { data: fallbackData } = await fallbackQuery
+          .order("total_ratings", { ascending: false })
+          .order("average_rating", { ascending: false })
+          .limit(limit * 2);
+
+        if (fallbackData) {
+          for (const p of fallbackData) {
+            if (!existingIds.has(p.id)) {
+              sortedProfiles.push(p);
+              existingIds.add(p.id);
+              if (sortedProfiles.length >= limit) break;
+            }
+          }
+        }
+      }
+
+      return sortedProfiles.slice(0, limit);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
