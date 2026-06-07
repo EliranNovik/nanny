@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 import { cn } from "@/lib/utils";
+import { openCommunityContact } from "@/lib/communityContact";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import type { HelperResult } from "@/pages/client/HelpersPage";
@@ -254,77 +255,17 @@ export function HelperResultProfileCard({
         });
         return;
       }
-      const myRole = currentProfile.role;
-      const theirRole = h.role;
-      if (myRole !== "client" && myRole !== "freelancer") {
-        addToast({
-          title: "Messaging unavailable",
-          description: "Your account cannot start a chat from here.",
-          variant: "error",
-        });
-        return;
-      }
-      if (theirRole !== "client" && theirRole !== "freelancer") {
-        addToast({
-          title: "Messaging unavailable",
-          description: "You can only message clients or helpers.",
-          variant: "error",
-        });
-        return;
-      }
-      if (myRole === theirRole) {
-        addToast({
-          title: "Messaging unavailable",
-          description:
-            "You can only message someone in the opposite role (client ↔ helper).",
-          variant: "default",
-        });
-        return;
-      }
-
-      const clientId = myRole === "client" ? currentUser.id : h.id;
-      const freelancerId = myRole === "freelancer" ? currentUser.id : h.id;
 
       setChatOpening(true);
       try {
-        const { data: existing, error: findErr } = await supabase
-          .from("conversations")
-          .select("id")
-          .eq("client_id", clientId)
-          .eq("freelancer_id", freelancerId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (findErr) throw findErr;
-
-        if (existing?.id) {
-          navigate(`/messages?conversation=${existing.id}`);
-          return;
-        }
-
-        const { data: created, error: insErr } = await supabase
-          .from("conversations")
-          .insert({
-            job_id: null,
-            client_id: clientId,
-            freelancer_id: freelancerId,
-          })
-          .select("id")
-          .single();
-
-        if (insErr) throw insErr;
-        navigate(`/messages?conversation=${created.id}`);
-      } catch (err: unknown) {
-        console.error(err);
-        const msg =
-          err && typeof err === "object" && "message" in err
-            ? String((err as { message: string }).message)
-            : "Please try again.";
-        addToast({
-          title: "Could not open chat",
-          description: msg,
-          variant: "error",
+        await openCommunityContact({
+          supabase,
+          user: currentUser,
+          myRole: currentProfile.role,
+          targetUserId: h.id,
+          targetRole: h.role,
+          navigate,
+          addToast,
         });
       } finally {
         setChatOpening(false);

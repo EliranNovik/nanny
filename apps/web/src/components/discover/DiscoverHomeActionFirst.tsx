@@ -24,7 +24,10 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { trackEvent } from "@/lib/analytics";
-import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
+import {
+  freelancerLiveCountdownTarget,
+  isFreelancerInActive24hLiveWindow,
+} from "@/lib/freelancerLiveWindow";
 import { supabase } from "@/lib/supabase";
 import {
   navigateToHelpersBrowse,
@@ -33,6 +36,7 @@ import {
 import { DiscoverHirePostRequestStrip } from "@/components/discover/DiscoverHirePostRequestStrip";
 import { ExploreHelpOthersLiveStrip } from "@/components/discover/ExploreHelpOthersLiveStrip";
 import { DiscoverHomeRealtimeStrip } from "@/components/discover/DiscoverHomeRealtimeStrip";
+import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
 import {
   DISCOVER_STROKE,
   discoverIcon,
@@ -109,6 +113,8 @@ export function DiscoverHomeActionFirst({
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
   const { data: frData } = useFreelancerRequests(user?.id);
   const [myRequestsOpen, setMyRequestsOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] =
+    useState<DiscoverHomeCategoryFilter>("all");
 
   const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
   const [quickMoreOpen, setQuickMoreOpen] = useState(false);
@@ -559,7 +565,7 @@ export function DiscoverHomeActionFirst({
   function renderDesktopWorkLiveBadge() {
     if (isHire) return null;
     if (!isInActive24hGoLiveWindow) return null;
-    const liveUntil = freelancerLiveMeta.live_until;
+    const liveUntil = freelancerLiveCountdownTarget(freelancerLiveMeta);
     return (
       <div className="pointer-events-none absolute right-6 top-6 z-[21] hidden md:block">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/45 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md">
@@ -714,14 +720,19 @@ export function DiscoverHomeActionFirst({
       )}
       <div className="flex flex-1 md:hidden flex-col gap-0 pb-[5rem]">
         <div className="shrink-0 pt-0 px-0">
-          <DiscoverHomeRealtimeStrip variant={homeMode} explorePath={explorePath} />
+          <DiscoverHomeRealtimeStrip
+            variant={homeMode}
+            explorePath={explorePath}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+          />
         </div>
 
         <div className="shrink-0 mt-3 flex flex-col px-0 pb-6">
           {isHire ? (
             <div className="flex flex-col">
               <div className="w-full px-4 pt-2 pb-2">
-                <DiscoverHomeMyOpenRequests />
+                <DiscoverHomeMyOpenRequests explorePath={explorePath} />
               </div>
               <div className="w-full px-4 pt-4 pb-2">
                 <DiscoverHomeSavedProfiles />
@@ -742,6 +753,7 @@ export function DiscoverHomeActionFirst({
 
         <DiscoverHomePostedHelpRequests
           enabled={!isHire}
+          categoryFilter={categoryFilter}
           className="w-full px-4 pt-2 pb-2"
         />
 
@@ -901,13 +913,26 @@ export function DiscoverHomeActionFirst({
 
         <div className="min-h-0 overflow-hidden pt-2 flex flex-col gap-2">
           <div className={cn(!isHire && "hidden")}>
-            <DiscoverHomeRealtimeStrip variant="hire" explorePath={explorePath} />
+            <DiscoverHomeRealtimeStrip
+              variant="hire"
+              explorePath={explorePath}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
+            />
           </div>
           <div className={cn(isHire && "hidden")}>
-            <DiscoverHomeRealtimeStrip variant="work" explorePath={explorePath} />
+            <DiscoverHomeRealtimeStrip
+              variant="work"
+              explorePath={explorePath}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
+            />
           </div>
 
-          <DiscoverHomeMyOpenRequests className={cn("min-w-0 px-0.5 pt-1", !isHire && "hidden")} />
+          <DiscoverHomeMyOpenRequests
+            className={cn("min-w-0 px-0.5 pt-1", !isHire && "hidden")}
+            explorePath={explorePath}
+          />
           <DiscoverHomeSavedProfiles className={cn("min-w-0 px-0.5 pt-3", !isHire && "hidden")} />
           <DiscoverHomeMyLiveHelpJobs
             mode="hire"
@@ -917,7 +942,11 @@ export function DiscoverHomeActionFirst({
           />
         </div>
 
-        <DiscoverHomePostedHelpRequests enabled className={cn("px-1 pt-2 pb-1", isHire && "hidden")} />
+        <DiscoverHomePostedHelpRequests
+          enabled
+          categoryFilter={categoryFilter}
+          className={cn("px-1 pt-2 pb-1", isHire && "hidden")}
+        />
         <DiscoverHomeFavoriteRequests className={cn("px-1 pt-4 pb-1", isHire && "hidden")} />
         <DiscoverHomeMyLiveHelpJobs
           mode="work"

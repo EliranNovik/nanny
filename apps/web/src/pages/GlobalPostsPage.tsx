@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
 import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
+import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { useSearchParams } from "react-router-dom";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { parseJobRequestShareId } from "@/lib/jobRequestShare";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
 import { GuestCommunityFeedAside } from "@/components/GuestCommunityFeedAside";
 import type { User } from "@supabase/supabase-js";
@@ -24,57 +25,88 @@ import {
 import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import { TEBNU_JOIN_COMMUNITY_BUTTON_CLASS } from "@/lib/tebnuBrandButton";
 import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
+import {
+  CommunityFeedHeader,
+  type CommunityFeedPostTypeFilter,
+} from "@/components/community/CommunityFeedHeader";
+import {
+  DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
+  type CommunityFeedAdvancedFilters,
+} from "@/lib/communityFeedFilters";
+import { parseCommunityFeedTypeFilter } from "@/lib/communityFeedNav";
 
 type FeedMainContentProps = {
   user: User | null;
   profile: { full_name?: string | null; photo_url?: string | null } | null;
   focusPostId: string | null;
+  focusRequestId: string | null;
   openCompose: () => void;
   expandDiscoverLayout?: boolean;
+  postTypeFilter: CommunityFeedPostTypeFilter;
+  onPostTypeFilterChange: (filter: CommunityFeedPostTypeFilter) => void;
+  commentedFilterActive: boolean;
+  onCommentedFilterChange: (active: boolean) => void;
+  acceptedFilterActive: boolean;
+  onAcceptedFilterChange: (active: boolean) => void;
+  advancedFilters: CommunityFeedAdvancedFilters;
+  onAdvancedFiltersChange: (filters: CommunityFeedAdvancedFilters) => void;
+  favoriteAuthorFilterId: string | null;
+  onFavoriteAuthorFilterChange: (authorId: string | null) => void;
 };
 
 function FeedMainContent({
   user,
-  profile,
   focusPostId,
+  focusRequestId,
   openCompose,
   expandDiscoverLayout = false,
+  postTypeFilter,
+  onPostTypeFilterChange,
+  commentedFilterActive,
+  onCommentedFilterChange,
+  acceptedFilterActive,
+  onAcceptedFilterChange,
+  advancedFilters,
+  onAdvancedFiltersChange,
+  favoriteAuthorFilterId,
+  onFavoriteAuthorFilterChange,
+  profile,
 }: FeedMainContentProps) {
   return (
     <div
       className={cn(
-        !focusPostId && "animate-in fade-in slide-in-from-bottom-4 duration-1000",
+        !focusPostId && !focusRequestId && "animate-in fade-in slide-in-from-bottom-4 duration-1000",
       )}
     >
-      <div
-        className={cn(
-          "mb-4 mt-3 md:mb-6 md:mt-4",
-          !expandDiscoverLayout && "px-4 md:px-0",
-        )}
-      >
-        <button
-          type="button"
-          onClick={openCompose}
-          className="flex w-full md:w-1/2 items-center gap-3 rounded-2xl bg-white p-3 text-left shadow-sm transition-all hover:bg-zinc-50 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/80"
-        >
-          <Avatar className="h-10 w-10 border border-black/5 dark:border-white/5">
-            <AvatarImage src={profile?.photo_url || undefined} className="object-cover" />
-            <AvatarFallback className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-              {(profile?.full_name?.charAt(0) || user?.email?.charAt(0) || "U").toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex h-10 flex-1 items-center rounded-full bg-zinc-100 px-4 transition-colors dark:bg-zinc-800/80">
-            <span className="text-[14px] text-zinc-500 dark:text-zinc-400">
-              Post a new story
-            </span>
-          </div>
-        </button>
-      </div>
+      <CommunityFeedHeader
+        activeFilter={postTypeFilter}
+        onFilterChange={onPostTypeFilterChange}
+        onAddStory={openCompose}
+        viewer={profile}
+        viewerUserId={user?.id ?? null}
+        commentedFilterActive={commentedFilterActive}
+        onCommentedFilterChange={onCommentedFilterChange}
+        acceptedFilterActive={acceptedFilterActive}
+        onAcceptedFilterChange={onAcceptedFilterChange}
+        advancedFilters={advancedFilters}
+        onAdvancedFiltersChange={onAdvancedFiltersChange}
+        selectedAuthorFilterId={favoriteAuthorFilterId}
+        onAuthorFilterChange={onFavoriteAuthorFilterChange}
+        className="mb-4 mt-3 md:mb-5 md:mt-4 px-2 md:px-0"
+      />
 
       <ProfilePostsFeed
         appearance="discover"
         focusPostId={focusPostId}
+        focusRequestId={focusRequestId}
         expandDiscoverLayout={expandDiscoverLayout}
+        filterPostTypeId={postTypeFilter === "all" ? null : postTypeFilter}
+        filterCommentedOwnPosts={commentedFilterActive}
+        filterAcceptedRequests={acceptedFilterActive}
+        filterAuthorId={favoriteAuthorFilterId ?? undefined}
+        feedAdvancedFilters={advancedFilters}
+        excludeOwnJobRequests={false}
+        plainCards
       />
     </div>
   );
@@ -82,17 +114,71 @@ function FeedMainContent({
 
 export default function GlobalPostsPage() {
   const { user, profile } = useAuth();
+  useMobileShellScrollCollapse(!!user);
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [composeOpen, setComposeOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [postTypeFilter, setPostTypeFilter] = useState<CommunityFeedPostTypeFilter>(
+    () => parseCommunityFeedTypeFilter(searchParams.get("type")) ?? "all",
+  );
+  const [commentedFilterActive, setCommentedFilterActive] = useState(false);
+  const [acceptedFilterActive, setAcceptedFilterActive] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<CommunityFeedAdvancedFilters>(
+    DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
+  );
+  const [favoriteAuthorFilterId, setFavoriteAuthorFilterId] = useState<string | null>(null);
 
   const rawPostParam = searchParams.get("post");
+  const rawRequestParam = searchParams.get("request");
   const focusPostId = parseProfilePostShareId(rawPostParam);
+  const focusRequestId = parseJobRequestShareId(rawRequestParam);
+  const typeParam = searchParams.get("type");
+
+  useEffect(() => {
+    setPostTypeFilter(parseCommunityFeedTypeFilter(typeParam) ?? "all");
+  }, [typeParam]);
+
+  const handlePostTypeFilterChange = useCallback(
+    (filter: CommunityFeedPostTypeFilter) => {
+      setPostTypeFilter(filter);
+      setAcceptedFilterActive(false);
+      const next = new URLSearchParams(searchParams);
+      if (filter === "all") {
+        next.delete("type");
+      } else {
+        next.set("type", filter);
+      }
+      if (filter !== "request_help" && filter !== "all") {
+        next.delete("request");
+      }
+      if (filter === "request_help") {
+        next.delete("post");
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  /** Drop request deep links when a non-request type tab is active. */
+  useEffect(() => {
+    const type = parseCommunityFeedTypeFilter(typeParam);
+    if (!rawRequestParam) return;
+    if (!type || type === "all" || type === "request_help") return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("request");
+    setSearchParams(next, { replace: true });
+  }, [typeParam, rawRequestParam, searchParams, setSearchParams]);
 
   /** Fix corrupted links where messengers glued caption text onto the UUID. */
   useEffect(() => {
+    if (rawRequestParam && focusRequestId && rawRequestParam.trim() !== focusRequestId) {
+      const next = new URLSearchParams(searchParams);
+      next.set("request", focusRequestId);
+      setSearchParams(next, { replace: true });
+      return;
+    }
     if (!rawPostParam || !focusPostId) return;
     if (rawPostParam.trim() === focusPostId) return;
     debugProfilePostDeepLink("GlobalPostsPage: sanitize post query param", {
@@ -141,6 +227,7 @@ export default function GlobalPostsPage() {
       variant="fullBleed"
       className="bg-white dark:bg-background"
       frameName="community-feed"
+      data-community-feed-page={user ? "" : undefined}
       data-community-feed-guest={!user ? "" : undefined}
     >
       {!user ? (
@@ -156,13 +243,24 @@ export default function GlobalPostsPage() {
       ) : null}
 
       {user ? (
-        <div className="app-desktop-shell px-0 pb-6 pt-2 md:px-4 md:py-8">
-          <div className="mx-auto w-full max-w-3xl md:mx-0 md:max-w-none">
+        <div className="app-desktop-shell flex min-h-0 flex-1 flex-col max-md:!px-0 max-md:transition-none pb-6 pt-2 md:px-4 md:py-8">
+          <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-visible px-0 md:mx-0 md:max-w-none">
             <FeedMainContent
               user={user}
               profile={profile}
               focusPostId={focusPostId}
+              focusRequestId={focusRequestId}
               openCompose={openCompose}
+              postTypeFilter={postTypeFilter}
+              onPostTypeFilterChange={handlePostTypeFilterChange}
+              commentedFilterActive={commentedFilterActive}
+              onCommentedFilterChange={setCommentedFilterActive}
+              acceptedFilterActive={acceptedFilterActive}
+              onAcceptedFilterChange={setAcceptedFilterActive}
+              advancedFilters={advancedFilters}
+              onAdvancedFiltersChange={setAdvancedFilters}
+              favoriteAuthorFilterId={favoriteAuthorFilterId}
+              onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
             />
           </div>
         </div>
@@ -174,8 +272,19 @@ export default function GlobalPostsPage() {
               user={user}
               profile={profile}
               focusPostId={focusPostId}
+              focusRequestId={focusRequestId}
               openCompose={openCompose}
               expandDiscoverLayout
+              postTypeFilter={postTypeFilter}
+              onPostTypeFilterChange={handlePostTypeFilterChange}
+              commentedFilterActive={commentedFilterActive}
+              onCommentedFilterChange={setCommentedFilterActive}
+              acceptedFilterActive={acceptedFilterActive}
+              onAcceptedFilterChange={setAcceptedFilterActive}
+              advancedFilters={advancedFilters}
+              onAdvancedFiltersChange={setAdvancedFilters}
+              favoriteAuthorFilterId={favoriteAuthorFilterId}
+              onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
             />
           </div>
         </div>

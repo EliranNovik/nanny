@@ -378,7 +378,7 @@ export function DesktopSidePanel() {
                       <span>Go live</span>
                       {isLiveNow && freelancerLiveUntil ? (
                         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold tabular-nums">
-                          <LiveTimer createdAt={freelancerLiveUntil} />
+                          <LiveTimer countdownTo={freelancerLiveUntil} />
                         </span>
                       ) : null}
                     </span>

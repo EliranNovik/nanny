@@ -309,8 +309,17 @@
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header]),
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-post-availability-no-mobile-header]),
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-cards-view]),
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-cards-view]),
-    .app-content-below-fixed-header:has([data-page-frame="community-feed"]) {
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-cards-view]) {
+      padding-top: 0;
+    }
+
+    /* Signed-in global community feed: same fixed top inset as Discover home */
+    .app-content-below-fixed-header:has([data-community-feed-page]) {
+      padding-top: calc(0.5rem + 2.25rem + 0.5rem);
+    }
+
+    /* Guest global feed: in-flow landing header — no reserved top bar */
+    .app-content-below-fixed-header:has([data-community-feed-guest]) {
       padding-top: 0;
     }
 
@@ -490,9 +499,18 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
-/* Create Job step 3 — Google Places city suggestions (class toggled from CreateJobCityAutocomplete) */
-body.create-job-city-pac .pac-container {
+/* Custom location picker menu + legacy Google pac (Radix dialog sets body pointer-events: none). */
+[data-location-picker-menu] {
+  pointer-events: auto !important;
+}
+
+.pac-container {
+  pointer-events: auto !important;
   z-index: 10050 !important;
+}
+
+body.create-job-city-pac .pac-container,
+body.location-picker-pac .pac-container {
   font-family: inherit !important;
   margin-top: 6px !important;
   padding: 8px !important;
@@ -507,17 +525,20 @@ body.create-job-city-pac .pac-container {
   backdrop-filter: blur(12px);
 }
 
-.dark body.create-job-city-pac .pac-container {
+.dark body.create-job-city-pac .pac-container,
+.dark body.location-picker-pac .pac-container {
   box-shadow:
     0 22px 45px -14px rgb(0 0 0 / 0.55),
     0 0 0 1px hsl(var(--primary) / 0.25) !important;
 }
 
-body.create-job-city-pac .pac-item {
+body.create-job-city-pac .pac-item,
+body.location-picker-pac .pac-item {
   margin: 3px 0 !important;
   padding: 12px 14px !important;
   line-height: 1.35 !important;
   cursor: pointer !important;
+  pointer-events: auto !important;
   border: none !important;
   border-radius: 0.65rem !important;
   font-size: 0.9375rem !important;
@@ -525,25 +546,31 @@ body.create-job-city-pac .pac-item {
 }
 
 body.create-job-city-pac .pac-item:hover,
-body.create-job-city-pac .pac-item-selected {
+body.create-job-city-pac .pac-item-selected,
+body.location-picker-pac .pac-item:hover,
+body.location-picker-pac .pac-item-selected {
   background: hsl(var(--primary) / 0.12) !important;
 }
 
-body.create-job-city-pac .pac-item-query {
+body.create-job-city-pac .pac-item-query,
+body.location-picker-pac .pac-item-query {
   font-size: inherit !important;
   color: hsl(var(--foreground)) !important;
 }
 
-body.create-job-city-pac .pac-matched {
+body.create-job-city-pac .pac-matched,
+body.location-picker-pac .pac-matched {
   font-weight: 700 !important;
   color: hsl(var(--primary)) !important;
 }
 
-body.create-job-city-pac .pac-icon {
+body.create-job-city-pac .pac-icon,
+body.location-picker-pac .pac-icon {
   margin-right: 10px !important;
 }
 
-body.create-job-city-pac .pac-logo {
+body.create-job-city-pac .pac-logo,
+body.location-picker-pac .pac-logo {
   margin: 10px 8px 6px !important;
   padding-top: 6px !important;
   opacity: 0.75;

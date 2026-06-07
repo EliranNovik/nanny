@@ -36,6 +36,12 @@ export type DiscoverOpenHelpRequestRow = {
   service_details?: Record<string, unknown> | null;
   /** From job_requests enrichment */
   notes?: string | null;
+  when_timeframe?: string | null;
+  custom_when_at?: string | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+  budget_rate_type?: string | null;
+  ai_generated_copy?: unknown;
 };
 
 /**
@@ -80,6 +86,48 @@ export function useDiscoverOpenHelpRequests(
         rows = rows.filter(
           (r) => !r.client_id || r.client_id !== excludeUserId,
         );
+      }
+
+      const missingClientIds = [
+        ...new Set(
+          rows
+            .filter(
+              (r) =>
+                r.client_id &&
+                (!r.client_photo_url?.trim() || !r.client_display_name?.trim()),
+            )
+            .map((r) => r.client_id as string),
+        ),
+      ];
+
+      if (missingClientIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name, photo_url")
+          .in("id", missingClientIds);
+        const profMap = new Map(
+          (profs ?? []).map((p) => [
+            p.id as string,
+            {
+              full_name: (p.full_name as string | null) ?? null,
+              photo_url: (p.photo_url as string | null) ?? null,
+            },
+          ]),
+        );
+        rows = rows.map((r) => {
+          if (!r.client_id) return r;
+          const p = profMap.get(r.client_id);
+          if (!p) return r;
+          return {
+            ...r,
+            client_display_name: r.client_display_name?.trim()
+              ? r.client_display_name
+              : p.full_name,
+            client_photo_url: r.client_photo_url?.trim()
+              ? r.client_photo_url
+              : p.photo_url,
+          };
+        });
       }
 
       return rows;

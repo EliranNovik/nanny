@@ -40,6 +40,8 @@ import {
   CheckCircle2,
   Clock,
   Zap,
+  CalendarDays,
+  Banknote,
 } from "lucide-react";
 import {
   Dialog,
@@ -50,6 +52,11 @@ import {
 import { isVideoMediaUrl } from "@/components/ImageLightboxModal";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
+import {
+  isRequestHelpWhenUrgent,
+  requestHelpWhenLabel,
+} from "@/lib/requestHelpWhen";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
@@ -174,6 +181,60 @@ function firstJobImage(
     (u): u is string => typeof u === "string" && u.trim().length > 0,
   );
   return found ?? null;
+}
+
+function formatJobBudgetLabel(job: {
+  budget_min?: number | null;
+  budget_max?: number | null;
+  budget_rate_type?: string | null;
+}): string | null {
+  const min = job.budget_min;
+  const max = job.budget_max;
+  if (min == null && max == null) return null;
+
+  const amount = min ?? max;
+  if (amount == null) return null;
+
+  if (max != null && min != null && max !== min) {
+    return `₪${min}–${max}`;
+  }
+
+  if (job.budget_rate_type === "fixed") {
+    return `₪${amount} fixed`;
+  }
+
+  return `₪${amount}/hr`;
+}
+
+function formatJobWhenLabel(job: {
+  when_timeframe?: string | null;
+  custom_when_at?: string | null;
+}): string | null {
+  if (!job.when_timeframe) return null;
+
+  if (job.when_timeframe === "custom" && job.custom_when_at) {
+    const parsed = new Date(job.custom_when_at);
+    if (!Number.isNaN(parsed.getTime())) {
+      return format(parsed, "EEEE, MMMM d 'at' h:mm a");
+    }
+  }
+
+  return requestHelpWhenLabel({ timeframe: job.when_timeframe });
+}
+
+function jobRequestNotes(job: {
+  notes?: string | null;
+  service_details?: {
+    description?: string | null;
+    custom?: string | null;
+  } | null;
+}): string | null {
+  const fromColumn = job.notes?.trim();
+  if (fromColumn) return fromColumn;
+  const fromDetails =
+    job.service_details?.description?.trim() ||
+    job.service_details?.custom?.trim();
+  return fromDetails || null;
 }
 
 function clientRequestPin(job: Record<string, unknown> | null | undefined): {
@@ -337,6 +398,11 @@ function ConfirmedRequestSummaryBody({
   hideComments?: boolean;
   imageClassName?: string;
 }) {
+  const budgetLabel = formatJobBudgetLabel(job);
+  const whenLabel = formatJobWhenLabel(job);
+  const notesText = jobRequestNotes(job);
+  const whenUrgent = isRequestHelpWhenUrgent(job.when_timeframe);
+
   return (
     <div className="grid gap-3">
       <div className="flex items-start gap-3">
@@ -381,24 +447,38 @@ function ConfirmedRequestSummaryBody({
                 </span>
               </div>
             ) : null}
+            {whenLabel ? (
+              <div
+                className={cn(
+                  "flex items-center gap-1.5",
+                  whenUrgent && "font-semibold text-red-600 dark:text-red-400",
+                )}
+              >
+                {whenUrgent ? (
+                  <Zap className="h-4 w-4" />
+                ) : (
+                  <CalendarDays className="h-4 w-4" />
+                )}
+                <span>{whenLabel}</span>
+              </div>
+            ) : null}
+            {budgetLabel ? (
+              <div className="flex items-center gap-1.5">
+                <Banknote className="h-4 w-4" />
+                <span>{budgetLabel}</span>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
-      {job.service_details?.description || job.service_details?.custom ? (
+      {notesText ? (
         <div className="rounded-2xl border border-border/50 bg-background/80 px-3.5 py-3 dark:bg-background/40">
           <div className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
             Notes
           </div>
-          {job.service_details?.description ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-              {job.service_details.description}
-            </p>
-          ) : null}
-          {job.service_details?.custom ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-              {job.service_details.custom}
-            </p>
-          ) : null}
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            {notesText}
+          </p>
         </div>
       ) : null}
 
@@ -421,6 +501,10 @@ function ConfirmedPageMoreSpecifics({
   job: any;
   onOpenFullscreenMap: () => void;
 }) {
+  const budgetLabel = formatJobBudgetLabel(job);
+  const whenLabel = formatJobWhenLabel(job);
+  const notesText = jobRequestNotes(job);
+
   return (
     <section className="py-6">
       <h3 className="text-sm font-black uppercase tracking-wide text-muted-foreground">
@@ -428,6 +512,18 @@ function ConfirmedPageMoreSpecifics({
       </h3>
       <div className="mt-3 space-y-4">
         <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+          {whenLabel ? (
+            <div className="col-span-2 flex items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 shrink-0" />
+              <span>{whenLabel}</span>
+            </div>
+          ) : null}
+          {budgetLabel ? (
+            <div className="col-span-2 flex items-center gap-1.5">
+              <Banknote className="h-4 w-4 shrink-0" />
+              <span>{budgetLabel}</span>
+            </div>
+          ) : null}
           {job.care_frequency && (
             <div className="capitalize">{job.care_frequency.replace("_", " ")}</div>
           )}
@@ -466,6 +562,11 @@ function ConfirmedPageMoreSpecifics({
               <div>{job.service_details.mobility_level.replace(/_/g, " ")}</div>
             )}
         </div>
+        {notesText ? (
+          <div className="rounded-2xl border border-border/50 bg-background/80 px-3.5 py-3 text-sm leading-relaxed text-foreground dark:bg-background/40">
+            {notesText}
+          </div>
+        ) : null}
         {job.service_type === "pickup_delivery" &&
           job.service_details?.from_address &&
           job.service_details?.to_address && (
@@ -1910,23 +2011,25 @@ export default function ConfirmedListPage() {
       const updatedDetails = {
         ...(job?.service_details || {}),
         description: editNotes,
-        custom: editNotes
+        custom: editNotes,
       };
-      
+
       const { error } = await supabase
         .from("job_requests")
         .update({
           time_duration: editDuration,
-          service_details: updatedDetails
+          notes: editNotes.trim() || null,
+          service_details: updatedDetails,
         })
         .eq("id", jobId);
 
       if (error) throw error;
-      
+
       setJob((prev: any) => ({
         ...prev,
         time_duration: editDuration,
-        service_details: updatedDetails
+        notes: editNotes.trim() || null,
+        service_details: updatedDetails,
       }));
       setIsEditOpen(false);
       addToast({ title: "Success", description: "Job details updated successfully!" });
@@ -2059,7 +2162,10 @@ export default function ConfirmedListPage() {
 
       const { error } = await supabase
         .from("job_requests")
-        .update({ service_details: updatedDetails })
+        .update({
+          notes: customDetails.trim() || null,
+          service_details: updatedDetails,
+        })
         .eq("id", jobId);
 
       if (error) throw error;
@@ -2257,10 +2363,11 @@ export default function ConfirmedListPage() {
 
   // Sync customDetails from job data (v2)
   useEffect(() => {
-    if (job?.service_details?.custom !== undefined && customDetails === "") {
-      setCustomDetails(job.service_details.custom || "");
+    const notes = jobRequestNotes(job ?? {});
+    if (notes !== undefined && customDetails === "") {
+      setCustomDetails(notes || "");
     }
-  }, [job?.service_details?.custom]);
+  }, [job?.notes, job?.service_details?.custom, job?.service_details?.description]);
 
   async function handleSelect(freelancerId: string) {
     setSelecting(freelancerId);
@@ -2351,9 +2458,7 @@ export default function ConfirmedListPage() {
 
   const openInlineEdit = useCallback(() => {
     setEditDuration(job?.time_duration || "");
-    setEditNotes(
-      job?.service_details?.description || job?.service_details?.custom || "",
-    );
+    setEditNotes(jobRequestNotes(job ?? {}) || "");
     setIsEditOpen(true);
   }, [job]);
 

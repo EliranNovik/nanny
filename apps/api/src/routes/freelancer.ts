@@ -27,7 +27,8 @@ freelancerRouter.post("/go-live", async (req: Request, res: Response) => {
       return;
     }
 
-    const liveUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const LIVE_WINDOW_MS = 24 * 60 * 60 * 1000;
+    const liveUntil = new Date(Date.now() + LIVE_WINDOW_MS).toISOString();
     const payload = {
       live_until: liveUntil,
       live_categories: parsed.data.live_categories,

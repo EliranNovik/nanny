@@ -22,8 +22,12 @@ export type ChatLinkPreviewApiPayload =
       error?: string;
     };
 
-const base = (import.meta.env.VITE_API_BASE_URL ||
-  "http://localhost:4000") as string;
+const base = import.meta.env.DEV &&
+  (!import.meta.env.VITE_API_BASE_URL?.trim() ||
+    import.meta.env.VITE_API_BASE_URL.includes("localhost:4000") ||
+    import.meta.env.VITE_API_BASE_URL.includes("127.0.0.1:4000"))
+  ? ""
+  : ((import.meta.env.VITE_API_BASE_URL || "http://localhost:4000") as string);
 
 /**
  * Resolved Open Graph preview for a URL (authenticated; server-side fetch).

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
+import { corsOriginDelegate } from "./lib/corsOrigins";
 import { requireUser } from "./middleware/auth";
 import { jobsRouter } from "./routes/jobs";
 import { devRouter } from "./routes/dev";
@@ -12,12 +13,13 @@ import {
   linkPreviewRouter,
 } from "./routes/linkPreview";
 import { ogProfilePostRouter } from "./routes/ogProfilePost";
+import { postsRouter } from "./routes/posts";
 
 const app = express();
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5175",
+    origin: corsOriginDelegate,
     credentials: true,
   }),
 );
@@ -44,6 +46,7 @@ app.use("/api/og", ogProfilePostRouter);
 // Protected routes
 app.use("/api/kyc", requireUser, kycRouter);
 app.use("/api/jobs", requireUser, jobsRouter);
+app.use("/api/posts", requireUser, postsRouter);
 app.use("/api/freelancer", requireUser, freelancerRouter);
 app.use("/api/dev", requireUser, devRouter);
 app.use("/api/admin", requireUser, adminRouter);

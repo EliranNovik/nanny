@@ -3,6 +3,9 @@ import type { FeedPost } from "@/components/profile/ProfilePostsFeed";
 import { fetchProfilePostById } from "@/lib/fetchProfilePostById";
 import { fetchAvailabilityPostForFeed } from "@/lib/fetchAvailabilityPostForFeed";
 
+import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
+import { postMatchesAdvancedFeedFilters } from "@/lib/communityFeedFilters";
+
 export type ProfilePostsFeedFilters = {
   userId?: string;
   filterTaggedUserId?: string;
@@ -10,13 +13,18 @@ export type ProfilePostsFeedFilters = {
   authorNameFilter?: string;
   sortOrder?: "newest" | "oldest";
   filterLikedByUserId?: string;
+  filterPostTypeId?: string;
+  filterCommentedOwnPosts?: boolean;
+  feedAdvancedFilters?: CommunityFeedAdvancedFilters;
   limit?: number;
 };
 
 type RawProfilePostRow = {
   id: string;
   author_id: string;
+  post_type_id?: string | null;
   tagged_user_ids?: string[];
+  post_metadata?: Record<string, unknown> | null;
 };
 
 type RawCommunityPostRow = {
@@ -47,15 +55,40 @@ export function profilePostMatchesFeedFilters(
   filters: ProfilePostsFeedFilters,
 ): boolean {
   if (filters.filterLikedByUserId) return false;
+  if (filters.filterCommentedOwnPosts) return false;
   if (filters.userId && row.author_id !== filters.userId) return false;
   if (filters.filterAuthorId && row.author_id !== filters.filterAuthorId) {
     return false;
   }
+  if (filters.feedAdvancedFilters?.myPostsOnly) return false;
+  if (filters.feedAdvancedFilters?.favoriteProfilesOnly) return false;
   if (filters.filterTaggedUserId) {
     const tagged = row.tagged_user_ids ?? [];
     if (!tagged.includes(filters.filterTaggedUserId)) return false;
   }
+  if (
+    filters.filterPostTypeId &&
+    row.post_type_id !== filters.filterPostTypeId
+  ) {
+    return false;
+  }
   if (filters.authorNameFilter?.trim()) return false;
+  if (
+    filters.feedAdvancedFilters &&
+    !postMatchesAdvancedFeedFilters(
+      {
+        post_type_id: row.post_type_id,
+        post_metadata: row.post_metadata as {
+          timeframe?: string | null;
+          budget?: number | null;
+          rate?: number | null;
+        } | null,
+      },
+      filters.feedAdvancedFilters,
+    )
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -69,6 +102,19 @@ export function communityPostMatchesFeedFilters(
     return false;
   }
   if (filters.filterTaggedUserId) return false;
+  if (filters.filterPostTypeId) return false;
+  if (filters.filterCommentedOwnPosts) return false;
+  if (filters.feedAdvancedFilters?.myPostsOnly) return false;
+  if (filters.feedAdvancedFilters?.favoriteProfilesOnly) return false;
+  if (filters.feedAdvancedFilters?.when && filters.feedAdvancedFilters.when !== "any") {
+    return false;
+  }
+  if (
+    filters.feedAdvancedFilters?.budgetMin != null ||
+    filters.feedAdvancedFilters?.budgetMax != null
+  ) {
+    return false;
+  }
   if (filters.authorNameFilter?.trim()) return false;
   if (row.status && row.status !== "active") return false;
   if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) {

@@ -151,11 +151,17 @@ export function BottomNav() {
     useDiscoverHomeScrollHeader();
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
+  const isCommunityFeedPage = pathnameNorm === "/community/feed";
+  /** Location chip shell — Discover home only. */
+  const showDiscoverShellHeader = isDiscoverHome;
+  /** Global community feed: back + location on the left. */
+  const showCommunityFeedHeaderLeft = isCommunityFeedPage && !!user;
   const [discoverHomeMode, setDiscoverHomeMode] = useState<
     "hire" | "work"
   >(() => readDiscoverHomeIntent("hire"));
   const isLikedPage = pathnameNorm === "/liked";
-  const isShellScrollCollapseRoute = isDiscoverHome || isLikedPage;
+  const isShellScrollCollapseRoute =
+    isDiscoverHome || isLikedPage || (isCommunityFeedPage && !!user);
   const shellCollapseChromeP = isShellScrollCollapseRoute
     ? discoverHeaderCollapseProgress
     : 0;
@@ -252,7 +258,6 @@ export function BottomNav() {
   const hideMobileAppHeaderChrome =
     pathnameNorm === "/client/create" ||
     pathnameNorm === "/availability/post-now" ||
-    pathnameNorm === "/community/feed" ||
     (isMatchSearchRoute && !matchSearchChromeVisible);
   /** Own availability, legacy /posts, and public board — category + back live in header */
   const isCommunityPostsFilterPage =
@@ -376,7 +381,10 @@ export function BottomNav() {
 
 
 
-  function renderDiscoverHomeLocationChip(variant: "mobile" | "desktop") {
+  function renderDiscoverHomeLocationChip(
+    variant: "mobile" | "desktop",
+    options?: { besideBack?: boolean },
+  ) {
     const { displayCity, displayCountry, gpsLoading } = activeLocation;
     const primary = displayCity ?? (gpsLoading ? "Detecting…" : "Add location");
     return (
@@ -386,8 +394,18 @@ export function BottomNav() {
           onClick={() => setLocationPickerOpen(true)}
           className={cn(
             variant === "mobile"
-              ? "pointer-events-auto flex min-h-11 max-w-[min(13.5rem,calc(100vw-7rem))] items-center gap-1 rounded-xl py-1 pl-1 pr-1.5 text-left text-slate-900 transition-all hover:opacity-90 active:scale-[0.98] dark:text-white"
-              : "flex max-w-[min(16rem,28vw)] min-h-10 items-center gap-1.5 rounded-xl py-1 pl-1 pr-2 text-left text-slate-900 transition hover:opacity-90 dark:text-white",
+              ? cn(
+                  "pointer-events-auto flex min-h-11 items-center gap-1 rounded-xl py-1 pl-1 pr-1.5 text-left text-slate-900 transition-all hover:opacity-90 active:scale-[0.98] dark:text-white",
+                  options?.besideBack
+                    ? "max-w-[min(10.5rem,calc(100vw-8.5rem))]"
+                    : "max-w-[min(13.5rem,calc(100vw-7rem))]",
+                )
+              : cn(
+                  "flex min-h-10 items-center gap-1.5 rounded-xl py-1 pl-1 pr-2 text-left text-slate-900 transition hover:opacity-90 dark:text-white",
+                  options?.besideBack
+                    ? "max-w-[min(13rem,calc(100vw-14rem))]"
+                    : "max-w-[min(16rem,28vw)]",
+                ),
           )}
           aria-label={displayCity ? `Current location: ${displayCity}. Tap to change.` : "Set your location"}
         >
@@ -790,8 +808,20 @@ export function BottomNav() {
       <div className="md:pl-[220px]">
         <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
         <div className="flex min-w-0 justify-start items-center gap-1.5 md:pl-2">
-          {isDiscoverHome ? (
+          {showDiscoverShellHeader ? (
             renderDiscoverHomeLocationChip("desktop")
+          ) : showCommunityFeedHeaderLeft ? (
+            <>
+              <button
+                type="button"
+                onClick={handleHeaderBack}
+                className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
+                aria-label="Back"
+              >
+                <HeaderBackChevron />
+              </button>
+              {renderDiscoverHomeLocationChip("desktop", { besideBack: true })}
+            </>
           ) : (
             <button
               type="button"
@@ -1008,7 +1038,7 @@ export function BottomNav() {
         ...shellScrollMobileChromeOverlayStyle,
       }}
     >
-      {isDiscoverHome ? (
+      {showDiscoverShellHeader ? (
         <div className="flex flex-col relative overflow-visible">
           {/* Default state: Location Chip */}
           <div
@@ -1022,7 +1052,8 @@ export function BottomNav() {
             {renderDiscoverHomeLocationChip("mobile")}
           </div>
 
-          {/* Collapsed state: "Get help now" or Avatars */}
+          {/* Collapsed state: "Get help now" or Avatars — Discover home only */}
+          {isDiscoverHome ? (
           <div
             className="absolute left-1 top-0.5 flex items-center gap-1.5 transition-all duration-300"
             style={{
@@ -1053,6 +1084,19 @@ export function BottomNav() {
               {discoverHomeMode === "hire" ? "Get help" : "Help others"}
             </span>
           </div>
+          ) : null}
+        </div>
+      ) : showCommunityFeedHeaderLeft ? (
+        <div className="pointer-events-auto flex min-w-0 flex-row items-center gap-0.5">
+          <button
+            type="button"
+            onClick={handleHeaderBack}
+            className={mobileUniversalBackBtnClass}
+            aria-label="Back"
+          >
+            <HeaderBackChevron />
+          </button>
+          {renderDiscoverHomeLocationChip("mobile", { besideBack: true })}
         </div>
       ) : (
         <button
@@ -1410,7 +1454,7 @@ export function BottomNav() {
                           <span>Go live</span>
                           {isLiveNow && freelancerLiveUntil ? (
                             <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-bold tabular-nums">
-                              <LiveTimer createdAt={freelancerLiveUntil} />
+                              <LiveTimer countdownTo={freelancerLiveUntil} />
                             </span>
                           ) : null}
                         </span>

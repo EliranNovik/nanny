@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
+import { parseGeneratedPostCopy, type GeneratedPostCopy } from "@/lib/generatedPostCopy";
 
 type ProfileSnippet = {
   id: string;
@@ -25,6 +26,15 @@ export type FetchedProfilePost = {
   liked_by_me: boolean;
   tagged_profiles: ProfileSnippet[];
   source: "post";
+  post_type_id?: string | null;
+  post_types?: {
+    id: string;
+    name: string;
+    emoji: string;
+    color: string;
+  } | null;
+  post_metadata?: any | null;
+  ai_generated_copy?: GeneratedPostCopy | null;
 };
 
 /**
@@ -38,7 +48,7 @@ export async function fetchProfilePostById(
   const { data: row, error } = await supabase
     .from("profile_posts")
     .select(
-      "id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at",
+      "id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at, post_type_id, post_metadata, custom_category, ai_generated_copy, post_types (id, name, emoji, color)",
     )
     .eq("id", postId)
     .maybeSingle();
@@ -68,11 +78,11 @@ export async function fetchProfilePostById(
       .in("id", idList),
     viewerUserId
       ? supabase
-          .from("profile_post_likes")
-          .select("post_id")
-          .eq("user_id", viewerUserId)
-          .eq("post_id", postId)
-          .maybeSingle()
+        .from("profile_post_likes")
+        .select("post_id")
+        .eq("user_id", viewerUserId)
+        .eq("post_id", postId)
+        .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     supabase.rpc("get_profile_post_engagement_counts", {
       p_post_ids: [postId],
@@ -102,17 +112,17 @@ export async function fetchProfilePostById(
 
   const engRow = (engRes.data ?? [])[0] as
     | {
-        post_id: string;
-        like_count: number | string;
-        comment_count: number | string;
-      }
+      post_id: string;
+      like_count: number | string;
+      comment_count: number | string;
+    }
     | undefined;
   const shareRow = (shareRes.data ?? [])[0] as
     | {
-        post_id: string;
-        click_count: number | string;
-        distinct_user_count: number | string;
-      }
+      post_id: string;
+      click_count: number | string;
+      distinct_user_count: number | string;
+    }
     | undefined;
 
   return {
@@ -133,5 +143,14 @@ export async function fetchProfilePostById(
       .map((id) => profileMap.get(id))
       .filter(Boolean) as ProfileSnippet[],
     source: "post",
+    post_type_id: row.post_type_id as string | null,
+    post_types: Array.isArray(row.post_types) ? row.post_types[0] : (row.post_types as any) || null,
+    post_metadata: (() => {
+      const meta = row.post_metadata as Record<string, unknown> | null;
+      const custom = (row.custom_category as string | null)?.trim();
+      if (!custom) return meta || null;
+      return { ...(meta ?? {}), custom_category: custom };
+    })(),
+    ai_generated_copy: parseGeneratedPostCopy(row.ai_generated_copy),
   };
 }

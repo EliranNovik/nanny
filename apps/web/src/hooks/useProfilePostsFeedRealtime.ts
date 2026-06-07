@@ -38,6 +38,9 @@ export function useProfilePostsFeedRealtime({
   authorNameFilter,
   sortOrder = "newest",
   filterLikedByUserId,
+  filterPostTypeId,
+  filterCommentedOwnPosts,
+  feedAdvancedFilters,
   limit,
 }: Options) {
   const filters: ProfilePostsFeedFilters = {
@@ -47,6 +50,9 @@ export function useProfilePostsFeedRealtime({
     authorNameFilter,
     sortOrder,
     filterLikedByUserId,
+    filterPostTypeId,
+    filterCommentedOwnPosts,
+    feedAdvancedFilters,
     limit,
   };
 

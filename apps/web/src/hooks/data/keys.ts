@@ -35,6 +35,10 @@ export const queryKeys = {
   postFavorites: (userId?: string, postIds?: string[]) => [...queryKeys.community, "favorites", userId, postIds?.sort().join(",")] as const,
   pendingHireInterests: (userId?: string, postIds?: string[]) => [...queryKeys.community, "hireInterests", userId, postIds?.sort().join(",")] as const,
 
+  /** Saved open help requests (`job_request_favorites`) for the current user. */
+  jobRequestFavorites: (userId?: string | null) =>
+    [...queryKeys.jobs, "jobRequestFavorites", userId ?? "none"] as const,
+
   /** Saved profiles (`profile_favorites`) for the current user. */
   profileFavorites: (userId?: string | null) =>
     [...queryKeys.community, "profileFavorites", userId ?? "none"] as const,
@@ -56,6 +60,14 @@ export const queryKeys = {
     authorNameFilter?: string | null;
     sortOrder?: string;
     filterLikedByUserId?: string | null;
+    filterPostTypeId?: string | null;
+    filterCommentedOwnPosts?: boolean;
+    filterAcceptedRequests?: boolean;
+    feedWhen?: string | null;
+    feedMyPostsOnly?: boolean;
+    feedBudgetMin?: number | null;
+    feedBudgetMax?: number | null;
+    feedFavoriteProfilesOnly?: boolean;
     limit?: number | null;
   }) =>
     [
@@ -68,6 +80,14 @@ export const queryKeys = {
       opts.authorNameFilter ?? "",
       opts.sortOrder ?? "newest",
       opts.filterLikedByUserId ?? "",
+      opts.filterPostTypeId ?? "",
+      opts.filterCommentedOwnPosts ? "commented" : "",
+      opts.filterAcceptedRequests ? "accepted" : "",
+      opts.feedWhen ?? "",
+      opts.feedMyPostsOnly ? "mine" : "",
+      opts.feedBudgetMin ?? "",
+      opts.feedBudgetMax ?? "",
+      opts.feedFavoriteProfilesOnly ? "fav" : "",
       opts.limit ?? 0,
     ] as const,
 
@@ -76,6 +96,14 @@ export const queryKeys = {
       ...queryKeys.community,
       "profilePostById",
       postId ?? "",
+      viewerUserId ?? "anon",
+    ] as const,
+
+  jobRequestById: (jobId?: string | null, viewerUserId?: string | null) =>
+    [
+      ...queryKeys.jobs,
+      "jobRequestById",
+      jobId ?? "",
       viewerUserId ?? "anon",
     ] as const,
 };

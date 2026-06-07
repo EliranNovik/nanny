@@ -12,6 +12,12 @@ export default defineConfig({
             '9538501d3d45.ngrok-free.app',
             '.ngrok-free.app', // Allow all ngrok subdomains
         ],
+        proxy: {
+            '/api': {
+                target: 'http://127.0.0.1:4000',
+                changeOrigin: true,
+            },
+        },
     },
     resolve: {
         alias: {

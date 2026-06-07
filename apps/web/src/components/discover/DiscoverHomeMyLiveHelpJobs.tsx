@@ -1,20 +1,15 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { ChevronRight, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/hooks/data/keys";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { trackEvent } from "@/lib/analytics";
-import {
-  serviceCategoryLabel,
-  isServiceCategoryId,
-  getServiceCategoryImage,
-} from "@/lib/serviceCategories";
-import type { ServiceCategoryId } from "@/lib/serviceCategories";
+import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import { DiscoverMyLiveHelpCard } from "@/components/discover/DiscoverOpenHelpRequestCard";
 
 type Mode = "hire" | "work";
 
@@ -32,6 +27,12 @@ type JobRow = {
   client_id: string | null;
   selected_freelancer_id: string | null;
   status: string | null;
+  notes?: string | null;
+  ai_generated_copy?: unknown;
+  when_timeframe?: string | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+  budget_rate_type?: string | null;
 };
 
 type LiveHelpPayload = {
@@ -40,62 +41,31 @@ type LiveHelpPayload = {
 };
 
 const HELPING_NOW_STATUSES = ["locked", "active"] as const;
+const MY_LIVE_HELP_PREVIEW_LIMIT = 5;
 
-/**
- * Live-help-now carousel — Airbnb-style cards for jobs the viewer is currently
- * engaged in.
- *
- * - `mode="hire"` → jobs the viewer **posted** that have a confirmed helper
- *   (header: "My help live"). The other-party shown is the helper.
- * - `mode="work"` → jobs the viewer is **helping with** as the selected
- *   freelancer (header: "Live help"). The other-party shown is the client.
- *
- * Same shell + cards as the rest of the discover home carousels (mobile
- * edge-to-edge swipe, desktop arrows in the header). No `.slice(0, 1)` cap —
- * every active live gig is shown (cap is a safe `limit(24)` on the query).
- *
- * Shares the same `queryKeys.exploreLiveHelp(userId, mode)` cache key as
- * `ExploreLiveHelpNow` so navigation between Discover home and Explore is
- * instant. Auto-refreshes via realtime subscription on `job_requests`.
- */
-const listContainerClass = cn(
-  "flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 scroll-pl-4",
-  "-mx-4 px-4 sm:-mx-0 sm:px-0 sm:scroll-pl-0",
-);
-
-const cardBtnClass = cn(
-  "group flex flex-col gap-1.5 text-left",
-  "w-[12rem] shrink-0 snap-start",
-  "sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem]",
-  "sm:gap-1 lg:gap-1.5",
-  "focus-visible:outline-none",
-);
-
-const cardTextBelowClass = "flex flex-col gap-0.5 px-0 sm:gap-0 lg:gap-0.5";
-
-const carouselArrowBtnClass = cn(
-  "hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full",
-  "border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-all",
-  "hover:bg-zinc-100 hover:shadow active:scale-95",
-  "dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
-);
-
-const imageWrapClass = cn(
-  "relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800/60",
-  "aspect-square",
-  "ring-1 ring-black/5 dark:ring-white/5 shadow-sm",
-  "transition-transform duration-200 group-hover:shadow-md",
-  "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-);
-
-function titleForServiceType(serviceType: string | null | undefined): string {
-  const t = (serviceType || "").trim();
-  if (t && isServiceCategoryId(t)) {
-    return serviceCategoryLabel(t as ServiceCategoryId);
-  }
-  const s = t.replace(/_/g, " ");
-  return s ? s.slice(0, 1).toUpperCase() + s.slice(1) : "Help request";
+function toLiveHelpCardRow(job: JobRow): Pick<
+  DiscoverOpenHelpRequestRow,
+  | "service_type"
+  | "location_city"
+  | "created_at"
+  | "notes"
+  | "ai_generated_copy"
+  | "when_timeframe"
+  | "budget_min"
+  | "budget_max"
+  | "budget_rate_type"
+> {
+  return {
+    service_type: job.service_type,
+    location_city: job.location_city,
+    created_at: job.created_at,
+    notes: job.notes ?? null,
+    ai_generated_copy: job.ai_generated_copy,
+    when_timeframe: job.when_timeframe ?? null,
+    budget_min: job.budget_min ?? null,
+    budget_max: job.budget_max ?? null,
+    budget_rate_type: job.budget_rate_type ?? null,
+  };
 }
 
 function useDiscoverMyLiveHelpJobs(userId: string | undefined, mode: Mode) {
@@ -125,7 +95,7 @@ function useDiscoverMyLiveHelpJobs(userId: string | undefined, mode: Mode) {
       const baseSelect = supabase
         .from("job_requests")
         .select(
-          "id, created_at, service_type, location_city, client_id, selected_freelancer_id, status",
+          "id, created_at, service_type, location_city, client_id, selected_freelancer_id, status, notes, ai_generated_copy, when_timeframe, budget_min, budget_max, budget_rate_type",
         );
       const filtered =
         mode === "hire"
@@ -146,7 +116,6 @@ function useDiscoverMyLiveHelpJobs(userId: string | undefined, mode: Mode) {
       const rows = (data ?? []) as JobRow[];
       if (rows.length === 0) return { jobs: rows, profileMap: {} };
 
-      // Other-party profiles: helpers in hire mode, clients in work mode.
       const otherIds = Array.from(
         new Set(
           (mode === "hire"
@@ -173,95 +142,85 @@ function useDiscoverMyLiveHelpJobs(userId: string | undefined, mode: Mode) {
 }
 
 type Props = {
-  /**
-   * `"hire"` shows jobs the viewer posted (header: "My help live", other-party
-   * is the helper). `"work"` shows jobs the viewer is helping with (header:
-   * "Live help", other-party is the client).
-   */
   mode: Mode;
-  /**
-   * Where to send the user when a card is clicked. Should resolve to the
-   * Explore page's "Live help" tab (e.g. `${explorePath}?mode=work&tab=live_help`).
-   */
   exploreLiveHelpPath: string;
-  /**
-   * Hire-mode only: when provided, the empty state renders a "Post new
-   * request" CTA that navigates here.
-   */
   createRequestPath?: string;
   className?: string;
 };
 
-export function DiscoverHomeMyLiveHelpJobs({
-  mode,
+type LiveHelpSectionProps = {
+  jobs: JobRow[];
+  profileMap: Record<string, ProfileMini>;
+  loading: boolean;
+  exploreLiveHelpPath: string;
+  className?: string;
+  title: string;
+  subtitle: string;
+  ariaLabel: string;
+  emptyTitle: string;
+  emptySub: string;
+  otherPartyLabel: string;
+  otherPartyFallback: string;
+  getOtherPartyId: (job: JobRow) => string;
+  getJobOpenPath: (jobId: string) => string;
+  openTrackEvent: string;
+  showMoreTrackEvent: string;
+  createRequestPath?: string;
+  emptyPostTrackEvent?: string;
+};
+
+function DiscoverHomeLiveHelpSection({
+  jobs,
+  profileMap,
+  loading,
   exploreLiveHelpPath,
-  createRequestPath,
   className,
-}: Props) {
+  title,
+  subtitle,
+  ariaLabel,
+  emptyTitle,
+  emptySub,
+  otherPartyLabel,
+  otherPartyFallback,
+  getOtherPartyId,
+  getJobOpenPath,
+  openTrackEvent,
+  showMoreTrackEvent,
+  createRequestPath,
+  emptyPostTrackEvent,
+}: LiveHelpSectionProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
-
-  const { data, isLoading: loading } = useDiscoverMyLiveHelpJobs(user?.id, mode);
-  const jobs = useMemo(() => data?.jobs ?? [], [data]);
-  const profileMap = data?.profileMap ?? {};
-
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const scrollByDir = useCallback((dir: 1 | -1) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const amount = Math.max(220, Math.floor(el.clientWidth * 0.85)) * dir;
-    el.scrollBy({ left: amount, behavior: "smooth" });
-  }, []);
-
-  const headerText = mode === "hire" ? "My help live" : "Live help";
-  const ariaLabel = mode === "hire" ? "My live help" : "Live help";
-  const otherPartyLabel = mode === "hire" ? "Helper" : "Helping";
-
-  if (!user?.id) return null;
 
   if (loading) {
     return (
       <section className={cn("w-full", className)} aria-label={ariaLabel}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-[15px] font-black uppercase tracking-[0.12em] text-zinc-900 dark:text-white">
-            {headerText}
-          </p>
+        <div className="mb-3 space-y-1">
+          <div className="h-6 w-40 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
+          <div className="h-4 w-52 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
         </div>
-        <div className={listContainerClass}>
-          {Array.from({ length: 4 }, (_, i) => (
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+          {Array.from({ length: 2 }, (_, i) => (
             <div
               key={i}
-              className="flex w-[12rem] shrink-0 snap-start flex-col gap-1.5 sm:w-[11.5rem] md:w-[12.5rem] lg:w-[15rem] xl:w-[16.5rem] 2xl:w-[18rem] sm:gap-1 lg:gap-1.5"
-            >
-              <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
-              <div className="space-y-1 px-0 sm:space-y-0.5">
-                <div className="h-3.5 w-2/3 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80 sm:h-3" />
-                <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60 sm:h-2.5" />
-              </div>
-            </div>
+              className="h-36 animate-pulse rounded-[18px] bg-zinc-200/70 dark:bg-zinc-800/70"
+            />
           ))}
         </div>
       </section>
     );
   }
 
-  const emptyTitle =
-    mode === "hire" ? "No live help yet" : "No live gigs yet";
-  const emptySub =
-    mode === "hire"
-      ? "When a helper is confirmed on your request, it will appear here."
-      : "When you're confirmed on a job, it will appear here.";
-
   if (jobs.length === 0) {
-    const showPostCta = mode === "hire" && !!createRequestPath;
+    const showPostCta = !!createRequestPath;
     return (
       <section className={cn("w-full", className)} aria-label={ariaLabel}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-[15px] font-black uppercase tracking-[0.12em] text-zinc-900 dark:text-white">
-            {headerText}
-          </p>
+        <div className="mb-3">
+          <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+            {title}
+          </h2>
+          <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-5 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="flex items-center gap-3 rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-5 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-400/15 dark:text-emerald-200 dark:ring-emerald-400/25">
             <Zap className="h-5 w-5" strokeWidth={2.25} aria-hidden />
           </span>
@@ -277,7 +236,9 @@ export function DiscoverHomeMyLiveHelpJobs({
             <button
               type="button"
               onClick={() => {
-                trackEvent("discover_my_help_live_empty_post_request", {});
+                if (emptyPostTrackEvent) {
+                  trackEvent(emptyPostTrackEvent, {});
+                }
                 navigate(createRequestPath as string);
               }}
               className={cn(
@@ -296,131 +257,124 @@ export function DiscoverHomeMyLiveHelpJobs({
     );
   }
 
+  const visibleJobs = jobs.slice(0, MY_LIVE_HELP_PREVIEW_LIMIT);
+  const hasMore = jobs.length > MY_LIVE_HELP_PREVIEW_LIMIT;
+
   return (
     <section className={cn("w-full", className)} aria-label={ariaLabel}>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-[15px] font-black uppercase tracking-[0.12em] text-zinc-900 dark:text-white">
-          {headerText}
-        </p>
-        <div className="hidden items-center gap-1.5 md:flex">
-          <button
-            type="button"
-            onClick={() => scrollByDir(-1)}
-            aria-label="Scroll previous"
-            className={carouselArrowBtnClass}
-          >
-            <ChevronLeft className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollByDir(1)}
-            aria-label="Scroll next"
-            className={carouselArrowBtnClass}
-          >
-            <ChevronRight className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-          </button>
-        </div>
+      <div className="mb-3">
+        <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+          {title}
+        </h2>
+        <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">{subtitle}</p>
       </div>
-      <div ref={scrollerRef} className={listContainerClass}>
-        {jobs.map((job) => {
-          const title = titleForServiceType(job.service_type);
-          const loc = (job.location_city ?? "").trim();
-          const otherId = String(
-            (mode === "hire"
-              ? job.selected_freelancer_id
-              : job.client_id) ?? "",
-          );
+
+      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+        {visibleJobs.map((job) => {
+          const otherId = getOtherPartyId(job);
           const otherProfile = otherId ? profileMap[otherId] : null;
-          const otherName = (otherProfile?.full_name || "").trim() ||
-            (mode === "hire" ? "Helper" : "Client");
-          const photoUrl = getServiceCategoryImage(job.service_type ?? null);
+          const otherPartyName =
+            (otherProfile?.full_name || "").trim() || otherPartyFallback;
 
           return (
-            <button
+            <DiscoverMyLiveHelpCard
               key={job.id}
-              type="button"
-              className={cardBtnClass}
-              onClick={() => {
-                trackEvent(
-                  mode === "hire"
-                    ? "discover_my_help_live_open"
-                    : "discover_my_live_help_open",
-                  { job_id: job.id },
-                );
-                navigate(exploreLiveHelpPath);
+              row={toLiveHelpCardRow(job)}
+              otherPartyLabel={otherPartyLabel}
+              otherPartyName={otherPartyName}
+              onOpen={() => {
+                trackEvent(openTrackEvent, { job_id: job.id });
+                navigate(getJobOpenPath(job.id));
               }}
-              aria-label={`${title}${loc ? ` in ${loc}` : ""} — ${
-                mode === "hire" ? "helped by" : "helping"
-              } ${otherName}`}
-            >
-              <div className={imageWrapClass}>
-                <img
-                  src={photoUrl}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
-                  loading="lazy"
-                  decoding="async"
-                />
-
-                {/* Top overlay gradient — improves legibility of the avatar / name row */}
-                <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/60 via-black/30 to-transparent sm:h-14"
-                  aria-hidden
-                />
-
-                {/* Other-party avatar + name + Live badge — top of image */}
-                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-1.5 p-2 sm:gap-1 sm:p-1.5 lg:gap-1.5 lg:p-2 xl:p-2.5">
-                  <div className="flex min-w-0 items-center gap-1.5 sm:gap-1 lg:gap-1.5">
-                    <Avatar className="h-8 w-8 shrink-0 overflow-hidden shadow-sm sm:h-7 sm:w-7 lg:h-9 lg:w-9 xl:h-10 xl:w-10">
-                      <AvatarImage
-                        src={otherProfile?.photo_url || undefined}
-                        alt=""
-                        className="object-cover"
-                      />
-                      <AvatarFallback className="bg-zinc-200 text-[10px] font-black text-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-[9px] lg:text-[11px]">
-                        {otherName.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span
-                      className="min-w-0 truncate text-[12.5px] font-semibold leading-tight text-white sm:text-[11px] lg:text-[13px] xl:text-[14px]"
-                      style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
-                    >
-                      {otherName}
-                    </span>
-                  </div>
-
-                  {/* "Live" pill — top-right */}
-                  <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-emerald-600/95 px-2.5 py-1 text-[12px] font-black uppercase tracking-wide text-white shadow-md backdrop-blur-sm sm:gap-1 sm:px-2 sm:py-0.5 sm:text-[10.5px] lg:gap-1.5 lg:px-2.5 lg:py-1 lg:text-[12px] xl:text-[13px] xl:px-3">
-                    <span className="relative flex h-2 w-2 shrink-0 lg:h-2 lg:w-2 xl:h-2.5 xl:w-2.5" aria-hidden>
-                      <span className="absolute inset-0 rounded-full bg-white/70 motion-safe:animate-ping motion-reduce:hidden" />
-                      <span className="relative h-2 w-2 rounded-full bg-white xl:h-2.5 xl:w-2.5" />
-                    </span>
-                    <span>Live</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Text on page background — Airbnb-style simple lines */}
-              <div className={cardTextBelowClass}>
-                <span className="min-w-0 truncate text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white sm:text-[13px] lg:text-[16px] xl:text-[17px]">
-                  {title}
-                </span>
-                {loc ? (
-                  <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px]">
-                    {loc}
-                  </span>
-                ) : null}
-                <span className="truncate text-[13px] text-zinc-500 dark:text-zinc-400 sm:text-[11.5px] lg:text-[13.5px] xl:text-[14.5px]">
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                    {otherPartyLabel}
-                  </span>{" "}
-                  {otherName}
-                </span>
-              </div>
-            </button>
+            />
           );
         })}
       </div>
+
+      {hasMore ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent(showMoreTrackEvent, {
+                from: "discover_home",
+                total: jobs.length,
+                destination: "my_activity_live_help",
+              });
+              navigate(exploreLiveHelpPath);
+            }}
+            className={cn(
+              "flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-zinc-50 text-sm font-bold text-foreground transition-colors hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800",
+            )}
+          >
+            Show more
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      ) : null}
     </section>
+  );
+}
+
+export function DiscoverHomeMyLiveHelpJobs({
+  mode,
+  exploreLiveHelpPath,
+  createRequestPath,
+  className,
+}: Props) {
+  const { user } = useAuth();
+
+  const { data, isLoading: loading } = useDiscoverMyLiveHelpJobs(user?.id, mode);
+  const jobs = useMemo(() => data?.jobs ?? [], [data]);
+  const profileMap = data?.profileMap ?? {};
+
+  if (!user?.id) return null;
+
+  if (mode === "hire") {
+    return (
+      <DiscoverHomeLiveHelpSection
+        jobs={jobs}
+        profileMap={profileMap}
+        loading={loading}
+        exploreLiveHelpPath={exploreLiveHelpPath}
+        createRequestPath={createRequestPath}
+        className={className}
+        title="My help live"
+        subtitle="Active help sessions with a confirmed helper"
+        ariaLabel="My live help"
+        emptyTitle="No live help yet"
+        emptySub="When a helper is confirmed on your request, it will appear here."
+        otherPartyLabel="Helper"
+        otherPartyFallback="Helper"
+        getOtherPartyId={(job) => String(job.selected_freelancer_id ?? "")}
+        getJobOpenPath={(jobId) => `/client/jobs/${encodeURIComponent(jobId)}/live`}
+        openTrackEvent="discover_my_help_live_open"
+        showMoreTrackEvent="discover_my_help_live_show_more"
+        emptyPostTrackEvent="discover_my_help_live_empty_post_request"
+      />
+    );
+  }
+
+  return (
+    <DiscoverHomeLiveHelpSection
+      jobs={jobs}
+      profileMap={profileMap}
+      loading={loading}
+      exploreLiveHelpPath={exploreLiveHelpPath}
+      className={className}
+      title="Live help"
+      subtitle="Jobs you're actively helping with right now"
+      ariaLabel="Live help"
+      emptyTitle="No live gigs yet"
+      emptySub="When you're confirmed on a job, it will appear here."
+      otherPartyLabel="Helping"
+      otherPartyFallback="Client"
+      getOtherPartyId={(job) => String(job.client_id ?? "")}
+      getJobOpenPath={(jobId) =>
+        `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(jobId)}`
+      }
+      openTrackEvent="discover_my_live_help_open"
+      showMoreTrackEvent="discover_my_live_help_show_more"
+    />
   );
 }

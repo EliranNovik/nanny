@@ -11,12 +11,32 @@ import { useKycGate } from "@/context/KycGateContext";
 import { needsKycVerification } from "@/lib/kyc";
 import { useToast } from "@/components/ui/toast";
 import { apiPost } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { getCityFromLocation } from "@/lib/location";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { SimpleCalendar } from "@/components/SimpleCalendar";
 import { DualLocationPicker } from "@/components/DualLocationPicker";
 import { CreateJobCityAutocomplete } from "@/components/CreateJobCityAutocomplete";
 import type { CityPlaceSelection } from "@/lib/cityPlace";
+import {
+  buildCustomWhenAtIso,
+  computeJobStartAtFromWhen,
+} from "@/lib/createJobWhen";
+import {
+  REQUEST_HELP_WHEN_OPTIONS,
+  requestHelpWhenOptionButtonClass,
+  type RequestHelpTimeframe,
+} from "@/lib/requestHelpWhen";
+import { format } from "date-fns";
 import {
   Heart,
   ChevronRight,
@@ -40,6 +60,10 @@ import {
   Users,
   UserPlus,
   Dumbbell,
+  Clock,
+  CalendarDays,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { cn } from "@/lib/utils";
@@ -194,7 +218,12 @@ const OTHER_HELP_TYPES = [
 
 const STORAGE_KEY = "create_job_form_data";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 9;
+
+const MAX_CREATE_JOB_MEDIA = 5;
+
+const noFieldSpinnerClass =
+  "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 /** Mobile hero + desktop tip card — aligned with post-availability wizard copy style */
 const CREATE_JOB_STEP_TIPS: readonly string[] = [
@@ -202,8 +231,19 @@ const CREATE_JOB_STEP_TIPS: readonly string[] = [
   "One-time is for a single visit; part-time and regular suit ongoing or repeating help.",
   "Pick your city from the suggestions (or GPS). Free text alone won’t unlock the next step.",
   "Choose a duration that fits the visit; helpers use it to decide if they can commit.",
+  "Add a budget if you have one in mind — you can skip this and continue.",
+  "When do you need help? Choose Now for urgent requests.",
+  "Add any extra details that might help — or skip if you're all set.",
+  "Photos or videos are optional but can clarify the job.",
   "Specific details get faster, better matches — add anything that clarifies the task.",
 ];
+
+type CreateJobMediaDraft = {
+  id: string;
+  file: File;
+  previewUrl: string;
+  kind: "image" | "video";
+};
 
 interface JobData {
   service_type: string;
@@ -212,6 +252,12 @@ interface JobData {
   /** Set when city comes from Places/GPS/profile — required to leave step 3 */
   location_city_confirmed: boolean;
   time_duration: string;
+  budget_amount: string;
+  budget_rate_type: "per_hour" | "fixed";
+  when_timeframe: RequestHelpTimeframe | "";
+  custom_when_date: string | null;
+  custom_when_time: string;
+  additional_notes: string;
   service_details: {
     // For cleaning
     cleaning_type?: string;
@@ -232,10 +278,26 @@ interface JobData {
   };
 }
 
+function filterCreateJobMediaFiles(files: File[]): File[] {
+  return files.filter(
+    (f) => f.type.startsWith("image/") || f.type.startsWith("video/"),
+  );
+}
+
+function revokeCreateJobMediaUrls(items: CreateJobMediaDraft[]) {
+  for (const item of items) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
+}
+
+function parseStoredCustomWhenDate(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
 export default function CreateJobPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { openKycRequiredDialog } = useKycGate();
   const appliedServiceFromUrl = useRef(false);
   const { addToast } = useToast();
@@ -284,6 +346,15 @@ export default function CreateJobPage() {
                 ? savedJobData.location_city_confirmed
                 : !!loc,
             time_duration: savedJobData.time_duration || "",
+            budget_amount: savedJobData.budget_amount || "",
+            budget_rate_type:
+              savedJobData.budget_rate_type === "fixed" ? "fixed" : "per_hour",
+            when_timeframe: savedJobData.when_timeframe || "",
+            custom_when_date: parseStoredCustomWhenDate(
+              savedJobData.custom_when_date,
+            ),
+            custom_when_time: savedJobData.custom_when_time || "",
+            additional_notes: savedJobData.additional_notes || "",
             service_details: savedJobData.service_details || {},
           } as JobData;
         }
@@ -298,6 +369,12 @@ export default function CreateJobPage() {
       location_city: "",
       location_city_confirmed: false,
       time_duration: "",
+      budget_amount: "",
+      budget_rate_type: "per_hour",
+      when_timeframe: "",
+      custom_when_date: null,
+      custom_when_time: "",
+      additional_notes: "",
       service_details: {},
     };
   });
@@ -307,6 +384,28 @@ export default function CreateJobPage() {
   const [error, setError] = useState("");
   const [gettingLocation, setGettingLocation] = useState(false);
   const [savedLocationShown, setSavedLocationShown] = useState(false);
+  const [composeMedia, setComposeMedia] = useState<CreateJobMediaDraft[]>([]);
+  const [customWhenDatePickerOpen, setCustomWhenDatePickerOpen] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const composeMediaRef = useRef(composeMedia);
+  composeMediaRef.current = composeMedia;
+
+  const customWhenDate = useMemo(() => {
+    if (!jobData.custom_when_date) return null;
+    const [year, month, day] = jobData.custom_when_date
+      .split("-")
+      .map((part) => parseInt(part, 10));
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return null;
+    }
+    return new Date(year, month - 1, day);
+  }, [jobData.custom_when_date]);
+
+  useEffect(() => {
+    return () => {
+      revokeCreateJobMediaUrls(composeMediaRef.current);
+    };
+  }, []);
 
   // Track previous values to only save when they actually change
   const prevStepRef = useRef<number | null>(null);
@@ -401,7 +500,11 @@ export default function CreateJobPage() {
       case 2: return "Type of Care";
       case 3: return "Location";
       case 4: return "Time Duration";
-      case 5: return "Service Details";
+      case 5: return "Budget";
+      case 6: return "When";
+      case 7: return "Additional details";
+      case 8: return "Photos & videos";
+      case 9: return "Service Details";
       default: return categoryLabel || "Post your request";
     }
   }, [step, categoryLabel]);
@@ -456,7 +559,18 @@ export default function CreateJobPage() {
         );
       case 4:
         return !!jobData.time_duration;
-      case 5: {
+      case 5:
+        return true;
+      case 6:
+        if (!jobData.when_timeframe) return false;
+        if (jobData.when_timeframe === "custom") {
+          return !!jobData.custom_when_date && !!jobData.custom_when_time.trim();
+        }
+        return true;
+      case 7:
+      case 8:
+        return true;
+      case 9: {
         // Check service-specific details based on service_type
         if (jobData.service_type === "cleaning") {
           return !!jobData.service_details.cleaning_type;
@@ -481,16 +595,6 @@ export default function CreateJobPage() {
 
   function updateField<K extends keyof JobData>(field: K, value: JobData[K]) {
     setJobData((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function updateServiceDetail<K extends keyof JobData["service_details"]>(
-    field: K,
-    value: JobData["service_details"][K],
-  ) {
-    setJobData((prev) => ({
-      ...prev,
-      service_details: { ...prev.service_details, [field]: value },
-    }));
   }
 
   async function handleGetLocation() {
@@ -519,6 +623,49 @@ export default function CreateJobPage() {
     }
   }
 
+  function updateServiceDetail<K extends keyof JobData["service_details"]>(
+    field: K,
+    value: JobData["service_details"][K],
+  ) {
+    setJobData((prev) => ({
+      ...prev,
+      service_details: { ...prev.service_details, [field]: value },
+    }));
+  }
+
+  function handleMediaPick(files: FileList | File[]) {
+    const list = filterCreateJobMediaFiles(Array.from(files));
+    if (list.length === 0) return;
+    setComposeMedia((prev) => {
+      const room = MAX_CREATE_JOB_MEDIA - prev.length;
+      if (room <= 0) return prev;
+      const next = list.slice(0, room).map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+        kind: (file.type.startsWith("video/") ? "video" : "image") as
+          | "image"
+          | "video",
+      }));
+      return [...prev, ...next];
+    });
+  }
+
+  function removeComposeMedia(id: string) {
+    setComposeMedia((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  }
+
+  function setCustomWhenDate(date: Date | null) {
+    setJobData((prev) => ({
+      ...prev,
+      custom_when_date: date ? format(date, "yyyy-MM-dd") : null,
+    }));
+  }
+
   async function handleSubmit() {
     if (needsKycVerification(profile)) {
       openKycRequiredDialog("start_request");
@@ -529,28 +676,89 @@ export default function CreateJobPage() {
     setError("");
 
     try {
-      console.log("[CreateJobPage] Submitting job request:", jobData);
-      const { location_city_confirmed: _confirmed, ...jobPayload } = jobData;
+      const uploadedImages: string[] = [];
+      if (user?.id && composeMedia.length > 0) {
+        for (const item of composeMedia) {
+          const fileExt = item.file.name.split(".").pop() || (item.kind === "video" ? "mp4" : "jpg");
+          const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from("job-images")
+            .upload(filePath, item.file, {
+              contentType: item.file.type || undefined,
+            });
+          if (uploadError) throw uploadError;
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("job-images").getPublicUrl(filePath);
+          uploadedImages.push(publicUrl);
+        }
+      }
+
+      const budgetParsed = parseInt(jobData.budget_amount, 10);
+      const hasBudget =
+        jobData.budget_amount.trim() !== "" &&
+        Number.isFinite(budgetParsed) &&
+        budgetParsed > 0;
+
+      const customWhenAtIso =
+        jobData.when_timeframe === "custom" && customWhenDate
+          ? buildCustomWhenAtIso(customWhenDate, jobData.custom_when_time)
+          : null;
+
+      const whenTimeframe = jobData.when_timeframe as RequestHelpTimeframe;
+      const startAt = whenTimeframe
+        ? computeJobStartAtFromWhen(whenTimeframe, customWhenAtIso)
+        : undefined;
+
+      const { location_city_confirmed: _confirmed, ...restJobData } = jobData;
+      const serviceDetails = {
+        ...restJobData.service_details,
+        ...(uploadedImages.length > 0 ? { images: uploadedImages } : {}),
+      };
+
+      const jobPayload = {
+        service_type: restJobData.service_type,
+        care_frequency: restJobData.care_frequency,
+        time_duration: restJobData.time_duration,
+        location_city: restJobData.location_city,
+        service_details: serviceDetails,
+        when_timeframe: whenTimeframe || undefined,
+        custom_when_at: customWhenAtIso ?? undefined,
+        start_at: startAt,
+        budget_min: hasBudget ? budgetParsed : null,
+        budget_max:
+          hasBudget && restJobData.budget_rate_type === "fixed"
+            ? budgetParsed
+            : null,
+        budget_rate_type: hasBudget ? restJobData.budget_rate_type : null,
+        notes: restJobData.additional_notes.trim() || null,
+        confirm_window_seconds: 90,
+      };
+
+      console.log("[CreateJobPage] Submitting job request:", jobPayload);
       const result = await apiPost<{ job_id: string; confirm_ends_at: string }>(
         "/api/jobs",
-        {
-          ...jobPayload,
-          confirm_window_seconds: 90,
-        },
+        jobPayload,
       );
       console.log("[CreateJobPage] Job created successfully:", result);
-      // Clear localStorage after successful submission
+      revokeCreateJobMediaUrls(composeMedia);
+      setComposeMedia([]);
       localStorage.removeItem(STORAGE_KEY);
-      // Pass job details via state for immediate display
       navigate(`/client/jobs/${result.job_id}/live`, {
         state: {
           job: {
             id: result.job_id,
             service_type: jobData.service_type,
-            service_details: jobData.service_details,
+            service_details: serviceDetails,
             location_city: jobData.location_city,
             time_duration: jobData.time_duration,
             care_frequency: jobData.care_frequency,
+            when_timeframe: whenTimeframe || null,
+            custom_when_at: customWhenAtIso,
+            budget_min: jobPayload.budget_min,
+            budget_max: jobPayload.budget_max,
+            budget_rate_type: jobPayload.budget_rate_type,
+            notes: jobPayload.notes,
           },
         },
       });
@@ -948,8 +1156,208 @@ export default function CreateJobPage() {
               </div>
             )}
 
-            {/* Step 5: Service-Specific Details */}
+            {/* Step 5: Budget (optional) */}
             {step === 5 && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Optional — leave blank to continue without a budget.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="ml-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                    Budget
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                        ₪
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="200"
+                        value={jobData.budget_amount}
+                        onChange={(e) => updateField("budget_amount", e.target.value)}
+                        className={cn(
+                          "h-14 w-full rounded-2xl border border-slate-200/90 bg-white pl-8 pr-4 text-lg font-medium text-foreground outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 dark:border-white/[0.12] dark:bg-white/[0.04]",
+                          noFieldSpinnerClass,
+                        )}
+                      />
+                    </div>
+                    <select
+                      value={jobData.budget_rate_type}
+                      onChange={(e) =>
+                        updateField(
+                          "budget_rate_type",
+                          e.target.value as JobData["budget_rate_type"],
+                        )
+                      }
+                      className="h-14 w-36 rounded-2xl border border-slate-200/90 bg-white px-3.5 text-base font-medium text-foreground outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 dark:border-white/[0.12] dark:bg-white/[0.04]"
+                    >
+                      <option value="per_hour">per hour</option>
+                      <option value="fixed">fixed</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 6: When */}
+            {step === 6 && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {REQUEST_HELP_WHEN_OPTIONS.map((opt) => {
+                    const isSel = jobData.when_timeframe === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          updateField("when_timeframe", opt.id);
+                          if (opt.id !== "custom") {
+                            setCustomWhenDate(null);
+                            updateField("custom_when_time", "");
+                            setCustomWhenDatePickerOpen(false);
+                          }
+                        }}
+                        className={cn(
+                          "h-11 rounded-xl border px-4 text-sm font-semibold transition-all active:scale-95",
+                          requestHelpWhenOptionButtonClass(isSel, opt.id),
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {jobData.when_timeframe === "custom" ? (
+                  <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-[1fr_auto]">
+                    <Dialog
+                      open={customWhenDatePickerOpen}
+                      onOpenChange={setCustomWhenDatePickerOpen}
+                    >
+                      <DialogTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex h-14 w-full items-center gap-2 rounded-2xl border border-slate-200/90 bg-white px-3.5 text-left text-base font-medium text-foreground outline-none transition-colors hover:bg-slate-50 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 dark:border-white/[0.12] dark:bg-white/[0.04] dark:hover:bg-white/[0.06]"
+                        >
+                          <CalendarDays className="h-5 w-5 shrink-0 text-muted-foreground" />
+                          <span className={cn(!customWhenDate && "text-muted-foreground")}>
+                            {customWhenDate
+                              ? format(customWhenDate, "EEEE, MMMM d, yyyy")
+                              : "Pick a date"}
+                          </span>
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                          <DialogTitle>When do you need help?</DialogTitle>
+                        </DialogHeader>
+                        <SimpleCalendar
+                          selectedDate={customWhenDate}
+                          onDateSelect={(date) => {
+                            setCustomWhenDate(date);
+                            setCustomWhenDatePickerOpen(false);
+                          }}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                    <div className="relative sm:w-40">
+                      <Clock className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="time"
+                        value={jobData.custom_when_time}
+                        onChange={(e) => updateField("custom_when_time", e.target.value)}
+                        className={cn(
+                          "h-14 w-full rounded-2xl border border-slate-200/90 bg-white pl-11 pr-3.5 text-base font-medium text-foreground outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 dark:border-white/[0.12] dark:bg-white/[0.04]",
+                          noFieldSpinnerClass,
+                        )}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Step 7: Additional details (optional) */}
+            {step === 7 && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Optional — add anything else helpers should know, or skip.
+                </p>
+                <Textarea
+                  placeholder="Describe what you need help with..."
+                  value={jobData.additional_notes}
+                  onChange={(e) => updateField("additional_notes", e.target.value)}
+                  className="min-h-[140px] resize-none rounded-2xl border-slate-200/90 bg-white text-base dark:border-white/[0.12] dark:bg-white/[0.04]"
+                />
+              </div>
+            )}
+
+            {/* Step 8: Media (optional) */}
+            {step === 8 && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Optional — add photos or videos to show the job.
+                </p>
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,video/mp4,video/webm,video/quicktime,video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) handleMediaPick(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                {composeMedia.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {composeMedia.map((item) => (
+                      <div
+                        key={item.id}
+                        className="relative aspect-square overflow-hidden rounded-2xl border border-slate-200/90 bg-muted/30 dark:border-white/[0.12]"
+                      >
+                        {item.kind === "image" ? (
+                          <img
+                            src={item.previewUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <video
+                            src={item.previewUrl}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeComposeMedia(item.id)}
+                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm"
+                          aria-label="Remove media"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {composeMedia.length < MAX_CREATE_JOB_MEDIA ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-14 w-full gap-2 rounded-2xl border-dashed text-base font-semibold"
+                    onClick={() => mediaInputRef.current?.click()}
+                  >
+                    <ImagePlus className="h-5 w-5" />
+                    Add photos or videos
+                  </Button>
+                ) : null}
+              </div>
+            )}
+
+            {/* Step 9: Service-Specific Details */}
+            {step === 9 && (
               <div className="space-y-4">
                 {/* Cleaning Type */}
                 {jobData.service_type === "cleaning" && (
@@ -1123,7 +1531,7 @@ export default function CreateJobPage() {
               </div>
             )}
 
-            {/* Bottom Navigation Actions (Steps 2-5 only) */}
+            {/* Bottom Navigation Actions (Steps 2-9 only) */}
             {step > 1 && (
               <div className="mt-10 flex flex-col gap-3 pb-8 px-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Button
@@ -1146,6 +1554,17 @@ export default function CreateJobPage() {
                         <Sparkles className="ml-2 h-6 w-6 text-white" />
                       </>
                     )
+                  ) : step === 5 || step === 7 || step === 8 ? (
+                    <>
+                      {step === 5 && !jobData.budget_amount.trim()
+                        ? "Skip"
+                        : step === 7 && !jobData.additional_notes.trim()
+                          ? "Skip"
+                          : step === 8 && composeMedia.length === 0
+                            ? "Skip"
+                            : "Next Step"}
+                      <ChevronRight className="ml-2 h-6 w-6" />
+                    </>
                   ) : (
                     <>
                       Next Step

@@ -10,7 +10,7 @@ type ToastFn = (opts: {
   variant?: "default" | "success" | "error" | "warning" | "info";
 }) => void;
 
-/** Start or open a DM with a community post author (client ↔ helper only). */
+/** Start or open a DM with another user (any role). */
 export async function openCommunityContact(opts: {
   supabase: SupabaseClient;
   user: User;
@@ -29,17 +29,21 @@ export async function openCommunityContact(opts: {
   } = opts;
   if (targetUserId === user.id) return;
 
-  // Unrestricted messaging: anyone can message anyone
-  const [idA, idB] = [user.id, targetUserId].sort();
-  const clientId = idA;
-  const freelancerId = idB;
+  const [clientId, freelancerId] =
+    user.id.localeCompare(targetUserId) < 0
+      ? [user.id, targetUserId]
+      : [targetUserId, user.id];
+
+  const pairOr =
+    `and(client_id.eq.${user.id},freelancer_id.eq.${targetUserId}),` +
+    `and(client_id.eq.${targetUserId},freelancer_id.eq.${user.id})`;
 
   try {
     const { data: existing, error: findErr } = await supabase
       .from("conversations")
       .select("id")
-      .eq("client_id", clientId)
-      .eq("freelancer_id", freelancerId)
+      .is("job_id", null)
+      .or(pairOr)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

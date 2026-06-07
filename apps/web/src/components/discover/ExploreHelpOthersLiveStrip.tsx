@@ -7,8 +7,8 @@ import { useKycGate } from "@/context/KycGateContext";
 import { supabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
 import {
+  freelancerLiveCountdownTarget,
   isFreelancerInActive24hLiveWindow,
-  isFreelancerLiveWindowActive,
 } from "@/lib/freelancerLiveWindow";
 import { cn } from "@/lib/utils";
 import { DiscoverMobileStripPill } from "@/components/discover/DiscoverMobileStripPill";
@@ -20,7 +20,6 @@ import {
 type FreelancerLiveRow = {
   live_until: string | null;
   available_now: boolean | null;
-  updated_at: string | null;
 };
 
 type Props = {
@@ -56,18 +55,25 @@ export function ExploreHelpOthersLiveStrip({
     setLoading(true);
     const { data, error } = await supabase
       .from("freelancer_profiles")
-      .select("live_until, available_now, updated_at")
+      .select("live_until, available_now")
       .eq("user_id", viewerId)
       .maybeSingle();
     if (error) {
       console.warn("[ExploreHelpOthersLiveStrip] freelancer_profiles:", error);
       setFp(null);
     } else {
-      setFp({
+      const row = {
         live_until: data?.live_until ?? null,
         available_now: data?.available_now ?? null,
-        updated_at: data?.updated_at ?? null,
-      });
+      };
+      setFp(row);
+      const untilMs = row.live_until ? new Date(row.live_until).getTime() : NaN;
+      if (row.live_until && !Number.isNaN(untilMs) && untilMs <= Date.now()) {
+        void supabase
+          .from("freelancer_profiles")
+          .update({ live_until: null, live_categories: [] })
+          .eq("user_id", viewerId);
+      }
     }
     setLoading(false);
   }, [viewerId]);
@@ -88,20 +94,11 @@ export function ExploreHelpOthersLiveStrip({
     };
   }, [load]);
 
-  const isLive = isFreelancerLiveWindowActive(fp);
-  const in24h = isFreelancerInActive24hLiveWindow(fp);
-
-  const timerCountdownIso = useMemo(() => {
-    if (!isLive) return null;
-    if (in24h && fp?.live_until) return fp.live_until;
-    return null;
-  }, [isLive, in24h, fp?.live_until]);
-
-  const timerElapsedAnchorIso = useMemo(() => {
-    if (!isLive) return null;
-    if (timerCountdownIso) return null;
-    return fp?.updated_at ?? null;
-  }, [isLive, timerCountdownIso, fp?.updated_at]);
+  const isLive = isFreelancerInActive24hLiveWindow(fp);
+  const timerCountdownIso = useMemo(
+    () => freelancerLiveCountdownTarget(fp),
+    [fp?.live_until],
+  );
 
   const handleGoLive = useCallback(() => {
     if (onGoLive) {
@@ -123,11 +120,10 @@ export function ExploreHelpOthersLiveStrip({
   }
 
   const timerSlot =
-    isLive && (timerCountdownIso || timerElapsedAnchorIso) ? (
+    isLive && timerCountdownIso ? (
       <div className={stripLiveTimerClass} aria-label="Live timer">
         <LiveTimer
-          countdownTo={timerCountdownIso ?? undefined}
-          createdAt={timerElapsedAnchorIso ?? undefined}
+          countdownTo={timerCountdownIso}
           render={({ time }) => <span>{time}</span>}
         />
       </div>

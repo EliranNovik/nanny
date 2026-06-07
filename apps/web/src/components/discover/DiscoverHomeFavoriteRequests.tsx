@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { globalCommunityFeedPath } from "@/lib/communityFeedNav";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -329,12 +330,15 @@ export function DiscoverHomeFavoriteRequests({
               type="button"
               className={cardBtnClass}
               onClick={() => {
-                trackEvent("discover_favorite_request_open_match", {
+                trackEvent("discover_favorite_request_open_feed", {
                   job_id: r.id,
                   client_id: r.client_id,
                 });
                 navigate(
-                  `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(r.id)}`,
+                  globalCommunityFeedPath({
+                    type: "request_help",
+                    request: r.id,
+                  }),
                 );
               }}
               aria-label={`${title} in ${loc} — posted by ${name}`}

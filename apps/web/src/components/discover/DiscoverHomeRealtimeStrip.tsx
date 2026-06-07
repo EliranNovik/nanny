@@ -43,6 +43,7 @@ import {
   serviceCategoryLabel,
 } from "@/lib/serviceCategories";
 import type { ServiceCategoryId } from "@/lib/serviceCategories";
+import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
 import { trackEvent } from "@/lib/analytics";
 import { DiscoverProfileSaveBadge } from "@/components/discover/DiscoverProfileSaveBadge";
 import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotificationFilter";
@@ -55,6 +56,7 @@ import { sendKnockMessage } from "@/lib/knockMessage";
 import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
 import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
 import { cn } from "@/lib/utils";
+import { openCommunityContact } from "@/lib/communityContact";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowDownCircle,
@@ -126,9 +128,12 @@ function ratingLabel(r: number | null | undefined): string {
   return Number(r).toFixed(1);
 }
 
+
 type Props = {
   variant: "hire" | "work";
   explorePath: string;
+  categoryFilter: DiscoverHomeCategoryFilter;
+  onCategoryFilterChange: (category: DiscoverHomeCategoryFilter) => void;
 };
 
 type WorkRowItem = {
@@ -203,15 +208,10 @@ const workStripDeclineRoundBtn = cn(
 );
 
 /**
- * Avatar frame: three-tone gradient in one hue (no outer shadow).
- * Hire = violet family; work = emerald family.
+ * Avatar frame for discover strip — plain circle (no coloured ring).
  */
-function stripAvatarRingClass(mode: "hire" | "work"): string {
-  if (mode === "hire") {
-    return "bg-gradient-to-br from-violet-400 via-violet-600 to-violet-900 dark:from-violet-300 dark:via-violet-500 dark:to-violet-800";
-  }
-  return "bg-gradient-to-br from-emerald-300 via-emerald-600 to-emerald-900 dark:from-emerald-400 dark:via-emerald-600 dark:to-emerald-800";
-}
+const stripAvatarClassName =
+  "h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]";
 
 const stripCategoryCircleClass =
   "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-14 md:w-14 items-center justify-center rounded-full border transition-all bg-white/85 shadow-sm backdrop-blur-md dark:border-0 dark:bg-zinc-800/75 dark:shadow-none md:dark:bg-zinc-900/55";
@@ -357,85 +357,19 @@ function StripHelperContactDropdown({
     (telegramUsername || "").replace(/^@/, "").trim();
 
   async function openInternalChat() {
-    if (!viewerId || viewerId === helperUserId) return;
-    if (!viewerRole) {
-      addToast({
-        title: "Please wait",
-        description: "Your profile is still loading. Try again in a moment.",
-        variant: "default",
-      });
-      return;
-    }
-    if (viewerRole !== "client" && viewerRole !== "freelancer") {
-      addToast({
-        title: "Messaging unavailable",
-        description: "Your account cannot start a chat from here.",
-        variant: "error",
-      });
-      return;
-    }
-    const theirRole = helperRole;
-    if (!theirRole || (theirRole !== "client" && theirRole !== "freelancer")) {
-      addToast({
-        title: "Messaging unavailable",
-        description: "You can only message clients or helpers.",
-        variant: "error",
-      });
-      return;
-    }
-    if (viewerRole === theirRole) {
-      addToast({
-        title: "Messaging unavailable",
-        description:
-          "You can only message someone in the opposite role (client ↔ helper).",
-        variant: "default",
-      });
-      return;
-    }
-
-    const clientId = viewerRole === "client" ? viewerId : helperUserId;
-    const freelancerId =
-      viewerRole === "freelancer" ? viewerId : helperUserId;
-
+    if (!viewerId || viewerId === helperUserId || !user) return;
     setOpeningChat(true);
     try {
-      const { data: existing, error: findErr } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("client_id", clientId)
-        .eq("freelancer_id", freelancerId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (findErr) throw findErr;
-
       setMenuOpen(false);
       onDismissSheet();
-      if (existing?.id) {
-        navigate(`/messages?conversation=${existing.id}`);
-        return;
-      }
-      const { data: created, error: insErr } = await supabase
-        .from("conversations")
-        .insert({
-          job_id: null,
-          client_id: clientId,
-          freelancer_id: freelancerId,
-        })
-        .select("id")
-        .single();
-      if (insErr) throw insErr;
-      navigate(`/messages?conversation=${created.id}`);
-    } catch (e: unknown) {
-      const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message: string }).message)
-          : "Please try again.";
-      addToast({
-        title: "Could not open chat",
-        description: msg,
-        variant: "error",
+      await openCommunityContact({
+        supabase,
+        user,
+        myRole: viewerRole,
+        targetUserId: helperUserId,
+        targetRole: helperRole,
+        navigate,
+        addToast,
       });
     } finally {
       setOpeningChat(false);
@@ -1229,16 +1163,12 @@ function DiscoverRealtimeStripDetailDialog({
                     disabled={!profileUserId}
                     aria-label="View public profile"
                   >
-                    <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("work"))}>
-                      <div className="rounded-full bg-white p-0.5 dark:bg-[#121212]">
-                        <Avatar className="h-[5.5rem] w-[5.5rem] border-0">
-                          <AvatarImage src={photoUrl || undefined} className="object-cover" alt="" />
-                          <AvatarFallback className="bg-zinc-200 text-xl font-black text-zinc-800 dark:bg-zinc-800 dark:text-white">
-                            {(displayName || "?").charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                    </div>
+                    <Avatar className={stripAvatarClassName}>
+                      <AvatarImage src={photoUrl || undefined} className="object-cover" alt="" />
+                      <AvatarFallback className="bg-zinc-200 text-xl font-black text-zinc-800 dark:bg-zinc-800 dark:text-white">
+                        {(displayName || "?").charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
                   </button>
                   <div className="flex flex-wrap items-center justify-center gap-x-1 text-[13px] text-zinc-500 dark:text-zinc-400">
                     <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
@@ -1293,21 +1223,12 @@ function DiscoverRealtimeStripDetailDialog({
                   disabled={!profileUserId}
                   aria-label="View public profile"
                 >
-                  <div
-                    className={cn(
-                      "relative overflow-visible rounded-full p-[3px]",
-                      hire ? stripAvatarRingClass("hire") : "bg-zinc-400 dark:bg-zinc-600",
-                    )}
-                  >
-                    <div className="rounded-full bg-white p-0.5 dark:bg-[#121212]">
-                      <Avatar className="h-[5.5rem] w-[5.5rem] border-0">
-                        <AvatarImage src={photoUrl || undefined} className="object-cover" alt="" />
-                        <AvatarFallback className="bg-zinc-200 text-xl font-black text-zinc-800 dark:bg-zinc-800 dark:text-white">
-                          {(displayName || "?").charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
-                  </div>
+                  <Avatar className={stripAvatarClassName}>
+                    <AvatarImage src={photoUrl || undefined} className="object-cover" alt="" />
+                    <AvatarFallback className="bg-zinc-200 text-xl font-black text-zinc-800 dark:bg-zinc-800 dark:text-white">
+                      {(displayName || "?").charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
                 </button>
 
                 <div className="min-w-0 flex-1 pt-0.5">
@@ -1849,7 +1770,12 @@ function formatJobDetailLine(job: {
 /**
  * Hire: horizontal avatar strip. Work: vertical request rows (reference layout).
  */
-export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
+export function DiscoverHomeRealtimeStrip({
+  variant,
+  explorePath,
+  categoryFilter: selectedFilterCategory,
+  onCategoryFilterChange: setSelectedFilterCategory,
+}: Props) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [detailOpen, setDetailOpen] = useState(false);
@@ -1877,7 +1803,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
   };
   const { data: liveAvatarsPayload, isLoading: isLoadingLive } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
-  const [selectedFilterCategory, setSelectedFilterCategory] = useState<ServiceCategoryId | "all">("all");
   const { data: offlineHelpers = [], isLoading: isLoadingOffline } = useTopOfflineHelpers(
     user?.id,
     selectedFilterCategory,
@@ -1973,7 +1898,6 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
       : DISCOVER_HOME_CATEGORIES.filter((c) => c.id === selectedFilterCategory);
 
     const out: HireStripItem[] = [];
-    const used = new Set<string>();
 
     if (selectedFilterCategory === "all") {
       const allHelpers: { av: DiscoverLiveAvatarEntry; primary: ServiceCategoryId; catSet: Set<ServiceCategoryId> }[] = [];
@@ -2483,21 +2407,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
               )}
             >
               <div className="relative inline-flex">
-                <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("work"))}>
-                  <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
-                    <Avatar className="h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
-                      <AvatarImage
-                        src={row.thumbUrl || undefined}
-                        className="object-cover"
-                        loading="eager" decoding="async"
-                        alt=""
-                      />
-                      <AvatarFallback className="text-lg font-bold">
-                        {row.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                </div>
+                <Avatar className={stripAvatarClassName}>
+                  <AvatarImage
+                    src={row.thumbUrl || undefined}
+                    className="object-cover"
+                    loading="eager" decoding="async"
+                    alt=""
+                  />
+                  <AvatarFallback className="text-lg font-bold">
+                    {row.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
                 {row.clientId.trim() ? (
                   <DiscoverProfileSaveBadge
                     targetUserId={row.clientId}
@@ -2609,21 +2529,17 @@ export function DiscoverHomeRealtimeStrip({ variant, explorePath }: Props) {
             className={stripHireProfileCardClass}
           >
             <div className="relative inline-flex">
-              <div className={cn("relative overflow-visible rounded-full p-[3px]", stripAvatarRingClass("hire"))}>
-                <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
-                  <Avatar className="h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]">
-                    <AvatarImage
-                      src={it.photo || undefined}
-                      className="object-cover"
-                      loading="eager" decoding="async"
-                      alt=""
-                    />
-                    <AvatarFallback className="text-lg font-bold">
-                      {it.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-              </div>
+              <Avatar className={stripAvatarClassName}>
+                <AvatarImage
+                  src={it.photo || undefined}
+                  className="object-cover"
+                  loading="eager" decoding="async"
+                  alt=""
+                />
+                <AvatarFallback className="text-lg font-bold">
+                  {it.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
               {it.helperUserId.trim() ? (
                 <DiscoverProfileSaveBadge
                   targetUserId={it.helperUserId}

@@ -10,6 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
 import {
+  SavedContentTabBar,
+  type SavedContentTab,
+} from "@/components/saved/SavedContentTabBar";
+import { SavedOpenHelpRequestsList } from "@/components/saved/SavedOpenHelpRequestsList";
+import { fetchSavedOpenHelpRequests } from "@/lib/jobRequestFavorites";
+import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import {
   BadgeCheck,
   CheckCircle2,
   Hourglass,
@@ -24,6 +31,7 @@ import {
 import { WhatsAppIcon } from "@/components/BrandIcons";
 import { INTERACTIVE_CARD_HOVER } from "@/components/jobs/jobCardSharedClasses";
 import { cn } from "@/lib/utils";
+import { openCommunityContact } from "@/lib/communityContact";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { ExpiryCountdown } from "@/components/ExpiryCountdown";
 import { StarRating } from "@/components/StarRating";
@@ -109,10 +117,13 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [loadingRequests, setLoadingRequests] = useState(false);
   const [profilesError, setProfilesError] = useState<string | null>(null);
   const [postsError, setPostsError] = useState<string | null>(null);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [posts, setPosts] = useState<PostWithExtras[]>([]);
+  const [savedRequests, setSavedRequests] = useState<DiscoverOpenHelpRequestRow[]>([]);
   const [likedProfilePosts, setLikedProfilePosts] = useState<LikedProfilePost[]>([]);
   const [busyProfileId, setBusyProfileId] = useState<string | null>(null);
   const [busyPostId, setBusyPostId] = useState<string | null>(null);
@@ -130,11 +141,11 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
     Record<string, string>
   >({});
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlTab = useMemo(() => {
+  const urlTab = useMemo((): SavedContentTab | null => {
     const raw = searchParams.get("tab");
-    return raw === "posts" || raw === "profiles" ? raw : null;
+    return raw === "posts" || raw === "requests" || raw === "profiles" ? raw : null;
   }, [searchParams]);
-  const [savedTab, setSavedTab] = useState<"posts" | "profiles">(() => {
+  const [savedTab, setSavedTab] = useState<SavedContentTab>(() => {
     return urlTab ?? (dataLikedPage ? "posts" : "profiles");
   });
 
@@ -144,7 +155,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
     setSavedTab(urlTab);
   }, [urlTab]);
 
-  function setSavedTabAndUrl(next: "posts" | "profiles") {
+  function setSavedTabAndUrl(next: SavedContentTab) {
     setSavedTab(next);
     setSearchParams(
       (prev) => {
@@ -190,12 +201,14 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
       setProfiles([]);
       setPosts([]);
       setLikedProfilePosts([]);
+      setSavedRequests([]);
       setHireInterestByPostId({});
       setConversationIdByJobId({});
       setLoading(false);
       setLoadError(null);
       setProfilesError(null);
       setPostsError(null);
+      setRequestsError(null);
       return;
     }
 
@@ -203,6 +216,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
     setLoadError(null);
     setProfilesError(null);
     setPostsError(null);
+    setRequestsError(null);
     try {
       console.log("[LikedPage] load start", { dataLikedPage: Boolean(dataLikedPage), userId: user.id });
       const runProfiles = async () => {
@@ -402,7 +416,31 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
         }
       };
 
-      await Promise.all([runProfiles(), runPosts()]);
+      const runRequests = async () => {
+        if (!dataLikedPage) {
+          setSavedRequests([]);
+          return;
+        }
+
+        setLoadingRequests(true);
+        setRequestsError(null);
+        try {
+          const rows = await withTimeout(
+            fetchSavedOpenHelpRequests(),
+            "get_saved_open_help_requests",
+            8000,
+          );
+          setSavedRequests(rows);
+        } catch (e) {
+          console.error("[LikedPage] requests load", e);
+          setSavedRequests([]);
+          setRequestsError(formatSupabaseError(e));
+        } finally {
+          setLoadingRequests(false);
+        }
+      };
+
+      await Promise.all([runProfiles(), runPosts(), runRequests()]);
     } catch (e) {
       console.error("[LikedPage]", e);
       setLoadError(formatSupabaseError(e));
@@ -414,6 +452,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
       setProfiles([]);
       setPosts([]);
       setLikedProfilePosts([]);
+      setSavedRequests([]);
       setHireInterestByPostId({});
       setConversationIdByJobId({});
     } finally {
@@ -431,10 +470,10 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
   /** After load: if the user only has saved posts (no profiles), show Posts so the list is not hidden. */
   useEffect(() => {
     if (loading) return;
-    if (profiles.length === 0 && effectivePostCount > 0) {
+    if (profiles.length === 0 && effectivePostCount > 0 && savedRequests.length === 0) {
       setSavedTabAndUrl("posts");
     }
-  }, [loading, profiles.length, effectivePostCount, dataLikedPage]);
+  }, [loading, profiles.length, effectivePostCount, savedRequests.length, dataLikedPage]);
 
   const removeProfileFavorite = async (favoriteUserId: string) => {
     if (!user?.id) return;
@@ -495,7 +534,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
   };
 
   const openDirectChatWithProfile = async (p: ProfileRow) => {
-    if (!user?.id || !profile?.role) {
+    if (!user?.id || !profile) {
       addToast({
         title: "Please wait",
         description:
@@ -506,79 +545,16 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
     }
     if (p.id === user.id) return;
 
-    const myRole = profile.role;
-    const theirRole = p.role;
-
-    if (myRole !== "client" && myRole !== "freelancer") {
-      addToast({
-        title: "Messaging unavailable",
-        description: "Your account cannot start a chat from here.",
-        variant: "error",
-      });
-      return;
-    }
-    if (!theirRole || (theirRole !== "client" && theirRole !== "freelancer")) {
-      addToast({
-        title: "Messaging unavailable",
-        description: "You can only message clients or helpers.",
-        variant: "error",
-      });
-      return;
-    }
-    if (myRole === theirRole) {
-      addToast({
-        title: "Messaging unavailable",
-        description:
-          "You can only message someone in the opposite role (client ↔ helper).",
-        variant: "default",
-      });
-      return;
-    }
-
-    const clientId = myRole === "client" ? user.id : p.id;
-    const freelancerId = myRole === "freelancer" ? user.id : p.id;
-
     setOpeningChatProfileId(p.id);
     try {
-      const { data: existing, error: findErr } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("client_id", clientId)
-        .eq("freelancer_id", freelancerId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (findErr) throw findErr;
-
-      if (existing?.id) {
-        navigate(`/messages?conversation=${existing.id}`);
-        return;
-      }
-
-      const { data: created, error: insErr } = await supabase
-        .from("conversations")
-        .insert({
-          job_id: null,
-          client_id: clientId,
-          freelancer_id: freelancerId,
-        })
-        .select("id")
-        .single();
-
-      if (insErr) throw insErr;
-
-      navigate(`/messages?conversation=${created.id}`);
-    } catch (e: unknown) {
-      console.error(e);
-      const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message: string }).message)
-          : "Please try again.";
-      addToast({
-        title: "Could not open chat",
-        description: msg,
-        variant: "error",
+      await openCommunityContact({
+        supabase,
+        user,
+        myRole: profile.role,
+        targetUserId: p.id,
+        targetRole: p.role,
+        navigate,
+        addToast,
       });
     } finally {
       setOpeningChatProfileId(null);
@@ -587,7 +563,14 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
 
   const emptyHint = (
     <p className="text-center text-sm text-muted-foreground">
-      Tap the heart on{" "}
+      Tap the bookmark on open requests in{" "}
+      <Link
+        to="/discover"
+        className="font-semibold text-primary underline-offset-4 hover:underline"
+      >
+        Discover
+      </Link>
+      , the heart on{" "}
       <Link
         to={profile?.role === "freelancer" ? "/jobs" : "/client/helpers"}
         className="font-semibold text-primary underline-offset-4 hover:underline"
@@ -605,8 +588,22 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
     </p>
   );
 
-  /** On the in-app Saved page (client/freelancer), tabs should scroll away (not fixed). */
-  const showSavedTabs = !dataLikedPage && (loading || profiles.length > 0 || effectivePostCount > 0);
+  const showSavedTabs =
+    !dataLikedPage &&
+    (loading || profiles.length > 0 || effectivePostCount > 0 || savedRequests.length > 0);
+
+  const tabBarProps = {
+    savedTab,
+    onTabChange: setSavedTabAndUrl,
+    loading,
+    postsCount: dataLikedPage ? likedProfilePosts.length : posts.length,
+    requestsCount: savedRequests.length,
+    profilesCount: profiles.length,
+    showRequestsTab: dataLikedPage,
+  };
+
+  const hasAnySaved =
+    profiles.length > 0 || effectivePostCount > 0 || savedRequests.length > 0;
 
   return (
     <div
@@ -626,123 +623,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
           )}
         >
           <div className="app-desktop-shell pointer-events-auto">
-            <div className="mx-auto flex max-w-2xl justify-center px-2 py-2 md:px-0">
-              <div
-                role="tablist"
-                aria-label="Saved content type"
-                className="flex w-full justify-center"
-              >
-                <div
-                  className={cn(
-                    "relative mx-auto grid min-h-[56px] w-full max-w-[22rem] grid-cols-2 gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[24rem] sm:min-h-[64px]",
-                    "bg-slate-100/80 border border-slate-200/60 shadow-inner",
-                    "dark:bg-zinc-900/50 dark:border-zinc-800/60 leading-none",
-                  )}
-                >
-                  <div
-                    aria-hidden
-                    className={cn(
-                      "pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 z-[5] rounded-[9999px]",
-                      "w-[calc((100%-1rem)/2)] will-change-transform",
-                      "bg-white shadow-sm ring-1 ring-slate-900/5",
-                      "dark:bg-zinc-800 dark:ring-white/10 dark:shadow-none",
-                      "transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                      savedTab === "posts"
-                        ? "translate-x-0"
-                        : "translate-x-[calc(100%+0.25rem)]",
-                    )}
-                  />
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={savedTab === "posts"}
-                    aria-label={
-                      savedTab === "posts"
-                        ? undefined
-                        : loading
-                          ? "Posts"
-                          : dataLikedPage
-                            ? `Posts, ${likedProfilePosts.length} liked`
-                            : `Posts, ${posts.length} saved`
-                    }
-                    onClick={() => setSavedTabAndUrl("posts")}
-                    className={cn(
-                      "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
-                      "transition-[color,transform] duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                      "active:scale-[0.98] motion-reduce:transition-none",
-                      savedTab === "posts"
-                        ? "gap-2.5 text-slate-900 dark:text-white sm:gap-3"
-                        : "gap-2.5 text-slate-500 hover:text-slate-700 sm:gap-3 dark:text-zinc-400 dark:hover:text-zinc-200",
-                    )}
-                  >
-                    <Sparkles
-                      className={cn(
-                        "h-5 w-5 shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                        savedTab === "posts"
-                          ? "text-rose-500 dark:text-rose-500"
-                          : "text-slate-400 dark:text-zinc-500",
-                      )}
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                    {savedTab === "posts" && (
-                      <>
-                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-[15px]">
-                          Posts
-                        </span>
-                        <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
-                          ({loading ? "…" : dataLikedPage ? likedProfilePosts.length : posts.length})
-                        </span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={savedTab === "profiles"}
-                    aria-label={
-                      savedTab === "profiles"
-                        ? undefined
-                        : loading
-                          ? "Profiles"
-                          : `Profiles, ${profiles.length} saved`
-                    }
-                    onClick={() => setSavedTabAndUrl("profiles")}
-                    className={cn(
-                      "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
-                      "transition-[color,transform] duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                      "active:scale-[0.98] motion-reduce:transition-none",
-                      savedTab === "profiles"
-                        ? "gap-2.5 text-slate-900 dark:text-white sm:gap-3"
-                        : "gap-2.5 text-slate-500 hover:text-slate-700 sm:gap-3 dark:text-zinc-400 dark:hover:text-zinc-200",
-                    )}
-                  >
-                    <UserRound
-                      className={cn(
-                        "h-5 w-5 shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                        savedTab === "profiles"
-                          ? "text-rose-500 dark:text-rose-500"
-                          : "text-slate-400 dark:text-zinc-500",
-                      )}
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                    {savedTab === "profiles" && (
-                      <>
-                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-[15px]">
-                          Profiles
-                        </span>
-                        <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
-                          ({loading ? "…" : profiles.length})
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <SavedContentTabBar {...tabBarProps} />
           </div>
         </div>
       )}
@@ -755,108 +636,8 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
             !showSavedTabs && "mt-6",
           )}
         >
-          {dataLikedPage && (loading || profiles.length > 0 || effectivePostCount > 0) ? (
-            <div className="mx-auto flex max-w-2xl justify-center px-2 py-2 md:px-0">
-              <div
-                role="tablist"
-                aria-label="Saved content type"
-                className="flex w-full justify-center"
-              >
-                <div
-                  className={cn(
-                    "relative mx-auto grid min-h-[56px] w-full max-w-[22rem] grid-cols-2 gap-1 overflow-hidden rounded-full p-1.5 sm:max-w-[24rem] sm:min-h-[64px]",
-                    "bg-slate-100/80 border border-slate-200/60 shadow-inner",
-                    "dark:bg-zinc-900/50 dark:border-zinc-800/60 leading-none",
-                  )}
-                >
-                  <div
-                    aria-hidden
-                    className={cn(
-                      "pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 z-[5] rounded-[9999px]",
-                      "w-[calc((100%-1rem)/2)] will-change-transform",
-                      "bg-white shadow-sm ring-1 ring-slate-900/5",
-                      "dark:bg-zinc-800 dark:ring-white/10 dark:shadow-none",
-                      "transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-                      savedTab === "posts"
-                        ? "translate-x-0"
-                        : "translate-x-[calc(100%+0.25rem)]",
-                    )}
-                  />
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={savedTab === "posts"}
-                    onClick={() => setSavedTabAndUrl("posts")}
-                    className={cn(
-                      "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
-                      "transition-[color,transform] duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                      "active:scale-[0.98] motion-reduce:transition-none",
-                      savedTab === "posts"
-                        ? "gap-2.5 text-slate-900 dark:text-white sm:gap-3"
-                        : "gap-2.5 text-slate-500 hover:text-slate-700 sm:gap-3 dark:text-zinc-400 dark:hover:text-zinc-200",
-                    )}
-                  >
-                    <Sparkles
-                      className={cn(
-                        "h-5 w-5 shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                        savedTab === "posts"
-                          ? "text-rose-500 dark:text-rose-500"
-                          : "text-slate-400 dark:text-zinc-500",
-                      )}
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                    {savedTab === "posts" && (
-                      <>
-                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-[15px]">
-                          Posts
-                        </span>
-                        <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
-                          ({loading ? "…" : likedProfilePosts.length})
-                        </span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={savedTab === "profiles"}
-                    onClick={() => setSavedTabAndUrl("profiles")}
-                    className={cn(
-                      "relative z-10 flex h-full min-h-[54px] min-w-0 items-center justify-center rounded-full px-2 py-2.5 sm:min-h-[62px] sm:px-3",
-                      "transition-[color,transform] duration-300 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                      "active:scale-[0.98] motion-reduce:transition-none",
-                      savedTab === "profiles"
-                        ? "gap-2.5 text-slate-900 dark:text-white sm:gap-3"
-                        : "gap-2.5 text-slate-500 hover:text-slate-700 sm:gap-3 dark:text-zinc-400 dark:hover:text-zinc-200",
-                    )}
-                  >
-                    <UserRound
-                      className={cn(
-                        "h-5 w-5 shrink-0 transition-colors duration-300 sm:h-6 sm:w-6",
-                        savedTab === "profiles"
-                          ? "text-rose-500 dark:text-rose-500"
-                          : "text-slate-400 dark:text-zinc-500",
-                      )}
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                    {savedTab === "profiles" && (
-                      <>
-                        <span className="max-w-[min(100%,7rem)] truncate text-sm font-bold leading-tight tracking-tight sm:text-[15px]">
-                          Profiles
-                        </span>
-                        <span className="shrink-0 tabular-nums text-xs font-bold text-slate-500/80 dark:text-zinc-400/80 sm:text-sm">
-                          ({loading ? "…" : profiles.length})
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+          {dataLikedPage && (loading || hasAnySaved) ? (
+            <SavedContentTabBar {...tabBarProps} />
           ) : null}
           {loadError ? (
             <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
@@ -867,7 +648,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
             <div className="flex justify-center py-20">
               <Loader2 className="h-10 w-10 animate-spin text-rose-500" />
             </div>
-          ) : profiles.length === 0 && effectivePostCount === 0 ? (
+          ) : !hasAnySaved ? (
             <Card className="rounded-2xl border border-dashed border-black/15 bg-transparent dark:border-white/15">
               <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
                 <Sparkles className="h-10 w-10 text-rose-400/80" />
@@ -880,7 +661,7 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
           ) : (
             <Tabs
               value={savedTab}
-              onValueChange={(v) => setSavedTabAndUrl(v as "posts" | "profiles")}
+              onValueChange={(v) => setSavedTabAndUrl(v as SavedContentTab)}
               className="w-full"
             >
               <TabsContent value="posts" className="mt-0 outline-none">
@@ -1096,6 +877,26 @@ export function SavedContent({ dataLikedPage }: { dataLikedPage?: boolean }) {
                       );
                     })}
                   </ul>
+                )}
+              </TabsContent>
+
+              <TabsContent value="requests" className="mt-0 outline-none">
+                {requestsError ? (
+                  <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+                    {requestsError}
+                  </div>
+                ) : null}
+                {loadingRequests ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <SavedOpenHelpRequestsList
+                    requests={savedRequests}
+                    onUnsaved={(jobId) =>
+                      setSavedRequests((prev) => prev.filter((row) => row.id !== jobId))
+                    }
+                  />
                 )}
               </TabsContent>
 

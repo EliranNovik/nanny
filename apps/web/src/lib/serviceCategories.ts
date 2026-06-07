@@ -96,3 +96,16 @@ export function serviceCategoryLabel(id?: string | null): string {
     id.replace(/_/g, " ")
   );
 }
+
+/** When category is `other_help`, show the user's custom label (max 15 chars) if provided. */
+export function postServiceCategoryLabel(
+  categoryId?: string | null,
+  customCategory?: string | null,
+): string {
+  if (categoryId === "other_help" && customCategory?.trim()) {
+    return customCategory.trim();
+  }
+  return serviceCategoryLabel(categoryId);
+}
+
+export const CUSTOM_POST_CATEGORY_MAX_LEN = 15;

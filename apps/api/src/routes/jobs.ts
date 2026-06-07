@@ -4,6 +4,10 @@ import { supabaseAdmin } from "../supabase";
 import { findCandidates } from "../logic/match";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { assertKycApproved } from "../lib/kycGate";
+import {
+  buildPostTextInputFromJob,
+  generatePostText,
+} from "../lib/postTextTemplates";
 
 export const jobsRouter = Router();
 
@@ -16,7 +20,8 @@ const JOB_SAFE_FIELDS = [
   "service_details", "children_count", "children_age_group",
   "location_city", "location_lat", "location_lng", "start_at", "created_at", "locked_at",
   "confirm_starts_at", "confirm_ends_at", "confirm_window_seconds",
-  "notes", "budget_min", "budget_max", "languages_pref", "requirements",
+  "notes", "budget_min", "budget_max", "budget_rate_type", "languages_pref", "requirements",
+  "when_timeframe", "custom_when_at",
   "offered_hourly_rate", "price_offer_status", "community_post_id",
   "community_post_expires_at",
 ].join(", ");
@@ -91,6 +96,12 @@ const VALID_TIME_DURATIONS = [
   "1_2_hours", "3_4_hours", "5_6_hours", "full_day",
 ] as const;
 
+const VALID_WHEN_TIMEFRAMES = [
+  "now", "today", "tomorrow", "this_week", "custom",
+] as const;
+
+const VALID_BUDGET_RATE_TYPES = ["per_hour", "fixed"] as const;
+
 const CreateJobSchema = z.object({
   service_type: z.enum(VALID_SERVICE_TYPES),
   care_frequency: z.enum(VALID_CARE_FREQUENCIES),
@@ -106,10 +117,13 @@ const CreateJobSchema = z.object({
   // Common fields
   location_city: z.string().min(1).max(200),
   start_at: z.string().datetime().optional(),
+  when_timeframe: z.enum(VALID_WHEN_TIMEFRAMES).optional(),
+  custom_when_at: z.string().datetime().optional(),
   languages_pref: z.array(z.string().max(50)).max(10).default([]),
   requirements: z.array(z.string().max(100)).max(20).default([]),
   budget_min: z.number().int().min(0).max(100_000).optional().nullable(),
   budget_max: z.number().int().min(0).max(100_000).optional().nullable(),
+  budget_rate_type: z.enum(VALID_BUDGET_RATE_TYPES).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
   confirm_window_seconds: z.number().int().min(30).max(180).default(90),
 });
@@ -219,6 +233,9 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
       stage: "Request" as const,
       ...payload,
       start_at: payload.start_at ? new Date(payload.start_at).toISOString() : null,
+      custom_when_at: payload.custom_when_at
+        ? new Date(payload.custom_when_at).toISOString()
+        : null,
     })
     .select(JOB_SAFE_FIELDS)
     .single();
@@ -236,6 +253,17 @@ jobsRouter.post("/", async (req: Request, res: Response): Promise<void> => {
     return;
   }
   const j = job as any;
+
+  try {
+    const generatedCopy = generatePostText(buildPostTextInputFromJob(j as Record<string, unknown>));
+    await supabaseAdmin
+      .from("job_requests")
+      .update({ ai_generated_copy: generatedCopy })
+      .eq("id", j.id);
+    j.ai_generated_copy = generatedCopy;
+  } catch (copyErr) {
+    console.error("[JobsAPI] Post copy generation failed:", copyErr);
+  }
 
   // Find matching candidates
   console.log("[JobsAPI] Finding candidates for job:", j.id);

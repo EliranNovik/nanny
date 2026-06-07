@@ -1,3 +1,25 @@
+export const FREELANCER_LIVE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * ISO timestamp to count down to for an active go-live window, capped at 24h from now.
+ * Returns null when the user is not in an active timed go-live window.
+ */
+export function freelancerLiveCountdownTarget(
+  fp:
+    | {
+        live_until?: string | null;
+      }
+    | null
+    | undefined,
+): string | null {
+  if (!isFreelancerInActive24hLiveWindow(fp)) return null;
+  const until = fp!.live_until!;
+  const untilMs = new Date(until).getTime();
+  if (Number.isNaN(untilMs)) return null;
+  const cappedMs = Math.min(untilMs, Date.now() + FREELANCER_LIVE_WINDOW_MS);
+  return new Date(cappedMs).toISOString();
+}
+
 /**
  * True when the helper should show as “available now” for matching / maps / Discover.
  *

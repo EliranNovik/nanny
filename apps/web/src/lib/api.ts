@@ -1,7 +1,22 @@
 import { supabase } from "./supabase";
 
-const base = (import.meta.env.VITE_API_BASE_URL ||
-  "http://localhost:4000") as string;
+/** In dev, route local API calls through the Vite proxy (same-origin). */
+function resolveApiBase(): string {
+  const configured = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (import.meta.env.DEV) {
+    if (
+      !configured ||
+      configured.includes("localhost:4000") ||
+      configured.includes("127.0.0.1:4000")
+    ) {
+      return "";
+    }
+    return configured;
+  }
+  return configured || "http://localhost:4000";
+}
+
+const base = resolveApiBase();
 
 async function authHeader(): Promise<Record<string, string>> {
   try {

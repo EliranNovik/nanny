@@ -1,16 +1,15 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import {
   Heart,
   MessageCircle,
   Send,
   Plus,
   X,
-  Image as ImageIcon,
   Loader2,
   AtSign,
   Trash2,
@@ -20,12 +19,14 @@ import {
   VolumeX,
   Volume2,
   Bookmark,
-  ChevronUp,
-  ChevronDown,
-  ListChecks,
-  FileText,
-  Megaphone,
+  Briefcase,
+  Users,
   CalendarDays,
+  MapPin,
+  Coins,
+  HelpCircle,
+  LifeBuoy,
+  Clock,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -34,9 +35,10 @@ import { useKycGate } from "@/context/KycGateContext";
 import { needsKycVerification } from "@/lib/kyc";
 import { useToast } from "@/components/ui/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithLiveDot } from "@/components/AvatarWithLiveDot";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn, noFieldSpinnerClass } from "@/lib/utils";
 import {
   bidirectionalInputProps,
   bidirectionalTextProps,
@@ -46,7 +48,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
+import { SimpleCalendar } from "@/components/SimpleCalendar";
+import { LocationPicker } from "@/components/LocationPicker";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   PUBLIC_PROFILE_MEDIA_BUCKET,
@@ -62,17 +67,85 @@ import type { AvailabilityPayload } from "@/lib/availabilityPosts";
 import {
   isServiceCategoryId,
   serviceCategoryLabel,
+  postServiceCategoryLabel,
+  CUSTOM_POST_CATEGORY_MAX_LEN,
   type ServiceCategoryId,
+  SERVICE_CATEGORIES,
 } from "@/lib/serviceCategories";
+import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useProfilePostsFeedRealtime } from "@/hooks/useProfilePostsFeedRealtime";
-import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { FavoritesPostsSidePanel } from "@/components/discover/FavoritesPostsSidePanel";
+import {
+  mapOpenHelpRequestToFeedPost,
+  jobRequestMatchesFeedFilters,
+  type JobRequestFeedPost,
+} from "@/lib/openHelpRequestFeedPost";
+import { JobRequestCommentsSidePanel } from "@/components/jobs/JobRequestCommentsSidePanel";
+import { JobRequestCommentsModal } from "@/components/jobs/JobRequestCommentsModal";
+import {
+  applyJobRequestEngagement,
+  fetchJobRequestEngagement,
+  fetchJobRequestForFeedById,
+} from "@/lib/fetchJobRequestForFeed";
+import { fetchAcceptedJobRequestsForFeed } from "@/lib/fetchAcceptedJobRequestsForFeed";
+import {
+  feedItemDomId,
+  parseJobRequestShareId,
+  scrollToFeedItemWhenReady,
+  shareJobRequest,
+} from "@/lib/jobRequestShare";
+import { acceptOpenHelpRequest } from "@/lib/acceptOpenHelpRequest";
+import { toggleJobRequestFavorite } from "@/lib/jobRequestFavorites";
+import { useJobRequestFavoriteIds } from "@/hooks/data/useJobRequestFavoriteIds";
+import {
+  buildPostTextInputFromProfile,
+  generatePostText,
+  mapProfilePostTypeToCopyType,
+} from "@/utils/postTextTemplates";
+import { parseGeneratedPostCopy, type GeneratedPostCopy } from "@/lib/generatedPostCopy";
+import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
+import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import {
   PostMediaReelsViewer,
   type ReelFeedPost,
 } from "@/components/profile/PostMediaReelsViewer";
 import { PostMediaDesktopViewer } from "@/components/profile/PostMediaDesktopViewer";
+import { PostMediaGalleryModal } from "@/components/profile/PostMediaGalleryModal";
+import {
+  MAX_PROFILE_POST_MEDIA,
+  allProfilePostStoragePaths,
+  extraProfilePostMediaItems,
+  getProfilePostMediaItems,
+  type ProfilePostMediaItem,
+} from "@/lib/profilePostMedia";
+import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
+import { postMatchesAdvancedFeedFilters } from "@/lib/communityFeedFilters";
+import {
+  REQUEST_HELP_WHEN_OPTIONS,
+  isRequestHelpWhenUrgent,
+  requestHelpWhenLabel,
+  type RequestHelpTimeframe,
+} from "@/lib/requestHelpWhen";
+import { openCommunityContact } from "@/lib/communityContact";
+import {
+  hasEventJoinInterest,
+  recordEventJoinInterest,
+} from "@/lib/profilePostEventJoin";
+import { preventDialogDismissForGooglePlacesPac } from "@/lib/googlePlacesPacModal";
+
+function mergeProfilePostMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+  customCategory: string | null | undefined,
+): Record<string, unknown> | null {
+  const base =
+    metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? { ...metadata }
+      : {};
+  const trimmed = customCategory?.trim();
+  if (trimmed) base.custom_category = trimmed;
+  return Object.keys(base).length > 0 ? base : null;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,6 +156,8 @@ export type ProfileSnippet = {
   is_verified?: boolean | null;
   /** Active 24h go-live window end (from `freelancer_profiles`), if any. */
   live_until?: string | null;
+  telegram_username?: string | null;
+  role?: string | null;
 };
 
 export type ProfilePost = {
@@ -103,6 +178,15 @@ export type ProfilePost = {
   liked_by_me: boolean;
   tagged_profiles: ProfileSnippet[];
   source: "post"; // discriminator
+  post_type_id?: string | null;
+  post_types?: {
+    id: string;
+    name: string;
+    emoji: string;
+    color: string;
+  } | null;
+  post_metadata?: any | null;
+  ai_generated_copy?: GeneratedPostCopy | null;
 };
 
 export type AvailabilityPost = {
@@ -125,7 +209,7 @@ export type AvailabilityPost = {
   availability_payload: AvailabilityPayload | null;
 };
 
-export type FeedPost = ProfilePost | AvailabilityPost;
+export type FeedPost = ProfilePost | AvailabilityPost | JobRequestFeedPost;
 
 export type PostComment = {
   id: string;
@@ -141,6 +225,12 @@ function categoryLabel(cat: string): string {
   return isServiceCategoryId(cat)
     ? serviceCategoryLabel(cat as ServiceCategoryId)
     : cat.replace(/_/g, " ");
+}
+
+/** Renders the official Discover-home icon for a service category (cleaning → Sparkles, nanny → Baby, etc.). */
+function CategoryIcon({ categoryId, className }: { categoryId: string; className?: string }) {
+  const Icon = HIRE_CATEGORY_TILE_UI[categoryId as ServiceCategoryId]?.Icon ?? HelpCircle;
+  return <Icon className={className} />;
 }
 
 function renderCaptionWithMentions(caption: string): React.ReactNode {
@@ -160,18 +250,10 @@ function renderCaptionWithMentions(caption: string): React.ReactNode {
 
 function CommentsDialog({
   postId,
-  caption,
-  captionText,
-  authorName,
-  authorPhotoUrl,
   open,
   onClose,
 }: {
   postId: string;
-  caption?: React.ReactNode;
-  captionText?: string;
-  authorName?: string;
-  authorPhotoUrl?: string | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -281,36 +363,6 @@ function CommentsDialog({
 
         <ScrollArea className="flex-1 px-5">
           <div className="space-y-5 py-4">
-            {caption ? (
-              <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="text-[11px] font-black uppercase tracking-wide text-muted-foreground">
-                    Post
-                  </div>
-                  {authorName ? (
-                    <div className="inline-flex items-center gap-2">
-                      <Avatar className="h-6 w-6 ring-1 ring-border/50">
-                        <AvatarImage src={authorPhotoUrl ?? undefined} />
-                        <AvatarFallback className="text-[10px] font-black">
-                          {authorName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="text-xs font-bold text-foreground/80">
-                        Written by {authorName}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-                <div
-                  {...bidirectionalTextProps(
-                    captionText,
-                    "mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
-                  )}
-                >
-                  {caption}
-                </div>
-              </div>
-            ) : null}
             {loading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -443,18 +495,12 @@ function CommentsDialog({
 
 function CommentsSidePanel({
   postId,
-  caption,
-  captionText,
   authorName,
-  authorPhotoUrl,
   initialCount,
   wideLayout = false,
 }: {
   postId: string;
-  caption?: React.ReactNode;
-  captionText?: string;
   authorName?: string;
-  authorPhotoUrl?: string | null;
   initialCount?: number | null;
   wideLayout?: boolean;
 }) {
@@ -582,35 +628,6 @@ function CommentsSidePanel({
 
       <ScrollArea className="flex-1">
         <div className="px-1 pb-5">
-          {caption ? (
-            <div className="pb-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9 shrink-0">
-                  <AvatarImage src={authorPhotoUrl ?? undefined} />
-                  <AvatarFallback className="text-xs font-bold">
-                    {(authorName ?? "M").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-bold text-foreground">
-                    {authorName ?? "Member"}
-                  </div>
-                  <div className="truncate text-xs font-semibold text-muted-foreground">
-                    Post caption
-                  </div>
-                </div>
-              </div>
-              <div
-                {...bidirectionalTextProps(
-                  captionText,
-                  "mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
-                )}
-              >
-                {caption}
-              </div>
-            </div>
-          ) : null}
-
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
@@ -625,58 +642,58 @@ function CommentsSidePanel({
                 const name = c.author?.full_name?.trim() || "Member";
                 return (
                   <div key={c.id} className="flex gap-3 py-4">
-                  {c.author?.id ? (
-                    <GuestAwareProfileLink
-                      userId={c.author.id}
-                      className="shrink-0 rounded-full outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      aria-label={`View ${name} profile`}
-                    >
-                      <Avatar className="h-8 w-8">
+                    {c.author?.id ? (
+                      <GuestAwareProfileLink
+                        userId={c.author.id}
+                        className="shrink-0 rounded-full outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        aria-label={`View ${name} profile`}
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={c.author?.photo_url ?? undefined} />
+                          <AvatarFallback className="text-xs font-bold">
+                            {name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </GuestAwareProfileLink>
+                    ) : (
+                      <Avatar className="h-8 w-8 shrink-0 opacity-60">
                         <AvatarImage src={c.author?.photo_url ?? undefined} />
                         <AvatarFallback className="text-xs font-bold">
                           {name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                    </GuestAwareProfileLink>
-                  ) : (
-                    <Avatar className="h-8 w-8 shrink-0 opacity-60">
-                      <AvatarImage src={c.author?.photo_url ?? undefined} />
-                      <AvatarFallback className="text-xs font-bold">
-                        {name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      {c.author?.id ? (
-                        <GuestAwareProfileLink
-                          userId={c.author.id}
-                          className="truncate text-[13px] font-bold text-foreground hover:underline underline-offset-2"
-                          aria-label={`View ${name} profile`}
-                        >
-                          {name}
-                        </GuestAwareProfileLink>
-                      ) : (
-                        <span className="truncate text-[13px] font-bold text-foreground">
-                          {name}
-                        </span>
-                      )}
-                      <time className="shrink-0 text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(c.created_at), {
-                          addSuffix: true,
-                        })}
-                      </time>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        {c.author?.id ? (
+                          <GuestAwareProfileLink
+                            userId={c.author.id}
+                            className="truncate text-[13px] font-bold text-foreground hover:underline underline-offset-2"
+                            aria-label={`View ${name} profile`}
+                          >
+                            {name}
+                          </GuestAwareProfileLink>
+                        ) : (
+                          <span className="truncate text-[13px] font-bold text-foreground">
+                            {name}
+                          </span>
+                        )}
+                        <time className="shrink-0 text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(c.created_at), {
+                            addSuffix: true,
+                          })}
+                        </time>
+                      </div>
+                      <p
+                        {...bidirectionalTextProps(
+                          c.body,
+                          "mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                        )}
+                      >
+                        {c.body}
+                      </p>
                     </div>
-                    <p
-                      {...bidirectionalTextProps(
-                        c.body,
-                        "mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
-                      )}
-                    >
-                      {c.body}
-                    </p>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -743,59 +760,245 @@ function CommentsSidePanel({
 
 // ─── Compose Modal ────────────────────────────────────────────────────────────
 
+const POST_TYPE_METADATA: Record<string, {
+  title: string;
+  desc: string;
+  icon: React.ComponentType<any>;
+  themeColor: string;
+  iconBg: string;
+  iconColor: string;
+  activeBorder: string;
+  activeBg: string;
+  textClass: string;
+}> = {
+  request_help: {
+    title: "Request Help",
+    desc: "I need help with something",
+    icon: LifeBuoy,
+    themeColor: "text-red-500 dark:text-red-400",
+    iconBg: "bg-red-500/10 dark:bg-red-500/20",
+    iconColor: "text-red-500 dark:text-red-400",
+    activeBorder: "border-red-500 dark:border-red-500/80 ring-red-500/15",
+    activeBg: "bg-red-50/20 dark:bg-red-950/10",
+    textClass: "text-red-600 dark:text-red-400",
+  },
+  offer_service: {
+    title: "Offer Service",
+    desc: "I want to offer my services",
+    icon: Briefcase,
+    themeColor: "text-emerald-600 dark:text-emerald-400",
+    iconBg: "bg-emerald-500/10 dark:bg-emerald-500/20",
+    iconColor: "text-emerald-500 dark:text-emerald-400",
+    activeBorder: "border-emerald-500 dark:border-emerald-500/80 ring-emerald-500/15",
+    activeBg: "bg-emerald-50/20 dark:bg-emerald-950/10",
+    textClass: "text-emerald-600 dark:text-emerald-400",
+  },
+  community: {
+    title: "Community Post",
+    desc: "Share something with the community",
+    icon: Users,
+    themeColor: "text-blue-600 dark:text-blue-400",
+    iconBg: "bg-blue-500/10 dark:bg-blue-500/20",
+    iconColor: "text-blue-500 dark:text-blue-400",
+    activeBorder: "border-blue-500 dark:border-blue-500/80 ring-blue-500/15",
+    activeBg: "bg-blue-50/20 dark:bg-blue-950/10",
+    textClass: "text-blue-600 dark:text-blue-400",
+  },
+  event: {
+    title: "Event",
+    desc: "Create or share an event",
+    icon: CalendarDays,
+    themeColor: "text-violet-600 dark:text-violet-400",
+    iconBg: "bg-violet-500/10 dark:bg-violet-500/20",
+    iconColor: "text-violet-500 dark:text-violet-400",
+    activeBorder: "border-violet-500 dark:border-violet-500/80 ring-violet-500/15",
+    activeBg: "bg-violet-50/20 dark:bg-violet-950/10",
+    textClass: "text-violet-600 dark:text-violet-400",
+  },
+};
+
+function getPostTypeBadgeLabel(typeId: string, typeName?: string) {
+  if (typeId === "request_help") return "REQUEST";
+  if (typeId === "offer_service") return "OFFER";
+  return (typeName ?? typeId).toUpperCase();
+}
+
+/** Offer posts open in-app chat — label uses the author's display name, not Telegram handle. */
+function offerPostContactLabel(fullName: string | null | undefined): string {
+  return `Contact ${fullName?.trim() || "User"}`;
+}
+
+function formatJobRequestAcceptedAt(iso: string): string {
+  return format(new Date(iso), "MMM d, yyyy 'at' h:mm a");
+}
+
+function formatEventPostDateTime(date: Date, time: string): string {
+  const [hours, minutes] = time.split(":").map((part) => parseInt(part, 10));
+  const dt = new Date(date);
+  dt.setHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0);
+  return format(dt, "EEEE, MMMM d 'at' h:mm a");
+}
+
+function postTypeBadgeClassName(typeId: string) {
+  return cn(
+    "inline-flex items-center gap-2 rounded-md px-3.5 py-1 text-[12px] font-black uppercase tracking-wider border-0 shadow-none",
+    typeId === "request_help" &&
+      "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+    typeId === "offer_service" &&
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+    typeId === "community" &&
+      "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+    typeId === "event" &&
+      "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400",
+  );
+}
+
+function PostTypeBadge({
+  typeId,
+  typeName,
+  className,
+}: {
+  typeId: string;
+  typeName?: string;
+  className?: string;
+}) {
+  const meta = POST_TYPE_METADATA[typeId];
+  const Icon = meta?.icon ?? Sparkles;
+
+  return (
+    <span className={cn(postTypeBadgeClassName(typeId), className)}>
+      <Icon
+        className={cn("h-[18px] w-[18px] shrink-0", meta?.iconColor ?? "text-orange-500")}
+        strokeWidth={2.25}
+        aria-hidden
+      />
+      {getPostTypeBadgeLabel(typeId, typeName)}
+    </span>
+  );
+}
+
 export function ComposeModal({
   open,
   onClose,
   onPosted,
   authorProfile,
+  initialPostTypeId = null,
 }: {
   open: boolean;
   onClose: () => void;
   onPosted: () => void;
   authorProfile: ProfileSnippet;
+  initialPostTypeId?: string | null;
 }) {
   const { user, profile } = useAuth();
   const { openKycRequiredDialog } = useKycGate();
   const { addToast } = useToast();
   const [caption, setCaption] = useState("");
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [mediaKind, setMediaKind] = useState<"image" | "video" | null>(null);
+  const [composeMedia, setComposeMedia] = useState<ComposeMediaDraft[]>([]);
   const [tagQuery, setTagQuery] = useState("");
   const [tagResults, setTagResults] = useState<ProfileSnippet[]>([]);
   const [taggedUsers, setTaggedUsers] = useState<ProfileSnippet[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  /** Bottom "Add to your post" tray — expanded shows the full action grid; collapsed shows a thin icon row. */
-  const [addToPostExpanded, setAddToPostExpanded] = useState(true);
-  /** True from the moment a file is picked until the <img>/<video> finishes loading the local blob URL. */
-  const [mediaLoading, setMediaLoading] = useState(false);
+  const [postTypes, setPostTypes] = useState<{ id: string; name: string; emoji: string; color: string }[]>([]);
+  const [selectedPostTypeId, setSelectedPostTypeId] = useState<string | null>(null);
+
+  // Post Details / Metadata States
+  const [requestHelpCategory, setRequestHelpCategory] = useState("");
+  const [postLocation, setPostLocation] = useState<{
+    address: string;
+    lat?: number;
+    lng?: number;
+  }>({ address: "" });
+  const [timeframe, setTimeframe] = useState<RequestHelpTimeframe>("today");
+  const [customWhenDate, setCustomWhenDate] = useState<Date | null>(null);
+  const [customWhenTime, setCustomWhenTime] = useState("");
+  const [customWhenDatePickerOpen, setCustomWhenDatePickerOpen] = useState(false);
+  const [budgetAmount, setBudgetAmount] = useState("");
+  const [budgetRateType, setBudgetRateType] = useState<"per_hour" | "fixed">("per_hour");
+
+  const [offerServiceCategory, setOfferServiceCategory] = useState("");
+  const [offerRate, setOfferRate] = useState("");
+  const [offerRateType, setOfferRateType] = useState<"per_hour" | "fixed">("per_hour");
+
+  const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState<Date | null>(null);
+  const [eventTime, setEventTime] = useState("");
+  const [eventDatePickerOpen, setEventDatePickerOpen] = useState(false);
+  const [eventLocation, setEventLocation] = useState<{
+    address: string;
+    lat?: number;
+    lng?: number;
+  }>({ address: "" });
+
+  const [communityTitle, setCommunityTitle] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
+  const [captionEditorOpen, setCaptionEditorOpen] = useState(false);
+
+  const captionPlaceholder =
+    selectedPostTypeId === "request_help"
+      ? "Describe what you need help with..."
+      : selectedPostTypeId === "offer_service"
+        ? "Describe your service..."
+        : selectedPostTypeId === "event"
+          ? "Describe your event details..."
+          : "Describe what you want to talk about...";
+
+  useEffect(() => {
+    async function loadPostTypes() {
+      const { data } = await supabase
+        .from("post_types")
+        .select("id, name, emoji, color")
+        .order("created_at", { ascending: true });
+      if (data) setPostTypes(data);
+    }
+    if (open) {
+      void loadPostTypes();
+      if (initialPostTypeId) {
+        setSelectedPostTypeId(initialPostTypeId);
+      }
+    }
+  }, [open, initialPostTypeId]);
+
+  useEffect(() => {
+    if (open && profile?.city) {
+      setPostLocation((prev) =>
+        prev.lat != null && prev.lng != null ? prev : { address: profile.city! },
+      );
+    }
+  }, [open, profile?.city]);
   const mediaInputRef = useRef<HTMLInputElement>(null);
-  const mediaPreviewRef = useRef<HTMLDivElement>(null);
   const tagTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tagBoxRef = useRef<HTMLDivElement>(null);
 
-  /** Whenever new media is added, smoothly scroll the preview into view so it's immediately visible. */
-  useEffect(() => {
-    if (!mediaPreview) return;
-    const t = window.setTimeout(() => {
-      mediaPreviewRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 80);
-    return () => window.clearTimeout(t);
-  }, [mediaPreview]);
-
   function reset() {
     setCaption("");
-    setMediaFile(null);
-    setMediaPreview(null);
-    setMediaKind(null);
-    setMediaLoading(false);
+    setComposeMedia((prev) => {
+      revokeComposeMediaUrls(prev);
+      return [];
+    });
     setTagQuery("");
     setTagResults([]);
     setTaggedUsers([]);
-    setAddToPostExpanded(true);
+    setSelectedPostTypeId(null);
+    setRequestHelpCategory("");
+    setPostLocation({ address: profile?.city || "" });
+    setTimeframe("today");
+    setCustomWhenDate(null);
+    setCustomWhenTime("");
+    setCustomWhenDatePickerOpen(false);
+    setBudgetAmount("");
+    setBudgetRateType("per_hour");
+    setOfferServiceCategory("");
+    setOfferRate("");
+    setOfferRateType("per_hour");
+    setEventName("");
+    setEventDate(null);
+    setEventTime("");
+    setEventDatePickerOpen(false);
+    setEventLocation({ address: "" });
+    setCommunityTitle("");
+    setCustomCategory("");
+    setCaptionEditorOpen(false);
   }
 
   function handleClose() {
@@ -803,30 +1006,31 @@ export function ComposeModal({
     onClose();
   }
 
-  function handleMedia(file: File, kind: "image" | "video") {
-    setMediaFile(file);
-    setMediaKind(kind);
-    const url = URL.createObjectURL(file);
-    setMediaPreview(url);
-    // Show a skeleton until the <img>/<video> reports it's done loading the local blob.
-    setMediaLoading(true);
-    // Auto-collapse the bottom tray so the freshly added preview is immediately visible.
-    setAddToPostExpanded(false);
-  }
-
-  /** Single-input picker that auto-detects whether the file is an image or video (combined Photo/Video button). */
-  function handlePhotoVideoPick(file: File) {
-    const kind: "image" | "video" = file.type.startsWith("video/") ? "video" : "image";
-    handleMedia(file, kind);
-  }
-
-  /** Stub for not-yet-implemented post types (Gif, Poll, Adoption, Lost Notice, Event). */
-  function comingSoon(label: string) {
-    addToast({
-      title: `${label} coming soon`,
-      description: "We're working on this — stay tuned!",
+  function handlePhotoVideoPick(files: FileList | File[]) {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    setComposeMedia((prev) => {
+      const room = MAX_PROFILE_POST_MEDIA - prev.length;
+      if (room <= 0) return prev;
+      const next = list.slice(0, room).map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+        kind: (file.type.startsWith("video/") ? "video" : "image") as "image" | "video",
+      }));
+      return [...prev, ...next];
     });
   }
+
+  function removeComposeMedia(id: string) {
+    setComposeMedia((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  }
+
+
 
   useEffect(() => {
     if (!tagQuery.trim()) { setTagResults([]); return; }
@@ -876,30 +1080,181 @@ export function ComposeModal({
       openKycRequiredDialog("share_post");
       return;
     }
-    if (!caption.trim() && !mediaFile) {
+    if (!selectedPostTypeId) {
+      addToast({ title: "Please choose what you are posting", variant: "warning" });
+      return;
+    }
+    if (selectedPostTypeId === "request_help" && !requestHelpCategory) {
+      addToast({ title: "Please choose what you need help with", variant: "warning" });
+      return;
+    }
+    if (
+      selectedPostTypeId === "request_help" &&
+      (postLocation.lat == null || postLocation.lng == null || !postLocation.address.trim())
+    ) {
+      addToast({
+        title: "Please pick a location",
+        description: "Choose from the suggestions or select a spot on the map.",
+        variant: "warning",
+      });
+      return;
+    }
+    if (selectedPostTypeId === "request_help" && timeframe === "custom") {
+      if (!customWhenDate || !customWhenTime) {
+        addToast({ title: "Please pick a custom date and time", variant: "warning" });
+        return;
+      }
+    }
+    if (selectedPostTypeId === "offer_service" && !offerServiceCategory) {
+      addToast({ title: "Please choose which service you are offering", variant: "warning" });
+      return;
+    }
+    const usesOtherHelpCategory =
+      (selectedPostTypeId === "request_help" && requestHelpCategory === "other_help") ||
+      (selectedPostTypeId === "offer_service" && offerServiceCategory === "other_help");
+    const trimmedCustomCategory = customCategory.trim();
+    if (usesOtherHelpCategory && !trimmedCustomCategory) {
+      addToast({ title: "Please name your category", variant: "warning" });
+      return;
+    }
+    if (usesOtherHelpCategory && trimmedCustomCategory.length > CUSTOM_POST_CATEGORY_MAX_LEN) {
+      addToast({
+        title: `Category must be ${CUSTOM_POST_CATEGORY_MAX_LEN} characters or less`,
+        variant: "warning",
+      });
+      return;
+    }
+    if (selectedPostTypeId === "event" && !eventName.trim()) {
+      addToast({ title: "Please enter an event name", variant: "warning" });
+      return;
+    }
+    if (selectedPostTypeId === "event" && !eventDate) {
+      addToast({ title: "Please pick an event date", variant: "warning" });
+      return;
+    }
+    if (selectedPostTypeId === "event" && !eventTime) {
+      addToast({ title: "Please pick an event time", variant: "warning" });
+      return;
+    }
+    if (
+      selectedPostTypeId === "event" &&
+      (eventLocation.lat == null || eventLocation.lng == null || !eventLocation.address.trim())
+    ) {
+      addToast({
+        title: "Please pick a location",
+        description: "Choose from the suggestions or select a spot on the map.",
+        variant: "warning",
+      });
+      return;
+    }
+    if (selectedPostTypeId === "community" && !communityTitle.trim()) {
+      addToast({ title: "Please enter a title for your post", variant: "warning" });
+      return;
+    }
+    if (!caption.trim() && composeMedia.length === 0) {
       addToast({ title: "Add a caption or media", variant: "warning" });
       return;
     }
     setSubmitting(true);
     try {
-      let storagePath: string | null = null;
+      const uploadedMedia: ProfilePostMediaItem[] = [];
 
-      if (mediaFile && mediaKind) {
-        const ext = mediaFile.name.split(".").pop()?.toLowerCase() ?? (mediaKind === "image" ? "jpg" : "mp4");
+      for (const item of composeMedia) {
+        const ext =
+          item.file.name.split(".").pop()?.toLowerCase() ??
+          (item.kind === "image" ? "jpg" : "mp4");
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from(PUBLIC_PROFILE_MEDIA_BUCKET)
-          .upload(path, mediaFile, { upsert: false, contentType: mediaFile.type || undefined });
+          .upload(path, item.file, {
+            upsert: false,
+            contentType: item.file.type || undefined,
+          });
         if (upErr) throw upErr;
-        storagePath = path;
+        uploadedMedia.push({ storage_path: path, media_type: item.kind });
       }
+
+      const primaryMedia = uploadedMedia[0] ?? null;
+      const savedCustomCategory = usesOtherHelpCategory ? trimmedCustomCategory : null;
+      let metadata: Record<string, unknown> = {};
+      if (uploadedMedia.length > 0) {
+        metadata.media_items = uploadedMedia;
+      }
+      if (selectedPostTypeId === "request_help") {
+        metadata = {
+          ...metadata,
+          category: requestHelpCategory,
+          location: postLocation.address,
+          location_lat: postLocation.lat,
+          location_lng: postLocation.lng,
+          timeframe: timeframe,
+          ...(timeframe === "custom" && customWhenDate && customWhenTime
+            ? {
+                custom_when: formatEventPostDateTime(customWhenDate, customWhenTime),
+                custom_when_date: format(customWhenDate, "yyyy-MM-dd"),
+                custom_when_time: customWhenTime,
+              }
+            : {}),
+          budget: budgetAmount ? Number(budgetAmount) : null,
+          rate_type: budgetRateType,
+          ...(savedCustomCategory ? { custom_category: savedCustomCategory } : {}),
+        };
+      } else if (selectedPostTypeId === "offer_service") {
+        metadata = {
+          ...metadata,
+          service: offerServiceCategory,
+          ...(postLocation.lat != null && postLocation.lng != null && postLocation.address.trim()
+            ? {
+                location: postLocation.address,
+                location_lat: postLocation.lat,
+                location_lng: postLocation.lng,
+              }
+            : {}),
+          rate: offerRate ? Number(offerRate) : null,
+          rate_type: offerRateType,
+          ...(savedCustomCategory ? { custom_category: savedCustomCategory } : {}),
+        };
+      } else if (selectedPostTypeId === "event") {
+        metadata = {
+          ...metadata,
+          event_name: eventName,
+          date_time: formatEventPostDateTime(eventDate!, eventTime),
+          event_date: format(eventDate!, "yyyy-MM-dd"),
+          event_time: eventTime,
+          location: eventLocation.address,
+          location_lat: eventLocation.lat,
+          location_lng: eventLocation.lng,
+        };
+      } else if (selectedPostTypeId === "community") {
+        metadata = {
+          ...metadata,
+          title: communityTitle,
+        };
+      }
+
+      let generatedCopy: GeneratedPostCopy | null = null;
+      if (mapProfilePostTypeToCopyType(selectedPostTypeId)) {
+        generatedCopy = generatePostText(
+          buildPostTextInputFromProfile(selectedPostTypeId, metadata, caption),
+        );
+      }
+
+      const captionToSave =
+        caption.trim() ||
+        generatedCopy?.short_text ||
+        generatedCopy?.feed_preview ||
+        null;
 
       const { error } = await supabase.from("profile_posts").insert({
         author_id: user.id,
-        caption: caption.trim() || null,
-        media_type: mediaKind ?? null,
-        storage_path: storagePath,
+        caption: captionToSave,
+        media_type: primaryMedia?.media_type ?? null,
+        storage_path: primaryMedia?.storage_path ?? null,
         tagged_user_ids: taggedUsers.map((u) => u.id),
+        post_type_id: selectedPostTypeId,
+        post_metadata: metadata,
+        custom_category: savedCustomCategory,
+        ai_generated_copy: generatedCopy,
       });
       if (error) throw error;
 
@@ -919,22 +1274,314 @@ export function ComposeModal({
     }
   }
 
+  const otherHelpCategoryField = (
+    <div className="space-y-1.5">
+      <label className="text-[13px] font-bold text-foreground">Your category</label>
+      <input
+        type="text"
+        value={customCategory}
+        onChange={(e) =>
+          setCustomCategory(e.target.value.slice(0, CUSTOM_POST_CATEGORY_MAX_LEN))
+        }
+        maxLength={CUSTOM_POST_CATEGORY_MAX_LEN}
+        placeholder="E.g. Dog walking"
+        className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60"
+        disabled={submitting}
+      />
+      <div className="text-right text-[10px] font-bold text-muted-foreground">
+        {customCategory.length}/{CUSTOM_POST_CATEGORY_MAX_LEN}
+      </div>
+    </div>
+  );
+
+  const photoUploadSection = (
+    <div className="space-y-2 pt-2">
+      <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
+        Add photos (optional)
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        {composeMedia.map((item) => (
+          <div
+            key={item.id}
+            className="relative h-20 w-20 overflow-hidden rounded-2xl border border-border/40 bg-black shadow-sm"
+          >
+            {item.kind === "image" ? (
+              <img src={item.previewUrl} className="h-full w-full object-cover" alt="Preview" />
+            ) : (
+              <video src={item.previewUrl} className="h-full w-full object-cover" muted playsInline />
+            )}
+            <button
+              type="button"
+              onClick={() => removeComposeMedia(item.id)}
+              className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 shadow-md active:scale-[0.85] transition-transform"
+              aria-label="Remove media"
+            >
+              <X className="h-3 w-3" strokeWidth={2.5} />
+            </button>
+          </div>
+        ))}
+
+        {composeMedia.length < MAX_PROFILE_POST_MEDIA ? (
+          <button
+            type="button"
+            onClick={() => mediaInputRef.current?.click()}
+            className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-50 active:scale-95 dark:border-zinc-800 dark:text-zinc-600 dark:hover:border-zinc-600 dark:hover:bg-zinc-900/30"
+            disabled={submitting}
+            aria-label="Add photos or videos"
+          >
+            <Plus className="h-6 w-6" strokeWidth={2.5} />
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  const livePreviewSection = (
+    <div className="space-y-2.5 pt-4 border-t border-zinc-200/60 dark:border-zinc-800/60 sm:border-t-0 sm:pt-0">
+      <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
+        Post Preview
+      </div>
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm overflow-hidden p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={authorProfile.photo_url ?? undefined} />
+              <AvatarFallback className="text-xs font-bold">
+                {(authorProfile.full_name ?? "?").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-foreground">
+                {authorProfile.full_name ?? "You"}
+              </span>
+              <span className="text-[11px] text-muted-foreground">Preview</span>
+            </div>
+          </div>
+
+          {(() => {
+            const pt = postTypes.find((p) => p.id === selectedPostTypeId);
+            if (!pt) return null;
+            return (
+              <PostTypeBadge typeId={pt.id} typeName={pt.name} />
+            );
+          })()}
+        </div>
+
+        {composeMedia[0] ? (
+          <div className="relative overflow-hidden rounded-xl border border-border/40 bg-black aspect-video max-h-48 shadow-sm flex items-center justify-center">
+            {composeMedia[0].kind === "image" ? (
+              <img src={composeMedia[0].previewUrl} className="h-full w-full object-cover" alt="Preview" />
+            ) : (
+              <video src={composeMedia[0].previewUrl} className="h-full w-full object-cover" muted playsInline />
+            )}
+            {composeMedia.length > 1 ? (
+              <div className="absolute bottom-2 right-2 flex items-end">
+                {composeMedia.slice(1, 4).map((item, i) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "relative h-9 w-9 overflow-hidden rounded-md border-2 border-white shadow-md",
+                      i > 0 && "-ml-2",
+                    )}
+                    style={{ zIndex: 10 + i }}
+                  >
+                    {item.kind === "image" ? (
+                      <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <video src={item.previewUrl} className="h-full w-full object-cover" muted playsInline />
+                    )}
+                    {i === 2 && composeMedia.length > 4 ? (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-[10px] font-black text-white">
+                        +{composeMedia.length - 4}
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {caption.trim() && (
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+            {caption}
+          </p>
+        )}
+
+        {(() => {
+          const hasMeta =
+            (selectedPostTypeId === "request_help" &&
+              (requestHelpCategory || postLocation.address || budgetAmount || customCategory.trim())) ||
+            (selectedPostTypeId === "offer_service" &&
+              (offerServiceCategory || postLocation.address || offerRate || customCategory.trim())) ||
+            (selectedPostTypeId === "event" &&
+              (eventName || eventDate || eventTime || eventLocation.address)) ||
+            (selectedPostTypeId === "community" && communityTitle);
+
+          if (!hasMeta) return null;
+
+          return (
+            <div className="p-3.5 rounded-2xl border border-zinc-100 bg-zinc-50/50 dark:border-zinc-900 dark:bg-zinc-950/40 space-y-2">
+              {selectedPostTypeId === "request_help" && (
+                <>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+                    {requestHelpCategory && (
+                      <div className="flex items-center gap-1.5 text-foreground font-bold">
+                        <CategoryIcon categoryId={requestHelpCategory} className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>{postServiceCategoryLabel(requestHelpCategory, customCategory)}</span>
+                      </div>
+                    )}
+                    {postLocation.address &&
+                    postLocation.lat != null &&
+                    postLocation.lng != null ? (
+                      <div className="flex items-center gap-1.5 text-foreground font-bold">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>{postLocation.address}</span>
+                      </div>
+                    ) : null}
+                    {timeframe ? (
+                      <div
+                        className={cn(
+                          "flex items-center gap-1.5 font-bold",
+                          isRequestHelpWhenUrgent(timeframe)
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-foreground",
+                        )}
+                      >
+                        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>
+                          {timeframe === "custom" && customWhenDate && customWhenTime
+                            ? formatEventPostDateTime(customWhenDate, customWhenTime)
+                            : requestHelpWhenLabel({ timeframe }) ?? ""}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                  {budgetAmount && (
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50 text-xs font-black text-rose-600 dark:text-rose-400">
+                      <Coins className="h-3.5 w-3.5 shrink-0" />
+                      <span>₪{budgetAmount}</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">
+                        {budgetRateType === "per_hour" ? "per hour" : "fixed price"}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {selectedPostTypeId === "offer_service" && (
+                <>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+                    {offerServiceCategory && (
+                      <div className="flex items-center gap-1.5 text-foreground font-bold">
+                        <CategoryIcon categoryId={offerServiceCategory} className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>{postServiceCategoryLabel(offerServiceCategory, customCategory)}</span>
+                      </div>
+                    )}
+                    {postLocation.address &&
+                    postLocation.lat != null &&
+                    postLocation.lng != null ? (
+                      <div className="flex items-center gap-1.5 text-foreground font-bold">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>{postLocation.address}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  {offerRate && (
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                      <Coins className="h-3.5 w-3.5 shrink-0" />
+                      <span>₪{offerRate}</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">
+                        {offerRateType === "per_hour" ? "per hour" : "fixed price"}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {selectedPostTypeId === "event" && (
+                <div className="space-y-1.5 text-xs">
+                  {eventName && (
+                    <div className="flex items-center gap-1.5 font-extrabold text-[13px] text-violet-600 dark:text-violet-400">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                      <span>{eventName}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {(eventDate || eventTime) && (
+                      <div className="flex items-center gap-1.5 text-foreground font-bold">
+                        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>
+                          {eventDate && eventTime
+                            ? formatEventPostDateTime(eventDate, eventTime)
+                            : eventDate
+                              ? format(eventDate, "EEEE, MMMM d, yyyy")
+                              : eventTime}
+                        </span>
+                      </div>
+                    )}
+                    {eventLocation.address && (
+                      <div className="flex items-center gap-1.5 text-foreground font-bold">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>{eventLocation.address}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedPostTypeId === "community" && communityTitle && (
+                <div className="flex items-center gap-1.5 font-extrabold text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                  <Users className="h-3.5 w-3.5 shrink-0" />
+                  <span>{communityTitle}</span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {selectedPostTypeId && selectedPostTypeId !== "community" && (
+          <button
+            type="button"
+            disabled
+            className={cn(
+              "w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black uppercase tracking-wider opacity-75 cursor-not-allowed",
+              selectedPostTypeId === "request_help" && "bg-red-600 text-white",
+              selectedPostTypeId === "offer_service" && "bg-emerald-600 text-white",
+              selectedPostTypeId === "event" && "bg-violet-600 text-white",
+            )}
+          >
+            {selectedPostTypeId === "request_help" && "I can help"}
+            {selectedPostTypeId === "offer_service" &&
+              offerPostContactLabel(authorProfile.full_name)}
+            {selectedPostTypeId === "event" && "I want to join"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent
+        onPointerDownOutside={preventDialogDismissForGooglePlacesPac}
+        onFocusOutside={preventDialogDismissForGooglePlacesPac}
         className={cn(
           "flex flex-col gap-0 p-0 overflow-hidden",
-          // Desktop / large screens: centered modal
-          "sm:max-w-lg sm:rounded-2xl sm:max-h-[min(92vh,720px)]",
+          // Desktop / large screens: centered modal — widen when composing
+          "sm:rounded-2xl",
+          selectedPostTypeId
+            ? "sm:max-w-4xl sm:h-[min(92vh,780px)] sm:max-h-[min(92vh,780px)]"
+            : "sm:max-w-lg sm:max-h-[min(92vh,720px)]",
           // Mobile: bottom sheet
           "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto",
-          "max-md:h-[92vh] max-md:max-h-[92vh]",
+          "max-md:h-[92vh] max-md:max-h-[92vh] max-md:min-h-0",
           "max-md:translate-x-0 max-md:translate-y-0",
           "max-md:rounded-t-[22px] max-md:rounded-b-none",
         )}
       >
         {/* Custom header — X (left), "Create Post" (center), Post button (right) */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-3 py-3 sm:px-4">
+        <div className="flex shrink-0 items-center justify-between px-3 py-3 sm:px-4">
           <button
             type="button"
             onClick={handleClose}
@@ -950,10 +1597,10 @@ export function ComposeModal({
           <button
             type="button"
             onClick={() => void handleSubmit()}
-            disabled={submitting || (!caption.trim() && !mediaFile)}
+            disabled={submitting || !selectedPostTypeId || (!caption.trim() && composeMedia.length === 0)}
             className={cn(
               "h-9 min-w-[72px] rounded-full px-4 text-sm font-bold transition-all",
-              submitting || (!caption.trim() && !mediaFile)
+              submitting || !selectedPostTypeId || (!caption.trim() && composeMedia.length === 0)
                 ? "bg-muted text-muted-foreground/70"
                 : "bg-orange-600 text-white shadow-md shadow-orange-500/20 hover:bg-orange-700 active:scale-95",
             )}
@@ -966,8 +1613,9 @@ export function ComposeModal({
           </button>
         </div>
 
-        <ScrollArea className="flex-1">
-          <div className="space-y-3 px-5 py-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden sm:flex-row">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="space-y-3 px-5 py-4">
             {/* Author row */}
             <div className="flex items-center gap-2.5">
               <Avatar className="h-10 w-10">
@@ -987,400 +1635,602 @@ export function ComposeModal({
               </span>
             </div>
 
-            {/* Caption */}
-            <Textarea
-              placeholder="What do you want to talk about?"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              maxLength={2200}
-              rows={4}
-              {...bidirectionalInputProps(
-                caption,
-                "resize-none bg-transparent border-none shadow-none focus-visible:ring-0 text-[15px] p-0 placeholder:text-muted-foreground/60",
-              )}
-              disabled={submitting}
-            />
-
-            {/* Media preview — shown immediately as media is added; skeleton overlays it until the file finishes loading */}
-            {mediaPreview && (
-              <div
-                ref={mediaPreviewRef}
-                className="relative overflow-hidden rounded-2xl bg-black ring-1 ring-border/40 shadow-sm animate-in fade-in zoom-in-95 duration-200"
-              >
-                {mediaKind === "image" ? (
-                  <img
-                    src={mediaPreview}
-                    alt="Preview"
-                    className={cn(
-                      "w-full max-h-[22rem] object-cover transition-opacity duration-200",
-                      mediaLoading ? "opacity-0" : "opacity-100",
-                    )}
-                    onLoad={() => setMediaLoading(false)}
-                    onError={() => setMediaLoading(false)}
-                  />
-                ) : (
-                  <video
-                    src={mediaPreview}
-                    controls
-                    playsInline
-                    autoPlay
-                    muted
-                    className={cn(
-                      "w-full max-h-[22rem] bg-black transition-opacity duration-200",
-                      mediaLoading ? "opacity-0" : "opacity-100",
-                    )}
-                    onLoadedData={() => setMediaLoading(false)}
-                    onError={() => setMediaLoading(false)}
-                  />
-                )}
-
-                {/* Loading skeleton — overlays the preview until the file finishes loading */}
-                {mediaLoading ? (
-                  <div
-                    className="absolute inset-0 flex h-full min-h-[14rem] w-full flex-col items-center justify-center bg-gradient-to-br from-zinc-200 via-zinc-100 to-zinc-200 dark:from-zinc-800 dark:via-zinc-700 dark:to-zinc-800"
-                    aria-busy="true"
-                    aria-label={`Loading ${mediaKind === "image" ? "photo" : "video"}`}
-                  >
-                    <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/30 to-transparent dark:via-white/10" />
-                    <div className="relative flex flex-col items-center gap-2.5">
-                      <Loader2 className="h-7 w-7 animate-spin text-orange-500" strokeWidth={2.5} />
-                      <span className="text-[12px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-                        {mediaKind === "image" ? "Loading photo…" : "Loading video…"}
-                      </span>
+            {/* Selected Post Type Header card with Change button */}
+            {selectedPostTypeId && (
+              (() => {
+                const pt = postTypes.find((p) => p.id === selectedPostTypeId);
+                if (!pt) return null;
+                const meta = POST_TYPE_METADATA[pt.id] || {
+                  title: pt.name,
+                  desc: "",
+                  icon: Sparkles,
+                  iconBg: "bg-orange-500/10 dark:bg-orange-500/20",
+                  iconColor: "text-orange-500 dark:text-orange-400",
+                };
+                const IconComponent = meta.icon;
+                return (
+                  <div className="flex items-center justify-between rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800/80 p-3.5 shadow-sm transition-all duration-200">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-inner", meta.iconBg, meta.iconColor)}>
+                        <IconComponent className="h-5.5 w-5.5" strokeWidth={2.25} />
+                      </div>
+                      <span className="font-extrabold text-[15px] text-foreground tracking-tight">{meta.title}</span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPostTypeId(null);
+                        setCustomCategory("");
+                      }}
+                      className="text-xs font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 transition-colors"
+                    >
+                      Change
+                    </button>
                   </div>
-                ) : null}
+                );
+              })()
+            )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMediaFile(null);
-                    setMediaPreview(null);
-                    setMediaKind(null);
-                    setMediaLoading(false);
-                  }}
-                  className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white shadow-lg backdrop-blur-md transition-all hover:bg-black/80 active:scale-95"
-                  aria-label="Remove media"
-                >
-                  <X className="h-4 w-4" strokeWidth={2.5} />
-                </button>
-                {!mediaLoading ? (
-                  <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-md backdrop-blur-md">
-                    {mediaKind === "image" ? "Photo" : "Video"}
-                  </span>
-                ) : null}
+            {/* Grid selector: What are you posting? (shown when no type is selected) */}
+            {!selectedPostTypeId && postTypes.length > 0 && (
+              <div className="space-y-3 pt-2 pb-2">
+                <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
+                  What are you posting?
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {postTypes.map((pt) => {
+                    const meta = POST_TYPE_METADATA[pt.id] || {
+                      title: pt.name,
+                      desc: "Share something with the board",
+                      icon: Sparkles,
+                      themeColor: "text-orange-600 dark:text-orange-400",
+                      iconBg: "bg-orange-500/10 dark:bg-orange-500/20",
+                      iconColor: "text-orange-500 dark:text-orange-400",
+                      activeBorder: "border-orange-500 dark:border-orange-500/80 ring-orange-500/15",
+                      activeBg: "bg-orange-50/30 dark:bg-orange-950/20",
+                      textClass: "text-orange-600 dark:text-orange-400",
+                    };
+                    const IconComponent = meta.icon;
+
+                    return (
+                      <button
+                        key={pt.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPostTypeId(pt.id);
+                          setCustomCategory("");
+                        }}
+                        className={cn(
+                          "flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-200 shadow-sm outline-none focus-visible:ring-2 active:scale-[0.98]",
+                          "bg-zinc-50/50 border-zinc-200/80 hover:bg-zinc-100/40 hover:border-zinc-300 dark:bg-zinc-900/45 dark:border-zinc-800/80 dark:hover:bg-zinc-800/30 dark:hover:border-zinc-700/80"
+                        )}
+                      >
+                        {/* Icon square with background and subtle glow */}
+                        <div className={cn(
+                          "w-14 h-14 rounded-xl flex items-center justify-center transition-transform",
+                          meta.iconBg,
+                          meta.iconColor
+                        )}>
+                          <IconComponent className="h-7 w-7" strokeWidth={2.25} />
+                        </div>
+
+                        {/* Title */}
+                        <div className={cn(
+                          "mt-3 text-[17px] font-black tracking-tight",
+                          meta.textClass
+                        )}>
+                          {meta.title}
+                        </div>
+
+                        {/* Description */}
+                        <div className="mt-1.5 text-[13px] font-semibold text-muted-foreground/80 leading-snug max-w-[140px]">
+                          {meta.desc}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Tag users */}
-            <div className="space-y-2">
-              <div ref={tagBoxRef} className="relative">
-                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Tag someone…"
-                  value={tagQuery}
-                  onChange={(e) => setTagQuery(e.target.value)}
-                  onBlur={() => {
-                    // Allow click on dropdown items before closing.
-                    window.setTimeout(() => setTagResults([]), 120);
-                  }}
-                  className="w-full h-10 rounded-full border border-input bg-muted/40 pl-9 pr-4 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 dark:bg-zinc-800/60"
-                  disabled={submitting}
-                />
+            {/* Dynamic Type-specific Form inputs */}
+            {selectedPostTypeId && (
+              <div className="space-y-4 pt-1 animate-in fade-in duration-200">
+                {/* 1. Request Help Specific Fields */}
+                {selectedPostTypeId === "request_help" && (
+                  <>
+                    {/* What do you need help with? */}
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">What do you need help with?</label>
+                      <div className="relative">
+                        <select
+                          value={requestHelpCategory}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setRequestHelpCategory(next);
+                            if (next !== "other_help") setCustomCategory("");
+                          }}
+                          className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
+                          disabled={submitting}
+                        >
+                          <option value="" disabled className="text-muted-foreground">E.g. Babysitter, Cleaning, Delivery..</option>
+                          {SERVICE_CATEGORIES.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
 
-                {/* Tag results dropdown — opens upward to avoid clipping at modal bottom */}
-                {tagResults.length > 0 && (
-                  <div className="absolute bottom-full left-0 right-0 mb-1.5 z-50 rounded-xl border border-border bg-background shadow-xl overflow-hidden max-h-48 overflow-y-auto">
-                    {tagResults.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 hover:bg-muted/60 transition-colors text-left"
-                        onClick={() => {
-                          if (!taggedUsers.find((t) => t.id === p.id)) {
-                            setTaggedUsers((prev) => [...prev, p]);
-                          }
-                          setTagQuery("");
-                          setTagResults([]);
-                        }}
-                      >
-                        <Avatar className="h-7 w-7 shrink-0">
-                          <AvatarImage src={p.photo_url ?? undefined} />
-                          <AvatarFallback className="text-xs font-bold">
-                            {(p.full_name ?? "?").charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium text-foreground">{p.full_name ?? "Unknown"}</span>
-                      </button>
-                    ))}
-                  </div>
+                    {requestHelpCategory === "other_help" ? otherHelpCategoryField : null}
+
+                    {/* Location */}
+                    <LocationPicker
+                      label="Location"
+                      labelClassName="text-[13px] font-bold text-foreground"
+                      inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
+                      placeholder="Search for a place"
+                      value={postLocation}
+                      onChange={setPostLocation}
+                      requireSelection
+                    />
+
+                    {/* When do you need it? */}
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">When do you need it?</label>
+                      <div className="flex flex-wrap gap-2">
+                        {REQUEST_HELP_WHEN_OPTIONS.map((opt) => {
+                          const isSel = timeframe === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                setTimeframe(opt.id);
+                                if (opt.id !== "custom") {
+                                  setCustomWhenDate(null);
+                                  setCustomWhenTime("");
+                                  setCustomWhenDatePickerOpen(false);
+                                }
+                              }}
+                              className={cn(
+                                "h-10 rounded-xl border px-4 text-xs font-semibold transition-all duration-150 active:scale-95",
+                                requestHelpWhenOptionButtonClass(isSel, opt.id),
+                              )}
+                              disabled={submitting}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {timeframe === "custom" ? (
+                        <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-[1fr_auto]">
+                          <Dialog
+                            open={customWhenDatePickerOpen}
+                            onOpenChange={setCustomWhenDatePickerOpen}
+                          >
+                            <DialogTrigger asChild>
+                              <button
+                                type="button"
+                                disabled={submitting}
+                                className="flex h-12 w-full items-center gap-2 rounded-xl border border-input bg-muted/40 px-3.5 text-left text-sm font-medium text-foreground outline-none transition-colors hover:bg-muted/60 focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 disabled:opacity-50 dark:bg-zinc-800/60"
+                              >
+                                <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                <span className={cn(!customWhenDate && "text-muted-foreground")}>
+                                  {customWhenDate
+                                    ? format(customWhenDate, "EEEE, MMMM d, yyyy")
+                                    : "Pick a date"}
+                                </span>
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-sm">
+                              <DialogHeader>
+                                <DialogTitle>When do you need help?</DialogTitle>
+                              </DialogHeader>
+                              <SimpleCalendar
+                                selectedDate={customWhenDate}
+                                onDateSelect={(date) => {
+                                  setCustomWhenDate(date);
+                                  setCustomWhenDatePickerOpen(false);
+                                }}
+                              />
+                            </DialogContent>
+                          </Dialog>
+
+                          <div className="relative sm:w-40">
+                            <Clock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <input
+                              type="time"
+                              value={customWhenTime}
+                              onChange={(e) => setCustomWhenTime(e.target.value)}
+                              className={cn(
+                                "h-12 w-full rounded-xl border border-input bg-muted/40 pl-10 pr-3.5 text-sm font-medium text-foreground outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 dark:bg-zinc-800/60",
+                                noFieldSpinnerClass,
+                              )}
+                              disabled={submitting}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Budget */}
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">Budget (optional)</label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground pointer-events-none">₪</span>
+                          <input
+                            type="number"
+                            placeholder="200"
+                            value={budgetAmount}
+                            onChange={(e) => setBudgetAmount(e.target.value)}
+                            className={cn(
+                              "w-full h-12 rounded-xl border border-input bg-muted/40 pl-8 pr-4 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60",
+                              noFieldSpinnerClass,
+                            )}
+                            disabled={submitting}
+                          />
+                        </div>
+                        <div className="relative w-36">
+                          <select
+                            value={budgetRateType}
+                            onChange={(e) => setBudgetRateType(e.target.value as any)}
+                            className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
+                            disabled={submitting}
+                          >
+                            <option value="per_hour">per hour</option>
+                            <option value="fixed">fixed price</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
-              </div>
 
-              {/* Tagged users chips */}
-              {taggedUsers.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {taggedUsers.map((t) => (
-                    <span
-                      key={t.id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 dark:bg-orange-950/60 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300"
+                {/* 2. Offer Service Specific Fields */}
+                {selectedPostTypeId === "offer_service" && (
+                  <>
+                    {/* What service are you offering? */}
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">What service are you offering?</label>
+                      <div className="relative">
+                        <select
+                          value={offerServiceCategory}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setOfferServiceCategory(next);
+                            if (next !== "other_help") setCustomCategory("");
+                          }}
+                          className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
+                          disabled={submitting}
+                        >
+                          <option value="" disabled className="text-muted-foreground">E.g. Babysitter, Cleaning, Delivery..</option>
+                          {SERVICE_CATEGORIES.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {offerServiceCategory === "other_help" ? otherHelpCategoryField : null}
+
+                    {/* Location */}
+                    <LocationPicker
+                      label="Location"
+                      labelClassName="text-[13px] font-bold text-foreground"
+                      inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
+                      placeholder="Search for a place (optional)"
+                      value={postLocation}
+                      onChange={setPostLocation}
+                      requireSelection
+                    />
+
+                    {/* Rate */}
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">Rate (optional)</label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground pointer-events-none">₪</span>
+                          <input
+                            type="number"
+                            placeholder="200"
+                            value={offerRate}
+                            onChange={(e) => setOfferRate(e.target.value)}
+                            className={cn(
+                              "w-full h-12 rounded-xl border border-input bg-muted/40 pl-8 pr-4 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60",
+                              noFieldSpinnerClass,
+                            )}
+                            disabled={submitting}
+                          />
+                        </div>
+                        <div className="relative w-36">
+                          <select
+                            value={offerRateType}
+                            onChange={(e) => setOfferRateType(e.target.value as any)}
+                            className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
+                            disabled={submitting}
+                          >
+                            <option value="per_hour">per hour</option>
+                            <option value="fixed">fixed price</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* 3. Event Specific Fields */}
+                {selectedPostTypeId === "event" && (
+                  <>
+                    {/* Event Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">Event Name</label>
+                      <input
+                        type="text"
+                        placeholder="E.g. Community Gathering, Picnic, Meetup"
+                        value={eventName}
+                        onChange={(e) => setEventName(e.target.value)}
+                        className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60"
+                        disabled={submitting}
+                      />
+                    </div>
+
+                    {/* Date & Time */}
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">Date & Time</label>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
+                        <Dialog open={eventDatePickerOpen} onOpenChange={setEventDatePickerOpen}>
+                          <DialogTrigger asChild>
+                            <button
+                              type="button"
+                              disabled={submitting}
+                              className="flex h-12 w-full items-center gap-2 rounded-xl border border-input bg-muted/40 px-3.5 text-left text-sm font-medium text-foreground outline-none transition-colors hover:bg-muted/60 focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 disabled:opacity-50 dark:bg-zinc-800/60"
+                            >
+                              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className={cn(!eventDate && "text-muted-foreground")}>
+                                {eventDate ? format(eventDate, "EEEE, MMMM d, yyyy") : "Pick a date"}
+                              </span>
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-sm">
+                            <DialogHeader>
+                              <DialogTitle>Event date</DialogTitle>
+                            </DialogHeader>
+                            <SimpleCalendar
+                              selectedDate={eventDate}
+                              onDateSelect={(date) => {
+                                setEventDate(date);
+                                setEventDatePickerOpen(false);
+                              }}
+                            />
+                          </DialogContent>
+                        </Dialog>
+
+                        <div className="relative sm:w-40">
+                          <Clock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <input
+                            type="time"
+                            value={eventTime}
+                            onChange={(e) => setEventTime(e.target.value)}
+                            className={cn(
+                              "h-12 w-full rounded-xl border border-input bg-muted/40 pl-10 pr-3.5 text-sm font-medium text-foreground outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 dark:bg-zinc-800/60",
+                              noFieldSpinnerClass,
+                            )}
+                            disabled={submitting}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <LocationPicker
+                      label="Location"
+                      labelClassName="text-[13px] font-bold text-foreground"
+                      inputClassName="h-12 rounded-xl border-input bg-muted/40 text-sm font-medium dark:bg-zinc-800/60"
+                      placeholder="Search for a place"
+                      value={eventLocation}
+                      onChange={setEventLocation}
+                      requireSelection
+                    />
+                  </>
+                )}
+
+                {/* 4. Community Specific Fields */}
+                {selectedPostTypeId === "community" && (
+                  <>
+                    {/* Title */}
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">Title</label>
+                      <input
+                        type="text"
+                        placeholder="What is the topic or question?"
+                        value={communityTitle}
+                        onChange={(e) => setCommunityTitle(e.target.value)}
+                        className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60"
+                        disabled={submitting}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Tell us more / Description — opens expanded editor */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-[13px] font-bold text-foreground">Tell us more</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setCaptionEditorOpen(true)}
+                      disabled={submitting}
+                      className={cn(
+                        "w-full rounded-xl border border-input bg-muted/40 p-3.5 text-left text-sm font-medium text-foreground outline-none transition-colors",
+                        "hover:border-orange-400/70 focus-visible:ring-1 focus-visible:ring-orange-500 focus-visible:border-orange-500",
+                        "dark:bg-zinc-800/60 min-h-[6.5rem] disabled:opacity-60",
+                      )}
                     >
-                      <Avatar className="h-4 w-4 shrink-0">
-                        <AvatarImage src={t.photo_url ?? undefined} />
-                        <AvatarFallback className="text-[8px]">
-                          {(t.full_name ?? "?").charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      @{t.full_name}
-                      <button
-                        type="button"
-                        onClick={() => setTaggedUsers((prev) => prev.filter((u) => u.id !== t.id))}
-                        className="ml-0.5 text-orange-500 hover:text-orange-700"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
+                      {caption.trim() ? (
+                        <span className="line-clamp-4 whitespace-pre-wrap">{caption}</span>
+                      ) : (
+                        <span className="text-muted-foreground/60">{captionPlaceholder}</span>
+                      )}
+                    </button>
+                    <div className="pointer-events-none absolute right-3.5 bottom-2 text-[10px] font-bold text-muted-foreground">
+                      {caption.length}/500
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </ScrollArea>
 
-        {/* "Add to your post" tray — single combined Photo/Video picker + extra options */}
-        <div className="shrink-0 border-t border-border/60 bg-background">
-          {/* Hidden file input — accepts image OR video from the same picker */}
-          <input
-            ref={mediaInputRef}
-            type="file"
-            accept="image/*,video/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handlePhotoVideoPick(f);
-              e.target.value = "";
-            }}
-          />
+                <Dialog open={captionEditorOpen} onOpenChange={setCaptionEditorOpen}>
+                  <DialogContent className="flex max-h-[min(92dvh,40rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+                    <DialogHeader className="border-b border-border/60 px-5 py-4">
+                      <DialogTitle className="text-base font-bold">Tell us more</DialogTitle>
+                    </DialogHeader>
+                    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                      <Textarea
+                        placeholder={captionPlaceholder}
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        maxLength={500}
+                        rows={14}
+                        autoFocus
+                        {...bidirectionalInputProps(
+                          caption,
+                          "min-h-[min(52dvh,22rem)] resize-none w-full rounded-xl border border-input bg-muted/40 p-4 text-base leading-relaxed outline-none focus-visible:ring-1 focus-visible:ring-orange-500 focus-visible:border-orange-500 font-medium text-foreground dark:bg-zinc-800/60 placeholder:text-muted-foreground/60",
+                        )}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between border-t border-border/60 px-5 py-4">
+                      <span className="text-xs font-bold tabular-nums text-muted-foreground">
+                        {caption.length}/500
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="rounded-full px-5 font-bold"
+                        onClick={() => setCaptionEditorOpen(false)}
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
-          {addToPostExpanded ? (
-            <div className="px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
-              {/* Drag handle (decorative) */}
-              <button
-                type="button"
-                onClick={() => setAddToPostExpanded(false)}
-                aria-label="Collapse add to post"
-                className="mx-auto mb-2 block h-1 w-10 rounded-full bg-muted-foreground/30 transition-colors hover:bg-muted-foreground/50"
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-[15px] font-bold text-foreground">
-                  Add to your post
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setAddToPostExpanded(false)}
-                  aria-label="Collapse"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60"
-                >
-                  <ChevronDown className="h-4 w-4" strokeWidth={2.5} />
-                </button>
-              </div>
+                {/* Photos upload — mobile only (desktop uses right panel) */}
+                <div className="sm:hidden">{photoUploadSection}</div>
 
-              {/* 3×2 grid of action cards */}
-              <div className="mt-3 grid grid-cols-2 gap-2.5">
-                <AddPostOptionCard
-                  icon={<ImageIcon className="h-5 w-5" strokeWidth={2.25} />}
-                  label="Photo/Video"
-                  iconBgClass="bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300"
-                  disabled={submitting || !!mediaFile}
-                  onClick={() => mediaInputRef.current?.click()}
-                />
-                <AddPostOptionCard
-                  icon={
-                    <span className="text-[11px] font-black tracking-tight">
-                      GIF
-                    </span>
-                  }
-                  label="Gif"
-                  iconBgClass="bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Gif")}
-                />
-                <AddPostOptionCard
-                  icon={<ListChecks className="h-5 w-5" strokeWidth={2.25} />}
-                  label="Poll"
-                  iconBgClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Poll")}
-                />
-                <AddPostOptionCard
-                  icon={<FileText className="h-5 w-5" strokeWidth={2.25} />}
-                  label="Adoption"
-                  iconBgClass="bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Adoption")}
-                />
-                <AddPostOptionCard
-                  icon={<Megaphone className="h-5 w-5" strokeWidth={2.25} />}
-                  label="Lost Notice"
-                  iconBgClass="bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Lost Notice")}
-                />
-                <AddPostOptionCard
-                  icon={<CalendarDays className="h-5 w-5" strokeWidth={2.25} />}
-                  label="Event"
-                  iconBgClass="bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Event")}
-                />
+                {/* Tag users */}
+                <div className="space-y-2">
+                  <div ref={tagBoxRef} className="relative">
+                    <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Tag someone…"
+                      value={tagQuery}
+                      onChange={(e) => setTagQuery(e.target.value)}
+                      onBlur={() => {
+                        window.setTimeout(() => setTagResults([]), 120);
+                      }}
+                      className="w-full h-10 rounded-full border border-input bg-muted/40 pl-9 pr-4 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 dark:bg-zinc-800/60"
+                      disabled={submitting}
+                    />
+
+                    {tagResults.length > 0 && (
+                      <div className="absolute bottom-full left-0 right-0 mb-1.5 z-50 rounded-xl border border-border bg-background shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                        {tagResults.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="flex w-full items-center gap-2.5 px-3 py-2.5 hover:bg-muted/60 transition-colors text-left"
+                            onClick={() => {
+                              if (!taggedUsers.find((t) => t.id === p.id)) {
+                                setTaggedUsers((prev) => [...prev, p]);
+                              }
+                              setTagQuery("");
+                              setTagResults([]);
+                            }}
+                          >
+                            <Avatar className="h-7 w-7 shrink-0">
+                              <AvatarImage src={p.photo_url ?? undefined} />
+                              <AvatarFallback className="text-xs font-bold">
+                                {(p.full_name ?? "?").charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-foreground">{p.full_name ?? "Unknown"}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {taggedUsers.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {taggedUsers.map((t) => (
+                        <span
+                          key={t.id}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 dark:bg-orange-950/60 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300"
+                        >
+                          <Avatar className="h-4 w-4 shrink-0">
+                            <AvatarImage src={t.photo_url ?? undefined} />
+                            <AvatarFallback className="text-[8px]">
+                              {(t.full_name ?? "?").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          @{t.full_name}
+                          <button
+                            type="button"
+                            onClick={() => setTaggedUsers((prev) => prev.filter((u) => u.id !== t.id))}
+                            className="ml-0.5 text-orange-500 hover:text-orange-700"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Live Preview — mobile only (desktop uses right panel) */}
+                <div className="sm:hidden">{livePreviewSection}</div>
               </div>
+            )}
             </div>
-          ) : (
-            /* Collapsed: thin row of icons + chevron up */
-            <div className="flex items-center justify-between gap-2 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
-              <div className="flex items-center gap-1">
-                <AddPostOptionIcon
-                  icon={<ImageIcon className="h-4 w-4" strokeWidth={2.25} />}
-                  iconBgClass="bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300"
-                  label="Photo/Video"
-                  disabled={submitting || !!mediaFile}
-                  onClick={() => mediaInputRef.current?.click()}
-                />
-                <AddPostOptionIcon
-                  icon={<span className="text-[9px] font-black">GIF</span>}
-                  iconBgClass="bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
-                  label="Gif"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Gif")}
-                />
-                <AddPostOptionIcon
-                  icon={<ListChecks className="h-4 w-4" strokeWidth={2.25} />}
-                  iconBgClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"
-                  label="Poll"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Poll")}
-                />
-                <AddPostOptionIcon
-                  icon={<FileText className="h-4 w-4" strokeWidth={2.25} />}
-                  iconBgClass="bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
-                  label="Adoption"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Adoption")}
-                />
-                <AddPostOptionIcon
-                  icon={<Megaphone className="h-4 w-4" strokeWidth={2.25} />}
-                  iconBgClass="bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300"
-                  label="Lost Notice"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Lost Notice")}
-                />
-                <AddPostOptionIcon
-                  icon={<CalendarDays className="h-4 w-4" strokeWidth={2.25} />}
-                  iconBgClass="bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300"
-                  label="Event"
-                  disabled={submitting}
-                  onClick={() => comingSoon("Event")}
-                />
+          </ScrollArea>
+
+          {selectedPostTypeId ? (
+            <ScrollArea className="hidden sm:flex min-h-0 w-[min(100%,380px)] shrink-0 flex-col border-l border-zinc-200/80 bg-zinc-50/40 dark:border-zinc-800/80 dark:bg-zinc-900/25">
+              <div className="space-y-5 px-5 py-4">
+                {photoUploadSection}
+                {livePreviewSection}
               </div>
-              <button
-                type="button"
-                onClick={() => setAddToPostExpanded(true)}
-                aria-label="Expand add to post"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60"
-              >
-                <ChevronUp className="h-4 w-4" strokeWidth={2.5} />
-              </button>
-            </div>
-          )}
+            </ScrollArea>
+          ) : null}
         </div>
+
+        {/* Hidden file input — keeps media upload wired */}
+        <input
+          ref={mediaInputRef}
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = e.target.files;
+            if (files?.length) handlePhotoVideoPick(files);
+            e.target.value = "";
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
 }
 
-/** Card-style action button used in the expanded "Add to your post" grid. */
-function AddPostOptionCard({
-  icon,
-  label,
-  iconBgClass,
-  disabled,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  iconBgClass: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex items-center justify-between gap-2 rounded-2xl border border-border/60 bg-muted/25 px-3 py-2.5 text-left transition-all",
-        "hover:bg-muted/40 active:scale-[0.98] dark:bg-zinc-800/40 dark:hover:bg-zinc-800/60",
-        "disabled:opacity-40 disabled:hover:bg-muted/25 disabled:active:scale-100",
-      )}
-    >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-            iconBgClass,
-          )}
-          aria-hidden
-        >
-          {icon}
-        </span>
-        <span className="truncate text-[14px] font-bold text-foreground">
-          {label}
-        </span>
-      </div>
-      <Plus
-        className="h-4 w-4 shrink-0 text-muted-foreground"
-        strokeWidth={2.25}
-        aria-hidden
-      />
-    </button>
-  );
-}
 
-/** Compact icon-only button used in the collapsed row. */
-function AddPostOptionIcon({
-  icon,
-  label,
-  iconBgClass,
-  disabled,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  iconBgClass: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={label}
-      aria-label={label}
-      className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all",
-        "hover:scale-110 active:scale-95",
-        "disabled:opacity-40 disabled:hover:scale-100",
-        iconBgClass,
-      )}
-    >
-      {icon}
-    </button>
-  );
-}
-
-/** Author avatar with green gradient ring during active 24h go-live (`live_until` in the future). */
+/** Author avatar — green dot when in active 24h go-live (`live_until` in the future). */
 function PostAuthorAvatar({
   authorName,
   photoUrl,
@@ -1392,40 +2242,100 @@ function PostAuthorAvatar({
   liveUntil?: string | null;
   variant: "overlay" | "card";
 }) {
-  const showLiveRing = isFreelancerInActive24hLiveWindow({ live_until: liveUntil ?? null });
   const fallbackClass =
     variant === "overlay"
       ? "bg-black/50 text-sm font-bold text-white"
       : "font-bold text-sm";
 
-  const avatar = (
-    <Avatar className="h-11 w-11 shrink-0">
-      <AvatarImage src={photoUrl} className="object-cover" alt="" />
-      <AvatarFallback className={fallbackClass}>
-        {authorName.charAt(0).toUpperCase()}
-      </AvatarFallback>
-    </Avatar>
-  );
-
-  if (!showLiveRing) return avatar;
-
-  const innerShell =
-    variant === "overlay"
-      ? "rounded-full overflow-hidden ring-1 ring-black/30"
-      : "rounded-full overflow-hidden bg-background ring-1 ring-border/50";
-
   return (
-    <span
-      className="inline-flex shrink-0 rounded-full bg-gradient-to-br from-lime-400 via-emerald-500 to-green-700 p-[2.5px] shadow-[0_0_14px_rgba(34,197,94,0.35)]"
-      title="Live now (24h availability)"
-    >
-      <span className={innerShell}>{avatar}</span>
-    </span>
+    <AvatarWithLiveDot liveUntil={liveUntil}>
+      <Avatar className="h-11 w-11 shrink-0">
+        <AvatarImage src={photoUrl} className="object-cover" alt="" />
+        <AvatarFallback className={fallbackClass}>
+          {authorName.charAt(0).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+    </AvatarWithLiveDot>
   );
 }
 
 const mediaTaggedAtBadgeClass =
   "pointer-events-none inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white shadow-md backdrop-blur-md";
+
+const mediaWhenBadgeClass =
+  "inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-sm font-black text-slate-900 shadow-md backdrop-blur-xl";
+
+const mediaWhenUrgentBadgeClass =
+  "inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-black uppercase tracking-wide text-white shadow-md shadow-red-900/35 ring-2 ring-red-400/40 backdrop-blur-sm";
+
+const mediaWhenBadgeIconClass = "h-4 w-4 shrink-0";
+
+const mediaWhenUrgentBadgeIconClass = "h-4 w-4 shrink-0 text-white";
+
+function whenBadgeClassForTimeframe(timeframe?: string | null) {
+  return isRequestHelpWhenUrgent(timeframe)
+    ? mediaWhenUrgentBadgeClass
+    : mediaWhenBadgeClass;
+}
+
+function whenBadgeIconClassForTimeframe(timeframe?: string | null) {
+  return isRequestHelpWhenUrgent(timeframe)
+    ? mediaWhenUrgentBadgeIconClass
+    : mediaWhenBadgeIconClass;
+}
+
+function requestHelpWhenOptionButtonClass(
+  selected: boolean,
+  option: RequestHelpTimeframe,
+) {
+  if (selected) {
+    return option === "now"
+      ? "bg-red-600 border-transparent text-white dark:bg-red-700 shadow-sm shadow-red-900/25"
+      : "bg-emerald-600 border-transparent text-white dark:bg-emerald-700 shadow-sm";
+  }
+  if (option === "now") {
+    return "bg-red-50 border-red-200 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/45";
+  }
+  return "bg-muted/40 border-input text-foreground hover:bg-muted/60 dark:bg-zinc-800/60";
+}
+
+function MediaTopBadges({
+  serviceCategoryId,
+  serviceCategoryLabelText,
+  whenLabel,
+  whenTimeframe,
+}: {
+  serviceCategoryId?: string | null;
+  serviceCategoryLabelText?: string | null;
+  whenLabel?: string | null;
+  whenTimeframe?: string | null;
+}) {
+  if (!serviceCategoryId && !whenLabel) return null;
+
+  return (
+    <div className="absolute top-3 left-3 z-[4] pointer-events-none flex max-w-[calc(100%-4rem)] flex-wrap items-center gap-2">
+      {serviceCategoryId && serviceCategoryLabelText ? (
+        <span className={mediaWhenBadgeClass}>
+          <CategoryIcon
+            categoryId={serviceCategoryId}
+            className={cn(
+              "h-4 w-4 shrink-0",
+              HIRE_CATEGORY_TILE_UI[serviceCategoryId as ServiceCategoryId]?.iconClass ??
+                "text-slate-600",
+            )}
+          />
+          {serviceCategoryLabelText}
+        </span>
+      ) : null}
+      {whenLabel ? (
+        <span className={whenBadgeClassForTimeframe(whenTimeframe)}>
+          <CalendarDays className={whenBadgeIconClassForTimeframe(whenTimeframe)} />
+          {whenLabel}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 const mediaTaggedUserBadgeClass =
   "pointer-events-auto inline-flex max-w-full items-center gap-2.5 rounded-full bg-black/35 px-3 py-2 text-[13px] font-bold text-white shadow-md backdrop-blur-md hover:bg-black/45 focus-visible:outline-none focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]";
@@ -1435,7 +2345,110 @@ const mediaTaggedMoreBadgeClass =
 
 const mediaTaggedAvatarClass = "h-7 w-7 shrink-0";
 
+function PostMediaExtraStack({
+  items,
+  onOpenGallery,
+}: {
+  items: ProfilePostMediaItem[];
+  onOpenGallery: (indexInGallery: number) => void;
+}) {
+  if (items.length === 0) return null;
+
+  const visible = items.slice(0, 3);
+  const overflow = items.length - visible.length;
+
+  return (
+    <div className="absolute bottom-3 right-3 z-[5] flex items-end">
+      {visible.map((item, i) => {
+        const thumbUrl = publicProfileMediaPublicUrl(item.storage_path);
+        const galleryIndex = i + 1;
+        const showOverflow = i === visible.length - 1 && overflow > 0;
+
+        return (
+          <button
+            key={item.storage_path}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenGallery(galleryIndex);
+            }}
+            className={cn(
+              "relative h-11 w-11 overflow-hidden rounded-lg border-2 border-white bg-black shadow-lg ring-1 ring-black/25 transition-transform active:scale-95",
+              i > 0 && "-ml-3",
+            )}
+            style={{ zIndex: 10 + i }}
+            aria-label={
+              showOverflow
+                ? `View all ${items.length + 1} media items`
+                : `View media ${galleryIndex + 1}`
+            }
+          >
+            {item.media_type === "image" ? (
+              <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <video src={thumbUrl} className="h-full w-full object-cover" muted playsInline />
+            )}
+            {showOverflow ? (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-[11px] font-black text-white">
+                +{overflow}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+type ComposeMediaDraft = {
+  id: string;
+  file: File;
+  previewUrl: string;
+  kind: "image" | "video";
+};
+
+function revokeComposeMediaUrls(items: ComposeMediaDraft[]) {
+  for (const item of items) URL.revokeObjectURL(item.previewUrl);
+}
+
 // ─── Post Card ────────────────────────────────────────────────────────────────
+
+function isPostCaptionExpandable(caption: string, hasMedia: boolean): boolean {
+  const trimmed = caption.trim();
+  return hasMedia
+    ? trimmed.length > 120 || trimmed.includes("\n")
+    : trimmed.length > 600 || (trimmed.match(/\n/g) || []).length > 9;
+}
+
+type PostCardProps = {
+  post: FeedPost;
+  currentUserId: string | null;
+  onLikeToggle: (postId: string, liked: boolean) => void;
+  isOwnFeed: boolean;
+  onDeleted: (postId: string) => void;
+  globalVideoUnmuted: boolean;
+  onGlobalVideoUnmutedChange: (next: boolean) => void;
+  refreshPostShareStats: (postId: string, source?: FeedPost["source"]) => void;
+  onOpenMediaReels: (postId: string) => void;
+  hidePostLikeButton?: boolean;
+  appearance: "default" | "discover" | "profile";
+  isFocused?: boolean;
+  discoverWideLayout?: boolean;
+  plainCard?: boolean;
+};
+
+function FeedPostItem(props: PostCardProps) {
+  return <PostCard {...props} />;
+}
+
+function canActAsHelperOnJobRequest(
+  profile: { role?: string; is_available_for_jobs?: boolean } | null | undefined,
+): boolean {
+  if (!profile?.role) return false;
+  if (profile.role === "freelancer") return true;
+  if (profile.role === "client" && profile.is_available_for_jobs === true) return true;
+  return false;
+}
 
 function PostCard({
   post,
@@ -1460,7 +2473,7 @@ function PostCard({
   onDeleted: (postId: string) => void;
   globalVideoUnmuted: boolean;
   onGlobalVideoUnmutedChange: (next: boolean) => void;
-  refreshPostShareStats: (postId: string) => void;
+  refreshPostShareStats: (postId: string, source?: FeedPost["source"]) => void;
   onOpenMediaReels: (postId: string) => void;
   /** Liked-posts-only feed (e.g. Saved / Liked) — hide redundant like control. */
   hidePostLikeButton?: boolean;
@@ -1471,15 +2484,110 @@ function PostCard({
 }) {
   const { addToast } = useToast();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
-  const { profile: viewerProfile } = useAuth();
+  const { profile: viewerProfile, user } = useAuth();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const isJobRequest = post.source === "job_request";
+  const [chatOpening, setChatOpening] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
   const [authorSaved, setAuthorSaved] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [jobSaveBusy, setJobSaveBusy] = useState(false);
+  const [jobAccepting, setJobAccepting] = useState(false);
+  const [jobAcceptedAt, setJobAcceptedAt] = useState<string | null>(null);
+  const [jobCommentCount, setJobCommentCount] = useState(post.comment_count);
   const [saveNoticeOpen, setSaveNoticeOpen] = useState(false);
   const saveNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [commentCount, setCommentCount] = useState(post.comment_count);
   const [liking, setLiking] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [eventJoined, setEventJoined] = useState(false);
+  const [eventJoinBusy, setEventJoinBusy] = useState(false);
+
+  const isEventPost =
+    post.source === "post" && post.post_types?.id === "event";
+  const isOwnEventPost = isEventPost && post.author_id === currentUserId;
+
+  useEffect(() => {
+    if (!isEventPost || !currentUserId || isOwnEventPost) {
+      setEventJoined(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const joined = await hasEventJoinInterest(supabase, post.id, currentUserId);
+        if (!cancelled) setEventJoined(joined);
+      } catch (error) {
+        console.error("[PostCard] event join status", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId, isEventPost, isOwnEventPost, post.id]);
+
+  const handleActionButtonClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user || !viewerProfile) {
+      openGuestAuthPrompt({ variant: "engage" });
+      return;
+    }
+
+    if (isEventPost) {
+      if (isOwnEventPost) {
+        navigate(
+          viewerProfile.role === "freelancer"
+            ? "/freelancer/profile/events"
+            : "/client/profile/events",
+        );
+        return;
+      }
+
+      setEventJoinBusy(true);
+      try {
+        const result = await recordEventJoinInterest(supabase, post.id, user.id);
+        setEventJoined(true);
+        addToast({
+          title: result.alreadyJoined
+            ? "Already interested"
+            : "You're interested in this event!",
+          description: result.alreadyJoined
+            ? "You already tapped I want to join on this event."
+            : "The event host can see your interest in My events.",
+          variant: "success",
+        });
+      } catch (error) {
+        console.error("[PostCard] event join", error);
+        addToast({
+          title: "Could not save your interest",
+          description: error instanceof Error ? error.message : "Please try again.",
+          variant: "error",
+        });
+      } finally {
+        setEventJoinBusy(false);
+      }
+      return;
+    }
+
+    setChatOpening(true);
+    try {
+      await openCommunityContact({
+        supabase,
+        user,
+        myRole: viewerProfile.role,
+        targetUserId: post.author_id,
+        targetRole: post.author?.role,
+        navigate,
+        addToast,
+      });
+    } finally {
+      setChatOpening(false);
+    }
+  };
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const [showAllTagged, setShowAllTagged] = useState(false);
   const videoUnmutedByUser = globalVideoUnmuted;
   const [mediaOrientation, setMediaOrientation] = useState<
@@ -1492,9 +2600,68 @@ function PostCard({
     post.media_type && post.storage_path
       ? publicProfileMediaPublicUrl(post.storage_path)
       : null;
+  const hasMedia = Boolean(mediaUrl);
+
+  const postMediaItems = useMemo(
+    () => (post.source === "post" ? getProfilePostMediaItems(post) : []),
+    [post],
+  );
+  const extraMediaItems = useMemo(
+    () => extraProfilePostMediaItems(postMediaItems),
+    [postMediaItems],
+  );
+
+  function openMediaGallery(indexInGallery: number) {
+    setGalleryIndex(indexInGallery);
+    setGalleryOpen(true);
+  }
 
   const canSaveAuthor =
-    Boolean(currentUserId) && post.author_id !== currentUserId;
+    Boolean(currentUserId) && post.author_id !== currentUserId && !isJobRequest;
+  const canSaveJobRequest =
+    isJobRequest && Boolean(currentUserId) && post.author_id !== currentUserId;
+  const { data: savedJobIds = new Set<string>() } = useJobRequestFavoriteIds(
+    canSaveJobRequest ? user?.id : undefined,
+  );
+  const jobSaved = isJobRequest && savedJobIds.has(post.id);
+
+  useEffect(() => {
+    if (!isJobRequest) return;
+    let cancelled = false;
+    void supabase
+      .from("job_request_comments")
+      .select("*", { count: "exact", head: true })
+      .eq("job_request_id", post.id)
+      .then(({ count }) => {
+        if (!cancelled && count != null) setJobCommentCount(count);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isJobRequest, post.id, commentsOpen]);
+
+  useEffect(() => {
+    if (!isJobRequest || !user?.id) {
+      setJobAcceptedAt(null);
+      return;
+    }
+    let cancelled = false;
+    void supabase
+      .from("job_confirmations")
+      .select("job_id, created_at")
+      .eq("freelancer_id", user.id)
+      .eq("status", "available")
+      .eq("job_id", post.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) {
+          setJobAcceptedAt(data?.created_at ? String(data.created_at) : null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isJobRequest, user?.id, post.id]);
 
   useEffect(() => {
     if (!canSaveAuthor || !currentUserId) {
@@ -1515,6 +2682,10 @@ function PostCard({
       cancelled = true;
     };
   }, [canSaveAuthor, currentUserId, post.author_id]);
+
+  useEffect(() => {
+    setCaptionExpanded(false);
+  }, [post.id]);
 
   const savedProfilesHref =
     viewerProfile?.role === "freelancer"
@@ -1558,6 +2729,12 @@ function PostCard({
   const isDiscover = appearance === "discover";
   const isProfile = appearance === "profile";
   const isPlainCard = Boolean(plainCard);
+  const cardPadX =
+    isDiscover || isPlainCard ? "px-2 md:px-4" : "px-4";
+  const cardMarginX =
+    isDiscover || isPlainCard ? "mx-2 md:mx-4" : "mx-4";
+  const mobileMediaInsetClass =
+    "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]";
   const mediaAspectStyle: React.CSSProperties | undefined = mediaAspectRatio
     ? { aspectRatio: String(mediaAspectRatio) }
     : undefined;
@@ -1576,16 +2753,16 @@ function PostCard({
       : "max-md:h-[min(86dvh,50rem)]";
   const mobileMediaBoxClass = mediaAspectRatio
     ? cn(
-        "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]",
-        // Portrait media can otherwise become extremely tall when width is full.
-        !isLandscape && mobilePortraitMaxHeight,
-      )
+      mobileMediaInsetClass,
+      // Portrait media can otherwise become extremely tall when width is full.
+      !isLandscape && mobilePortraitMaxHeight,
+    )
     : isLandscape
-      ? "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]"
+      ? mobileMediaInsetClass
       : cn(
-          "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]",
-          mobilePortraitFallbackHeight,
-        );
+        mobileMediaInsetClass,
+        mobilePortraitFallbackHeight,
+      );
   const mobileMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
 
   // Desktop media sizing:
@@ -1598,9 +2775,9 @@ function PostCard({
       : "md:h-[min(82vh,52rem)] md:max-h-[min(82vh,52rem)] md:w-auto md:max-w-full";
   const desktopMediaBoxClass = mediaAspectRatio
     ? cn(
-        "md:rounded-xl",
-        isLandscape ? "md:w-full" : portraitDesktopSizingClass,
-      )
+      "md:rounded-xl",
+      isLandscape ? "md:w-full" : portraitDesktopSizingClass,
+    )
     : isLandscape
       ? "md:w-full md:rounded-xl"
       : cn("md:rounded-xl", portraitDesktopSizingClass);
@@ -1608,12 +2785,13 @@ function PostCard({
   const landscapeMediaObjectClass = "object-contain";
   const mediaBoxBgClass = isLandscape ? "bg-black" : "bg-transparent";
   // Discover card width: portrait shrinks to media; landscape spans the column up to a cap.
+  // Text-only posts use full column width so the header badge aligns with media posts.
   const desktopDiscoverCardWidthClass = isDiscover
     ? discoverWideLayout
-      ? isLandscape
+      ? isLandscape || !hasMedia
         ? "md:w-full md:max-w-none"
         : "md:w-full md:max-w-[720px]"
-      : isLandscape
+      : isLandscape || !hasMedia
         ? "md:w-full md:max-w-[820px]"
         : "md:w-fit md:max-w-[520px]"
     : null;
@@ -1624,10 +2802,24 @@ function PostCard({
       openGuestAuthPrompt({ variant: "engage" });
       return;
     }
-    if (post.source !== "post") return; // availability posts don't have likes for now
+    if (post.source === "availability") return;
     setLiking(true);
     try {
-      if (post.liked_by_me) {
+      if (post.source === "job_request") {
+        if (post.liked_by_me) {
+          const { error } = await supabase
+            .from("job_request_likes")
+            .delete()
+            .eq("job_id", post.id)
+            .eq("user_id", currentUserId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("job_request_likes")
+            .insert({ job_id: post.id, user_id: currentUserId });
+          if (error) throw error;
+        }
+      } else if (post.liked_by_me) {
         const { error } = await supabase
           .from("profile_post_likes")
           .delete()
@@ -1644,7 +2836,7 @@ function PostCard({
     } catch (e) {
       console.error("[PostCard] toggleLike", e);
       addToast({
-        title: "Could not like post",
+        title: post.source === "job_request" ? "Could not like request" : "Could not like post",
         description: e instanceof Error ? e.message : "Please try again.",
         variant: "error",
       });
@@ -1713,22 +2905,96 @@ function PostCard({
     }
   }
 
-  async function handleShare() {
-    if (post.source !== "post") return;
+  async function toggleSaveJobRequest(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!currentUserId) {
+      openGuestAuthPrompt({ variant: "engage" });
+      return;
+    }
+    setJobSaveBusy(true);
+    try {
+      await toggleJobRequestFavorite(currentUserId, post.id, jobSaved);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.jobRequestFavorites(currentUserId),
+      });
+      addToast({
+        title: jobSaved ? "Removed from saved" : "Request saved",
+        variant: "success",
+      });
+    } catch (err) {
+      addToast({
+        title: "Could not save",
+        description: err instanceof Error ? err.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setJobSaveBusy(false);
+    }
+  }
 
-    const result = await shareProfilePost({
-      postId: post.id,
-      authorName: authorName,
-      caption: post.caption,
-      mediaUrl,
-      mediaType: post.media_type,
-    });
+  async function handleJobRequestAccept(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!user?.id) {
+      openGuestAuthPrompt({ variant: "engage" });
+      return;
+    }
+    if (!canActAsHelperOnJobRequest(viewerProfile)) {
+      addToast({
+        title: "Enable helper profile",
+        description: "Turn on help mode to accept requests.",
+        variant: "warning",
+      });
+      return;
+    }
+    setJobAccepting(true);
+    try {
+      await acceptOpenHelpRequest(post.id);
+      setJobAcceptedAt(new Date().toISOString());
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.discoverOpenHelpRequests(user.id),
+      });
+      addToast({
+        title: "Accepted",
+        description: `Waiting for ${authorName}.`,
+        variant: "success",
+      });
+    } catch (err) {
+      addToast({
+        title: "Failed to accept",
+        description: err instanceof Error ? err.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setJobAccepting(false);
+    }
+  }
+
+  async function handleShare() {
+    if (post.source !== "post" && post.source !== "job_request") return;
+
+    const result =
+      post.source === "job_request"
+        ? await shareJobRequest({
+            jobId: post.id,
+            authorName,
+            caption: effectiveCaption,
+          })
+        : await shareProfilePost({
+            postId: post.id,
+            authorName: authorName,
+            caption: post.caption,
+            mediaUrl,
+            mediaType: post.media_type,
+          });
 
     if (result === "cancelled") return;
     if (result === "copied") {
       addToast({
         title: "Link copied",
-        description: "Paste anywhere to share this post.",
+        description:
+          post.source === "job_request"
+            ? "Paste anywhere to share this request."
+            : "Paste anywhere to share this post.",
         variant: "success",
       });
     } else if (result === "failed") {
@@ -1742,6 +3008,19 @@ function PostCard({
 
     if (!currentUserId) return;
 
+    if (post.source === "job_request") {
+      const { error } = await supabase.from("job_request_shares").insert({
+        job_id: post.id,
+        user_id: currentUserId,
+      });
+      if (error) {
+        console.error("[PostCard] job_request_shares insert", error);
+        return;
+      }
+      void refreshPostShareStats(post.id, "job_request");
+      return;
+    }
+
     const { error } = await supabase.from("profile_post_shares").insert({
       post_id: post.id,
       user_id: currentUserId,
@@ -1750,15 +3029,16 @@ function PostCard({
       console.error("[PostCard] profile_post_shares insert", error);
       return;
     }
-    void refreshPostShareStats(post.id);
+    void refreshPostShareStats(post.id, "post");
   }
 
   async function handleDelete() {
     if (!currentUserId || post.source !== "post") return;
     setDeleting(true);
     try {
-      if (post.storage_path) {
-        await supabase.storage.from(PUBLIC_PROFILE_MEDIA_BUCKET).remove([post.storage_path]);
+      const paths = allProfilePostStoragePaths(post);
+      if (paths.length > 0) {
+        await supabase.storage.from(PUBLIC_PROFILE_MEDIA_BUCKET).remove(paths);
       }
       const { error } = await supabase.from("profile_posts").delete().eq("id", post.id);
       if (error) throw error;
@@ -1772,11 +3052,57 @@ function PostCard({
   }
 
   const authorName = post.author?.full_name?.trim() || "User";
-  const captionLayout = post.caption?.trim()
-    ? bidirectionalTextProps(post.caption, "text-left")
+  const generatedCopy =
+    post.source === "post" || post.source === "job_request"
+      ? post.ai_generated_copy ?? null
+      : null;
+  const effectiveCaption = post.caption?.trim() || generatedCopy?.short_text || "";
+  const captionLayout = effectiveCaption
+    ? bidirectionalTextProps(effectiveCaption, "text-left")
     : null;
   const isSource = post.source === "availability";
-  const hasMedia = Boolean(mediaUrl);
+  const whenLabel = useMemo(() => {
+    if (post.source === "job_request" && post.post_metadata?.timeframe) {
+      return requestHelpWhenLabel(post.post_metadata);
+    }
+    if (post.source !== "post" || !post.post_metadata) return null;
+    if (post.post_type_id === "request_help" && post.post_metadata.timeframe) {
+      return requestHelpWhenLabel(post.post_metadata);
+    }
+    if (post.post_type_id === "event" && post.post_metadata.date_time) {
+      return post.post_metadata.date_time;
+    }
+    return null;
+  }, [post]);
+
+  const requestWhenTimeframe = useMemo(() => {
+    if (post.source === "job_request") {
+      return (post.post_metadata?.timeframe as string | null | undefined) ?? null;
+    }
+    if (post.source !== "post" || post.post_type_id !== "request_help") return null;
+    return (post.post_metadata?.timeframe as string | null | undefined) ?? null;
+  }, [post]);
+
+  const serviceCategoryMeta = useMemo(() => {
+    if (post.source === "job_request" && post.post_metadata?.category) {
+      return {
+        id: post.post_metadata.category,
+        label: postServiceCategoryLabel(post.post_metadata.category),
+      };
+    }
+    if (post.source !== "post" || !post.post_metadata) return null;
+    const categoryId =
+      post.post_type_id === "request_help"
+        ? post.post_metadata.category
+        : post.post_type_id === "offer_service"
+          ? post.post_metadata.service
+          : null;
+    if (!categoryId) return null;
+    return {
+      id: categoryId,
+      label: postServiceCategoryLabel(categoryId, post.post_metadata.custom_category),
+    };
+  }, [post]);
 
   function toggleInlineVideoMute(e: React.MouseEvent) {
     e.stopPropagation();
@@ -1837,10 +3163,11 @@ function PostCard({
 
   function renderEngagementRow() {
     const btnPad = hasMedia ? (isProfile ? "py-1" : "py-1.5") : isProfile ? "py-2" : "py-2.5";
+    const engagementDisabled = post.source === "availability";
     return (
       <div
         className={cn(
-          "flex items-center gap-0 bg-transparent px-2 md:px-3",
+          "flex items-center justify-between bg-transparent px-2 md:px-3",
           hasMedia
             ? isProfile
               ? "pb-0 pt-0 md:pt-0.5 md:pb-0"
@@ -1850,63 +3177,134 @@ function PostCard({
               : "py-1 md:mt-0.5 md:py-2",
         )}
       >
-        {!hidePostLikeButton ? (
-        <button
-          type="button"
-          disabled={liking || post.source === "availability"}
-          onClick={() => void toggleLike()}
-          className={cn(
-            "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold transition-all",
-            btnPad,
-            post.liked_by_me
-              ? "text-rose-500"
-              : "text-muted-foreground hover:bg-muted/60 hover:text-rose-500 dark:text-white dark:hover:text-rose-400",
-            (liking || post.source === "availability") && "pointer-events-none opacity-50",
-          )}
-          aria-label={post.liked_by_me ? "Unlike" : "Like"}
-        >
-          <Heart
-            className={cn("h-6 w-6 transition-transform", post.liked_by_me && "scale-110 fill-rose-500")}
-            strokeWidth={2.75}
-          />
-          {post.like_count > 0 && (
-            <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
-          )}
-        </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => setCommentsOpen(true)}
-          className={cn(
-            "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
-            btnPad,
-          )}
-          aria-label="Comments"
-        >
-          <MessageCircle className="h-6 w-6" strokeWidth={2.75} />
-          {commentCount > 0 && (
-            <span className="min-w-[1ch] tabular-nums">{commentCount}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleShare()}
-          title={
-            post.source === "post"
-              ? `${post.share_click_count} share taps · ${post.share_distinct_user_count} people`
-              : undefined
-          }
-          className={cn(
-            "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
-            btnPad,
-          )}
-          aria-label="Share"
-        >
-          <Send className="h-6 w-6" strokeWidth={2.75} />
-          {post.source === "post" && post.share_click_count > 0 ? (
-            <span className="min-w-[1ch] tabular-nums">{post.share_click_count}</span>
+        <div className="flex items-center gap-0">
+          {!hidePostLikeButton ? (
+            <button
+              type="button"
+              disabled={liking || engagementDisabled}
+              onClick={() => void toggleLike()}
+              className={cn(
+                "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold transition-all",
+                btnPad,
+                post.liked_by_me
+                  ? "text-rose-500"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-rose-500 dark:text-white dark:hover:text-rose-400",
+                (liking || engagementDisabled) && "pointer-events-none opacity-50",
+              )}
+              aria-label={post.liked_by_me ? "Unlike" : "Like"}
+            >
+              <Heart
+                className={cn("h-6 w-6 transition-transform", post.liked_by_me && "scale-110 fill-rose-500")}
+                strokeWidth={2.75}
+              />
+              {post.like_count > 0 && (
+                <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
+              )}
+            </button>
           ) : null}
-        </button>
+          <button
+            type="button"
+            onClick={() => setCommentsOpen(true)}
+            className={cn(
+              "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+              btnPad,
+            )}
+            aria-label="Comments"
+          >
+            <MessageCircle className="h-6 w-6" strokeWidth={2.75} />
+            {(isJobRequest ? jobCommentCount : commentCount) > 0 && (
+              <span className="min-w-[1ch] tabular-nums">
+                {isJobRequest ? jobCommentCount : commentCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            title={
+              post.source === "post"
+                ? `${post.share_click_count} share taps · ${post.share_distinct_user_count} people`
+                : undefined
+            }
+            className={cn(
+              "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+              btnPad,
+            )}
+            aria-label="Share"
+          >
+            <Send className="h-6 w-6" strokeWidth={2.75} />
+            {post.share_click_count > 0 ? (
+              <span className="min-w-[1ch] tabular-nums">{post.share_click_count}</span>
+            ) : null}
+          </button>
+        </div>
+
+        {canSaveJobRequest ? (
+          <button
+            type="button"
+            disabled={jobSaveBusy}
+            onClick={(e) => {
+              e.stopPropagation();
+              void toggleSaveJobRequest(e);
+            }}
+            title={jobSaved ? "Remove from saved requests" : "Save request"}
+            aria-label={jobSaved ? "Remove from saved requests" : "Save request"}
+            aria-pressed={jobSaved}
+            className={cn(
+              "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold transition-colors",
+              btnPad,
+              jobSaved
+                ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+            )}
+          >
+            {jobSaveBusy ? (
+              <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+            ) : (
+              <Bookmark
+                className={cn(
+                  "h-6 w-6",
+                  jobSaved && "fill-amber-500 text-amber-700 dark:fill-amber-400 dark:text-amber-200",
+                )}
+                strokeWidth={jobSaved ? 0 : 2.75}
+                aria-hidden
+              />
+            )}
+          </button>
+        ) : null}
+        {canSaveAuthor && hasMedia ? (
+          <button
+            type="button"
+            disabled={favoriteBusy}
+            onClick={(e) => {
+              e.stopPropagation();
+              void toggleSaveAuthor(e);
+            }}
+            title={authorSaved ? "Remove from saved profiles" : "Save profile"}
+            aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
+            aria-pressed={authorSaved}
+            className={cn(
+              "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold transition-colors",
+              btnPad,
+              authorSaved
+                ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400"
+            )}
+          >
+            {favoriteBusy ? (
+              <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+            ) : (
+              <Bookmark
+                className={cn(
+                  "h-6 w-6",
+                  authorSaved && "fill-amber-500 text-amber-700 dark:fill-amber-400 dark:text-amber-200",
+                )}
+                strokeWidth={authorSaved ? 0 : 2.75}
+                aria-hidden
+              />
+            )}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -1915,7 +3313,11 @@ function PostCard({
 
   return (
     <div
-      id={post.source === "post" ? `profile-post-${post.id}` : undefined}
+      id={
+        post.source === "post" || post.source === "job_request"
+          ? feedItemDomId(post.source, post.id)
+          : undefined
+      }
       className={cn(
         "overflow-hidden transition-all duration-300 border-0",
         isDiscover || isPlainCard
@@ -1928,88 +3330,100 @@ function PostCard({
       {/* Header — always rendered outside the media block */}
       <div
         className={cn(
-          "flex items-start gap-3 px-4",
+          "flex items-start gap-3",
+          cardPadX,
           isProfile ? "pt-3 pb-1.5" : "pt-4 pb-2",
         )}
       >
-          <GuestAwareProfileLink
-            userId={post.author_id}
-            className="shrink-0 self-start"
-            aria-label={`View ${authorName} profile`}
-          >
-            <PostAuthorAvatar
-              authorName={authorName}
-              photoUrl={post.author?.photo_url ?? undefined}
-              liveUntil={post.author?.live_until}
-              variant="card"
-            />
-          </GuestAwareProfileLink>
-          <div className="min-w-0 flex-1 flex flex-col gap-0.5 pt-0.5">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <GuestAwareProfileLink
-                userId={post.author_id}
-                className="truncate font-black text-xl leading-tight text-foreground hover:underline underline-offset-2"
-                aria-label={`View ${authorName} profile`}
-              >
-                {authorName}
-              </GuestAwareProfileLink>
-              {post.author?.is_verified ? (
-                <BadgeCheck
-                  className="h-[18px] w-[18px] shrink-0"
-                  fill="#0ea5e9"
-                  color="#ffffff"
-                  aria-label="Verified"
-                />
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <time className="text-[13px] font-semibold tabular-nums text-muted-foreground">{postedLabel}</time>
-              {isSource && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
-                  <Sparkles className="h-3 w-3" />
-                  {categoryLabel((post as AvailabilityPost).category)}
-                </span>
-              )}
-            </div>
+        <GuestAwareProfileLink
+          userId={post.author_id}
+          className="shrink-0 self-start"
+          aria-label={`View ${authorName} profile`}
+        >
+          <PostAuthorAvatar
+            authorName={authorName}
+            photoUrl={post.author?.photo_url ?? undefined}
+            liveUntil={post.author?.live_until}
+            variant="card"
+          />
+        </GuestAwareProfileLink>
+        <div className="min-w-0 flex-1 flex flex-col gap-0.5 pt-0.5">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <GuestAwareProfileLink
+              userId={post.author_id}
+              className="truncate font-black text-xl leading-tight text-foreground hover:underline underline-offset-2"
+              aria-label={`View ${authorName} profile`}
+            >
+              {authorName}
+            </GuestAwareProfileLink>
+            {post.author?.is_verified ? (
+              <BadgeCheck
+                className="h-[18px] w-[18px] shrink-0"
+                fill="#0ea5e9"
+                color="#ffffff"
+                aria-label="Verified"
+              />
+            ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-2 self-start pt-0.5">
-            {canSaveAuthor ? (
-              <button
-                type="button"
-                disabled={favoriteBusy}
-                onClick={(e) => void toggleSaveAuthor(e)}
-                title={authorSaved ? "Remove from saved profiles" : "Save profile"}
-                aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
-                aria-pressed={authorSaved}
-                className={saveBadgeHeaderClass}
-              >
-                {favoriteBusy ? (
-                  <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
-                ) : (
-                  <Bookmark
-                    className={cn(
-                      "h-6 w-6",
-                      authorSaved && "fill-amber-500 text-amber-700 dark:fill-amber-400 dark:text-amber-200",
-                    )}
-                    strokeWidth={authorSaved ? 0 : 2}
-                    aria-hidden
-                  />
-                )}
-              </button>
-            ) : null}
-            {isOwnFeed && post.source === "post" ? (
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={handleDelete}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 hover:border-red-200/60 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:border-red-900/40"
-                aria-label="Delete post"
-              >
-                {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
-              </button>
-            ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <time className="text-[13px] font-semibold tabular-nums text-muted-foreground">{postedLabel}</time>
+            {isSource && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
+                <Sparkles className="h-3 w-3" />
+                {categoryLabel((post as AvailabilityPost).category)}
+              </span>
+            )}
           </div>
         </div>
+        <div className="flex shrink-0 items-center gap-2 self-start pt-0.5">
+          {post.source === "post" && post.post_types ? (
+            <PostTypeBadge
+              typeId={post.post_types.id}
+              typeName={post.post_types.name}
+            />
+          ) : isJobRequest && post.post_types ? (
+            <PostTypeBadge
+              typeId={post.post_types.id}
+              typeName={post.post_types.name}
+            />
+          ) : null}
+          {canSaveAuthor && !hasMedia ? (
+            <button
+              type="button"
+              disabled={favoriteBusy}
+              onClick={(e) => void toggleSaveAuthor(e)}
+              title={authorSaved ? "Remove from saved profiles" : "Save profile"}
+              aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
+              aria-pressed={authorSaved}
+              className={saveBadgeHeaderClass}
+            >
+              {favoriteBusy ? (
+                <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+              ) : (
+                <Bookmark
+                  className={cn(
+                    "h-6 w-6",
+                    authorSaved && "fill-amber-500 text-amber-700 dark:fill-amber-400 dark:text-amber-200",
+                  )}
+                  strokeWidth={authorSaved ? 0 : 2}
+                  aria-hidden
+                />
+              )}
+            </button>
+          ) : null}
+          {isOwnFeed && post.source === "post" ? (
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDelete}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 hover:border-red-200/60 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:border-red-900/40"
+              aria-label="Delete post"
+            >
+              {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+            </button>
+          ) : null}
+        </div>
+      </div>
       {/* Media */}
       {mediaUrl && post.media_type === "image" && (
         <div
@@ -2048,7 +3462,14 @@ function PostCard({
             />
           </button>
 
+          <MediaTopBadges
+            serviceCategoryId={serviceCategoryMeta?.id}
+            serviceCategoryLabelText={serviceCategoryMeta?.label}
+            whenLabel={whenLabel}
+            whenTimeframe={requestWhenTimeframe}
+          />
 
+          <PostMediaExtraStack items={extraMediaItems} onOpenGallery={openMediaGallery} />
 
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
@@ -2149,6 +3570,15 @@ function PostCard({
             </button>
           </div>
 
+          <MediaTopBadges
+            serviceCategoryId={serviceCategoryMeta?.id}
+            serviceCategoryLabelText={serviceCategoryMeta?.label}
+            whenLabel={whenLabel}
+            whenTimeframe={requestWhenTimeframe}
+          />
+
+          <PostMediaExtraStack items={extraMediaItems} onOpenGallery={openMediaGallery} />
+
           {/* Tagged users — bottom-left overlay on media */}
           {post.tagged_profiles.length > 0 ? (
             <div className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
@@ -2194,62 +3624,267 @@ function PostCard({
       {/* Like / comment / share — directly under media (matches Instagram-style feed) */}
       {hasMedia ? renderEngagementRow() : null}
 
-      {/* Caption */}
-      {post.caption?.trim() && (
+      {/* Community title — shown above caption as a heading */}
+      {post.source === "post" && post.post_type_id === "community" && (generatedCopy?.title || post.post_metadata?.title) && (
+        <div className={cn(cardPadX, hasMedia ? "pt-1" : "pt-3")}>
+          <h3 className="text-lg font-extrabold leading-snug text-blue-600 dark:text-blue-400">
+            {generatedCopy?.title || post.post_metadata.title}
+          </h3>
+        </div>
+      )}
+
+      {effectiveCaption && (() => {
+        const captionExpandable = isPostCaptionExpandable(effectiveCaption, hasMedia);
+        return (
         <div
           className={cn(
-            "px-4 pb-0",
+            cardPadX,
+            "pb-0",
             hasMedia ? "pt-0 md:pt-0.5 md:pb-1" : "pt-2 md:pt-3 md:pb-1",
           )}
         >
           <div className="flex items-end justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setCommentsOpen(true)}
-              className={cn("flex-1", captionLayout?.className)}
-              dir={captionLayout?.dir}
-              aria-label="Open full post text"
-            >
+            <div className={cn("flex-1", captionLayout?.className)} dir={captionLayout?.dir}>
               <p
                 {...bidirectionalTextProps(
-                  post.caption,
-                  "line-clamp-2 text-[17px] leading-relaxed text-foreground",
+                  effectiveCaption,
+                  cn(
+                    "text-[17px] leading-relaxed text-foreground whitespace-pre-wrap",
+                    !captionExpanded &&
+                      (hasMedia ? "line-clamp-2" : "line-clamp-[10]"),
+                  ),
                 )}
               >
                 <span className="text-[18px] font-black lowercase">{authorName}</span>{" "}
                 <span className="mx-1 inline-block align-middle text-[13px] text-muted-foreground">•</span>{" "}
-                {renderCaptionWithMentions(post.caption)}
+                {renderCaptionWithMentions(effectiveCaption)}
               </p>
-            </button>
-            {post.caption.trim().length > 120 || post.caption.includes("\n") ? (
+            </div>
+            {captionExpandable ? (
               <button
                 type="button"
-                onClick={() => setCommentsOpen(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCaptionExpanded((prev) => !prev);
+                }}
                 className="shrink-0 text-base font-black text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
-                aria-label="Show full text"
+                aria-label={captionExpanded ? "Show less text" : "Show full text"}
+                aria-expanded={captionExpanded}
               >
-                More
+                {captionExpanded ? "Less" : "More"}
               </button>
             ) : null}
           </div>
+        </div>
+        );
+      })()}
+
+      {/* Post Metadata details box (community posts show title above caption instead) */}
+      {(post.source === "post" || post.source === "job_request") &&
+        post.post_metadata &&
+        post.post_type_id !== "community" &&
+        Object.keys(post.post_metadata).length > 0 && (
+        <div className={cn("mt-2 space-y-2 rounded-2xl border border-zinc-100 bg-zinc-50/50 p-3.5 dark:border-zinc-900 dark:bg-zinc-950/40", cardMarginX)}>
+          {post.post_type_id === "request_help" && (
+            <>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                {post.post_metadata.category ? (
+                  <div className="flex items-center gap-1.5 text-foreground font-bold">
+                    <CategoryIcon categoryId={post.post_metadata.category} className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>
+                      {postServiceCategoryLabel(
+                        post.post_metadata.category,
+                        post.post_metadata.custom_category,
+                      )}
+                    </span>
+                  </div>
+                ) : null}
+                {post.post_metadata.location && (
+                  <div className="flex items-center gap-1.5 text-foreground font-bold">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>{post.post_metadata.location}</span>
+                  </div>
+                )}
+                {post.post_metadata.timeframe ? (
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 font-bold",
+                      isRequestHelpWhenUrgent(post.post_metadata.timeframe)
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-foreground",
+                    )}
+                  >
+                    <CalendarDays
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        isRequestHelpWhenUrgent(post.post_metadata.timeframe)
+                          ? "text-red-500 dark:text-red-400"
+                          : "text-muted-foreground",
+                      )}
+                    />
+                    <span className={cn(isRequestHelpWhenUrgent(post.post_metadata.timeframe) && "uppercase tracking-wide")}>
+                      {requestHelpWhenLabel(post.post_metadata) ?? ""}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+              {post.post_metadata.budget && (
+                <div className="flex items-center gap-2 pt-1 border-t border-zinc-205/50 dark:border-zinc-800/50 text-[15px] font-black text-rose-600 dark:text-rose-400">
+                  <Coins className="h-4 w-4 shrink-0" />
+                  <span>₪{post.post_metadata.budget}</span>
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    {post.post_metadata.rate_type === "per_hour" ? "per hour" : "fixed price"}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+
+          {post.post_type_id === "offer_service" && (
+            <>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                {post.post_metadata.service ? (
+                  <div className="flex items-center gap-1.5 text-foreground font-bold">
+                    <CategoryIcon categoryId={post.post_metadata.service} className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>
+                      {postServiceCategoryLabel(
+                        post.post_metadata.service,
+                        post.post_metadata.custom_category,
+                      )}
+                    </span>
+                  </div>
+                ) : null}
+                {post.post_metadata.location && (
+                  <div className="flex items-center gap-1.5 text-foreground font-bold">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>{post.post_metadata.location}</span>
+                  </div>
+                )}
+              </div>
+              {post.post_metadata.rate && (
+                <div className="flex items-center gap-2 pt-1 border-t border-zinc-205/50 dark:border-zinc-800/50 text-[15px] font-black text-emerald-600 dark:text-emerald-400">
+                  <Coins className="h-4 w-4 shrink-0" />
+                  <span>₪{post.post_metadata.rate}</span>
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    {post.post_metadata.rate_type === "per_hour" ? "per hour" : "fixed price"}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+
+          {post.post_type_id === "event" && (
+            <div className="space-y-1.5 text-sm">
+              {post.post_metadata.event_name && (
+                <div className="flex items-center gap-1.5 font-extrabold text-[15px] text-violet-600 dark:text-violet-400">
+                  <Sparkles className="h-4 w-4 shrink-0" />
+                  <span>{post.post_metadata.event_name}</span>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {post.post_metadata.date_time && (
+                  <div className="flex items-center gap-1.5 text-foreground font-bold">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>{post.post_metadata.date_time}</span>
+                  </div>
+                )}
+                {post.post_metadata.location && (
+                  <div className="flex items-center gap-1.5 text-foreground font-bold">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>{post.post_metadata.location}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* Action button below metadata details box */}
+      {((post.source === "post" &&
+        post.post_types &&
+        post.post_types.id !== "community") ||
+        (isJobRequest && currentUserId !== post.author_id)) && (
+        <div className={cn("mt-2", cardMarginX)}>
+          <button
+            type="button"
+            onClick={isJobRequest ? handleJobRequestAccept : handleActionButtonClick}
+            disabled={
+              isJobRequest
+                ? jobAccepting || Boolean(jobAcceptedAt)
+                : chatOpening || eventJoinBusy
+            }
+            className={cn(
+              "w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black uppercase tracking-wider transition-all duration-200 active:scale-95 disabled:opacity-65 shadow-none border-0",
+              (post.source === "post" &&
+                post.post_types?.id === "request_help") ||
+                isJobRequest
+                ? jobAcceptedAt
+                  ? "bg-red-500/15 text-red-700 ring-1 ring-red-300/80 dark:bg-red-950/30 dark:text-red-200 dark:ring-red-800/80"
+                  : "bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-600"
+                : null,
+              post.source === "post" &&
+                post.post_types?.id === "offer_service" &&
+                "bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600",
+              post.source === "post" &&
+                post.post_types?.id === "event" &&
+                (eventJoined
+                  ? "bg-violet-500/15 text-violet-700 ring-1 ring-violet-300/80 dark:bg-violet-950/30 dark:text-violet-200 dark:ring-violet-800/80"
+                  : "bg-violet-600 hover:bg-violet-700 text-white dark:bg-violet-700 dark:hover:bg-violet-600"),
+            )}
+          >
+            {isJobRequest ? (
+              jobAccepting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null
+            ) : chatOpening || eventJoinBusy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : null}
+            {isJobRequest
+              ? jobAcceptedAt
+                ? (
+                    <span className="flex flex-col items-center gap-0.5 normal-case tracking-normal">
+                      <span className="uppercase tracking-wider">Accepted</span>
+                      <span className="text-xs font-semibold opacity-90">
+                        at {formatJobRequestAcceptedAt(jobAcceptedAt)}
+                      </span>
+                    </span>
+                  )
+                : "I can help"
+              : null}
+            {!isJobRequest && post.source === "post" && post.post_types ? (
+              <>
+                {post.post_types.id === "request_help" && "I can help"}
+                {post.post_types.id === "offer_service" &&
+                  offerPostContactLabel(post.author?.full_name)}
+                {post.post_types.id === "event" &&
+                  (isOwnEventPost
+                    ? "View interested users"
+                    : eventJoined
+                      ? "Interested"
+                      : "I want to join")}
+              </>
+            ) : null}
+          </button>
         </div>
       )}
 
       {/* Tagged users (only when there is no media overlay) */}
       {!hasMedia && post.tagged_profiles.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 px-4 pt-2">
+        <div className={cn("flex flex-wrap items-center gap-3 pt-2", cardPadX)}>
           <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           {post.tagged_profiles.map((t) => (
             <GuestAwareProfileLink
               key={t.id}
               userId={t.id}
-              className="inline-flex items-center gap-2 rounded-full bg-orange-50 dark:bg-orange-950/50 px-3 py-1.5 text-sm font-black text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/60 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
             >
-              <Avatar className="h-7 w-7 border border-orange-200/50 dark:border-orange-800/30 shadow-inner">
+              <Avatar className="h-7 w-7">
                 <AvatarImage src={t.photo_url ?? undefined} />
-                <AvatarFallback className="text-[11px] font-bold">{(t.full_name ?? "?").charAt(0)}</AvatarFallback>
+                <AvatarFallback className="text-[10px] font-bold">{(t.full_name ?? "?").charAt(0)}</AvatarFallback>
               </Avatar>
-              <span className="pr-1">{t.full_name}</span>
+              <span>{t.full_name}</span>
             </GuestAwareProfileLink>
           ))}
         </div>
@@ -2258,12 +3893,9 @@ function PostCard({
       {!hasMedia ? renderEngagementRow() : null}
 
       {/* Comments dialog */}
+      {!isJobRequest ? (
       <CommentsDialog
         postId={post.id}
-        caption={post.caption?.trim() ? renderCaptionWithMentions(post.caption) : undefined}
-        captionText={post.caption?.trim() || undefined}
-        authorName={authorName}
-        authorPhotoUrl={post.author?.photo_url ?? null}
         open={commentsOpen}
         onClose={() => {
           setCommentsOpen(false);
@@ -2277,6 +3909,31 @@ function PostCard({
             });
         }}
       />
+      ) : (
+      <JobRequestCommentsModal
+        jobId={post.id}
+        isOpen={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        onCommentAdded={() => {
+          void supabase
+            .from("job_request_comments")
+            .select("*", { count: "exact", head: true })
+            .eq("job_request_id", post.id)
+            .then(({ count }) => {
+              if (count != null) setJobCommentCount(count);
+            });
+        }}
+      />
+      )}
+
+      {postMediaItems.length > 0 ? (
+        <PostMediaGalleryModal
+          open={galleryOpen}
+          onClose={() => setGalleryOpen(false)}
+          items={postMediaItems}
+          initialIndex={galleryIndex}
+        />
+      ) : null}
 
       {saveNoticeOpen ? (
         <div
@@ -2380,10 +4037,25 @@ interface ProfilePostsFeedProps {
   discoverSidePanel?: "comments" | "favorites";
   /** Deep link from share URLs (`/community/feed?post=`). */
   focusPostId?: string | null;
+  /** Deep link from shared help requests (`/community/feed?request=`). */
+  focusRequestId?: string | null;
   /** Wider post + comments columns for guest community feed on desktop. */
   expandDiscoverLayout?: boolean;
   /** Render posts on the page background (no card surface). */
   plainCards?: boolean;
+  /** Filter global feed to a single post type (e.g. request_help). */
+  filterPostTypeId?: string | null;
+  /** Show only the viewer's posts that received comments. */
+  filterCommentedOwnPosts?: boolean;
+  /** Show only open help requests the viewer accepted. */
+  filterAcceptedRequests?: boolean;
+  /** Advanced community feed filters (when, budget, my posts, favorites). */
+  feedAdvancedFilters?: CommunityFeedAdvancedFilters;
+  /**
+   * Hide the signed-in user's own open job requests (Discover "Help others").
+   * Default: true only when `discoverSidePanel === "favorites"`.
+   */
+  excludeOwnJobRequests?: boolean;
 }
 
 export function ProfilePostsFeed({
@@ -2398,10 +4070,18 @@ export function ProfilePostsFeed({
   appearance = "default",
   discoverSidePanel = "comments",
   focusPostId = null,
+  focusRequestId = null,
   expandDiscoverLayout = false,
   plainCards = false,
+  filterPostTypeId = null,
+  filterCommentedOwnPosts = false,
+  filterAcceptedRequests = false,
+  feedAdvancedFilters,
+  excludeOwnJobRequests,
 }: ProfilePostsFeedProps) {
+  const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
   const normalizedFocusPostId = parseProfilePostShareId(focusPostId);
+  const normalizedFocusRequestId = parseJobRequestShareId(focusRequestId);
   const { user, profile: currentProfile } = useAuth();
   const { guardKycAction } = useKycGate();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
@@ -2418,6 +4098,7 @@ export function ProfilePostsFeed({
   const [reelsOpenPostId, setReelsOpenPostId] = useState<string | null>(null);
   const [reelCommentsPostId, setReelCommentsPostId] = useState<string | null>(null);
   const deepLinkHandledRef = useRef<string | null>(null);
+  const requestDeepLinkHandledRef = useRef<string | null>(null);
   /**
    * Track viewport width so we can render the desktop full-size viewer
    * (`PostMediaDesktopViewer`) on md+ screens and the mobile reels viewer
@@ -2445,6 +4126,8 @@ export function ProfilePostsFeed({
   }, []);
   const queryClient = useQueryClient();
 
+  const advancedFilters = feedAdvancedFilters;
+
   // Stable query key — used to invalidate/update the cache in realtime handlers.
   const qk = useMemo(() => queryKeys.profilePostsFeed({
     userId,
@@ -2454,8 +4137,33 @@ export function ProfilePostsFeed({
     authorNameFilter,
     sortOrder,
     filterLikedByUserId,
+    filterPostTypeId,
+    filterCommentedOwnPosts,
+    filterAcceptedRequests,
+    feedWhen: advancedFilters?.when ?? null,
+    feedMyPostsOnly: advancedFilters?.myPostsOnly ?? false,
+    feedBudgetMin: advancedFilters?.budgetMin ?? null,
+    feedBudgetMax: advancedFilters?.budgetMax ?? null,
+    feedFavoriteProfilesOnly: advancedFilters?.favoriteProfilesOnly ?? false,
     limit,
-  }), [userId, user?.id, filterTaggedUserId, filterAuthorId, authorNameFilter, sortOrder, filterLikedByUserId, limit]);
+  }), [
+    userId,
+    user?.id,
+    filterTaggedUserId,
+    filterAuthorId,
+    authorNameFilter,
+    sortOrder,
+    filterLikedByUserId,
+    filterPostTypeId,
+    filterCommentedOwnPosts,
+    filterAcceptedRequests,
+    advancedFilters?.when,
+    advancedFilters?.myPostsOnly,
+    advancedFilters?.budgetMin,
+    advancedFilters?.budgetMax,
+    advancedFilters?.favoriteProfilesOnly,
+    limit,
+  ]);
 
   useProfilePostsFeedRealtime({
     queryClient,
@@ -2467,6 +4175,9 @@ export function ProfilePostsFeed({
     authorNameFilter,
     sortOrder,
     filterLikedByUserId,
+    filterPostTypeId: filterPostTypeId ?? undefined,
+    filterCommentedOwnPosts,
+    feedAdvancedFilters: advancedFilters,
     limit,
   });
 
@@ -2522,6 +4233,12 @@ export function ProfilePostsFeed({
     },
   );
 
+  useRealtimeSubscription({ table: "job_requests", event: "*" }, () => {
+    if (!userId) {
+      void queryClient.invalidateQueries({ queryKey: qk, refetchType: "active" });
+    }
+  });
+
   const authorProfile: ProfileSnippet = {
     id: user?.id ?? "",
     full_name: currentProfile?.full_name ?? null,
@@ -2558,70 +4275,245 @@ export function ProfilePostsFeed({
         }
       }
 
+      let commentedOwnPostIds: string[] | null = null;
+      if (filterCommentedOwnPosts && currentUserId) {
+        const { data: ownPosts, error: ownErr } = await supabase
+          .from("profile_posts")
+          .select("id")
+          .eq("author_id", currentUserId);
+        if (ownErr) throw ownErr;
+        const ownIds = (ownPosts ?? []).map((p) => p.id as string);
+        if (ownIds.length === 0) return [];
+
+        const { data: commentRows, error: commentErr } = await supabase
+          .from("profile_post_comments")
+          .select("post_id")
+          .in("post_id", ownIds);
+        if (commentErr) throw commentErr;
+        commentedOwnPostIds = [
+          ...new Set((commentRows ?? []).map((r) => r.post_id as string)),
+        ];
+        if (commentedOwnPostIds.length === 0) return [];
+      }
+
+      let favoriteAuthorIds: string[] | null = null;
+      if (advancedFilters?.favoriteProfilesOnly && currentUserId) {
+        const { data: favRows, error: favErr } = await supabase
+          .from("profile_favorites")
+          .select("favorite_user_id")
+          .eq("user_id", currentUserId);
+        if (favErr) throw favErr;
+        favoriteAuthorIds = (favRows ?? []).map((r) => r.favorite_user_id as string);
+        if (favoriteAuthorIds.length === 0) return [];
+      }
+
+      const effectiveAuthorId =
+        advancedFilters?.myPostsOnly && currentUserId
+          ? currentUserId
+          : filterAuthorId;
+
+      if (filterAcceptedRequests) {
+        if (!currentUserId) return [];
+
+        let jobRequestRows = await fetchAcceptedJobRequestsForFeed(
+          currentUserId,
+          sortOrder,
+        );
+
+        if (effectiveAuthorId) {
+          jobRequestRows = jobRequestRows.filter(
+            (r) => r.client_id === effectiveAuthorId,
+          );
+        } else if (favoriteAuthorIds) {
+          jobRequestRows = jobRequestRows.filter(
+            (r) => r.client_id && favoriteAuthorIds.includes(r.client_id),
+          );
+        }
+
+        if (advancedFilters) {
+          jobRequestRows = jobRequestRows.filter((r) =>
+            jobRequestMatchesFeedFilters(r, {
+              when: advancedFilters.when,
+              budgetMin: advancedFilters.budgetMin,
+              budgetMax: advancedFilters.budgetMax,
+            }),
+          );
+        }
+
+        if (jobRequestRows.length === 0) return [];
+
+        const profileIds = new Set<string>([currentUserId]);
+        jobRequestRows.forEach((r) => {
+          if (r.client_id) profileIds.add(r.client_id);
+        });
+
+        const idList = [...profileIds].slice(0, 200);
+        const { data: profilesData, error: profErr } = await supabase
+          .from("profiles")
+          .select("id, full_name, photo_url, is_verified, telegram_username, role")
+          .in("id", idList);
+        if (profErr) throw profErr;
+
+        const profileMap = new Map<string, ProfileSnippet>(
+          (profilesData ?? []).map((p) => [p.id as string, p as ProfileSnippet]),
+        );
+
+        const jobRequestFeedRaw: JobRequestFeedPost[] = jobRequestRows.map((r) =>
+          mapOpenHelpRequestToFeedPost(r, profileMap.get(r.client_id ?? "")),
+        );
+        const jobRequestEngagement = await fetchJobRequestEngagement(
+          jobRequestFeedRaw.map((p) => p.id),
+          currentUserId,
+        );
+        return applyJobRequestEngagement(jobRequestFeedRaw, jobRequestEngagement);
+      }
+
       // 2. Fetch profile posts
       let query = supabase
         .from("profile_posts")
-        .select("id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at");
+        .select("id, author_id, caption, media_type, storage_path, tagged_user_ids, created_at, post_type_id, post_metadata, custom_category, ai_generated_copy, post_types (id, name, emoji, color)");
 
       if (filterLikedByUserId && likedPostIds) {
         query = query.in("id", likedPostIds);
-      } else if (userId) {
-        query = query.eq("author_id", userId);
-      } else if (filterAuthorId) {
-        query = query.eq("author_id", filterAuthorId);
-      } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
-        if (resolvedAuthorIds.length === 0) {
-          return [];
+      } else if (commentedOwnPostIds) {
+        query = query.in("id", commentedOwnPostIds);
+      } else {
+        let authorIds: string[] | null = null;
+        if (userId) {
+          authorIds = [userId];
+        } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
+          if (resolvedAuthorIds.length === 0) return [];
+          authorIds = resolvedAuthorIds;
+        } else if (effectiveAuthorId && favoriteAuthorIds) {
+          authorIds = favoriteAuthorIds.includes(effectiveAuthorId)
+            ? [effectiveAuthorId]
+            : [];
+          if (authorIds.length === 0) return [];
+        } else if (effectiveAuthorId) {
+          authorIds = [effectiveAuthorId];
+        } else if (favoriteAuthorIds) {
+          authorIds = favoriteAuthorIds;
         }
-        query = query.in("author_id", resolvedAuthorIds);
+
+        if (authorIds?.length === 1) {
+          query = query.eq("author_id", authorIds[0]);
+        } else if (authorIds && authorIds.length > 1) {
+          query = query.in("author_id", authorIds);
+        }
       }
 
       if (filterTaggedUserId) {
         query = query.contains("tagged_user_ids", [filterTaggedUserId]);
       }
 
+      if (filterPostTypeId) {
+        query = query.eq("post_type_id", filterPostTypeId);
+      }
+
       const limitPosts = limit ?? (userId ? 50 : 100);
       const limitAvail = limit ?? (userId ? 20 : 50);
+      const skipAvailability =
+        Boolean(filterLikedByUserId) ||
+        Boolean(filterCommentedOwnPosts) ||
+        Boolean(advancedFilters?.myPostsOnly) ||
+        Boolean(advancedFilters?.favoriteProfilesOnly) ||
+        (Boolean(filterPostTypeId) && filterPostTypeId !== "request_help") ||
+        (advancedFilters?.when !== "any" && filterPostTypeId !== "request_help") ||
+        (advancedFilters?.budgetMin != null && filterPostTypeId !== "request_help") ||
+        (advancedFilters?.budgetMax != null && filterPostTypeId !== "request_help");
+
+      const skipJobRequests =
+        Boolean(userId) ||
+        Boolean(filterLikedByUserId) ||
+        Boolean(filterCommentedOwnPosts) ||
+        Boolean(filterTaggedUserId) ||
+        (Boolean(filterPostTypeId) &&
+          filterPostTypeId !== "request_help" &&
+          filterPostTypeId !== null);
       const profilePostsPromise = query
         .order("created_at", { ascending: sortOrder === "oldest" })
         .limit(limitPosts);
 
       const nowIso = new Date().toISOString();
-      const availPromise = !filterLikedByUserId
+      const availPromise = !skipAvailability
         ? (() => {
-            let availQuery = supabase
-              .from("community_posts")
-              .select(
-                "id, category, title, note, expires_at, availability_payload, created_at, author_id",
-              )
-              .eq("status", "active")
-              .gt("expires_at", nowIso);
-            if (userId) {
-              availQuery = availQuery.eq("author_id", userId);
-            } else if (filterAuthorId) {
-              availQuery = availQuery.eq("author_id", filterAuthorId);
-            } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
-              if (resolvedAuthorIds.length > 0) {
-                availQuery = availQuery.in("author_id", resolvedAuthorIds);
-              } else {
-                availQuery = availQuery.eq(
-                  "author_id",
-                  "00000000-0000-0000-0000-000000000000",
-                );
-              }
+          let availQuery = supabase
+            .from("community_posts")
+            .select(
+              "id, category, title, note, expires_at, availability_payload, created_at, author_id",
+            )
+            .eq("status", "active")
+            .gt("expires_at", nowIso);
+          if (userId) {
+            availQuery = availQuery.eq("author_id", userId);
+          } else if (filterAuthorId) {
+            availQuery = availQuery.eq("author_id", filterAuthorId);
+          } else if (authorNameFilter && authorNameFilter.trim().length > 0) {
+            if (resolvedAuthorIds.length > 0) {
+              availQuery = availQuery.in("author_id", resolvedAuthorIds);
+            } else {
+              availQuery = availQuery.eq(
+                "author_id",
+                "00000000-0000-0000-0000-000000000000",
+              );
             }
-            return availQuery
-              .order("created_at", { ascending: sortOrder === "oldest" })
-              .limit(limitAvail);
-          })()
+          }
+          return availQuery
+            .order("created_at", { ascending: sortOrder === "oldest" })
+            .limit(limitAvail);
+        })()
         : Promise.resolve({ data: [] as Record<string, unknown>[], error: null });
 
-      const [{ data: profilePostRows, error: ppErr }, availRes] =
-        await Promise.all([profilePostsPromise, availPromise]);
+      const jobRequestsPromise = !skipJobRequests
+        ? supabase.rpc("get_discover_open_help_requests", { p_limit: limitPosts })
+        : Promise.resolve({ data: [] as DiscoverOpenHelpRequestRow[], error: null });
+
+      const [{ data: profilePostRows, error: ppErr }, availRes, jobRes] =
+        await Promise.all([profilePostsPromise, availPromise, jobRequestsPromise]);
 
       if (ppErr) throw ppErr;
       if (availRes.error) throw availRes.error;
-      const availRows = !filterLikedByUserId ? (availRes.data ?? []) : [];
+      if (jobRes.error) throw jobRes.error;
+      const availRows = !skipAvailability ? (availRes.data ?? []) : [];
+      let jobRequestRows = !skipJobRequests
+        ? ((jobRes.data ?? []) as DiscoverOpenHelpRequestRow[]).filter((r) => {
+            if (r.status == null || r.status === "") return true;
+            return isJobOpenForDiscoverListing(String(r.status));
+          })
+        : [];
+
+      if (currentUserId && hideOwnJobRequests) {
+        jobRequestRows = jobRequestRows.filter(
+          (r) =>
+            !r.client_id ||
+            r.client_id !== currentUserId ||
+            r.id === normalizedFocusRequestId,
+        );
+      }
+
+      if (advancedFilters?.myPostsOnly && currentUserId) {
+        jobRequestRows = jobRequestRows.filter(
+          (r) => r.client_id === currentUserId,
+        );
+      }
+
+      if (effectiveAuthorId) {
+        jobRequestRows = jobRequestRows.filter((r) => r.client_id === effectiveAuthorId);
+      } else if (favoriteAuthorIds) {
+        jobRequestRows = jobRequestRows.filter(
+          (r) => r.client_id && favoriteAuthorIds.includes(r.client_id),
+        );
+      }
+
+      if (advancedFilters) {
+        jobRequestRows = jobRequestRows.filter((r) =>
+          jobRequestMatchesFeedFilters(r, {
+            when: advancedFilters.when,
+            budgetMin: advancedFilters.budgetMin,
+            budgetMax: advancedFilters.budgetMax,
+          }),
+        );
+      }
 
       const rawPosts = (profilePostRows ?? []) as {
         id: string;
@@ -2631,6 +4523,11 @@ export function ProfilePostsFeed({
         storage_path: string | null;
         tagged_user_ids: string[];
         created_at: string;
+        post_type_id?: string | null;
+        post_types?: any | null;
+        post_metadata?: any | null;
+        custom_category?: string | null;
+        ai_generated_copy?: unknown;
       }[];
 
       // Keep liked page order stable (by like time) when requested.
@@ -2649,6 +4546,9 @@ export function ProfilePostsFeed({
 
       rawPosts.forEach((p) => profileIds.add(p.author_id));
       availRows.forEach((r) => profileIds.add(r.author_id as string));
+      jobRequestRows.forEach((r) => {
+        if (r.client_id) profileIds.add(r.client_id);
+      });
 
       const idList = [...profileIds, ...allTaggedIds].slice(0, 200);
       const postIds = rawPosts.map((p) => p.id);
@@ -2656,36 +4556,36 @@ export function ProfilePostsFeed({
       const [profRes, likedRes, engRes, shareRes, fpRes] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, full_name, photo_url, is_verified")
+          .select("id, full_name, photo_url, is_verified, telegram_username, role")
           .in("id", idList),
         currentUserId && postIds.length > 0
           ? supabase
-              .from("profile_post_likes")
-              .select("post_id")
-              .eq("user_id", currentUserId)
-              .in("post_id", postIds)
+            .from("profile_post_likes")
+            .select("post_id")
+            .eq("user_id", currentUserId)
+            .in("post_id", postIds)
           : Promise.resolve({ data: [] as { post_id: string }[], error: null }),
         postIds.length > 0
           ? supabase.rpc("get_profile_post_engagement_counts", {
-              p_post_ids: postIds,
-            })
+            p_post_ids: postIds,
+          })
           : Promise.resolve({
-              data: [] as {
-                post_id: string;
-                like_count: number | string;
-                comment_count: number | string;
-              }[],
-              error: null,
-            }),
+            data: [] as {
+              post_id: string;
+              like_count: number | string;
+              comment_count: number | string;
+            }[],
+            error: null,
+          }),
         postIds.length > 0
           ? supabase.rpc("get_profile_post_share_stats", { p_post_ids: postIds })
           : Promise.resolve({ data: [] as unknown[], error: null }),
         idList.length > 0
           ? supabase.from("freelancer_profiles").select("user_id, live_until").in("user_id", idList)
           : Promise.resolve({
-              data: [] as { user_id: string; live_until: string | null }[],
-              error: null,
-            }),
+            data: [] as { user_id: string; live_until: string | null }[],
+            error: null,
+          }),
       ]);
 
       if (fpRes.error) {
@@ -2771,7 +4671,20 @@ export function ProfilePostsFeed({
           .map((id) => profileMap.get(id))
           .filter(Boolean) as ProfileSnippet[],
         source: "post",
+        post_type_id: p.post_type_id,
+        post_types: Array.isArray(p.post_types) ? p.post_types[0] : (p.post_types || null),
+        post_metadata: mergeProfilePostMetadata(
+          p.post_metadata as Record<string, unknown> | null | undefined,
+          p.custom_category,
+        ),
+        ai_generated_copy: parseGeneratedPostCopy(p.ai_generated_copy),
       }));
+
+      const filteredProfilePosts = advancedFilters
+        ? profilePostsFeed.filter((p) =>
+            postMatchesAdvancedFeedFilters(p, advancedFilters),
+          )
+        : profilePostsFeed;
 
       // 8. Build availability posts (merged as regular posts)
       const availFeed: AvailabilityPost[] = (availRows ?? []).map((r) => ({
@@ -2794,8 +4707,21 @@ export function ProfilePostsFeed({
         availability_payload: (r.availability_payload as AvailabilityPayload | null) ?? null,
       }));
 
-      // 9. Merge and sort by created_at
-      const merged: FeedPost[] = [...profilePostsFeed, ...availFeed].sort(
+      // 9. Merge job requests (create-flow open help) into global feed
+      const jobRequestFeedRaw: JobRequestFeedPost[] = jobRequestRows.map((r) =>
+        mapOpenHelpRequestToFeedPost(r, profileMap.get(r.client_id ?? "")),
+      );
+      const jobRequestEngagement = await fetchJobRequestEngagement(
+        jobRequestFeedRaw.map((p) => p.id),
+        currentUserId,
+      );
+      const jobRequestFeed = applyJobRequestEngagement(
+        jobRequestFeedRaw,
+        jobRequestEngagement,
+      );
+
+      // 10. Merge and sort by created_at
+      const merged: FeedPost[] = [...filteredProfilePosts, ...availFeed, ...jobRequestFeed].sort(
         (a, b) => {
           const timeA = new Date(a.created_at).getTime();
           const timeB = new Date(b.created_at).getTime();
@@ -2816,8 +4742,13 @@ export function ProfilePostsFeed({
     authorNameFilter,
     sortOrder,
     filterLikedByUserId,
+    filterPostTypeId,
+    filterCommentedOwnPosts,
+    filterAcceptedRequests,
+    advancedFilters,
     limit,
-    supabase,
+    hideOwnJobRequests,
+    normalizedFocusRequestId,
   ]);
 
   const { data: posts = [], isPending } = useQuery({
@@ -2843,29 +4774,121 @@ export function ProfilePostsFeed({
       fetchProfilePostById(normalizedFocusPostId!, user?.id ?? null),
   });
 
+  const allowRequestDeepLink =
+    Boolean(normalizedFocusRequestId) &&
+    (!filterPostTypeId || filterPostTypeId === "request_help") &&
+    !filterAcceptedRequests;
+
+  const allowPostDeepLink =
+    Boolean(normalizedFocusPostId) &&
+    filterPostTypeId !== "request_help" &&
+    !filterAcceptedRequests;
+
+  const {
+    data: focusedRequest,
+    isFetching: focusedRequestFetching,
+  } = useQuery({
+    queryKey: queryKeys.jobRequestById(normalizedFocusRequestId, user?.id),
+    enabled: allowRequestDeepLink,
+    staleTime: 60_000,
+    queryFn: () =>
+      fetchJobRequestForFeedById(normalizedFocusRequestId!, user?.id ?? null),
+  });
+
+  const isFocusedFeedItem = useCallback(
+    (post: FeedPost) => {
+      if (
+        allowPostDeepLink &&
+        normalizedFocusPostId &&
+        post.id === normalizedFocusPostId &&
+        post.source === "post"
+      ) {
+        return true;
+      }
+      if (
+        allowRequestDeepLink &&
+        normalizedFocusRequestId &&
+        post.id === normalizedFocusRequestId &&
+        post.source === "job_request"
+      ) {
+        return true;
+      }
+      return false;
+    },
+    [
+      allowPostDeepLink,
+      allowRequestDeepLink,
+      normalizedFocusPostId,
+      normalizedFocusRequestId,
+    ],
+  );
+
   const displayPosts = useMemo(() => {
-    if (!normalizedFocusPostId) return posts;
-    const match =
-      posts.find((p) => p.id === normalizedFocusPostId) ??
-      (focusedPost?.id === normalizedFocusPostId ? focusedPost : null);
-    if (!match) return posts;
-    const rest = posts.filter((p) => p.id !== normalizedFocusPostId);
-    const next = [match, ...rest];
-    debugProfilePostDeepLink("displayPosts: pinned shared post", {
-      focusPostId: normalizedFocusPostId,
-      matchSource: posts.some((p) => p.id === normalizedFocusPostId)
-        ? "feed"
-        : "focusedPostQuery",
-      displayCount: next.length,
-      firstPostId: next[0]?.id ?? null,
-      feedPostIds: posts.map((p) => p.id).slice(0, 8),
-    });
-    return next;
-  }, [posts, focusedPost, normalizedFocusPostId]);
+    let result = posts;
+
+    if (allowPostDeepLink && normalizedFocusPostId) {
+      const inFeed = result.find(
+        (p) => p.id === normalizedFocusPostId && p.source === "post",
+      );
+      const focusedCandidate =
+        focusedPost?.id === normalizedFocusPostId ? focusedPost : null;
+      const match =
+        inFeed ??
+        (focusedCandidate &&
+        (!filterPostTypeId || focusedCandidate.post_type_id === filterPostTypeId)
+          ? focusedCandidate
+          : null);
+      if (match) {
+        result = [
+          match,
+          ...result.filter(
+            (p) => !(p.id === normalizedFocusPostId && p.source === "post"),
+          ),
+        ];
+        debugProfilePostDeepLink("displayPosts: pinned shared post", {
+          focusPostId: normalizedFocusPostId,
+          matchSource: inFeed ? "feed" : "focusedPostQuery",
+          displayCount: result.length,
+          firstPostId: result[0]?.id ?? null,
+        });
+      }
+    }
+
+    if (allowRequestDeepLink && normalizedFocusRequestId) {
+      const match =
+        result.find(
+          (p) =>
+            p.id === normalizedFocusRequestId && p.source === "job_request",
+        ) ??
+        (focusedRequest?.id === normalizedFocusRequestId ? focusedRequest : null);
+      if (match) {
+        result = [
+          match,
+          ...result.filter(
+            (p) =>
+              !(
+                p.id === normalizedFocusRequestId && p.source === "job_request"
+              ),
+          ),
+        ];
+      }
+    }
+
+    return result;
+  }, [
+    posts,
+    focusedPost,
+    focusedRequest,
+    normalizedFocusPostId,
+    normalizedFocusRequestId,
+    allowPostDeepLink,
+    allowRequestDeepLink,
+    filterPostTypeId,
+  ]);
 
   /** Deep link from shared URLs: scroll the matching post into view. */
   useEffect(() => {
-    if (!normalizedFocusPostId) {
+    if (!allowPostDeepLink || !normalizedFocusPostId) {
       deepLinkHandledRef.current = null;
       return;
     }
@@ -2936,6 +4959,7 @@ export function ProfilePostsFeed({
 
     return cancelScroll;
   }, [
+    allowPostDeepLink,
     normalizedFocusPostId,
     isPending,
     focusedPostFetching,
@@ -2945,11 +4969,56 @@ export function ProfilePostsFeed({
     appearance,
   ]);
 
+  /** Deep link from shared request URLs: scroll the matching request into view. */
+  useEffect(() => {
+    if (!allowRequestDeepLink || !normalizedFocusRequestId) {
+      requestDeepLinkHandledRef.current = null;
+      return;
+    }
+
+    if (isPending) return;
+
+    const item = displayPosts.find(
+      (p) => p.id === normalizedFocusRequestId && p.source === "job_request",
+    );
+    if (!item) {
+      if (focusedRequestFetching) return;
+      return;
+    }
+    if (requestDeepLinkHandledRef.current === normalizedFocusRequestId) return;
+
+    const cancelScroll = scrollToFeedItemWhenReady(
+      normalizedFocusRequestId,
+      "job_request",
+      {
+        topInset: appearance === "discover" ? 96 : 12,
+        onDone: (found) => {
+          if (found) {
+            requestDeepLinkHandledRef.current = normalizedFocusRequestId;
+          }
+        },
+      },
+    );
+
+    return cancelScroll;
+  }, [
+    allowRequestDeepLink,
+    normalizedFocusRequestId,
+    isPending,
+    focusedRequestFetching,
+    displayPosts,
+    appearance,
+  ]);
+
   function handleLikeToggle(postId: string, newLiked: boolean) {
     queryClient.setQueryData<FeedPost[]>(qk, (prev) =>
       prev?.map((p) =>
         p.id === postId
-          ? { ...p, liked_by_me: newLiked, like_count: Math.max(0, p.like_count + (newLiked ? 1 : -1)) }
+          ? {
+              ...p,
+              liked_by_me: newLiked,
+              like_count: Math.max(0, p.like_count + (newLiked ? 1 : -1)),
+            }
           : p,
       ),
     );
@@ -2959,14 +5028,25 @@ export function ProfilePostsFeed({
     queryClient.setQueryData<FeedPost[]>(qk, (prev) => prev?.filter((p) => p.id !== postId));
   }
 
-  const reelCommentsPost = useMemo(() => {
-    if (!reelCommentsPostId) return undefined;
-    const p = displayPosts.find((x) => x.id === reelCommentsPostId);
-    return p?.source === "post" ? (p as ProfilePost) : undefined;
-  }, [displayPosts, reelCommentsPostId]);
-
   const refreshPostShareStats = useCallback(
-    async (postId: string) => {
+    async (postId: string, source: FeedPost["source"] = "post") => {
+      if (source === "job_request") {
+        const engagement = await fetchJobRequestEngagement(
+          [postId],
+          user?.id ?? null,
+        );
+        const stats = engagement.get(postId);
+        if (!stats) return;
+        queryClient.setQueryData<FeedPost[]>(qk, (prev) =>
+          prev?.map((p) =>
+            p.id === postId && p.source === "job_request"
+              ? { ...p, share_click_count: stats.share_click_count }
+              : p,
+          ),
+        );
+        return;
+      }
+
       const { data, error } = await supabase.rpc(
         "get_profile_post_share_stats",
         { p_post_ids: [postId] },
@@ -2977,10 +5057,10 @@ export function ProfilePostsFeed({
       }
       const row = (data ?? [])[0] as
         | {
-            post_id: string;
-            click_count: number | string;
-            distinct_user_count: number | string;
-          }
+          post_id: string;
+          click_count: number | string;
+          distinct_user_count: number | string;
+        }
         | undefined;
       const click = Number(row?.click_count ?? 0);
       const distinct = Number(row?.distinct_user_count ?? 0);
@@ -2992,7 +5072,7 @@ export function ProfilePostsFeed({
         ),
       );
     },
-    [supabase, queryClient, qk],
+    [user?.id, queryClient, qk],
   );
 
   if (isPending) {
@@ -3030,8 +5110,8 @@ export function ProfilePostsFeed({
               <div className="h-3 w-2/3 bg-slate-50 dark:bg-white/5 rounded" />
             </div>
             <div className="flex gap-4 pt-2">
-               <div className="h-4 w-4 bg-slate-50 dark:bg-white/5 rounded" />
-               <div className="h-4 w-4 bg-slate-50 dark:bg-white/5 rounded" />
+              <div className="h-4 w-4 bg-slate-50 dark:bg-white/5 rounded" />
+              <div className="h-4 w-4 bg-slate-50 dark:bg-white/5 rounded" />
             </div>
           </div>
         ))}
@@ -3067,7 +5147,7 @@ export function ProfilePostsFeed({
             aria-hidden
           />
           <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
-            {userId 
+            {userId
               ? isOwnProfile ? "You haven't posted anything yet." : "No posts yet."
               : "The community feed is quiet right now. Check back later!"}
           </p>
@@ -3091,7 +5171,7 @@ export function ProfilePostsFeed({
         <div className="md:flex md:items-start md:justify-start md:gap-10 md:pr-4 lg:pr-8">
           <div className="min-w-0 space-y-3 md:flex-1 md:space-y-2">
             {displayPosts.map((post) => (
-              <PostCard
+              <FeedPostItem
                 key={post.id}
                 post={post}
                 currentUserId={user?.id ?? null}
@@ -3104,7 +5184,7 @@ export function ProfilePostsFeed({
                 onOpenMediaReels={setReelsOpenPostId}
                 hidePostLikeButton={Boolean(filterLikedByUserId)}
                 appearance={appearance}
-                isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
+                isFocused={isFocusedFeedItem(post)}
                 plainCard={plainCards}
               />
             ))}
@@ -3115,18 +5195,15 @@ export function ProfilePostsFeed({
         displayPosts.map((post) => {
           const isDiscover = appearance === "discover";
           const isProfilePost = post.source === "post";
-          const shouldShowComments = isDiscover && isProfilePost;
+          const isJobRequestPost = post.source === "job_request";
+          const shouldShowComments = isDiscover && (isProfilePost || isJobRequestPost);
           const authorName = post.author?.full_name?.trim()
             ? post.author.full_name.trim()
             : "Member";
-          const caption =
-            isProfilePost && post.caption?.trim()
-              ? renderCaptionWithMentions(post.caption)
-              : undefined;
 
           if (!shouldShowComments) {
             return (
-              <PostCard
+              <FeedPostItem
                 key={post.id}
                 post={post}
                 currentUserId={user?.id ?? null}
@@ -3139,7 +5216,7 @@ export function ProfilePostsFeed({
                 onOpenMediaReels={setReelsOpenPostId}
                 hidePostLikeButton={Boolean(filterLikedByUserId)}
                 appearance={appearance}
-                isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
+                isFocused={isFocusedFeedItem(post)}
                 discoverWideLayout={expandDiscoverLayout}
                 plainCard={plainCards}
               />
@@ -3155,7 +5232,7 @@ export function ProfilePostsFeed({
               )}
             >
               <div className="min-w-0 md:flex-1">
-                <PostCard
+                <FeedPostItem
                   post={post}
                   currentUserId={user?.id ?? null}
                   onLikeToggle={handleLikeToggle}
@@ -3167,20 +5244,28 @@ export function ProfilePostsFeed({
                   onOpenMediaReels={setReelsOpenPostId}
                   hidePostLikeButton={Boolean(filterLikedByUserId)}
                   appearance={appearance}
-                  isFocused={Boolean(normalizedFocusPostId && normalizedFocusPostId === post.id)}
+                  isFocused={isFocusedFeedItem(post)}
                   discoverWideLayout={expandDiscoverLayout}
+                  plainCard={plainCards}
                 />
               </div>
 
-              <CommentsSidePanel
-                postId={post.id}
-                caption={caption}
-                captionText={post.caption?.trim() || undefined}
-                authorName={authorName}
-                authorPhotoUrl={post.author?.photo_url ?? null}
-                initialCount={post.comment_count}
-                wideLayout={expandDiscoverLayout}
-              />
+              {isJobRequestPost ? (
+                <JobRequestCommentsSidePanel
+                  jobId={post.id}
+                  user={user ?? null}
+                  authorName={authorName}
+                  initialCount={post.comment_count}
+                  wideLayout={expandDiscoverLayout}
+                />
+              ) : (
+                <CommentsSidePanel
+                  postId={post.id}
+                  authorName={authorName}
+                  initialCount={post.comment_count}
+                  wideLayout={expandDiscoverLayout}
+                />
+              )}
             </div>
           );
         })
@@ -3217,18 +5302,6 @@ export function ProfilePostsFeed({
 
       <CommentsDialog
         postId={reelCommentsPostId ?? ""}
-        caption={
-          reelCommentsPost?.caption?.trim()
-            ? renderCaptionWithMentions(reelCommentsPost.caption)
-            : undefined
-        }
-        captionText={reelCommentsPost?.caption?.trim() || undefined}
-        authorName={
-          reelCommentsPost?.author?.full_name?.trim()
-            ? reelCommentsPost.author.full_name.trim()
-            : undefined
-        }
-        authorPhotoUrl={reelCommentsPost?.author?.photo_url ?? null}
         open={reelCommentsPostId !== null}
         onClose={() => setReelCommentsPostId(null)}
       />

@@ -56,6 +56,7 @@ import ClientProfilePersonalPage from "@/pages/client/profile/ClientProfilePerso
 import ClientProfileServicesPage from "@/pages/client/profile/ClientProfileServicesPage";
 import ClientProfileAppearancePage from "@/pages/client/profile/ClientProfileAppearancePage";
 import ClientProfileSavedPage from "@/pages/client/profile/ClientProfileSavedPage";
+import ClientProfileEventsPage from "@/pages/client/profile/ClientProfileEventsPage";
 import PublicProfileMediaManagePage from "@/pages/profile/PublicProfileMediaManagePage";
 import MessagesPage from "@/pages/MessagesPage";
 import FreelancerProfileLayout from "@/pages/freelancer/profile/FreelancerProfileLayout";
@@ -69,6 +70,7 @@ import FreelancerProfileExperiencePage from "@/pages/freelancer/profile/Freelanc
 import FreelancerProfileRatesPage from "@/pages/freelancer/profile/FreelancerProfileRatesPage";
 import FreelancerProfileAppearancePage from "@/pages/freelancer/profile/FreelancerProfileAppearancePage";
 import FreelancerProfileSavedPage from "@/pages/freelancer/profile/FreelancerProfileSavedPage";
+import FreelancerProfileEventsPage from "@/pages/freelancer/profile/FreelancerProfileEventsPage";
 import FreelancerDashboardPage from "@/pages/freelancer/DashboardPage";
 import FreelancerHomePage from "@/pages/freelancer/FreelancerHomePage";
 import UnifiedJobsPage from "@/pages/jobs/UnifiedJobsPage";
@@ -434,6 +436,7 @@ function AppRoutes() {
         >
           <Route index element={<ClientProfileHub />} />
           <Route path="saved" element={<ClientProfileSavedPage />} />
+          <Route path="events" element={<ClientProfileEventsPage />} />
           <Route path="gallery" element={<PublicProfileMediaManagePage />} />
           <Route path="personal" element={<ClientProfilePersonalPage />} />
           <Route path="services" element={<ClientProfileServicesPage />} />
@@ -475,6 +478,7 @@ function AppRoutes() {
         >
           <Route index element={<FreelancerProfileHub />} />
           <Route path="saved" element={<FreelancerProfileSavedPage />} />
+          <Route path="events" element={<FreelancerProfileEventsPage />} />
           <Route path="gallery" element={<PublicProfileMediaManagePage />} />
           <Route path="personal" element={<FreelancerProfilePersonalPage />} />
           <Route

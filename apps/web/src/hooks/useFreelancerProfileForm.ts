@@ -37,6 +37,7 @@ export function useFreelancerProfileForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [rateMode, setRateMode] = useState<RateMode>("single");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -183,6 +184,45 @@ export function useFreelancerProfileForm() {
     value: FreelancerData[K],
   ) {
     setData((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function setAvailableNowAndSave(checked: boolean) {
+    if (!user || availabilitySaving) return;
+
+    let previous = false;
+    setData((prev) => {
+      previous = prev.available_now;
+      return { ...prev, available_now: checked };
+    });
+    setAvailabilitySaving(true);
+
+    try {
+      const { error } = await supabase
+        .from("freelancer_profiles")
+        .update({ available_now: checked })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      addToast({
+        title: checked ? "You're available" : "Not available",
+        description: checked
+          ? "You'll receive job notifications"
+          : "Turn on to receive job requests",
+        variant: "success",
+      });
+    } catch (err: unknown) {
+      setData((prev) => ({ ...prev, available_now: previous }));
+      const message =
+        err instanceof Error ? err.message : "Please try again";
+      addToast({
+        title: "Couldn't update availability",
+        description: message,
+        variant: "error",
+      });
+    } finally {
+      setAvailabilitySaving(false);
+    }
   }
 
   function toggleLanguage(lang: string) {
@@ -447,6 +487,7 @@ export function useFreelancerProfileForm() {
     fileInputRef,
     loading,
     saving,
+    availabilitySaving,
     rateMode,
     setRateMode,
     photoUrl,
@@ -472,6 +513,7 @@ export function useFreelancerProfileForm() {
     setLocationRadius,
     data,
     updateField,
+    setAvailableNowAndSave,
     toggleLanguage,
     handleImageUploadFile,
     handleImageUpload,

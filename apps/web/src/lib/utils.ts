@@ -4,6 +4,10 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/** Hides native spinner / stepper controls on numeric and time inputs. */
+export const noFieldSpinnerClass =
+  "[appearance:textfield] [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-calendar-picker-indicator]:hidden";
 export function getNativeMapUrl(
   job: any,
   provider: "apple" | "google" | "waze" = "google",
