@@ -151,6 +151,31 @@ function ClientPoster({
   return <div className="inline-flex min-w-0 max-w-full items-center gap-2">{inner}</div>;
 }
 
+function WhenBadge({
+  whenTimeframe,
+  className,
+}: {
+  whenTimeframe: string | null | undefined;
+  className?: string;
+}) {
+  const whenBadge = openHelpRequestWhenBadgeLabel(whenTimeframe);
+  if (!whenBadge) return null;
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em]",
+        whenBadgeToneClass(whenTimeframe),
+        isUrgentWhen(whenTimeframe) && "ring-1 ring-red-500/25",
+        className,
+      )}
+    >
+      <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      {whenBadge}
+    </span>
+  );
+}
+
 type Props = {
   row: DiscoverOpenHelpRequestRow;
   onAccept: () => void;
@@ -189,7 +214,6 @@ export function DiscoverOpenHelpRequestCard({
   const detailLine = openHelpRequestDetailLine(row);
   const scheduleLine = openHelpRequestScheduleLine(row);
   const budget = formatOpenHelpRequestBudget(row);
-  const whenBadge = openHelpRequestWhenBadgeLabel(row.when_timeframe);
   const categoryLabel = serviceCategoryTitle(row.service_type).toUpperCase();
   const postedLabel = timeAgo(row.created_at);
   const clientName = (row.client_display_name || "").trim() || "Member";
@@ -239,41 +263,32 @@ export function DiscoverOpenHelpRequestCard({
                 >
                   {categoryLabel}
                 </span>
-                {whenBadge ? (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em]",
-                      whenBadgeToneClass(row.when_timeframe),
-                      isUrgentWhen(row.when_timeframe) && "ring-1 ring-red-500/25",
-                    )}
-                  >
-                    <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    {whenBadge}
-                  </span>
-                ) : null}
               </div>
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted/60 sm:h-10 sm:w-10",
-                  saved ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
-                )}
-                aria-label={saved ? "Remove from saved requests" : "Save request"}
-                disabled={saveBusy || !onToggleSave}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleSave?.();
-                }}
-              >
-                {saveBusy ? (
-                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                ) : (
-                  <Bookmark
-                    className={cn("h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]", saved && "fill-current")}
-                    strokeWidth={2.25}
-                  />
-                )}
-              </button>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <WhenBadge whenTimeframe={row.when_timeframe} />
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted/60 sm:h-10 sm:w-10",
+                    saved ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+                  )}
+                  aria-label={saved ? "Remove from saved requests" : "Save request"}
+                  disabled={saveBusy || !onToggleSave}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSave?.();
+                  }}
+                >
+                  {saveBusy ? (
+                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  ) : (
+                    <Bookmark
+                      className={cn("h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]", saved && "fill-current")}
+                      strokeWidth={2.25}
+                    />
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="mt-1">
@@ -390,10 +405,10 @@ export function DiscoverMyOpenRequestCard({
   const detailLine = openHelpRequestDetailLine(row);
   const scheduleLine = openHelpRequestScheduleLine(row);
   const budget = formatOpenHelpRequestBudget(row);
-  const whenBadge = openHelpRequestWhenBadgeLabel(row.when_timeframe);
   const categoryLabel = serviceCategoryTitle(row.service_type).toUpperCase();
   const postedLabel = timeAgo(row.created_at);
   const uploadedImageUrl = firstJobRequestImage(row.service_details ?? null);
+  const hasWhenBadge = Boolean(openHelpRequestWhenBadgeLabel(row.when_timeframe));
 
   return (
     <article
@@ -427,26 +442,35 @@ export function DiscoverMyOpenRequestCard({
           <div
             className={cn(
               "relative flex min-w-0 flex-1 flex-col",
-              uploadedImageUrl ? "pr-14 sm:pr-16" : "pr-11",
+              uploadedImageUrl
+                ? hasWhenBadge
+                  ? "pr-28 sm:pr-32"
+                  : "pr-14 sm:pr-16"
+                : hasWhenBadge
+                  ? "pr-24 sm:pr-28"
+                  : "pr-11",
             )}
           >
             <div className="pointer-events-none absolute right-0 top-0 z-[1] flex flex-col items-end gap-1.5">
-              <span
-                className={cn(
-                  "pointer-events-auto inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-black tabular-nums sm:h-10",
-                  acceptedCount > 0
-                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                    : "bg-zinc-200/80 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-                )}
-                aria-label={
-                  acceptedCount > 0
-                    ? `${acceptedCount} helpers accepted`
-                    : "No helpers accepted yet"
-                }
-              >
-                <Users className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
-                {acceptedCount}
-              </span>
+              <div className="pointer-events-auto flex items-center gap-1.5">
+                <WhenBadge whenTimeframe={row.when_timeframe} />
+                <span
+                  className={cn(
+                    "inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-black tabular-nums sm:h-10",
+                    acceptedCount > 0
+                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                      : "bg-zinc-200/80 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+                  )}
+                  aria-label={
+                    acceptedCount > 0
+                      ? `${acceptedCount} helpers accepted`
+                      : "No helpers accepted yet"
+                  }
+                >
+                  <Users className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                  {acceptedCount}
+                </span>
+              </div>
               {uploadedImageUrl ? (
                 <img
                   src={uploadedImageUrl}
@@ -467,18 +491,6 @@ export function DiscoverMyOpenRequestCard({
               >
                 {categoryLabel}
               </span>
-              {whenBadge ? (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em]",
-                    whenBadgeToneClass(row.when_timeframe),
-                    isUrgentWhen(row.when_timeframe) && "ring-1 ring-red-500/25",
-                  )}
-                >
-                  <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  {whenBadge}
-                </span>
-              ) : null}
             </div>
 
             <div className="mt-1">

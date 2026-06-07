@@ -1341,7 +1341,7 @@ export function ComposeModal({
       <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
         Post Preview
       </div>
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm overflow-hidden p-4 space-y-3">
+      <div className="rounded-2xl border-0 bg-zinc-100 dark:bg-zinc-800/55 overflow-hidden p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Avatar className="h-9 w-9">
@@ -1569,7 +1569,7 @@ export function ComposeModal({
         className={cn(
           "flex flex-col gap-0 p-0 overflow-hidden",
           // Desktop / large screens: centered modal — widen when composing
-          "sm:rounded-2xl",
+          "sm:rounded-2xl dark:border-0",
           selectedPostTypeId
             ? "sm:max-w-4xl sm:h-[min(92vh,780px)] sm:max-h-[min(92vh,780px)]"
             : "sm:max-w-lg sm:max-h-[min(92vh,720px)]",
@@ -1701,8 +1701,8 @@ export function ComposeModal({
                           setCustomCategory("");
                         }}
                         className={cn(
-                          "flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-200 shadow-sm outline-none focus-visible:ring-2 active:scale-[0.98]",
-                          "bg-zinc-50/50 border-zinc-200/80 hover:bg-zinc-100/40 hover:border-zinc-300 dark:bg-zinc-900/45 dark:border-zinc-800/80 dark:hover:bg-zinc-800/30 dark:hover:border-zinc-700/80"
+                          "flex flex-col items-center text-center p-4 rounded-2xl border-0 transition-all duration-200 outline-none focus-visible:ring-2 active:scale-[0.98]",
+                          "bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/55 dark:hover:bg-zinc-800/70",
                         )}
                       >
                         {/* Icon square with background and subtle glow */}
