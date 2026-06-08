@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { formatDistanceToNow } from "date-fns";
+import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import { Loader2, Send } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
@@ -45,7 +47,9 @@ export function JobRequestCommentsSidePanel({
   wideLayout?: boolean;
   className?: string;
 }) {
+  const { t, i18n } = useTranslation();
   const { addToast } = useToast();
+  const dateLocale = dateFnsLocaleFor(i18n.language);
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const [comments, setComments] = useState<JobComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,9 +110,9 @@ export function JobRequestCommentsSidePanel({
   }, [fetchCount, fetchComments]);
 
   const headerLabel = useMemo(() => {
-    if (count == null) return "Comments";
-    return `${count} Comments`;
-  }, [count]);
+    if (count == null) return t("common.comments");
+    return t("feed.commentsCount", { count });
+  }, [count, t]);
 
   async function submitComment() {
     const body = draft.trim();
@@ -165,7 +169,7 @@ export function JobRequestCommentsSidePanel({
         <div className="min-w-0">
           <div className="truncate text-base font-black text-foreground">{headerLabel}</div>
           <div className="mt-0.5 text-xs font-semibold text-muted-foreground">
-            {authorName ? `on ${authorName}'s request` : " "}
+            {authorName ? t("feed.onAuthorsRequest", { name: authorName }) : " "}
           </div>
         </div>
         <Button
@@ -178,7 +182,7 @@ export function JobRequestCommentsSidePanel({
             void fetchComments();
           }}
         >
-          Refresh
+          {t("feed.refresh")}
         </Button>
       </div>
 
@@ -190,7 +194,7 @@ export function JobRequestCommentsSidePanel({
             </div>
           ) : comments.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              No comments yet. Be the first!
+              {t("feed.noCommentsYet")}
             </p>
           ) : (
             <div className="divide-y divide-border/60">
@@ -220,7 +224,10 @@ export function JobRequestCommentsSidePanel({
                           {name}
                         </GuestAwareProfileLink>
                         <time className="shrink-0 text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(c.created_at), {
+                            addSuffix: true,
+                            locale: dateLocale,
+                          })}
                         </time>
                       </div>
                       <p
@@ -244,7 +251,7 @@ export function JobRequestCommentsSidePanel({
         {user ? (
           <div className="flex items-end gap-2">
             <Textarea
-              placeholder="Write a comment…"
+              placeholder={t("feed.writeComment")}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {

@@ -1,6 +1,8 @@
 import { useOutletContext } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import { Button } from "@/components/ui/button";
+import { ProfileLanguageMenuRow } from "@/components/profile/ProfileLanguageMenuRow";
 import { ProfileMenuRow, profileMenuListClassName } from "@/components/profile/ProfileMenuRow";
 import { ProfileHubIdentityCard } from "@/components/profile/ProfileHubIdentityCard";
 import type { ClientProfileFormContext } from "@/hooks/useClientProfileForm";
@@ -17,6 +19,7 @@ import {
 } from "lucide-react";
 
 export default function ClientProfileHub() {
+  const { t } = useTranslation();
   const { openReportModal } = useReportIssue();
   const ctx = useOutletContext<ClientProfileFormContext>();
   const { profile, fullName, photoUrl } = ctx;
@@ -35,14 +38,15 @@ export default function ClientProfileHub() {
           />
 
           <div className={profileMenuListClassName}>
-            <ProfileMenuRow to="/client/profile/personal" icon={User} label="Personal & contact" />
-            <ProfileMenuRow to="/client/explore" icon={LayoutDashboard} label="My activity" />
-            <ProfileMenuRow to="/client/profile/events" icon={CalendarDays} label="My events" />
-            <ProfileMenuRow to="/recent-activity" icon={Activity} label="Recent activity" />
-            <ProfileMenuRow to="/client/profile/saved" icon={Heart} label="Saved" />
-            <ProfileMenuRow to="/client/profile/gallery" icon={ImageIcon} label="Public profile gallery" />
-            <ProfileMenuRow to="/client/profile/services" icon={Briefcase} label="Services & area" />
-            <ProfileMenuRow to="/client/profile/appearance" icon={Palette} label="Appearance" />
+            <ProfileMenuRow to="/client/profile/personal" icon={User} label={t("profile.personalContact")} />
+            <ProfileMenuRow to="/client/explore" icon={LayoutDashboard} label={t("profile.myActivity")} />
+            <ProfileMenuRow to="/client/profile/events" icon={CalendarDays} label={t("profile.myEvents")} />
+            <ProfileMenuRow to="/recent-activity" icon={Activity} label={t("profile.recentActivity")} />
+            <ProfileMenuRow to="/client/profile/saved" icon={Heart} label={t("common.saved")} />
+            <ProfileMenuRow to="/client/profile/gallery" icon={ImageIcon} label={t("profile.publicGallery")} />
+            <ProfileMenuRow to="/client/profile/services" icon={Briefcase} label={t("profile.servicesArea")} />
+            <ProfileLanguageMenuRow to="/client/profile/language" />
+            <ProfileMenuRow to="/client/profile/appearance" icon={Palette} label={t("profile.appearance")} />
           </div>
 
           <div className="mt-10 flex justify-center pb-4">
@@ -54,7 +58,7 @@ export default function ClientProfileHub() {
               onClick={openReportModal}
             >
               <AlertCircle className="w-4 h-4" />
-              Report an issue
+              {t("common.reportIssue")}
             </Button>
           </div>
         </div>

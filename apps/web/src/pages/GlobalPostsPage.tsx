@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
 import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
@@ -33,7 +33,10 @@ import {
   DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
   type CommunityFeedAdvancedFilters,
 } from "@/lib/communityFeedFilters";
-import { parseCommunityFeedTypeFilter } from "@/lib/communityFeedNav";
+import {
+  type CommunityFeedLocationState,
+  parseCommunityFeedTypeFilter,
+} from "@/lib/communityFeedNav";
 
 type FeedMainContentProps = {
   user: User | null;
@@ -52,6 +55,8 @@ type FeedMainContentProps = {
   onAdvancedFiltersChange: (filters: CommunityFeedAdvancedFilters) => void;
   favoriteAuthorFilterId: string | null;
   onFavoriteAuthorFilterChange: (authorId: string | null) => void;
+  scrollToPostId: string | null;
+  onScrollToPostDone: () => void;
 };
 
 function FeedMainContent({
@@ -70,8 +75,15 @@ function FeedMainContent({
   onAdvancedFiltersChange,
   favoriteAuthorFilterId,
   onFavoriteAuthorFilterChange,
+  scrollToPostId,
+  onScrollToPostDone,
   profile,
 }: FeedMainContentProps) {
+  const sidePanelPostTypeIds = useMemo(
+    () => (postTypeFilter === "all" ? null : [postTypeFilter]),
+    [postTypeFilter],
+  );
+
   return (
     <div
       className={cn(
@@ -92,20 +104,26 @@ function FeedMainContent({
         onAdvancedFiltersChange={onAdvancedFiltersChange}
         selectedAuthorFilterId={favoriteAuthorFilterId}
         onAuthorFilterChange={onFavoriteAuthorFilterChange}
+        reserveSidePanelSpace
         className="mb-4 mt-3 md:mb-5 md:mt-4 px-2 md:px-0"
       />
 
       <ProfilePostsFeed
         appearance="discover"
+        discoverSidePanel="favorites"
         focusPostId={focusPostId}
         focusRequestId={focusRequestId}
         expandDiscoverLayout={expandDiscoverLayout}
         filterPostTypeId={postTypeFilter === "all" ? null : postTypeFilter}
+        sidePanelPostTypeIds={sidePanelPostTypeIds}
         filterCommentedOwnPosts={commentedFilterActive}
         filterAcceptedRequests={acceptedFilterActive}
         filterAuthorId={favoriteAuthorFilterId ?? undefined}
         feedAdvancedFilters={advancedFilters}
         excludeOwnJobRequests={false}
+        fixedFavoritesSidePanel
+        scrollToPostId={scrollToPostId}
+        onScrollToPostDone={onScrollToPostDone}
         plainCards
       />
     </div>
@@ -117,7 +135,13 @@ export default function GlobalPostsPage() {
   useMobileShellScrollCollapse(!!user);
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { guardKycAction } = useKycGate();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [scrollToPostId, setScrollToPostId] = useState<string | null>(() => {
+    const raw = (location.state as CommunityFeedLocationState | null)?.scrollToPostId;
+    return raw ? (parseProfilePostShareId(raw) ?? raw) : null;
+  });
   const [composeOpen, setComposeOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [postTypeFilter, setPostTypeFilter] = useState<CommunityFeedPostTypeFilter>(
@@ -135,6 +159,14 @@ export default function GlobalPostsPage() {
   const focusPostId = parseProfilePostShareId(rawPostParam);
   const focusRequestId = parseJobRequestShareId(rawRequestParam);
   const typeParam = searchParams.get("type");
+
+  useEffect(() => {
+    if (!(location.state as CommunityFeedLocationState | null)?.scrollToPostId) return;
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: null },
+    );
+  }, [location.pathname, location.search, location.state, navigate]);
 
   useEffect(() => {
     setPostTypeFilter(parseCommunityFeedTypeFilter(typeParam) ?? "all");
@@ -261,6 +293,8 @@ export default function GlobalPostsPage() {
               onAdvancedFiltersChange={setAdvancedFilters}
               favoriteAuthorFilterId={favoriteAuthorFilterId}
               onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
+              scrollToPostId={scrollToPostId}
+              onScrollToPostDone={() => setScrollToPostId(null)}
             />
           </div>
         </div>
@@ -285,6 +319,8 @@ export default function GlobalPostsPage() {
               onAdvancedFiltersChange={setAdvancedFilters}
               favoriteAuthorFilterId={favoriteAuthorFilterId}
               onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
+              scrollToPostId={scrollToPostId}
+              onScrollToPostDone={() => setScrollToPostId(null)}
             />
           </div>
         </div>

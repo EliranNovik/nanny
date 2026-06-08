@@ -1,7 +1,9 @@
 import { useOutletContext } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useReportIssue } from "@/context/ReportIssueContext";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { ProfileLanguageMenuRow } from "@/components/profile/ProfileLanguageMenuRow";
 import { ProfileMenuRow, profileMenuListClassName } from "@/components/profile/ProfileMenuRow";
 import { ProfileHubIdentityCard } from "@/components/profile/ProfileHubIdentityCard";
 import type { FreelancerProfileFormContext } from "@/hooks/useFreelancerProfileForm";
@@ -22,6 +24,7 @@ import {
 } from "lucide-react";
 
 export default function FreelancerProfileHub() {
+  const { t } = useTranslation();
   const { openReportModal } = useReportIssue();
   const ctx = useOutletContext<FreelancerProfileFormContext>();
   const { profile, fullName, photoUrl } = ctx;
@@ -40,16 +43,16 @@ export default function FreelancerProfileHub() {
 
           <div className="flex flex-col gap-4">
             <div className={profileMenuListClassName}>
-              <ProfileMenuRow to="/freelancer/profile/personal" icon={User} label="Personal & contact" />
-              <ProfileMenuRow to="/freelancer/explore" icon={LayoutDashboard} label="My activity" />
-              <ProfileMenuRow to="/freelancer/profile/events" icon={CalendarDays} label="My events" />
-              <ProfileMenuRow to="/recent-activity" icon={Activity} label="Recent activity" />
-              <ProfileMenuRow to="/freelancer/profile/saved" icon={Heart} label="Saved" />
-              <ProfileMenuRow to="/freelancer/profile/gallery" icon={ImageIcon} label="Public profile gallery" />
+              <ProfileMenuRow to="/freelancer/profile/personal" icon={User} label={t("profile.personalContact")} />
+              <ProfileMenuRow to="/freelancer/explore" icon={LayoutDashboard} label={t("profile.myActivity")} />
+              <ProfileMenuRow to="/freelancer/profile/events" icon={CalendarDays} label={t("profile.myEvents")} />
+              <ProfileMenuRow to="/recent-activity" icon={Activity} label={t("profile.recentActivity")} />
+              <ProfileMenuRow to="/freelancer/profile/saved" icon={Heart} label={t("common.saved")} />
+              <ProfileMenuRow to="/freelancer/profile/gallery" icon={ImageIcon} label={t("profile.publicGallery")} />
               <ProfileMenuRow
                 to="/freelancer/profile/availability"
                 icon={Bell}
-                label="Availability"
+                label={t("profile.availability")}
                 trailing={
                   <Switch
                     checked={ctx.data.available_now}
@@ -63,14 +66,15 @@ export default function FreelancerProfileHub() {
                   />
                 }
               />
-              <ProfileMenuRow to="/freelancer/profile/about" icon={FileText} label="About you" />
+              <ProfileMenuRow to="/freelancer/profile/about" icon={FileText} label={t("profile.aboutYou")} />
             </div>
             <div className={profileMenuListClassName}>
-              <ProfileMenuRow to="/freelancer/profile/services" icon={Heart} label="Services & area" />
-              <ProfileMenuRow to="/freelancer/profile/languages" icon={Globe} label="Languages" />
-              <ProfileMenuRow to="/freelancer/profile/experience" icon={Shield} label="Experience & skills" />
-              <ProfileMenuRow to="/freelancer/profile/rates" icon={DollarSign} label="Hourly rates" />
-              <ProfileMenuRow to="/freelancer/profile/appearance" icon={Palette} label="Appearance" />
+              <ProfileMenuRow to="/freelancer/profile/services" icon={Heart} label={t("profile.servicesArea")} />
+              <ProfileMenuRow to="/freelancer/profile/languages" icon={Globe} label={t("profile.languages")} />
+              <ProfileMenuRow to="/freelancer/profile/experience" icon={Shield} label={t("profile.experienceSkills")} />
+              <ProfileMenuRow to="/freelancer/profile/rates" icon={DollarSign} label={t("profile.hourlyRates")} />
+              <ProfileLanguageMenuRow to="/freelancer/profile/language" />
+              <ProfileMenuRow to="/freelancer/profile/appearance" icon={Palette} label={t("profile.appearance")} />
             </div>
           </div>
 
@@ -83,7 +87,7 @@ export default function FreelancerProfileHub() {
               onClick={openReportModal}
             >
               <AlertCircle className="w-4 h-4" />
-              Report an issue
+              {t("common.reportIssue")}
             </Button>
           </div>
         </div>

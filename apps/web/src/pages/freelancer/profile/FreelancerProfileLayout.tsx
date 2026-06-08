@@ -1,9 +1,11 @@
 import { Outlet } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useFreelancerProfileForm } from "@/hooks/useFreelancerProfileForm";
+import { useScrollToTopOnPathnameChange } from "@/hooks/useScrollToTopOnPathnameChange";
 
 export default function FreelancerProfileLayout() {
   const form = useFreelancerProfileForm();
+  useScrollToTopOnPathnameChange();
 
   if (form.loading) {
     return (

@@ -4,16 +4,6 @@ export type DiscoverHomeCategoryFilter = ServiceCategoryId | "all";
 
 export type DiscoverOpenHelpRequestSort = "newest" | "oldest" | "today" | "now";
 
-export const DISCOVER_OPEN_HELP_REQUEST_SORT_LABELS: Record<
-  DiscoverOpenHelpRequestSort,
-  string
-> = {
-  newest: "Newest",
-  oldest: "Oldest",
-  today: "Today",
-  now: "Now",
-};
-
 export function filterOpenHelpRequestsByCategory<
   T extends { service_type: string | null },
 >(rows: T[], categoryFilter: DiscoverHomeCategoryFilter): T[] {

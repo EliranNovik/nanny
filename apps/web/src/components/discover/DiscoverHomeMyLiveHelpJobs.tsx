@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -189,6 +190,7 @@ function DiscoverHomeLiveHelpSection({
   createRequestPath,
   emptyPostTrackEvent,
 }: LiveHelpSectionProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   if (loading) {
@@ -247,9 +249,9 @@ function DiscoverHomeLiveHelpSection({
                 "dark:border-white/10 dark:bg-white/15 dark:text-white dark:hover:bg-white/20 dark:shadow-none",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
               )}
-              aria-label="Post a new request"
+              aria-label={t("discover.postRequest")}
             >
-              Post request
+              {t("discover.postRequest")}
             </button>
           ) : null}
         </div>
@@ -307,7 +309,7 @@ function DiscoverHomeLiveHelpSection({
               "flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-zinc-50 text-sm font-bold text-foreground transition-colors hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800",
             )}
           >
-            Show more
+            {t("common.showMore")}
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
@@ -322,6 +324,7 @@ export function DiscoverHomeMyLiveHelpJobs({
   createRequestPath,
   className,
 }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const { data, isLoading: loading } = useDiscoverMyLiveHelpJobs(user?.id, mode);
@@ -339,11 +342,11 @@ export function DiscoverHomeMyLiveHelpJobs({
         exploreLiveHelpPath={exploreLiveHelpPath}
         createRequestPath={createRequestPath}
         className={className}
-        title="My help live"
-        subtitle="Active help sessions with a confirmed helper"
-        ariaLabel="My live help"
-        emptyTitle="No live help yet"
-        emptySub="When a helper is confirmed on your request, it will appear here."
+        title={t("discover.myHelpLive")}
+        subtitle={t("discover.myHelpLiveSubtitle")}
+        ariaLabel={t("discover.myHelpLive")}
+        emptyTitle={t("discover.noLiveHelpYet")}
+        emptySub={t("discover.noLiveHelpYetSub")}
         otherPartyLabel="Helper"
         otherPartyFallback="Helper"
         getOtherPartyId={(job) => String(job.selected_freelancer_id ?? "")}
@@ -362,11 +365,11 @@ export function DiscoverHomeMyLiveHelpJobs({
       loading={loading}
       exploreLiveHelpPath={exploreLiveHelpPath}
       className={className}
-      title="Live help"
-      subtitle="Jobs you're actively helping with right now"
-      ariaLabel="Live help"
-      emptyTitle="No live gigs yet"
-      emptySub="When you're confirmed on a job, it will appear here."
+        title={t("discover.liveHelp")}
+        subtitle={t("discover.liveHelpSubtitle")}
+        ariaLabel={t("discover.liveHelp")}
+        emptyTitle={t("discover.noLiveGigsYet")}
+        emptySub={t("discover.noLiveGigsYetSub")}
       otherPartyLabel="Helping"
       otherPartyFallback="Client"
       getOtherPartyId={(job) => String(job.client_id ?? "")}

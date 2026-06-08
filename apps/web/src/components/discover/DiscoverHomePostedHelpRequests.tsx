@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,6 @@ import {
 } from "@/components/discover/DiscoverOpenHelpRequestCard";
 import {
   applyOpenHelpRequestDiscoverSort,
-  DISCOVER_OPEN_HELP_REQUEST_SORT_LABELS,
   filterOpenHelpRequestsByCategory,
   type DiscoverHomeCategoryFilter,
   type DiscoverOpenHelpRequestSort,
@@ -56,6 +56,7 @@ export function DiscoverHomePostedHelpRequests({
   className,
   categoryFilter = "all",
 }: Props) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
@@ -252,17 +253,17 @@ export function DiscoverHomePostedHelpRequests({
 
   if (filteredRequests.length === 0) return null;
 
-  const sortLabel = DISCOVER_OPEN_HELP_REQUEST_SORT_LABELS[sortBy];
+  const sortLabel = t(`common.${sortBy}`);
 
   return (
     <section className={cn("w-full", className)} aria-label="Posted help requests">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-            Open requests near you
+            {t("discover.openRequestsNearYou")}
           </h2>
           <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">
-            New jobs posted in the last 24h
+            {t("discover.openRequestsSubtitle")}
           </p>
         </div>
         <div ref={sortMenuRef} className="relative shrink-0">
@@ -272,12 +273,12 @@ export function DiscoverHomePostedHelpRequests({
               "inline-flex items-center gap-1 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-sm font-bold text-foreground shadow-sm dark:border-white/10 dark:bg-zinc-900",
               sortMenuOpen && "ring-2 ring-emerald-500/30",
             )}
-            aria-label={`Sort by ${sortLabel}`}
+            aria-label={`${t("common.sort")}: ${sortLabel}`}
             aria-expanded={sortMenuOpen}
             aria-haspopup="listbox"
             onClick={() => setSortMenuOpen((open) => !open)}
           >
-            Sort: {sortLabel}
+            {t("common.sort")}: {sortLabel}
             <ChevronDown
               className={cn(
                 "h-3.5 w-3.5 text-muted-foreground transition-transform",
@@ -308,7 +309,7 @@ export function DiscoverHomePostedHelpRequests({
                         : "text-foreground hover:bg-zinc-50 dark:hover:bg-zinc-800/80",
                     )}
                   >
-                    {DISCOVER_OPEN_HELP_REQUEST_SORT_LABELS[option]}
+                    {t(`common.${option}`)}
                   </button>
                 );
               })}
@@ -320,10 +321,10 @@ export function DiscoverHomePostedHelpRequests({
       {sortedRequests.length === 0 ? (
         <div className="rounded-[18px] border border-dashed border-zinc-200/80 bg-zinc-50/60 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
           <p className="text-sm font-semibold text-foreground">
-            No {sortLabel.toLowerCase()} requests right now
+            {t("discover.noSortMatch", { sort: sortLabel })}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Try another sort option or check back soon.
+            {t("discover.tryAnotherSort")}
           </p>
         </div>
       ) : (

@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
 import { Link, useNavigate } from "react-router-dom";
 import { GuestAwareProfileLink } from "@/components/GuestAwareProfileLink";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow, format, parseISO } from "date-fns";
+import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import {
   Heart,
   MessageCircle,
@@ -66,8 +69,6 @@ import {
 import type { AvailabilityPayload } from "@/lib/availabilityPosts";
 import {
   isServiceCategoryId,
-  serviceCategoryLabel,
-  postServiceCategoryLabel,
   CUSTOM_POST_CATEGORY_MAX_LEN,
   type ServiceCategoryId,
   SERVICE_CATEGORIES,
@@ -124,13 +125,15 @@ import { postMatchesAdvancedFeedFilters } from "@/lib/communityFeedFilters";
 import {
   REQUEST_HELP_WHEN_OPTIONS,
   isRequestHelpWhenUrgent,
-  requestHelpWhenLabel,
   type RequestHelpTimeframe,
 } from "@/lib/requestHelpWhen";
 import { openCommunityContact } from "@/lib/communityContact";
 import {
-  hasEventJoinInterest,
+  fetchEventPostHelperCounts,
+  getEventJoinInterestStatus,
+  parseEventHelpersNeeded,
   recordEventJoinInterest,
+  type EventJoinInterestStatus,
 } from "@/lib/profilePostEventJoin";
 import { preventDialogDismissForGooglePlacesPac } from "@/lib/googlePlacesPacModal";
 
@@ -187,6 +190,8 @@ export type ProfilePost = {
   } | null;
   post_metadata?: any | null;
   ai_generated_copy?: GeneratedPostCopy | null;
+  /** Accepted helper count for event posts (from join interests). */
+  event_accepted_helpers_count?: number;
 };
 
 export type AvailabilityPost = {
@@ -221,10 +226,134 @@ export type PostComment = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function categoryLabel(cat: string): string {
-  return isServiceCategoryId(cat)
-    ? serviceCategoryLabel(cat as ServiceCategoryId)
-    : cat.replace(/_/g, " ");
+const FEED_POST_TYPE_IDS = [
+  "request_help",
+  "offer_service",
+  "community",
+  "event",
+] as const;
+
+function feedCategoryLabel(
+  t: TFunction,
+  categoryId?: string | null,
+  customCategory?: string | null,
+): string {
+  if (categoryId === "other_help" && customCategory?.trim()) {
+    return customCategory.trim();
+  }
+  if (categoryId && isServiceCategoryId(categoryId)) {
+    return t(`feed.categories.${categoryId}`);
+  }
+  if (!categoryId) return t("feed.categories.help_request");
+  return categoryId.replace(/_/g, " ");
+}
+
+function feedPostTypeBadgeLabel(t: TFunction, typeId: string, typeName?: string) {
+  if ((FEED_POST_TYPE_IDS as readonly string[]).includes(typeId)) {
+    return t(`feed.postType.${typeId}`);
+  }
+  return typeName ?? typeId;
+}
+
+function feedContactLabel(t: TFunction, fullName: string | null | undefined): string {
+  return t("feed.contactName", {
+    name: fullName?.trim() || t("feed.defaultUser"),
+  });
+}
+
+const FEED_WHEN_LABEL_KEYS: Record<string, string> = {
+  now: "feed.filters.whenNow",
+  today: "feed.filters.whenToday",
+  tomorrow: "feed.filters.whenTomorrow",
+  this_week: "feed.filters.whenThisWeek",
+  custom: "feed.filters.whenCustom",
+};
+
+function feedEventDateTimeLabel(
+  t: TFunction,
+  language: string,
+  metadata: {
+    date_time?: string | null;
+    event_date?: string | null;
+    event_time?: string | null;
+  },
+): string | null {
+  if (metadata.event_date?.trim()) {
+    try {
+      const base = parseISO(metadata.event_date.trim());
+      if (!Number.isNaN(base.getTime())) {
+        const locale = dateFnsLocaleFor(language);
+        const [hours, minutes] = (metadata.event_time ?? "00:00")
+          .split(":")
+          .map((part) => parseInt(part, 10));
+        const dt = new Date(base);
+        dt.setHours(
+          Number.isFinite(hours) ? hours : 0,
+          Number.isFinite(minutes) ? minutes : 0,
+          0,
+          0,
+        );
+        return t("feed.event.dateTime", {
+          date: format(dt, "EEEE, MMMM d", { locale }),
+          time: format(dt, "h:mm a", { locale }),
+        });
+      }
+    } catch {
+      /* fall through to stored string */
+    }
+  }
+  return metadata.date_time?.trim() ?? null;
+}
+
+function feedWhenLabel(
+  t: TFunction,
+  metadata: {
+    timeframe?: string | null;
+    custom_when?: string | null;
+  },
+): string | null {
+  if (!metadata.timeframe) return null;
+  if (metadata.timeframe === "custom" && metadata.custom_when) {
+    return metadata.custom_when;
+  }
+  const key = FEED_WHEN_LABEL_KEYS[metadata.timeframe];
+  if (key) return t(key);
+  return metadata.timeframe.replace(/_/g, " ");
+}
+
+function feedLocationSlug(part: string): string {
+  return part
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+function feedRateTypeLabel(t: TFunction, rateType?: string | null): string {
+  return rateType === "per_hour"
+    ? t("feed.budget.perHour")
+    : t("feed.budget.fixedPrice");
+}
+
+function feedLocationLabel(t: TFunction, location?: string | null): string {
+  if (!location?.trim()) return "";
+  const localizedCountry = t("feed.location.countryIsrael");
+  const parts = location
+    .trim()
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return location.trim();
+
+  return parts
+    .map((part) => {
+      if (/^israel$/i.test(part)) return localizedCountry;
+      const slug = feedLocationSlug(part);
+      if (!slug) return part;
+      return t(`feed.location.cities.${slug}`, { defaultValue: part });
+    })
+    .join(", ");
 }
 
 /** Renders the official Discover-home icon for a service category (cleaning → Sparkles, nanny → Baby, etc.). */
@@ -257,6 +386,7 @@ function CommentsDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { addToast } = useToast();
@@ -265,6 +395,7 @@ function CommentsDialog({
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const dateLocale = dateFnsLocaleFor(i18n.language);
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -344,7 +475,7 @@ function CommentsDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         className={cn(
-          "flex flex-col gap-0 p-0 overflow-hidden",
+          "flex flex-col gap-0 border-0 p-0 overflow-hidden",
           // Desktop / large screens: centered modal
           "sm:max-w-md sm:rounded-2xl sm:max-h-[min(90vh,580px)]",
           // Mobile: bottom sheet
@@ -354,10 +485,10 @@ function CommentsDialog({
           "max-md:rounded-t-[22px] max-md:rounded-b-none",
         )}
       >
-        <DialogHeader className="border-b border-border/60 px-5 py-4">
+        <DialogHeader className="px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <MessageCircle className="h-5 w-5 text-orange-500" strokeWidth={2} />
-            Comments
+            {t("common.comments")}
           </DialogTitle>
         </DialogHeader>
 
@@ -369,7 +500,7 @@ function CommentsDialog({
               </div>
             ) : comments.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No comments yet. Be the first!
+                {t("feed.noCommentsYet")}
               </p>
             ) : (
               comments.map((c) => {
@@ -415,7 +546,10 @@ function CommentsDialog({
                           </span>
                         )}
                         <time className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(c.created_at), {
+                            addSuffix: true,
+                            locale: dateLocale,
+                          })}
                         </time>
                       </div>
                       <p
@@ -439,7 +573,7 @@ function CommentsDialog({
           {user ? (
             <div className="flex items-end gap-2">
               <Textarea
-                placeholder="Write a comment…"
+                placeholder={t("feed.writeComment")}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -504,6 +638,7 @@ function CommentsSidePanel({
   initialCount?: number | null;
   wideLayout?: boolean;
 }) {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { addToast } = useToast();
@@ -514,6 +649,7 @@ function CommentsSidePanel({
   const [count, setCount] = useState<number | null>(
     typeof initialCount === "number" ? initialCount : null,
   );
+  const dateLocale = dateFnsLocaleFor(i18n.language);
 
   const fetchCount = useCallback(async () => {
     try {
@@ -605,11 +741,13 @@ function CommentsSidePanel({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <div className="truncate text-base font-black text-foreground">
-              {count == null ? "Comments" : `${count} Comments`}
+              {count == null
+                ? t("common.comments")
+                : t("feed.commentsCount", { count })}
             </div>
           </div>
           <div className="mt-0.5 text-xs font-semibold text-muted-foreground">
-            {authorName ? `on ${authorName}'s post` : " "}
+            {authorName ? t("feed.onAuthorsPost", { name: authorName }) : " "}
           </div>
         </div>
         <Button
@@ -622,7 +760,7 @@ function CommentsSidePanel({
             void fetchComments();
           }}
         >
-          Refresh
+          {t("feed.refresh")}
         </Button>
       </div>
 
@@ -634,7 +772,7 @@ function CommentsSidePanel({
             </div>
           ) : comments.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              No comments yet. Be the first!
+              {t("feed.noCommentsYet")}
             </p>
           ) : (
             <div className="divide-y divide-border/60">
@@ -681,6 +819,7 @@ function CommentsSidePanel({
                         <time className="shrink-0 text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(c.created_at), {
                             addSuffix: true,
+                            locale: dateLocale,
                           })}
                         </time>
                       </div>
@@ -705,7 +844,7 @@ function CommentsSidePanel({
         {user ? (
           <div className="flex items-end gap-2">
             <Textarea
-              placeholder="Write a comment…"
+              placeholder={t("feed.writeComment")}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -817,21 +956,6 @@ const POST_TYPE_METADATA: Record<string, {
   },
 };
 
-function getPostTypeBadgeLabel(typeId: string, typeName?: string) {
-  if (typeId === "request_help") return "REQUEST";
-  if (typeId === "offer_service") return "OFFER";
-  return (typeName ?? typeId).toUpperCase();
-}
-
-/** Offer posts open in-app chat — label uses the author's display name, not Telegram handle. */
-function offerPostContactLabel(fullName: string | null | undefined): string {
-  return `Contact ${fullName?.trim() || "User"}`;
-}
-
-function formatJobRequestAcceptedAt(iso: string): string {
-  return format(new Date(iso), "MMM d, yyyy 'at' h:mm a");
-}
-
 function formatEventPostDateTime(date: Date, time: string): string {
   const [hours, minutes] = time.split(":").map((part) => parseInt(part, 10));
   const dt = new Date(date);
@@ -862,6 +986,7 @@ function PostTypeBadge({
   typeName?: string;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const meta = POST_TYPE_METADATA[typeId];
   const Icon = meta?.icon ?? Sparkles;
 
@@ -872,7 +997,7 @@ function PostTypeBadge({
         strokeWidth={2.25}
         aria-hidden
       />
-      {getPostTypeBadgeLabel(typeId, typeName)}
+      {feedPostTypeBadgeLabel(t, typeId, typeName)}
     </span>
   );
 }
@@ -890,6 +1015,7 @@ export function ComposeModal({
   authorProfile: ProfileSnippet;
   initialPostTypeId?: string | null;
 }) {
+  const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { openKycRequiredDialog } = useKycGate();
   const { addToast } = useToast();
@@ -929,6 +1055,7 @@ export function ComposeModal({
     lat?: number;
     lng?: number;
   }>({ address: "" });
+  const [eventHelpersNeeded, setEventHelpersNeeded] = useState("");
 
   const [communityTitle, setCommunityTitle] = useState("");
   const [customCategory, setCustomCategory] = useState("");
@@ -996,6 +1123,7 @@ export function ComposeModal({
     setEventTime("");
     setEventDatePickerOpen(false);
     setEventLocation({ address: "" });
+    setEventHelpersNeeded("");
     setCommunityTitle("");
     setCustomCategory("");
     setCaptionEditorOpen(false);
@@ -1136,6 +1264,16 @@ export function ComposeModal({
       addToast({ title: "Please pick an event time", variant: "warning" });
       return;
     }
+    if (selectedPostTypeId === "event" && eventHelpersNeeded.trim()) {
+      const needed = parseInt(eventHelpersNeeded, 10);
+      if (!Number.isFinite(needed) || needed < 1) {
+        addToast({
+          title: "Helpers needed must be at least 1",
+          variant: "warning",
+        });
+        return;
+      }
+    }
     if (
       selectedPostTypeId === "event" &&
       (eventLocation.lat == null || eventLocation.lng == null || !eventLocation.address.trim())
@@ -1215,6 +1353,9 @@ export function ComposeModal({
           ...(savedCustomCategory ? { custom_category: savedCustomCategory } : {}),
         };
       } else if (selectedPostTypeId === "event") {
+        const helpersNeeded = eventHelpersNeeded.trim()
+          ? parseInt(eventHelpersNeeded, 10)
+          : null;
         metadata = {
           ...metadata,
           event_name: eventName,
@@ -1224,6 +1365,9 @@ export function ComposeModal({
           location: eventLocation.address,
           location_lat: eventLocation.lat,
           location_lng: eventLocation.lng,
+          ...(helpersNeeded != null && Number.isFinite(helpersNeeded) && helpersNeeded > 0
+            ? { helpers_needed: helpersNeeded }
+            : {}),
         };
       } else if (selectedPostTypeId === "community") {
         metadata = {
@@ -1415,7 +1559,11 @@ export function ComposeModal({
             (selectedPostTypeId === "offer_service" &&
               (offerServiceCategory || postLocation.address || offerRate || customCategory.trim())) ||
             (selectedPostTypeId === "event" &&
-              (eventName || eventDate || eventTime || eventLocation.address)) ||
+              (eventName ||
+                eventDate ||
+                eventTime ||
+                eventLocation.address ||
+                eventHelpersNeeded)) ||
             (selectedPostTypeId === "community" && communityTitle);
 
           if (!hasMeta) return null;
@@ -1428,7 +1576,7 @@ export function ComposeModal({
                     {requestHelpCategory && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
                         <CategoryIcon categoryId={requestHelpCategory} className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>{postServiceCategoryLabel(requestHelpCategory, customCategory)}</span>
+                        <span>{feedCategoryLabel(t, requestHelpCategory, customCategory)}</span>
                       </div>
                     )}
                     {postLocation.address &&
@@ -1436,7 +1584,7 @@ export function ComposeModal({
                     postLocation.lng != null ? (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>{postLocation.address}</span>
+                        <span>{feedLocationLabel(t, postLocation.address)}</span>
                       </div>
                     ) : null}
                     {timeframe ? (
@@ -1452,7 +1600,7 @@ export function ComposeModal({
                         <span>
                           {timeframe === "custom" && customWhenDate && customWhenTime
                             ? formatEventPostDateTime(customWhenDate, customWhenTime)
-                            : requestHelpWhenLabel({ timeframe }) ?? ""}
+                            : feedWhenLabel(t, { timeframe }) ?? ""}
                         </span>
                       </div>
                     ) : null}
@@ -1462,7 +1610,7 @@ export function ComposeModal({
                       <Coins className="h-3.5 w-3.5 shrink-0" />
                       <span>₪{budgetAmount}</span>
                       <span className="text-[10px] text-muted-foreground font-semibold">
-                        {budgetRateType === "per_hour" ? "per hour" : "fixed price"}
+                        {feedRateTypeLabel(t, budgetRateType)}
                       </span>
                     </div>
                   )}
@@ -1475,7 +1623,7 @@ export function ComposeModal({
                     {offerServiceCategory && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
                         <CategoryIcon categoryId={offerServiceCategory} className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>{postServiceCategoryLabel(offerServiceCategory, customCategory)}</span>
+                        <span>{feedCategoryLabel(t, offerServiceCategory, customCategory)}</span>
                       </div>
                     )}
                     {postLocation.address &&
@@ -1483,7 +1631,7 @@ export function ComposeModal({
                     postLocation.lng != null ? (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>{postLocation.address}</span>
+                        <span>{feedLocationLabel(t, postLocation.address)}</span>
                       </div>
                     ) : null}
                   </div>
@@ -1492,7 +1640,7 @@ export function ComposeModal({
                       <Coins className="h-3.5 w-3.5 shrink-0" />
                       <span>₪{offerRate}</span>
                       <span className="text-[10px] text-muted-foreground font-semibold">
-                        {offerRateType === "per_hour" ? "per hour" : "fixed price"}
+                        {feedRateTypeLabel(t, offerRateType)}
                       </span>
                     </div>
                   )}
@@ -1526,6 +1674,14 @@ export function ComposeModal({
                         <span>{eventLocation.address}</span>
                       </div>
                     )}
+                    {eventHelpersNeeded.trim() ? (
+                      <div className="flex items-center gap-1.5 text-foreground font-bold">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>
+                          {eventHelpersNeeded} {Number(eventHelpersNeeded) === 1 ? "helper" : "helpers"} needed
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}
@@ -1551,9 +1707,9 @@ export function ComposeModal({
               selectedPostTypeId === "event" && "bg-violet-600 text-white",
             )}
           >
-            {selectedPostTypeId === "request_help" && "I can help"}
+            {selectedPostTypeId === "request_help" && t("feed.iCanHelp")}
             {selectedPostTypeId === "offer_service" &&
-              offerPostContactLabel(authorProfile.full_name)}
+              feedContactLabel(t, authorProfile.full_name)}
             {selectedPostTypeId === "event" && "I want to join"}
           </button>
         )}
@@ -1800,7 +1956,7 @@ export function ComposeModal({
                               )}
                               disabled={submitting}
                             >
-                              {opt.label}
+                              {t(FEED_WHEN_LABEL_KEYS[opt.id] ?? opt.id)}
                             </button>
                           );
                         })}
@@ -1881,8 +2037,8 @@ export function ComposeModal({
                             className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
                             disabled={submitting}
                           >
-                            <option value="per_hour">per hour</option>
-                            <option value="fixed">fixed price</option>
+                            <option value="per_hour">{t("feed.budget.perHour")}</option>
+                            <option value="fixed">{t("feed.budget.fixedPrice")}</option>
                           </select>
                         </div>
                       </div>
@@ -1955,8 +2111,8 @@ export function ComposeModal({
                             className="w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 appearance-none font-medium text-foreground dark:bg-zinc-800/60"
                             disabled={submitting}
                           >
-                            <option value="per_hour">per hour</option>
-                            <option value="fixed">fixed price</option>
+                            <option value="per_hour">{t("feed.budget.perHour")}</option>
+                            <option value="fixed">{t("feed.budget.fixedPrice")}</option>
                           </select>
                         </div>
                       </div>
@@ -2037,6 +2193,25 @@ export function ComposeModal({
                       onChange={setEventLocation}
                       requireSelection
                     />
+
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-foreground">
+                        Helpers needed
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        inputMode="numeric"
+                        placeholder="How many helpers do you need?"
+                        value={eventHelpersNeeded}
+                        onChange={(e) => setEventHelpersNeeded(e.target.value)}
+                        className={cn(
+                          "w-full h-12 rounded-xl border border-input bg-muted/40 px-3.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 font-medium text-foreground dark:bg-zinc-800/60",
+                          noFieldSpinnerClass,
+                        )}
+                        disabled={submitting}
+                      />
+                    </div>
                   </>
                 )}
 
@@ -2482,6 +2657,7 @@ function PostCard({
   discoverWideLayout?: boolean;
   plainCard?: boolean;
 }) {
+  const { t, i18n } = useTranslation();
   const { addToast } = useToast();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const { profile: viewerProfile, user } = useAuth();
@@ -2502,23 +2678,37 @@ function PostCard({
   const [commentCount, setCommentCount] = useState(post.comment_count);
   const [liking, setLiking] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [eventJoined, setEventJoined] = useState(false);
+  const [eventJoinStatus, setEventJoinStatus] = useState<EventJoinInterestStatus | null>(
+    null,
+  );
   const [eventJoinBusy, setEventJoinBusy] = useState(false);
 
   const isEventPost =
     post.source === "post" && post.post_types?.id === "event";
   const isOwnEventPost = isEventPost && post.author_id === currentUserId;
+  const eventHelpersNeeded =
+    isEventPost && post.source === "post"
+      ? parseEventHelpersNeeded(post.post_metadata)
+      : null;
+  const eventAcceptedHelpers =
+    isEventPost && post.source === "post"
+      ? (post.event_accepted_helpers_count ?? 0)
+      : 0;
 
   useEffect(() => {
     if (!isEventPost || !currentUserId || isOwnEventPost) {
-      setEventJoined(false);
+      setEventJoinStatus(null);
       return;
     }
     let cancelled = false;
     void (async () => {
       try {
-        const joined = await hasEventJoinInterest(supabase, post.id, currentUserId);
-        if (!cancelled) setEventJoined(joined);
+        const status = await getEventJoinInterestStatus(
+          supabase,
+          post.id,
+          currentUserId,
+        );
+        if (!cancelled) setEventJoinStatus(status);
       } catch (error) {
         console.error("[PostCard] event join status", error);
       }
@@ -2545,10 +2735,22 @@ function PostCard({
         return;
       }
 
+      if (eventJoinStatus === "declined") {
+        addToast({
+          title: "Not selected for this event",
+          description: "The host declined your request. Contact them if you think this is a mistake.",
+          variant: "warning",
+        });
+        return;
+      }
+      if (eventJoinStatus === "accepted") {
+        return;
+      }
+
       setEventJoinBusy(true);
       try {
         const result = await recordEventJoinInterest(supabase, post.id, user.id);
-        setEventJoined(true);
+        setEventJoinStatus(result.status);
         addToast({
           title: result.alreadyJoined
             ? "Already interested"
@@ -2714,14 +2916,6 @@ function PostCard({
     };
   }, [saveNoticeOpen]);
 
-  const saveBadgeHeaderClass = cn(
-    "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-md backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
-    authorSaved
-      ? "border-amber-300/70 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/45 dark:bg-amber-950/55 dark:text-amber-200 dark:hover:bg-amber-950/75"
-      : "border-border/80 bg-muted/85 text-muted-foreground hover:bg-muted hover:text-foreground dark:bg-zinc-800/90 dark:hover:bg-zinc-800",
-  );
-
-
   const videoMuteMediaClass =
     "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white shadow-lg backdrop-blur-xl transition-colors hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45";
 
@@ -2784,17 +2978,23 @@ function PostCard({
   const portraitMediaObjectClass = "object-cover";
   const landscapeMediaObjectClass = "object-contain";
   const mediaBoxBgClass = isLandscape ? "bg-black" : "bg-transparent";
-  // Discover card width: portrait shrinks to media; landscape spans the column up to a cap.
-  // Text-only posts use full column width so the header badge aligns with media posts.
-  const desktopDiscoverCardWidthClass = isDiscover
+  // Feed column is always full width so the header type badge aligns across post types.
+  // Portrait media alone shrinks below the header.
+  const desktopDiscoverFeedColumnClass = isDiscover
     ? discoverWideLayout
-      ? isLandscape || !hasMedia
-        ? "md:w-full md:max-w-none"
-        : "md:w-full md:max-w-[720px]"
-      : isLandscape || !hasMedia
-        ? "md:w-full md:max-w-[820px]"
-        : "md:w-fit md:max-w-[520px]"
+      ? "md:w-full md:max-w-none"
+      : "md:w-full md:max-w-[820px]"
     : null;
+  const desktopDiscoverMediaColumnClass =
+    isDiscover && hasMedia
+      ? discoverWideLayout
+        ? isLandscape
+          ? "md:w-full md:max-w-none"
+          : "md:w-full md:max-w-[720px]"
+        : isLandscape
+          ? "md:w-full md:max-w-[820px]"
+          : "md:w-fit md:max-w-[520px]"
+      : null;
   const desktopMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
 
   async function toggleLike() {
@@ -3061,19 +3261,26 @@ function PostCard({
     ? bidirectionalTextProps(effectiveCaption, "text-left")
     : null;
   const isSource = post.source === "availability";
+  const eventDateTimeLabel = useMemo(() => {
+    if (post.source !== "post" || post.post_type_id !== "event" || !post.post_metadata) {
+      return null;
+    }
+    return feedEventDateTimeLabel(t, i18n.language, post.post_metadata);
+  }, [post, t, i18n.language]);
+
   const whenLabel = useMemo(() => {
     if (post.source === "job_request" && post.post_metadata?.timeframe) {
-      return requestHelpWhenLabel(post.post_metadata);
+      return feedWhenLabel(t, post.post_metadata);
     }
     if (post.source !== "post" || !post.post_metadata) return null;
     if (post.post_type_id === "request_help" && post.post_metadata.timeframe) {
-      return requestHelpWhenLabel(post.post_metadata);
+      return feedWhenLabel(t, post.post_metadata);
     }
-    if (post.post_type_id === "event" && post.post_metadata.date_time) {
-      return post.post_metadata.date_time;
+    if (post.post_type_id === "event") {
+      return eventDateTimeLabel;
     }
     return null;
-  }, [post]);
+  }, [post, t, eventDateTimeLabel]);
 
   const requestWhenTimeframe = useMemo(() => {
     if (post.source === "job_request") {
@@ -3087,7 +3294,7 @@ function PostCard({
     if (post.source === "job_request" && post.post_metadata?.category) {
       return {
         id: post.post_metadata.category,
-        label: postServiceCategoryLabel(post.post_metadata.category),
+        label: feedCategoryLabel(t, post.post_metadata.category),
       };
     }
     if (post.source !== "post" || !post.post_metadata) return null;
@@ -3100,9 +3307,9 @@ function PostCard({
     if (!categoryId) return null;
     return {
       id: categoryId,
-      label: postServiceCategoryLabel(categoryId, post.post_metadata.custom_category),
+      label: feedCategoryLabel(t, categoryId, post.post_metadata.custom_category),
     };
-  }, [post]);
+  }, [post, t]);
 
   function toggleInlineVideoMute(e: React.MouseEvent) {
     e.stopPropagation();
@@ -3121,8 +3328,12 @@ function PostCard({
     }
   }
   const postedLabel = useMemo(
-    () => formatDistanceToNow(new Date(post.created_at), { addSuffix: true }),
-    [post.created_at],
+    () =>
+      formatDistanceToNow(new Date(post.created_at), {
+        addSuffix: true,
+        locale: dateFnsLocaleFor(i18n.language),
+      }),
+    [post.created_at, i18n.language],
   );
 
   useEffect(() => {
@@ -3167,14 +3378,9 @@ function PostCard({
     return (
       <div
         className={cn(
-          "flex items-center justify-between bg-transparent px-2 md:px-3",
-          hasMedia
-            ? isProfile
-              ? "pb-0 pt-0 md:pt-0.5 md:pb-0"
-              : "pb-0 pt-0.5 md:pt-1 md:pb-0"
-            : isProfile
-              ? "py-0.5 md:mt-0.5 md:py-1.5"
-              : "py-1 md:mt-0.5 md:py-2",
+          "mt-1.5 flex items-center justify-between bg-transparent",
+          cardMarginX,
+          isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0",
         )}
       >
         <div className="flex items-center gap-0">
@@ -3272,7 +3478,7 @@ function PostCard({
             )}
           </button>
         ) : null}
-        {canSaveAuthor && hasMedia ? (
+        {canSaveAuthor ? (
           <button
             type="button"
             disabled={favoriteBusy}
@@ -3309,7 +3515,38 @@ function PostCard({
     );
   }
 
+  const showFeedMetadataBox =
+    (post.source === "post" || post.source === "job_request") &&
+    post.post_metadata &&
+    post.post_type_id !== "community" &&
+    Object.keys(post.post_metadata).length > 0;
 
+  const showFeedActionButton =
+    (post.source === "post" &&
+      post.post_types &&
+      post.post_types.id !== "community") ||
+    (isJobRequest && currentUserId !== post.author_id);
+
+  const feedActionButtonClass = cn(
+    "inline-flex h-9 w-[10.75rem] shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold uppercase tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-65 shadow-none border-0",
+    (post.source === "post" && post.post_types?.id === "request_help") || isJobRequest
+      ? jobAcceptedAt
+        ? "bg-red-500/15 text-red-700 ring-1 ring-red-300/80 dark:bg-red-950/30 dark:text-red-200 dark:ring-red-800/80"
+        : "bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-600"
+      : null,
+    post.source === "post" &&
+      post.post_types?.id === "offer_service" &&
+      "bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600",
+    post.source === "post" &&
+      post.post_types?.id === "event" &&
+      (eventJoinStatus === "accepted"
+        ? "bg-emerald-500/15 text-emerald-800 ring-1 ring-emerald-300/80 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-800/80"
+        : eventJoinStatus === "declined"
+          ? "bg-muted text-muted-foreground ring-1 ring-border/80"
+          : eventJoinStatus === "pending"
+            ? "bg-violet-500/15 text-violet-700 ring-1 ring-violet-300/80 dark:bg-violet-950/30 dark:text-violet-200 dark:ring-violet-800/80"
+            : "bg-violet-600 hover:bg-violet-700 text-white dark:bg-violet-700 dark:hover:bg-violet-600"),
+  );
 
   return (
     <div
@@ -3324,7 +3561,7 @@ function PostCard({
           ? "bg-transparent shadow-none ring-0 outline-none rounded-none dark:bg-transparent"
           : "bg-white shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md",
         isFocused && "scroll-mt-24 scroll-mb-28",
-        desktopDiscoverCardWidthClass,
+        desktopDiscoverFeedColumnClass,
       )}
     >
       {/* Header — always rendered outside the media block */}
@@ -3370,46 +3607,36 @@ function PostCard({
             {isSource && (
               <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
                 <Sparkles className="h-3 w-3" />
-                {categoryLabel((post as AvailabilityPost).category)}
+                {feedCategoryLabel(t, (post as AvailabilityPost).category)}
               </span>
             )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2 self-start pt-0.5">
-          {post.source === "post" && post.post_types ? (
+          {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
+              <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {eventHelpersNeeded != null
+                ? t("feed.event.helpersBadge", {
+                    accepted: eventAcceptedHelpers,
+                    needed: eventHelpersNeeded,
+                  })
+                : t("feed.event.helpersAcceptedOnly", {
+                    count: eventAcceptedHelpers,
+                  })}
+            </span>
+          ) : null}
+          {post.source === "post" &&
+          (post.post_types?.id ?? post.post_type_id) ? (
             <PostTypeBadge
-              typeId={post.post_types.id}
-              typeName={post.post_types.name}
+              typeId={post.post_types?.id ?? post.post_type_id!}
+              typeName={post.post_types?.name}
             />
           ) : isJobRequest && post.post_types ? (
             <PostTypeBadge
               typeId={post.post_types.id}
               typeName={post.post_types.name}
             />
-          ) : null}
-          {canSaveAuthor && !hasMedia ? (
-            <button
-              type="button"
-              disabled={favoriteBusy}
-              onClick={(e) => void toggleSaveAuthor(e)}
-              title={authorSaved ? "Remove from saved profiles" : "Save profile"}
-              aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
-              aria-pressed={authorSaved}
-              className={saveBadgeHeaderClass}
-            >
-              {favoriteBusy ? (
-                <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
-              ) : (
-                <Bookmark
-                  className={cn(
-                    "h-6 w-6",
-                    authorSaved && "fill-amber-500 text-amber-700 dark:fill-amber-400 dark:text-amber-200",
-                  )}
-                  strokeWidth={authorSaved ? 0 : 2}
-                  aria-hidden
-                />
-              )}
-            </button>
           ) : null}
           {isOwnFeed && post.source === "post" ? (
             <button
@@ -3432,6 +3659,7 @@ function PostCard({
             mediaBoxBgClass,
             mobileMediaBoxClass,
             desktopMediaBoxClass,
+            desktopDiscoverMediaColumnClass,
           )}
           style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
         >
@@ -3519,6 +3747,7 @@ function PostCard({
             mediaBoxBgClass,
             mobileMediaBoxClass,
             desktopMediaBoxClass,
+            desktopDiscoverMediaColumnClass,
           )}
           style={{ ...mobileMediaStyle, ...desktopMediaStyle }}
         >
@@ -3621,9 +3850,6 @@ function PostCard({
         </div>
       )}
 
-      {/* Like / comment / share — directly under media (matches Instagram-style feed) */}
-      {hasMedia ? renderEngagementRow() : null}
-
       {/* Community title — shown above caption as a heading */}
       {post.source === "post" && post.post_type_id === "community" && (generatedCopy?.title || post.post_metadata?.title) && (
         <div className={cn(cardPadX, hasMedia ? "pt-1" : "pt-3")}>
@@ -3679,12 +3905,31 @@ function PostCard({
         );
       })()}
 
-      {/* Post Metadata details box (community posts show title above caption instead) */}
-      {(post.source === "post" || post.source === "job_request") &&
-        post.post_metadata &&
-        post.post_type_id !== "community" &&
-        Object.keys(post.post_metadata).length > 0 && (
-        <div className={cn("mt-2 space-y-2 rounded-2xl border border-zinc-100 bg-zinc-50/50 p-3.5 dark:border-zinc-900 dark:bg-zinc-950/40", cardMarginX)}>
+      {/* Tagged users (only when there is no media overlay) */}
+      {!hasMedia && post.tagged_profiles.length > 0 ? (
+        <div className={cn("flex flex-wrap items-center gap-3 pt-2", cardPadX)}>
+          <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          {post.tagged_profiles.map((t) => (
+            <GuestAwareProfileLink
+              key={t.id}
+              userId={t.id}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+            >
+              <Avatar className="h-7 w-7">
+                <AvatarImage src={t.photo_url ?? undefined} />
+                <AvatarFallback className="text-[10px] font-bold">{(t.full_name ?? "?").charAt(0)}</AvatarFallback>
+              </Avatar>
+              <span>{t.full_name}</span>
+            </GuestAwareProfileLink>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Post metadata + compact action button (community posts show title above caption) */}
+      {(showFeedMetadataBox || showFeedActionButton) && (
+        <div className={cn("mt-2 rounded-2xl bg-zinc-50/50 p-3.5 dark:bg-zinc-800/55", cardMarginX)}>
+          {showFeedMetadataBox ? (
+          <div className="space-y-2">
           {post.post_type_id === "request_help" && (
             <>
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
@@ -3692,7 +3937,8 @@ function PostCard({
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <CategoryIcon categoryId={post.post_metadata.category} className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>
-                      {postServiceCategoryLabel(
+                      {feedCategoryLabel(
+                        t,
                         post.post_metadata.category,
                         post.post_metadata.custom_category,
                       )}
@@ -3702,7 +3948,7 @@ function PostCard({
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span>{post.post_metadata.location}</span>
+                    <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}
                 {post.post_metadata.timeframe ? (
@@ -3723,7 +3969,7 @@ function PostCard({
                       )}
                     />
                     <span className={cn(isRequestHelpWhenUrgent(post.post_metadata.timeframe) && "uppercase tracking-wide")}>
-                      {requestHelpWhenLabel(post.post_metadata) ?? ""}
+                      {feedWhenLabel(t, post.post_metadata) ?? ""}
                     </span>
                   </div>
                 ) : null}
@@ -3733,7 +3979,7 @@ function PostCard({
                   <Coins className="h-4 w-4 shrink-0" />
                   <span>₪{post.post_metadata.budget}</span>
                   <span className="text-xs text-muted-foreground font-semibold">
-                    {post.post_metadata.rate_type === "per_hour" ? "per hour" : "fixed price"}
+                    {feedRateTypeLabel(t, post.post_metadata.rate_type)}
                   </span>
                 </div>
               )}
@@ -3747,7 +3993,8 @@ function PostCard({
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <CategoryIcon categoryId={post.post_metadata.service} className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>
-                      {postServiceCategoryLabel(
+                      {feedCategoryLabel(
+                        t,
                         post.post_metadata.service,
                         post.post_metadata.custom_category,
                       )}
@@ -3757,7 +4004,7 @@ function PostCard({
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span>{post.post_metadata.location}</span>
+                    <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}
               </div>
@@ -3766,7 +4013,7 @@ function PostCard({
                   <Coins className="h-4 w-4 shrink-0" />
                   <span>₪{post.post_metadata.rate}</span>
                   <span className="text-xs text-muted-foreground font-semibold">
-                    {post.post_metadata.rate_type === "per_hour" ? "per hour" : "fixed price"}
+                    {feedRateTypeLabel(t, post.post_metadata.rate_type)}
                   </span>
                 </div>
               )}
@@ -3782,115 +4029,85 @@ function PostCard({
                 </div>
               )}
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {post.post_metadata.date_time && (
+                {eventDateTimeLabel ? (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span>{post.post_metadata.date_time}</span>
+                    <span>{eventDateTimeLabel}</span>
                   </div>
-                )}
+                ) : null}
                 {post.post_metadata.location && (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span>{post.post_metadata.location}</span>
+                    <span>{feedLocationLabel(t, post.post_metadata.location)}</span>
                   </div>
                 )}
+                {eventHelpersNeeded != null ? (
+                  <div className="flex items-center gap-1.5 text-foreground font-bold">
+                    <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>
+                      {t("feed.event.helpersNeededLabel", { count: eventHelpersNeeded })}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
           )}
+          </div>
+          ) : null}
 
+          {showFeedActionButton ? (
+            <div className={cn("flex justify-end", showFeedMetadataBox && "mt-3")}>
+              <button
+                type="button"
+                onClick={isJobRequest ? handleJobRequestAccept : handleActionButtonClick}
+                disabled={
+                  isJobRequest
+                    ? jobAccepting || Boolean(jobAcceptedAt)
+                    : chatOpening ||
+                      eventJoinBusy ||
+                      eventJoinStatus === "accepted" ||
+                      eventJoinStatus === "declined"
+                }
+                className={feedActionButtonClass}
+              >
+                {isJobRequest ? (
+                  jobAccepting ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                  ) : null
+                ) : chatOpening || eventJoinBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                ) : null}
+                <span className="truncate">
+                  {isJobRequest
+                    ? jobAcceptedAt
+                      ? "Accepted"
+                      : t("feed.iCanHelp")
+                    : null}
+                  {!isJobRequest && post.source === "post" && post.post_types ? (
+                    <>
+                      {post.post_types.id === "request_help" && t("feed.iCanHelp")}
+                      {post.post_types.id === "offer_service" &&
+                        feedContactLabel(t, post.author?.full_name)}
+                      {post.post_types.id === "event" &&
+                        (isOwnEventPost
+                          ? t("feed.event.viewInterestedUsers")
+                          : eventJoinStatus === "accepted"
+                            ? t("feed.event.selectedHelper")
+                            : eventJoinStatus === "declined"
+                              ? t("feed.event.declined")
+                              : eventJoinStatus === "pending"
+                                ? t("feed.event.interested")
+                                : t("feed.event.wantToJoin"))}
+                    </>
+                  ) : null}
+                </span>
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
 
-      {/* Action button below metadata details box */}
-      {((post.source === "post" &&
-        post.post_types &&
-        post.post_types.id !== "community") ||
-        (isJobRequest && currentUserId !== post.author_id)) && (
-        <div className={cn("mt-2", cardMarginX)}>
-          <button
-            type="button"
-            onClick={isJobRequest ? handleJobRequestAccept : handleActionButtonClick}
-            disabled={
-              isJobRequest
-                ? jobAccepting || Boolean(jobAcceptedAt)
-                : chatOpening || eventJoinBusy
-            }
-            className={cn(
-              "w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black uppercase tracking-wider transition-all duration-200 active:scale-95 disabled:opacity-65 shadow-none border-0",
-              (post.source === "post" &&
-                post.post_types?.id === "request_help") ||
-                isJobRequest
-                ? jobAcceptedAt
-                  ? "bg-red-500/15 text-red-700 ring-1 ring-red-300/80 dark:bg-red-950/30 dark:text-red-200 dark:ring-red-800/80"
-                  : "bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-600"
-                : null,
-              post.source === "post" &&
-                post.post_types?.id === "offer_service" &&
-                "bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600",
-              post.source === "post" &&
-                post.post_types?.id === "event" &&
-                (eventJoined
-                  ? "bg-violet-500/15 text-violet-700 ring-1 ring-violet-300/80 dark:bg-violet-950/30 dark:text-violet-200 dark:ring-violet-800/80"
-                  : "bg-violet-600 hover:bg-violet-700 text-white dark:bg-violet-700 dark:hover:bg-violet-600"),
-            )}
-          >
-            {isJobRequest ? (
-              jobAccepting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null
-            ) : chatOpening || eventJoinBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : null}
-            {isJobRequest
-              ? jobAcceptedAt
-                ? (
-                    <span className="flex flex-col items-center gap-0.5 normal-case tracking-normal">
-                      <span className="uppercase tracking-wider">Accepted</span>
-                      <span className="text-xs font-semibold opacity-90">
-                        at {formatJobRequestAcceptedAt(jobAcceptedAt)}
-                      </span>
-                    </span>
-                  )
-                : "I can help"
-              : null}
-            {!isJobRequest && post.source === "post" && post.post_types ? (
-              <>
-                {post.post_types.id === "request_help" && "I can help"}
-                {post.post_types.id === "offer_service" &&
-                  offerPostContactLabel(post.author?.full_name)}
-                {post.post_types.id === "event" &&
-                  (isOwnEventPost
-                    ? "View interested users"
-                    : eventJoined
-                      ? "Interested"
-                      : "I want to join")}
-              </>
-            ) : null}
-          </button>
-        </div>
-      )}
-
-      {/* Tagged users (only when there is no media overlay) */}
-      {!hasMedia && post.tagged_profiles.length > 0 && (
-        <div className={cn("flex flex-wrap items-center gap-3 pt-2", cardPadX)}>
-          <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          {post.tagged_profiles.map((t) => (
-            <GuestAwareProfileLink
-              key={t.id}
-              userId={t.id}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
-            >
-              <Avatar className="h-7 w-7">
-                <AvatarImage src={t.photo_url ?? undefined} />
-                <AvatarFallback className="text-[10px] font-bold">{(t.full_name ?? "?").charAt(0)}</AvatarFallback>
-              </Avatar>
-              <span>{t.full_name}</span>
-            </GuestAwareProfileLink>
-          ))}
-        </div>
-      )}
-
-      {!hasMedia ? renderEngagementRow() : null}
+      {renderEngagementRow()}
 
       {/* Comments dialog */}
       {!isJobRequest ? (
@@ -4045,6 +4262,17 @@ interface ProfilePostsFeedProps {
   plainCards?: boolean;
   /** Filter global feed to a single post type (e.g. request_help). */
   filterPostTypeId?: string | null;
+  /** Filter feed to multiple post types (Discover home hire/work tabs). */
+  filterPostTypeIds?: string[] | null;
+  /** Post types shown in the favorites side panel (defaults to feed filter). */
+  sidePanelPostTypeIds?: string[] | null;
+  /** Pin favorites panel to viewport; scroll panel independently (community feed page). */
+  fixedFavoritesSidePanel?: boolean;
+  /** Navigate away or handle side-panel post click (Discover home → community feed). */
+  onSidePanelPostOpen?: (postId: string) => void;
+  /** Scroll to a post in the feed after navigation (no pin-to-top). */
+  scrollToPostId?: string | null;
+  onScrollToPostDone?: () => void;
   /** Show only the viewer's posts that received comments. */
   filterCommentedOwnPosts?: boolean;
   /** Show only open help requests the viewer accepted. */
@@ -4074,14 +4302,28 @@ export function ProfilePostsFeed({
   expandDiscoverLayout = false,
   plainCards = false,
   filterPostTypeId = null,
+  filterPostTypeIds = null,
+  sidePanelPostTypeIds = null,
+  fixedFavoritesSidePanel = false,
+  onSidePanelPostOpen,
+  scrollToPostId = null,
+  onScrollToPostDone,
   filterCommentedOwnPosts = false,
   filterAcceptedRequests = false,
   feedAdvancedFilters,
   excludeOwnJobRequests,
 }: ProfilePostsFeedProps) {
   const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
+  const effectivePostTypeFilter = useMemo(() => {
+    if (filterPostTypeIds?.length) return filterPostTypeIds;
+    if (filterPostTypeId) return [filterPostTypeId];
+    return null;
+  }, [filterPostTypeId, filterPostTypeIds]);
+  const resolvedSidePanelPostTypeIds =
+    sidePanelPostTypeIds ?? effectivePostTypeFilter;
   const normalizedFocusPostId = parseProfilePostShareId(focusPostId);
   const normalizedFocusRequestId = parseJobRequestShareId(focusRequestId);
+  const normalizedScrollToPostId = parseProfilePostShareId(scrollToPostId);
   const { user, profile: currentProfile } = useAuth();
   const { guardKycAction } = useKycGate();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
@@ -4099,6 +4341,7 @@ export function ProfilePostsFeed({
   const [reelCommentsPostId, setReelCommentsPostId] = useState<string | null>(null);
   const deepLinkHandledRef = useRef<string | null>(null);
   const requestDeepLinkHandledRef = useRef<string | null>(null);
+  const scrollToPostHandledRef = useRef<string | null>(null);
   /**
    * Track viewport width so we can render the desktop full-size viewer
    * (`PostMediaDesktopViewer`) on md+ screens and the mobile reels viewer
@@ -4138,6 +4381,7 @@ export function ProfilePostsFeed({
     sortOrder,
     filterLikedByUserId,
     filterPostTypeId,
+    filterPostTypeIds: effectivePostTypeFilter,
     filterCommentedOwnPosts,
     filterAcceptedRequests,
     feedWhen: advancedFilters?.when ?? null,
@@ -4155,6 +4399,7 @@ export function ProfilePostsFeed({
     sortOrder,
     filterLikedByUserId,
     filterPostTypeId,
+    effectivePostTypeFilter,
     filterCommentedOwnPosts,
     filterAcceptedRequests,
     advancedFilters?.when,
@@ -4406,9 +4651,16 @@ export function ProfilePostsFeed({
         query = query.contains("tagged_user_ids", [filterTaggedUserId]);
       }
 
-      if (filterPostTypeId) {
+      if (effectivePostTypeFilter?.length) {
+        query = query.in("post_type_id", effectivePostTypeFilter);
+      } else if (filterPostTypeId) {
         query = query.eq("post_type_id", filterPostTypeId);
       }
+
+      const includesRequestHelp =
+        !effectivePostTypeFilter?.length ||
+        effectivePostTypeFilter.includes("request_help");
+      const hasPostTypeFilter = Boolean(effectivePostTypeFilter?.length);
 
       const limitPosts = limit ?? (userId ? 50 : 100);
       const limitAvail = limit ?? (userId ? 20 : 50);
@@ -4417,16 +4669,18 @@ export function ProfilePostsFeed({
         Boolean(filterCommentedOwnPosts) ||
         Boolean(advancedFilters?.myPostsOnly) ||
         Boolean(advancedFilters?.favoriteProfilesOnly) ||
+        hasPostTypeFilter ||
         (Boolean(filterPostTypeId) && filterPostTypeId !== "request_help") ||
-        (advancedFilters?.when !== "any" && filterPostTypeId !== "request_help") ||
-        (advancedFilters?.budgetMin != null && filterPostTypeId !== "request_help") ||
-        (advancedFilters?.budgetMax != null && filterPostTypeId !== "request_help");
+        (advancedFilters?.when !== "any" && !includesRequestHelp) ||
+        (advancedFilters?.budgetMin != null && !includesRequestHelp) ||
+        (advancedFilters?.budgetMax != null && !includesRequestHelp);
 
       const skipJobRequests =
         Boolean(userId) ||
         Boolean(filterLikedByUserId) ||
         Boolean(filterCommentedOwnPosts) ||
         Boolean(filterTaggedUserId) ||
+        (hasPostTypeFilter && !includesRequestHelp) ||
         (Boolean(filterPostTypeId) &&
           filterPostTypeId !== "request_help" &&
           filterPostTypeId !== null);
@@ -4552,8 +4806,12 @@ export function ProfilePostsFeed({
 
       const idList = [...profileIds, ...allTaggedIds].slice(0, 200);
       const postIds = rawPosts.map((p) => p.id);
+      const eventPostIds = rawPosts
+        .filter((p) => p.post_type_id === "event")
+        .map((p) => p.id);
 
-      const [profRes, likedRes, engRes, shareRes, fpRes] = await Promise.all([
+      const [profRes, likedRes, engRes, shareRes, fpRes, eventHelperRes] =
+        await Promise.all([
         supabase
           .from("profiles")
           .select("id, full_name, photo_url, is_verified, telegram_username, role")
@@ -4586,6 +4844,9 @@ export function ProfilePostsFeed({
             data: [] as { user_id: string; live_until: string | null }[],
             error: null,
           }),
+        eventPostIds.length > 0
+          ? fetchEventPostHelperCounts(supabase, eventPostIds)
+          : Promise.resolve(new Map()),
       ]);
 
       if (fpRes.error) {
@@ -4652,6 +4913,11 @@ export function ProfilePostsFeed({
         }
       }
 
+      const eventHelperCountMap =
+        eventHelperRes instanceof Map
+          ? eventHelperRes
+          : new Map<string, { accepted_count: number }>();
+
       // 7. Build profile posts
       const profilePostsFeed: ProfilePost[] = rawPosts.map((p) => ({
         id: p.id,
@@ -4678,6 +4944,10 @@ export function ProfilePostsFeed({
           p.custom_category,
         ),
         ai_generated_copy: parseGeneratedPostCopy(p.ai_generated_copy),
+        event_accepted_helpers_count:
+          p.post_type_id === "event"
+            ? (eventHelperCountMap.get(p.id)?.accepted_count ?? 0)
+            : undefined,
       }));
 
       const filteredProfilePosts = advancedFilters
@@ -4721,13 +4991,31 @@ export function ProfilePostsFeed({
       );
 
       // 10. Merge and sort by created_at
-      const merged: FeedPost[] = [...filteredProfilePosts, ...availFeed, ...jobRequestFeed].sort(
+      let merged: FeedPost[] = [...filteredProfilePosts, ...availFeed, ...jobRequestFeed].sort(
         (a, b) => {
           const timeA = new Date(a.created_at).getTime();
           const timeB = new Date(b.created_at).getTime();
           return sortOrder === "oldest" ? timeA - timeB : timeB - timeA;
         }
       );
+
+      if (effectivePostTypeFilter?.length) {
+        merged = merged.filter((post) => {
+          if (post.source === "job_request") {
+            return effectivePostTypeFilter.includes("request_help");
+          }
+          if (post.source === "availability") return false;
+          if (post.source === "post") {
+            const typeId = post.post_type_id ?? post.post_types?.id ?? null;
+            return typeId != null && effectivePostTypeFilter.includes(typeId);
+          }
+          return false;
+        });
+      }
+
+      if (limit != null) {
+        merged = merged.slice(0, limit);
+      }
 
       return merged;
     } catch (e) {
@@ -4743,6 +5031,7 @@ export function ProfilePostsFeed({
     sortOrder,
     filterLikedByUserId,
     filterPostTypeId,
+    effectivePostTypeFilter,
     filterCommentedOwnPosts,
     filterAcceptedRequests,
     advancedFilters,
@@ -4776,13 +5065,26 @@ export function ProfilePostsFeed({
 
   const allowRequestDeepLink =
     Boolean(normalizedFocusRequestId) &&
+    (!effectivePostTypeFilter?.length ||
+      effectivePostTypeFilter.includes("request_help")) &&
     (!filterPostTypeId || filterPostTypeId === "request_help") &&
     !filterAcceptedRequests;
 
   const allowPostDeepLink =
-    Boolean(normalizedFocusPostId) &&
-    filterPostTypeId !== "request_help" &&
-    !filterAcceptedRequests;
+    Boolean(normalizedFocusPostId) && !filterAcceptedRequests;
+
+  const handleSidePanelPostOpen = useCallback(
+    (postId: string) => {
+      if (onSidePanelPostOpen) {
+        onSidePanelPostOpen(postId);
+        return;
+      }
+      scrollToProfilePostWhenReady(postId, {
+        topInset: appearance === "discover" ? 96 : 12,
+      });
+    },
+    [appearance, onSidePanelPostOpen],
+  );
 
   const {
     data: focusedRequest,
@@ -4832,12 +5134,7 @@ export function ProfilePostsFeed({
       );
       const focusedCandidate =
         focusedPost?.id === normalizedFocusPostId ? focusedPost : null;
-      const match =
-        inFeed ??
-        (focusedCandidate &&
-        (!filterPostTypeId || focusedCandidate.post_type_id === filterPostTypeId)
-          ? focusedCandidate
-          : null);
+      const match = inFeed ?? focusedCandidate;
       if (match) {
         result = [
           match,
@@ -4884,6 +5181,7 @@ export function ProfilePostsFeed({
     allowPostDeepLink,
     allowRequestDeepLink,
     filterPostTypeId,
+    effectivePostTypeFilter,
   ]);
 
   /** Deep link from shared URLs: scroll the matching post into view. */
@@ -5010,6 +5308,34 @@ export function ProfilePostsFeed({
     appearance,
   ]);
 
+  /** Scroll to a post after navigating from Discover home (no pin-to-top). */
+  useEffect(() => {
+    if (!normalizedScrollToPostId) {
+      scrollToPostHandledRef.current = null;
+      return;
+    }
+    if (isPending) return;
+    if (scrollToPostHandledRef.current === normalizedScrollToPostId) return;
+
+    const cancelScroll = scrollToProfilePostWhenReady(normalizedScrollToPostId, {
+      topInset: appearance === "discover" ? 96 : 12,
+      onDone: (found) => {
+        if (found) {
+          scrollToPostHandledRef.current = normalizedScrollToPostId;
+          onScrollToPostDone?.();
+        }
+      },
+    });
+
+    return cancelScroll;
+  }, [
+    normalizedScrollToPostId,
+    isPending,
+    posts,
+    appearance,
+    onScrollToPostDone,
+  ]);
+
   function handleLikeToggle(postId: string, newLiked: boolean) {
     queryClient.setQueryData<FeedPost[]>(qk, (prev) =>
       prev?.map((p) =>
@@ -5120,7 +5446,7 @@ export function ProfilePostsFeed({
   }
 
   return (
-    <div className="space-y-3 md:space-y-2">
+    <div className="space-y-7 md:space-y-8">
       {/* Compose button — own profile only */}
       {isOwnProfile && (
         <div>
@@ -5168,8 +5494,8 @@ export function ProfilePostsFeed({
         // Two-column layout for the whole feed: posts stack on the left,
         // sidebar spans the full feed height on the right (no extra gaps
         // between posts when the sidebar is long).
-        <div className="md:flex md:items-start md:justify-start md:gap-10 md:pr-4 lg:pr-8">
-          <div className="min-w-0 space-y-3 md:flex-1 md:space-y-2">
+        <div className="md:flex md:items-start md:justify-start md:gap-5 md:pr-2 lg:gap-8 lg:pr-4 xl:gap-10 xl:pr-8">
+          <div className="min-w-0 space-y-7 md:flex-1 md:space-y-8">
             {displayPosts.map((post) => (
               <FeedPostItem
                 key={post.id}
@@ -5189,7 +5515,11 @@ export function ProfilePostsFeed({
               />
             ))}
           </div>
-          <FavoritesPostsSidePanel />
+          <FavoritesPostsSidePanel
+            postTypeIds={resolvedSidePanelPostTypeIds}
+            fixed={fixedFavoritesSidePanel}
+            onPostOpen={handleSidePanelPostOpen}
+          />
         </div>
       ) : (
         displayPosts.map((post) => {

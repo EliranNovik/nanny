@@ -61,6 +61,7 @@ export const queryKeys = {
     sortOrder?: string;
     filterLikedByUserId?: string | null;
     filterPostTypeId?: string | null;
+    filterPostTypeIds?: string[] | null;
     filterCommentedOwnPosts?: boolean;
     filterAcceptedRequests?: boolean;
     feedWhen?: string | null;
@@ -81,6 +82,7 @@ export const queryKeys = {
       opts.sortOrder ?? "newest",
       opts.filterLikedByUserId ?? "",
       opts.filterPostTypeId ?? "",
+      opts.filterPostTypeIds?.join(",") ?? "",
       opts.filterCommentedOwnPosts ? "commented" : "",
       opts.filterAcceptedRequests ? "accepted" : "",
       opts.feedWhen ?? "",

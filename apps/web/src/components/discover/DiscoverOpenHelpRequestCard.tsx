@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Baby,
   Bookmark,
@@ -209,6 +210,7 @@ export function DiscoverOpenHelpRequestCard({
   onToggleSave,
   className,
 }: Props) {
+  const { t } = useTranslation();
   const title = openHelpRequestTitle(row);
   const description = openHelpRequestDescription(row);
   const detailLine = openHelpRequestDetailLine(row);
@@ -371,7 +373,7 @@ export function DiscoverOpenHelpRequestCard({
               ) : (
                 <Check className="h-4 w-4" strokeWidth={3} aria-hidden />
               )}
-              Accept request
+              {t("discover.acceptRequest")}
             </button>
           )}
           </div>
@@ -400,6 +402,7 @@ export function DiscoverMyOpenRequestCard({
   onOpen: () => void;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const title = openHelpRequestTitle(row);
   const description = openHelpRequestDescription(row);
   const detailLine = openHelpRequestDetailLine(row);
@@ -558,8 +561,8 @@ export function DiscoverMyOpenRequestCard({
               }}
               aria-label="View your request"
             >
-              <ChevronRight className="h-4 w-4" strokeWidth={3} aria-hidden />
-              View request
+              <ChevronRight className="h-4 w-4 rtl-flip-icon" strokeWidth={3} aria-hidden />
+              {t("discover.viewRequest")}
             </button>
           </div>
         </div>
@@ -592,6 +595,7 @@ export function DiscoverMyLiveHelpCard({
   onOpen: () => void;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const title = openHelpRequestTitle(row);
   const description = openHelpRequestDescription(row);
   const budget = formatOpenHelpRequestBudget(row);
@@ -627,11 +631,11 @@ export function DiscoverMyLiveHelpCard({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
-          <div className="relative flex min-w-0 flex-1 flex-col pr-16 sm:pr-[4.5rem]">
-            <div className="pointer-events-none absolute right-0 top-0 z-[1]">
+          <div className="relative flex min-w-0 flex-1 flex-col pe-16 sm:pe-[4.5rem]">
+            <div className="pointer-events-none absolute end-0 top-0 z-[1]">
               <span
                 className="pointer-events-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 text-xs font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300 sm:h-10"
-                aria-label="Live help session"
+                aria-label={t("discover.liveHelp")}
               >
                 <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
                   <span className="absolute inset-0 rounded-full bg-emerald-500/70 motion-safe:animate-ping motion-reduce:hidden" />
@@ -706,10 +710,10 @@ export function DiscoverMyLiveHelpCard({
                 e.stopPropagation();
                 onOpen();
               }}
-              aria-label="View live help"
+              aria-label={t("discover.viewLive")}
             >
-              <ChevronRight className="h-4 w-4" strokeWidth={3} aria-hidden />
-              View live
+              <ChevronRight className="h-4 w-4 rtl-flip-icon" strokeWidth={3} aria-hidden />
+              {t("discover.viewLive")}
             </button>
           </div>
         </div>
@@ -725,6 +729,7 @@ export function DiscoverOpenHelpRequestsSeeMoreButton({
   onClick: () => void;
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -734,8 +739,8 @@ export function DiscoverOpenHelpRequestsSeeMoreButton({
         className,
       )}
     >
-      See more requests
-      <ChevronRight className="h-4 w-4" aria-hidden />
+      {t("discover.seeMoreRequests")}
+      <ChevronRight className="h-4 w-4 rtl-flip-icon" aria-hidden />
     </button>
   );
 }

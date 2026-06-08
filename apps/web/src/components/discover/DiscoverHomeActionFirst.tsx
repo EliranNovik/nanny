@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/data/keys";
 import {
@@ -54,6 +55,8 @@ import {
   isServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
+import { communityFeedScrollState } from "@/lib/communityFeedNav";
+import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 import { LiveTimer } from "@/components/LiveTimer";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExplorePendingResponses } from "@/components/discover/ExplorePendingResponses";
@@ -62,9 +65,11 @@ import { DiscoverHomeFavoriteRequests } from "@/components/discover/DiscoverHome
 import { DiscoverHomeMyOpenRequests } from "@/components/discover/DiscoverHomeMyOpenRequests";
 import { DiscoverHomeSavedProfiles } from "@/components/discover/DiscoverHomeSavedProfiles";
 import { DiscoverHomeMyLiveHelpJobs } from "@/components/discover/DiscoverHomeMyLiveHelpJobs";
-import { DiscoverHomeReviewsDesktopStrip } from "@/components/discover/DiscoverHomeReviewsDesktopStrip";
 
 type HomeMode = "hire" | "work";
+
+const DISCOVER_HIRE_COMMUNITY_POST_TYPES = ["offer_service"] as const;
+const DISCOVER_WORK_COMMUNITY_POST_TYPES = ["request_help", "event"] as const;
 
 type Props = {
   homeMode: HomeMode;
@@ -105,10 +110,20 @@ export function DiscoverHomeActionFirst({
   workPrimaryPath,
   createRequestPath,
 }: Props) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { guardKycAction } = useKycGate();
   const isHire = homeMode === "hire";
+  const discoverCommunityPostTypes = isHire
+    ? [...DISCOVER_HIRE_COMMUNITY_POST_TYPES]
+    : [...DISCOVER_WORK_COMMUNITY_POST_TYPES];
+  const openCommunityFeedPost = useCallback(
+    (postId: string) => {
+      navigate(GLOBAL_POSTS_PATH, { state: communityFeedScrollState(postId) });
+    },
+    [navigate],
+  );
   const { data: liveAvatarsPayload } = useDiscoverLiveAvatars(user?.id);
   const categoryAvatars = liveAvatarsPayload?.byCategory ?? {};
   const { data: frData } = useFreelancerRequests(user?.id);
@@ -772,9 +787,16 @@ export function DiscoverHomeActionFirst({
 
         <section className="mt-6 px-0 md:px-4 pb-24">
           <h2 className="mb-4 px-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
-            Our community live
+            {t("discover.ourCommunityLive")}
           </h2>
-          <ProfilePostsFeed limit={5} appearance="discover" discoverSidePanel="favorites" />
+          <ProfilePostsFeed
+            limit={5}
+            appearance="discover"
+            discoverSidePanel="favorites"
+            filterPostTypeIds={discoverCommunityPostTypes}
+            sidePanelPostTypeIds={discoverCommunityPostTypes}
+            onSidePanelPostOpen={openCommunityFeedPost}
+          />
           <div className="mt-6 flex justify-center px-4 pb-8">
             <button
               type="button"
@@ -956,15 +978,17 @@ export function DiscoverHomeActionFirst({
 
         <section className="mt-6 pb-0">
           <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
-            Our community live
+            {t("discover.ourCommunityLive")}
           </h2>
-          <ProfilePostsFeed limit={5} appearance="discover" discoverSidePanel="favorites" />
+          <ProfilePostsFeed
+            limit={5}
+            appearance="discover"
+            discoverSidePanel="favorites"
+            filterPostTypeIds={discoverCommunityPostTypes}
+            sidePanelPostTypeIds={discoverCommunityPostTypes}
+            onSidePanelPostOpen={openCommunityFeedPost}
+          />
         </section>
-
-        <DiscoverHomeReviewsDesktopStrip
-          limit={10}
-          className="mt-10 shrink-0 border-t border-slate-200/80 pt-8 pb-12 dark:border-white/10"
-        />
       </div>
 
       {/* My Requests Modal */}

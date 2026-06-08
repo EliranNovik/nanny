@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ExploreHelpOthersLiveStrip } from "@/components/discover/ExploreHelpOthersLiveStrip";
 import { ExploreMyPostedRequests } from "@/components/discover/ExploreMyPostedRequests";
 import { ExploreLiveHelpNow } from "@/components/discover/ExploreLiveHelpNow";
@@ -59,16 +60,16 @@ function parseExploreSearchParams(searchParams: URLSearchParams): {
   return { mode, tab: "live_help" };
 }
 
-const HIRE_TAB_ITEMS: { id: HireTabId; label: string }[] = [
-  { id: "live_help", label: "Live help" },
-  { id: "my_requests", label: "My requests" },
-  { id: "history", label: "History" },
+const HIRE_TAB_ITEMS: { id: HireTabId; labelKey: string }[] = [
+  { id: "live_help", labelKey: "explore.liveHelpTab" },
+  { id: "my_requests", labelKey: "explore.myRequestsTab" },
+  { id: "history", labelKey: "explore.historyTab" },
 ];
 
-const WORK_TAB_ITEMS: { id: WorkTabId; label: string }[] = [
-  { id: "live_help", label: "Live help" },
-  { id: "pending", label: "Pending" },
-  { id: "history", label: "History" },
+const WORK_TAB_ITEMS: { id: WorkTabId; labelKey: string }[] = [
+  { id: "live_help", labelKey: "explore.liveHelpTab" },
+  { id: "pending", labelKey: "explore.pendingTab" },
+  { id: "history", labelKey: "explore.historyTab" },
 ];
 
 /** Secondary tabs: larger black labels (light) + bottom border accent when active. */
@@ -81,6 +82,7 @@ function ExploreSecondaryUnderlineTabs({
   tab: HireTabId | WorkTabId;
   onTabChange: (t: HireTabId | WorkTabId) => void;
 }) {
+  const { t } = useTranslation();
   const items = mode === "hire" ? HIRE_TAB_ITEMS : WORK_TAB_ITEMS;
   const isHire = mode === "hire";
   return (
@@ -88,11 +90,12 @@ function ExploreSecondaryUnderlineTabs({
       className="border-b border-border/80"
       role="tablist"
       aria-label={
-        mode === "hire" ? "My activity sections" : "Help others sections"
+        mode === "hire" ? t("explore.myActivity") : t("explore.helpOthers")
       }
     >
       <div className="-mb-px flex gap-0 overflow-x-auto pb-px sm:gap-1">
-        {items.map(({ id, label }) => {
+        {items.map(({ id, labelKey }) => {
+          const label = t(labelKey);
           const selected = tab === id;
           return (
             <button
@@ -123,6 +126,7 @@ function ExploreSecondaryUnderlineTabs({
  * Explore: fixed strip under app header (Discover primary toggle + underline sub-tabs), then scrollable content.
  */
 export default function ExplorePage() {
+  const { t } = useTranslation();
   const location = useLocation();
   const isClientExplore = location.pathname.startsWith("/client/");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -207,8 +211,8 @@ export default function ExplorePage() {
       {/* Title row scrolls away on mobile; tab bar sticks under the viewport top */}
       <div className="app-desktop-shell max-md:px-2.5">
         <div className="flex w-full items-center justify-between px-2 pb-1.5 pt-2 md:pt-5">
-          <h1 className="pl-2 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
-            {mode === "hire" ? "My activity" : "Help others"}
+          <h1 className="ps-2 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
+            {mode === "hire" ? t("explore.myActivity") : t("explore.helpOthers")}
           </h1>
 
           <button
@@ -216,8 +220,8 @@ export default function ExplorePage() {
             onClick={() => setMode(mode === "hire" ? "work" : "hire")}
             className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-3.5 py-2 text-[13px] font-bold text-slate-700 shadow-sm backdrop-blur-md transition-colors hover:bg-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:bg-zinc-700"
           >
-            {mode === "hire" ? "Help others?" : "Get help?"}
-            <ChevronRight className="-mr-0.5 h-4 w-4 opacity-70" aria-hidden />
+            {mode === "hire" ? t("explore.helpOthersQuestion") : t("explore.getHelpQuestion")}
+            <ChevronRight className="-me-0.5 h-4 w-4 opacity-70 rtl-flip-icon" aria-hidden />
           </button>
         </div>
       </div>

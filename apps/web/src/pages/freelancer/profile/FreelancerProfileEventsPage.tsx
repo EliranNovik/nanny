@@ -3,13 +3,16 @@ import { Link } from "react-router-dom";
 import { formatDistanceToNow, isPast, parseISO } from "date-fns";
 import {
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronUp,
   ExternalLink,
   Loader2,
   MapPin,
+  Settings2,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useKycGate } from "@/context/KycGateContext";
@@ -21,10 +24,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   normalizeJoinInterestProfile,
+  parseEventHelpersNeeded,
+  updateEventJoinInterestStatus,
+  updateEventPostHelpersNeeded,
   type EventJoinInterestRow,
+  type EventJoinInterestStatus,
 } from "@/lib/profilePostEventJoin";
 import { publicProfileMediaUrl } from "@/lib/publicProfileMedia";
-import { cn } from "@/lib/utils";
+import { cn, noFieldSpinnerClass } from "@/lib/utils";
 
 type EventPostMetadata = {
   event_name?: string | null;
@@ -32,6 +39,7 @@ type EventPostMetadata = {
   event_date?: string | null;
   event_time?: string | null;
   location?: string | null;
+  helpers_needed?: number | null;
 };
 
 type EventPostRow = {
@@ -115,40 +123,103 @@ function FilterChip({
   );
 }
 
-function EventInterestUserRow({
+function interestStatusLabel(status: EventJoinInterestStatus | null | undefined) {
+  if (status === "accepted") return "Accepted";
+  if (status === "declined") return "Declined";
+  return "Pending";
+}
+
+function EventInterestManageRow({
   interest,
+  onStatusChange,
+  busyId,
 }: {
   interest: EventJoinInterestRow;
+  onStatusChange: (interestId: string, status: EventJoinInterestStatus) => void;
+  busyId: string | null;
 }) {
   const profile = normalizeJoinInterestProfile(interest.profiles);
   const name = profile?.full_name?.trim() || "Member";
+  const status = (interest.status ?? "pending") as EventJoinInterestStatus;
+  const isBusy = busyId === interest.id;
 
   return (
-    <Link
-      to={`/profile/${interest.user_id}`}
-      className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-violet-500/8"
-    >
-      <Avatar className="h-10 w-10 shrink-0">
-        <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
-        <AvatarFallback className="text-xs font-bold">
-          {name.charAt(0).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-foreground">{name}</p>
-        <p className="text-xs font-medium text-muted-foreground">
-          Interested {formatDistanceToNow(new Date(interest.created_at), { addSuffix: true })}
-        </p>
+    <div className="flex flex-col gap-2 rounded-xl px-3 py-2.5 sm:flex-row sm:items-center">
+      <Link
+        to={`/profile/${interest.user_id}`}
+        className="flex min-w-0 flex-1 items-center gap-3 transition-colors hover:opacity-90"
+      >
+        <Avatar className="h-10 w-10 shrink-0">
+          <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+          <AvatarFallback className="text-xs font-bold">
+            {name.charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {interestStatusLabel(status)} ·{" "}
+            {formatDistanceToNow(new Date(interest.created_at), { addSuffix: true })}
+          </p>
+        </div>
+        <ExternalLink className="hidden h-4 w-4 shrink-0 text-muted-foreground/70 sm:block" />
+      </Link>
+      <div className="flex shrink-0 items-center gap-1.5 ps-[3.25rem] sm:ps-0">
+        {status !== "accepted" ? (
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 rounded-full px-3 text-xs"
+            disabled={isBusy}
+            onClick={() => onStatusChange(interest.id, "accepted")}
+          >
+            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            Accept
+          </Button>
+        ) : null}
+        {status !== "declined" ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-full px-3 text-xs"
+            disabled={isBusy}
+            onClick={() => onStatusChange(interest.id, "declined")}
+          >
+            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+            Decline
+          </Button>
+        ) : null}
       </div>
-      <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-    </Link>
+    </div>
   );
 }
 
-function EventCard({ event }: { event: EventWithInterests }) {
+function EventCard({
+  event,
+  onInterestStatusChange,
+  onHelpersNeededSave,
+}: {
+  event: EventWithInterests;
+  onInterestStatusChange: (
+    postId: string,
+    interestId: string,
+    status: EventJoinInterestStatus,
+  ) => Promise<void>;
+  onHelpersNeededSave: (postId: string, helpersNeeded: number | null) => Promise<void>;
+}) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [busyInterestId, setBusyInterestId] = useState<string | null>(null);
+  const [helpersDraft, setHelpersDraft] = useState("");
+  const [savingHelpers, setSavingHelpers] = useState(false);
   const meta = event.post_metadata ?? {};
   const interestCount = event.interests.length;
+  const acceptedCount = event.interests.filter((i) => i.status === "accepted").length;
+  const pendingCount = event.interests.filter(
+    (i) => (i.status ?? "pending") === "pending",
+  ).length;
+  const helpersNeeded = parseEventHelpersNeeded(meta as Record<string, unknown>);
   const mediaUrl =
     event.media_type === "image" && event.storage_path
       ? publicProfileMediaUrl(event.storage_path, { width: 720, quality: 85 })
@@ -189,10 +260,17 @@ function EventCard({ event }: { event: EventWithInterests }) {
                 {isUpcoming ? "Upcoming" : "Past"}
               </span>
             ) : null}
-            <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white">
-              <Users className="h-3.5 w-3.5" />
-              {interestCount}
-            </span>
+            {helpersNeeded != null ? (
+              <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white">
+                <Users className="h-3.5 w-3.5" />
+                {acceptedCount}/{helpersNeeded} helpers
+              </span>
+            ) : (
+              <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white">
+                <Users className="h-3.5 w-3.5" />
+                {interestCount} interested
+              </span>
+            )}
           </div>
           <h2 className="text-lg font-bold tracking-tight text-foreground">
             {meta.event_name?.trim() || "Untitled event"}
@@ -223,6 +301,31 @@ function EventCard({ event }: { event: EventWithInterests }) {
           <Button variant="outline" size="sm" className="rounded-full" asChild>
             <Link to={`/posts?post=${event.id}`}>View on feed</Link>
           </Button>
+          <Button
+            type="button"
+            variant={settingsOpen ? "default" : "ghost"}
+            size="sm"
+            className={cn(
+              "gap-1.5 rounded-full",
+              settingsOpen
+                ? "bg-violet-600 text-white hover:bg-violet-700"
+                : "text-violet-700 hover:text-violet-800 dark:text-violet-300",
+            )}
+            onClick={() => {
+              setSettingsOpen((prev) => {
+                const next = !prev;
+                if (next) {
+                  setHelpersDraft(
+                    helpersNeeded != null ? String(helpersNeeded) : "",
+                  );
+                }
+                return next;
+              });
+            }}
+          >
+            <Settings2 className="h-4 w-4" />
+            Settings
+          </Button>
           {interestCount > 0 ? (
             <Button
               type="button"
@@ -238,13 +341,101 @@ function EventCard({ event }: { event: EventWithInterests }) {
                 </>
               ) : (
                 <>
-                  Interested
+                  Interested ({pendingCount})
                   <ChevronDown className="h-4 w-4" />
                 </>
               )}
             </Button>
           ) : null}
         </div>
+
+        {settingsOpen ? (
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-zinc-900/60">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Event settings
+            </p>
+            <div className="mt-3 space-y-2">
+              <label className="text-sm font-semibold text-foreground">
+                Helpers needed
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  placeholder="Optional"
+                  value={helpersDraft}
+                  onChange={(e) => setHelpersDraft(e.target.value)}
+                  className={cn("h-10 max-w-[8rem] rounded-xl", noFieldSpinnerClass)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={savingHelpers}
+                  onClick={() => {
+                    void (async () => {
+                      setSavingHelpers(true);
+                      try {
+                        const trimmed = helpersDraft.trim();
+                        const parsed = trimmed ? parseInt(trimmed, 10) : null;
+                        const value =
+                          parsed != null && Number.isFinite(parsed) && parsed > 0
+                            ? parsed
+                            : null;
+                        await onHelpersNeededSave(event.id, value);
+                      } finally {
+                        setSavingHelpers(false);
+                      }
+                    })();
+                  }}
+                >
+                  {savingHelpers ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {acceptedCount} accepted
+                {helpersNeeded != null ? ` of ${helpersNeeded} needed` : ""}
+                {pendingCount > 0 ? ` · ${pendingCount} pending review` : ""}
+              </p>
+            </div>
+
+            {interestCount > 0 ? (
+              <div className="mt-4">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                  Choose helpers
+                </p>
+                <div className="divide-y divide-violet-200/60 rounded-xl border border-violet-200/70 bg-white dark:divide-violet-900/40 dark:border-violet-900/40 dark:bg-zinc-950/40">
+                  {event.interests.map((interest) => (
+                    <EventInterestManageRow
+                      key={interest.id}
+                      interest={interest}
+                      busyId={busyInterestId}
+                      onStatusChange={(interestId, status) => {
+                        void (async () => {
+                          setBusyInterestId(interestId);
+                          try {
+                            await onInterestStatusChange(event.id, interestId, status);
+                          } finally {
+                            setBusyInterestId(null);
+                          }
+                        })();
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">
+                No one has requested to join yet.
+              </p>
+            )}
+          </div>
+        ) : null}
 
         {expanded && interestCount > 0 ? (
           <div className="rounded-2xl border border-violet-200/70 bg-violet-50/50 p-2 dark:border-violet-900/40 dark:bg-violet-950/20">
@@ -253,7 +444,21 @@ function EventCard({ event }: { event: EventWithInterests }) {
             </p>
             <div className="divide-y divide-violet-200/60 dark:divide-violet-900/40">
               {event.interests.map((interest) => (
-                <EventInterestUserRow key={interest.id} interest={interest} />
+                <EventInterestManageRow
+                  key={interest.id}
+                  interest={interest}
+                  busyId={busyInterestId}
+                  onStatusChange={(interestId, status) => {
+                    void (async () => {
+                      setBusyInterestId(interestId);
+                      try {
+                        await onInterestStatusChange(event.id, interestId, status);
+                      } finally {
+                        setBusyInterestId(null);
+                      }
+                    })();
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -313,7 +518,7 @@ export default function FreelancerProfileEventsPage() {
         const { data: interestRows, error: interestsError } = await supabase
           .from("profile_post_event_join_interests")
           .select(
-            "id, post_id, user_id, created_at, profiles:user_id(id, full_name, photo_url)",
+            "id, post_id, user_id, created_at, status, profiles:user_id(id, full_name, photo_url)",
           )
           .in("post_id", postIds)
           .order("created_at", { ascending: false });
@@ -410,11 +615,59 @@ export default function FreelancerProfileEventsPage() {
     guardKycAction("share_post", () => setComposeOpen(true));
   }
 
+  async function handleInterestStatusChange(
+    postId: string,
+    interestId: string,
+    status: EventJoinInterestStatus,
+  ) {
+    await updateEventJoinInterestStatus(supabase, interestId, status);
+    setEvents((prev) =>
+      prev.map((event) =>
+        event.id !== postId
+          ? event
+          : {
+              ...event,
+              interests: event.interests.map((interest) =>
+                interest.id === interestId ? { ...interest, status } : interest,
+              ),
+            },
+      ),
+    );
+  }
+
+  async function handleHelpersNeededSave(postId: string, helpersNeeded: number | null) {
+    if (!user?.id) return;
+    const event = events.find((row) => row.id === postId);
+    if (!event) return;
+    const metadata = (event.post_metadata ?? {}) as Record<string, unknown>;
+    await updateEventPostHelpersNeeded(
+      supabase,
+      postId,
+      user.id,
+      metadata,
+      helpersNeeded,
+    );
+    setEvents((prev) =>
+      prev.map((row) =>
+        row.id !== postId
+          ? row
+          : {
+              ...row,
+              post_metadata: {
+                ...row.post_metadata,
+                helpers_needed: helpersNeeded ?? undefined,
+              },
+            },
+      ),
+    );
+  }
+
   return (
     <>
     <ProfileSubpageLayout
       title="My events"
       description="Events you created and people who want to join."
+      className="bg-white dark:bg-background"
     >
       {loading ? (
         <div className="flex min-h-[240px] items-center justify-center">
@@ -573,7 +826,12 @@ export default function FreelancerProfileEventsPage() {
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               {filteredEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onInterestStatusChange={handleInterestStatusChange}
+                  onHelpersNeededSave={handleHelpersNeededSave}
+                />
               ))}
             </div>
           )}

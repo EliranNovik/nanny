@@ -78,7 +78,7 @@ export function UserSearch({
     <div
       ref={searchRef}
       className={cn(
-        "group relative w-full max-w-[240px] sm:max-w-sm",
+        "group relative w-full max-w-[220px] sm:max-w-xs md:max-w-xs lg:max-w-sm",
         className,
       )}
     >
@@ -104,7 +104,7 @@ export function UserSearch({
             "w-full text-[14px] transition-all placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-0",
             isInline
               ? "h-9 border-0 border-b-2 border-slate-400/45 bg-transparent py-1 pl-8 pr-8 text-slate-900 focus:border-orange-500 dark:border-white/35 dark:text-white dark:focus:border-orange-400"
-              : "h-11 rounded-2xl border border-slate-300/70 bg-black/[0.03] pl-10 pr-10 shadow-sm focus:border-orange-400/50 focus:bg-white dark:border-zinc-700 dark:bg-white/5 dark:focus:border-orange-500/50 dark:focus:bg-zinc-900",
+              : "h-11 rounded-2xl border-0 bg-black/[0.03] pl-10 pr-10 shadow-none focus:bg-white dark:bg-white/5 dark:focus:bg-zinc-900",
           )}
         />
         {query && (

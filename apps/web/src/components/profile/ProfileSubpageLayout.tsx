@@ -1,6 +1,9 @@
+import { cn } from "@/lib/utils";
+
 interface ProfileSubpageLayoutProps {
   title: string;
   description?: string;
+  className?: string;
   children: React.ReactNode;
 }
 
@@ -8,10 +11,16 @@ interface ProfileSubpageLayoutProps {
 export function ProfileSubpageLayout({
   title,
   description,
+  className,
   children,
 }: ProfileSubpageLayoutProps) {
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background pb-6 md:pb-8">
+    <div
+      className={cn(
+        "min-h-screen bg-slate-50/50 pb-6 dark:bg-background md:pb-8",
+        className,
+      )}
+    >
       <div className="app-desktop-shell pt-10 md:pt-12">
         <div className="app-desktop-centered-wide">
           <div className="mb-8">

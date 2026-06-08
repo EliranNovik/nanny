@@ -55,6 +55,17 @@ export function countActiveAdvancedFilters(
   return n;
 }
 
+export function countActiveFeedModalFilters(
+  filters: CommunityFeedAdvancedFilters,
+  opts?: { commented?: boolean; accepted?: boolean },
+): number {
+  return (
+    countActiveAdvancedFilters(filters) +
+    (opts?.commented ? 1 : 0) +
+    (opts?.accepted ? 1 : 0)
+  );
+}
+
 export function hasActiveAdvancedFilters(
   filters: CommunityFeedAdvancedFilters,
 ): boolean {

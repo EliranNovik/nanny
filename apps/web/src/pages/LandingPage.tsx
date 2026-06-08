@@ -200,7 +200,7 @@ export default function LandingPage() {
         className="md:left-[calc(50%+110px)] md:w-[calc(92%-220px)]"
       />
       {/* Desktop: reuse the community-feed guest sidebar */}
-      <div className="hidden md:block fixed left-0 top-0 z-[55]">
+      <div className="app-desktop-side-panel hidden md:block z-[55]">
         <GuestCommunityFeedAside className="h-[100dvh] bg-background/70 backdrop-blur-md" />
       </div>
 
@@ -234,7 +234,7 @@ export default function LandingPage() {
       </div>
 
       {/* Main Content - No top padding to allow Hero to flow behind header */}
-      <main className="flex-1 pt-0 md:pl-[220px]">
+      <main className="flex-1 pt-0 app-side-panel-offset">
         {/* Full-Screen Hero Section */}
         <section
           ref={heroRef}

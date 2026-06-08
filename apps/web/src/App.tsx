@@ -23,6 +23,7 @@ import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { SessionAnalyticsInit } from "@/components/SessionAnalyticsInit";
 import { AppBootSplash } from "@/components/AppBootSplash";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { DocumentLocaleSync } from "@/components/i18n/DocumentLocaleSync";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,6 +56,7 @@ import ClientProfileHub from "@/pages/client/profile/ClientProfileHub";
 import ClientProfilePersonalPage from "@/pages/client/profile/ClientProfilePersonalPage";
 import ClientProfileServicesPage from "@/pages/client/profile/ClientProfileServicesPage";
 import ClientProfileAppearancePage from "@/pages/client/profile/ClientProfileAppearancePage";
+import { ProfileAppLanguagePage } from "@/components/profile/ProfileAppLanguagePage";
 import ClientProfileSavedPage from "@/pages/client/profile/ClientProfileSavedPage";
 import ClientProfileEventsPage from "@/pages/client/profile/ClientProfileEventsPage";
 import PublicProfileMediaManagePage from "@/pages/profile/PublicProfileMediaManagePage";
@@ -234,7 +236,7 @@ function PageLayoutWithHeader() {
       <div className="min-h-[100dvh] min-h-[-webkit-fill-available]">
         <DesktopSidePanel />
         {/* On desktop, leave room for the fixed left panel */}
-        <div className="min-w-0 md:pl-[220px]">
+        <div className="min-w-0 app-side-panel-offset">
           {/* Always-mounted keep-alive pages */}
           <KeepAlivePages />
           {/* Normal outlet — hidden when a keep-alive route is active */}
@@ -441,6 +443,7 @@ function AppRoutes() {
           <Route path="personal" element={<ClientProfilePersonalPage />} />
           <Route path="services" element={<ClientProfileServicesPage />} />
           <Route path="appearance" element={<ClientProfileAppearancePage />} />
+          <Route path="language" element={<ProfileAppLanguagePage />} />
         </Route>
 
         {/* Freelancer routes */}
@@ -500,6 +503,7 @@ function AppRoutes() {
             path="appearance"
             element={<FreelancerProfileAppearancePage />}
           />
+          <Route path="language" element={<ProfileAppLanguagePage />} />
         </Route>
         <Route
           path="/freelancer/profile/edit"
@@ -605,6 +609,7 @@ export default function App() {
             }}
           >
             <DocumentScrollOverflowGate />
+            <DocumentLocaleSync />
             <ToastProvider>
               <AuthProvider>
                 <GuestAuthPromptProvider>

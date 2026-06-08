@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { CalendarDays, Clock, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabase";
+import { fetchAcceptedRequestCount } from "@/lib/fetchAcceptedJobRequestsForFeed";
 import {
   Dialog,
   DialogContent,
@@ -15,27 +19,75 @@ import { cn, noFieldSpinnerClass } from "@/lib/utils";
 import {
   COMMUNITY_FEED_WHEN_OPTIONS,
   DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
-  countActiveAdvancedFilters,
+  countActiveFeedModalFilters,
   type CommunityFeedAdvancedFilters,
+  type CommunityFeedWhenFilter,
 } from "@/lib/communityFeedFilters";
+
+const WHEN_OPTION_LABEL_KEYS: Record<CommunityFeedWhenFilter, string> = {
+  any: "feed.filters.whenAny",
+  now: "feed.filters.whenNow",
+  today: "feed.filters.whenToday",
+  tomorrow: "feed.filters.whenTomorrow",
+  this_week: "feed.filters.whenThisWeek",
+  custom: "feed.filters.whenCustom",
+};
 
 type CommunityFeedFilterDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   filters: CommunityFeedAdvancedFilters;
   onApply: (filters: CommunityFeedAdvancedFilters) => void;
+  viewerUserId?: string | null;
+  commentedFilterActive?: boolean;
+  onCommentedFilterChange?: (active: boolean) => void;
+  acceptedFilterActive?: boolean;
+  onAcceptedFilterChange?: (active: boolean) => void;
+  onAuthorFilterChange?: (authorId: string | null) => void;
+};
+
+async function fetchCommentedOwnPostCount(viewerUserId: string): Promise<number> {
+  const { data: ownPosts, error: ownErr } = await supabase
+    .from("profile_posts")
+    .select("id")
+    .eq("author_id", viewerUserId);
+  if (ownErr) throw ownErr;
+
+  const ownIds = (ownPosts ?? []).map((p) => p.id as string);
+  if (ownIds.length === 0) return 0;
+
+  const { data: commentRows, error } = await supabase
+    .from("profile_post_comments")
+    .select("post_id")
+    .in("post_id", ownIds);
+  if (error) throw error;
+  return new Set((commentRows ?? []).map((r) => r.post_id as string)).size;
+}
+
+type FilterDialogDraft = {
+  advanced: CommunityFeedAdvancedFilters;
+  commentedOnly: boolean;
+  acceptedOnly: boolean;
 };
 
 export function CommunityFeedFilterButton({
   filters,
   onClick,
+  commentedFilterActive = false,
+  acceptedFilterActive = false,
   className,
 }: {
   filters: CommunityFeedAdvancedFilters;
   onClick: () => void;
+  commentedFilterActive?: boolean;
+  acceptedFilterActive?: boolean;
   className?: string;
 }) {
-  const activeCount = countActiveAdvancedFilters(filters);
+  const { t } = useTranslation();
+  const activeCount = countActiveFeedModalFilters(filters, {
+    commented: commentedFilterActive,
+    accepted: acceptedFilterActive,
+  });
 
   return (
     <button
@@ -48,10 +100,10 @@ export function CommunityFeedFilterButton({
           : "border-border/60 bg-background text-foreground hover:bg-muted/50",
         className,
       )}
-      aria-label="Filter posts"
+      aria-label={t("feed.filters.filterPosts")}
     >
       <SlidersHorizontal className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} />
-      Filter
+      {t("feed.filters.filter")}
       {activeCount > 0 ? (
         <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white/20 px-1.5 text-[10px] font-black tabular-nums">
           {activeCount}
@@ -65,10 +117,12 @@ function FilterCheckboxRow({
   checked,
   onChange,
   label,
+  count,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
+  count?: number;
 }) {
   return (
     <button
@@ -104,7 +158,19 @@ function FilterCheckboxRow({
           </svg>
         ) : null}
       </span>
-      <span className="text-sm font-semibold text-foreground">{label}</span>
+      <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{label}</span>
+      {typeof count === "number" && count > 0 ? (
+        <span
+          className={cn(
+            "inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums",
+            checked
+              ? "bg-orange-600/15 text-orange-700 dark:text-orange-300"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {count}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -132,6 +198,7 @@ function CustomWhenRangeField({
   onDateChange: (value: string | null) => void;
   onTimeChange: (value: string | null) => void;
 }) {
+  const { t } = useTranslation();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const selectedDate = parseStoredFilterDate(dateValue);
 
@@ -151,13 +218,13 @@ function CustomWhenRangeField({
               <span className={cn(!selectedDate && "text-muted-foreground")}>
                 {selectedDate
                   ? format(selectedDate, "EEEE, MMMM d, yyyy")
-                  : "Pick a date"}
+                  : t("feed.filters.pickDate")}
               </span>
             </button>
           </DialogTrigger>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle>{label} date</DialogTitle>
+              <DialogTitle>{t("feed.filters.dateLabel", { label })}</DialogTitle>
             </DialogHeader>
             <SimpleCalendar
               selectedDate={selectedDate}
@@ -191,25 +258,67 @@ export function CommunityFeedFilterDialog({
   onOpenChange,
   filters,
   onApply,
+  viewerUserId,
+  commentedFilterActive = false,
+  onCommentedFilterChange,
+  acceptedFilterActive = false,
+  onAcceptedFilterChange,
+  onAuthorFilterChange,
 }: CommunityFeedFilterDialogProps) {
-  const [draft, setDraft] = useState(filters);
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState<FilterDialogDraft>({
+    advanced: filters,
+    commentedOnly: false,
+    acceptedOnly: false,
+  });
+
+  const { data: commentedOwnCount = 0 } = useQuery({
+    queryKey: ["community", "commentedOwnPostCount", viewerUserId],
+    queryFn: () => fetchCommentedOwnPostCount(viewerUserId!),
+    enabled: Boolean(viewerUserId),
+    staleTime: 30_000,
+  });
+
+  const { data: acceptedRequestCount = 0 } = useQuery({
+    queryKey: ["community", "acceptedRequestCount", viewerUserId],
+    queryFn: () => fetchAcceptedRequestCount(viewerUserId!),
+    enabled: Boolean(viewerUserId),
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
-    if (open) setDraft(filters);
-  }, [open, filters]);
+    if (open) {
+      setDraft({
+        advanced: filters,
+        commentedOnly: commentedFilterActive,
+        acceptedOnly: acceptedFilterActive,
+      });
+    }
+  }, [open, filters, commentedFilterActive, acceptedFilterActive]);
 
-  function updateDraft(patch: Partial<CommunityFeedAdvancedFilters>) {
-    setDraft((prev) => ({ ...prev, ...patch }));
+  function updateAdvanced(patch: Partial<CommunityFeedAdvancedFilters>) {
+    setDraft((prev) => ({ ...prev, advanced: { ...prev.advanced, ...patch } }));
   }
 
   function handleApply() {
-    onApply(draft);
+    onApply(draft.advanced);
+    if (draft.commentedOnly || draft.acceptedOnly) {
+      onAuthorFilterChange?.(null);
+    }
+    onCommentedFilterChange?.(draft.commentedOnly);
+    onAcceptedFilterChange?.(draft.acceptedOnly);
     onOpenChange(false);
   }
 
   function handleClear() {
-    setDraft(DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS);
+    setDraft({
+      advanced: DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
+      commentedOnly: false,
+      acceptedOnly: false,
+    });
     onApply(DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS);
+    onCommentedFilterChange?.(false);
+    onAcceptedFilterChange?.(false);
     onOpenChange(false);
   }
 
@@ -217,21 +326,21 @@ export function CommunityFeedFilterDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[min(90vh,640px)] max-w-md flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl">
         <DialogHeader className="shrink-0 border-b border-border/60 px-5 py-4 text-left">
-          <DialogTitle className="text-base font-bold">Filter posts</DialogTitle>
+          <DialogTitle className="text-base font-bold">{t("feed.filters.filterPosts")}</DialogTitle>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
           <div className="space-y-2">
-            <p className="text-[13px] font-bold text-foreground">When</p>
+            <p className="text-[13px] font-bold text-foreground">{t("feed.filters.when")}</p>
             <div className="flex flex-wrap gap-2">
               {COMMUNITY_FEED_WHEN_OPTIONS.map((opt) => {
-                const selected = draft.when === opt.id;
+                const selected = draft.advanced.when === opt.id;
                 return (
                   <button
                     key={opt.id}
                     type="button"
                     onClick={() =>
-                      updateDraft({
+                      updateAdvanced({
                         when: opt.id,
                         ...(opt.id !== "custom"
                           ? {
@@ -254,47 +363,47 @@ export function CommunityFeedFilterDialog({
                           : "border-border bg-background text-foreground hover:bg-muted/50",
                     )}
                   >
-                    {opt.label}
+                    {t(WHEN_OPTION_LABEL_KEYS[opt.id])}
                   </button>
                 );
               })}
             </div>
-            {draft.when === "custom" ? (
+            {draft.advanced.when === "custom" ? (
               <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
                 <CustomWhenRangeField
-                  label="From"
-                  dateValue={draft.customWhenFromDate}
-                  timeValue={draft.customWhenFromTime}
-                  onDateChange={(value) => updateDraft({ customWhenFromDate: value })}
-                  onTimeChange={(value) => updateDraft({ customWhenFromTime: value })}
+                  label={t("feed.filters.from")}
+                  dateValue={draft.advanced.customWhenFromDate}
+                  timeValue={draft.advanced.customWhenFromTime}
+                  onDateChange={(value) => updateAdvanced({ customWhenFromDate: value })}
+                  onTimeChange={(value) => updateAdvanced({ customWhenFromTime: value })}
                 />
                 <CustomWhenRangeField
-                  label="To"
-                  dateValue={draft.customWhenToDate}
-                  timeValue={draft.customWhenToTime}
-                  onDateChange={(value) => updateDraft({ customWhenToDate: value })}
-                  onTimeChange={(value) => updateDraft({ customWhenToTime: value })}
+                  label={t("feed.filters.to")}
+                  dateValue={draft.advanced.customWhenToDate}
+                  timeValue={draft.advanced.customWhenToTime}
+                  onDateChange={(value) => updateAdvanced({ customWhenToDate: value })}
+                  onTimeChange={(value) => updateAdvanced({ customWhenToTime: value })}
                 />
                 <p className="text-[11px] font-medium text-muted-foreground">
-                  Leave either side empty to filter with only a start or end time.
+                  {t("feed.filters.customWhenHint")}
                 </p>
               </div>
             ) : null}
             <p className="text-[11px] font-medium text-muted-foreground">
-              Applies to request posts with a timeframe. Today includes urgent Now posts.
+              {t("feed.filters.whenAppliesHint")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <p className="text-[13px] font-bold text-foreground">Budget / rate (₪)</p>
+            <p className="text-[13px] font-bold text-foreground">{t("feed.filters.budgetRate")}</p>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
                 min={0}
-                placeholder="From"
-                value={draft.budgetMin ?? ""}
+                placeholder={t("feed.filters.budgetFrom")}
+                value={draft.advanced.budgetMin ?? ""}
                 onChange={(e) =>
-                  updateDraft({
+                  updateAdvanced({
                     budgetMin: e.target.value ? Number(e.target.value) : null,
                   })
                 }
@@ -307,10 +416,10 @@ export function CommunityFeedFilterDialog({
               <Input
                 type="number"
                 min={0}
-                placeholder="To"
-                value={draft.budgetMax ?? ""}
+                placeholder={t("feed.filters.budgetTo")}
+                value={draft.advanced.budgetMax ?? ""}
                 onChange={(e) =>
-                  updateDraft({
+                  updateAdvanced({
                     budgetMax: e.target.value ? Number(e.target.value) : null,
                   })
                 }
@@ -323,29 +432,57 @@ export function CommunityFeedFilterDialog({
           </div>
 
           <div className="space-y-2">
+            {viewerUserId ? (
+              <>
+                <FilterCheckboxRow
+                  checked={draft.commentedOnly}
+                  onChange={(checked) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      commentedOnly: checked,
+                      acceptedOnly: checked ? false : prev.acceptedOnly,
+                    }))
+                  }
+                  label={t("feed.filters.commented")}
+                  count={commentedOwnCount}
+                />
+                <FilterCheckboxRow
+                  checked={draft.acceptedOnly}
+                  onChange={(checked) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      acceptedOnly: checked,
+                      commentedOnly: checked ? false : prev.commentedOnly,
+                    }))
+                  }
+                  label={t("feed.filters.acceptedTab")}
+                  count={acceptedRequestCount}
+                />
+              </>
+            ) : null}
             <FilterCheckboxRow
-              checked={draft.myPostsOnly}
-              onChange={(checked) => updateDraft({ myPostsOnly: checked })}
-              label="My posts"
+              checked={draft.advanced.myPostsOnly}
+              onChange={(checked) => updateAdvanced({ myPostsOnly: checked })}
+              label={t("feed.filters.myPosts")}
             />
             <FilterCheckboxRow
-              checked={draft.favoriteProfilesOnly}
-              onChange={(checked) => updateDraft({ favoriteProfilesOnly: checked })}
-              label="Favorite profile posts"
+              checked={draft.advanced.favoriteProfilesOnly}
+              onChange={(checked) => updateAdvanced({ favoriteProfilesOnly: checked })}
+              label={t("feed.filters.favoriteProfilePosts")}
             />
           </div>
         </div>
 
         <div className="flex shrink-0 gap-2 border-t border-border/60 bg-background px-5 py-4">
           <Button type="button" variant="ghost" className="flex-1" onClick={handleClear}>
-            Clear
+            {t("feed.filters.clear")}
           </Button>
           <Button
             type="button"
             className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
             onClick={handleApply}
           >
-            Apply
+            {t("feed.filters.apply")}
           </Button>
         </div>
       </DialogContent>

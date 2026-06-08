@@ -1,12 +1,11 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase,
   CalendarDays,
-  Check,
   LayoutGrid,
   LifeBuoy,
-  MessageCircle,
   Plus,
   Users,
   type LucideIcon,
@@ -18,8 +17,8 @@ import {
   CommunityFeedFilterDialog,
 } from "@/components/community/CommunityFeedFilterDialog";
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
-import { fetchAcceptedRequestCount } from "@/lib/fetchAcceptedJobRequestsForFeed";
 import { cn } from "@/lib/utils";
+import { FAVORITES_SIDE_PANEL_RESERVE_CLASS } from "@/components/discover/FavoritesPostsSidePanel";
 import { AvatarWithLiveDot } from "@/components/AvatarWithLiveDot";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -32,14 +31,14 @@ export type CommunityFeedPostTypeFilter =
 
 const FILTER_TABS: {
   id: CommunityFeedPostTypeFilter;
-  label: string;
+  labelKey: string;
   Icon: LucideIcon;
   activeClass: string;
   idleClass: string;
 }[] = [
   {
     id: "all",
-    label: "All",
+    labelKey: "feed.filters.all",
     Icon: LayoutGrid,
     activeClass:
       "border-transparent bg-emerald-600 text-white shadow-md shadow-emerald-900/15",
@@ -48,7 +47,7 @@ const FILTER_TABS: {
   },
   {
     id: "request_help",
-    label: "Requests",
+    labelKey: "feed.filters.requests",
     Icon: LifeBuoy,
     activeClass:
       "border-transparent bg-red-600 text-white shadow-md shadow-red-900/15",
@@ -57,7 +56,7 @@ const FILTER_TABS: {
   },
   {
     id: "offer_service",
-    label: "Offers",
+    labelKey: "feed.filters.offers",
     Icon: Briefcase,
     activeClass:
       "border-transparent bg-emerald-600 text-white shadow-md shadow-emerald-900/15",
@@ -66,7 +65,7 @@ const FILTER_TABS: {
   },
   {
     id: "community",
-    label: "Community",
+    labelKey: "feed.filters.community",
     Icon: Users,
     activeClass:
       "border-transparent bg-blue-600 text-white shadow-md shadow-blue-900/15",
@@ -75,7 +74,7 @@ const FILTER_TABS: {
   },
   {
     id: "event",
-    label: "Events",
+    labelKey: "feed.filters.events",
     Icon: CalendarDays,
     activeClass:
       "border-transparent bg-violet-600 text-white shadow-md shadow-violet-900/15",
@@ -132,24 +131,6 @@ async function fetchFavoriteProfiles(viewerUserId: string): Promise<FavoriteProf
     .filter(Boolean) as FavoriteProfile[];
 }
 
-async function fetchCommentedOwnPostCount(viewerUserId: string): Promise<number> {
-  const { data: ownPosts, error: ownErr } = await supabase
-    .from("profile_posts")
-    .select("id")
-    .eq("author_id", viewerUserId);
-  if (ownErr) throw ownErr;
-
-  const ownIds = (ownPosts ?? []).map((p) => p.id as string);
-  if (ownIds.length === 0) return 0;
-
-  const { data: commentRows, error } = await supabase
-    .from("profile_post_comments")
-    .select("post_id")
-    .in("post_id", ownIds);
-  if (error) throw error;
-  return new Set((commentRows ?? []).map((r) => r.post_id as string)).size;
-}
-
 type CommunityFeedHeaderProps = {
   activeFilter: CommunityFeedPostTypeFilter;
   onFilterChange: (filter: CommunityFeedPostTypeFilter) => void;
@@ -167,6 +148,8 @@ type CommunityFeedHeaderProps = {
   onAdvancedFiltersChange?: (filters: CommunityFeedAdvancedFilters) => void;
   selectedAuthorFilterId?: string | null;
   onAuthorFilterChange?: (authorId: string | null) => void;
+  /** Keep filter chips out from under the fixed favorites side panel on desktop. */
+  reserveSidePanelSpace?: boolean;
   className?: string;
 };
 
@@ -184,8 +167,10 @@ export function CommunityFeedHeader({
   onAdvancedFiltersChange,
   selectedAuthorFilterId = null,
   onAuthorFilterChange,
+  reserveSidePanelSpace = false,
   className,
 }: CommunityFeedHeaderProps) {
+  const { t } = useTranslation();
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
 
   const { data: favoriteProfiles = [] } = useQuery({
@@ -193,20 +178,6 @@ export function CommunityFeedHeader({
     queryFn: () => fetchFavoriteProfiles(viewerUserId!),
     enabled: Boolean(viewerUserId),
     staleTime: 60_000,
-  });
-
-  const { data: commentedOwnCount = 0 } = useQuery({
-    queryKey: ["community", "commentedOwnPostCount", viewerUserId],
-    queryFn: () => fetchCommentedOwnPostCount(viewerUserId!),
-    enabled: Boolean(viewerUserId),
-    staleTime: 30_000,
-  });
-
-  const { data: acceptedRequestCount = 0 } = useQuery({
-    queryKey: ["community", "acceptedRequestCount", viewerUserId],
-    queryFn: () => fetchAcceptedRequestCount(viewerUserId!),
-    enabled: Boolean(viewerUserId),
-    staleTime: 30_000,
   });
 
   const viewerInitial =
@@ -222,7 +193,7 @@ export function CommunityFeedHeader({
           "max-md:-mx-0 px-1 md:mx-0 md:px-0",
         )}
         role="list"
-        aria-label="Saved profiles"
+        aria-label={t("feed.filters.savedProfiles")}
       >
         <button
           type="button"
@@ -233,7 +204,7 @@ export function CommunityFeedHeader({
             "transition-transform active:scale-[0.97]",
             "focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
-          aria-label="Add your story"
+          aria-label={t("feed.filters.addYourStory")}
         >
           <div className="relative h-[5.5rem] w-[5.5rem] shrink-0">
             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/35 bg-muted/20">
@@ -259,7 +230,7 @@ export function CommunityFeedHeader({
             </span>
           </div>
           <span className="max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground">
-            Your story
+            {t("feed.filters.yourStory")}
           </span>
         </button>
 
@@ -284,8 +255,8 @@ export function CommunityFeedHeader({
               title={author.full_name ?? label}
               aria-label={
                 isSelected
-                  ? `Clear filter for ${author.full_name ?? label}`
-                  : `Show posts by ${author.full_name ?? label}`
+                  ? t("feed.filters.clearFilterFor", { name: author.full_name ?? label })
+                  : t("feed.filters.showPostsBy", { name: author.full_name ?? label })
               }
               aria-pressed={isSelected}
             >
@@ -323,15 +294,17 @@ export function CommunityFeedHeader({
 
       <div
         className={cn(
-          "flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "flex gap-2 overflow-x-auto pb-1",
+          "max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden",
+          "md:[scrollbar-width:thin] md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-border/80",
           "px-1 md:px-0",
+          reserveSidePanelSpace && FAVORITES_SIDE_PANEL_RESERVE_CLASS,
         )}
         role="tablist"
-        aria-label="Filter posts by type"
+        aria-label={t("feed.filters.filterPostsByType")}
       >
         {FILTER_TABS.map((tab) => {
-          const selected =
-            tab.id === activeFilter && !commentedFilterActive && !acceptedFilterActive;
+          const selected = tab.id === activeFilter;
           const Icon = tab.Icon;
           return (
             <button
@@ -351,81 +324,17 @@ export function CommunityFeedHeader({
               )}
             >
               <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           );
         })}
-
-        {viewerUserId ? (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={commentedFilterActive}
-              onClick={() => {
-                onAuthorFilterChange?.(null);
-                onAcceptedFilterChange?.(false);
-                onCommentedFilterChange?.(!commentedFilterActive);
-              }}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
-              commentedFilterActive
-                ? "border-transparent bg-sky-600 text-white shadow-md shadow-sky-900/15"
-                : "border-sky-200/70 bg-sky-50/50 text-sky-700 hover:bg-sky-50 dark:border-sky-500/25 dark:bg-sky-950/20 dark:text-sky-300",
-            )}
-          >
-            <MessageCircle className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
-            Commented
-            {commentedOwnCount > 0 ? (
-              <span
-                className={cn(
-                  "inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums",
-                  commentedFilterActive ? "bg-white/20 text-white" : "bg-sky-600/15 text-sky-700 dark:text-sky-300",
-                )}
-              >
-                {commentedOwnCount}
-              </span>
-            ) : null}
-          </button>
-        ) : null}
-
-        {viewerUserId ? (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={acceptedFilterActive}
-            onClick={() => {
-              onAuthorFilterChange?.(null);
-              onCommentedFilterChange?.(false);
-              onAcceptedFilterChange?.(!acceptedFilterActive);
-            }}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
-              acceptedFilterActive
-                ? "border-transparent bg-amber-600 text-white shadow-md shadow-amber-900/15"
-                : "border-amber-200/70 bg-amber-50/50 text-amber-800 hover:bg-amber-50 dark:border-amber-500/25 dark:bg-amber-950/20 dark:text-amber-300",
-            )}
-          >
-            <Check className="h-[18px] w-[18px] shrink-0" strokeWidth={2.75} aria-hidden />
-            Accepted
-            {acceptedRequestCount > 0 ? (
-              <span
-                className={cn(
-                  "inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums",
-                  acceptedFilterActive
-                    ? "bg-white/20 text-white"
-                    : "bg-amber-600/15 text-amber-800 dark:text-amber-300",
-                )}
-              >
-                {acceptedRequestCount}
-              </span>
-            ) : null}
-          </button>
-        ) : null}
 
         {viewerUserId && advancedFilters && onAdvancedFiltersChange ? (
           <>
             <CommunityFeedFilterButton
               filters={advancedFilters}
+              commentedFilterActive={commentedFilterActive}
+              acceptedFilterActive={acceptedFilterActive}
               onClick={() => setFilterDialogOpen(true)}
             />
             <CommunityFeedFilterDialog
@@ -433,6 +342,12 @@ export function CommunityFeedHeader({
               onOpenChange={setFilterDialogOpen}
               filters={advancedFilters}
               onApply={onAdvancedFiltersChange}
+              viewerUserId={viewerUserId}
+              commentedFilterActive={commentedFilterActive}
+              onCommentedFilterChange={onCommentedFilterChange}
+              acceptedFilterActive={acceptedFilterActive}
+              onAcceptedFilterChange={onAcceptedFilterChange}
+              onAuthorFilterChange={onAuthorFilterChange}
             />
           </>
         ) : null}

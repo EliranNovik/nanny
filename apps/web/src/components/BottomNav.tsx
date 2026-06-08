@@ -73,6 +73,8 @@ import {
   writeDiscoverHomeIntent,
 } from "@/lib/discoverHomeIntent";
 import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { LocationPickerSheet } from "@/components/LocationPickerSheet";
 
@@ -117,6 +119,7 @@ export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const [jobsSearchParams] = useSearchParams();
+  const { t } = useTranslation();
   const { activityInboxCount, unreadMessages } = useUnreadCounts();
   const { scheduleChanges } = useScheduleChanges();
   const jobsTabCounts = useJobsTabCounts(user);
@@ -802,42 +805,47 @@ export function BottomNav() {
   const DesktopHeader = (
     <header
       data-desktop-header-strip=""
-      className="hidden md:block fixed top-0 left-0 right-0 z-50 border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background"
+      className="hidden md:block fixed inset-x-0 top-0 z-50 border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background"
     >
-      {/* Match PageLayoutWithHeader md:pl-[220px] so header chrome clears the side panel */}
-      <div className="md:pl-[220px]">
-        <div className="app-desktop-shell grid grid-cols-3 items-center gap-3 py-2.5">
-        <div className="flex min-w-0 justify-start items-center gap-1.5 md:pl-2">
-          {showDiscoverShellHeader ? (
-            renderDiscoverHomeLocationChip("desktop")
-          ) : showCommunityFeedHeaderLeft ? (
-            <>
+      {/*
+       * Full-viewport grid: 220px sidebar column + content spanning to the right edge.
+       * Inner [auto | 1fr | auto] pins left controls beside the side panel and
+       * language/bell to the viewport end (not the feed column before favorites).
+       */}
+      <div className="grid h-14 w-full grid-cols-[220px_minmax(0,1fr)] items-center">
+        <div aria-hidden="true" />
+        <div className="grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
+          <div className="flex min-w-0 items-center gap-1 ps-3">
+            {showDiscoverShellHeader ? (
+              renderDiscoverHomeLocationChip("desktop")
+            ) : showCommunityFeedHeaderLeft ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleHeaderBack}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
+                  aria-label={t("common.back")}
+                >
+                  <HeaderBackChevron />
+                </button>
+                {renderDiscoverHomeLocationChip("desktop", { besideBack: true })}
+              </>
+            ) : (
               <button
                 type="button"
                 onClick={handleHeaderBack}
                 className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
-                aria-label="Back"
+                aria-label={t("common.back")}
               >
                 <HeaderBackChevron />
               </button>
-              {renderDiscoverHomeLocationChip("desktop", { besideBack: true })}
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={handleHeaderBack}
-              className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
-              aria-label="Back"
-            >
-              <HeaderBackChevron />
-            </button>
-          )}
-        </div>
+            )}
+          </div>
 
-        <div className="flex min-w-0 max-w-full justify-center justify-self-center px-2 md:max-w-xl md:px-4 lg:max-w-2xl">
+          <div className="flex min-w-0 items-center justify-center px-2 md:px-4">
           {isDiscoverHome && desktopDiscoverSearchOpen ? (
             <div className="flex w-full min-w-0 items-center gap-2 md:gap-2.5">
-              <div className="min-w-0 flex-1 md:max-w-md lg:max-w-xl">
+              <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
                 <UserSearch
                   autoFocus
                   onResultSelect={() => setDesktopDiscoverSearchOpen(false)}
@@ -847,7 +855,7 @@ export function BottomNav() {
                 type="button"
                 onClick={() => setDesktopDiscoverSearchOpen(false)}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
-                aria-label="Close search"
+                aria-label={t("common.closeSearch")}
               >
                 <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
               </button>
@@ -865,7 +873,7 @@ export function BottomNav() {
                 type="button"
                 onClick={() => setDesktopDiscoverSearchOpen(true)}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
-                aria-label="Open search"
+                aria-label={t("common.openSearch")}
               >
                 <Search className="h-6 w-6" strokeWidth={2.25} aria-hidden />
               </button>
@@ -881,35 +889,36 @@ export function BottomNav() {
                   />
                 </div>
               )}
-              <div className="min-w-0 flex-1 md:max-w-md lg:max-w-xl">
+              <div className="min-w-0 flex-1 md:max-w-xs lg:max-w-sm">
                 <UserSearch />
               </div>
             </div>
           )}
-        </div>
+          </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-1 min-w-0">
-          <button
-            type="button"
-            onClick={() => setNotificationsOpen(true)}
-            className="relative rounded-xl p-2.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90 md:p-3"
-            aria-label="Notifications"
-          >
-            <Bell className="h-6 w-6 md:h-7 md:w-7" />
-            {notificationBadgeCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute right-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 md:right-0 md:top-0 md:h-7 md:min-w-7 md:px-1.5 md:text-xs"
-              >
-                {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-              </Badge>
-            )}
-          </button>
-          {/*
-           * Profile avatar lives in the DesktopSidePanel ("Profile" nav row) on
-           * desktop, so the header no longer renders a duplicate avatar button.
-           */}
-        </div>
+          <div className="flex shrink-0 items-center justify-end gap-0.5">
+            <LanguageSwitcher />
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen(true)}
+              className="relative rounded-xl p-2.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90 md:p-3"
+              aria-label={t("common.notifications")}
+            >
+              <Bell className="h-6 w-6 md:h-7 md:w-7" />
+              {notificationBadgeCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute end-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 md:end-0 md:top-0 md:h-7 md:min-w-7 md:px-1.5 md:text-xs"
+                >
+                  {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
+                </Badge>
+              )}
+            </button>
+            {/*
+             * Profile avatar lives in the DesktopSidePanel ("Profile" nav row) on
+             * desktop, so the header no longer renders a duplicate avatar button.
+             */}
+          </div>
         </div>
       </div>
     </header>

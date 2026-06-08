@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
@@ -35,7 +36,8 @@ type SavedProfileRow = {
 type SavedPostRow = { id: string; caption: string | null; authorName: string | null };
 
 type NavItem = {
-  label: string;
+  id: "home" | "explore" | "messages" | "profile";
+  labelKey: string;
   href: string;
   icon: LucideIcon;
   activeMatch: (pathname: string) => boolean;
@@ -52,6 +54,7 @@ function isExcludedRoute(pathname: string): boolean {
 }
 
 export function DesktopSidePanel() {
+  const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
   const { guardKycAction } = useKycGate();
   const { unreadMessages } = useUnreadCounts();
@@ -102,26 +105,30 @@ export function DesktopSidePanel() {
 
   const items: NavItem[] = [
     {
-      label: "Home",
+      id: "home",
+      labelKey: "common.home",
       href: homeHref,
       icon: Home,
       activeMatch: (p) => p.startsWith(homeHref),
     },
     {
-      label: "Explore",
+      id: "explore",
+      labelKey: "common.explore",
       href: exploreHref,
       icon: Rss,
       activeMatch: (p) =>
         p.startsWith("/community") || p.startsWith("/public/posts"),
     },
     {
-      label: "Messages",
+      id: "messages",
+      labelKey: "common.messages",
       href: messagesHref,
       icon: MessageCircle,
       activeMatch: (p) => p.startsWith("/messages"),
     },
     {
-      label: "Profile",
+      id: "profile",
+      labelKey: "common.profile",
       href: profileHref,
       icon: User,
       activeMatch: (p) => p.startsWith(profileHref),
@@ -271,7 +278,7 @@ export function DesktopSidePanel() {
   return (
     <aside
       className={cn(
-        "hidden md:flex fixed left-0 top-0 bottom-0 z-[200] w-[220px] flex-col",
+        "app-desktop-side-panel hidden md:flex flex-col",
         "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
       )}
     >
@@ -293,11 +300,11 @@ export function DesktopSidePanel() {
             type="button"
             onClick={() => setPlusOpen((v) => !v)}
             className={cn(
-              "ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+              "ms-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
               "bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors",
               "hover:bg-background active:scale-[0.98]",
             )}
-            aria-label="Create"
+            aria-label={t("common.create")}
             aria-expanded={plusOpen}
             aria-haspopup="menu"
           >
@@ -313,8 +320,8 @@ export function DesktopSidePanel() {
               <div
                 role="menu"
                 className={cn(
-                  "absolute left-[calc(100%+12px)] top-0 z-[150] w-[14.5rem] overflow-hidden rounded-2xl",
-                  "bg-background/95 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2 duration-200",
+                  "absolute start-[calc(100%+12px)] top-0 z-[150] w-[14.5rem] overflow-hidden rounded-2xl",
+                  "bg-background/95 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 duration-200",
                 )}
               >
                 {isClient ? (
@@ -328,7 +335,7 @@ export function DesktopSidePanel() {
                     }}
                   >
                     <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
-                    <span>Find helpers</span>
+                    <span>{t("nav.findHelpers")}</span>
                   </button>
                 ) : null}
                 {isFreelancer ? (
@@ -342,7 +349,7 @@ export function DesktopSidePanel() {
                     }}
                   >
                     <Rss className="h-5 w-5 shrink-0 text-foreground/80" />
-                    <span>Find requests</span>
+                    <span>{t("nav.findRequests")}</span>
                   </button>
                 ) : null}
                 {isClient ? (
@@ -358,7 +365,7 @@ export function DesktopSidePanel() {
                     }}
                   >
                     <Zap className="h-5 w-5 shrink-0 text-foreground/80" strokeWidth={2.5} />
-                    <span>Start request</span>
+                    <span>{t("nav.startRequest")}</span>
                   </button>
                 ) : null}
                 {isFreelancer ? (
@@ -375,7 +382,7 @@ export function DesktopSidePanel() {
                   >
                     <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
                     <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                      <span>Go live</span>
+                      <span>{t("nav.goLive")}</span>
                       {isLiveNow && freelancerLiveUntil ? (
                         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold tabular-nums">
                           <LiveTimer countdownTo={freelancerLiveUntil} />
@@ -396,7 +403,7 @@ export function DesktopSidePanel() {
                   }}
                 >
                   <PenSquare className="h-5 w-5 shrink-0 text-foreground/80" />
-                  <span>Share a post</span>
+                  <span>{t("nav.sharePost")}</span>
                 </button>
               </div>
             </>
@@ -412,7 +419,8 @@ export function DesktopSidePanel() {
             {items.map((it) => {
               const active = it.activeMatch(pathname);
               const Icon = it.icon;
-              const isProfileRow = it.label === "Profile";
+              const isProfileRow = it.id === "profile";
+              const label = t(it.labelKey);
               return (
                 <Link
                   key={it.href}
@@ -423,7 +431,7 @@ export function DesktopSidePanel() {
                     active && "bg-muted/70 text-foreground",
                   )}
                   aria-current={active ? "page" : undefined}
-                  title={it.label}
+                  title={label}
                 >
                   {isProfileRow ? (
                     <Avatar
@@ -449,12 +457,12 @@ export function DesktopSidePanel() {
                     <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} />
                   )}
                   <span className="text-[13px] font-bold leading-none tracking-tight">
-                    {it.label}
+                    {label}
                   </span>
-                  {it.label === "Messages" && unreadMessages > 0 && (
+                  {it.id === "messages" && unreadMessages > 0 && (
                     <Badge
                       variant="destructive"
-                      className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black tabular-nums shadow-sm"
+                      className="ms-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black tabular-nums shadow-sm"
                     >
                       {unreadMessages > 9 ? "9+" : unreadMessages}
                     </Badge>
@@ -482,7 +490,7 @@ export function DesktopSidePanel() {
               >
                 <span className="inline-flex items-center gap-2">
                   <Bookmark className="h-4 w-4" strokeWidth={2.6} />
-                  Saved profiles
+                  {t("nav.savedProfiles")}
                 </span>
                 <ChevronDown className={cn("h-4 w-4 transition-transform", savedProfilesOpen && "rotate-180")} />
               </button>
@@ -558,7 +566,7 @@ export function DesktopSidePanel() {
               >
                 <span className="inline-flex items-center gap-2">
                   <Bookmark className="h-4 w-4" strokeWidth={2.6} />
-                  Saved posts
+                  {t("nav.savedPosts")}
                 </span>
                 <ChevronDown className={cn("h-4 w-4 transition-transform", savedPostsOpen && "rotate-180")} />
               </button>
@@ -612,11 +620,11 @@ export function DesktopSidePanel() {
             "group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors",
             "text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:hover:bg-red-500/20 active:scale-[0.98]",
           )}
-          aria-label="Log out"
+          aria-label={t("common.logOut")}
         >
           <LogOut className="h-6 w-6 shrink-0" strokeWidth={2.4} />
           <span className="text-[13px] font-bold leading-none tracking-tight">
-            Log out
+            {t("common.logOut")}
           </span>
         </button>
       </div>

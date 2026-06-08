@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -50,6 +51,7 @@ export function DiscoverHomeMyOpenRequests({
   className,
   explorePath = "/client/explore",
 }: Props) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
 
@@ -109,10 +111,10 @@ export function DiscoverHomeMyOpenRequests({
     <section className={cn("w-full", className)} aria-label="My open requests">
       <div className="mb-3">
         <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-          My requests
+          {t("discover.myRequests")}
         </h2>
         <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">
-          Your open help requests
+          {t("discover.myRequestsSubtitle")}
         </p>
       </div>
 
@@ -146,7 +148,7 @@ export function DiscoverHomeMyOpenRequests({
               "flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-zinc-50 text-sm font-bold text-foreground transition-colors hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800",
             )}
           >
-            Show more
+            {t("common.showMore")}
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
