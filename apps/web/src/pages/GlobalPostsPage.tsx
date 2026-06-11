@@ -326,35 +326,7 @@ export default function GlobalPostsPage() {
         </div>
       )}
 
-      {/*
-        Floating "Share a post" CTA.
-         - Mobile: circular plus-icon FAB in the bottom-right, above the BottomNav.
-         - Desktop: full pill ("Share a post") centred at the bottom of the viewport.
-      */}
-      <button
-        type="button"
-        onClick={user ? openCompose : () => setAboutOpen(true)}
-        className={cn(
-          "md:hidden fixed z-[120] right-4 inline-flex h-14 w-14 items-center justify-center rounded-full",
-          "bg-orange-600 text-white shadow-2xl shadow-orange-500/30 transition-transform",
-          "hover:bg-orange-700 active:scale-[0.95]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        )}
-        style={{
-          bottom: user
-            ? "calc(3.25rem + max(0.5rem, env(safe-area-inset-bottom,0px)) + 0.75rem)"
-            : "calc(0.75rem + env(safe-area-inset-bottom,0px))",
-        }}
-        aria-label={user ? "Share a post" : "What is tebnu?"}
-      >
-        <Send
-          className="h-6 w-6 translate-x-[1px]"
-          strokeWidth={2.5}
-          aria-hidden
-        />
-      </button>
-
-      {/* Guest mobile: "What is tebnu?" bottom sheet (opened via primary FAB). */}
+      {/* Guest mobile: "What is tebnu?" bottom sheet */}
       {!user && aboutOpen ? (
         <MobileSnapBottomSheet
           expanded={aboutOpen}
@@ -447,6 +419,7 @@ export default function GlobalPostsPage() {
         </MobileSnapBottomSheet>
       ) : null}
 
+      {/* Desktop: floating "Share a post" CTA */}
       <button
         type="button"
         onClick={user ? openCompose : () => setAboutOpen(true)}

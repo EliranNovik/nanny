@@ -14,7 +14,6 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import type { ActiveLocationResult, LocationMode } from "@/hooks/useActiveLocation";
 
@@ -202,24 +201,13 @@ export function LocationPickerSheet({ open, onOpenChange, location }: Props) {
         </div>
 
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3 border-b border-border/40">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-zinc-800">
-              <MapPin className="h-4 w-4 text-slate-600 dark:text-slate-300" strokeWidth={2.25} />
-            </span>
-            <span className="text-[15px] font-semibold text-slate-900 dark:text-white">
-              My location
-            </span>
-          </div>
-          <DialogClose asChild>
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-black/5 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" strokeWidth={2.25} />
-            </button>
-          </DialogClose>
+        <div className="flex shrink-0 items-center gap-2.5 px-5 py-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-zinc-800">
+            <MapPin className="h-4 w-4 text-slate-600 dark:text-slate-300" strokeWidth={2.25} />
+          </span>
+          <span className="text-[15px] font-semibold text-slate-900 dark:text-white">
+            My location
+          </span>
         </div>
 
         {/* Location options */}
@@ -256,8 +244,6 @@ export function LocationPickerSheet({ open, onOpenChange, location }: Props) {
             )}
           </button>
 
-          <div className="mx-5 border-t border-border/30" />
-
           {/* Profile */}
           <button
             type="button"
@@ -282,8 +268,6 @@ export function LocationPickerSheet({ open, onOpenChange, location }: Props) {
               <Check className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" strokeWidth={2.5} />
             )}
           </button>
-
-          <div className="mx-5 border-t border-border/30" />
 
           {/* Custom */}
           <button

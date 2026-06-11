@@ -9,6 +9,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { useAuth as _useAuth } from "@/context/AuthContext";
+import { AppSafeAreaSync } from "@/components/AppSafeAreaSync";
 import { DocumentScrollOverflowGate } from "@/components/DocumentScrollOverflowGate";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { DiscoverHomeScrollHeaderProvider } from "@/context/DiscoverHomeScrollHeaderContext";
@@ -214,8 +215,8 @@ function KeepAlivePages() {
 
 /**
  * Wraps page content with top padding so it clears the fixed BottomNav header.
- * #root already applies env(safe-area-inset-top); pt-14 (~3.5rem) matches the mobile strip
- * (safe-area padding inside the strip + h-10 + margins) and the md desktop bar.
+ * Mobile: scroll-top clearance on .app-mobile-scroll-top-clearance (scrolls away under fixed blur).
+ * md: 3.5rem bar on shell (#root still pads safe-area-top on desktop).
  */
 function PageLayoutWithHeader() {
   const { pathname } = useLocation();
@@ -236,7 +237,7 @@ function PageLayoutWithHeader() {
       <div className="min-h-[100dvh] min-h-[-webkit-fill-available]">
         <DesktopSidePanel />
         {/* On desktop, leave room for the fixed left panel */}
-        <div className="min-w-0 app-side-panel-offset">
+        <div className="min-w-0 app-side-panel-offset app-mobile-scroll-top-clearance">
           {/* Always-mounted keep-alive pages */}
           <KeepAlivePages />
           {/* Normal outlet — hidden when a keep-alive route is active */}
@@ -609,6 +610,7 @@ export default function App() {
             }}
           >
             <DocumentScrollOverflowGate />
+            <AppSafeAreaSync />
             <DocumentLocaleSync />
             <ToastProvider>
               <AuthProvider>

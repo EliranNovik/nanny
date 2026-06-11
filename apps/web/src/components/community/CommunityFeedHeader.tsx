@@ -41,45 +41,45 @@ const FILTER_TABS: {
     labelKey: "feed.filters.all",
     Icon: LayoutGrid,
     activeClass:
-      "border-transparent bg-emerald-600 text-white shadow-md shadow-emerald-900/15",
+      "border-0 bg-emerald-600 text-white shadow-md shadow-emerald-900/15",
     idleClass:
-      "border-border/60 bg-background text-foreground hover:bg-muted/50",
+      "border-0 bg-background text-foreground hover:bg-muted/50",
   },
   {
     id: "request_help",
     labelKey: "feed.filters.requests",
     Icon: LifeBuoy,
     activeClass:
-      "border-transparent bg-red-600 text-white shadow-md shadow-red-900/15",
+      "border-0 bg-red-600 text-white shadow-md shadow-red-900/15",
     idleClass:
-      "border-red-200/70 bg-red-50/50 text-red-700 hover:bg-red-50 dark:border-red-500/25 dark:bg-red-950/20 dark:text-red-300",
+      "border-0 bg-red-50/50 text-red-700 hover:bg-red-50 dark:bg-red-950/20 dark:text-red-300",
   },
   {
     id: "offer_service",
     labelKey: "feed.filters.offers",
     Icon: Briefcase,
     activeClass:
-      "border-transparent bg-emerald-600 text-white shadow-md shadow-emerald-900/15",
+      "border-0 bg-emerald-600 text-white shadow-md shadow-emerald-900/15",
     idleClass:
-      "border-emerald-200/70 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/25 dark:bg-emerald-950/20 dark:text-emerald-300",
+      "border-0 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-300",
   },
   {
     id: "community",
     labelKey: "feed.filters.community",
     Icon: Users,
     activeClass:
-      "border-transparent bg-blue-600 text-white shadow-md shadow-blue-900/15",
+      "border-0 bg-blue-600 text-white shadow-md shadow-blue-900/15",
     idleClass:
-      "border-blue-200/70 bg-blue-50/50 text-blue-700 hover:bg-blue-50 dark:border-blue-500/25 dark:bg-blue-950/20 dark:text-blue-300",
+      "border-0 bg-blue-50/50 text-blue-700 hover:bg-blue-50 dark:bg-blue-950/20 dark:text-blue-300",
   },
   {
     id: "event",
     labelKey: "feed.filters.events",
     Icon: CalendarDays,
     activeClass:
-      "border-transparent bg-violet-600 text-white shadow-md shadow-violet-900/15",
+      "border-0 bg-violet-600 text-white shadow-md shadow-violet-900/15",
     idleClass:
-      "border-violet-200/70 bg-violet-50/50 text-violet-700 hover:bg-violet-50 dark:border-violet-500/25 dark:bg-violet-950/20 dark:text-violet-300",
+      "border-0 bg-violet-50/50 text-violet-700 hover:bg-violet-50 dark:bg-violet-950/20 dark:text-violet-300",
   },
 ];
 
@@ -319,7 +319,7 @@ export function CommunityFeedHeader({
                 onFilterChange(tab.id);
               }}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
+                "inline-flex shrink-0 items-center gap-2 rounded-full border-0 px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
                 selected ? tab.activeClass : tab.idleClass,
               )}
             >

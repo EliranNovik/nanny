@@ -13,8 +13,8 @@ import {
 type DiscoverRole = "client" | "freelancer";
 
 export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
-  /** Enable scroll-linked collapse for mobile shell. */
-  useMobileShellScrollCollapse(true);
+  /** Discover home: fixed mobile header — no scroll-linked shell collapse. */
+  useMobileShellScrollCollapse(false);
 
   const { addToast } = useToast();
   const isClient = role === "client";
@@ -46,9 +46,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
     <div
       className={cn(
         "relative flex min-h-0 flex-1 flex-col bg-white dark:bg-background",
-        homeMode === "work" || homeMode === "hire"
-          ? "max-md:pb-[calc(6.85rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]"
-          : "max-md:pb-0",
+        "max-md:pb-0",
         "md:min-h-screen md:flex-none md:overflow-visible md:pb-12 md:overflow-y-auto",
       )}
       data-discover-home-page=""

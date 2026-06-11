@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useState, useMemo, useCallback } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useMemo,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -43,7 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { glassBadgeClass, glassIconButtonClass } from "@/lib/glassBadge";
+import { glassBadgeClass } from "@/lib/glassBadge";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -79,6 +86,65 @@ function shouldOpenMobileChatPane(): boolean {
   const params = new URLSearchParams(window.location.search);
   if (params.get("conversation")) return true;
   return /\/messages\/[^/]+/.test(window.location.pathname);
+}
+
+function inboxNavIconClass(isActive: boolean) {
+  return cn(
+    "bottom-nav-mobile-tab-glyph h-7 w-7 transition-[width,height,transform]",
+    isActive
+      ? "bottom-nav-mobile-tab-glyph-active fill-current stroke-none text-zinc-950 dark:text-white"
+      : "fill-none stroke-[2] text-zinc-950/65 dark:text-white/65",
+  );
+}
+
+function MessagesInboxNavItem({
+  active,
+  label,
+  onClick,
+  ariaLabel,
+  children,
+  className,
+}: {
+  active?: boolean;
+  label: string;
+  onClick: () => void;
+  ariaLabel?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel ?? label}
+      className={cn(
+        "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0",
+        className,
+      )}
+    >
+      {active ? (
+        <span
+          className="bottom-nav-tab-active-glass pointer-events-none absolute inset-x-0.5 -inset-y-0.5 rounded-full"
+          aria-hidden
+        />
+      ) : null}
+      <div className="bottom-nav-mobile-tab-inner relative z-[1] flex w-full flex-col items-center justify-center gap-0.5 px-0.5 py-1">
+        <div className="bottom-nav-mobile-icon-slot relative flex h-8 w-full items-center justify-center overflow-visible">
+          {children}
+        </div>
+        <span
+          className={cn(
+            "bottom-nav-mobile-tab-label max-w-[4.5rem] mt-px truncate text-center text-[10px] leading-none tracking-tight",
+            active
+              ? "font-bold text-zinc-950 dark:text-white"
+              : "font-semibold text-zinc-950/55 dark:text-white/55",
+          )}
+        >
+          {label}
+        </span>
+      </div>
+    </button>
+  );
 }
 
 function InboxSecuredFooter() {
@@ -603,9 +669,8 @@ export default function MessagesPage() {
         className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background"
       >
         <div className="flex h-full min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-border/30 bg-transparent md:w-80 lg:w-96 md:flex">
-          <div className="z-40 flex shrink-0 bg-transparent px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4">
+          <div className="z-40 hidden shrink-0 bg-transparent px-4 pb-4 pt-4 md:block">
             <div className="flex w-full items-center gap-3">
-              <Skeleton className="h-11 w-11 shrink-0 rounded-full md:hidden" />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <Skeleton className="h-5 w-20" />
                 <Skeleton className="h-3 w-40" />
@@ -651,41 +716,16 @@ export default function MessagesPage() {
           mobileView === "contacts" ? "flex" : "hidden md:flex",
         )}
       >
-        {/*
-          Mobile: fixed frosted top; middle list scrolls edge-to-edge with padding under the header.
-          Floating see-through actions at the bottom (messages tab).
-        */}
-        <div className="max-md:fixed max-md:inset-x-0 max-md:top-0 max-md:z-40 md:contents">
-          {/* Header: back (mobile) + Messages / News tabs — floating glass controls */}
+        {/* Desktop: inbox section tabs in sidebar header. Mobile uses bottom nav bar. */}
+        <div className="hidden md:contents">
           <div
             className={cn(
-              "z-40 flex shrink-0 items-center gap-2.5 bg-transparent px-4 pb-3 sm:gap-3",
-              "pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-4",
+              "z-40 flex shrink-0 items-center gap-2.5 bg-transparent px-4 pb-3 sm:gap-3 md:pt-4",
             )}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() =>
-                navigate(
-                  profile?.role === "client"
-                    ? "/client/home"
-                    : "/freelancer/home",
-                )
-              }
-              className={cn(
-                "h-11 w-11 shrink-0 rounded-full md:hidden",
-                glassBadgeClass,
-                "text-foreground hover:bg-white/15 active:bg-white/20",
-                "dark:hover:bg-white/10 dark:active:bg-white/15",
-                glassIconButtonClass,
-              )}
-            >
-              <HeaderBackChevron />
-            </Button>
             <div
               className={cn(
-                "ml-auto flex w-auto gap-0.5 rounded-full p-1 md:ml-0 md:min-w-0 md:flex-1 md:gap-0",
+                "flex w-auto gap-0.5 rounded-full p-1 md:min-w-0 md:flex-1 md:gap-0",
                 glassBadgeClass,
               )}
               role="tablist"
@@ -759,10 +799,8 @@ export default function MessagesPage() {
               "[&_[data-radix-scroll-area-viewport]]:max-md:[scrollbar-width:none]",
               "[&_[data-radix-scroll-area-viewport]]:max-md:[-ms-overflow-style:none]",
               "[&_[data-radix-scroll-area-viewport]]:max-md:[&::-webkit-scrollbar]:hidden",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[calc(max(0.75rem,env(safe-area-inset-top,0px))+4.75rem)]",
-              inboxTab === "messages"
-                ? "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
-                : "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[max(1rem,env(safe-area-inset-bottom,0px))]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(5.75rem+max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))]",
             )}
           >
             {inboxTab === "messages" ? (
@@ -1143,53 +1181,120 @@ export default function MessagesPage() {
             )}
           </ScrollArea>
 
-          {/* Mobile: floating glass pill — New message + Remove (icon-only, bottom-right) */}
-          {inboxTab === "messages" ? (
-            <div
-              className={cn(
-                "pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-end px-4 md:hidden",
-                "pb-[max(1rem,env(safe-area-inset-bottom,0px))]",
-              )}
-            >
-              <div
-                className={cn(
-                  "pointer-events-auto flex gap-0.5 rounded-full p-1",
-                  glassBadgeClass,
-                )}
-              >
-                <button
-                  type="button"
-                  aria-label="New message"
-                  className={cn(
-                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors",
-                    "hover:bg-white/10 active:bg-white/15",
-                    "dark:hover:bg-white/[0.06] dark:active:bg-white/10",
-                  )}
-                  onClick={() => setNewChatOpen(true)}
+        </div>
+
+        {/* Mobile: unified inbox chrome — back, tabs, and actions in one bottom nav pill */}
+        {mobileView === "contacts" ? (
+          <nav
+            className={cn(
+              "pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-2 md:hidden",
+              "pb-[max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]",
+            )}
+            role="tablist"
+            aria-label="Messages inbox"
+          >
+            <div className="bottom-nav-mobile-shell pointer-events-auto w-full max-w-none">
+              <div className="bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-3 py-2">
+                <MessagesInboxNavItem
+                  label="Back"
+                  onClick={() =>
+                    navigate(
+                      profile?.role === "client"
+                        ? "/client/home"
+                        : "/freelancer/home",
+                    )
+                  }
                 >
-                  <PlusSquare className="h-5 w-5 shrink-0" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  aria-label={isManageMode ? "Done removing" : "Remove conversations"}
-                  onClick={() => setIsManageMode(!isManageMode)}
-                  className={cn(
-                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors",
-                    isManageMode
-                      ? "bg-red-500/10 text-red-600 hover:bg-red-500/15 active:bg-red-500/20 dark:text-red-400"
-                      : "text-foreground hover:bg-white/10 active:bg-white/15 dark:hover:bg-white/[0.06] dark:active:bg-white/10",
-                  )}
+                  <HeaderBackChevron className="h-5 w-5 text-zinc-950 dark:text-white" />
+                </MessagesInboxNavItem>
+
+                <MessagesInboxNavItem
+                  active={inboxTab === "messages"}
+                  label="Messages"
+                  ariaLabel={
+                    inboxUnreadTotal > 0
+                      ? `Messages, ${inboxUnreadTotal} unread`
+                      : "Messages"
+                  }
+                  onClick={() => setInboxTab("messages")}
                 >
-                  {isManageMode ? (
-                    <Check className="h-5 w-5 shrink-0" aria-hidden />
-                  ) : (
-                    <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
-                  )}
-                </button>
+                  <MessageCircle
+                    className={inboxNavIconClass(inboxTab === "messages")}
+                    aria-hidden
+                  />
+                  {inboxUnreadTotal > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-red-600 px-0.5 text-[10px] font-black leading-none text-white">
+                      {inboxUnreadTotal > 9 ? "9+" : inboxUnreadTotal}
+                    </span>
+                  ) : null}
+                </MessagesInboxNavItem>
+
+                <MessagesInboxNavItem
+                  active={inboxTab === "news"}
+                  label="News"
+                  ariaLabel={
+                    visibleActivityAlerts.length > 0
+                      ? `News, ${visibleActivityAlerts.length} items`
+                      : "News"
+                  }
+                  onClick={() => setInboxTab("news")}
+                >
+                  <Bell
+                    className={inboxNavIconClass(inboxTab === "news")}
+                    aria-hidden
+                  />
+                  {visibleActivityAlerts.length > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-muted-foreground/25 px-0.5 text-[10px] font-black leading-none text-foreground dark:bg-white/20">
+                      {visibleActivityAlerts.length > 9
+                        ? "9+"
+                        : visibleActivityAlerts.length}
+                    </span>
+                  ) : null}
+                </MessagesInboxNavItem>
+
+                {inboxTab === "messages" ? (
+                  <>
+                    <MessagesInboxNavItem
+                      label="New"
+                      ariaLabel="New message"
+                      onClick={() => setNewChatOpen(true)}
+                    >
+                      <PlusSquare
+                        className="bottom-nav-mobile-tab-glyph h-7 w-7 fill-none stroke-[2] text-zinc-950/65 dark:text-white/65"
+                        aria-hidden
+                      />
+                    </MessagesInboxNavItem>
+
+                    <MessagesInboxNavItem
+                      label={isManageMode ? "Done" : "Remove"}
+                      ariaLabel={
+                        isManageMode ? "Done removing" : "Remove conversations"
+                      }
+                      onClick={() => setIsManageMode(!isManageMode)}
+                      className={
+                        isManageMode
+                          ? "text-red-600 dark:text-red-400"
+                          : undefined
+                      }
+                    >
+                      {isManageMode ? (
+                        <Check
+                          className="bottom-nav-mobile-tab-glyph h-7 w-7 stroke-[2] text-red-600 dark:text-red-400"
+                          aria-hidden
+                        />
+                      ) : (
+                        <Trash2
+                          className="bottom-nav-mobile-tab-glyph h-7 w-7 fill-none stroke-[2] text-zinc-950/65 dark:text-white/65"
+                          aria-hidden
+                        />
+                      )}
+                    </MessagesInboxNavItem>
+                  </>
+                ) : null}
               </div>
             </div>
-          ) : null}
-        </div>
+          </nav>
+        ) : null}
 
         {/* Desktop Tab Bar */}
         <div className="hidden md:flex shrink-0 items-center justify-around border-t border-border/20 bg-background/95 px-4 pt-2.5 pb-4 h-[71px] dark:border-white/[0.04]">

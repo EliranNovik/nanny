@@ -73,4 +73,4 @@ export function ProfileMenuRow({
 }
 
 export const profileMenuListClassName =
-  "overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-sm dark:border-white/5 dark:bg-zinc-900 [&>.profile-menu-row:not(:first-child)_span.profile-menu-row-divider]:border-t";
+  "overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-sm dark:border-0 dark:bg-zinc-900 dark:shadow-none [&>.profile-menu-row:not(:first-child)_span.profile-menu-row-divider]:border-t";

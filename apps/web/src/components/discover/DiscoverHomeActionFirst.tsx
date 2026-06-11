@@ -48,6 +48,7 @@ import { matchesCommunityRequestsIncoming } from "@/lib/communityRequestsNotific
 import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
 import { useDiscoverOpenHelpRequests } from "@/hooks/data/useDiscoverOpenHelpRequests";
+import { registerDiscoverHomeQuickMoreOpener } from "@/lib/discoverHomeQuickMoreBridge";
 import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
 import {
   ALL_HELP_CATEGORY_ID,
@@ -167,6 +168,11 @@ export function DiscoverHomeActionFirst({
   useEffect(() => {
     void loadFreelancerLiveMeta();
   }, [loadFreelancerLiveMeta]);
+
+  useEffect(() => {
+    registerDiscoverHomeQuickMoreOpener(() => setQuickMoreOpen(true));
+    return () => registerDiscoverHomeQuickMoreOpener(null);
+  }, []);
 
   /** Clients + freelancers both persist 24h go-live on `freelancer_profiles` — refetch when returning to the tab. */
   useEffect(() => {
@@ -311,12 +317,8 @@ export function DiscoverHomeActionFirst({
             "md:max-w-md",
           )}
         >
-          <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-5 py-3.5 backdrop-blur-md">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-lg font-black tracking-tight">More actions</DialogTitle>
-            </div>
-          </DialogHeader>
-          <div className="flex flex-col gap-1 p-2 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+          <DialogTitle className="sr-only">More actions</DialogTitle>
+          <div className="flex flex-col gap-1 p-2 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
             {isHire ? (
               <>
                 <button
@@ -698,42 +700,44 @@ export function DiscoverHomeActionFirst({
       )}
     >
       {renderQuickActionDockMobile()}
-      {isHire ? (
-        <DiscoverHirePostRequestStrip
-          onPostRequest={() => {
-            trackEvent("discover_actions_post_request", {
-              mode: homeMode,
-              source: "strip",
-            });
-            writeDiscoverHomeIntent("hire");
-            guardKycAction("start_request", () => {
-              navigate(createRequestPath);
-              recordFirstMeaningfulAction("home_primary_create_request");
-            });
-          }}
-          onMoreClick={() => setQuickMoreOpen(true)}
-          moreMenuTotal={hireMoreMenuTotal}
-          moreMenuOpen={quickMoreOpen}
-        />
-      ) : (
-        <ExploreHelpOthersLiveStrip
-          onGoLive={() => {
-            trackEvent("discover_actions_go_live", {
-              mode: homeMode,
-              source: "strip",
-            });
-            writeDiscoverHomeIntent("work");
-            guardKycAction("go_live", () => {
-              navigate(workPrimaryPath);
-              recordFirstMeaningfulAction("home_primary_work");
-            });
-          }}
-          onMoreClick={() => setQuickMoreOpen(true)}
-          moreMenuTotal={workMoreMenuTotal}
-          moreMenuOpen={quickMoreOpen}
-        />
-      )}
-      <div className="flex flex-1 md:hidden flex-col gap-0 pb-[5rem]">
+      <div className="hidden md:contents">
+        {isHire ? (
+          <DiscoverHirePostRequestStrip
+            onPostRequest={() => {
+              trackEvent("discover_actions_post_request", {
+                mode: homeMode,
+                source: "strip",
+              });
+              writeDiscoverHomeIntent("hire");
+              guardKycAction("start_request", () => {
+                navigate(createRequestPath);
+                recordFirstMeaningfulAction("home_primary_create_request");
+              });
+            }}
+            onMoreClick={() => setQuickMoreOpen(true)}
+            moreMenuTotal={hireMoreMenuTotal}
+            moreMenuOpen={quickMoreOpen}
+          />
+        ) : (
+          <ExploreHelpOthersLiveStrip
+            onGoLive={() => {
+              trackEvent("discover_actions_go_live", {
+                mode: homeMode,
+                source: "strip",
+              });
+              writeDiscoverHomeIntent("work");
+              guardKycAction("go_live", () => {
+                navigate(workPrimaryPath);
+                recordFirstMeaningfulAction("home_primary_work");
+              });
+            }}
+            onMoreClick={() => setQuickMoreOpen(true)}
+            moreMenuTotal={workMoreMenuTotal}
+            moreMenuOpen={quickMoreOpen}
+          />
+        )}
+      </div>
+      <div className="flex flex-1 md:hidden flex-col gap-0">
         <div className="shrink-0 pt-0 px-0">
           <DiscoverHomeRealtimeStrip
             variant={homeMode}

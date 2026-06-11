@@ -58,6 +58,25 @@
 
 @layer base {
   :root {
+    --visual-viewport-top-inset: 0px;
+    --visual-viewport-bottom-inset: 0px;
+    --app-safe-top: max(
+      env(safe-area-inset-top, 0px),
+      var(--visual-viewport-top-inset)
+    );
+    --app-safe-bottom: max(
+      env(safe-area-inset-bottom, 0px),
+      var(--visual-viewport-bottom-inset)
+    );
+    /* Mobile fixed header strip: safe-top + 0.5rem + h-10 + 0.5rem (BottomNav). */
+    --app-mobile-header-stack: calc(0.5rem + 2.25rem + 0.5rem);
+    /* Frosted band: notch / status-bar safe zone only — not header icons or feed. */
+    --app-mobile-top-glass-height: max(0.5rem, var(--app-safe-top));
+    --bottom-nav-morph-duration-expand: 1200ms;
+    --bottom-nav-morph-duration-compact: 1900ms;
+    --bottom-nav-morph-ease-expand: cubic-bezier(0.22, 1.12, 0.36, 1);
+    --bottom-nav-morph-ease-compact: cubic-bezier(0.36, 0, 0.14, 1);
+
     /**
      * Top Layout System — spacing under fixed app chrome (see components/page-frame).
      * --app-nav-clearance: matches md `.app-content-below-fixed-header` (3.5rem) for subheaders fixed below BottomNav.
@@ -67,7 +86,7 @@
     --app-explore-underline-tabs: 2.75rem;
     --app-explore-stack-gap: 0px;
     --app-offset-below-explore-double-strip: calc(
-      env(safe-area-inset-top, 0px) + var(--app-nav-clearance) +
+      var(--app-safe-top) + var(--app-nav-clearance) +
         var(--app-explore-stack-gap) + var(--app-explore-mode-toggle-block) +
         var(--app-explore-stack-gap) + var(--app-explore-underline-tabs)
     );
@@ -165,6 +184,14 @@
     pointer-events: none;
   }
 
+  /* Avoid 100lvh painting a solid band below the visible fold when Safari toolbar shows. */
+  @media (max-width: 767.98px) {
+    html::before {
+      min-height: 100dvh;
+      min-height: -webkit-fill-available;
+    }
+  }
+
   html.dark::before {
     background-image: none;
     /* Subtle top highlight for depth (monochrome, not a colour wash). */
@@ -212,6 +239,18 @@
     overscroll-behavior-y: none;
   }
 
+  /**
+   * Mobile: do not reserve safe-area on #root — those bands are non-scrollable and show
+   * the solid html::before fill instead of feed content behind glass chrome.
+   * Scroll / header padding on layout classes clears notch + home indicator instead.
+   */
+  @media (max-width: 767.98px) {
+    #root {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+  }
+
   /* Page sections: no second paint layer (mesh is global on html::before) */
   [class*="gradient-mesh"],
   .gradient-mesh {
@@ -229,9 +268,9 @@
    * Clears fixed BottomNav (full-width bar + center FAB + safe area) so content
    * does not end hidden under the bar when scrolled to the end.
    */
-  /* Nav height only; #root already adds env(safe-area-inset-bottom). */
+  /* Nav height + bottom safe area (mobile #root no longer reserves safe-area inset). */
   .app-main-scroll-pad {
-    padding-bottom: 7.25rem;
+    padding-bottom: calc(7.25rem + var(--app-safe-bottom));
   }
 
   @media (min-width: 768px) {
@@ -315,53 +354,68 @@
 
   /**
    * Main column under BottomNav fixed header (see App.tsx PageLayoutWithHeader).
-   * #root already pads env(safe-area-inset-top); this adds the bar height only — keep in sync
-   * with BottomNav mobileScrollHeaderLayer (padding + h-10 + padding).
+   * Mobile: outer shell has no top pad — clearance scrolls on .app-mobile-scroll-top-clearance
+   * so feed content can pass behind the fixed safe-zone blur. Desktop: bar height only.
    */
   .app-content-below-fixed-header {
-    padding-top: calc(0.5rem + 2.25rem + 0.5rem);
+    padding-top: var(--app-mobile-header-stack);
   }
 
-  /* Create job / post availability: mobile app header hidden — #root safe-area only */
   @media (max-width: 767.98px) {
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header]),
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-post-availability-no-mobile-header]),
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-cards-view]),
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-cards-view]) {
+    .app-content-below-fixed-header {
       padding-top: 0;
     }
 
-    /* Signed-in global community feed: same fixed top inset as Discover home */
-    .app-content-below-fixed-header:has([data-community-feed-page]) {
-      padding-top: calc(0.5rem + 2.25rem + 0.5rem);
+    /**
+     * Clears floating header buttons only (notch uses fixed blur overlay).
+     * Lives on scrollable content so it scrolls away and feed moves under top chrome.
+     */
+    .app-mobile-scroll-top-clearance {
+      padding-top: var(--app-mobile-header-stack);
     }
 
-    /* Guest global feed: in-flow landing header — no reserved top bar */
-    .app-content-below-fixed-header:has([data-community-feed-guest]) {
+    /**
+     * PageFrame pages: bleed bg to the viewport top (behind safe-zone blur) while
+     * keeping in-flow content below floating header buttons.
+     */
+    .app-mobile-scroll-top-clearance > [data-page-frame] {
+      margin-top: calc(-1 * var(--app-mobile-header-stack));
+      padding-top: var(--app-mobile-header-stack);
+    }
+
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header])
+      .app-mobile-scroll-top-clearance,
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-post-availability-no-mobile-header])
+      .app-mobile-scroll-top-clearance,
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-cards-view])
+      .app-mobile-scroll-top-clearance,
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-cards-view])
+      .app-mobile-scroll-top-clearance,
+    .app-content-below-fixed-header:has([data-community-feed-guest]) .app-mobile-scroll-top-clearance,
+    .app-content-below-fixed-header:has([data-public-profile-guest]) .app-mobile-scroll-top-clearance,
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-messages-page])
+      .app-mobile-scroll-top-clearance {
       padding-top: 0;
-    }
-
-    /* Guest public profile: header is in-flow — no reserved top bar. */
-    .app-content-below-fixed-header:has([data-public-profile-guest]) {
-      padding-top: 0;
-    }
-
-    /* Discover home: fixed top padding — tab toggle does not collapse on scroll */
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-discover-home-page]) {
-      padding-top: calc(0.5rem + 2.25rem + 0.5rem);
-    }
-
-    /* /jobs: fixed top padding — tab strip does not collapse on scroll */
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-unified-jobs-page]) {
-      padding-top: calc(0.5rem + 2.25rem + 0.5rem);
     }
 
     /**
      * /liked: scroll-linked collapse — `--mobile-shell-collapse-progress` is 0…1 (set on html in JS).
      */
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-liked-page]) {
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-liked-page])
+      .app-mobile-scroll-top-clearance {
       padding-top: calc(
-        (1 - var(--mobile-shell-collapse-progress, 0)) * (0.5rem + 2.25rem + 0.5rem)
+        (1 - var(--mobile-shell-collapse-progress, 0)) * var(--app-mobile-header-stack)
+      );
+    }
+
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-liked-page])
+      .app-mobile-scroll-top-clearance
+      > [data-page-frame] {
+      margin-top: calc(
+        -1 * (1 - var(--mobile-shell-collapse-progress, 0)) * var(--app-mobile-header-stack)
+      );
+      padding-top: calc(
+        (1 - var(--mobile-shell-collapse-progress, 0)) * var(--app-mobile-header-stack)
       );
     }
   }
@@ -395,29 +449,273 @@
     }
   }
 
-  /* Flush with page background — same token as html::before; no glass, rules, or drop shadow */
+  /*
+   * Mobile: fixed frosted top band — portaled to body (no transform ancestors;
+   * backdrop-filter breaks inside collapsing header layers on iOS).
+   */
+  @media (max-width: 767.98px) {
+    .mobile-header-safe-zone-glass {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--app-mobile-top-glass-height);
+      z-index: 57;
+      pointer-events: none;
+      background-color: transparent;
+      background-image: linear-gradient(
+        180deg,
+        hsl(0 0% 100% / 0.1) 0%,
+        hsl(0 0% 100% / 0.06) 35%,
+        hsl(0 0% 100% / 0.025) 62%,
+        transparent 100%
+      );
+      -webkit-backdrop-filter: blur(10px) saturate(130%);
+      backdrop-filter: blur(10px) saturate(130%);
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 58%,
+        rgb(0 0 0 / 0.45) 78%,
+        transparent 100%
+      );
+      mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 58%,
+        rgb(0 0 0 / 0.45) 78%,
+        transparent 100%
+      );
+    }
+
+    .dark .mobile-header-safe-zone-glass {
+      background-image: linear-gradient(
+        180deg,
+        hsl(222 16% 7% / 0.22) 0%,
+        hsl(222 16% 7% / 0.12) 35%,
+        hsl(222 16% 7% / 0.04) 62%,
+        transparent 100%
+      );
+      -webkit-backdrop-filter: blur(10px) saturate(125%);
+      backdrop-filter: blur(10px) saturate(125%);
+    }
+  }
+
+  /* Discover / feed header: frosted location pill */
+  .discover-header-location-glass {
+    position: relative;
+    isolation: isolate;
+    border-radius: 9999px;
+    background-color: hsl(0 0% 100% / 0.08);
+    background-image: linear-gradient(
+      180deg,
+      hsl(0 0% 100% / 0.14) 0%,
+      hsl(0 0% 100% / 0.04) 100%
+    );
+    -webkit-backdrop-filter: blur(12px) saturate(145%);
+    backdrop-filter: blur(12px) saturate(145%);
+    border: none;
+    box-shadow: 0 2px 14px hsl(0 0% 0% / 0.05);
+    transition:
+      background-color 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  .discover-header-location-glass:hover {
+    background-color: hsl(0 0% 100% / 0.12);
+    box-shadow: 0 4px 18px hsl(0 0% 0% / 0.07);
+  }
+
+  .dark .discover-header-location-glass {
+    background-color: hsl(0 0% 0% / 0.12);
+    background-image: linear-gradient(
+      180deg,
+      hsl(0 0% 100% / 0.08) 0%,
+      hsl(0 0% 100% / 0.02) 100%
+    );
+    border: none;
+    box-shadow: 0 2px 16px hsl(0 0% 0% / 0.2);
+  }
+
+  .dark .discover-header-location-glass:hover {
+    background-color: hsl(0 0% 0% / 0.18);
+  }
+
+  /* Mobile: floating Apple-style frosted pill; desktop: flush bar */
   .bottom-nav-mobile-shell {
     position: relative;
     isolation: isolate;
-    border: none;
-    box-shadow: none;
-    background-color: hsl(var(--background));
-    background-image: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    transition: background-color 0.3s ease;
+    transition:
+      background-color 0.3s ease,
+      box-shadow 0.3s ease,
+      border-color 0.3s ease;
   }
 
   @media (max-width: 767.98px) {
     .bottom-nav-mobile-shell {
-      border-radius: 0;
+      border-radius: 9999px;
+      background-color: hsl(0 0% 100% / 0.06);
+      background-image: linear-gradient(
+        180deg,
+        hsl(0 0% 100% / 0.1) 0%,
+        hsl(0 0% 100% / 0.03) 100%
+      );
+      -webkit-backdrop-filter: blur(10px) saturate(140%);
+      backdrop-filter: blur(10px) saturate(140%);
+      border: 1px solid hsl(0 0% 100% / 0.22);
+      box-shadow: 0 4px 20px hsl(0 0% 0% / 0.04);
+      width: 100%;
+      max-width: 100%;
+      transform: scale(1);
+      transform-origin: center bottom;
+      transition:
+        transform var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
+        width var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
+        max-width var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
+        box-shadow var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
+        background-color 0.35s ease,
+        border-color 0.35s ease;
+    }
+
+    .bottom-nav-mobile-shell.bottom-nav-mobile-compact {
+      transition:
+        transform var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
+        width var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
+        max-width var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
+        box-shadow var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
+        background-color 0.35s ease,
+        border-color 0.35s ease;
+    }
+
+    .bottom-nav-mobile-items-row,
+    .bottom-nav-mobile-tab-inner,
+    .bottom-nav-mobile-icon-slot,
+    .bottom-nav-mobile-tab-label,
+    .bottom-nav-mobile-tab-glyph {
+      transition-property: padding, gap, height, width, font-size, transform;
+      transition-duration: var(--bottom-nav-morph-duration-expand);
+      transition-timing-function: var(--bottom-nav-morph-ease-expand);
+    }
+
+    .bottom-nav-mobile-compact .bottom-nav-mobile-items-row,
+    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-inner,
+    .bottom-nav-mobile-compact .bottom-nav-mobile-icon-slot,
+    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-label,
+    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-glyph {
+      transition-duration: var(--bottom-nav-morph-duration-compact);
+      transition-timing-function: var(--bottom-nav-morph-ease-compact);
+    }
+
+    .bottom-nav-mobile-portal-compact {
+      transition: padding-bottom var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact);
+    }
+
+    .bottom-nav-mobile-compact.bottom-nav-mobile-shell {
+      width: min(94vw, 22.5rem);
+      max-width: min(94vw, 22.5rem);
+      transform: scale(0.95);
+      box-shadow: 0 3px 16px hsl(0 0% 0% / 0.05);
+    }
+
+    .bottom-nav-mobile-compact .bottom-nav-mobile-items-row {
+      padding-top: 0.4375rem;
+      padding-bottom: 0.4375rem;
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+
+    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-inner {
+      gap: 0.25rem;
+      padding-top: 0.375rem;
+      padding-bottom: 0.375rem;
+    }
+
+    .bottom-nav-mobile-compact .bottom-nav-mobile-icon-slot {
+      height: 1.875rem;
+    }
+
+    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-label {
+      font-size: 0.59375rem;
+      line-height: 1;
+    }
+
+    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-glyph {
+      height: 1.625rem;
+      width: 1.625rem;
+    }
+
+    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-glyph-active {
+      height: 1.6875rem;
+      width: 1.6875rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bottom-nav-mobile-shell,
+      .bottom-nav-mobile-portal-compact {
+        transition: none;
+      }
+
+      .bottom-nav-mobile-compact.bottom-nav-mobile-shell {
+        width: min(96vw, 23rem);
+        max-width: min(96vw, 23rem);
+        transform: scale(0.97);
+      }
+    }
+
+    .dark .bottom-nav-mobile-shell {
+      background-color: hsl(0 0% 0% / 0.1);
+      background-image: linear-gradient(
+        180deg,
+        hsl(0 0% 100% / 0.06) 0%,
+        hsl(0 0% 100% / 0.02) 100%
+      );
+      border-color: hsl(0 0% 100% / 0.1);
+      box-shadow: 0 4px 24px hsl(0 0% 0% / 0.18);
+    }
+
+    .bottom-nav-tab-active-glass {
+      background-color: hsl(0 0% 100% / 0.18);
+      background-image: linear-gradient(
+        180deg,
+        hsl(0 0% 100% / 0.28) 0%,
+        hsl(0 0% 100% / 0.1) 100%
+      );
+      -webkit-backdrop-filter: blur(18px) saturate(165%);
+      backdrop-filter: blur(18px) saturate(165%);
+      border: none;
+      box-shadow: 0 2px 8px hsl(0 0% 0% / 0.04);
+      transition:
+        opacity var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
+        transform var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand);
+    }
+
+    .bottom-nav-mobile-compact .bottom-nav-tab-active-glass {
+      transition:
+        opacity var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
+        transform var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact);
+    }
+
+    .dark .bottom-nav-tab-active-glass {
+      background-color: hsl(0 0% 100% / 0.07);
+      background-image: linear-gradient(
+        180deg,
+        hsl(0 0% 100% / 0.12) 0%,
+        hsl(0 0% 100% / 0.04) 100%
+      );
+      border: none;
+      box-shadow: 0 2px 10px hsl(0 0% 0% / 0.16);
     }
   }
 
   @media (min-width: 768px) {
     .bottom-nav-mobile-shell {
       border-radius: 1rem;
+      border: none;
+      box-shadow: none;
       background-color: hsl(var(--background));
+      background-image: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
     }
   }
 

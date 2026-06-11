@@ -3,9 +3,9 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui
 import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { cn } from "@/lib/utils";
 
-/** Sit above the discovery bottom nav on mobile. */
+/** Sit above the mobile bottom tab bar (icons + labels + safe area). */
 export const discoverMobileSheetBottomOffset =
-  "bottom-[max(3.75rem,calc(env(safe-area-inset-bottom,0px)+3.25rem))]";
+  "bottom-[max(4.5rem,calc(env(safe-area-inset-bottom,0px)+4rem))]";
 
 export function useIsMobileViewport() {
   const [isMobile, setIsMobile] = useState(() => {

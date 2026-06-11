@@ -70,7 +70,6 @@ import type { AvailabilityPayload } from "@/lib/availabilityPosts";
 import {
   isServiceCategoryId,
   CUSTOM_POST_CATEGORY_MAX_LEN,
-  type ServiceCategoryId,
   SERVICE_CATEGORIES,
 } from "@/lib/serviceCategories";
 import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
@@ -357,9 +356,31 @@ function feedLocationLabel(t: TFunction, location?: string | null): string {
 }
 
 /** Renders the official Discover-home icon for a service category (cleaning → Sparkles, nanny → Baby, etc.). */
-function CategoryIcon({ categoryId, className }: { categoryId: string; className?: string }) {
-  const Icon = HIRE_CATEGORY_TILE_UI[categoryId as ServiceCategoryId]?.Icon ?? HelpCircle;
-  return <Icon className={className} />;
+function CategoryIcon({
+  categoryId,
+  className,
+  variant = "default",
+}: {
+  categoryId: string;
+  className?: string;
+  variant?: "default" | "badge";
+}) {
+  const normalized = (categoryId ?? "").trim().toLowerCase();
+  const id = isServiceCategoryId(normalized) ? normalized : null;
+  const ui = id ? HIRE_CATEGORY_TILE_UI[id] : null;
+  const Icon = ui?.Icon ?? HelpCircle;
+  const colorClass =
+    variant === "badge"
+      ? ui?.badgeIconClass ?? "text-slate-700"
+      : ui?.iconClass ?? "text-muted-foreground";
+
+  return (
+    <Icon
+      className={cn(colorClass, className)}
+      strokeWidth={2.25}
+      aria-hidden
+    />
+  );
 }
 
 function renderCaptionWithMentions(caption: string): React.ReactNode {
@@ -963,9 +984,15 @@ function formatEventPostDateTime(date: Date, time: string): string {
   return format(dt, "EEEE, MMMM d 'at' h:mm a");
 }
 
-function postTypeBadgeClassName(typeId: string) {
+function postTypeBadgeClassName(
+  typeId: string,
+  size: "default" | "lg" = "default",
+) {
   return cn(
-    "inline-flex items-center gap-2 rounded-md px-3.5 py-1 text-[12px] font-black uppercase tracking-wider border-0 shadow-none",
+    "inline-flex items-center font-black uppercase tracking-wider border-0 shadow-none",
+    size === "lg"
+      ? "gap-2.5 rounded-lg px-4 py-1.5 text-[13px]"
+      : "gap-2 rounded-md px-3.5 py-1 text-[12px]",
     typeId === "request_help" &&
       "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
     typeId === "offer_service" &&
@@ -981,19 +1008,25 @@ function PostTypeBadge({
   typeId,
   typeName,
   className,
+  size = "default",
 }: {
   typeId: string;
   typeName?: string;
   className?: string;
+  size?: "default" | "lg";
 }) {
   const { t } = useTranslation();
   const meta = POST_TYPE_METADATA[typeId];
   const Icon = meta?.icon ?? Sparkles;
 
   return (
-    <span className={cn(postTypeBadgeClassName(typeId), className)}>
+    <span className={cn(postTypeBadgeClassName(typeId, size), className)}>
       <Icon
-        className={cn("h-[18px] w-[18px] shrink-0", meta?.iconColor ?? "text-orange-500")}
+        className={cn(
+          size === "lg" ? "h-5 w-5" : "h-[18px] w-[18px]",
+          "shrink-0",
+          meta?.iconColor ?? "text-orange-500",
+        )}
         strokeWidth={2.25}
         aria-hidden
       />
@@ -1575,7 +1608,7 @@ export function ComposeModal({
                   <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
                     {requestHelpCategory && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
-                        <CategoryIcon categoryId={requestHelpCategory} className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <CategoryIcon categoryId={requestHelpCategory} className="h-3.5 w-3.5 shrink-0" />
                         <span>{feedCategoryLabel(t, requestHelpCategory, customCategory)}</span>
                       </div>
                     )}
@@ -1622,7 +1655,7 @@ export function ComposeModal({
                   <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
                     {offerServiceCategory && (
                       <div className="flex items-center gap-1.5 text-foreground font-bold">
-                        <CategoryIcon categoryId={offerServiceCategory} className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <CategoryIcon categoryId={offerServiceCategory} className="h-3.5 w-3.5 shrink-0" />
                         <span>{feedCategoryLabel(t, offerServiceCategory, customCategory)}</span>
                       </div>
                     )}
@@ -2493,11 +2526,8 @@ function MediaTopBadges({
         <span className={mediaWhenBadgeClass}>
           <CategoryIcon
             categoryId={serviceCategoryId}
-            className={cn(
-              "h-4 w-4 shrink-0",
-              HIRE_CATEGORY_TILE_UI[serviceCategoryId as ServiceCategoryId]?.iconClass ??
-                "text-slate-600",
-            )}
+            variant="badge"
+            className="h-4 w-4 shrink-0"
           />
           {serviceCategoryLabelText}
         </span>
@@ -3631,11 +3661,13 @@ function PostCard({
             <PostTypeBadge
               typeId={post.post_types?.id ?? post.post_type_id!}
               typeName={post.post_types?.name}
+              size={isDiscover ? "lg" : "default"}
             />
           ) : isJobRequest && post.post_types ? (
             <PostTypeBadge
               typeId={post.post_types.id}
               typeName={post.post_types.name}
+              size={isDiscover ? "lg" : "default"}
             />
           ) : null}
           {isOwnFeed && post.source === "post" ? (
@@ -3935,7 +3967,7 @@ function PostCard({
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                 {post.post_metadata.category ? (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
-                    <CategoryIcon categoryId={post.post_metadata.category} className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <CategoryIcon categoryId={post.post_metadata.category} className="h-4 w-4 shrink-0" />
                     <span>
                       {feedCategoryLabel(
                         t,
@@ -3991,7 +4023,7 @@ function PostCard({
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                 {post.post_metadata.service ? (
                   <div className="flex items-center gap-1.5 text-foreground font-bold">
-                    <CategoryIcon categoryId={post.post_metadata.service} className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <CategoryIcon categoryId={post.post_metadata.service} className="h-4 w-4 shrink-0" />
                     <span>
                       {feedCategoryLabel(
                         t,

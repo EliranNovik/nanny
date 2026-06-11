@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Link,
@@ -9,9 +15,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { useDiscoverHomeScrollHeader } from "@/context/DiscoverHomeScrollHeaderContext";
-import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
-import { useMemo } from "react";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
 import {
@@ -37,7 +41,6 @@ import {
   PenSquare,
   AlertCircle,
   Rss,
-  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +69,7 @@ import {
 } from "@/components/nav/BottomNavTabGlyphs";
 import { supabase } from "@/lib/supabase";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
+import { DiscoverHomeMobileHeaderRight } from "@/components/discover/DiscoverHomeMobileHeaderRight";
 import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
 import {
   readDiscoverHomeIntent,
@@ -81,10 +85,88 @@ import { LocationPickerSheet } from "@/components/LocationPickerSheet";
 /** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
 function bottomNavTabIconClass(isActive: boolean) {
   return cn(
-    "transition-all duration-300 h-7 w-7 sm:h-8 sm:w-8",
+    "bottom-nav-mobile-tab-glyph transition-[width,height,transform] h-7 w-7 md:h-8 md:w-8",
+    isActive && "bottom-nav-mobile-tab-glyph-active",
     isActive
       ? "fill-current stroke-none text-zinc-950 dark:text-white"
       : "fill-none stroke-[2] text-zinc-950/65 dark:text-white/65 group-hover:text-zinc-950 dark:group-hover:text-white",
+  );
+}
+
+/** Floating frosted pill — mobile only; desktop keeps full-width bar. */
+const mobileNavPortalClass =
+  "fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-2 pb-[max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] md:hidden";
+
+const mobileNavShellClass = cn(
+  "bottom-nav-mobile-shell pointer-events-auto",
+  "w-full max-w-none",
+  "md:mx-auto md:max-w-md md:rounded-2xl",
+);
+
+const mobileNavItemsRowClass = cn(
+  "bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-3 py-2 transition-[padding]",
+  "md:mx-0 md:w-full md:max-w-none md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12",
+);
+
+const mobileTabTouchClass =
+  "relative flex h-12 w-12 shrink-0 items-center justify-center md:h-[48px] md:w-[48px]";
+
+const mobileTabLinkClass =
+  "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0 transition-all";
+
+const mobileTabLabelClass =
+  "bottom-nav-mobile-tab-label max-w-[4.5rem] mt-px truncate text-center text-[10px] font-semibold leading-none tracking-tight transition-[font-size] md:hidden";
+
+const mobileTabActiveGlassClass =
+  "bottom-nav-tab-active-glass pointer-events-none absolute inset-x-0.5 -inset-y-0.5 rounded-full md:hidden";
+
+function MobileTabLabel({
+  active,
+  children,
+}: {
+  active?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        mobileTabLabelClass,
+        active
+          ? "font-bold text-zinc-950 dark:text-white"
+          : "font-semibold text-zinc-950/55 dark:text-white/55",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function MobileTabItem({
+  active,
+  label,
+  children,
+  iconClassName,
+}: {
+  active: boolean;
+  label: string;
+  children: ReactNode;
+  iconClassName?: string;
+}) {
+  return (
+    <>
+      {active ? <span className={mobileTabActiveGlassClass} aria-hidden /> : null}
+      <div className="bottom-nav-mobile-tab-inner relative z-[1] flex w-full flex-col items-center justify-center gap-0.5 px-0.5 py-1 transition-[gap,padding] md:py-0">
+        <div
+          className={cn(
+            "bottom-nav-mobile-icon-slot relative flex h-8 w-full items-center justify-center overflow-visible transition-[height]",
+            iconClassName,
+          )}
+        >
+          {children}
+        </div>
+        <MobileTabLabel active={active}>{label}</MobileTabLabel>
+      </div>
+    </>
   );
 }
 
@@ -96,7 +178,7 @@ const appMenuJobsCountBadgeClassName = cn(
 );
 
 const plusMenuPanelClassName = cn(
-  "absolute bottom-[72px] left-1/2 z-30 flex -translate-x-1/2 flex-col gap-2.5 p-3",
+  "absolute bottom-[calc(4.75rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] left-1/2 z-30 flex -translate-x-1/2 flex-col gap-2.5 p-3",
   "w-[min(20rem,calc(100vw-1.5rem))] rounded-[1.75rem]",
   "bg-zinc-950/[0.97] text-white shadow-2xl shadow-black/55 backdrop-blur-md",
   "ring-1 ring-inset ring-white/10",
@@ -164,42 +246,67 @@ export function BottomNav() {
   >(() => readDiscoverHomeIntent("hire"));
   const isLikedPage = pathnameNorm === "/liked";
   const isShellScrollCollapseRoute =
-    isDiscoverHome || isLikedPage || (isCommunityFeedPage && !!user);
+    isLikedPage || (isCommunityFeedPage && !!user);
   const shellCollapseChromeP = isShellScrollCollapseRoute
     ? discoverHeaderCollapseProgress
     : 0;
-
-  const avatars = useDiscoverLiveAvatars();
-  const liveAvatars = useMemo(() => {
-    if (!avatars.data?.byCategory) return [];
-    const all = Object.values(avatars.data.byCategory).flat();
-    const uniqueMap = new Map<string, any>();
-    for (const av of all) {
-      if (av.helper_user_id) uniqueMap.set(av.helper_user_id, av);
-    }
-    return Array.from(uniqueMap.values());
-  }, [avatars.data]);
+  /** Discover home: location + CTAs stay fixed — no scroll-hide or collapse chrome. */
+  const discoverHomeFixedChrome = isDiscoverHome;
 
   const [headerVisible, setHeaderVisible] = useState(true);
+  const [discoverLocationVisible, setDiscoverLocationVisible] = useState(true);
+  const [mobileNavCompact, setMobileNavCompact] = useState(false);
   const [matchSearchChromeVisible, setMatchSearchChromeVisibleState] =
     useState(true);
   const scrollYRef = useRef(0);
+  const mobileNavScrollRafRef = useRef<number | null>(null);
   const headerVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
 
   useEffect(() => {
-    const handleScroll = () => {
+    const mq = window.matchMedia("(max-width: 767.98px)");
+
+    const applyScroll = () => {
+      mobileNavScrollRafRef.current = null;
       const currentScrollY = window.scrollY;
       const prev = scrollYRef.current;
       const dy = currentScrollY - prev;
       scrollYRef.current = currentScrollY;
 
-      // Small hysteresis to avoid flicker.
       const MIN_DELTA_DOWN = 5;
       const MIN_DELTA_UP = 3;
 
-      // Always show near the top.
+      if (mq.matches) {
+        if (currentScrollY <= 48) {
+          setMobileNavCompact(false);
+        } else if (dy < -MIN_DELTA_UP) {
+          /** Scrolling up — expand immediately. */
+          setMobileNavCompact(false);
+        } else if (dy > MIN_DELTA_DOWN) {
+          /** Scrolling down — compact immediately; CSS handles the slower morph. */
+          setMobileNavCompact(true);
+        }
+      } else {
+        setMobileNavCompact(false);
+      }
+
+      if (discoverHomeFixedChrome) {
+        if (mq.matches) {
+          if (currentScrollY <= 48) {
+            setDiscoverLocationVisible(true);
+          } else if (dy < -MIN_DELTA_UP) {
+            setDiscoverLocationVisible(true);
+          } else if (dy > MIN_DELTA_DOWN) {
+            setDiscoverLocationVisible(false);
+          }
+        } else {
+          setDiscoverLocationVisible(true);
+        }
+        setHeaderVisible(true);
+        return;
+      }
+
       if (currentScrollY <= 60) {
         setHeaderVisible(true);
         return;
@@ -211,26 +318,67 @@ export function BottomNav() {
         setHeaderVisible(true);
       }
     };
+
+    const handleScroll = () => {
+      if (mobileNavScrollRafRef.current != null) return;
+      mobileNavScrollRafRef.current = requestAnimationFrame(applyScroll);
+    };
+
+    applyScroll();
+    mq.addEventListener("change", handleScroll);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
+      mq.removeEventListener("change", handleScroll);
       window.removeEventListener("scroll", handleScroll);
+      if (mobileNavScrollRafRef.current != null) {
+        cancelAnimationFrame(mobileNavScrollRafRef.current);
+        mobileNavScrollRafRef.current = null;
+      }
       if (headerVisibilityTimerRef.current) {
         clearTimeout(headerVisibilityTimerRef.current);
         headerVisibilityTimerRef.current = null;
       }
     };
-  }, []);
+  }, [discoverHomeFixedChrome]);
+
+  useEffect(() => {
+    if (!isDiscoverHome) {
+      setDiscoverLocationVisible(true);
+    }
+  }, [isDiscoverHome]);
+
+  const discoverLocationHideClass =
+    showDiscoverShellHeader && !discoverLocationVisible
+      ? "-translate-y-[150%] opacity-0 pointer-events-none"
+      : undefined;
+
+  const mobileNavPortalClassName = cn(
+    mobileNavPortalClass,
+    mobileNavCompact && "bottom-nav-mobile-portal-compact",
+  );
+
+  const mobileNavShellClassName = cn(
+    mobileNavShellClass,
+    mobileNavCompact && "bottom-nav-mobile-compact",
+  );
 
   /** Scroll-linked — no CSS transition; transform/opacity follow collapse progress. */
   const shellScrollMobileChromeOverlayStyle: CSSProperties | undefined =
-    isShellScrollCollapseRoute
-      ? {
-        transform: headerVisible
-          ? `translateY(calc(-1 * ${shellCollapseChromeP * 130}%))`
-          : "translateY(-120%)",
-        opacity: headerVisible ? Math.max(0, 1 - (shellCollapseChromeP * 1.5)) : 0,
-        transition: "transform 500ms cubic-bezier(0.22, 1, 0.36, 1), opacity 400ms ease",
-      }
+    discoverHomeFixedChrome
+      ? undefined
+      : isShellScrollCollapseRoute
+        ? {
+          transform: headerVisible
+            ? `translateY(calc(-1 * ${shellCollapseChromeP * 130}%))`
+            : "translateY(-120%)",
+          opacity: headerVisible ? Math.max(0, 1 - (shellCollapseChromeP * 1.5)) : 0,
+          transition: "transform 500ms cubic-bezier(0.22, 1, 0.36, 1), opacity 400ms ease",
+        }
+        : undefined;
+
+  const mobileChromeHideClass =
+    !discoverHomeFixedChrome && !headerVisible
+      ? "-translate-y-[150%] opacity-0"
       : undefined;
 
   const receiveRequestsOn = profile?.is_available_for_jobs === true;
@@ -396,15 +544,16 @@ export function BottomNav() {
           type="button"
           onClick={() => setLocationPickerOpen(true)}
           className={cn(
+            "discover-header-location-glass",
             variant === "mobile"
               ? cn(
-                  "pointer-events-auto flex min-h-11 items-center gap-1 rounded-xl py-1 pl-1 pr-1.5 text-left text-slate-900 transition-all hover:opacity-90 active:scale-[0.98] dark:text-white",
+                  "pointer-events-auto flex min-h-10 items-center gap-1 py-1 pl-3 pr-2.5 text-left text-slate-900 active:scale-[0.98] dark:text-white",
                   options?.besideBack
                     ? "max-w-[min(10.5rem,calc(100vw-8.5rem))]"
                     : "max-w-[min(13.5rem,calc(100vw-7rem))]",
                 )
               : cn(
-                  "flex min-h-10 items-center gap-1.5 rounded-xl py-1 pl-1 pr-2 text-left text-slate-900 transition hover:opacity-90 dark:text-white",
+                  "flex min-h-10 items-center gap-1.5 py-1 pl-3 pr-2.5 text-left text-slate-900 dark:text-white",
                   options?.besideBack
                     ? "max-w-[min(13rem,calc(100vw-14rem))]"
                     : "max-w-[min(16rem,28vw)]",
@@ -412,18 +561,9 @@ export function BottomNav() {
           )}
           aria-label={displayCity ? `Current location: ${displayCity}. Tap to change.` : "Set your location"}
         >
-          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center">
-            <MapPin
-              className="h-5 w-5 text-slate-900 dark:text-white"
-              strokeWidth={2.25}
-              aria-hidden
-            />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[14px] leading-tight sm:text-[15px]">
-            <span className="font-bold text-slate-900 dark:text-white">{primary}</span>
-            {displayCountry && (
-              <span className="font-normal text-slate-600 dark:text-slate-400">, {displayCountry}</span>
-            )}
+          <span className="min-w-0 flex-1 truncate text-[14px] font-bold leading-tight text-slate-900 dark:text-white sm:text-[15px]">
+            {primary}
+            {displayCountry ? `, ${displayCountry}` : null}
           </span>
           <ChevronDown
             className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
@@ -490,7 +630,7 @@ export function BottomNav() {
         <div
           className={cn(
             "shrink-0 border-b border-border/30 bg-background px-4 pb-3",
-            "pt-4 max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
+            "pt-4 max-md:pt-[max(0.75rem,var(--app-safe-top,env(safe-area-inset-top,0px)))]",
           )}
         >
           <div className="flex items-center justify-between gap-2">
@@ -924,25 +1064,9 @@ export function BottomNav() {
     </header>
   );
 
-  /** Mobile: fixed top background strip behind back / search / bell. */
-  const mobileScrollHeaderLayer = (
-    <div
-      data-mobile-header-strip=""
-      className={cn(
-        "md:hidden pointer-events-none fixed inset-x-0 top-0 z-[58] transition-[transform,opacity,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        "border-none bg-background shadow-none backdrop-blur-none dark:bg-background",
-        !headerVisible && "-translate-y-full opacity-0",
-        "motion-reduce:transition-none",
-      )}
-      style={{
-        paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
-        paddingBottom: "0.5rem",
-        ...shellScrollMobileChromeOverlayStyle,
-      }}
-      aria-hidden
-    >
-      <div className="h-10 w-full" />
-    </div>
+  /** Fixed notch frost — always on viewport top; not tied to collapsing header chrome. */
+  const mobileSafeZoneGlassLayer = (
+    <div className="mobile-header-safe-zone-glass" aria-hidden />
   );
 
   /** Mobile only: floating row — community pages: back | centered category | search + bell; else search + bell (top-right). */
@@ -953,11 +1077,11 @@ export function BottomNav() {
         mobileSearchOpen || showCommunityHeaderCategoryDropdown
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
           : "right-[max(0.75rem,env(safe-area-inset-right))]",
-        !headerVisible && "-translate-y-[150%] opacity-0",
+        mobileChromeHideClass,
         "motion-reduce:transition-none",
       )}
       style={{
-        top: "max(0.5rem, env(safe-area-inset-top))",
+        top: "max(0.5rem, var(--app-safe-top, env(safe-area-inset-top, 0px)))",
         ...shellScrollMobileChromeOverlayStyle,
       }}
     >
@@ -965,16 +1089,24 @@ export function BottomNav() {
         ref={mobileSearchClusterRef}
         className={cn(
           "pointer-events-auto flex flex-row flex-nowrap items-center gap-1.5",
+          discoverHomeFixedChrome && "justify-end",
           mobileSearchOpen || showCommunityHeaderCategoryDropdown
             ? !mobileSearchOpen && showCommunityHeaderCategoryDropdown
               ? "ml-14 min-w-0 flex-1"
               : "w-full"
-            : "max-w-[calc(100vw-1rem)] justify-end",
+            : !discoverHomeFixedChrome && "max-w-[calc(100vw-1rem)] justify-end",
           mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end",
           isPublicPostsPage && !mobileSearchOpen && "justify-end",
         )}
       >
-        {showCommunityHeaderCategoryDropdown && !mobileSearchOpen && (
+        {discoverHomeFixedChrome ? (
+          <DiscoverHomeMobileHeaderRight
+            mode={discoverHomeMode}
+            createRequestPath="/client/create"
+            workPrimaryPath="/availability/post-now"
+          />
+        ) : null}
+        {!discoverHomeFixedChrome && showCommunityHeaderCategoryDropdown && !mobileSearchOpen && (
           <div className="flex min-w-0 flex-1 justify-center px-0.5">
             <div className="w-full max-w-[min(10.5rem,calc(100vw-8rem))]">
               <CommunityPostsCategoryNativeSelect
@@ -985,46 +1117,50 @@ export function BottomNav() {
             </div>
           </div>
         )}
-        <div
-          className={cn(
-            "relative shrink-0",
-            (!isCommunityPostsFilterPage || isPublicPostsPage) &&
-            !mobileSearchOpen &&
-            "ml-auto",
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => setMobileSearchOpen((v) => !v)}
-            className="p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
-            aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
-            aria-expanded={mobileSearchOpen}
-          >
-            {mobileSearchOpen ? (
-              <X className="h-7 w-7" strokeWidth={2} />
-            ) : (
-              <Search className="h-7 w-7" strokeWidth={2} />
-            )}
-          </button>
-        </div>
-        {!mobileSearchOpen && (
-          <button
-            type="button"
-            onClick={() => setNotificationsOpen(true)}
-            className="relative shrink-0 p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
-            aria-label="Notifications"
-          >
-            <Bell className="h-7 w-7" strokeWidth={2} />
-            {notificationBadgeCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900"
+        {!discoverHomeFixedChrome ? (
+          <>
+            <div
+              className={cn(
+                "relative shrink-0",
+                (!isCommunityPostsFilterPage || isPublicPostsPage) &&
+                !mobileSearchOpen &&
+                "ml-auto",
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen((v) => !v)}
+                className="p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
+                aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
+                aria-expanded={mobileSearchOpen}
               >
-                {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-              </Badge>
+                {mobileSearchOpen ? (
+                  <X className="h-7 w-7" strokeWidth={2} />
+                ) : (
+                  <Search className="h-7 w-7" strokeWidth={2} />
+                )}
+              </button>
+            </div>
+            {!mobileSearchOpen && (
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen(true)}
+                className="relative shrink-0 p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
+                aria-label="Notifications"
+              >
+                <Bell className="h-7 w-7" strokeWidth={2} />
+                {notificationBadgeCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900"
+                  >
+                    {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
+                  </Badge>
+                )}
+              </button>
             )}
-          </button>
-        )}
+          </>
+        ) : null}
 
       </div>
     </div>
@@ -1038,63 +1174,17 @@ export function BottomNav() {
     <div
       className={cn(
         "md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        !headerVisible && "-translate-y-[150%] opacity-0",
+        showDiscoverShellHeader ? discoverLocationHideClass : mobileChromeHideClass,
         "motion-reduce:transition-none",
       )}
       style={{
-        top: "max(0.5rem, env(safe-area-inset-top))",
+        top: "max(0.5rem, var(--app-safe-top, env(safe-area-inset-top, 0px)))",
         left: "max(0.75rem, env(safe-area-inset-left))",
         ...shellScrollMobileChromeOverlayStyle,
       }}
     >
       {showDiscoverShellHeader ? (
-        <div className="flex flex-col relative overflow-visible">
-          {/* Default state: Location Chip */}
-          <div
-            className="transition-all duration-300"
-            style={{
-              opacity: 1 - shellCollapseChromeP * 2.5,
-              transform: `translateY(${shellCollapseChromeP * 10}px)`,
-              visibility: shellCollapseChromeP > 0.4 ? "hidden" : "visible",
-            }}
-          >
-            {renderDiscoverHomeLocationChip("mobile")}
-          </div>
-
-          {/* Collapsed state: "Get help now" or Avatars — Discover home only */}
-          {isDiscoverHome ? (
-          <div
-            className="absolute left-1 top-0.5 flex items-center gap-1.5 transition-all duration-300"
-            style={{
-              opacity: Math.max(0, (shellCollapseChromeP - 0.45) * 2),
-              transform: `translateY(${(1 - shellCollapseChromeP) * 12}px)`,
-              visibility: shellCollapseChromeP < 0.35 ? "hidden" : "visible",
-            }}
-          >
-            <div className="flex -space-x-3">
-              {liveAvatars.slice(0, 4).map((av, i) => (
-                <div
-                  key={av.id || i}
-                  className="h-8 w-8 rounded-full border-2 border-white bg-slate-100 dark:border-zinc-900 dark:bg-zinc-800 relative shadow-sm overflow-visible"
-                  style={{ zIndex: 10 - i }}
-                >
-                  <Avatar className="h-full w-full">
-                    <AvatarImage src={av.photo_url || undefined} className="object-cover" />
-                    <AvatarFallback className="text-[10px] font-bold">{av.full_name?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 border border-white dark:border-zinc-900" />
-                  </span>
-                </div>
-              ))}
-            </div>
-            <span className="text-[14px] font-black tracking-tight text-slate-900 dark:text-white ml-1">
-              {discoverHomeMode === "hire" ? "Get help" : "Help others"}
-            </span>
-          </div>
-          ) : null}
-        </div>
+        renderDiscoverHomeLocationChip("mobile")
       ) : showCommunityFeedHeaderLeft ? (
         <div className="pointer-events-auto flex min-w-0 flex-row items-center gap-0.5">
           <button
@@ -1229,28 +1319,23 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
+        {!hideMobileAppHeaderChrome &&
+          createPortal(mobileSafeZoneGlassLayer, document.body)}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         {createPortal(
-          <nav className="fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none px-0 pb-0 md:hidden">
-            <div
-              className={cn(
-                // Desktop: keep it pinned to the viewport bottom (no floating gap).
-                "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl",
-              )}
-            >
-              <div className="flex items-center justify-center px-6 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-[env(safe-area-inset-bottom,0px)]">
-                <div
-                  className="flex shrink-0 flex-col items-center justify-center"
-                  title="Getting Started"
-                >
-                  <BottomNavHomeIcon
-                    active
-                    className="text-zinc-950 dark:text-white"
-                  />
+          <nav className={mobileNavPortalClassName}>
+            <div className={cn(mobileNavShellClassName, "md:max-w-xs")}>
+              <div className={mobileNavItemsRowClass}>
+                <div className={mobileTabLinkClass}>
+                  <MobileTabItem active label={t("common.home")}>
+                    <BottomNavHomeIcon
+                      active
+                      className="h-7 w-7 text-zinc-950 dark:text-white"
+                    />
+                  </MobileTabItem>
                 </div>
               </div>
             </div>
@@ -1291,27 +1376,14 @@ export function BottomNav() {
     return (
       <>
         {!isHelpersFindPage ? DesktopHeader : null}
-        {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
+        {!hideMobileAppHeaderChrome &&
+          createPortal(mobileSafeZoneGlassLayer, document.body)}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {createPortal(
-          <nav
-            className={cn(
-              /** Body portal: above reels / body overlays (z~119) but below Dialog (z-[130]). #root is z-1 so in-root z-120 could not stack above portaled reels. */
-              "fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-0 pb-0 md:hidden",
-            )}
-          >
-          <div
-            className={cn(
-              // Desktop: keep it pinned to the viewport bottom (no floating gap).
-              "bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-md md:rounded-2xl",
-            )}
-          >
-            <div
-              className={cn(
-                "mx-0 flex w-full max-w-none items-center justify-evenly overflow-visible px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12",
-              )}
-            >
+          <nav className={mobileNavPortalClassName}>
+          <div className={mobileNavShellClassName}>
+            <div className={mobileNavItemsRowClass}>
               {/* Home */}
               {(() => {
                 const isActive = location.pathname.startsWith(homePath);
@@ -1319,16 +1391,19 @@ export function BottomNav() {
                   <Link
                     to={homePath}
                     className={cn(
-                      "group flex flex-col items-center justify-center p-1 transition-all relative",
+                      mobileTabLinkClass,
                       isActive
                         ? "text-zinc-950 dark:text-white"
                         : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
-                    <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
-                      <BottomNavHomeIcon active={isActive} className={bottomNavTabIconClass(isActive)} />
-                    </div>
+                    <MobileTabItem active={isActive} label={t("common.home")}>
+                      <BottomNavHomeIcon
+                        active={isActive}
+                        className={cn(bottomNavTabIconClass(isActive), "relative z-[1]")}
+                      />
+                    </MobileTabItem>
                   </Link>
                 );
               })()}
@@ -1337,7 +1412,7 @@ export function BottomNav() {
               <Link
                 to={explorePath}
                 className={cn(
-                  "group flex flex-col items-center justify-center p-1 transition-all relative",
+                  mobileTabLinkClass,
                   isExploreActive
                     ? "text-zinc-950 dark:text-white"
                     : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
@@ -1345,21 +1420,22 @@ export function BottomNav() {
                 aria-current={isExploreActive ? "page" : undefined}
                 aria-label="Explore live feed"
               >
-                <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
+                <MobileTabItem active={isExploreActive} label={t("common.feed")}>
                   <Rss
-                    className={bottomNavTabIconClass(isExploreActive)}
+                    className={cn(bottomNavTabIconClass(isExploreActive), "relative z-[1]")}
                     aria-hidden
                   />
-                </div>
+                </MobileTabItem>
               </Link>
 
               {/* Center — + dropdown */}
-              <div ref={plusMenuRef} className="relative z-20 flex flex-col items-center justify-center">
+              <div ref={plusMenuRef} className="relative z-20 flex min-w-0 flex-1 flex-col items-center justify-center">
                 <button
                   type="button"
                   onClick={() => setPlusMenuOpen((v) => !v)}
                   className={cn(
-                    "group flex flex-col items-center justify-center p-1 transition-all relative",
+                    mobileTabLinkClass,
+                    "w-full",
                     "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30 rounded-xl",
                     plusMenuOpen
                       ? "text-zinc-950 dark:text-white"
@@ -1368,21 +1444,19 @@ export function BottomNav() {
                   aria-expanded={plusMenuOpen}
                   aria-label="Open quick actions"
                 >
-                  <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
-                    <div
+                  <MobileTabItem active={plusMenuOpen} label={t("common.create")}>
+                    <Plus
                       className={cn(
-                        "flex h-11 w-11 items-center justify-center rounded-full motion-safe:animate-dock-plus-glow",
-                        isDiscoverHome
-                          ? "bg-zinc-950 text-white shadow-xl ring-1 ring-inset ring-white/25"
-                          : "bg-orange-600 text-white ring-1 ring-inset ring-white/20",
-                        "transition-[transform,filter] duration-200 ease-out",
-                        "group-hover:brightness-110 group-active:scale-[0.98]",
-                        plusMenuOpen && "brightness-110",
+                        "bottom-nav-mobile-tab-glyph relative z-[1] h-7 w-7 transition-[width,height,transform] md:h-8 md:w-8",
+                        plusMenuOpen && "bottom-nav-mobile-tab-glyph-active",
+                        plusMenuOpen
+                          ? "text-zinc-950 dark:text-white"
+                          : "text-zinc-950/65 dark:text-white/65 group-hover:text-zinc-950 dark:group-hover:text-white",
                       )}
-                    >
-                      <Plus className="h-6 w-6" strokeWidth={2.75} aria-hidden />
-                    </div>
-                  </div>
+                      strokeWidth={plusMenuOpen ? 2.75 : 2}
+                      aria-hidden
+                    />
+                  </MobileTabItem>
                 </button>
 
                 {plusMenuOpen ? (
@@ -1498,24 +1572,26 @@ export function BottomNav() {
                   <Link
                     to="/messages"
                     className={cn(
-                      "group flex flex-col items-center justify-center p-1 transition-all relative",
+                      mobileTabLinkClass,
                       isActive
                         ? "text-zinc-950 dark:text-white"
                         : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
-                    <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center sm:h-[48px] sm:w-[48px]">
-                      <MessageCircle className={bottomNavTabIconClass(isActive)} />
+                    <MobileTabItem active={isActive} label={t("common.messages")}>
+                      <MessageCircle
+                        className={cn(bottomNavTabIconClass(isActive), "relative z-[1]")}
+                      />
                       {showMessageBadge && (
                         <Badge
                           variant="destructive"
-                          className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-black leading-none shadow-sm dark:border-zinc-950 sm:h-5.5 sm:min-w-[22px] sm:text-[11px]"
+                          className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-red-600 px-0.5 text-[10px] font-black leading-none shadow-none ring-0 md:h-5.5 md:min-w-[22px] md:px-1 md:text-[11px]"
                         >
                           {inboxBadgeCount > 9 ? "9+" : inboxBadgeCount}
                         </Badge>
                       )}
-                    </div>
+                    </MobileTabItem>
                   </Link>
                 );
               })()}
@@ -1529,15 +1605,16 @@ export function BottomNav() {
                       type="button"
                       onClick={() => setProfileMenuOpen(true)}
                       className={cn(
-                        "md:hidden flex flex-col items-center justify-center p-1 transition-all relative",
+                        "md:hidden",
+                        mobileTabLinkClass,
                         isActive
                           ? "text-zinc-950 dark:text-white"
                           : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
                       )}
                       aria-label="Open profile menu"
                     >
-                      <div className="relative flex h-[44px] w-[44px] shrink-0 items-center justify-center overflow-visible sm:h-[48px] sm:w-[48px]">
-                        <Avatar className="h-7 w-7 border-0 ring-0 sm:h-8 sm:w-8">
+                      <MobileTabItem active={isActive} label={t("common.profile")}>
+                        <Avatar className="relative z-[1] h-9 w-9 border-0 ring-0 md:h-8 md:w-8">
                           <AvatarImage
                             src={profile?.photo_url ?? undefined}
                             alt=""
@@ -1548,7 +1625,7 @@ export function BottomNav() {
                               .toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                      </div>
+                      </MobileTabItem>
                     </button>
 
                     <Link
@@ -1611,15 +1688,16 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {!hideMobileAppHeaderChrome && mobileScrollHeaderLayer}
+        {!hideMobileAppHeaderChrome &&
+          createPortal(mobileSafeZoneGlassLayer, document.body)}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {createPortal(
-          <nav className="fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none px-0 pb-0 md:hidden">
-            <div className="bottom-nav-mobile-shell mx-auto w-full max-w-none overflow-visible rounded-none pointer-events-auto md:mb-0 md:max-w-xs md:rounded-2xl">
-              <div className="flex items-center justify-center px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-6 md:pb-[env(safe-area-inset-bottom,0px)]">
-                <div className="flex items-center justify-center w-[52px] h-[52px] rounded-2xl bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 flex-shrink-0 animate-pulse">
-                  <Home className="w-7 h-7" />
+          <nav className={mobileNavPortalClassName}>
+            <div className={cn(mobileNavShellClassName, "md:max-w-xs")}>
+              <div className={mobileNavItemsRowClass}>
+                <div className={cn(mobileTabTouchClass, "rounded-2xl bg-slate-100/80 text-slate-400 dark:bg-zinc-800/80 dark:text-zinc-500 animate-pulse")}>
+                  <Home className="h-7 w-7" />
                 </div>
               </div>
             </div>

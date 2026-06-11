@@ -35,7 +35,7 @@ export function ProfileHubIdentityCard({
       className={cn(
         "mb-8 flex items-center gap-4 md:gap-5",
         "border-0 bg-transparent px-0 py-0 shadow-none",
-        "dark:rounded-[18px] dark:border dark:border-white/5 dark:bg-zinc-900 dark:px-5 dark:py-5 dark:shadow-sm",
+        "dark:rounded-[18px] dark:border-0 dark:bg-zinc-900 dark:px-5 dark:py-5 dark:shadow-none",
         className,
       )}
     >
