@@ -790,7 +790,7 @@ export default function MessagesPage() {
               "[&_[data-radix-scroll-area-viewport]]:max-md:[-ms-overflow-style:none]",
               "[&_[data-radix-scroll-area-viewport]]:max-md:[&::-webkit-scrollbar]:hidden",
               "[&_[data-radix-scroll-area-viewport]]:max-md:pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
-              "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(5.75rem+max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))]",
+              "[&_[data-radix-scroll-area-viewport]]:max-md:pb-[calc(5.75rem+var(--app-nav-bottom-inset,max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))))]",
             )}
           >
             {inboxTab === "messages" ? (
@@ -1177,8 +1177,7 @@ export default function MessagesPage() {
         {mobileView === "contacts" ? (
           <nav
             className={cn(
-              "pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-2 md:hidden",
-              "pb-[max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]",
+              "pointer-events-none fixed inset-x-0 bottom-[var(--app-nav-bottom-inset,max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))] z-40 flex justify-center px-2 md:hidden",
             )}
             role="tablist"
             aria-label="Messages inbox"

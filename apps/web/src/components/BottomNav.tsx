@@ -95,7 +95,7 @@ function bottomNavTabIconClass(isActive: boolean) {
 
 /** Floating frosted pill — mobile only; desktop keeps full-width bar. */
 const mobileNavPortalClass =
-  "fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-4 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] md:hidden";
+  "fixed bottom-[var(--app-nav-bottom-inset,max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))] left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-4 md:hidden";
 
 const mobileNavShellClass = cn(
   "bottom-nav-mobile-shell pointer-events-auto",
@@ -162,7 +162,7 @@ const appMenuJobsCountBadgeClassName = cn(
 );
 
 const plusMenuPanelClassName = cn(
-  "bottom-nav-plus-menu-panel fixed bottom-[calc(4.75rem+max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))] left-1/2 z-[130] -translate-x-1/2",
+  "bottom-nav-plus-menu-panel fixed bottom-[calc(4.75rem+var(--app-nav-bottom-inset,max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))] left-1/2 z-[130] -translate-x-1/2",
   "w-[min(18.5rem,calc(100vw-2rem))] rounded-[1.375rem] outline-none",
   "shadow-[0_18px_44px_hsl(0_0%_0%_/0.16)] dark:shadow-[0_22px_52px_hsl(0_0%_0%_/0.52)]",
   "animate-in fade-in slide-in-from-bottom-3 zoom-in-95 duration-200",
@@ -1060,12 +1060,9 @@ export function BottomNav() {
     </header>
   );
 
-  /** Fixed notch / home-indicator frost — portaled to body (iOS Safari safe zones). */
+  /** Fixed notch frost — portaled to body (iOS Safari safe zone top). */
   const mobileSafeZoneGlassLayers = (
-    <>
-      <div className="mobile-header-safe-zone-glass" aria-hidden />
-      <div className="mobile-footer-safe-zone-glass" aria-hidden />
-    </>
+    <div className="mobile-header-safe-zone-glass" aria-hidden />
   );
 
   /** Mobile only: floating row — community pages: back | centered category | search + bell; else search + bell (top-right). */

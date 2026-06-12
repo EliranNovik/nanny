@@ -27,6 +27,22 @@ function readEnvSafeAreaInsets() {
   return { top, bottom, left, right };
 }
 
+/** Safari URL bar: gap between large and small viewport when browser chrome is visible. */
+function readDynamicViewportBottomGap() {
+  if (typeof document === "undefined") return 0;
+
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;";
+  document.documentElement.appendChild(probe);
+  probe.style.height = "100lvh";
+  const lvh = probe.getBoundingClientRect().height;
+  probe.style.height = "100svh";
+  const svh = probe.getBoundingClientRect().height;
+  probe.remove();
+  return Math.max(0, Math.round(lvh - svh));
+}
+
 /**
  * iOS Safari: env(safe-area-inset-*) is unreliable while browser chrome shows/hides.
  * Probe env() + visualViewport gaps so fixed chrome and scroll content extend into the
@@ -42,18 +58,27 @@ export function useAppSafeAreaSync() {
       raf = requestAnimationFrame(() => {
         const envInsets = readEnvSafeAreaInsets();
         const vv = window.visualViewport;
+        const layoutHeight = document.documentElement.clientHeight;
         let visualTopInset = 0;
         let visualBottomInset = 0;
         if (vv) {
           visualTopInset = Math.max(0, Math.round(vv.offsetTop));
+          const vvBottom = vv.offsetTop + vv.height;
           visualBottomInset = Math.max(
             0,
-            Math.round(window.innerHeight - (vv.height + vv.offsetTop)),
+            Math.round(layoutHeight - vvBottom),
+            Math.round(window.innerHeight - vvBottom),
           );
         }
 
+        const dynamicBottomGap = readDynamicViewportBottomGap();
         const safeTop = Math.max(envInsets.top, visualTopInset);
-        const safeBottom = Math.max(envInsets.bottom, visualBottomInset);
+        const safeBottom = Math.max(
+          envInsets.bottom,
+          visualBottomInset,
+          dynamicBottomGap,
+        );
+        const navBottomInset = Math.max(12, safeBottom);
 
         root.style.setProperty(
           "--visual-viewport-top-inset",
@@ -65,13 +90,14 @@ export function useAppSafeAreaSync() {
         );
         root.style.setProperty("--app-safe-top", `${safeTop}px`);
         root.style.setProperty("--app-safe-bottom", `${safeBottom}px`);
+        root.style.setProperty("--app-nav-bottom-inset", `${navBottomInset}px`);
         root.style.setProperty(
           "--app-mobile-top-glass-height",
           `${Math.max(8, safeTop)}px`,
         );
         root.style.setProperty(
           "--app-mobile-bottom-glass-height",
-          `${Math.max(8, safeBottom)}px`,
+          `${Math.max(8, navBottomInset)}px`,
         );
       });
     };
@@ -80,6 +106,7 @@ export function useAppSafeAreaSync() {
     const vv = window.visualViewport;
     vv?.addEventListener("resize", update);
     vv?.addEventListener("scroll", update);
+    vv?.addEventListener("geometrychange", update);
     window.addEventListener("resize", update);
     window.addEventListener("orientationchange", update);
     window.addEventListener("scroll", update, { passive: true });
@@ -88,6 +115,7 @@ export function useAppSafeAreaSync() {
       cancelAnimationFrame(raf);
       vv?.removeEventListener("resize", update);
       vv?.removeEventListener("scroll", update);
+      vv?.removeEventListener("geometrychange", update);
       window.removeEventListener("resize", update);
       window.removeEventListener("orientationchange", update);
       window.removeEventListener("scroll", update);
@@ -95,6 +123,7 @@ export function useAppSafeAreaSync() {
       root.style.removeProperty("--visual-viewport-bottom-inset");
       root.style.removeProperty("--app-safe-top");
       root.style.removeProperty("--app-safe-bottom");
+      root.style.removeProperty("--app-nav-bottom-inset");
       root.style.removeProperty("--app-mobile-top-glass-height");
       root.style.removeProperty("--app-mobile-bottom-glass-height");
     };

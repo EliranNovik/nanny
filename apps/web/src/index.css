@@ -62,11 +62,17 @@
     --visual-viewport-bottom-inset: 0px;
     --app-safe-top: env(safe-area-inset-top, 0px);
     --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+    /* Bottom nav offset: home indicator + iOS Safari toolbar (lvh−svh) + JS visualViewport sync */
+    --app-nav-bottom-inset: max(
+      0.75rem,
+      env(safe-area-inset-bottom, 0px),
+      calc(100lvh - 100svh)
+    );
     /* Mobile fixed header strip: safe-top + 0.5rem + h-10 + 0.5rem (BottomNav). */
     --app-mobile-header-stack: calc(0.5rem + 2.25rem + 0.5rem);
     /* Frosted bands: notch + home-indicator (height synced on mobile via useAppSafeAreaSync). */
     --app-mobile-top-glass-height: max(0.5rem, var(--app-safe-top));
-    --app-mobile-bottom-glass-height: max(0.5rem, var(--app-safe-bottom));
+    --app-mobile-bottom-glass-height: max(0.5rem, var(--app-nav-bottom-inset));
     --bottom-nav-morph-duration: 1200ms;
     --bottom-nav-morph-ease: cubic-bezier(0.22, 1.12, 0.36, 1);
 
@@ -265,7 +271,7 @@
    */
   /* Nav height + bottom safe area (mobile #root no longer reserves safe-area inset). */
   .app-main-scroll-pad {
-    padding-bottom: calc(7.75rem + var(--app-safe-bottom));
+    padding-bottom: calc(7.75rem + var(--app-nav-bottom-inset));
   }
 
   @media (min-width: 768px) {
@@ -508,51 +514,6 @@
       backdrop-filter: blur(10px) saturate(125%);
     }
 
-    .mobile-footer-safe-zone-glass {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: var(--app-mobile-bottom-glass-height);
-      z-index: 57;
-      pointer-events: none;
-      background-color: transparent;
-      background-image: linear-gradient(
-        0deg,
-        hsl(0 0% 100% / 0.1) 0%,
-        hsl(0 0% 100% / 0.06) 35%,
-        hsl(0 0% 100% / 0.025) 62%,
-        transparent 100%
-      );
-      -webkit-backdrop-filter: blur(10px) saturate(130%);
-      backdrop-filter: blur(10px) saturate(130%);
-      -webkit-mask-image: linear-gradient(
-        to top,
-        #000 0%,
-        #000 58%,
-        rgb(0 0 0 / 0.45) 78%,
-        transparent 100%
-      );
-      mask-image: linear-gradient(
-        to top,
-        #000 0%,
-        #000 58%,
-        rgb(0 0 0 / 0.45) 78%,
-        transparent 100%
-      );
-    }
-
-    .dark .mobile-footer-safe-zone-glass {
-      background-image: linear-gradient(
-        0deg,
-        hsl(222 16% 7% / 0.22) 0%,
-        hsl(222 16% 7% / 0.12) 35%,
-        hsl(222 16% 7% / 0.04) 62%,
-        transparent 100%
-      );
-      -webkit-backdrop-filter: blur(10px) saturate(125%);
-      backdrop-filter: blur(10px) saturate(125%);
-    }
   }
 
   /* Discover / feed header: frosted location pill */
@@ -612,8 +573,8 @@
       border-radius: 9999px;
       padding: 6px 3px;
       background: hsl(0 0% 100% / 0.13);
-      -webkit-backdrop-filter: blur(2px) saturate(1.15);
-      backdrop-filter: blur(2px) saturate(1.15);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
       border: none;
       box-shadow: 0 10px 25px hsl(0 0% 0% / 0.28);
       width: 100%;
@@ -689,8 +650,8 @@
       overflow: hidden;
       border: none;
       background: hsl(0 0% 100% / 0.58);
-      -webkit-backdrop-filter: blur(22px) saturate(1.45);
-      backdrop-filter: blur(22px) saturate(1.45);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
     }
 
     .bottom-nav-plus-menu-glow {
@@ -717,8 +678,8 @@
 
     .dark .bottom-nav-plus-menu-panel {
       background: hsl(0 0% 0% / 0.54);
-      -webkit-backdrop-filter: blur(26px) saturate(1.2);
-      backdrop-filter: blur(26px) saturate(1.2);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
     }
 
     .dark .bottom-nav-plus-menu-glow {
@@ -830,8 +791,8 @@
 
     .dark .bottom-nav-mobile-shell {
       background: hsl(0 0% 0% / 0.64);
-      -webkit-backdrop-filter: blur(2px) saturate(1.1);
-      backdrop-filter: blur(2px) saturate(1.1);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
       border: none;
       box-shadow: 0 10px 28px hsl(0 0% 0% / 0.55);
     }
@@ -889,8 +850,8 @@
       width: 4.75rem;
       height: 2.875rem;
       background: hsl(0 0% 100% / 0.32);
-      -webkit-backdrop-filter: blur(4px) saturate(1.35);
-      backdrop-filter: blur(4px) saturate(1.35);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
       border: none;
       border-radius: 9999px;
       box-shadow: 0 5px 14px hsl(0 0% 0% / 0.22);
