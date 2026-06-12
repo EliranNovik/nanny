@@ -124,24 +124,14 @@ function MessagesInboxNavItem({
     >
       {active ? (
         <span
-          className="bottom-nav-tab-active-glass pointer-events-none absolute inset-x-0.5 -inset-y-0.5 rounded-full"
+          className="bottom-nav-tab-active-glass pointer-events-none absolute"
           aria-hidden
         />
       ) : null}
-      <div className="bottom-nav-mobile-tab-inner relative z-[1] flex w-full flex-col items-center justify-center gap-0.5 px-0.5 py-1">
-        <div className="bottom-nav-mobile-icon-slot relative flex h-8 w-full items-center justify-center overflow-visible">
+      <div className="bottom-nav-mobile-tab-inner relative z-[1] flex w-full flex-col items-center justify-center px-0 py-0">
+        <div className="bottom-nav-mobile-icon-slot relative flex w-full items-center justify-center overflow-visible">
           {children}
         </div>
-        <span
-          className={cn(
-            "bottom-nav-mobile-tab-label max-w-[4.5rem] mt-px truncate text-center text-[10px] leading-none tracking-tight",
-            active
-              ? "font-bold text-zinc-950 dark:text-white"
-              : "font-semibold text-zinc-950/55 dark:text-white/55",
-          )}
-        >
-          {label}
-        </span>
       </div>
     </button>
   );
@@ -1194,7 +1184,7 @@ export default function MessagesPage() {
             aria-label="Messages inbox"
           >
             <div className="bottom-nav-mobile-shell pointer-events-auto w-full max-w-none">
-              <div className="bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-3 py-2">
+              <div className="bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-0 py-0">
                 <MessagesInboxNavItem
                   label="Back"
                   onClick={() =>

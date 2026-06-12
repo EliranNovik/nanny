@@ -3959,7 +3959,7 @@ function PostCard({
 
       {/* Post metadata + compact action button (community posts show title above caption) */}
       {(showFeedMetadataBox || showFeedActionButton) && (
-        <div className={cn("mt-2 rounded-2xl bg-zinc-50/50 p-3.5 dark:bg-zinc-800/55", cardMarginX)}>
+        <div className={cn("mt-2 rounded-2xl bg-zinc-100/90 p-3.5 dark:bg-zinc-800/55", cardMarginX)}>
           {showFeedMetadataBox ? (
           <div className="space-y-2">
           {post.post_type_id === "request_help" && (
@@ -4007,7 +4007,7 @@ function PostCard({
                 ) : null}
               </div>
               {post.post_metadata.budget && (
-                <div className="flex items-center gap-2 pt-1 border-t border-zinc-205/50 dark:border-zinc-800/50 text-[15px] font-black text-rose-600 dark:text-rose-400">
+                <div className="flex items-center gap-2 pt-1 border-t border-zinc-200/70 dark:border-zinc-800/50 text-[15px] font-black text-rose-600 dark:text-rose-400">
                   <Coins className="h-4 w-4 shrink-0" />
                   <span>₪{post.post_metadata.budget}</span>
                   <span className="text-xs text-muted-foreground font-semibold">
@@ -4041,7 +4041,7 @@ function PostCard({
                 )}
               </div>
               {post.post_metadata.rate && (
-                <div className="flex items-center gap-2 pt-1 border-t border-zinc-205/50 dark:border-zinc-800/50 text-[15px] font-black text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center gap-2 pt-1 border-t border-zinc-200/70 dark:border-zinc-800/50 text-[15px] font-black text-emerald-600 dark:text-emerald-400">
                   <Coins className="h-4 w-4 shrink-0" />
                   <span>₪{post.post_metadata.rate}</span>
                   <span className="text-xs text-muted-foreground font-semibold">

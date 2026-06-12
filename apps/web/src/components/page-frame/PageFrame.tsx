@@ -25,8 +25,9 @@ export function PageFrame({
       data-page-frame={frameName}
       className={cn(
         variant === "default" &&
-          "min-h-screen bg-slate-50/50 pb-6 dark:bg-background md:pb-8",
-        variant === "fullBleed" && "min-h-screen bg-background",
+          "min-h-[100dvh] min-h-[-webkit-fill-available] bg-slate-50/50 pb-6 dark:bg-background md:min-h-screen md:pb-8",
+        variant === "fullBleed" &&
+          "min-h-[100dvh] min-h-[-webkit-fill-available] bg-background md:min-h-screen",
         className,
       )}
       {...rest}

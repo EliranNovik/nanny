@@ -60,22 +60,15 @@
   :root {
     --visual-viewport-top-inset: 0px;
     --visual-viewport-bottom-inset: 0px;
-    --app-safe-top: max(
-      env(safe-area-inset-top, 0px),
-      var(--visual-viewport-top-inset)
-    );
-    --app-safe-bottom: max(
-      env(safe-area-inset-bottom, 0px),
-      var(--visual-viewport-bottom-inset)
-    );
+    --app-safe-top: env(safe-area-inset-top, 0px);
+    --app-safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Mobile fixed header strip: safe-top + 0.5rem + h-10 + 0.5rem (BottomNav). */
     --app-mobile-header-stack: calc(0.5rem + 2.25rem + 0.5rem);
-    /* Frosted band: notch / status-bar safe zone only — not header icons or feed. */
+    /* Frosted bands: notch + home-indicator (height synced on mobile via useAppSafeAreaSync). */
     --app-mobile-top-glass-height: max(0.5rem, var(--app-safe-top));
-    --bottom-nav-morph-duration-expand: 1200ms;
-    --bottom-nav-morph-duration-compact: 1900ms;
-    --bottom-nav-morph-ease-expand: cubic-bezier(0.22, 1.12, 0.36, 1);
-    --bottom-nav-morph-ease-compact: cubic-bezier(0.36, 0, 0.14, 1);
+    --app-mobile-bottom-glass-height: max(0.5rem, var(--app-safe-bottom));
+    --bottom-nav-morph-duration: 1200ms;
+    --bottom-nav-morph-ease: cubic-bezier(0.22, 1.12, 0.36, 1);
 
     /**
      * Top Layout System — spacing under fixed app chrome (see components/page-frame).
@@ -184,11 +177,13 @@
     pointer-events: none;
   }
 
-  /* Avoid 100lvh painting a solid band below the visible fold when Safari toolbar shows. */
+  /* iOS Safari: bleed base paint into notch + home-indicator (viewport-fit=cover). */
   @media (max-width: 767.98px) {
     html::before {
-      min-height: 100dvh;
-      min-height: -webkit-fill-available;
+      top: calc(-1 * var(--app-safe-top));
+      bottom: calc(-1 * var(--app-safe-bottom));
+      left: calc(-1 * env(safe-area-inset-left, 0px));
+      right: calc(-1 * env(safe-area-inset-right, 0px));
     }
   }
 
@@ -270,7 +265,7 @@
    */
   /* Nav height + bottom safe area (mobile #root no longer reserves safe-area inset). */
   .app-main-scroll-pad {
-    padding-bottom: calc(7.25rem + var(--app-safe-bottom));
+    padding-bottom: calc(7.75rem + var(--app-safe-bottom));
   }
 
   @media (min-width: 768px) {
@@ -371,7 +366,10 @@
      * Lives on scrollable content so it scrolls away and feed moves under top chrome.
      */
     .app-mobile-scroll-top-clearance {
-      padding-top: var(--app-mobile-header-stack);
+      padding-top: calc(var(--app-mobile-header-stack) + var(--app-safe-top));
+      margin-top: calc(-1 * var(--app-safe-top));
+      padding-bottom: var(--app-safe-bottom);
+      margin-bottom: calc(-1 * var(--app-safe-bottom));
     }
 
     /**
@@ -381,6 +379,13 @@
     .app-mobile-scroll-top-clearance > [data-page-frame] {
       margin-top: calc(-1 * var(--app-mobile-header-stack));
       padding-top: var(--app-mobile-header-stack);
+    }
+
+    [data-discover-home-page] {
+      padding-top: var(--app-safe-top);
+      margin-top: calc(-1 * var(--app-safe-top));
+      padding-bottom: var(--app-safe-bottom);
+      margin-bottom: calc(-1 * var(--app-safe-bottom));
     }
 
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header])
@@ -395,7 +400,8 @@
     .app-content-below-fixed-header:has([data-public-profile-guest]) .app-mobile-scroll-top-clearance,
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-messages-page])
       .app-mobile-scroll-top-clearance {
-      padding-top: 0;
+      padding-top: var(--app-safe-top);
+      margin-top: calc(-1 * var(--app-safe-top));
     }
 
     /**
@@ -404,8 +410,10 @@
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-liked-page])
       .app-mobile-scroll-top-clearance {
       padding-top: calc(
-        (1 - var(--mobile-shell-collapse-progress, 0)) * var(--app-mobile-header-stack)
+        var(--app-safe-top) +
+          (1 - var(--mobile-shell-collapse-progress, 0)) * var(--app-mobile-header-stack)
       );
+      margin-top: calc(-1 * var(--app-safe-top));
     }
 
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-liked-page])
@@ -499,6 +507,52 @@
       -webkit-backdrop-filter: blur(10px) saturate(125%);
       backdrop-filter: blur(10px) saturate(125%);
     }
+
+    .mobile-footer-safe-zone-glass {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--app-mobile-bottom-glass-height);
+      z-index: 57;
+      pointer-events: none;
+      background-color: transparent;
+      background-image: linear-gradient(
+        0deg,
+        hsl(0 0% 100% / 0.1) 0%,
+        hsl(0 0% 100% / 0.06) 35%,
+        hsl(0 0% 100% / 0.025) 62%,
+        transparent 100%
+      );
+      -webkit-backdrop-filter: blur(10px) saturate(130%);
+      backdrop-filter: blur(10px) saturate(130%);
+      -webkit-mask-image: linear-gradient(
+        to top,
+        #000 0%,
+        #000 58%,
+        rgb(0 0 0 / 0.45) 78%,
+        transparent 100%
+      );
+      mask-image: linear-gradient(
+        to top,
+        #000 0%,
+        #000 58%,
+        rgb(0 0 0 / 0.45) 78%,
+        transparent 100%
+      );
+    }
+
+    .dark .mobile-footer-safe-zone-glass {
+      background-image: linear-gradient(
+        0deg,
+        hsl(222 16% 7% / 0.22) 0%,
+        hsl(222 16% 7% / 0.12) 35%,
+        hsl(222 16% 7% / 0.04) 62%,
+        transparent 100%
+      );
+      -webkit-backdrop-filter: blur(10px) saturate(125%);
+      backdrop-filter: blur(10px) saturate(125%);
+    }
   }
 
   /* Discover / feed header: frosted location pill */
@@ -552,39 +606,165 @@
   }
 
   @media (max-width: 767.98px) {
+    /* Clear tinted glass — readable content through the bar (not frosted) */
     .bottom-nav-mobile-shell {
+      overflow: visible;
       border-radius: 9999px;
-      background-color: hsl(0 0% 100% / 0.06);
-      background-image: linear-gradient(
-        180deg,
-        hsl(0 0% 100% / 0.1) 0%,
-        hsl(0 0% 100% / 0.03) 100%
-      );
-      -webkit-backdrop-filter: blur(10px) saturate(140%);
-      backdrop-filter: blur(10px) saturate(140%);
-      border: 1px solid hsl(0 0% 100% / 0.22);
-      box-shadow: 0 4px 20px hsl(0 0% 0% / 0.04);
+      padding: 6px 3px;
+      background: hsl(0 0% 100% / 0.13);
+      -webkit-backdrop-filter: blur(2px) saturate(1.15);
+      backdrop-filter: blur(2px) saturate(1.15);
+      border: none;
+      box-shadow: 0 10px 25px hsl(0 0% 0% / 0.28);
       width: 100%;
       max-width: 100%;
       transform: scale(1);
       transform-origin: center bottom;
       transition:
-        transform var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
-        width var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
-        max-width var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
-        box-shadow var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
+        transform var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
+        width var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
+        max-width var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
+        box-shadow var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
         background-color 0.35s ease,
         border-color 0.35s ease;
     }
 
-    .bottom-nav-mobile-shell.bottom-nav-mobile-compact {
-      transition:
-        transform var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
-        width var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
-        max-width var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
-        box-shadow var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
-        background-color 0.35s ease,
-        border-color 0.35s ease;
+    .bottom-nav-mobile-glow {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+      background: radial-gradient(
+        circle at 78% 55%,
+        hsl(142 71% 45% / 0.1),
+        transparent 24%
+      );
+    }
+
+    .bottom-nav-mobile-shell::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 6px;
+      height: 12px;
+      border-radius: 9999px;
+      z-index: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        hsl(0 0% 100% / 0.28),
+        transparent
+      );
+      filter: blur(6px);
+      opacity: 0.7;
+    }
+
+    .bottom-nav-mobile-shell::after {
+      content: none;
+    }
+
+    .bottom-nav-mobile-readable-layer {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 1;
+      background: hsl(0 0% 100% / 0.19);
+      box-shadow: none;
+    }
+
+    .bottom-nav-mobile-items-row {
+      position: relative;
+      z-index: 2;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+
+    /* Plus quick-actions menu — frosted glass companion to the bottom nav pill */
+    .bottom-nav-plus-menu-panel {
+      isolation: isolate;
+      overflow: hidden;
+      border: none;
+      background: hsl(0 0% 100% / 0.58);
+      -webkit-backdrop-filter: blur(22px) saturate(1.45);
+      backdrop-filter: blur(22px) saturate(1.45);
+    }
+
+    .bottom-nav-plus-menu-glow {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+      background: radial-gradient(
+        ellipse 125% 85% at 50% -18%,
+        hsl(0 0% 100% / 0.42),
+        transparent 58%
+      );
+    }
+
+    .bottom-nav-plus-menu-readable {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 1;
+      background: hsl(0 0% 96% / 0.42);
+    }
+
+    .dark .bottom-nav-plus-menu-panel {
+      background: hsl(0 0% 0% / 0.54);
+      -webkit-backdrop-filter: blur(26px) saturate(1.2);
+      backdrop-filter: blur(26px) saturate(1.2);
+    }
+
+    .dark .bottom-nav-plus-menu-glow {
+      background: radial-gradient(
+        ellipse 125% 85% at 50% -12%,
+        hsl(0 0% 100% / 0.1),
+        transparent 52%
+      );
+    }
+
+    .dark .bottom-nav-plus-menu-readable {
+      background: hsl(0 0% 14% / 0.4);
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-tab-inner {
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot {
+      height: 2.5rem;
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
+    .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot svg,
+    .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot img {
+      filter:
+        drop-shadow(0 1px 1px hsl(0 0% 100% / 0.65))
+        drop-shadow(0 2px 5px hsl(0 0% 0% / 0.24));
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-tab-label {
+      font-weight: 800;
+      color: hsl(0 0% 6% / 0.95);
+      text-shadow:
+        0 1px 1px hsl(0 0% 100% / 0.75),
+        0 2px 5px hsl(0 0% 0% / 0.18);
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph {
+      color: hsl(0 0% 8% / 0.92);
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph-active,
+    .bottom-nav-mobile-shell .group:hover .bottom-nav-mobile-tab-glyph {
+      color: hsl(0 0% 6% / 0.95);
     }
 
     .bottom-nav-mobile-items-row,
@@ -593,45 +773,32 @@
     .bottom-nav-mobile-tab-label,
     .bottom-nav-mobile-tab-glyph {
       transition-property: padding, gap, height, width, font-size, transform;
-      transition-duration: var(--bottom-nav-morph-duration-expand);
-      transition-timing-function: var(--bottom-nav-morph-ease-expand);
-    }
-
-    .bottom-nav-mobile-compact .bottom-nav-mobile-items-row,
-    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-inner,
-    .bottom-nav-mobile-compact .bottom-nav-mobile-icon-slot,
-    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-label,
-    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-glyph {
-      transition-duration: var(--bottom-nav-morph-duration-compact);
-      transition-timing-function: var(--bottom-nav-morph-ease-compact);
-    }
-
-    .bottom-nav-mobile-portal-compact {
-      transition: padding-bottom var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact);
+      transition-duration: var(--bottom-nav-morph-duration);
+      transition-timing-function: var(--bottom-nav-morph-ease);
     }
 
     .bottom-nav-mobile-compact.bottom-nav-mobile-shell {
-      width: min(94vw, 22.5rem);
-      max-width: min(94vw, 22.5rem);
+      width: min(97vw, 25rem);
+      max-width: min(97vw, 25rem);
       transform: scale(0.95);
-      box-shadow: 0 3px 16px hsl(0 0% 0% / 0.05);
+      box-shadow: 0 10px 22px hsl(0 0% 0% / 0.24);
     }
 
     .bottom-nav-mobile-compact .bottom-nav-mobile-items-row {
-      padding-top: 0.4375rem;
-      padding-bottom: 0.4375rem;
-      padding-left: 0.75rem;
-      padding-right: 0.75rem;
+      padding-top: 0.3125rem;
+      padding-bottom: 0.3125rem;
+      padding-left: 0.125rem;
+      padding-right: 0.125rem;
     }
 
     .bottom-nav-mobile-compact .bottom-nav-mobile-tab-inner {
-      gap: 0.25rem;
-      padding-top: 0.375rem;
-      padding-bottom: 0.375rem;
+      gap: 0;
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
     }
 
     .bottom-nav-mobile-compact .bottom-nav-mobile-icon-slot {
-      height: 1.875rem;
+      height: 2.25rem;
     }
 
     .bottom-nav-mobile-compact .bottom-nav-mobile-tab-label {
@@ -640,70 +807,115 @@
     }
 
     .bottom-nav-mobile-compact .bottom-nav-mobile-tab-glyph {
-      height: 1.625rem;
-      width: 1.625rem;
+      height: 1.75rem;
+      width: 1.75rem;
     }
 
     .bottom-nav-mobile-compact .bottom-nav-mobile-tab-glyph-active {
-      height: 1.6875rem;
-      width: 1.6875rem;
+      height: 1.8125rem;
+      width: 1.8125rem;
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .bottom-nav-mobile-shell,
-      .bottom-nav-mobile-portal-compact {
+      .bottom-nav-mobile-shell {
         transition: none;
       }
 
       .bottom-nav-mobile-compact.bottom-nav-mobile-shell {
-        width: min(96vw, 23rem);
-        max-width: min(96vw, 23rem);
+        width: min(98vw, 25.5rem);
+        max-width: min(98vw, 25.5rem);
         transform: scale(0.97);
       }
     }
 
     .dark .bottom-nav-mobile-shell {
-      background-color: hsl(0 0% 0% / 0.1);
-      background-image: linear-gradient(
-        180deg,
-        hsl(0 0% 100% / 0.06) 0%,
-        hsl(0 0% 100% / 0.02) 100%
+      background: hsl(0 0% 0% / 0.64);
+      -webkit-backdrop-filter: blur(2px) saturate(1.1);
+      backdrop-filter: blur(2px) saturate(1.1);
+      border: none;
+      box-shadow: 0 10px 28px hsl(0 0% 0% / 0.55);
+    }
+
+    .dark .bottom-nav-mobile-glow {
+      background: radial-gradient(
+        circle at 78% 55%,
+        hsl(142 71% 45% / 0.06),
+        transparent 24%
       );
-      border-color: hsl(0 0% 100% / 0.1);
-      box-shadow: 0 4px 24px hsl(0 0% 0% / 0.18);
+    }
+
+    .dark .bottom-nav-mobile-shell::before {
+      background: linear-gradient(
+        90deg,
+        transparent,
+        hsl(0 0% 100% / 0.1),
+        transparent
+      );
+      opacity: 0.35;
+    }
+
+    .dark .bottom-nav-mobile-compact.bottom-nav-mobile-shell {
+      box-shadow: 0 10px 24px hsl(0 0% 0% / 0.5);
+    }
+
+    .dark .bottom-nav-mobile-readable-layer {
+      background: hsl(0 0% 0% / 0.36);
+      box-shadow: none;
+    }
+
+    .dark .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
+    .dark .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot svg,
+    .dark .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot img {
+      filter: drop-shadow(0 2px 5px hsl(0 0% 0% / 0.55));
+    }
+
+    .dark .bottom-nav-mobile-shell .bottom-nav-mobile-tab-label {
+      color: hsl(0 0% 100% / 0.95);
+      text-shadow: 0 2px 5px hsl(0 0% 0% / 0.55);
+    }
+
+    .dark .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
+    .dark .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph-active,
+    .dark .bottom-nav-mobile-shell .group:hover .bottom-nav-mobile-tab-glyph {
+      color: hsl(0 0% 100% / 0.95);
     }
 
     .bottom-nav-tab-active-glass {
-      background-color: hsl(0 0% 100% / 0.18);
-      background-image: linear-gradient(
-        180deg,
-        hsl(0 0% 100% / 0.28) 0%,
-        hsl(0 0% 100% / 0.1) 100%
-      );
-      -webkit-backdrop-filter: blur(18px) saturate(165%);
-      backdrop-filter: blur(18px) saturate(165%);
+      overflow: hidden;
+      top: 50%;
+      left: 50%;
+      right: auto;
+      bottom: auto;
+      width: 4.75rem;
+      height: 2.875rem;
+      background: hsl(0 0% 100% / 0.32);
+      -webkit-backdrop-filter: blur(4px) saturate(1.35);
+      backdrop-filter: blur(4px) saturate(1.35);
       border: none;
-      box-shadow: 0 2px 8px hsl(0 0% 0% / 0.04);
+      border-radius: 9999px;
+      box-shadow: 0 5px 14px hsl(0 0% 0% / 0.22);
+      transform: translate(-50%, -50%);
       transition:
-        opacity var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand),
-        transform var(--bottom-nav-morph-duration-expand) var(--bottom-nav-morph-ease-expand);
+        opacity var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
+        transform var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
+        width var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
+        height var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
+        box-shadow var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease);
+    }
+
+    .bottom-nav-tab-active-glass::before {
+      content: none;
     }
 
     .bottom-nav-mobile-compact .bottom-nav-tab-active-glass {
-      transition:
-        opacity var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact),
-        transform var(--bottom-nav-morph-duration-compact) var(--bottom-nav-morph-ease-compact);
+      width: 4.25rem;
+      height: 2.625rem;
     }
 
     .dark .bottom-nav-tab-active-glass {
-      background-color: hsl(0 0% 100% / 0.07);
-      background-image: linear-gradient(
-        180deg,
-        hsl(0 0% 100% / 0.12) 0%,
-        hsl(0 0% 100% / 0.04) 100%
-      );
+      background: hsl(0 0% 100% / 0.18);
       border: none;
-      box-shadow: 0 2px 10px hsl(0 0% 0% / 0.16);
+      box-shadow: 0 5px 14px hsl(0 0% 0% / 0.42);
     }
   }
 
@@ -716,6 +928,18 @@
       background-image: none;
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-tab-label {
+      color: inherit;
+      font-weight: inherit;
+      text-shadow: none;
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
+    .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot svg {
+      color: inherit;
+      filter: none;
     }
   }
 

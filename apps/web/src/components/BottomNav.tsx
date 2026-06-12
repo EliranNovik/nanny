@@ -85,17 +85,17 @@ import { LocationPickerSheet } from "@/components/LocationPickerSheet";
 /** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
 function bottomNavTabIconClass(isActive: boolean) {
   return cn(
-    "bottom-nav-mobile-tab-glyph transition-[width,height,transform] h-7 w-7 md:h-8 md:w-8",
+    "bottom-nav-mobile-tab-glyph transition-[width,height,transform] h-8 w-8 md:h-8 md:w-8",
     isActive && "bottom-nav-mobile-tab-glyph-active",
     isActive
-      ? "fill-current stroke-none text-zinc-950 dark:text-white"
-      : "fill-none stroke-[2] text-zinc-950/65 dark:text-white/65 group-hover:text-zinc-950 dark:group-hover:text-white",
+      ? "fill-current stroke-none md:text-zinc-950 dark:md:text-white"
+      : "fill-none stroke-[2.75] md:text-zinc-950/85 dark:md:text-white md:group-hover:text-zinc-950 dark:md:group-hover:text-white",
   );
 }
 
 /** Floating frosted pill — mobile only; desktop keeps full-width bar. */
 const mobileNavPortalClass =
-  "fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-2 pb-[max(0.5rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] md:hidden";
+  "fixed bottom-0 left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-4 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] md:hidden";
 
 const mobileNavShellClass = cn(
   "bottom-nav-mobile-shell pointer-events-auto",
@@ -104,8 +104,16 @@ const mobileNavShellClass = cn(
 );
 
 const mobileNavItemsRowClass = cn(
-  "bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-3 py-2 transition-[padding]",
+  "bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-0 py-0 transition-[padding]",
   "md:mx-0 md:w-full md:max-w-none md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12",
+);
+
+const mobileNavGlowLayer = (
+  <div className="bottom-nav-mobile-glow" aria-hidden />
+);
+
+const mobileNavReadableLayer = (
+  <div className="bottom-nav-mobile-readable-layer" aria-hidden />
 );
 
 const mobileTabTouchClass =
@@ -114,32 +122,8 @@ const mobileTabTouchClass =
 const mobileTabLinkClass =
   "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0 transition-all";
 
-const mobileTabLabelClass =
-  "bottom-nav-mobile-tab-label max-w-[4.5rem] mt-px truncate text-center text-[10px] font-semibold leading-none tracking-tight transition-[font-size] md:hidden";
-
 const mobileTabActiveGlassClass =
-  "bottom-nav-tab-active-glass pointer-events-none absolute inset-x-0.5 -inset-y-0.5 rounded-full md:hidden";
-
-function MobileTabLabel({
-  active,
-  children,
-}: {
-  active?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <span
-      className={cn(
-        mobileTabLabelClass,
-        active
-          ? "font-bold text-zinc-950 dark:text-white"
-          : "font-semibold text-zinc-950/55 dark:text-white/55",
-      )}
-    >
-      {children}
-    </span>
-  );
-}
+  "bottom-nav-tab-active-glass pointer-events-none absolute md:hidden";
 
 function MobileTabItem({
   active,
@@ -155,16 +139,16 @@ function MobileTabItem({
   return (
     <>
       {active ? <span className={mobileTabActiveGlassClass} aria-hidden /> : null}
-      <div className="bottom-nav-mobile-tab-inner relative z-[1] flex w-full flex-col items-center justify-center gap-0.5 px-0.5 py-1 transition-[gap,padding] md:py-0">
+      <div className="bottom-nav-mobile-tab-inner relative z-[2] flex w-full flex-col items-center justify-center px-0 py-0 transition-[padding] md:py-0">
         <div
           className={cn(
-            "bottom-nav-mobile-icon-slot relative flex h-8 w-full items-center justify-center overflow-visible transition-[height]",
+            "bottom-nav-mobile-icon-slot relative flex w-full items-center justify-center overflow-visible transition-[height] md:h-8",
             iconClassName,
           )}
         >
           {children}
         </div>
-        <MobileTabLabel active={active}>{label}</MobileTabLabel>
+        <span className="sr-only">{label}</span>
       </div>
     </>
   );
@@ -178,22 +162,31 @@ const appMenuJobsCountBadgeClassName = cn(
 );
 
 const plusMenuPanelClassName = cn(
-  "absolute bottom-[calc(4.75rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] left-1/2 z-30 flex -translate-x-1/2 flex-col gap-2.5 p-3",
-  "w-[min(20rem,calc(100vw-1.5rem))] rounded-[1.75rem]",
-  "bg-zinc-950/[0.97] text-white shadow-2xl shadow-black/55 backdrop-blur-md",
-  "ring-1 ring-inset ring-white/10",
-  "md:bottom-[68px] md:w-[17.5rem] md:gap-2 md:p-2.5",
+  "bottom-nav-plus-menu-panel fixed bottom-[calc(4.75rem+max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))] left-1/2 z-[130] -translate-x-1/2",
+  "w-[min(18.5rem,calc(100vw-2rem))] rounded-[1.375rem] outline-none",
+  "shadow-[0_18px_44px_hsl(0_0%_0%_/0.16)] dark:shadow-[0_22px_52px_hsl(0_0%_0%_/0.52)]",
+  "animate-in fade-in slide-in-from-bottom-3 zoom-in-95 duration-200",
+  "md:bottom-[68px] md:w-[17rem]",
 );
+
+const plusMenuItemsClassName = "relative z-[2] flex flex-col gap-0.5 p-1.5";
 
 const plusMenuItemClassName = cn(
-  "flex w-full min-h-[3.5rem] items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left",
-  "text-[16px] font-semibold leading-snug tracking-tight transition-[background,transform] duration-150",
-  "bg-white/10 hover:bg-white/14 active:scale-[0.99] active:bg-white/18",
-  "md:min-h-[3rem] md:gap-3 md:px-3.5 md:py-3 md:text-[15px]",
+  "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left",
+  "text-[15px] font-medium leading-snug tracking-tight text-zinc-800",
+  "transition-[background,transform,color] duration-150",
+  "hover:bg-zinc-900/[0.05] active:scale-[0.985] active:bg-zinc-900/[0.08]",
+  "dark:text-zinc-100 dark:hover:bg-white/[0.07] dark:active:bg-white/[0.1]",
+  "md:px-3.5 md:py-2.5 md:text-[14px]",
 );
 
-const plusMenuIconWrapClassName =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/16 md:h-9 md:w-9";
+const plusMenuIconWrapClassName = cn(
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+  "bg-zinc-900/[0.06] shadow-[inset_0_1px_0_hsl(0_0%_100%_/0.35)]",
+  "dark:bg-white/[0.1] dark:shadow-[inset_0_1px_0_hsl(0_0%_100%_/0.08)]",
+);
+
+const plusMenuIconClassName = "h-[1.125rem] w-[1.125rem] text-zinc-600 dark:text-zinc-300";
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();
@@ -216,6 +209,7 @@ export function BottomNav() {
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const plusMenuRef = useRef<HTMLDivElement>(null);
+  const plusMenuPanelRef = useRef<HTMLDivElement>(null);
   const { openReportModal } = useReportIssue();
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const activeLocation = useActiveLocation();
@@ -274,17 +268,16 @@ export function BottomNav() {
       const dy = currentScrollY - prev;
       scrollYRef.current = currentScrollY;
 
-      const MIN_DELTA_DOWN = 5;
-      const MIN_DELTA_UP = 3;
+      const MIN_SCROLL_DELTA = 4;
 
       if (mq.matches) {
         if (currentScrollY <= 48) {
           setMobileNavCompact(false);
-        } else if (dy < -MIN_DELTA_UP) {
+        } else if (dy < -MIN_SCROLL_DELTA) {
           /** Scrolling up — expand immediately. */
           setMobileNavCompact(false);
-        } else if (dy > MIN_DELTA_DOWN) {
-          /** Scrolling down — compact immediately; CSS handles the slower morph. */
+        } else if (dy > MIN_SCROLL_DELTA) {
+          /** Scrolling down — compact with the same morph timing as expand. */
           setMobileNavCompact(true);
         }
       } else {
@@ -295,9 +288,9 @@ export function BottomNav() {
         if (mq.matches) {
           if (currentScrollY <= 48) {
             setDiscoverLocationVisible(true);
-          } else if (dy < -MIN_DELTA_UP) {
+          } else if (dy < -MIN_SCROLL_DELTA) {
             setDiscoverLocationVisible(true);
-          } else if (dy > MIN_DELTA_DOWN) {
+          } else if (dy > MIN_SCROLL_DELTA) {
             setDiscoverLocationVisible(false);
           }
         } else {
@@ -312,9 +305,9 @@ export function BottomNav() {
         return;
       }
 
-      if (dy > MIN_DELTA_DOWN) {
+      if (dy > MIN_SCROLL_DELTA) {
         setHeaderVisible(false);
-      } else if (dy < -MIN_DELTA_UP) {
+      } else if (dy < -MIN_SCROLL_DELTA) {
         setHeaderVisible(true);
       }
     };
@@ -352,10 +345,7 @@ export function BottomNav() {
       ? "-translate-y-[150%] opacity-0 pointer-events-none"
       : undefined;
 
-  const mobileNavPortalClassName = cn(
-    mobileNavPortalClass,
-    mobileNavCompact && "bottom-nav-mobile-portal-compact",
-  );
+  const mobileNavPortalClassName = mobileNavPortalClass;
 
   const mobileNavShellClassName = cn(
     mobileNavShellClass,
@@ -493,15 +483,21 @@ export function BottomNav() {
   }, [isMatchSearchRoute]);
 
   useEffect(() => {
-    function onDocPointerDown(e: PointerEvent) {
-      if (!plusMenuOpen) return;
-      const el = plusMenuRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && el.contains(e.target)) return;
+    if (!plusMenuOpen) return;
+    function onDocClick(e: MouseEvent) {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (plusMenuRef.current?.contains(target)) return;
+      if (plusMenuPanelRef.current?.contains(target)) return;
       setPlusMenuOpen(false);
     }
-    document.addEventListener("pointerdown", onDocPointerDown);
-    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+    const id = window.setTimeout(() => {
+      document.addEventListener("click", onDocClick, true);
+    }, 0);
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener("click", onDocClick, true);
+    };
   }, [plusMenuOpen]);
 
   useEffect(() => {
@@ -1064,9 +1060,12 @@ export function BottomNav() {
     </header>
   );
 
-  /** Fixed notch frost — always on viewport top; not tied to collapsing header chrome. */
-  const mobileSafeZoneGlassLayer = (
-    <div className="mobile-header-safe-zone-glass" aria-hidden />
+  /** Fixed notch / home-indicator frost — portaled to body (iOS Safari safe zones). */
+  const mobileSafeZoneGlassLayers = (
+    <>
+      <div className="mobile-header-safe-zone-glass" aria-hidden />
+      <div className="mobile-footer-safe-zone-glass" aria-hidden />
+    </>
   );
 
   /** Mobile only: floating row — community pages: back | centered category | search + bell; else search + bell (top-right). */
@@ -1320,7 +1319,7 @@ export function BottomNav() {
       <>
         {DesktopHeader}
         {!hideMobileAppHeaderChrome &&
-          createPortal(mobileSafeZoneGlassLayer, document.body)}
+          createPortal(mobileSafeZoneGlassLayers, document.body)}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {ProfileMenuModal}
@@ -1328,6 +1327,8 @@ export function BottomNav() {
         {createPortal(
           <nav className={mobileNavPortalClassName}>
             <div className={cn(mobileNavShellClassName, "md:max-w-xs")}>
+              {mobileNavGlowLayer}
+              {mobileNavReadableLayer}
               <div className={mobileNavItemsRowClass}>
                 <div className={mobileTabLinkClass}>
                   <MobileTabItem active label={t("common.home")}>
@@ -1377,12 +1378,14 @@ export function BottomNav() {
       <>
         {!isHelpersFindPage ? DesktopHeader : null}
         {!hideMobileAppHeaderChrome &&
-          createPortal(mobileSafeZoneGlassLayer, document.body)}
+          createPortal(mobileSafeZoneGlassLayers, document.body)}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {createPortal(
           <nav className={mobileNavPortalClassName}>
           <div className={mobileNavShellClassName}>
+            {mobileNavGlowLayer}
+            {mobileNavReadableLayer}
             <div className={mobileNavItemsRowClass}>
               {/* Home */}
               {(() => {
@@ -1394,7 +1397,7 @@ export function BottomNav() {
                       mobileTabLinkClass,
                       isActive
                         ? "text-zinc-950 dark:text-white"
-                        : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
+                        : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
@@ -1415,7 +1418,7 @@ export function BottomNav() {
                   mobileTabLinkClass,
                   isExploreActive
                     ? "text-zinc-950 dark:text-white"
-                    : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
+                    : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
                 )}
                 aria-current={isExploreActive ? "page" : undefined}
                 aria-label="Explore live feed"
@@ -1423,6 +1426,7 @@ export function BottomNav() {
                 <MobileTabItem active={isExploreActive} label={t("common.feed")}>
                   <Rss
                     className={cn(bottomNavTabIconClass(isExploreActive), "relative z-[1]")}
+                    strokeWidth={2.75}
                     aria-hidden
                   />
                 </MobileTabItem>
@@ -1439,7 +1443,7 @@ export function BottomNav() {
                     "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30 rounded-xl",
                     plusMenuOpen
                       ? "text-zinc-950 dark:text-white"
-                      : "text-zinc-950/70 hover:text-zinc-950 dark:text-white/75 dark:hover:text-white",
+                      : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
                   )}
                   aria-expanded={plusMenuOpen}
                   aria-label="Open quick actions"
@@ -1447,11 +1451,11 @@ export function BottomNav() {
                   <MobileTabItem active={plusMenuOpen} label={t("common.create")}>
                     <Plus
                       className={cn(
-                        "bottom-nav-mobile-tab-glyph relative z-[1] h-7 w-7 transition-[width,height,transform] md:h-8 md:w-8",
+                        "bottom-nav-mobile-tab-glyph relative z-[1] h-8 w-8 transition-[width,height,transform] md:h-8 md:w-8",
                         plusMenuOpen && "bottom-nav-mobile-tab-glyph-active",
                         plusMenuOpen
-                          ? "text-zinc-950 dark:text-white"
-                          : "text-zinc-950/65 dark:text-white/65 group-hover:text-zinc-950 dark:group-hover:text-white",
+                          ? "md:text-zinc-950 dark:md:text-white"
+                          : "md:text-zinc-950/85 dark:md:text-white md:group-hover:text-zinc-950 dark:md:group-hover:text-white",
                       )}
                       strokeWidth={plusMenuOpen ? 2.75 : 2}
                       aria-hidden
@@ -1459,8 +1463,16 @@ export function BottomNav() {
                   </MobileTabItem>
                 </button>
 
-                {plusMenuOpen ? (
-                  <div role="menu" className={plusMenuPanelClassName}>
+                {plusMenuOpen
+                  ? createPortal(
+                      <div
+                        ref={plusMenuPanelRef}
+                        role="menu"
+                        className={plusMenuPanelClassName}
+                      >
+                        <div className="bottom-nav-plus-menu-glow" aria-hidden />
+                        <div className="bottom-nav-plus-menu-readable" aria-hidden />
+                        <div className={plusMenuItemsClassName}>
                     {/* Role-aware shortcut: Find helpers (client) or Find requests (freelancer) */}
                     {profile?.role === "client" && (
                       <button
@@ -1473,7 +1485,7 @@ export function BottomNav() {
                         }}
                       >
                         <span className={plusMenuIconWrapClassName}>
-                          <UsersRound className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                          <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
                         </span>
                         <span>Find helpers</span>
                       </button>
@@ -1489,7 +1501,7 @@ export function BottomNav() {
                         }}
                       >
                         <span className={plusMenuIconWrapClassName}>
-                          <Rss className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                          <Rss className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
                         </span>
                         <span>Find requests</span>
                       </button>
@@ -1507,7 +1519,7 @@ export function BottomNav() {
                         }}
                       >
                         <span className={plusMenuIconWrapClassName}>
-                          <Zap className="h-5 w-5 text-white" strokeWidth={2.5} aria-hidden />
+                          <Zap className={plusMenuIconClassName} strokeWidth={2.5} aria-hidden />
                         </span>
                         <span>Start request</span>
                       </button>
@@ -1520,7 +1532,7 @@ export function BottomNav() {
                         className={cn(
                           plusMenuItemClassName,
                           isLiveNow &&
-                            "cursor-not-allowed opacity-55 hover:bg-white/10 active:scale-100",
+                            "cursor-not-allowed opacity-55 hover:bg-transparent dark:hover:bg-transparent active:scale-100",
                         )}
                         onClick={() => {
                           if (isLiveNow) return;
@@ -1531,12 +1543,12 @@ export function BottomNav() {
                         }}
                       >
                         <span className={plusMenuIconWrapClassName}>
-                          <UsersRound className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                          <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
                         </span>
                         <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
                           <span>Go live</span>
                           {isLiveNow && freelancerLiveUntil ? (
-                            <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-bold tabular-nums">
+                            <span className="shrink-0 rounded-full bg-emerald-500/14 px-2.5 py-1 text-[11px] font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/16 dark:text-emerald-300">
                               <LiveTimer countdownTo={freelancerLiveUntil} />
                             </span>
                           ) : null}
@@ -1555,12 +1567,15 @@ export function BottomNav() {
                       }}
                     >
                       <span className={plusMenuIconWrapClassName}>
-                        <PenSquare className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+                        <PenSquare className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
                       </span>
                       <span>Share a post</span>
                     </button>
-                  </div>
-                ) : null}
+                        </div>
+                      </div>,
+                      document.body,
+                    )
+                  : null}
               </div>
 
               {/* Messages */}
@@ -1575,13 +1590,14 @@ export function BottomNav() {
                       mobileTabLinkClass,
                       isActive
                         ? "text-zinc-950 dark:text-white"
-                        : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
+                        : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
                     <MobileTabItem active={isActive} label={t("common.messages")}>
                       <MessageCircle
                         className={cn(bottomNavTabIconClass(isActive), "relative z-[1]")}
+                        strokeWidth={2.75}
                       />
                       {showMessageBadge && (
                         <Badge
@@ -1609,12 +1625,12 @@ export function BottomNav() {
                         mobileTabLinkClass,
                         isActive
                           ? "text-zinc-950 dark:text-white"
-                          : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
+                          : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
                       )}
                       aria-label="Open profile menu"
                     >
                       <MobileTabItem active={isActive} label={t("common.profile")}>
-                        <Avatar className="relative z-[1] h-9 w-9 border-0 ring-0 md:h-8 md:w-8">
+                        <Avatar className="relative z-[1] h-10 w-10 border-0 ring-0 md:h-8 md:w-8">
                           <AvatarImage
                             src={profile?.photo_url ?? undefined}
                             alt=""
@@ -1689,12 +1705,14 @@ export function BottomNav() {
       <>
         {DesktopHeader}
         {!hideMobileAppHeaderChrome &&
-          createPortal(mobileSafeZoneGlassLayer, document.body)}
+          createPortal(mobileSafeZoneGlassLayers, document.body)}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {createPortal(
           <nav className={mobileNavPortalClassName}>
             <div className={cn(mobileNavShellClassName, "md:max-w-xs")}>
+              {mobileNavGlowLayer}
+              {mobileNavReadableLayer}
               <div className={mobileNavItemsRowClass}>
                 <div className={cn(mobileTabTouchClass, "rounded-2xl bg-slate-100/80 text-slate-400 dark:bg-zinc-800/80 dark:text-zinc-500 animate-pulse")}>
                   <Home className="h-7 w-7" />
