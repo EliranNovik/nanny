@@ -63,7 +63,7 @@
     --app-safe-top: env(safe-area-inset-top, 0px);
     --app-safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Bottom nav offset — JS refines on iOS Safari; keep close to bottom in mobile browsers */
-    --app-nav-bottom-inset: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    --app-nav-bottom-inset: max(0.25rem, env(safe-area-inset-bottom, 0px));
     --app-plus-menu-bottom: calc(4.75rem + var(--app-nav-bottom-inset));
     --app-bottom-nav-height: 4.75rem;
     --app-bottom-nav-stack: calc(var(--app-bottom-nav-height) + var(--app-nav-bottom-inset));
@@ -71,7 +71,7 @@
     /* Mobile fixed header strip: safe-top + 0.5rem + h-10 + 0.5rem (BottomNav). */
     --app-mobile-header-stack: calc(0.5rem + 2.25rem + 0.5rem);
     /* Frosted bands: notch + home-indicator (height synced on mobile via useAppSafeAreaSync). */
-    --app-mobile-top-glass-height: max(0.5rem, var(--app-safe-top));
+    --app-mobile-top-glass-height: calc(var(--app-safe-top) + 1.5rem);
     --app-mobile-bottom-glass-height: max(0.5rem, var(--app-nav-bottom-inset));
 
     /**
@@ -269,7 +269,7 @@
    */
   /* Nav height + bottom safe area (mobile #root no longer reserves safe-area inset). */
   .app-main-scroll-pad {
-    padding-bottom: calc(7.75rem + var(--app-nav-bottom-inset));
+    padding-bottom: calc(var(--app-bottom-nav-stack) + 1rem);
   }
 
   @media (min-width: 768px) {
@@ -386,7 +386,7 @@
     }
 
     [data-discover-home-page] {
-      padding-top: var(--app-safe-top);
+      padding-top: calc(var(--app-safe-top) + var(--app-mobile-header-stack));
       margin-top: calc(-1 * var(--app-safe-top));
       padding-bottom: var(--app-safe-bottom);
       margin-bottom: calc(-1 * var(--app-safe-bottom));
@@ -477,25 +477,29 @@
       background-color: transparent;
       background-image: linear-gradient(
         180deg,
-        hsl(0 0% 100% / 0.1) 0%,
-        hsl(0 0% 100% / 0.06) 35%,
-        hsl(0 0% 100% / 0.025) 62%,
+        hsl(0 0% 100% / 0.045) 0%,
+        hsl(0 0% 100% / 0.024) 30%,
+        hsl(0 0% 100% / 0.008) 62%,
         transparent 100%
       );
-      -webkit-backdrop-filter: blur(10px) saturate(130%);
-      backdrop-filter: blur(10px) saturate(130%);
+      -webkit-backdrop-filter: blur(3px) saturate(106%);
+      backdrop-filter: blur(3px) saturate(106%);
       -webkit-mask-image: linear-gradient(
         to bottom,
         #000 0%,
-        #000 58%,
-        rgb(0 0 0 / 0.45) 78%,
+        rgb(0 0 0 / 0.9) 16%,
+        rgb(0 0 0 / 0.58) 40%,
+        rgb(0 0 0 / 0.24) 66%,
+        rgb(0 0 0 / 0.07) 84%,
         transparent 100%
       );
       mask-image: linear-gradient(
         to bottom,
         #000 0%,
-        #000 58%,
-        rgb(0 0 0 / 0.45) 78%,
+        rgb(0 0 0 / 0.9) 16%,
+        rgb(0 0 0 / 0.58) 40%,
+        rgb(0 0 0 / 0.24) 66%,
+        rgb(0 0 0 / 0.07) 84%,
         transparent 100%
       );
     }
@@ -503,13 +507,13 @@
     .dark .mobile-header-safe-zone-glass {
       background-image: linear-gradient(
         180deg,
-        hsl(222 16% 7% / 0.22) 0%,
-        hsl(222 16% 7% / 0.12) 35%,
-        hsl(222 16% 7% / 0.04) 62%,
+        hsl(222 16% 7% / 0.1) 0%,
+        hsl(222 16% 7% / 0.055) 30%,
+        hsl(222 16% 7% / 0.018) 62%,
         transparent 100%
       );
-      -webkit-backdrop-filter: blur(10px) saturate(125%);
-      backdrop-filter: blur(10px) saturate(125%);
+      -webkit-backdrop-filter: blur(3px) saturate(104%);
+      backdrop-filter: blur(3px) saturate(104%);
     }
 
   }
@@ -574,7 +578,6 @@
     position: relative;
     transition:
       background-color 0.3s ease,
-      box-shadow 0.3s ease,
       border-color 0.3s ease;
   }
 
@@ -588,42 +591,17 @@
       padding: 3px 2px;
       background: hsl(0 0% 100% / 0.3);
       border: none;
-      box-shadow: 0 10px 22px hsl(0 0% 0% / 0.24);
+      box-shadow: none;
       width: min(94vw, 22.5rem);
       max-width: min(94vw, 22.5rem);
     }
 
     .bottom-nav-mobile-glow {
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      pointer-events: none;
-      z-index: 0;
-      background: radial-gradient(
-        circle at 78% 55%,
-        hsl(0 0% 100% / 0.12),
-        transparent 30%
-      );
+      display: none;
     }
 
     .bottom-nav-mobile-shell::before {
-      content: "";
-      position: absolute;
-      left: 16px;
-      right: 16px;
-      top: 6px;
-      height: 12px;
-      border-radius: 9999px;
-      z-index: 0;
-      pointer-events: none;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        hsl(0 0% 100% / 0.34),
-        transparent
-      );
-      filter: blur(6px);
-      opacity: 0.82;
+      content: none;
     }
 
     .bottom-nav-mobile-shell::after {
@@ -787,25 +765,15 @@
     .dark .bottom-nav-mobile-shell {
       background: hsl(0 0% 8% / 0.76);
       border: none;
-      box-shadow: 0 10px 24px hsl(0 0% 0% / 0.5);
+      box-shadow: none;
     }
 
     .dark .bottom-nav-mobile-glow {
-      background: radial-gradient(
-        circle at 78% 55%,
-        hsl(0 0% 100% / 0.08),
-        transparent 30%
-      );
+      display: none;
     }
 
     .dark .bottom-nav-mobile-shell::before {
-      background: linear-gradient(
-        90deg,
-        transparent,
-        hsl(0 0% 100% / 0.14),
-        transparent
-      );
-      opacity: 0.42;
+      content: none;
     }
 
     .dark .bottom-nav-mobile-readable-layer {

@@ -57,7 +57,7 @@ export function DiscoverHomeContent({ role }: { role: DiscoverRole }) {
           "app-desktop-shell flex min-h-0 flex-1 flex-col max-md:!px-0 max-md:transition-none",
           /* Discovery home: trim the desktop shell's outer padding so carousels stretch closer to the screen edges */
           "md:!px-4 lg:!px-5 xl:!px-6 2xl:!px-8",
-          "pt-2 md:pt-7",
+          "pt-0 md:pt-7",
         )}
       >
         <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-visible px-0 md:mx-0 md:max-w-none md:overflow-x-hidden md:overflow-y-visible">

@@ -81,13 +81,18 @@ export function useAppSafeAreaSync() {
 
         const dynamicBottomGap = readDynamicViewportBottomGap();
         const appleTouch = isAppleTouchDevice();
-        const safeTop = Math.max(envInsets.top, visualTopInset);
+        /** env() can read 0 on iOS before layout; status-bar height is a sane floor. */
+        const iosTopFallback =
+          appleTouch && envInsets.top < 1 && visualTopInset < 1 ? 44 : 0;
+        const safeTop = Math.max(envInsets.top, visualTopInset, iosTopFallback);
 
+        /** Lift scroll/sheets above Safari toolbar — not used for nav position (nav stays lower). */
         const safariToolbarLift = appleTouch
           ? Math.max(visualBottomInset, dynamicBottomGap)
           : 0;
         const safeBottom = Math.max(envInsets.bottom, safariToolbarLift);
-        const navBottomInset = Math.max(8, envInsets.bottom, safariToolbarLift);
+        /** Nav: home-indicator only — sit near the physical bottom, not double-lifted above Safari chrome. */
+        const navBottomInset = Math.max(4, envInsets.bottom);
 
         root.style.setProperty(
           "--visual-viewport-top-inset",
@@ -110,7 +115,7 @@ export function useAppSafeAreaSync() {
         );
         root.style.setProperty(
           "--app-mobile-top-glass-height",
-          `${Math.max(8, safeTop)}px`,
+          `calc(${safeTop}px + 1.5rem)`,
         );
         root.style.setProperty(
           "--app-mobile-bottom-glass-height",
