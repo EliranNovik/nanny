@@ -1427,7 +1427,7 @@ export function OpenJobRequestMatchCard({
             className={cn(
               "relative flex min-h-0 w-full flex-col overflow-hidden bg-white shadow-2xl dark:bg-zinc-900",
               // Mobile: open from top, stop above the fixed “Map & search” dock + BottomNav.
-              "max-md:h-[calc(100dvh-(5rem+env(safe-area-inset-bottom,0px)))] max-md:rounded-none max-md:animate-in max-md:fade-in",
+              "max-md:h-[calc(100dvh-var(--app-mobile-sheet-bottom))] max-md:rounded-none max-md:animate-in max-md:fade-in",
               // Desktop: centered dialog
               "md:h-[min(85vh,44rem)] md:w-[min(92vw,56rem)] md:max-w-none md:rounded-[24px] md:animate-in md:zoom-in-95",
             )}

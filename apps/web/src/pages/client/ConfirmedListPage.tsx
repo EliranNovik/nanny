@@ -2931,7 +2931,7 @@ export default function ConfirmedListPage() {
           <MobileSnapBottomSheet
             expanded={mobileRequestDetailsOpen}
             onExpandedChange={setMobileRequestDetailsOpen}
-            bottomOffsetClass="bottom-[max(3.75rem,calc(env(safe-area-inset-bottom,0px)+3.25rem))]"
+            bottomOffsetClass="bottom-[var(--app-mobile-sheet-bottom)]"
             ariaLabel="Drag to expand or collapse request details"
             collapsed={
               mobileRequestDetailsOpen ? (

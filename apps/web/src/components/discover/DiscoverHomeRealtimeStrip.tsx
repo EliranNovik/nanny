@@ -19,10 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
-import {
-  discoverMobileSheetBottomOffset,
-  useIsMobileViewport,
-} from "@/lib/discoverSheetDialog";
+import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
+import { useDiscoverHomeOverlayLock } from "@/hooks/useDiscoverHomeOverlayLock";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -54,7 +52,7 @@ import {
 } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { sendKnockMessage } from "@/lib/knockMessage";
 import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
-import { DiscoverHomeModeSegmentedControl } from "@/components/discover/DiscoverHomeModeSegmentedControl";
+import { DiscoverHomePageModeSwitcher } from "@/components/discover/DiscoverHomePageModeSwitcher";
 import { cn } from "@/lib/utils";
 import { openCommunityContact } from "@/lib/communityContact";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -962,6 +960,8 @@ function DiscoverRealtimeStripDetailDialog({
     if (open) setSheetExpanded(true);
   }, [open]);
 
+  useDiscoverHomeOverlayLock(open || pickupMapOpen);
+
   useEffect(() => {
     setPickupMapOpen(false);
   }, [work?.jobId]);
@@ -1492,7 +1492,7 @@ function DiscoverRealtimeStripDetailDialog({
             if (!next) closeSheet();
           }}
           onDismiss={closeSheet}
-          bottomOffsetClass={discoverMobileSheetBottomOffset}
+          heightMode="viewport"
           collapsed={sheetDragHandle}
           ariaLabel="Drag down to close"
         >
@@ -2176,15 +2176,13 @@ export function DiscoverHomeRealtimeStrip({
   if (isLoading) {
     return (
       <>
-        <div className="px-4 pb-2 md:hidden">
-          <DiscoverHomeModeSegmentedControl
-            mode={variant}
-            onModeChange={(m) => {
-              void writeDiscoverHomeIntent(m);
-            }}
-            variant="page"
-          />
-        </div>
+        <DiscoverHomePageModeSwitcher
+          mode={variant}
+          onModeChange={(m) => {
+            void writeDiscoverHomeIntent(m);
+          }}
+          className="pb-2 pt-0"
+        />
         {/* Category Icons Row Skeleton */}
         <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -2218,15 +2216,13 @@ export function DiscoverHomeRealtimeStrip({
     if (variant === "hire") {
       return (
         <>
-          <div className="px-4 pb-2 md:hidden">
-            <DiscoverHomeModeSegmentedControl
-              mode={variant}
-              onModeChange={(m) => {
-                void writeDiscoverHomeIntent(m);
-              }}
-              variant="page"
-            />
-          </div>
+          <DiscoverHomePageModeSwitcher
+            mode={variant}
+            onModeChange={(m) => {
+              void writeDiscoverHomeIntent(m);
+            }}
+            className="pb-2 pt-0"
+          />
           <div className="flex items-center justify-between py-2 px-1">
             <p className="text-[14px] font-medium text-muted-foreground flex-1 pr-4">
               No helpers showing as available right now — try{" "}
@@ -2254,15 +2250,13 @@ export function DiscoverHomeRealtimeStrip({
 
     return (
       <>
-        <div className="px-4 pb-2 md:hidden">
-          <DiscoverHomeModeSegmentedControl
-            mode={variant}
-            onModeChange={(m) => {
-              void writeDiscoverHomeIntent(m);
-            }}
-            variant="page"
-          />
-        </div>
+        <DiscoverHomePageModeSwitcher
+          mode={variant}
+          onModeChange={(m) => {
+            void writeDiscoverHomeIntent(m);
+          }}
+          className="pb-2 pt-0"
+        />
         <div className="rounded-[1rem] border border-dashed border-border/50 bg-muted/25 px-4 py-5 dark:bg-zinc-900/40">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-1 flex-col items-center gap-2 text-center text-sm text-muted-foreground sm:items-start sm:text-left">
@@ -2325,15 +2319,12 @@ export function DiscoverHomeRealtimeStrip({
       <>
       <div className="space-y-4">
         {/* Switch buttons of get help now and help others now on mobile */}
-        <div className="px-4 pt-1 md:hidden">
-          <DiscoverHomeModeSegmentedControl
-            mode={variant}
-            onModeChange={(m) => {
-              void writeDiscoverHomeIntent(m);
-            }}
-            variant="page"
-          />
-        </div>
+        <DiscoverHomePageModeSwitcher
+          mode={variant}
+          onModeChange={(m) => {
+            void writeDiscoverHomeIntent(m);
+          }}
+        />
         {/* Category Icons Row - Work Mode */}
         <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
           <button
@@ -2451,15 +2442,12 @@ export function DiscoverHomeRealtimeStrip({
     <>
     <div className="space-y-4">
       {/* Switch buttons of get help now and help others now on mobile */}
-      <div className="px-4 pt-1 md:hidden">
-        <DiscoverHomeModeSegmentedControl
-          mode={variant}
-          onModeChange={(m) => {
-            void writeDiscoverHomeIntent(m);
-          }}
-          variant="page"
-        />
-      </div>
+      <DiscoverHomePageModeSwitcher
+        mode={variant}
+        onModeChange={(m) => {
+          void writeDiscoverHomeIntent(m);
+        }}
+      />
       {/* Category Icons Row - Hire Mode */}
       <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
         <button

@@ -7,7 +7,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
-  PlayCircle,
+  Radio,
   Search,
   UsersRound,
   Wifi,
@@ -22,6 +22,12 @@ import {
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
+import {
+  mobileBottomSheetSlideAnimationClass,
+  mobileTallBottomSheetDialogClass,
+  mobileSheetSafePaddingBottom,
+} from "@/lib/mobileModalLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { trackEvent } from "@/lib/analytics";
@@ -34,8 +40,6 @@ import {
   navigateToHelpersBrowse,
   navigateToWorkBrowseRequests,
 } from "@/lib/discoverBrowseNavigate";
-import { DiscoverHirePostRequestStrip } from "@/components/discover/DiscoverHirePostRequestStrip";
-import { ExploreHelpOthersLiveStrip } from "@/components/discover/ExploreHelpOthersLiveStrip";
 import { DiscoverHomeRealtimeStrip } from "@/components/discover/DiscoverHomeRealtimeStrip";
 import type { DiscoverHomeCategoryFilter } from "@/lib/discoverHomeCategoryFilter";
 import {
@@ -49,6 +53,7 @@ import { useDiscoverLiveAvatars } from "@/hooks/data/useDiscoverFeed";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
 import { useDiscoverOpenHelpRequests } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { registerDiscoverHomeQuickMoreOpener } from "@/lib/discoverHomeQuickMoreBridge";
+import { useDiscoverHomeOverlayLock } from "@/hooks/useDiscoverHomeOverlayLock";
 import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
 import {
   ALL_HELP_CATEGORY_ID,
@@ -134,6 +139,7 @@ export function DiscoverHomeActionFirst({
 
   const [pendingWorkRequestsOpen, setPendingWorkRequestsOpen] = useState(false);
   const [quickMoreOpen, setQuickMoreOpen] = useState(false);
+  const [quickMoreSheetExpanded, setQuickMoreSheetExpanded] = useState(true);
   const fetchOpenHelpPool =
     !isHire && !!user?.id && profile?.role !== "freelancer";
   const { data: openHelpRows = [] } = useDiscoverOpenHelpRequests(
@@ -173,6 +179,14 @@ export function DiscoverHomeActionFirst({
     registerDiscoverHomeQuickMoreOpener(() => setQuickMoreOpen(true));
     return () => registerDiscoverHomeQuickMoreOpener(null);
   }, []);
+
+  useEffect(() => {
+    if (quickMoreOpen) setQuickMoreSheetExpanded(true);
+  }, [quickMoreOpen]);
+
+  useDiscoverHomeOverlayLock(
+    quickMoreOpen || myRequestsOpen || pendingWorkRequestsOpen,
+  );
 
   /** Clients + freelancers both persist 24h go-live on `freelancer_profiles` — refetch when returning to the tab. */
   useEffect(() => {
@@ -272,31 +286,11 @@ export function DiscoverHomeActionFirst({
     return (frData?.myOpenRequests ?? []).length;
   }, [frData]);
 
-  const hireMoreMenuTotal = useMemo(
-    () => hireLiveHelperCount + myRequestsCount,
-    [hireLiveHelperCount, myRequestsCount],
-  );
-
   const pendingWorkRequestsCount = useMemo(() => {
     return (frData?.inboundNotifications ?? []).filter((n) =>
       Boolean(n.isConfirmed),
     ).length;
   }, [frData]);
-
-  const workMoreMenuTotal = useMemo(
-    () =>
-      isInActive24hGoLiveWindow
-        ? pendingWorkRequestsCount
-        : workLivePostCount + pendingWorkRequestsCount,
-    [
-      isInActive24hGoLiveWindow,
-      pendingWorkRequestsCount,
-      workLivePostCount,
-    ],
-  );
-
-  /** Smooth shadow pulse on dock FABs (`box-shadow` keyframes; respects `motion-safe`). */
-  const primaryCtaBreatheClass = "motion-safe:animate-dock-primary-breathe";
 
   /**
    * Mobile: the More-actions sheet is the only quick-action surface; the
@@ -307,20 +301,38 @@ export function DiscoverHomeActionFirst({
     const badgeRow =
       "ml-auto flex h-8 min-w-[2rem] items-center justify-center rounded-full px-2 text-[15px] font-black tabular-nums text-white bg-red-500 shadow-md";
 
-    const quickMoreSheet = (
-      <Dialog open={quickMoreOpen} onOpenChange={setQuickMoreOpen}>
-        <DialogContent
-          aria-describedby={undefined}
-          className={cn(
-            "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
-            "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:max-h-[min(85vh,22rem)] max-md:w-full max-md:translate-y-0",
-            "md:max-w-md",
-          )}
-        >
-          <DialogTitle className="sr-only">More actions</DialogTitle>
-          <div className="flex flex-col gap-1 p-2 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+    const quickMoreBody = (
+      <div className={cn("flex flex-col gap-1 bg-background p-2", mobileSheetSafePaddingBottom)}>
             {isHire ? (
               <>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
+                  onClick={() => {
+                    setQuickMoreOpen(false);
+                    trackEvent("discover_actions_post_request", {
+                      mode: homeMode,
+                      source: "quick_more",
+                    });
+                    writeDiscoverHomeIntent("hire");
+                    guardKycAction("start_request", () => {
+                      navigate(createRequestPath);
+                      recordFirstMeaningfulAction("home_primary_create_request");
+                    });
+                  }}
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-300">
+                    <Zap className="h-6 w-6" strokeWidth={2.5} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[17px] font-extrabold text-foreground">
+                      {t("nav.startRequest")}
+                    </span>
+                    <span className="text-[13px] text-muted-foreground">
+                      Get help from people near you
+                    </span>
+                  </span>
+                </button>
                 <button
                   type="button"
                   className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
@@ -365,6 +377,62 @@ export function DiscoverHomeActionFirst({
               </>
             ) : (
               <>
+                {isInActive24hGoLiveWindow ? (
+                  <div className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+                      <span className="relative flex h-5 w-5 shrink-0">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:animate-none" />
+                        <span className="relative inline-flex h-5 w-5 rounded-full bg-emerald-500" />
+                      </span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[17px] font-extrabold text-foreground">
+                        You&apos;re live
+                      </span>
+                      <span className="text-[13px] text-muted-foreground">
+                        Visible to people nearby
+                        {freelancerLiveCountdownTarget(freelancerLiveMeta) ? (
+                          <>
+                            {" · "}
+                            <LiveTimer
+                              countdownTo={freelancerLiveCountdownTarget(freelancerLiveMeta)!}
+                              render={({ time }) => <span>{time}</span>}
+                            />
+                          </>
+                        ) : null}
+                      </span>
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
+                    onClick={() => {
+                      setQuickMoreOpen(false);
+                      trackEvent("discover_actions_go_live", {
+                        mode: homeMode,
+                        source: "quick_more",
+                      });
+                      writeDiscoverHomeIntent("work");
+                      guardKycAction("go_live", () => {
+                        navigate(workPrimaryPath);
+                        recordFirstMeaningfulAction("home_primary_work");
+                      });
+                    }}
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+                      <Radio className="h-6 w-6" strokeWidth={2.5} aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[17px] font-extrabold text-foreground">
+                        {t("nav.goLive")}
+                      </span>
+                      <span className="text-[13px] text-muted-foreground">
+                        Be seen by people near you
+                      </span>
+                    </span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-muted/80 active:bg-muted"
@@ -411,9 +479,26 @@ export function DiscoverHomeActionFirst({
               </>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
     );
+
+    const quickMoreSheet = quickMoreOpen ? (
+      <MobileSnapBottomSheet
+        expanded={quickMoreSheetExpanded}
+        onExpandedChange={(next) => {
+          setQuickMoreSheetExpanded(next);
+          if (!next) setQuickMoreOpen(false);
+        }}
+        onDismiss={() => setQuickMoreOpen(false)}
+        hidePeek
+        heightMode="content"
+        maxHeight="min(85dvh, 640px)"
+        ariaLabel={t("discover.moreActions", { defaultValue: "More discover actions" })}
+        className="z-[140]"
+      >
+        <p className="sr-only">More actions</p>
+        {quickMoreBody}
+      </MobileSnapBottomSheet>
+    ) : null;
 
     // The "Find requests" entry lives exclusively inside the More-actions sheet on
     // mobile; the standalone floating FAB is intentionally removed (avoids a
@@ -468,29 +553,6 @@ export function DiscoverHomeActionFirst({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                trackEvent("discover_actions_post_request", { mode: homeMode });
-                writeDiscoverHomeIntent("hire");
-                guardKycAction("start_request", () => {
-                  navigate(createRequestPath);
-                  recordFirstMeaningfulAction("home_primary_create_request");
-                });
-              }}
-              className={cn(
-                roundBadgeClass,
-                primaryCtaBreatheClass,
-                "border-0 bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-[0_0_30px_rgba(99,102,241,0.4)] ring-white/30 hover:brightness-110",
-              )}
-              aria-label="Request help now"
-            >
-              <Zap className="h-7 w-7 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" strokeWidth={3} aria-hidden />
-            </button>
-            <span className={badgeCaptionClass}>Post request</span>
-          </div>
-          <div className="flex flex-col items-center gap-2.5 group">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
                 setMyRequestsOpen(true);
               }}
               className={roundBadgeClass}
@@ -531,31 +593,6 @@ export function DiscoverHomeActionFirst({
           </button>
           <span className={badgeCaptionClass}>Find requests</span>
         </div>
-        {isInActive24hGoLiveWindow ? null : (
-          <div className="flex flex-col items-center gap-2.5 group">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                trackEvent("discover_actions_go_live", { mode: homeMode });
-                writeDiscoverHomeIntent("work");
-                guardKycAction("go_live", () => {
-                  navigate(workPrimaryPath);
-                  recordFirstMeaningfulAction("home_primary_work");
-                });
-              }}
-              className={cn(
-                roundBadgeClass,
-                primaryCtaBreatheClass,
-                "border-0 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_30px_rgba(16,185,129,0.4)] ring-white/30 hover:brightness-110",
-              )}
-              aria-label="Go live"
-            >
-              <PlayCircle className="h-7 w-7 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" strokeWidth={3} aria-hidden />
-            </button>
-            <span className={badgeCaptionClass}>Go live</span>
-          </div>
-        )}
         <div className="flex flex-col items-center gap-2.5 group">
           <button
             type="button"
@@ -700,43 +737,6 @@ export function DiscoverHomeActionFirst({
       )}
     >
       {renderQuickActionDockMobile()}
-      <div className="hidden md:contents">
-        {isHire ? (
-          <DiscoverHirePostRequestStrip
-            onPostRequest={() => {
-              trackEvent("discover_actions_post_request", {
-                mode: homeMode,
-                source: "strip",
-              });
-              writeDiscoverHomeIntent("hire");
-              guardKycAction("start_request", () => {
-                navigate(createRequestPath);
-                recordFirstMeaningfulAction("home_primary_create_request");
-              });
-            }}
-            onMoreClick={() => setQuickMoreOpen(true)}
-            moreMenuTotal={hireMoreMenuTotal}
-            moreMenuOpen={quickMoreOpen}
-          />
-        ) : (
-          <ExploreHelpOthersLiveStrip
-            onGoLive={() => {
-              trackEvent("discover_actions_go_live", {
-                mode: homeMode,
-                source: "strip",
-              });
-              writeDiscoverHomeIntent("work");
-              guardKycAction("go_live", () => {
-                navigate(workPrimaryPath);
-                recordFirstMeaningfulAction("home_primary_work");
-              });
-            }}
-            onMoreClick={() => setQuickMoreOpen(true)}
-            moreMenuTotal={workMoreMenuTotal}
-            moreMenuOpen={quickMoreOpen}
-          />
-        )}
-      </div>
       <div className="flex flex-1 md:hidden flex-col gap-0">
         <div className="shrink-0 pt-0 px-0">
           <DiscoverHomeRealtimeStrip
@@ -1000,9 +1000,10 @@ export function DiscoverHomeActionFirst({
         <DialogContent
           aria-describedby={undefined}
           className={cn(
-          "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
-          "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:h-[85vh] max-md:w-full max-md:translate-y-0",
-          "md:max-h-[min(90vh,48rem)] md:max-w-4xl"
+          "flex flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
+          mobileTallBottomSheetDialogClass,
+          mobileBottomSheetSlideAnimationClass,
+          "md:max-h-[min(90vh,48rem)] md:max-w-4xl md:rounded-2xl"
         )}>
           <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
             <div className="flex items-center justify-between">
@@ -1023,9 +1024,10 @@ export function DiscoverHomeActionFirst({
         <DialogContent
           aria-describedby={undefined}
           className={cn(
-          "flex flex-col gap-0 overflow-hidden rounded-t-[28px] border-0 p-0 shadow-2xl",
-          "max-md:fixed max-md:bottom-0 max-md:top-auto max-md:h-[85vh] max-md:w-full max-md:translate-y-0",
-          "md:max-h-[min(90vh,48rem)] md:max-w-4xl"
+          "flex flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
+          mobileTallBottomSheetDialogClass,
+          mobileBottomSheetSlideAnimationClass,
+          "md:max-h-[min(90vh,48rem)] md:max-w-4xl md:rounded-2xl"
         )}>
           <DialogHeader className="shrink-0 border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
             <div className="flex items-center justify-between">

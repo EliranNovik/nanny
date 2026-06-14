@@ -43,6 +43,14 @@ function readDynamicViewportBottomGap() {
   return Math.max(0, Math.round(lvh - svh));
 }
 
+function isAppleTouchDevice() {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 /**
  * iOS Safari: env(safe-area-inset-*) is unreliable while browser chrome shows/hides.
  * Probe env() + visualViewport gaps so fixed chrome and scroll content extend into the
@@ -72,13 +80,14 @@ export function useAppSafeAreaSync() {
         }
 
         const dynamicBottomGap = readDynamicViewportBottomGap();
+        const appleTouch = isAppleTouchDevice();
         const safeTop = Math.max(envInsets.top, visualTopInset);
-        const safeBottom = Math.max(
-          envInsets.bottom,
-          visualBottomInset,
-          dynamicBottomGap,
-        );
-        const navBottomInset = Math.max(12, safeBottom);
+
+        const safariToolbarLift = appleTouch
+          ? Math.max(visualBottomInset, dynamicBottomGap)
+          : 0;
+        const safeBottom = Math.max(envInsets.bottom, safariToolbarLift);
+        const navBottomInset = Math.max(8, envInsets.bottom, safariToolbarLift);
 
         root.style.setProperty(
           "--visual-viewport-top-inset",
@@ -91,6 +100,14 @@ export function useAppSafeAreaSync() {
         root.style.setProperty("--app-safe-top", `${safeTop}px`);
         root.style.setProperty("--app-safe-bottom", `${safeBottom}px`);
         root.style.setProperty("--app-nav-bottom-inset", `${navBottomInset}px`);
+        root.style.setProperty(
+          "--app-mobile-sheet-bottom",
+          `calc(4.75rem + ${navBottomInset}px)`,
+        );
+        root.style.setProperty(
+          "--app-plus-menu-bottom",
+          `calc(4.75rem + ${navBottomInset}px)`,
+        );
         root.style.setProperty(
           "--app-mobile-top-glass-height",
           `${Math.max(8, safeTop)}px`,
@@ -124,6 +141,8 @@ export function useAppSafeAreaSync() {
       root.style.removeProperty("--app-safe-top");
       root.style.removeProperty("--app-safe-bottom");
       root.style.removeProperty("--app-nav-bottom-inset");
+      root.style.removeProperty("--app-mobile-sheet-bottom");
+      root.style.removeProperty("--app-plus-menu-bottom");
       root.style.removeProperty("--app-mobile-top-glass-height");
       root.style.removeProperty("--app-mobile-bottom-glass-height");
     };

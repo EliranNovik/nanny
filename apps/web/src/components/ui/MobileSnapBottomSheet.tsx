@@ -8,6 +8,7 @@ import {
   type TouchEvent,
 } from "react";
 import { cn } from "@/lib/utils";
+import { MOBILE_BOTTOM_SHEET_EDGE } from "@/lib/mobileModalLayout";
 
 const SNAP_EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
 
@@ -16,14 +17,20 @@ type MobileSnapBottomSheetProps = {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   /** Peek row (handle + title) — always visible at the top of the sheet when collapsed. */
-  collapsed: ReactNode;
+  collapsed?: ReactNode;
   /** Full sheet body — scrollable when expanded. */
   children: ReactNode;
+  /** Dismiss-only sheets: no peek strip; swipe from body/header to close. */
+  hidePeek?: boolean;
+  /** `aria-labelledby` target when `hidePeek` (id on the in-body title). */
+  titleId?: string;
   /** Fixed offset from viewport bottom (e.g. above bottom nav). */
   bottomOffsetClass?: string;
   className?: string;
   /** Max expanded height as CSS value. */
   maxHeight?: string;
+  /** `viewport` fills up to maxHeight; `content` hugs body height (capped). */
+  heightMode?: "viewport" | "content";
   /** aria-label for the drag handle region */
   ariaLabel?: string;
   /** Overlay modals: swipe-to-close dismisses entirely instead of snapping to peek. */
@@ -35,11 +42,14 @@ export function MobileSnapBottomSheet({
   onExpandedChange,
   collapsed,
   children,
-  bottomOffsetClass = "bottom-0",
+  bottomOffsetClass = MOBILE_BOTTOM_SHEET_EDGE,
   className,
   maxHeight = "min(92dvh, 860px)",
+  heightMode = "viewport",
   ariaLabel = "Drag to expand or collapse",
   onDismiss,
+  hidePeek = false,
+  titleId,
 }: MobileSnapBottomSheetProps) {
   const sheetId = useId();
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -64,31 +74,50 @@ export function MobileSnapBottomSheet({
     startY: 0,
   });
 
-  const collapsedOffsetPx = Math.max(0, expandedHeightPx - peekHeightPx);
+  const fitContent = heightMode === "content";
 
-  const settledTranslatePx = expanded ? 0 : collapsedOffsetPx;
+  const effectivePeekHeightPx = hidePeek ? 0 : peekHeightPx;
+
+  const collapsedOffsetPx = fitContent
+    ? 0
+    : Math.max(0, expandedHeightPx - effectivePeekHeightPx);
+
+  const settledTranslatePx = fitContent ? 0 : expanded ? 0 : collapsedOffsetPx;
   const translatePx = dragTranslatePx ?? settledTranslatePx;
 
   useLayoutEffect(() => {
     const vhCap = Math.min(window.innerHeight * 0.92, 860);
-    setExpandedHeightPx(vhCap);
-    if (peekRef.current) setPeekHeightPx(peekRef.current.offsetHeight || 88);
-  }, [expanded, children]);
+    if (fitContent && sheetRef.current) {
+      const measured = sheetRef.current.scrollHeight;
+      setExpandedHeightPx(Math.min(measured, vhCap));
+    } else {
+      setExpandedHeightPx(vhCap);
+    }
+    if (hidePeek) setPeekHeightPx(0);
+    else if (peekRef.current) setPeekHeightPx(peekRef.current.offsetHeight || 88);
+  }, [expanded, children, fitContent, hidePeek]);
 
   useEffect(() => {
     const onResize = () => {
       const vhCap = Math.min(window.innerHeight * 0.92, 860);
-      setExpandedHeightPx(vhCap);
-      if (peekRef.current) setPeekHeightPx(peekRef.current.offsetHeight || 88);
+      if (fitContent && sheetRef.current) {
+        const measured = sheetRef.current.scrollHeight;
+        setExpandedHeightPx(Math.min(measured, vhCap));
+      } else {
+        setExpandedHeightPx(vhCap);
+      }
+      if (hidePeek) setPeekHeightPx(0);
+      else if (peekRef.current) setPeekHeightPx(peekRef.current.offsetHeight || 88);
     };
     const ro = new ResizeObserver(onResize);
-    if (peekRef.current) ro.observe(peekRef.current);
+    if (sheetRef.current) ro.observe(sheetRef.current);
+    if (!hidePeek && peekRef.current) ro.observe(peekRef.current);
     window.addEventListener("resize", onResize);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [fitContent, hidePeek]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -99,7 +128,14 @@ export function MobileSnapBottomSheet({
     };
   }, [expanded]);
 
+  const dismissDragCapPx = fitContent
+    ? Math.max(expandedHeightPx, effectivePeekHeightPx, 240)
+    : collapsedOffsetPx;
+
   const clampTranslate = (value: number) => {
+    if (fitContent) {
+      return Math.min(Math.max(value, 0), dismissDragCapPx);
+    }
     if (collapsedOffsetPx <= 0) return 0;
     return Math.min(Math.max(value, 0), collapsedOffsetPx);
   };
@@ -114,14 +150,23 @@ export function MobileSnapBottomSheet({
     const flickUp = velocityY < -0.55;
     const mid = collapsedOffsetPx * 0.42;
 
+    setDragTranslatePx(null);
+    setDragging(false);
+    dragRef.current.active = false;
+
+    if (fitContent && onDismiss) {
+      if (flickDown || clamped > dismissDragCapPx * 0.22) {
+        onDismiss();
+        return;
+      }
+      onExpandedChange(true);
+      return;
+    }
+
     let nextExpanded = expanded;
     if (flickDown) nextExpanded = false;
     else if (flickUp) nextExpanded = true;
     else nextExpanded = clamped < mid;
-
-    setDragTranslatePx(null);
-    setDragging(false);
-    dragRef.current.active = false;
 
     if (!nextExpanded && onDismiss) {
       onDismiss();
@@ -224,16 +269,18 @@ export function MobileSnapBottomSheet({
   };
 
   const backdropOpacity =
-    collapsedOffsetPx > 0
-      ? Math.max(0, Math.min(1, 1 - translatePx / collapsedOffsetPx))
-      : expanded
-        ? 1
-        : 0;
+    fitContent && dismissDragCapPx > 0
+      ? Math.max(0, Math.min(1, 1 - translatePx / dismissDragCapPx))
+      : collapsedOffsetPx > 0
+        ? Math.max(0, Math.min(1, 1 - translatePx / collapsedOffsetPx))
+        : expanded
+          ? 1
+          : 0;
 
   return (
     <div
       className={cn(
-        "pointer-events-none fixed inset-x-0 z-[125] md:hidden",
+        "pointer-events-none fixed inset-x-0 z-[130] md:hidden",
         bottomOffsetClass,
         className,
       )}
@@ -258,36 +305,52 @@ export function MobileSnapBottomSheet({
         ref={sheetRef}
         role="dialog"
         aria-modal={expanded}
-        aria-labelledby={`${sheetId}-peek`}
+        aria-labelledby={hidePeek && titleId ? titleId : `${sheetId}-peek`}
         className={cn(
           "pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[1.75rem] border border-border/60 border-b-0 bg-background shadow-[0_-8px_40px_-12px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.03] dark:border-white/[0.08] dark:shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] dark:ring-white/[0.05]",
+          fitContent && "h-auto",
           !dragging && "will-change-transform",
         )}
-        style={{
-          height: expandedHeightPx > 0 ? `${expandedHeightPx}px` : maxHeight,
-          maxHeight,
-          transform: `translate3d(0, ${translatePx}px, 0)`,
-          transition: dragging
-            ? "none"
-            : `transform 0.38s ${SNAP_EASING}`,
-        }}
+        style={
+          fitContent
+            ? {
+                maxHeight,
+                transform: `translate3d(0, ${translatePx}px, 0)`,
+                transition: dragging
+                  ? "none"
+                  : `transform 0.38s ${SNAP_EASING}`,
+              }
+            : {
+                height: expandedHeightPx > 0 ? `${expandedHeightPx}px` : maxHeight,
+                maxHeight,
+                transform: `translate3d(0, ${translatePx}px, 0)`,
+                transition: dragging
+                  ? "none"
+                  : `transform 0.38s ${SNAP_EASING}`,
+              }
+        }
       >
-        <div
-          ref={peekRef}
-          id={`${sheetId}-peek`}
-          className="shrink-0 touch-none select-none"
-          onTouchStart={onHandleTouchStart}
-          onTouchMove={onHandleTouchMove}
-          onTouchEnd={onHandleTouchEnd}
-          onTouchCancel={onHandleTouchEnd}
-          aria-label={ariaLabel}
-        >
-          {collapsed}
-        </div>
+        {!hidePeek ? (
+          <div
+            ref={peekRef}
+            id={`${sheetId}-peek`}
+            className="shrink-0 touch-none select-none"
+            onTouchStart={onHandleTouchStart}
+            onTouchMove={onHandleTouchMove}
+            onTouchEnd={onHandleTouchEnd}
+            onTouchCancel={onHandleTouchEnd}
+            aria-label={ariaLabel}
+          >
+            {collapsed}
+          </div>
+        ) : null}
 
         <div
           ref={scrollRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y"
+          className={cn(
+            "min-h-0 flex-1 overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y",
+            fitContent ? "overflow-visible" : "overflow-y-auto",
+          )}
           onTouchStart={onScrollAreaTouchStart}
           onTouchMove={onScrollAreaTouchMove}
           onTouchEnd={onScrollAreaTouchEnd}

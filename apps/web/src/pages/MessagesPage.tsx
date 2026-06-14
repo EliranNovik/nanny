@@ -50,6 +50,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  mobileTallBottomSheetDialogClass,
+  mobileBottomSheetSlideAnimationClass,
+} from "@/lib/mobileModalLayout";
 import { glassBadgeClass } from "@/lib/glassBadge";
 import ChatPage from "./ChatPage";
 import { useSearchParams } from "react-router-dom";
@@ -1207,15 +1211,17 @@ export default function MessagesPage() {
                   }
                   onClick={() => setInboxTab("messages")}
                 >
-                  <MessageCircle
-                    className={inboxNavIconClass(inboxTab === "messages")}
-                    aria-hidden
-                  />
-                  {inboxUnreadTotal > 0 ? (
-                    <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-red-600 px-0.5 text-[10px] font-black leading-none text-white">
-                      {inboxUnreadTotal > 9 ? "9+" : inboxUnreadTotal}
-                    </span>
-                  ) : null}
+                  <div className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center">
+                    <MessageCircle
+                      className={inboxNavIconClass(inboxTab === "messages")}
+                      aria-hidden
+                    />
+                    {inboxUnreadTotal > 0 ? (
+                      <span className="absolute -right-1 -top-1 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-red-600 px-0.5 text-[10px] font-black leading-none text-white">
+                        {inboxUnreadTotal > 9 ? "9+" : inboxUnreadTotal}
+                      </span>
+                    ) : null}
+                  </div>
                 </MessagesInboxNavItem>
 
                 <MessagesInboxNavItem
@@ -1411,14 +1417,10 @@ export default function MessagesPage() {
         <DialogContent
           overlayClassName="max-md:bg-black/45"
           className={cn(
-            "flex max-h-[min(88dvh,640px)] w-full flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
-            "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:max-h-[min(92dvh,720px)]",
-            "max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[1.5rem] max-md:rounded-b-none",
-            "!max-md:data-[state=open]:slide-in-from-left-0 !max-md:data-[state=open]:slide-in-from-top-0",
-            "!max-md:data-[state=closed]:slide-out-to-left-0 !max-md:data-[state=closed]:slide-out-to-top-0",
-            "!max-md:data-[state=open]:zoom-in-100 !max-md:data-[state=closed]:zoom-out-100",
-            "!max-md:data-[state=open]:slide-in-from-bottom !max-md:data-[state=closed]:slide-out-to-bottom",
-            "md:max-w-md md:rounded-2xl md:p-6",
+            "flex w-full flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
+            mobileTallBottomSheetDialogClass,
+            mobileBottomSheetSlideAnimationClass,
+            "md:max-h-[min(88dvh,640px)] md:max-w-md md:rounded-2xl md:p-6",
           )}
         >
           <DialogTitle className="sr-only">Start a new chat</DialogTitle>

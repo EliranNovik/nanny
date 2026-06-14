@@ -62,19 +62,17 @@
     --visual-viewport-bottom-inset: 0px;
     --app-safe-top: env(safe-area-inset-top, 0px);
     --app-safe-bottom: env(safe-area-inset-bottom, 0px);
-    /* Bottom nav offset: home indicator + iOS Safari toolbar (lvh−svh) + JS visualViewport sync */
-    --app-nav-bottom-inset: max(
-      0.75rem,
-      env(safe-area-inset-bottom, 0px),
-      calc(100lvh - 100svh)
-    );
+    /* Bottom nav offset — JS refines on iOS Safari; keep close to bottom in mobile browsers */
+    --app-nav-bottom-inset: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    --app-plus-menu-bottom: calc(4.75rem + var(--app-nav-bottom-inset));
+    --app-bottom-nav-height: 4.75rem;
+    --app-bottom-nav-stack: calc(var(--app-bottom-nav-height) + var(--app-nav-bottom-inset));
+    --app-mobile-sheet-bottom: var(--app-bottom-nav-stack);
     /* Mobile fixed header strip: safe-top + 0.5rem + h-10 + 0.5rem (BottomNav). */
     --app-mobile-header-stack: calc(0.5rem + 2.25rem + 0.5rem);
     /* Frosted bands: notch + home-indicator (height synced on mobile via useAppSafeAreaSync). */
     --app-mobile-top-glass-height: max(0.5rem, var(--app-safe-top));
     --app-mobile-bottom-glass-height: max(0.5rem, var(--app-nav-bottom-inset));
-    --bottom-nav-morph-duration: 1200ms;
-    --bottom-nav-morph-ease: cubic-bezier(0.22, 1.12, 0.36, 1);
 
     /**
      * Top Layout System — spacing under fixed app chrome (see components/page-frame).
@@ -519,7 +517,7 @@
   /* Discover / feed header: frosted location pill */
   .discover-header-location-glass {
     position: relative;
-    isolation: isolate;
+    overflow: hidden;
     border-radius: 9999px;
     background-color: hsl(0 0% 100% / 0.08);
     background-image: linear-gradient(
@@ -536,30 +534,44 @@
       box-shadow 0.25s ease;
   }
 
+  .discover-header-location-glass::before {
+    content: none;
+  }
+
   .discover-header-location-glass:hover {
     background-color: hsl(0 0% 100% / 0.12);
     box-shadow: 0 4px 18px hsl(0 0% 0% / 0.07);
   }
 
   .dark .discover-header-location-glass {
-    background-color: hsl(0 0% 0% / 0.12);
-    background-image: linear-gradient(
-      180deg,
-      hsl(0 0% 100% / 0.08) 0%,
-      hsl(0 0% 100% / 0.02) 100%
-    );
+    background: hsl(0 0% 8% / 0.76);
+    background-image: none;
     border: none;
-    box-shadow: 0 2px 16px hsl(0 0% 0% / 0.2);
+    box-shadow: 0 10px 24px hsl(0 0% 0% / 0.5);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .dark .discover-header-location-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: hsl(0 0% 12% / 0.42);
+    -webkit-backdrop-filter: blur(4px) saturate(1.14);
+    backdrop-filter: blur(4px) saturate(1.14);
   }
 
   .dark .discover-header-location-glass:hover {
-    background-color: hsl(0 0% 0% / 0.18);
+    background: hsl(0 0% 8% / 0.82);
+    box-shadow: 0 10px 26px hsl(0 0% 0% / 0.54);
   }
 
   /* Mobile: floating Apple-style frosted pill; desktop: flush bar */
   .bottom-nav-mobile-shell {
     position: relative;
-    isolation: isolate;
     transition:
       background-color 0.3s ease,
       box-shadow 0.3s ease,
@@ -570,24 +582,15 @@
     /* Clear tinted glass — readable content through the bar (not frosted) */
     .bottom-nav-mobile-shell {
       overflow: visible;
+      position: relative;
+      margin-inline: auto;
       border-radius: 9999px;
-      padding: 6px 3px;
-      background: hsl(0 0% 100% / 0.13);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+      padding: 3px 2px;
+      background: hsl(0 0% 100% / 0.3);
       border: none;
-      box-shadow: 0 10px 25px hsl(0 0% 0% / 0.28);
-      width: 100%;
-      max-width: 100%;
-      transform: scale(1);
-      transform-origin: center bottom;
-      transition:
-        transform var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
-        width var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
-        max-width var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
-        box-shadow var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
-        background-color 0.35s ease,
-        border-color 0.35s ease;
+      box-shadow: 0 10px 22px hsl(0 0% 0% / 0.24);
+      width: min(94vw, 22.5rem);
+      max-width: min(94vw, 22.5rem);
     }
 
     .bottom-nav-mobile-glow {
@@ -598,8 +601,8 @@
       z-index: 0;
       background: radial-gradient(
         circle at 78% 55%,
-        hsl(142 71% 45% / 0.1),
-        transparent 24%
+        hsl(0 0% 100% / 0.12),
+        transparent 30%
       );
     }
 
@@ -616,11 +619,11 @@
       background: linear-gradient(
         90deg,
         transparent,
-        hsl(0 0% 100% / 0.28),
+        hsl(0 0% 100% / 0.34),
         transparent
       );
       filter: blur(6px);
-      opacity: 0.7;
+      opacity: 0.82;
     }
 
     .bottom-nav-mobile-shell::after {
@@ -633,15 +636,50 @@
       border-radius: inherit;
       pointer-events: none;
       z-index: 1;
-      background: hsl(0 0% 100% / 0.19);
+      overflow: hidden;
+      background: hsl(0 0% 100% / 0.24);
       box-shadow: none;
+      -webkit-backdrop-filter: blur(3px) saturate(1.18);
+      backdrop-filter: blur(3px) saturate(1.18);
     }
 
     .bottom-nav-mobile-items-row {
       position: relative;
       z-index: 2;
-      padding-top: 0.5rem;
-      padding-bottom: 0.5rem;
+      isolation: isolate;
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+
+    .bottom-nav-plus-spacer {
+      pointer-events: none;
+    }
+
+    .bottom-nav-plus-anchor {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 30;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .bottom-nav-plus-anchor .bottom-nav-plus-button {
+      pointer-events: auto;
+    }
+
+    .bottom-nav-plus-tab,
+    .bottom-nav-plus-button,
+    .bottom-nav-plus-icon-plate {
+      transition: none;
+    }
+
+    .bottom-nav-plus-glyph {
+      width: 1.5rem;
+      height: 1.5rem;
+      min-width: 1.5rem;
+      min-height: 1.5rem;
+      filter: none;
     }
 
     /* Plus quick-actions menu — frosted glass companion to the bottom nav pill */
@@ -649,9 +687,9 @@
       isolation: isolate;
       overflow: hidden;
       border: none;
-      background: hsl(0 0% 100% / 0.58);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+      background: hsl(0 0% 100% / 0.42);
+      -webkit-backdrop-filter: blur(6px) saturate(1.1);
+      backdrop-filter: blur(6px) saturate(1.1);
     }
 
     .bottom-nav-plus-menu-glow {
@@ -673,13 +711,13 @@
       border-radius: inherit;
       pointer-events: none;
       z-index: 1;
-      background: hsl(0 0% 96% / 0.42);
+      background: hsl(0 0% 96% / 0.24);
     }
 
     .dark .bottom-nav-plus-menu-panel {
-      background: hsl(0 0% 0% / 0.54);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+      background: hsl(0 0% 0% / 0.46);
+      -webkit-backdrop-filter: blur(8px) saturate(1.05);
+      backdrop-filter: blur(8px) saturate(1.05);
     }
 
     .dark .bottom-nav-plus-menu-glow {
@@ -695,28 +733,42 @@
     }
 
     .bottom-nav-mobile-shell .bottom-nav-mobile-tab-inner {
-      padding-top: 0.25rem;
-      padding-bottom: 0.25rem;
+      padding-top: 0.125rem;
+      padding-bottom: 0.125rem;
     }
 
     .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot {
       height: 2.5rem;
+      min-height: 2.5rem;
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
+    .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot svg {
+      width: 2rem;
+      height: 2rem;
+      min-width: 2rem;
+      min-height: 2rem;
+      shape-rendering: geometricPrecision;
     }
 
     .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
     .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot svg,
     .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot img {
-      filter:
-        drop-shadow(0 1px 1px hsl(0 0% 100% / 0.65))
-        drop-shadow(0 2px 5px hsl(0 0% 0% / 0.24));
+      filter: none;
+    }
+
+    .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot img {
+      width: 2.5rem;
+      height: 2.5rem;
+      min-width: 2.5rem;
+      min-height: 2.5rem;
+      object-fit: cover;
     }
 
     .bottom-nav-mobile-shell .bottom-nav-mobile-tab-label {
       font-weight: 800;
       color: hsl(0 0% 6% / 0.95);
-      text-shadow:
-        0 1px 1px hsl(0 0% 100% / 0.75),
-        0 2px 5px hsl(0 0% 0% / 0.18);
+      text-shadow: none;
     }
 
     .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph {
@@ -728,80 +780,21 @@
       color: hsl(0 0% 6% / 0.95);
     }
 
-    .bottom-nav-mobile-items-row,
-    .bottom-nav-mobile-tab-inner,
-    .bottom-nav-mobile-icon-slot,
-    .bottom-nav-mobile-tab-label,
-    .bottom-nav-mobile-tab-glyph {
-      transition-property: padding, gap, height, width, font-size, transform;
-      transition-duration: var(--bottom-nav-morph-duration);
-      transition-timing-function: var(--bottom-nav-morph-ease);
-    }
-
-    .bottom-nav-mobile-compact.bottom-nav-mobile-shell {
-      width: min(97vw, 25rem);
-      max-width: min(97vw, 25rem);
-      transform: scale(0.95);
-      box-shadow: 0 10px 22px hsl(0 0% 0% / 0.24);
-    }
-
-    .bottom-nav-mobile-compact .bottom-nav-mobile-items-row {
-      padding-top: 0.3125rem;
-      padding-bottom: 0.3125rem;
-      padding-left: 0.125rem;
-      padding-right: 0.125rem;
-    }
-
-    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-inner {
-      gap: 0;
-      padding-top: 0.25rem;
-      padding-bottom: 0.25rem;
-    }
-
-    .bottom-nav-mobile-compact .bottom-nav-mobile-icon-slot {
-      height: 2.25rem;
-    }
-
-    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-label {
-      font-size: 0.59375rem;
-      line-height: 1;
-    }
-
-    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-glyph {
-      height: 1.75rem;
-      width: 1.75rem;
-    }
-
-    .bottom-nav-mobile-compact .bottom-nav-mobile-tab-glyph-active {
-      height: 1.8125rem;
-      width: 1.8125rem;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .bottom-nav-mobile-shell {
-        transition: none;
-      }
-
-      .bottom-nav-mobile-compact.bottom-nav-mobile-shell {
-        width: min(98vw, 25.5rem);
-        max-width: min(98vw, 25.5rem);
-        transform: scale(0.97);
-      }
+    .bottom-nav-mobile-tab-inner {
+      transition: none;
     }
 
     .dark .bottom-nav-mobile-shell {
-      background: hsl(0 0% 0% / 0.64);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+      background: hsl(0 0% 8% / 0.76);
       border: none;
-      box-shadow: 0 10px 28px hsl(0 0% 0% / 0.55);
+      box-shadow: 0 10px 24px hsl(0 0% 0% / 0.5);
     }
 
     .dark .bottom-nav-mobile-glow {
       background: radial-gradient(
         circle at 78% 55%,
-        hsl(142 71% 45% / 0.06),
-        transparent 24%
+        hsl(0 0% 100% / 0.08),
+        transparent 30%
       );
     }
 
@@ -809,30 +802,28 @@
       background: linear-gradient(
         90deg,
         transparent,
-        hsl(0 0% 100% / 0.1),
+        hsl(0 0% 100% / 0.14),
         transparent
       );
-      opacity: 0.35;
-    }
-
-    .dark .bottom-nav-mobile-compact.bottom-nav-mobile-shell {
-      box-shadow: 0 10px 24px hsl(0 0% 0% / 0.5);
+      opacity: 0.42;
     }
 
     .dark .bottom-nav-mobile-readable-layer {
-      background: hsl(0 0% 0% / 0.36);
+      background: hsl(0 0% 12% / 0.42);
       box-shadow: none;
+      -webkit-backdrop-filter: blur(4px) saturate(1.14);
+      backdrop-filter: blur(4px) saturate(1.14);
     }
 
     .dark .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
     .dark .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot svg,
     .dark .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot img {
-      filter: drop-shadow(0 2px 5px hsl(0 0% 0% / 0.55));
+      filter: none;
     }
 
     .dark .bottom-nav-mobile-shell .bottom-nav-mobile-tab-label {
       color: hsl(0 0% 100% / 0.95);
-      text-shadow: 0 2px 5px hsl(0 0% 0% / 0.55);
+      text-shadow: none;
     }
 
     .dark .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
@@ -849,34 +840,23 @@
       bottom: auto;
       width: 4.75rem;
       height: 2.875rem;
-      background: hsl(0 0% 100% / 0.32);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+      min-width: 4.75rem;
+      min-height: 2.875rem;
+      background: hsl(0 0% 68% / 0.38);
       border: none;
       border-radius: 9999px;
-      box-shadow: 0 5px 14px hsl(0 0% 0% / 0.22);
+      box-shadow: none;
       transform: translate(-50%, -50%);
-      transition:
-        opacity var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
-        transform var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
-        width var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
-        height var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease),
-        box-shadow var(--bottom-nav-morph-duration) var(--bottom-nav-morph-ease);
     }
 
     .bottom-nav-tab-active-glass::before {
       content: none;
     }
 
-    .bottom-nav-mobile-compact .bottom-nav-tab-active-glass {
-      width: 4.25rem;
-      height: 2.625rem;
-    }
-
     .dark .bottom-nav-tab-active-glass {
       background: hsl(0 0% 100% / 0.18);
       border: none;
-      box-shadow: 0 5px 14px hsl(0 0% 0% / 0.42);
+      box-shadow: none;
     }
   }
 

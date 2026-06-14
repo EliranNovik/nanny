@@ -8,6 +8,7 @@ import {
   useDiscoverLatestJobReviews,
 } from "@/hooks/data/useDiscoverLatestJobReviews";
 import { useNavigate } from "react-router-dom";
+import { useDiscoverHomeOverlayLock } from "@/hooks/useDiscoverHomeOverlayLock";
 
 type ReviewRow = DiscoverLatestJobReview;
 
@@ -35,6 +36,8 @@ export function DiscoverHomeLatestReviews({ limit = 6 }: { limit?: number }) {
   const [isOpen, setIsOpen] = useState(false);
   const capped = Math.max(1, Math.min(20, limit));
   const { loading, rows } = useDiscoverLatestJobReviews(capped);
+
+  useDiscoverHomeOverlayLock(isOpen);
 
   const gradients = useMemo(
     () => [

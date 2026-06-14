@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /** Higher above mobile BottomNav — extra gap from nav bar. */
 export const stripBottomFlushClass =
-  "bottom-[calc(4.75rem+max(0.75rem,env(safe-area-inset-bottom,0px)))]";
+  "bottom-[var(--app-mobile-sheet-bottom)]";
 
 /** Wrapper positions the pill on the right edge. */
 export const stripFabPillClusterClass = cn(

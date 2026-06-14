@@ -36,7 +36,7 @@ const MOBILE_SNAP_TOP_LOGGED_IN =
 const MOBILE_SNAP_TOP_GUEST =
   "top-[calc(env(safe-area-inset-top,0px)+3.5rem+5.75rem)]";
 const MOBILE_SNAP_BOTTOM =
-  "bottom-[calc(3.75rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]";
+  "bottom-[var(--app-mobile-sheet-bottom)]";
 
 export default function PublicCommunityPostsPage() {
   const navigate = useNavigate();

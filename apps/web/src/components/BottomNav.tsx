@@ -77,15 +77,18 @@ import {
   writeDiscoverHomeIntent,
 } from "@/lib/discoverHomeIntent";
 import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
+import { subscribeDiscoverHomeOverlay } from "@/lib/discoverHomeOverlayState";
+import { discoverHeaderGlassIconBtnClass } from "@/lib/discoverHomeHeaderChrome";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { LocationPickerSheet } from "@/components/LocationPickerSheet";
+import { DISCOVER_MOBILE_CHROME_HIDE_CLASS } from "@/lib/discoverMobileChromeScroll";
 
 /** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
 function bottomNavTabIconClass(isActive: boolean) {
   return cn(
-    "bottom-nav-mobile-tab-glyph transition-[width,height,transform] h-8 w-8 md:h-8 md:w-8",
+    "bottom-nav-mobile-tab-glyph h-8 w-8 shrink-0 md:h-8 md:w-8",
     isActive && "bottom-nav-mobile-tab-glyph-active",
     isActive
       ? "fill-current stroke-none md:text-zinc-950 dark:md:text-white"
@@ -93,18 +96,23 @@ function bottomNavTabIconClass(isActive: boolean) {
   );
 }
 
+/** Home + feed tabs: always use the filled active icon style. */
+const bottomNavHomeFeedIconClass = cn(
+  "bottom-nav-mobile-tab-glyph bottom-nav-mobile-tab-glyph-active relative z-[1] h-8 w-8 shrink-0",
+  "fill-current stroke-none text-zinc-950 dark:text-white md:text-zinc-950 dark:md:text-white",
+);
+
 /** Floating frosted pill — mobile only; desktop keeps full-width bar. */
 const mobileNavPortalClass =
-  "fixed bottom-[var(--app-nav-bottom-inset,max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))] left-0 right-0 z-[125] flex justify-center pointer-events-none overflow-visible px-4 md:hidden";
+  "fixed bottom-[var(--app-nav-bottom-inset,max(0.5rem,env(safe-area-inset-bottom,0px)))] left-0 right-0 z-[125] pointer-events-none overflow-visible px-4 md:hidden";
 
 const mobileNavShellClass = cn(
-  "bottom-nav-mobile-shell pointer-events-auto",
-  "w-full max-w-none",
-  "md:mx-auto md:max-w-md md:rounded-2xl",
+  "bottom-nav-mobile-shell pointer-events-auto mx-auto",
+  "md:max-w-md md:rounded-2xl",
 );
 
 const mobileNavItemsRowClass = cn(
-  "bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-0 py-0 transition-[padding]",
+  "bottom-nav-mobile-items-row flex w-full items-center justify-evenly gap-0 overflow-visible px-0 py-0",
   "md:mx-0 md:w-full md:max-w-none md:justify-between md:px-6 md:py-2 md:pb-2 lg:px-8 xl:px-12",
 );
 
@@ -120,29 +128,43 @@ const mobileTabTouchClass =
   "relative flex h-12 w-12 shrink-0 items-center justify-center md:h-[48px] md:w-[48px]";
 
 const mobileTabLinkClass =
-  "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0 transition-all";
+  "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0 transition-colors duration-150";
 
 const mobileTabActiveGlassClass =
   "bottom-nav-tab-active-glass pointer-events-none absolute md:hidden";
+
+const plusIconPlateClassName = cn(
+  "bottom-nav-plus-icon-plate flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+  "bg-zinc-300/80 text-zinc-900 dark:bg-zinc-600/65 dark:text-white",
+);
+
+const plusButtonClassName = cn(
+  "bottom-nav-plus-button flex h-10 w-10 shrink-0 items-center justify-center",
+  "outline-none transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30",
+);
 
 function MobileTabItem({
   active,
   label,
   children,
   iconClassName,
+  showActiveBadge = true,
 }: {
   active: boolean;
   label: string;
   children: ReactNode;
   iconClassName?: string;
+  showActiveBadge?: boolean;
 }) {
   return (
     <>
-      {active ? <span className={mobileTabActiveGlassClass} aria-hidden /> : null}
+      {active && showActiveBadge ? (
+        <span className={mobileTabActiveGlassClass} aria-hidden />
+      ) : null}
       <div className="bottom-nav-mobile-tab-inner relative z-[2] flex w-full flex-col items-center justify-center px-0 py-0 transition-[padding] md:py-0">
         <div
           className={cn(
-            "bottom-nav-mobile-icon-slot relative flex w-full items-center justify-center overflow-visible transition-[height] md:h-8",
+            "bottom-nav-mobile-icon-slot relative flex h-10 w-full shrink-0 items-center justify-center overflow-visible md:h-8",
             iconClassName,
           )}
         >
@@ -162,7 +184,7 @@ const appMenuJobsCountBadgeClassName = cn(
 );
 
 const plusMenuPanelClassName = cn(
-  "bottom-nav-plus-menu-panel fixed bottom-[calc(4.75rem+var(--app-nav-bottom-inset,max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px))))] left-1/2 z-[130] -translate-x-1/2",
+  "bottom-nav-plus-menu-panel pointer-events-auto fixed bottom-[var(--app-plus-menu-bottom,calc(4.75rem+max(0.5rem,env(safe-area-inset-bottom,0px))))] left-1/2 z-[150] -translate-x-1/2",
   "w-[min(18.5rem,calc(100vw-2rem))] rounded-[1.375rem] outline-none",
   "shadow-[0_18px_44px_hsl(0_0%_0%_/0.16)] dark:shadow-[0_22px_52px_hsl(0_0%_0%_/0.52)]",
   "animate-in fade-in slide-in-from-bottom-3 zoom-in-95 duration-200",
@@ -210,6 +232,7 @@ export function BottomNav() {
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuPanelRef = useRef<HTMLDivElement>(null);
+  const plusButtonRef = useRef<HTMLButtonElement>(null);
   const { openReportModal } = useReportIssue();
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const activeLocation = useActiveLocation();
@@ -226,8 +249,11 @@ export function BottomNav() {
         : "/dashboard";
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
-  const { collapseProgress: discoverHeaderCollapseProgress } =
-    useDiscoverHomeScrollHeader();
+  const {
+    collapseProgress: discoverHeaderCollapseProgress,
+    mobileDiscoverChromeVisible,
+    setMobileDiscoverChromeVisible,
+  } = useDiscoverHomeScrollHeader();
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
   const isCommunityFeedPage = pathnameNorm === "/community/feed";
@@ -248,10 +274,9 @@ export function BottomNav() {
   const discoverHomeFixedChrome = isDiscoverHome;
 
   const [headerVisible, setHeaderVisible] = useState(true);
-  const [discoverLocationVisible, setDiscoverLocationVisible] = useState(true);
-  const [mobileNavCompact, setMobileNavCompact] = useState(false);
   const [matchSearchChromeVisible, setMatchSearchChromeVisibleState] =
     useState(true);
+  const [discoverHomeOverlayOpen, setDiscoverHomeOverlayOpen] = useState(false);
   const scrollYRef = useRef(0);
   const mobileNavScrollRafRef = useRef<number | null>(null);
   const headerVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -270,31 +295,17 @@ export function BottomNav() {
 
       const MIN_SCROLL_DELTA = 4;
 
-      if (mq.matches) {
-        if (currentScrollY <= 48) {
-          setMobileNavCompact(false);
-        } else if (dy < -MIN_SCROLL_DELTA) {
-          /** Scrolling up — expand immediately. */
-          setMobileNavCompact(false);
-        } else if (dy > MIN_SCROLL_DELTA) {
-          /** Scrolling down — compact with the same morph timing as expand. */
-          setMobileNavCompact(true);
-        }
-      } else {
-        setMobileNavCompact(false);
-      }
-
       if (discoverHomeFixedChrome) {
         if (mq.matches) {
           if (currentScrollY <= 48) {
-            setDiscoverLocationVisible(true);
+            setMobileDiscoverChromeVisible(true);
           } else if (dy < -MIN_SCROLL_DELTA) {
-            setDiscoverLocationVisible(true);
-          } else if (dy > MIN_SCROLL_DELTA) {
-            setDiscoverLocationVisible(false);
+            setMobileDiscoverChromeVisible(true);
+          } else if (dy > 0) {
+            setMobileDiscoverChromeVisible(false);
           }
         } else {
-          setDiscoverLocationVisible(true);
+          setMobileDiscoverChromeVisible(true);
         }
         setHeaderVisible(true);
         return;
@@ -332,25 +343,22 @@ export function BottomNav() {
         headerVisibilityTimerRef.current = null;
       }
     };
-  }, [discoverHomeFixedChrome]);
+  }, [discoverHomeFixedChrome, setMobileDiscoverChromeVisible]);
 
   useEffect(() => {
     if (!isDiscoverHome) {
-      setDiscoverLocationVisible(true);
+      setMobileDiscoverChromeVisible(true);
     }
-  }, [isDiscoverHome]);
+  }, [isDiscoverHome, setMobileDiscoverChromeVisible]);
 
-  const discoverLocationHideClass =
-    showDiscoverShellHeader && !discoverLocationVisible
-      ? "-translate-y-[150%] opacity-0 pointer-events-none"
+  const discoverMobileChromeHideClass =
+    showDiscoverShellHeader && !mobileDiscoverChromeVisible
+      ? DISCOVER_MOBILE_CHROME_HIDE_CLASS
       : undefined;
 
   const mobileNavPortalClassName = mobileNavPortalClass;
 
-  const mobileNavShellClassName = cn(
-    mobileNavShellClass,
-    mobileNavCompact && "bottom-nav-mobile-compact",
-  );
+  const mobileNavShellClassName = mobileNavShellClass;
 
   /** Scroll-linked — no CSS transition; transform/opacity follow collapse progress. */
   const shellScrollMobileChromeOverlayStyle: CSSProperties | undefined =
@@ -483,20 +491,31 @@ export function BottomNav() {
   }, [isMatchSearchRoute]);
 
   useEffect(() => {
+    return subscribeDiscoverHomeOverlay(setDiscoverHomeOverlayOpen);
+  }, []);
+
+  const hideMobileBottomNav =
+    isDiscoverHome &&
+    (discoverHomeOverlayOpen ||
+      mobileSearchOpen ||
+      locationPickerOpen);
+
+  useEffect(() => {
     if (!plusMenuOpen) return;
-    function onDocClick(e: MouseEvent) {
+    function onPointerDown(e: PointerEvent) {
       const target = e.target;
       if (!(target instanceof Node)) return;
+      if (plusButtonRef.current?.contains(target)) return;
       if (plusMenuRef.current?.contains(target)) return;
       if (plusMenuPanelRef.current?.contains(target)) return;
       setPlusMenuOpen(false);
     }
     const id = window.setTimeout(() => {
-      document.addEventListener("click", onDocClick, true);
+      document.addEventListener("pointerdown", onPointerDown);
     }, 0);
     return () => {
       window.clearTimeout(id);
-      document.removeEventListener("click", onDocClick, true);
+      document.removeEventListener("pointerdown", onPointerDown);
     };
   }, [plusMenuOpen]);
 
@@ -546,7 +565,7 @@ export function BottomNav() {
                   "pointer-events-auto flex min-h-10 items-center gap-1 py-1 pl-3 pr-2.5 text-left text-slate-900 active:scale-[0.98] dark:text-white",
                   options?.besideBack
                     ? "max-w-[min(10.5rem,calc(100vw-8.5rem))]"
-                    : "max-w-[min(13.5rem,calc(100vw-7rem))]",
+                    : "max-w-[min(10.5rem,calc(100vw-9.5rem))]",
                 )
               : cn(
                   "flex min-h-10 items-center gap-1.5 py-1 pl-3 pr-2.5 text-left text-slate-900 dark:text-white",
@@ -557,12 +576,12 @@ export function BottomNav() {
           )}
           aria-label={displayCity ? `Current location: ${displayCity}. Tap to change.` : "Set your location"}
         >
-          <span className="min-w-0 flex-1 truncate text-[14px] font-bold leading-tight text-slate-900 dark:text-white sm:text-[15px]">
+          <span className="relative z-[1] min-w-0 flex-1 truncate text-[14px] font-bold leading-tight text-slate-900 dark:text-white sm:text-[15px]">
             {primary}
             {displayCountry ? `, ${displayCountry}` : null}
           </span>
           <ChevronDown
-            className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+            className="relative z-[1] h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
             strokeWidth={2.25}
             aria-hidden
           />
@@ -1073,7 +1092,7 @@ export function BottomNav() {
         mobileSearchOpen || showCommunityHeaderCategoryDropdown
           ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
           : "right-[max(0.75rem,env(safe-area-inset-right))]",
-        mobileChromeHideClass,
+        showDiscoverShellHeader ? discoverMobileChromeHideClass : mobileChromeHideClass,
         "motion-reduce:transition-none",
       )}
       style={{
@@ -1096,11 +1115,9 @@ export function BottomNav() {
         )}
       >
         {discoverHomeFixedChrome ? (
-          <DiscoverHomeMobileHeaderRight
-            mode={discoverHomeMode}
-            createRequestPath="/client/create"
-            workPrimaryPath="/availability/post-now"
-          />
+          <div className="pointer-events-auto">
+            <DiscoverHomeMobileHeaderRight />
+          </div>
         ) : null}
         {!discoverHomeFixedChrome && showCommunityHeaderCategoryDropdown && !mobileSearchOpen && (
           <div className="flex min-w-0 flex-1 justify-center px-0.5">
@@ -1170,7 +1187,7 @@ export function BottomNav() {
     <div
       className={cn(
         "md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        showDiscoverShellHeader ? discoverLocationHideClass : mobileChromeHideClass,
+        showDiscoverShellHeader ? discoverMobileChromeHideClass : mobileChromeHideClass,
         "motion-reduce:transition-none",
       )}
       style={{
@@ -1180,7 +1197,17 @@ export function BottomNav() {
       }}
     >
       {showDiscoverShellHeader ? (
-        renderDiscoverHomeLocationChip("mobile")
+        <div className="pointer-events-auto flex min-w-0 flex-row items-center gap-1.5">
+          {renderDiscoverHomeLocationChip("mobile")}
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen(true)}
+            className={discoverHeaderGlassIconBtnClass}
+            aria-label={t("common.openSearch", { defaultValue: "Search" })}
+          >
+            <Search className="relative z-[1] h-5 w-5" strokeWidth={2.25} aria-hidden />
+          </button>
+        </div>
       ) : showCommunityFeedHeaderLeft ? (
         <div className="pointer-events-auto flex min-w-0 flex-row items-center gap-0.5">
           <button
@@ -1208,7 +1235,7 @@ export function BottomNav() {
 
   const ProfileMenuModal = (
     <Dialog open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
-      <DialogContent className="max-w-xs p-4 gap-3 rounded-xl left-4 right-4 top-14 translate-x-0 translate-y-0 w-[calc(100%-2rem)] max-w-sm data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2">
+      <DialogContent className="max-w-xs gap-3 rounded-2xl border-0 p-4 shadow-xl outline-none ring-0 focus:outline-none focus-visible:ring-0 left-4 right-4 top-14 w-[calc(100%-2rem)] max-w-sm translate-x-0 translate-y-0 bg-white dark:bg-zinc-800 dark:text-zinc-50 data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2">
         <DialogTitle className="sr-only">Account menu</DialogTitle>
         <div className="flex flex-col gap-1">
           <Button
@@ -1321,7 +1348,8 @@ export function BottomNav() {
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
-        {createPortal(
+        {!hideMobileBottomNav &&
+          createPortal(
           <nav className={mobileNavPortalClassName}>
             <div className={cn(mobileNavShellClassName, "md:max-w-xs")}>
               {mobileNavGlowLayer}
@@ -1329,10 +1357,7 @@ export function BottomNav() {
               <div className={mobileNavItemsRowClass}>
                 <div className={mobileTabLinkClass}>
                   <MobileTabItem active label={t("common.home")}>
-                    <BottomNavHomeIcon
-                      active
-                      className="h-7 w-7 text-zinc-950 dark:text-white"
-                    />
+                    <BottomNavHomeIcon className="h-7 w-7 text-zinc-950 dark:text-white" />
                   </MobileTabItem>
                 </div>
               </div>
@@ -1378,7 +1403,8 @@ export function BottomNav() {
           createPortal(mobileSafeZoneGlassLayers, document.body)}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
-        {createPortal(
+        {!hideMobileBottomNav &&
+          createPortal(
           <nav className={mobileNavPortalClassName}>
           <div className={mobileNavShellClassName}>
             {mobileNavGlowLayer}
@@ -1399,10 +1425,7 @@ export function BottomNav() {
                     aria-current={isActive ? "page" : undefined}
                   >
                     <MobileTabItem active={isActive} label={t("common.home")}>
-                      <BottomNavHomeIcon
-                        active={isActive}
-                        className={cn(bottomNavTabIconClass(isActive), "relative z-[1]")}
-                      />
+                      <BottomNavHomeIcon className={bottomNavHomeFeedIconClass} />
                     </MobileTabItem>
                   </Link>
                 );
@@ -1421,159 +1444,11 @@ export function BottomNav() {
                 aria-label="Explore live feed"
               >
                 <MobileTabItem active={isExploreActive} label={t("common.feed")}>
-                  <Rss
-                    className={cn(bottomNavTabIconClass(isExploreActive), "relative z-[1]")}
-                    strokeWidth={2.75}
-                    aria-hidden
-                  />
+                  <Rss className={bottomNavHomeFeedIconClass} strokeWidth={0} aria-hidden />
                 </MobileTabItem>
               </Link>
 
-              {/* Center — + dropdown */}
-              <div ref={plusMenuRef} className="relative z-20 flex min-w-0 flex-1 flex-col items-center justify-center">
-                <button
-                  type="button"
-                  onClick={() => setPlusMenuOpen((v) => !v)}
-                  className={cn(
-                    mobileTabLinkClass,
-                    "w-full",
-                    "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30 rounded-xl",
-                    plusMenuOpen
-                      ? "text-zinc-950 dark:text-white"
-                      : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
-                  )}
-                  aria-expanded={plusMenuOpen}
-                  aria-label="Open quick actions"
-                >
-                  <MobileTabItem active={plusMenuOpen} label={t("common.create")}>
-                    <Plus
-                      className={cn(
-                        "bottom-nav-mobile-tab-glyph relative z-[1] h-8 w-8 transition-[width,height,transform] md:h-8 md:w-8",
-                        plusMenuOpen && "bottom-nav-mobile-tab-glyph-active",
-                        plusMenuOpen
-                          ? "md:text-zinc-950 dark:md:text-white"
-                          : "md:text-zinc-950/85 dark:md:text-white md:group-hover:text-zinc-950 dark:md:group-hover:text-white",
-                      )}
-                      strokeWidth={plusMenuOpen ? 2.75 : 2}
-                      aria-hidden
-                    />
-                  </MobileTabItem>
-                </button>
-
-                {plusMenuOpen
-                  ? createPortal(
-                      <div
-                        ref={plusMenuPanelRef}
-                        role="menu"
-                        className={plusMenuPanelClassName}
-                      >
-                        <div className="bottom-nav-plus-menu-glow" aria-hidden />
-                        <div className="bottom-nav-plus-menu-readable" aria-hidden />
-                        <div className={plusMenuItemsClassName}>
-                    {/* Role-aware shortcut: Find helpers (client) or Find requests (freelancer) */}
-                    {profile?.role === "client" && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={plusMenuItemClassName}
-                        onClick={() => {
-                          setPlusMenuOpen(false);
-                          navigate("/client/helpers");
-                        }}
-                      >
-                        <span className={plusMenuIconWrapClassName}>
-                          <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
-                        </span>
-                        <span>Find helpers</span>
-                      </button>
-                    )}
-                    {profile?.role === "freelancer" && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={plusMenuItemClassName}
-                        onClick={() => {
-                          setPlusMenuOpen(false);
-                          navigate("/freelancer/jobs/match");
-                        }}
-                      >
-                        <span className={plusMenuIconWrapClassName}>
-                          <Rss className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
-                        </span>
-                        <span>Find requests</span>
-                      </button>
-                    )}
-                    {profile?.role === "client" && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={plusMenuItemClassName}
-                        onClick={() => {
-                          setPlusMenuOpen(false);
-                          guardKycAction("start_request", () =>
-                            navigate("/client/create"),
-                          );
-                        }}
-                      >
-                        <span className={plusMenuIconWrapClassName}>
-                          <Zap className={plusMenuIconClassName} strokeWidth={2.5} aria-hidden />
-                        </span>
-                        <span>Start request</span>
-                      </button>
-                    )}
-                    {profile?.role === "freelancer" && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        disabled={isLiveNow}
-                        className={cn(
-                          plusMenuItemClassName,
-                          isLiveNow &&
-                            "cursor-not-allowed opacity-55 hover:bg-transparent dark:hover:bg-transparent active:scale-100",
-                        )}
-                        onClick={() => {
-                          if (isLiveNow) return;
-                          setPlusMenuOpen(false);
-                          guardKycAction("go_live", () =>
-                            navigate("/availability/post-now"),
-                          );
-                        }}
-                      >
-                        <span className={plusMenuIconWrapClassName}>
-                          <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
-                        </span>
-                        <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                          <span>Go live</span>
-                          {isLiveNow && freelancerLiveUntil ? (
-                            <span className="shrink-0 rounded-full bg-emerald-500/14 px-2.5 py-1 text-[11px] font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/16 dark:text-emerald-300">
-                              <LiveTimer countdownTo={freelancerLiveUntil} />
-                            </span>
-                          ) : null}
-                        </span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={plusMenuItemClassName}
-                      onClick={() => {
-                        setPlusMenuOpen(false);
-                        guardKycAction("share_post", () =>
-                          navigate("/community/feed?compose=1"),
-                        );
-                      }}
-                    >
-                      <span className={plusMenuIconWrapClassName}>
-                        <PenSquare className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
-                      </span>
-                      <span>Share a post</span>
-                    </button>
-                        </div>
-                      </div>,
-                      document.body,
-                    )
-                  : null}
-              </div>
+              <div className="bottom-nav-plus-spacer w-10 shrink-0 md:hidden" aria-hidden />
 
               {/* Messages */}
               {(() => {
@@ -1592,18 +1467,20 @@ export function BottomNav() {
                     aria-current={isActive ? "page" : undefined}
                   >
                     <MobileTabItem active={isActive} label={t("common.messages")}>
-                      <MessageCircle
-                        className={cn(bottomNavTabIconClass(isActive), "relative z-[1]")}
-                        strokeWidth={2.75}
-                      />
-                      {showMessageBadge && (
-                        <Badge
-                          variant="destructive"
-                          className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-red-600 px-0.5 text-[10px] font-black leading-none shadow-none ring-0 md:h-5.5 md:min-w-[22px] md:px-1 md:text-[11px]"
-                        >
-                          {inboxBadgeCount > 9 ? "9+" : inboxBadgeCount}
-                        </Badge>
-                      )}
+                      <div className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center">
+                        <MessageCircle
+                          className={cn(bottomNavTabIconClass(isActive), "relative z-[1]")}
+                          strokeWidth={2.75}
+                        />
+                        {showMessageBadge && (
+                          <Badge
+                            variant="destructive"
+                            className="absolute -right-1 -top-1 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-red-600 px-0.5 text-[10px] font-black leading-none shadow-none ring-0 md:h-5.5 md:min-w-[22px] md:px-1 md:text-[11px]"
+                          >
+                            {inboxBadgeCount > 9 ? "9+" : inboxBadgeCount}
+                          </Badge>
+                        )}
+                      </div>
                     </MobileTabItem>
                   </Link>
                 );
@@ -1675,6 +1552,143 @@ export function BottomNav() {
                 );
               })()}
             </div>
+
+            <div ref={plusMenuRef} className="bottom-nav-plus-anchor md:hidden">
+              <button
+                ref={plusButtonRef}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlusMenuOpen((v) => !v);
+                }}
+                className={plusButtonClassName}
+                aria-expanded={plusMenuOpen}
+                aria-label="Open quick actions"
+              >
+                <span className={plusIconPlateClassName}>
+                  <Plus
+                    className="bottom-nav-plus-glyph relative z-[1] h-6 w-6 shrink-0"
+                    strokeWidth={2.5}
+                    aria-hidden
+                  />
+                </span>
+                <span className="sr-only">{t("common.create")}</span>
+              </button>
+            </div>
+
+            {plusMenuOpen
+              ? createPortal(
+                  <div
+                    ref={plusMenuPanelRef}
+                    role="menu"
+                    className={plusMenuPanelClassName}
+                  >
+                    <div className="bottom-nav-plus-menu-glow" aria-hidden />
+                    <div className="bottom-nav-plus-menu-readable" aria-hidden />
+                    <div className={plusMenuItemsClassName}>
+                      {profile?.role === "client" && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={plusMenuItemClassName}
+                          onClick={() => {
+                            setPlusMenuOpen(false);
+                            navigate("/client/helpers");
+                          }}
+                        >
+                          <span className={plusMenuIconWrapClassName}>
+                            <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
+                          </span>
+                          <span>Find helpers</span>
+                        </button>
+                      )}
+                      {profile?.role === "freelancer" && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={plusMenuItemClassName}
+                          onClick={() => {
+                            setPlusMenuOpen(false);
+                            navigate("/freelancer/jobs/match");
+                          }}
+                        >
+                          <span className={plusMenuIconWrapClassName}>
+                            <Rss className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
+                          </span>
+                          <span>Find requests</span>
+                        </button>
+                      )}
+                      {profile?.role === "client" && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={plusMenuItemClassName}
+                          onClick={() => {
+                            setPlusMenuOpen(false);
+                            guardKycAction("start_request", () =>
+                              navigate("/client/create"),
+                            );
+                          }}
+                        >
+                          <span className={plusMenuIconWrapClassName}>
+                            <Zap className={plusMenuIconClassName} strokeWidth={2.5} aria-hidden />
+                          </span>
+                          <span>Start request</span>
+                        </button>
+                      )}
+                      {profile?.role === "freelancer" && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={isLiveNow}
+                          className={cn(
+                            plusMenuItemClassName,
+                            isLiveNow &&
+                              "cursor-not-allowed opacity-55 hover:bg-transparent dark:hover:bg-transparent active:scale-100",
+                          )}
+                          onClick={() => {
+                            if (isLiveNow) return;
+                            setPlusMenuOpen(false);
+                            guardKycAction("go_live", () =>
+                              navigate("/availability/post-now"),
+                            );
+                          }}
+                        >
+                          <span className={plusMenuIconWrapClassName}>
+                            <UsersRound className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
+                          </span>
+                          <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                            <span>Go live</span>
+                            {isLiveNow && freelancerLiveUntil ? (
+                              <span className="shrink-0 rounded-full bg-emerald-500/14 px-2.5 py-1 text-[11px] font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/16 dark:text-emerald-300">
+                                <LiveTimer countdownTo={freelancerLiveUntil} />
+                              </span>
+                            ) : null}
+                          </span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={plusMenuItemClassName}
+                        onClick={() => {
+                          setPlusMenuOpen(false);
+                          guardKycAction("share_post", () =>
+                            navigate("/community/feed?compose=1"),
+                          );
+                        }}
+                      >
+                        <span className={plusMenuIconWrapClassName}>
+                          <PenSquare className={plusMenuIconClassName} strokeWidth={2.25} aria-hidden />
+                        </span>
+                        <span>Share a post</span>
+                      </button>
+                    </div>
+                  </div>,
+                  document.body,
+                )
+              : null}
+
             {/* Safe area padding (desktop bar only; mobile uses nav pb) */}
             <div className="hidden h-[env(safe-area-inset-bottom,0px)] w-full md:block" />
           </div>
@@ -1705,7 +1719,8 @@ export function BottomNav() {
           createPortal(mobileSafeZoneGlassLayers, document.body)}
         {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
         {!hideMobileAppHeaderChrome && MobileFloatingActions}
-        {createPortal(
+        {!hideMobileBottomNav &&
+          createPortal(
           <nav className={mobileNavPortalClassName}>
             <div className={cn(mobileNavShellClassName, "md:max-w-xs")}>
               {mobileNavGlowLayer}

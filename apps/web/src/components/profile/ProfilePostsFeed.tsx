@@ -43,6 +43,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, noFieldSpinnerClass } from "@/lib/utils";
 import {
+  mobileBottomSheetSlideAnimationClass,
+  mobileSheetSafePaddingBottom,
+} from "@/lib/mobileModalLayout";
+import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
+import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
+import { useGooglePlacesPacModalSupport } from "@/lib/googlePlacesPacModal";
+import {
   bidirectionalInputProps,
   bidirectionalTextProps,
 } from "@/lib/textDirection";
@@ -497,13 +504,8 @@ function CommentsDialog({
       <DialogContent
         className={cn(
           "flex flex-col gap-0 border-0 p-0 overflow-hidden",
-          // Desktop / large screens: centered modal
           "sm:max-w-md sm:rounded-2xl sm:max-h-[min(90vh,580px)]",
-          // Mobile: bottom sheet
-          "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto",
-          "max-md:h-[78vh] max-md:max-h-[78vh]",
-          "max-md:translate-x-0 max-md:translate-y-0",
-          "max-md:rounded-t-[22px] max-md:rounded-b-none",
+          mobileBottomSheetSlideAnimationClass,
         )}
       >
         <DialogHeader className="px-5 py-4">
@@ -1093,6 +1095,14 @@ export function ComposeModal({
   const [communityTitle, setCommunityTitle] = useState("");
   const [customCategory, setCustomCategory] = useState("");
   const [captionEditorOpen, setCaptionEditorOpen] = useState(false);
+  const isMobileViewport = useIsMobileViewport();
+  const [sheetExpanded, setSheetExpanded] = useState(true);
+
+  useEffect(() => {
+    if (open) setSheetExpanded(true);
+  }, [open]);
+
+  useGooglePlacesPacModalSupport(open);
 
   const captionPlaceholder =
     selectedPostTypeId === "request_help"
@@ -1750,61 +1760,8 @@ export function ComposeModal({
     </div>
   );
 
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent
-        onPointerDownOutside={preventDialogDismissForGooglePlacesPac}
-        onFocusOutside={preventDialogDismissForGooglePlacesPac}
-        className={cn(
-          "flex flex-col gap-0 p-0 overflow-hidden",
-          // Desktop / large screens: centered modal — widen when composing
-          "sm:rounded-2xl dark:border-0",
-          selectedPostTypeId
-            ? "sm:max-w-4xl sm:h-[min(92vh,780px)] sm:max-h-[min(92vh,780px)]"
-            : "sm:max-w-lg sm:max-h-[min(92vh,720px)]",
-          // Mobile: bottom sheet
-          "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto",
-          "max-md:h-[92vh] max-md:max-h-[92vh] max-md:min-h-0",
-          "max-md:translate-x-0 max-md:translate-y-0",
-          "max-md:rounded-t-[22px] max-md:rounded-b-none",
-        )}
-      >
-        {/* Custom header — X (left), "Create Post" (center), Post button (right) */}
-        <div className="flex shrink-0 items-center justify-between px-3 py-3 sm:px-4">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={submitting}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/60 active:scale-95 disabled:opacity-50"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" strokeWidth={2.25} />
-          </button>
-          <DialogTitle className="text-[17px] font-bold tracking-tight text-foreground">
-            Create Post
-          </DialogTitle>
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={submitting || !selectedPostTypeId || (!caption.trim() && composeMedia.length === 0)}
-            className={cn(
-              "h-9 min-w-[72px] rounded-full px-4 text-sm font-bold transition-all",
-              submitting || !selectedPostTypeId || (!caption.trim() && composeMedia.length === 0)
-                ? "bg-muted text-muted-foreground/70"
-                : "bg-orange-600 text-white shadow-md shadow-orange-500/20 hover:bg-orange-700 active:scale-95",
-            )}
-          >
-            {submitting ? (
-              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-            ) : (
-              "Post"
-            )}
-          </button>
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden sm:flex-row">
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="space-y-3 px-5 py-4">
+  const composeScrollFields = (
+    <>
             {/* Author row */}
             <div className="flex items-center gap-2.5">
               <Avatar className="h-10 w-10">
@@ -1862,11 +1819,11 @@ export function ComposeModal({
 
             {/* Grid selector: What are you posting? (shown when no type is selected) */}
             {!selectedPostTypeId && postTypes.length > 0 && (
-              <div className="space-y-3 pt-2 pb-2">
-                <div className="text-[13px] font-black text-muted-foreground uppercase tracking-wider">
+              <div className="space-y-3 pt-1">
+                <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/90">
                   What are you posting?
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2.5">
                   {postTypes.map((pt) => {
                     const meta = POST_TYPE_METADATA[pt.id] || {
                       title: pt.name,
@@ -1890,29 +1847,26 @@ export function ComposeModal({
                           setCustomCategory("");
                         }}
                         className={cn(
-                          "flex flex-col items-center text-center p-4 rounded-2xl border-0 transition-all duration-200 outline-none focus-visible:ring-2 active:scale-[0.98]",
-                          "bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/55 dark:hover:bg-zinc-800/70",
+                          "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-card p-3.5 text-left shadow-sm transition-all duration-200 outline-none",
+                          "hover:border-border active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-orange-500/40",
+                          "dark:border-white/10 dark:bg-zinc-900/80",
                         )}
                       >
-                        {/* Icon square with background and subtle glow */}
-                        <div className={cn(
-                          "w-14 h-14 rounded-xl flex items-center justify-center transition-transform",
-                          meta.iconBg,
-                          meta.iconColor
-                        )}>
-                          <IconComponent className="h-7 w-7" strokeWidth={2.25} />
+                        <div className="flex w-full items-center gap-2.5">
+                          <div
+                            className={cn(
+                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                              meta.iconBg,
+                              meta.iconColor,
+                            )}
+                          >
+                            <IconComponent className="h-5 w-5" strokeWidth={2.25} />
+                          </div>
+                          <div className="min-w-0 text-[15px] font-bold tracking-tight text-foreground">
+                            {meta.title}
+                          </div>
                         </div>
-
-                        {/* Title */}
-                        <div className={cn(
-                          "mt-3 text-[17px] font-black tracking-tight",
-                          meta.textClass
-                        )}>
-                          {meta.title}
-                        </div>
-
-                        {/* Description */}
-                        <div className="mt-1.5 text-[13px] font-semibold text-muted-foreground/80 leading-snug max-w-[140px]">
+                        <div className="w-full text-[12px] font-medium leading-snug text-muted-foreground">
                           {meta.desc}
                         </div>
                       </button>
@@ -2406,6 +2360,135 @@ export function ComposeModal({
                 <div className="sm:hidden">{livePreviewSection}</div>
               </div>
             )}
+    </>
+  );
+
+  return (
+    <>
+      {isMobileViewport && open ? (
+        <MobileSnapBottomSheet
+          expanded={sheetExpanded}
+          onExpandedChange={(next) => {
+            setSheetExpanded(next);
+            if (!next) handleClose();
+          }}
+          onDismiss={handleClose}
+          hidePeek
+          titleId="compose-sheet-title"
+          heightMode="viewport"
+          maxHeight="min(92dvh, 860px)"
+          ariaLabel="Create Post"
+        >
+          <div className="flex min-h-0 flex-col bg-background text-foreground dark:bg-[#121212]">
+            <div className="flex shrink-0 items-center justify-between px-3 py-3">
+              <div className="w-9 shrink-0" aria-hidden />
+              <h2
+                id="compose-sheet-title"
+                className="text-[17px] font-bold tracking-tight text-foreground"
+              >
+                Create Post
+              </h2>
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={
+                  submitting ||
+                  !selectedPostTypeId ||
+                  (!caption.trim() && composeMedia.length === 0)
+                }
+                className={cn(
+                  "h-9 min-w-[72px] rounded-full px-4 text-sm font-bold transition-all",
+                  submitting ||
+                    !selectedPostTypeId ||
+                    (!caption.trim() && composeMedia.length === 0)
+                    ? "bg-muted text-muted-foreground/70"
+                    : "bg-orange-600 text-white shadow-md shadow-orange-500/20 hover:bg-orange-700 active:scale-95",
+                )}
+              >
+                {submitting ? (
+                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                ) : (
+                  "Post"
+                )}
+              </button>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <ScrollArea className="min-h-0 flex-1">
+                <div
+                  className={cn("space-y-3 px-5 py-4", mobileSheetSafePaddingBottom)}
+                >
+                  {composeScrollFields}
+                </div>
+              </ScrollArea>
+            </div>
+
+            <input
+              ref={mediaInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = e.target.files;
+                if (files?.length) handlePhotoVideoPick(files);
+                e.target.value = "";
+              }}
+            />
+          </div>
+        </MobileSnapBottomSheet>
+      ) : null}
+
+      {!isMobileViewport ? (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent
+        onPointerDownOutside={preventDialogDismissForGooglePlacesPac}
+        onFocusOutside={preventDialogDismissForGooglePlacesPac}
+        className={cn(
+          "flex flex-col gap-0 overflow-hidden p-0",
+          "sm:rounded-2xl dark:border-0",
+          selectedPostTypeId
+            ? "sm:max-w-4xl sm:h-[min(92vh,780px)] sm:max-h-[min(92vh,780px)]"
+            : "sm:max-w-lg sm:max-h-[min(92vh,720px)]",
+        )}
+      >
+        {/* Custom header — X (left), "Create Post" (center), Post button (right) */}
+        <div className="flex shrink-0 items-center justify-between px-3 py-3 sm:px-4">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={submitting}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/60 active:scale-95 disabled:opacity-50"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" strokeWidth={2.25} />
+          </button>
+          <DialogTitle className="text-[17px] font-bold tracking-tight text-foreground">
+            Create Post
+          </DialogTitle>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={submitting || !selectedPostTypeId || (!caption.trim() && composeMedia.length === 0)}
+            className={cn(
+              "h-9 min-w-[72px] rounded-full px-4 text-sm font-bold transition-all",
+              submitting || !selectedPostTypeId || (!caption.trim() && composeMedia.length === 0)
+                ? "bg-muted text-muted-foreground/70"
+                : "bg-orange-600 text-white shadow-md shadow-orange-500/20 hover:bg-orange-700 active:scale-95",
+            )}
+          >
+            {submitting ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+            ) : (
+              "Post"
+            )}
+          </button>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden sm:flex-row">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className={cn("space-y-3 px-5 py-4", mobileSheetSafePaddingBottom)}>
+            {composeScrollFields}
             </div>
           </ScrollArea>
 
@@ -2434,6 +2517,8 @@ export function ComposeModal({
         />
       </DialogContent>
     </Dialog>
+      ) : null}
+    </>
   );
 }
 

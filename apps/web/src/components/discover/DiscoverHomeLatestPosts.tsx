@@ -12,6 +12,7 @@ import { ChevronRight, Radio, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCommunityBoardPreviewLive } from "@/hooks/useCommunityPostsLive";
 import { fetchCommunityPostWithMetaById } from "@/lib/fetchCommunityPostWithMeta";
+import { useDiscoverHomeOverlayLock } from "@/hooks/useDiscoverHomeOverlayLock";
 
 type FeedPost = {
   id: string;
@@ -100,6 +101,8 @@ export function DiscoverHomeLatestPosts() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<PostCardRow[]>([]);
+
+  useDiscoverHomeOverlayLock(isOpen);
 
   const prependLivePost = useCallback(async (postId: string) => {
     const hydrated = await fetchCommunityPostWithMetaById(postId);

@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
+  mobileTallBottomSheetDialogClass,
+  mobileBottomSheetSlideAnimationClass,
+} from "@/lib/mobileModalLayout";
+import {
   MapPin,
   Navigation,
   User,
@@ -186,9 +190,9 @@ export function LocationPickerSheet({ open, onOpenChange, location }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "flex flex-col gap-0 overflow-hidden rounded-t-[1.5rem] rounded-b-none border-0 p-0 shadow-2xl",
-          "bottom-0 top-auto left-0 right-0 w-full max-w-none translate-x-0 translate-y-0",
-          "data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:slide-out-to-bottom-4",
+          "flex flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl",
+          mobileTallBottomSheetDialogClass,
+          mobileBottomSheetSlideAnimationClass,
           "md:rounded-2xl md:bottom-auto md:left-1/2 md:top-1/2 md:w-[min(26rem,90vw)]",
           "md:-translate-x-1/2 md:-translate-y-1/2",
         )}

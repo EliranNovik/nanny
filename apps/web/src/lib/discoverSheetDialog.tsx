@@ -2,10 +2,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { cn } from "@/lib/utils";
+import {
+  MOBILE_BOTTOM_SHEET_EDGE,
+  mobileSheetSafePaddingBottom,
+} from "@/lib/mobileModalLayout";
 
-/** Sit above the mobile bottom tab bar (icons + labels + safe area). */
-export const discoverMobileSheetBottomOffset =
-  "bottom-[max(4.5rem,calc(env(safe-area-inset-bottom,0px)+4rem))]";
+/** Sit above the mobile bottom tab bar (legacy export). */
+export const discoverMobileSheetBottomOffset = MOBILE_BOTTOM_SHEET_EDGE;
 
 export function useIsMobileViewport() {
   const [isMobile, setIsMobile] = useState(() => {
@@ -72,7 +75,7 @@ export function DiscoverOverlaySnapSheet({
           </div>
         }
       >
-        <div className="bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className={cn("bg-card", mobileSheetSafePaddingBottom)}>
           {children}
         </div>
       </MobileSnapBottomSheet>
@@ -100,7 +103,8 @@ export const discoverSheetDialogContentClassName = cn(
   "flex max-h-[min(92dvh,860px)] max-md:min-h-[68dvh] w-full max-w-[min(100vw-1rem,26rem)] flex-col gap-0 overflow-hidden border-0 bg-transparent p-0 shadow-none",
   "duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
   "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-  "fixed bottom-0 left-1/2 top-auto z-50 -translate-x-1/2 translate-y-0",
+  "fixed left-1/2 top-auto z-[130] -translate-x-1/2 translate-y-0",
+  "max-md:bottom-0 md:bottom-0",
   // Override default DialogContent (centered) slide/zoom — otherwise open animation reads as from the side.
   "!data-[state=open]:slide-in-from-left-0 !data-[state=open]:slide-in-from-top-0",
   "!data-[state=closed]:slide-out-to-left-0 !data-[state=closed]:slide-out-to-top-0",

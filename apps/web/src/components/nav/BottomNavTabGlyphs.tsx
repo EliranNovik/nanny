@@ -3,13 +3,12 @@ import { cn } from "@/lib/utils";
 const frame = "h-7 w-7 shrink-0 sm:h-8 sm:w-8";
 
 /**
- * Home: filled Material-style when active; rounded outline when inactive.
+ * Home: filled Material-style (same glyph for active and inactive tabs).
  */
 export function BottomNavHomeIcon({
-  active,
   className,
 }: {
-  active: boolean;
+  active?: boolean;
   className?: string;
 }) {
   return (
@@ -18,21 +17,10 @@ export function BottomNavHomeIcon({
       className={cn(frame, className)}
       aria-hidden
     >
-      {active ? (
-        <path
-          fill="currentColor"
-          d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"
-        />
-      ) : (
-        <path
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2.75}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 10.5 12 4l9 6.5V20h-4v-6H7v6H4v-9.5z"
-        />
-      )}
+      <path
+        fill="currentColor"
+        d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"
+      />
     </svg>
   );
 }

@@ -2,12 +2,15 @@ import { createContext, useContext, useMemo, useState } from "react";
 
 /**
  * Discover home mobile: header/tab strip collapse is driven by scroll position (0 = expanded, 1 = collapsed),
- * not a discrete toggle — progress moves with the user’s finger.
+ * not a discrete toggle — progress moves with the user's finger.
  */
 type DiscoverHomeScrollHeaderContextValue = {
   /** 0 = full top chrome, 1 = fully collapsed — interpolated from scroll range on mobile discover only */
   collapseProgress: number;
   setCollapseProgress: (p: number) => void;
+  /** Mobile discover: location + header CTAs visible (scroll down / near top) */
+  mobileDiscoverChromeVisible: boolean;
+  setMobileDiscoverChromeVisible: (visible: boolean) => void;
 };
 
 const DiscoverHomeScrollHeaderContext =
@@ -19,9 +22,16 @@ export function DiscoverHomeScrollHeaderProvider({
   children: React.ReactNode;
 }) {
   const [collapseProgress, setCollapseProgress] = useState(0);
+  const [mobileDiscoverChromeVisible, setMobileDiscoverChromeVisible] =
+    useState(true);
   const value = useMemo(
-    () => ({ collapseProgress, setCollapseProgress }),
-    [collapseProgress],
+    () => ({
+      collapseProgress,
+      setCollapseProgress,
+      mobileDiscoverChromeVisible,
+      setMobileDiscoverChromeVisible,
+    }),
+    [collapseProgress, mobileDiscoverChromeVisible],
   );
   return (
     <DiscoverHomeScrollHeaderContext.Provider value={value}>
@@ -36,6 +46,10 @@ export function useDiscoverHomeScrollHeader() {
     ctx ?? {
       collapseProgress: 0,
       setCollapseProgress: (_p: number) => {
+        /* no-op outside provider */
+      },
+      mobileDiscoverChromeVisible: true,
+      setMobileDiscoverChromeVisible: (_visible: boolean) => {
         /* no-op outside provider */
       },
     }
