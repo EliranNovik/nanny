@@ -1321,15 +1321,18 @@ export default function PublicProfilePage() {
       data-public-profile-guest={!currentUser ? "" : undefined}
     >
       {!currentUser ? (
-        <LandingSiteHeader
-          leftCorner="back"
-          scrollWithPage
-          fullWidth
-          hideLeftLogo
-          className="mb-0"
-          variant="glassy"
-          hideBackButtonMobile
-        />
+        <div className="max-md:px-4 max-md:pt-4">
+          <LandingSiteHeader
+            leftCorner="back"
+            scrollWithPage
+            fullWidth
+            hideLeftLogo
+            mobileMatchLanding
+            hideBackButtonMobile
+            className="mb-0 max-md:max-w-5xl"
+            variant="glassy"
+          />
+        </div>
       ) : null}
       {/* 
         Sticky Header (Mobile & Desktop)

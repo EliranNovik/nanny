@@ -63,7 +63,7 @@
     --app-safe-top: env(safe-area-inset-top, 0px);
     --app-safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Bottom nav offset — JS refines on iOS Safari; keep close to bottom in mobile browsers */
-    --app-nav-bottom-inset: max(0.25rem, env(safe-area-inset-bottom, 0px));
+    --app-nav-bottom-inset: max(0.5rem, env(safe-area-inset-bottom, 0px));
     --app-plus-menu-bottom: calc(4.75rem + var(--app-nav-bottom-inset));
     --app-bottom-nav-height: 4.75rem;
     --app-bottom-nav-stack: calc(var(--app-bottom-nav-height) + var(--app-nav-bottom-inset));
@@ -71,7 +71,7 @@
     /* Mobile fixed header strip: safe-top + 0.5rem + h-10 + 0.5rem (BottomNav). */
     --app-mobile-header-stack: calc(0.5rem + 2.25rem + 0.5rem);
     /* Frosted bands: notch + home-indicator (height synced on mobile via useAppSafeAreaSync). */
-    --app-mobile-top-glass-height: calc(var(--app-safe-top) + 1.5rem);
+    --app-mobile-top-glass-height: calc(var(--app-safe-top) + 1rem);
     --app-mobile-bottom-glass-height: max(0.5rem, var(--app-nav-bottom-inset));
 
     /**
@@ -269,7 +269,7 @@
    */
   /* Nav height + bottom safe area (mobile #root no longer reserves safe-area inset). */
   .app-main-scroll-pad {
-    padding-bottom: calc(var(--app-bottom-nav-stack) + 1rem);
+    padding-bottom: calc(var(--app-bottom-nav-stack) + 0.5rem);
   }
 
   @media (min-width: 768px) {
@@ -386,10 +386,9 @@
     }
 
     [data-discover-home-page] {
-      padding-top: calc(var(--app-safe-top) + var(--app-mobile-header-stack));
+      /* Bleed page bg into notch; header clearance comes from .app-mobile-scroll-top-clearance */
+      padding-top: var(--app-safe-top);
       margin-top: calc(-1 * var(--app-safe-top));
-      padding-bottom: var(--app-safe-bottom);
-      margin-bottom: calc(-1 * var(--app-safe-bottom));
     }
 
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header])
@@ -477,9 +476,9 @@
       background-color: transparent;
       background-image: linear-gradient(
         180deg,
-        hsl(0 0% 100% / 0.045) 0%,
-        hsl(0 0% 100% / 0.024) 30%,
-        hsl(0 0% 100% / 0.008) 62%,
+        hsl(0 0% 100% / 0.02) 0%,
+        hsl(0 0% 100% / 0.012) 30%,
+        hsl(0 0% 100% / 0.004) 62%,
         transparent 100%
       );
       -webkit-backdrop-filter: blur(3px) saturate(106%);
@@ -507,9 +506,9 @@
     .dark .mobile-header-safe-zone-glass {
       background-image: linear-gradient(
         180deg,
-        hsl(222 16% 7% / 0.1) 0%,
-        hsl(222 16% 7% / 0.055) 30%,
-        hsl(222 16% 7% / 0.018) 62%,
+        hsl(222 16% 7% / 0.06) 0%,
+        hsl(222 16% 7% / 0.03) 30%,
+        hsl(222 16% 7% / 0.01) 62%,
         transparent 100%
       );
       -webkit-backdrop-filter: blur(3px) saturate(104%);

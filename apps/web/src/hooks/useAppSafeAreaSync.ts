@@ -27,22 +27,6 @@ function readEnvSafeAreaInsets() {
   return { top, bottom, left, right };
 }
 
-/** Safari URL bar: gap between large and small viewport when browser chrome is visible. */
-function readDynamicViewportBottomGap() {
-  if (typeof document === "undefined") return 0;
-
-  const probe = document.createElement("div");
-  probe.style.cssText =
-    "position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;";
-  document.documentElement.appendChild(probe);
-  probe.style.height = "100lvh";
-  const lvh = probe.getBoundingClientRect().height;
-  probe.style.height = "100svh";
-  const svh = probe.getBoundingClientRect().height;
-  probe.remove();
-  return Math.max(0, Math.round(lvh - svh));
-}
-
 function isAppleTouchDevice() {
   if (typeof navigator === "undefined") return false;
   return (
@@ -79,20 +63,14 @@ export function useAppSafeAreaSync() {
           );
         }
 
-        const dynamicBottomGap = readDynamicViewportBottomGap();
         const appleTouch = isAppleTouchDevice();
-        /** env() can read 0 on iOS before layout; status-bar height is a sane floor. */
-        const iosTopFallback =
-          appleTouch && envInsets.top < 1 && visualTopInset < 1 ? 44 : 0;
-        const safeTop = Math.max(envInsets.top, visualTopInset, iosTopFallback);
+        const safeTop = Math.max(envInsets.top, visualTopInset);
 
-        /** Lift scroll/sheets above Safari toolbar — not used for nav position (nav stays lower). */
-        const safariToolbarLift = appleTouch
-          ? Math.max(visualBottomInset, dynamicBottomGap)
-          : 0;
+        /** Safari toolbar gap — used for scroll/sheet clearance, not double-counted with lvh/svh. */
+        const safariToolbarLift = appleTouch ? visualBottomInset : 0;
         const safeBottom = Math.max(envInsets.bottom, safariToolbarLift);
-        /** Nav: home-indicator only — sit near the physical bottom, not double-lifted above Safari chrome. */
-        const navBottomInset = Math.max(4, envInsets.bottom);
+        /** Nav sits just above Safari bottom chrome + home indicator. */
+        const navBottomInset = Math.max(8, envInsets.bottom, safariToolbarLift);
 
         root.style.setProperty(
           "--visual-viewport-top-inset",
@@ -106,6 +84,10 @@ export function useAppSafeAreaSync() {
         root.style.setProperty("--app-safe-bottom", `${safeBottom}px`);
         root.style.setProperty("--app-nav-bottom-inset", `${navBottomInset}px`);
         root.style.setProperty(
+          "--app-bottom-nav-stack",
+          `calc(4.75rem + ${navBottomInset}px)`,
+        );
+        root.style.setProperty(
           "--app-mobile-sheet-bottom",
           `calc(4.75rem + ${navBottomInset}px)`,
         );
@@ -115,7 +97,7 @@ export function useAppSafeAreaSync() {
         );
         root.style.setProperty(
           "--app-mobile-top-glass-height",
-          `calc(${safeTop}px + 1.5rem)`,
+          `calc(${safeTop}px + 1rem)`,
         );
         root.style.setProperty(
           "--app-mobile-bottom-glass-height",
@@ -146,6 +128,7 @@ export function useAppSafeAreaSync() {
       root.style.removeProperty("--app-safe-top");
       root.style.removeProperty("--app-safe-bottom");
       root.style.removeProperty("--app-nav-bottom-inset");
+      root.style.removeProperty("--app-bottom-nav-stack");
       root.style.removeProperty("--app-mobile-sheet-bottom");
       root.style.removeProperty("--app-plus-menu-bottom");
       root.style.removeProperty("--app-mobile-top-glass-height");

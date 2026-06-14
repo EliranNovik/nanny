@@ -104,7 +104,7 @@ const bottomNavHomeFeedIconClass = cn(
 
 /** Floating frosted pill — mobile only; desktop keeps full-width bar. */
 const mobileNavPortalClass =
-  "fixed bottom-0 left-0 right-0 z-[125] pointer-events-none overflow-visible px-4 pb-[var(--app-nav-bottom-inset,max(0.25rem,env(safe-area-inset-bottom,0px)))] md:hidden";
+  "fixed bottom-[var(--app-nav-bottom-inset,max(0.5rem,env(safe-area-inset-bottom,0px)))] left-0 right-0 z-[125] pointer-events-none overflow-visible px-4 md:hidden";
 
 const mobileNavShellClass = cn(
   "bottom-nav-mobile-shell pointer-events-auto mx-auto",

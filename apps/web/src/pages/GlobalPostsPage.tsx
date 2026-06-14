@@ -263,15 +263,18 @@ export default function GlobalPostsPage() {
       data-community-feed-guest={!user ? "" : undefined}
     >
       {!user ? (
-        <LandingSiteHeader
-          hidePostFeedLink
-          scrollWithPage
-          fullWidth
-          hideLeftLogo
-          className="mb-0"
-          variant="glassy"
-          hideBackButtonMobile
-        />
+        <div className="max-md:px-4 max-md:pt-4">
+          <LandingSiteHeader
+            hidePostFeedLink
+            scrollWithPage
+            fullWidth
+            hideLeftLogo
+            mobileMatchLanding
+            hideBackButtonMobile
+            className="mb-0 max-md:max-w-5xl"
+            variant="glassy"
+          />
+        </div>
       ) : null}
 
       {user ? (

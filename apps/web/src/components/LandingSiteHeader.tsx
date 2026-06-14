@@ -42,7 +42,16 @@ export type LandingSiteHeaderProps = {
   className?: string;
   variant?: "brand" | "glassy";
   hideBackButtonMobile?: boolean;
+  /** Mobile: orange pill header matching the landing page (desktop keeps other props). */
+  mobileMatchLanding?: boolean;
 };
+
+const brandHeaderBgClass =
+  "bg-gradient-to-r from-orange-500 to-red-600 border border-white/20";
+const glassyHeaderBgClass =
+  "bg-white/70 dark:bg-zinc-800/40 border-0 shadow-md";
+const landingMobileHeaderBgClass =
+  "max-md:bg-gradient-to-r max-md:from-orange-500 max-md:to-red-600 max-md:border max-md:border-white/20 max-md:shadow-2xl";
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
 export function LandingSiteHeader({
@@ -58,7 +67,9 @@ export function LandingSiteHeader({
   className,
   variant = "brand",
   hideBackButtonMobile = false,
+  mobileMatchLanding = false,
 }: LandingSiteHeaderProps) {
+  const hideMobileBack = hideBackButtonMobile || mobileMatchLanding;
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -74,21 +85,28 @@ export function LandingSiteHeader({
     linkColorClass
   );
 
-  const headerBgClass = variant === "glassy"
-    ? "bg-white/70 dark:bg-zinc-800/40 border-0 shadow-md"
-    : "bg-gradient-to-r from-orange-500 to-red-600 border border-white/20";
+  const headerBgClass = cn(
+    variant === "glassy" ? glassyHeaderBgClass : brandHeaderBgClass,
+    mobileMatchLanding && landingMobileHeaderBgClass,
+  );
 
   const backBtnClass = variant === "glassy"
     ? "border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300 dark:hover:bg-zinc-900/60"
     : "border-white/25 bg-white/10 text-white hover:bg-white/15";
 
-  const menuIconClass = variant === "glassy"
-    ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
-    : "text-white hover:text-white/80";
+  const menuIconClass = cn(
+    variant === "glassy"
+      ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
+      : "text-white hover:text-white/80",
+    mobileMatchLanding && "max-md:text-white max-md:hover:text-white/80",
+  );
 
-  const signInBtnClass = variant === "glassy"
-    ? "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
-    : "text-white hover:bg-white/10";
+  const signInBtnClass = cn(
+    variant === "glassy"
+      ? "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
+      : "text-white hover:bg-white/10",
+    mobileMatchLanding && "max-md:text-white max-md:hover:bg-white/10",
+  );
 
   const navContainerTextClass = variant === "glassy"
     ? "text-zinc-800 dark:text-zinc-200"
@@ -152,10 +170,14 @@ export function LandingSiteHeader({
           "relative min-h-[52px] md:min-h-[60px] backdrop-blur-md flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500",
           headerBgClass,
           scrollWithPage && fullWidth
-            ? "community-feed-guest-header relative z-auto mb-4 w-full max-w-none rounded-none border-x-0 shadow-md"
+            ? mobileMatchLanding
+              ? "relative z-auto mb-4 max-md:mx-auto max-md:w-[92%] max-md:max-w-5xl max-md:rounded-full max-md:shadow-2xl md:community-feed-guest-header md:w-full md:max-w-none md:rounded-none md:border-x-0 md:shadow-md"
+              : "community-feed-guest-header relative z-auto mb-4 w-full max-w-none rounded-none border-x-0 shadow-md"
             : scrollWithPage
               ? "relative z-auto mx-auto mb-4 w-full max-w-5xl rounded-full shadow-2xl"
-              : "fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl rounded-full shadow-2xl",
+              : mobileMatchLanding
+                ? "max-md:relative max-md:z-auto max-md:mx-auto max-md:mb-4 max-md:w-[92%] max-md:max-w-5xl max-md:rounded-full max-md:shadow-2xl md:fixed md:top-6 md:left-1/2 md:-translate-x-1/2 md:z-50 md:w-[92%] md:max-w-5xl md:rounded-full md:shadow-2xl"
+                : "fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl rounded-full shadow-2xl",
           className,
         )}
       >
@@ -172,7 +194,7 @@ export function LandingSiteHeader({
                   <HeaderBackChevron className="opacity-95" />
                   Back
                 </button>
-                {!hideBackButtonMobile ? (
+                {!hideMobileBack ? (
                   <button
                     type="button"
                     onClick={goBack}
@@ -282,14 +304,19 @@ export function LandingSiteHeader({
                     "rounded-full font-bold px-3 md:px-5 text-sm shadow-sm",
                     variant === "glassy"
                       ? "bg-orange-600 text-white hover:bg-orange-700"
-                      : "bg-white text-orange-600 hover:bg-white/90"
+                      : "bg-white text-orange-600 hover:bg-white/90",
+                    mobileMatchLanding &&
+                      "max-md:bg-white max-md:text-orange-600 max-md:hover:bg-white/90",
                   )}
                 >
-                  {!user && variant !== "glassy" ? (
+                  {!user && (variant !== "glassy" || mobileMatchLanding) ? (
                     <img
                       src={BRAND_LOGO_SRC}
                       alt=""
-                      className="mr-2 h-6 w-auto md:h-7"
+                      className={cn(
+                        "mr-2 h-6 w-auto md:h-7",
+                        variant === "glassy" && mobileMatchLanding && "md:hidden",
+                      )}
                       aria-hidden
                       loading="eager"
                       decoding="async"
@@ -342,10 +369,10 @@ export function LandingSiteHeader({
               {postFeedLinkMobile}
               <Link
                 to="/"
-                className="text-xl font-black text-slate-900"
+                className="text-xl font-black text-slate-900 flex items-center gap-4"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Home
+                <Home className="w-6 h-6 text-primary" /> Home
               </Link>
               {(user || !hideLoginCta) && (
                 <>

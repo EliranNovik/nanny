@@ -195,10 +195,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-      <LandingSiteHeader
-        hideLeftLogo
-        className="md:left-[calc(50%+110px)] md:w-[calc(92%-220px)]"
-      />
       {/* Desktop: reuse the community-feed guest sidebar */}
       <div className="app-desktop-side-panel hidden md:block z-[55]">
         <GuestCommunityFeedAside className="h-[100dvh] bg-background/70 backdrop-blur-md" />
@@ -233,8 +229,7 @@ export default function LandingPage() {
         </Button>
       </div>
 
-      {/* Main Content - No top padding to allow Hero to flow behind header */}
-      <main className="flex-1 pt-0 app-side-panel-offset">
+      <main className="flex-1 app-side-panel-offset">
         {/* Full-Screen Hero Section */}
         <section
           ref={heroRef}
@@ -250,8 +245,18 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-black/10 z-[1]"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent z-[2]"></div>
 
+          {/* Header overlays hero image and scrolls with the section */}
+          <div className="absolute inset-x-0 top-0 z-20 px-4 pt-4 md:pt-6 app-side-panel-offset">
+            <LandingSiteHeader
+              hideLeftLogo
+              scrollWithPage
+              hideBackButtonMobile
+              className="max-w-5xl !mb-0"
+            />
+          </div>
+
           {/* Left column: hero copy (constrained); download strip is full-bleed below so QR can sit at viewport edge on desktop */}
-          <div className="relative z-10 flex w-full max-w-7xl flex-col items-start px-6 pb-6 pt-32 md:mx-0 md:px-8 md:pb-8 md:pt-40 md:pl-8 lg:pl-12 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
+          <div className="relative z-10 flex w-full max-w-7xl flex-col items-start px-6 pb-6 pt-24 md:mx-0 md:px-8 md:pb-8 md:pt-28 md:pl-8 lg:pl-12 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
             <div className="w-[85%] max-w-xl md:w-full md:bg-white/5 md:backdrop-blur-sm md:border md:border-white/5 p-5 md:p-8 rounded-[2rem] text-left space-y-4 md:space-y-6 animate-in fade-in slide-in-from-left-10 duration-1000 md:shadow-sm">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white drop-shadow-lg">
                 Bringing{" "}
