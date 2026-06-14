@@ -8,7 +8,7 @@ import {
   type TouchEvent,
 } from "react";
 import { cn } from "@/lib/utils";
-import { MOBILE_BOTTOM_SHEET_EDGE } from "@/lib/mobileModalLayout";
+import { MOBILE_BOTTOM_SHEET_EDGE, mobileBottomSheetDragHandleClass } from "@/lib/mobileModalLayout";
 
 const SNAP_EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
 
@@ -330,6 +330,18 @@ export function MobileSnapBottomSheet({
               }
         }
       >
+        {hidePeek ? (
+          <div
+            className="flex shrink-0 touch-none select-none justify-center px-4 pb-1 pt-3"
+            onTouchStart={onHandleTouchStart}
+            onTouchMove={onHandleTouchMove}
+            onTouchEnd={onHandleTouchEnd}
+            onTouchCancel={onHandleTouchEnd}
+            aria-label={ariaLabel}
+          >
+            <span aria-hidden className={mobileBottomSheetDragHandleClass} />
+          </div>
+        ) : null}
         {!hidePeek ? (
           <div
             ref={peekRef}

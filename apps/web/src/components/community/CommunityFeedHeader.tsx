@@ -15,6 +15,8 @@ import { queryKeys } from "@/hooks/data/keys";
 import {
   CommunityFeedFilterButton,
   CommunityFeedFilterDialog,
+  communityFeedFilterActiveBadgeClass,
+  communityFeedFilterIdleBadgeClass,
 } from "@/components/community/CommunityFeedFilterDialog";
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
 import { cn } from "@/lib/utils";
@@ -33,54 +35,12 @@ const FILTER_TABS: {
   id: CommunityFeedPostTypeFilter;
   labelKey: string;
   Icon: LucideIcon;
-  activeClass: string;
-  idleClass: string;
 }[] = [
-  {
-    id: "all",
-    labelKey: "feed.filters.all",
-    Icon: LayoutGrid,
-    activeClass:
-      "border-0 bg-emerald-600 text-white shadow-md shadow-emerald-900/15",
-    idleClass:
-      "border-0 bg-background text-foreground hover:bg-muted/50",
-  },
-  {
-    id: "request_help",
-    labelKey: "feed.filters.requests",
-    Icon: LifeBuoy,
-    activeClass:
-      "border-0 bg-red-600 text-white shadow-md shadow-red-900/15",
-    idleClass:
-      "border-0 bg-red-50/50 text-red-700 hover:bg-red-50 dark:bg-red-950/20 dark:text-red-300",
-  },
-  {
-    id: "offer_service",
-    labelKey: "feed.filters.offers",
-    Icon: Briefcase,
-    activeClass:
-      "border-0 bg-emerald-600 text-white shadow-md shadow-emerald-900/15",
-    idleClass:
-      "border-0 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-300",
-  },
-  {
-    id: "community",
-    labelKey: "feed.filters.community",
-    Icon: Users,
-    activeClass:
-      "border-0 bg-blue-600 text-white shadow-md shadow-blue-900/15",
-    idleClass:
-      "border-0 bg-blue-50/50 text-blue-700 hover:bg-blue-50 dark:bg-blue-950/20 dark:text-blue-300",
-  },
-  {
-    id: "event",
-    labelKey: "feed.filters.events",
-    Icon: CalendarDays,
-    activeClass:
-      "border-0 bg-violet-600 text-white shadow-md shadow-violet-900/15",
-    idleClass:
-      "border-0 bg-violet-50/50 text-violet-700 hover:bg-violet-50 dark:bg-violet-950/20 dark:text-violet-300",
-  },
+  { id: "all", labelKey: "feed.filters.all", Icon: LayoutGrid },
+  { id: "request_help", labelKey: "feed.filters.requests", Icon: LifeBuoy },
+  { id: "offer_service", labelKey: "feed.filters.offers", Icon: Briefcase },
+  { id: "community", labelKey: "feed.filters.community", Icon: Users },
+  { id: "event", labelKey: "feed.filters.events", Icon: CalendarDays },
 ];
 
 type FavoriteProfile = {
@@ -319,8 +279,10 @@ export function CommunityFeedHeader({
                 onFilterChange(tab.id);
               }}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-full border-0 px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
-                selected ? tab.activeClass : tab.idleClass,
+                "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
+                selected
+                  ? communityFeedFilterActiveBadgeClass
+                  : communityFeedFilterIdleBadgeClass,
               )}
             >
               <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />

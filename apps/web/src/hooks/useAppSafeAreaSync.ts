@@ -83,21 +83,22 @@ export function useAppSafeAreaSync() {
         root.style.setProperty("--app-safe-top", `${safeTop}px`);
         root.style.setProperty("--app-safe-bottom", `${safeBottom}px`);
         root.style.setProperty("--app-nav-bottom-inset", `${navBottomInset}px`);
+        root.style.setProperty("--app-bottom-nav-height", "5.25rem");
         root.style.setProperty(
           "--app-bottom-nav-stack",
-          `calc(4.75rem + ${navBottomInset}px)`,
+          `calc(5.25rem + ${navBottomInset}px)`,
         );
         root.style.setProperty(
           "--app-mobile-sheet-bottom",
-          `calc(4.75rem + ${navBottomInset}px)`,
+          `calc(5.25rem + ${navBottomInset}px)`,
         );
         root.style.setProperty(
           "--app-plus-menu-bottom",
-          `calc(4.75rem + ${navBottomInset}px)`,
+          `calc(5.25rem + ${navBottomInset}px)`,
         );
         root.style.setProperty(
-          "--app-mobile-top-glass-height",
-          `calc(${safeTop}px + 1rem)`,
+          "--app-mobile-header-stack",
+          `calc(${safeTop}px + 3.5rem)`,
         );
         root.style.setProperty(
           "--app-mobile-bottom-glass-height",
@@ -128,10 +129,11 @@ export function useAppSafeAreaSync() {
       root.style.removeProperty("--app-safe-top");
       root.style.removeProperty("--app-safe-bottom");
       root.style.removeProperty("--app-nav-bottom-inset");
+      root.style.removeProperty("--app-bottom-nav-height");
       root.style.removeProperty("--app-bottom-nav-stack");
       root.style.removeProperty("--app-mobile-sheet-bottom");
       root.style.removeProperty("--app-plus-menu-bottom");
-      root.style.removeProperty("--app-mobile-top-glass-height");
+      root.style.removeProperty("--app-mobile-header-stack");
       root.style.removeProperty("--app-mobile-bottom-glass-height");
     };
   }, []);

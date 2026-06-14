@@ -215,8 +215,7 @@ function KeepAlivePages() {
 
 /**
  * Wraps page content with top padding so it clears the fixed BottomNav header.
- * Mobile: scroll-top clearance on .app-mobile-scroll-top-clearance (scrolls away under fixed blur).
- * md: 3.5rem bar on shell (#root still pads safe-area-top on desktop).
+ * Mobile + desktop: solid fixed header bar; shell uses --app-mobile-header-stack.
  */
 function PageLayoutWithHeader() {
   const { pathname } = useLocation();

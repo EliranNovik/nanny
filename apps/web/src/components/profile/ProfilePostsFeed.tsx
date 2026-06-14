@@ -1819,11 +1819,11 @@ export function ComposeModal({
 
             {/* Grid selector: What are you posting? (shown when no type is selected) */}
             {!selectedPostTypeId && postTypes.length > 0 && (
-              <div className="space-y-3 pt-1">
-                <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/90">
+              <div className="space-y-3.5 pt-1">
+                <div className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground/90">
                   What are you posting?
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 gap-3">
                   {postTypes.map((pt) => {
                     const meta = POST_TYPE_METADATA[pt.id] || {
                       title: pt.name,
@@ -1847,26 +1847,26 @@ export function ComposeModal({
                           setCustomCategory("");
                         }}
                         className={cn(
-                          "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-card p-3.5 text-left shadow-sm transition-all duration-200 outline-none",
-                          "hover:border-border active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-orange-500/40",
-                          "dark:border-white/10 dark:bg-zinc-900/80",
+                          "flex min-h-[7.25rem] flex-col items-start gap-2.5 rounded-2xl border-0 bg-zinc-50 p-4 text-left shadow-none transition-all duration-200 outline-none",
+                          "hover:bg-zinc-100/80 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-orange-500/40",
+                          "dark:bg-zinc-900/80",
                         )}
                       >
-                        <div className="flex w-full items-center gap-2.5">
+                        <div className="flex w-full items-center gap-3">
                           <div
                             className={cn(
-                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl",
                               meta.iconBg,
                               meta.iconColor,
                             )}
                           >
                             <IconComponent className="h-5 w-5" strokeWidth={2.25} />
                           </div>
-                          <div className="min-w-0 text-[15px] font-bold tracking-tight text-foreground">
+                          <div className="min-w-0 text-base font-bold tracking-tight text-foreground">
                             {meta.title}
                           </div>
                         </div>
-                        <div className="w-full text-[12px] font-medium leading-snug text-muted-foreground">
+                        <div className="w-full text-[13px] font-medium leading-snug text-muted-foreground">
                           {meta.desc}
                         </div>
                       </button>

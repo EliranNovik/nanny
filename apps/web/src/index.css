@@ -64,12 +64,12 @@
     --app-safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Bottom nav offset — JS refines on iOS Safari; keep close to bottom in mobile browsers */
     --app-nav-bottom-inset: max(0.5rem, env(safe-area-inset-bottom, 0px));
-    --app-plus-menu-bottom: calc(4.75rem + var(--app-nav-bottom-inset));
-    --app-bottom-nav-height: 4.75rem;
+    --app-plus-menu-bottom: calc(var(--app-bottom-nav-height) + var(--app-nav-bottom-inset));
+    --app-bottom-nav-height: 5.25rem;
     --app-bottom-nav-stack: calc(var(--app-bottom-nav-height) + var(--app-nav-bottom-inset));
     --app-mobile-sheet-bottom: var(--app-bottom-nav-stack);
-    /* Mobile fixed header strip: safe-top + 0.5rem + h-10 + 0.5rem (BottomNav). */
-    --app-mobile-header-stack: calc(0.5rem + 2.25rem + 0.5rem);
+    /* Mobile fixed header strip: safe-top + 3.5rem bar (BottomNav). */
+    --app-mobile-header-stack: calc(var(--app-safe-top) + 3.5rem);
     /* Frosted bands: notch + home-indicator (height synced on mobile via useAppSafeAreaSync). */
     --app-mobile-top-glass-height: calc(var(--app-safe-top) + 1rem);
     --app-mobile-bottom-glass-height: max(0.5rem, var(--app-nav-bottom-inset));
@@ -353,42 +353,38 @@
 
   /**
    * Main column under BottomNav fixed header (see App.tsx PageLayoutWithHeader).
-   * Mobile: outer shell has no top pad — clearance scrolls on .app-mobile-scroll-top-clearance
-   * so feed content can pass behind the fixed safe-zone blur. Desktop: bar height only.
+   * Mobile + desktop: reserve space for the fixed signed-in header bar.
    */
   .app-content-below-fixed-header {
     padding-top: var(--app-mobile-header-stack);
   }
 
   @media (max-width: 767.98px) {
-    .app-content-below-fixed-header {
-      padding-top: 0;
-    }
-
     /**
-     * Clears floating header buttons only (notch uses fixed blur overlay).
-     * Lives on scrollable content so it scrolls away and feed moves under top chrome.
+     * Signed-in scroll column — shell already pads for fixed header; avoid double clearance.
      */
     .app-mobile-scroll-top-clearance {
-      padding-top: calc(var(--app-mobile-header-stack) + var(--app-safe-top));
-      margin-top: calc(-1 * var(--app-safe-top));
+      padding-top: 0;
+      margin-top: 0;
       padding-bottom: var(--app-safe-bottom);
       margin-bottom: calc(-1 * var(--app-safe-bottom));
     }
 
-    /**
-     * PageFrame pages: bleed bg to the viewport top (behind safe-zone blur) while
-     * keeping in-flow content below floating header buttons.
-     */
     .app-mobile-scroll-top-clearance > [data-page-frame] {
-      margin-top: calc(-1 * var(--app-mobile-header-stack));
-      padding-top: var(--app-mobile-header-stack);
+      margin-top: 0;
+      padding-top: 0;
     }
 
     [data-discover-home-page] {
-      /* Bleed page bg into notch; header clearance comes from .app-mobile-scroll-top-clearance */
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header]),
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-post-availability-no-mobile-header]),
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-find-helpers-cards-view]),
+    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-freelancer-jobs-match-cards-view]) {
       padding-top: var(--app-safe-top);
-      margin-top: calc(-1 * var(--app-safe-top));
     }
 
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-create-job-no-mobile-header])
@@ -403,31 +399,8 @@
     .app-content-below-fixed-header:has([data-public-profile-guest]) .app-mobile-scroll-top-clearance,
     .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-messages-page])
       .app-mobile-scroll-top-clearance {
-      padding-top: var(--app-safe-top);
-      margin-top: calc(-1 * var(--app-safe-top));
-    }
-
-    /**
-     * /liked: scroll-linked collapse — `--mobile-shell-collapse-progress` is 0…1 (set on html in JS).
-     */
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-liked-page])
-      .app-mobile-scroll-top-clearance {
-      padding-top: calc(
-        var(--app-safe-top) +
-          (1 - var(--mobile-shell-collapse-progress, 0)) * var(--app-mobile-header-stack)
-      );
-      margin-top: calc(-1 * var(--app-safe-top));
-    }
-
-    .app-content-below-fixed-header:has(div:not([aria-hidden="true"]) > [data-liked-page])
-      .app-mobile-scroll-top-clearance
-      > [data-page-frame] {
-      margin-top: calc(
-        -1 * (1 - var(--mobile-shell-collapse-progress, 0)) * var(--app-mobile-header-stack)
-      );
-      padding-top: calc(
-        (1 - var(--mobile-shell-collapse-progress, 0)) * var(--app-mobile-header-stack)
-      );
+      padding-top: 0;
+      margin-top: 0;
     }
   }
 
@@ -587,9 +560,9 @@
       position: relative;
       margin-inline: auto;
       border-radius: 9999px;
-      padding: 3px 2px;
+      padding: 5px 4px;
       background: hsl(0 0% 100% / 0.3);
-      border: none;
+      border: 1px solid hsl(0 0% 0% / 0.1);
       box-shadow: none;
       width: min(94vw, 22.5rem);
       max-width: min(94vw, 22.5rem);
@@ -624,8 +597,8 @@
       position: relative;
       z-index: 2;
       isolation: isolate;
-      padding-top: 0.25rem;
-      padding-bottom: 0.25rem;
+      padding-top: 0.375rem;
+      padding-bottom: 0.375rem;
     }
 
     .bottom-nav-plus-spacer {
@@ -646,16 +619,15 @@
     }
 
     .bottom-nav-plus-tab,
-    .bottom-nav-plus-button,
-    .bottom-nav-plus-icon-plate {
+    .bottom-nav-plus-button {
       transition: none;
     }
 
     .bottom-nav-plus-glyph {
-      width: 1.5rem;
-      height: 1.5rem;
-      min-width: 1.5rem;
-      min-height: 1.5rem;
+      width: 2.25rem;
+      height: 2.25rem;
+      min-width: 2.25rem;
+      min-height: 2.25rem;
       filter: none;
     }
 
@@ -715,16 +687,16 @@
     }
 
     .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot {
-      height: 2.5rem;
-      min-height: 2.5rem;
+      height: 2.875rem;
+      min-height: 2.875rem;
     }
 
     .bottom-nav-mobile-shell .bottom-nav-mobile-tab-glyph,
     .bottom-nav-mobile-shell .bottom-nav-mobile-icon-slot svg {
-      width: 2rem;
-      height: 2rem;
-      min-width: 2rem;
-      min-height: 2rem;
+      width: 2.25rem;
+      height: 2.25rem;
+      min-width: 2.25rem;
+      min-height: 2.25rem;
       shape-rendering: geometricPrecision;
     }
 
@@ -763,7 +735,7 @@
 
     .dark .bottom-nav-mobile-shell {
       background: hsl(0 0% 8% / 0.76);
-      border: none;
+      border: 1px solid hsl(0 0% 100% / 0.12);
       box-shadow: none;
     }
 
@@ -805,11 +777,11 @@
       left: 50%;
       right: auto;
       bottom: auto;
-      width: 4.75rem;
-      height: 2.875rem;
-      min-width: 4.75rem;
-      min-height: 2.875rem;
-      background: hsl(0 0% 68% / 0.38);
+      width: 5.25rem;
+      height: 3.125rem;
+      min-width: 5.25rem;
+      min-height: 3.125rem;
+      background: hsl(0 0% 54% / 0.44);
       border: none;
       border-radius: 9999px;
       box-shadow: none;

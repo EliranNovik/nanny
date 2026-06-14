@@ -29,6 +29,17 @@ import {
   type CommunityFeedWhenFilter,
 } from "@/lib/communityFeedFilters";
 
+/** Community feed filter row — neutral grey pills (light + dark). */
+export const communityFeedFilterIdleBadgeClass =
+  "border-0 bg-zinc-100 text-zinc-700 shadow-none hover:bg-zinc-200/90 dark:bg-zinc-800/90 dark:text-zinc-300 dark:hover:bg-zinc-700/90 dark:shadow-none";
+export const communityFeedFilterActiveBadgeClass =
+  "border-0 bg-zinc-300 text-zinc-900 shadow-none dark:bg-zinc-600 dark:text-white dark:shadow-none";
+
+/** @deprecated Use communityFeedFilterIdleBadgeClass */
+export const communityFeedFilterDarkIdleBadgeClass = communityFeedFilterIdleBadgeClass;
+/** @deprecated Use communityFeedFilterActiveBadgeClass */
+export const communityFeedFilterDarkActiveBadgeClass = communityFeedFilterActiveBadgeClass;
+
 const WHEN_OPTION_LABEL_KEYS: Record<CommunityFeedWhenFilter, string> = {
   any: "feed.filters.whenAny",
   now: "feed.filters.whenNow",
@@ -101,8 +112,8 @@ export function CommunityFeedFilterButton({
       className={cn(
         "relative inline-flex shrink-0 items-center gap-2 rounded-full border-0 px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
         activeCount > 0
-          ? "bg-orange-600 text-white shadow-md shadow-orange-900/15"
-          : "bg-background text-foreground hover:bg-muted/50",
+          ? communityFeedFilterActiveBadgeClass
+          : communityFeedFilterIdleBadgeClass,
         className,
       )}
       aria-label={t("feed.filters.filterPosts")}
@@ -110,7 +121,7 @@ export function CommunityFeedFilterButton({
       <SlidersHorizontal className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} />
       {t("feed.filters.filter")}
       {activeCount > 0 ? (
-        <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white/20 px-1.5 text-[10px] font-black tabular-nums">
+        <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-zinc-500/15 px-1.5 text-[10px] font-black tabular-nums text-zinc-800 dark:bg-white/20 dark:text-white">
           {activeCount}
         </span>
       ) : null}

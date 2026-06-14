@@ -2,7 +2,6 @@ import {
   useState,
   useEffect,
   useRef,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -14,7 +13,6 @@ import {
 } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useKycGate } from "@/context/KycGateContext";
-import { useDiscoverHomeScrollHeader } from "@/context/DiscoverHomeScrollHeaderContext";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { HeaderBackChevron } from "@/components/HeaderBackChevron";
 import { useScheduleChanges } from "@/hooks/useScheduleChanges";
@@ -78,17 +76,19 @@ import {
 } from "@/lib/discoverHomeIntent";
 import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 import { subscribeDiscoverHomeOverlay } from "@/lib/discoverHomeOverlayState";
-import { discoverHeaderGlassIconBtnClass } from "@/lib/discoverHomeHeaderChrome";
+import {
+  signedInHeaderIconBtnClass,
+  signedInHeaderLocationBtnClass,
+} from "@/lib/discoverHomeHeaderChrome";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { LocationPickerSheet } from "@/components/LocationPickerSheet";
-import { DISCOVER_MOBILE_CHROME_HIDE_CLASS } from "@/lib/discoverMobileChromeScroll";
 
 /** Bottom tabs: active = solid fill, inactive = outline stroke (Lucide paths support both). */
 function bottomNavTabIconClass(isActive: boolean) {
   return cn(
-    "bottom-nav-mobile-tab-glyph h-8 w-8 shrink-0 md:h-8 md:w-8",
+    "bottom-nav-mobile-tab-glyph h-9 w-9 shrink-0 md:h-8 md:w-8",
     isActive && "bottom-nav-mobile-tab-glyph-active",
     isActive
       ? "fill-current stroke-none md:text-zinc-950 dark:md:text-white"
@@ -98,7 +98,7 @@ function bottomNavTabIconClass(isActive: boolean) {
 
 /** Home + feed tabs: always use the filled active icon style. */
 const bottomNavHomeFeedIconClass = cn(
-  "bottom-nav-mobile-tab-glyph bottom-nav-mobile-tab-glyph-active relative z-[1] h-8 w-8 shrink-0",
+  "bottom-nav-mobile-tab-glyph bottom-nav-mobile-tab-glyph-active relative z-[1] h-9 w-9 shrink-0",
   "fill-current stroke-none text-zinc-950 dark:text-white md:text-zinc-950 dark:md:text-white",
 );
 
@@ -125,7 +125,7 @@ const mobileNavReadableLayer = (
 );
 
 const mobileTabTouchClass =
-  "relative flex h-12 w-12 shrink-0 items-center justify-center md:h-[48px] md:w-[48px]";
+  "relative flex h-14 w-14 shrink-0 items-center justify-center md:h-[48px] md:w-[48px]";
 
 const mobileTabLinkClass =
   "group relative flex min-w-0 flex-1 flex-col items-center justify-center px-0 py-0 transition-colors duration-150";
@@ -133,14 +133,10 @@ const mobileTabLinkClass =
 const mobileTabActiveGlassClass =
   "bottom-nav-tab-active-glass pointer-events-none absolute md:hidden";
 
-const plusIconPlateClassName = cn(
-  "bottom-nav-plus-icon-plate flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-  "bg-zinc-300/80 text-zinc-900 dark:bg-zinc-600/65 dark:text-white",
-);
-
 const plusButtonClassName = cn(
-  "bottom-nav-plus-button flex h-10 w-10 shrink-0 items-center justify-center",
-  "outline-none transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30",
+  mobileTabTouchClass,
+  "bottom-nav-plus-button text-zinc-950 transition-opacity hover:opacity-80 active:scale-95 dark:text-white",
+  "outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/30",
 );
 
 function MobileTabItem({
@@ -164,7 +160,7 @@ function MobileTabItem({
       <div className="bottom-nav-mobile-tab-inner relative z-[2] flex w-full flex-col items-center justify-center px-0 py-0 transition-[padding] md:py-0">
         <div
           className={cn(
-            "bottom-nav-mobile-icon-slot relative flex h-10 w-full shrink-0 items-center justify-center overflow-visible md:h-8",
+            "bottom-nav-mobile-icon-slot relative flex h-11 w-full shrink-0 items-center justify-center overflow-visible md:h-8",
             iconClassName,
           )}
         >
@@ -184,7 +180,7 @@ const appMenuJobsCountBadgeClassName = cn(
 );
 
 const plusMenuPanelClassName = cn(
-  "bottom-nav-plus-menu-panel pointer-events-auto fixed bottom-[var(--app-plus-menu-bottom,calc(4.75rem+max(0.5rem,env(safe-area-inset-bottom,0px))))] left-1/2 z-[150] -translate-x-1/2",
+  "bottom-nav-plus-menu-panel pointer-events-auto fixed bottom-[var(--app-plus-menu-bottom,calc(5.25rem+max(0.5rem,env(safe-area-inset-bottom,0px))))] left-1/2 z-[150] -translate-x-1/2",
   "w-[min(18.5rem,calc(100vw-2rem))] rounded-[1.375rem] outline-none",
   "shadow-[0_18px_44px_hsl(0_0%_0%_/0.16)] dark:shadow-[0_22px_52px_hsl(0_0%_0%_/0.52)]",
   "animate-in fade-in slide-in-from-bottom-3 zoom-in-95 duration-200",
@@ -226,7 +222,6 @@ export function BottomNav() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [desktopDiscoverSearchOpen, setDesktopDiscoverSearchOpen] =
     useState(false);
-  const mobileSearchClusterRef = useRef<HTMLDivElement>(null);
   const [appMenuHelpOthersOpen, setAppMenuHelpOthersOpen] = useState(false);
   const [appMenuNeedHelpOpen, setAppMenuNeedHelpOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
@@ -249,11 +244,6 @@ export function BottomNav() {
         : "/dashboard";
 
   const pathnameNorm = location.pathname.replace(/\/$/, "") || "/";
-  const {
-    collapseProgress: discoverHeaderCollapseProgress,
-    mobileDiscoverChromeVisible,
-    setMobileDiscoverChromeVisible,
-  } = useDiscoverHomeScrollHeader();
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
   const isCommunityFeedPage = pathnameNorm === "/community/feed";
@@ -264,121 +254,12 @@ export function BottomNav() {
   const [discoverHomeMode, setDiscoverHomeMode] = useState<
     "hire" | "work"
   >(() => readDiscoverHomeIntent("hire"));
-  const isLikedPage = pathnameNorm === "/liked";
-  const isShellScrollCollapseRoute =
-    isLikedPage || (isCommunityFeedPage && !!user);
-  const shellCollapseChromeP = isShellScrollCollapseRoute
-    ? discoverHeaderCollapseProgress
-    : 0;
-  /** Discover home: location + CTAs stay fixed — no scroll-hide or collapse chrome. */
+  /** Discover home: location + CTAs stay fixed — no scroll-hide chrome. */
   const discoverHomeFixedChrome = isDiscoverHome;
 
-  const [headerVisible, setHeaderVisible] = useState(true);
   const [matchSearchChromeVisible, setMatchSearchChromeVisibleState] =
     useState(true);
   const [discoverHomeOverlayOpen, setDiscoverHomeOverlayOpen] = useState(false);
-  const scrollYRef = useRef(0);
-  const mobileNavScrollRafRef = useRef<number | null>(null);
-  const headerVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767.98px)");
-
-    const applyScroll = () => {
-      mobileNavScrollRafRef.current = null;
-      const currentScrollY = window.scrollY;
-      const prev = scrollYRef.current;
-      const dy = currentScrollY - prev;
-      scrollYRef.current = currentScrollY;
-
-      const MIN_SCROLL_DELTA = 4;
-
-      if (discoverHomeFixedChrome) {
-        if (mq.matches) {
-          if (currentScrollY <= 48) {
-            setMobileDiscoverChromeVisible(true);
-          } else if (dy < -MIN_SCROLL_DELTA) {
-            setMobileDiscoverChromeVisible(true);
-          } else if (dy > 0) {
-            setMobileDiscoverChromeVisible(false);
-          }
-        } else {
-          setMobileDiscoverChromeVisible(true);
-        }
-        setHeaderVisible(true);
-        return;
-      }
-
-      if (currentScrollY <= 60) {
-        setHeaderVisible(true);
-        return;
-      }
-
-      if (dy > MIN_SCROLL_DELTA) {
-        setHeaderVisible(false);
-      } else if (dy < -MIN_SCROLL_DELTA) {
-        setHeaderVisible(true);
-      }
-    };
-
-    const handleScroll = () => {
-      if (mobileNavScrollRafRef.current != null) return;
-      mobileNavScrollRafRef.current = requestAnimationFrame(applyScroll);
-    };
-
-    applyScroll();
-    mq.addEventListener("change", handleScroll);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      mq.removeEventListener("change", handleScroll);
-      window.removeEventListener("scroll", handleScroll);
-      if (mobileNavScrollRafRef.current != null) {
-        cancelAnimationFrame(mobileNavScrollRafRef.current);
-        mobileNavScrollRafRef.current = null;
-      }
-      if (headerVisibilityTimerRef.current) {
-        clearTimeout(headerVisibilityTimerRef.current);
-        headerVisibilityTimerRef.current = null;
-      }
-    };
-  }, [discoverHomeFixedChrome, setMobileDiscoverChromeVisible]);
-
-  useEffect(() => {
-    if (!isDiscoverHome) {
-      setMobileDiscoverChromeVisible(true);
-    }
-  }, [isDiscoverHome, setMobileDiscoverChromeVisible]);
-
-  const discoverMobileChromeHideClass =
-    showDiscoverShellHeader && !mobileDiscoverChromeVisible
-      ? DISCOVER_MOBILE_CHROME_HIDE_CLASS
-      : undefined;
-
-  const mobileNavPortalClassName = mobileNavPortalClass;
-
-  const mobileNavShellClassName = mobileNavShellClass;
-
-  /** Scroll-linked — no CSS transition; transform/opacity follow collapse progress. */
-  const shellScrollMobileChromeOverlayStyle: CSSProperties | undefined =
-    discoverHomeFixedChrome
-      ? undefined
-      : isShellScrollCollapseRoute
-        ? {
-          transform: headerVisible
-            ? `translateY(calc(-1 * ${shellCollapseChromeP * 130}%))`
-            : "translateY(-120%)",
-          opacity: headerVisible ? Math.max(0, 1 - (shellCollapseChromeP * 1.5)) : 0,
-          transition: "transform 500ms cubic-bezier(0.22, 1, 0.36, 1), opacity 400ms ease",
-        }
-        : undefined;
-
-  const mobileChromeHideClass =
-    !discoverHomeFixedChrome && !headerVisible
-      ? "-translate-y-[150%] opacity-0"
-      : undefined;
-
   const receiveRequestsOn = profile?.is_available_for_jobs === true;
   const showFreelancerJobNav =
     profile?.role === "freelancer" ||
@@ -559,16 +440,14 @@ export function BottomNav() {
           type="button"
           onClick={() => setLocationPickerOpen(true)}
           className={cn(
-            "discover-header-location-glass",
+            signedInHeaderLocationBtnClass,
             variant === "mobile"
               ? cn(
-                  "pointer-events-auto flex min-h-10 items-center gap-1 py-1 pl-3 pr-2.5 text-left text-slate-900 active:scale-[0.98] dark:text-white",
                   options?.besideBack
                     ? "max-w-[min(10.5rem,calc(100vw-8.5rem))]"
                     : "max-w-[min(10.5rem,calc(100vw-9.5rem))]",
                 )
               : cn(
-                  "flex min-h-10 items-center gap-1.5 py-1 pl-3 pr-2.5 text-left text-slate-900 dark:text-white",
                   options?.besideBack
                     ? "max-w-[min(13rem,calc(100vw-14rem))]"
                     : "max-w-[min(16rem,28vw)]",
@@ -576,12 +455,12 @@ export function BottomNav() {
           )}
           aria-label={displayCity ? `Current location: ${displayCity}. Tap to change.` : "Set your location"}
         >
-          <span className="relative z-[1] min-w-0 flex-1 truncate text-[14px] font-bold leading-tight text-slate-900 dark:text-white sm:text-[15px]">
+          <span className="min-w-0 flex-1 truncate text-[14px] font-bold leading-tight text-slate-900 dark:text-white sm:text-[15px]">
             {primary}
             {displayCountry ? `, ${displayCountry}` : null}
           </span>
           <ChevronDown
-            className="relative z-[1] h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+            className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
             strokeWidth={2.25}
             aria-hidden
           />
@@ -960,7 +839,7 @@ export function BottomNav() {
   const DesktopHeader = (
     <header
       data-desktop-header-strip=""
-      className="hidden md:block fixed inset-x-0 top-0 z-50 border-none bg-background shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-background"
+      className="hidden md:block fixed inset-x-0 top-0 z-50 border-0 bg-white shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-zinc-900"
     >
       {/*
        * Full-viewport grid: 220px sidebar column + content spanning to the right edge.
@@ -978,7 +857,7 @@ export function BottomNav() {
                 <button
                   type="button"
                   onClick={handleHeaderBack}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
+                  className={signedInHeaderIconBtnClass}
                   aria-label={t("common.back")}
                 >
                   <HeaderBackChevron />
@@ -989,7 +868,7 @@ export function BottomNav() {
               <button
                 type="button"
                 onClick={handleHeaderBack}
-                className="flex h-10 w-10 shrink-0 items-center justify-center text-slate-600 transition hover:opacity-80 dark:text-slate-300 dark:hover:opacity-90"
+                className={signedInHeaderIconBtnClass}
                 aria-label={t("common.back")}
               >
                 <HeaderBackChevron />
@@ -1009,7 +888,7 @@ export function BottomNav() {
               <button
                 type="button"
                 onClick={() => setDesktopDiscoverSearchOpen(false)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                className={signedInHeaderIconBtnClass}
                 aria-label={t("common.closeSearch")}
               >
                 <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
@@ -1027,7 +906,7 @@ export function BottomNav() {
               <button
                 type="button"
                 onClick={() => setDesktopDiscoverSearchOpen(true)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                className={signedInHeaderIconBtnClass}
                 aria-label={t("common.openSearch")}
               >
                 <Search className="h-6 w-6" strokeWidth={2.25} aria-hidden />
@@ -1056,7 +935,7 @@ export function BottomNav() {
             <button
               type="button"
               onClick={() => setNotificationsOpen(true)}
-              className="relative rounded-xl p-2.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90 md:p-3"
+              className={cn("relative", signedInHeaderIconBtnClass)}
               aria-label={t("common.notifications")}
             >
               <Bell className="h-6 w-6 md:h-7 md:w-7" />
@@ -1079,47 +958,55 @@ export function BottomNav() {
     </header>
   );
 
-  /** Fixed notch frost — portaled to body (iOS Safari safe zone top). */
-  const mobileSafeZoneGlassLayers = (
-    <div className="mobile-header-safe-zone-glass" aria-hidden />
-  );
-
-  /** Mobile only: floating row — community pages: back | centered category | search + bell; else search + bell (top-right). */
-  const MobileFloatingActions = (
-    <div
-      className={cn(
-        "md:hidden fixed z-[60] pointer-events-none transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        mobileSearchOpen || showCommunityHeaderCategoryDropdown
-          ? "left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))]"
-          : "right-[max(0.75rem,env(safe-area-inset-right))]",
-        showDiscoverShellHeader ? discoverMobileChromeHideClass : mobileChromeHideClass,
-        "motion-reduce:transition-none",
-      )}
+  const MobileSignedInHeader = !hideMobileAppHeaderChrome ? (
+    <header
+      data-mobile-header-strip
+      className="md:hidden fixed inset-x-0 top-0 z-[60] border-0 bg-white dark:bg-zinc-900"
       style={{
-        top: "max(0.5rem, var(--app-safe-top, env(safe-area-inset-top, 0px)))",
-        ...shellScrollMobileChromeOverlayStyle,
+        paddingTop: "var(--app-safe-top, env(safe-area-inset-top, 0px))",
       }}
     >
-      <div
-        ref={mobileSearchClusterRef}
-        className={cn(
-          "pointer-events-auto flex flex-row flex-nowrap items-center gap-1.5",
-          discoverHomeFixedChrome && "justify-end",
-          mobileSearchOpen || showCommunityHeaderCategoryDropdown
-            ? !mobileSearchOpen && showCommunityHeaderCategoryDropdown
-              ? "ml-14 min-w-0 flex-1"
-              : "w-full"
-            : !discoverHomeFixedChrome && "max-w-[calc(100vw-1rem)] justify-end",
-          mobileSearchOpen && !isCommunityPostsFilterPage && "justify-end",
-          isPublicPostsPage && !mobileSearchOpen && "justify-end",
-        )}
-      >
-        {discoverHomeFixedChrome ? (
-          <div className="pointer-events-auto">
-            <DiscoverHomeMobileHeaderRight />
-          </div>
-        ) : null}
-        {!discoverHomeFixedChrome && showCommunityHeaderCategoryDropdown && !mobileSearchOpen && (
+      <div className="flex h-14 min-h-14 items-center gap-1 px-2 sm:px-3">
+        <div className="flex min-w-0 shrink-0 items-center gap-0.5">
+          {showDiscoverShellHeader ? (
+            <>
+              {renderDiscoverHomeLocationChip("mobile")}
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(true)}
+                className={signedInHeaderIconBtnClass}
+                aria-label={t("common.openSearch", { defaultValue: "Search" })}
+              >
+                <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+              </button>
+            </>
+          ) : showCommunityFeedHeaderLeft ? (
+            <>
+              <button
+                type="button"
+                onClick={handleHeaderBack}
+                className={signedInHeaderIconBtnClass}
+                aria-label="Back"
+              >
+                <HeaderBackChevron />
+              </button>
+              {renderDiscoverHomeLocationChip("mobile", { besideBack: true })}
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={handleHeaderBack}
+              className={signedInHeaderIconBtnClass}
+              aria-label="Back"
+            >
+              <HeaderBackChevron />
+            </button>
+          )}
+        </div>
+
+        {!discoverHomeFixedChrome &&
+        showCommunityHeaderCategoryDropdown &&
+        !mobileSearchOpen ? (
           <div className="flex min-w-0 flex-1 justify-center px-0.5">
             <div className="w-full max-w-[min(10.5rem,calc(100vw-8rem))]">
               <CommunityPostsCategoryNativeSelect
@@ -1129,109 +1016,52 @@ export function BottomNav() {
               />
             </div>
           </div>
+        ) : (
+          <div className="min-w-0 flex-1" aria-hidden />
         )}
-        {!discoverHomeFixedChrome ? (
-          <>
-            <div
-              className={cn(
-                "relative shrink-0",
-                (!isCommunityPostsFilterPage || isPublicPostsPage) &&
-                !mobileSearchOpen &&
-                "ml-auto",
-              )}
-            >
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          {discoverHomeFixedChrome ? (
+            <DiscoverHomeMobileHeaderRight />
+          ) : (
+            <>
               <button
                 type="button"
                 onClick={() => setMobileSearchOpen((v) => !v)}
-                className="p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
+                className={signedInHeaderIconBtnClass}
                 aria-label={mobileSearchOpen ? "Close search" : "Search helpers"}
                 aria-expanded={mobileSearchOpen}
               >
                 {mobileSearchOpen ? (
-                  <X className="h-7 w-7" strokeWidth={2} />
+                  <X className="h-6 w-6" strokeWidth={2} />
                 ) : (
-                  <Search className="h-7 w-7" strokeWidth={2} />
+                  <Search className="h-6 w-6" strokeWidth={2} />
                 )}
               </button>
-            </div>
-            {!mobileSearchOpen && (
-              <button
-                type="button"
-                onClick={() => setNotificationsOpen(true)}
-                className="relative shrink-0 p-2.5 text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300"
-                aria-label="Notifications"
-              >
-                <Bell className="h-7 w-7" strokeWidth={2} />
-                {notificationBadgeCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900"
-                  >
-                    {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-                  </Badge>
-                )}
-              </button>
-            )}
-          </>
-        ) : null}
-
+              {!mobileSearchOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setNotificationsOpen(true)}
+                  className={cn("relative", signedInHeaderIconBtnClass)}
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-6 w-6" strokeWidth={2} />
+                  {notificationBadgeCount > 0 ? (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center border-2 border-white px-0.5 text-[10px] font-black leading-none shadow-sm dark:border-zinc-900"
+                    >
+                      {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
+                    </Badge>
+                  ) : null}
+                </button>
+              ) : null}
+            </>
+          )}
+        </div>
       </div>
-    </div>
-  );
-
-  /** Mobile: back top-left on every page (plain icon on the strip, no pill). */
-  const mobileUniversalBackBtnClass =
-    "pointer-events-auto flex h-12 w-12 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300";
-
-  const MobileLeftHeaderCluster = (
-    <div
-      className={cn(
-        "md:hidden fixed z-[70] pointer-events-none flex flex-row items-center gap-1 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        showDiscoverShellHeader ? discoverMobileChromeHideClass : mobileChromeHideClass,
-        "motion-reduce:transition-none",
-      )}
-      style={{
-        top: "max(0.5rem, var(--app-safe-top, env(safe-area-inset-top, 0px)))",
-        left: "max(0.75rem, env(safe-area-inset-left))",
-        ...shellScrollMobileChromeOverlayStyle,
-      }}
-    >
-      {showDiscoverShellHeader ? (
-        <div className="pointer-events-auto flex min-w-0 flex-row items-center gap-1.5">
-          {renderDiscoverHomeLocationChip("mobile")}
-          <button
-            type="button"
-            onClick={() => setMobileSearchOpen(true)}
-            className={discoverHeaderGlassIconBtnClass}
-            aria-label={t("common.openSearch", { defaultValue: "Search" })}
-          >
-            <Search className="relative z-[1] h-5 w-5" strokeWidth={2.25} aria-hidden />
-          </button>
-        </div>
-      ) : showCommunityFeedHeaderLeft ? (
-        <div className="pointer-events-auto flex min-w-0 flex-row items-center gap-0.5">
-          <button
-            type="button"
-            onClick={handleHeaderBack}
-            className={mobileUniversalBackBtnClass}
-            aria-label="Back"
-          >
-            <HeaderBackChevron />
-          </button>
-          {renderDiscoverHomeLocationChip("mobile", { besideBack: true })}
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={handleHeaderBack}
-          className={mobileUniversalBackBtnClass}
-          aria-label="Back"
-        >
-          <HeaderBackChevron />
-        </button>
-      )}
-    </div>
-  );
+    </header>
+  ) : null;
 
   const ProfileMenuModal = (
     <Dialog open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
@@ -1281,7 +1111,7 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {MobileLeftHeaderCluster}
+        {MobileSignedInHeader}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         <NotificationsModal
@@ -1342,16 +1172,13 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {!hideMobileAppHeaderChrome &&
-          createPortal(mobileSafeZoneGlassLayers, document.body)}
-        {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
-        {!hideMobileAppHeaderChrome && MobileFloatingActions}
+        {MobileSignedInHeader}
         {ProfileMenuModal}
         {DesktopAppMenuModal}
         {!hideMobileBottomNav &&
           createPortal(
-          <nav className={mobileNavPortalClassName}>
-            <div className={cn(mobileNavShellClassName, "md:max-w-xs")}>
+          <nav className={mobileNavPortalClass}>
+            <div className={cn(mobileNavShellClass, "md:max-w-xs")}>
               {mobileNavGlowLayer}
               {mobileNavReadableLayer}
               <div className={mobileNavItemsRowClass}>
@@ -1399,14 +1226,11 @@ export function BottomNav() {
     return (
       <>
         {!isHelpersFindPage ? DesktopHeader : null}
-        {!hideMobileAppHeaderChrome &&
-          createPortal(mobileSafeZoneGlassLayers, document.body)}
-        {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
-        {!hideMobileAppHeaderChrome && MobileFloatingActions}
+        {MobileSignedInHeader}
         {!hideMobileBottomNav &&
           createPortal(
-          <nav className={mobileNavPortalClassName}>
-          <div className={mobileNavShellClassName}>
+          <nav className={mobileNavPortalClass}>
+          <div className={mobileNavShellClass}>
             {mobileNavGlowLayer}
             {mobileNavReadableLayer}
             <div className={mobileNavItemsRowClass}>
@@ -1448,7 +1272,7 @@ export function BottomNav() {
                 </MobileTabItem>
               </Link>
 
-              <div className="bottom-nav-plus-spacer w-10 shrink-0 md:hidden" aria-hidden />
+              <div className="bottom-nav-plus-spacer w-11 shrink-0 md:hidden" aria-hidden />
 
               {/* Messages */}
               {(() => {
@@ -1467,7 +1291,7 @@ export function BottomNav() {
                     aria-current={isActive ? "page" : undefined}
                   >
                     <MobileTabItem active={isActive} label={t("common.messages")}>
-                      <div className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center">
+                      <div className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
                         <MessageCircle
                           className={cn(bottomNavTabIconClass(isActive), "relative z-[1]")}
                           strokeWidth={2.75}
@@ -1565,13 +1389,11 @@ export function BottomNav() {
                 aria-expanded={plusMenuOpen}
                 aria-label="Open quick actions"
               >
-                <span className={plusIconPlateClassName}>
-                  <Plus
-                    className="bottom-nav-plus-glyph relative z-[1] h-6 w-6 shrink-0"
-                    strokeWidth={2.5}
-                    aria-hidden
-                  />
-                </span>
+                <Plus
+                  className="bottom-nav-plus-glyph h-9 w-9 shrink-0"
+                  strokeWidth={2.75}
+                  aria-hidden
+                />
                 <span className="sr-only">{t("common.create")}</span>
               </button>
             </div>
@@ -1715,14 +1537,11 @@ export function BottomNav() {
     return (
       <>
         {DesktopHeader}
-        {!hideMobileAppHeaderChrome &&
-          createPortal(mobileSafeZoneGlassLayers, document.body)}
-        {!hideMobileAppHeaderChrome && MobileLeftHeaderCluster}
-        {!hideMobileAppHeaderChrome && MobileFloatingActions}
+        {MobileSignedInHeader}
         {!hideMobileBottomNav &&
           createPortal(
-          <nav className={mobileNavPortalClassName}>
-            <div className={cn(mobileNavShellClassName, "md:max-w-xs")}>
+          <nav className={mobileNavPortalClass}>
+            <div className={cn(mobileNavShellClass, "md:max-w-xs")}>
               {mobileNavGlowLayer}
               {mobileNavReadableLayer}
               <div className={mobileNavItemsRowClass}>

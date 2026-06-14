@@ -52,10 +52,10 @@ export function CommunityPostsCategoryNativeSelect({
       <select
         aria-label="Filter by category"
         className={cn(
-          "w-full cursor-pointer appearance-none border border-border bg-card font-semibold text-foreground shadow-sm",
+          "w-full cursor-pointer appearance-none bg-transparent font-semibold text-foreground",
           isHeader
-            ? "h-9 rounded-full py-1 pl-8 pr-8 text-[11px] leading-tight"
-            : "h-11 rounded-2xl py-2 pl-10 pr-10 text-sm",
+            ? "h-9 border-0 py-1 pl-8 pr-8 text-[11px] leading-tight shadow-none"
+            : "h-11 rounded-2xl border border-border bg-card py-2 pl-10 pr-10 text-sm shadow-sm",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
         )}
         value={value}

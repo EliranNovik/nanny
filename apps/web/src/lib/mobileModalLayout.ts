@@ -43,7 +43,7 @@ export const mobileSheetSafePaddingBottom =
   "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]";
 
 export const mobileBottomSheetDragHandleClass =
-  "mx-auto h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30";
+  "mx-auto h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/35";
 
 /** @deprecated Use MOBILE_BOTTOM_SHEET_EDGE — sheets anchor to screen bottom, not above nav. */
 export const MOBILE_SHEET_ABOVE_NAV_BOTTOM = MOBILE_BOTTOM_SHEET_EDGE;
