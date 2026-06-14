@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
@@ -6,7 +7,7 @@ import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Send } from "lucide-react";
+import { Send, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
@@ -37,10 +38,17 @@ import {
   type CommunityFeedLocationState,
   parseCommunityFeedTypeFilter,
 } from "@/lib/communityFeedNav";
+import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 
 type FeedMainContentProps = {
   user: User | null;
-  profile: { full_name?: string | null; photo_url?: string | null } | null;
+  profile: {
+    full_name?: string | null;
+    photo_url?: string | null;
+    city?: string | null;
+    location_lat?: number | null;
+    location_lng?: number | null;
+  } | null;
   focusPostId: string | null;
   focusRequestId: string | null;
   openCompose: () => void;
@@ -57,6 +65,7 @@ type FeedMainContentProps = {
   onFavoriteAuthorFilterChange: (authorId: string | null) => void;
   scrollToPostId: string | null;
   onScrollToPostDone: () => void;
+  viewerLocation: ViewerLocation | null;
 };
 
 function FeedMainContent({
@@ -78,7 +87,9 @@ function FeedMainContent({
   scrollToPostId,
   onScrollToPostDone,
   profile,
+  viewerLocation,
 }: FeedMainContentProps) {
+  const { t } = useTranslation();
   const sidePanelPostTypeIds = useMemo(
     () => (postTypeFilter === "all" ? null : [postTypeFilter]),
     [postTypeFilter],
@@ -105,8 +116,16 @@ function FeedMainContent({
         selectedAuthorFilterId={favoriteAuthorFilterId}
         onAuthorFilterChange={onFavoriteAuthorFilterChange}
         reserveSidePanelSpace
+        variant="global"
         className="mb-4 mt-3 md:mb-5 md:mt-4 px-2 md:px-0"
       />
+
+      {viewerLocation?.city ? (
+        <p className="mb-3 flex items-center gap-2 px-2 text-[13px] font-medium text-muted-foreground md:px-0">
+          <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+          {t("feed.global.showingNear", { city: viewerLocation.city })}
+        </p>
+      ) : null}
 
       <ProfilePostsFeed
         appearance="discover"
@@ -125,6 +144,8 @@ function FeedMainContent({
         scrollToPostId={scrollToPostId}
         onScrollToPostDone={onScrollToPostDone}
         plainCards
+        globalFeedLayout
+        viewerLocation={viewerLocation}
       />
     </div>
   );
@@ -153,6 +174,15 @@ export default function GlobalPostsPage() {
     DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
   );
   const [favoriteAuthorFilterId, setFavoriteAuthorFilterId] = useState<string | null>(null);
+
+  const viewerLocation = useMemo<ViewerLocation | null>(() => {
+    if (!profile) return null;
+    return {
+      city: profile.city ?? null,
+      lat: profile.location_lat ?? null,
+      lng: profile.location_lng ?? null,
+    };
+  }, [profile]);
 
   const rawPostParam = searchParams.get("post");
   const rawRequestParam = searchParams.get("request");
@@ -298,6 +328,7 @@ export default function GlobalPostsPage() {
               onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
               scrollToPostId={scrollToPostId}
               onScrollToPostDone={() => setScrollToPostId(null)}
+              viewerLocation={viewerLocation}
             />
           </div>
         </div>
@@ -324,6 +355,7 @@ export default function GlobalPostsPage() {
               onFavoriteAuthorFilterChange={setFavoriteAuthorFilterId}
               scrollToPostId={scrollToPostId}
               onScrollToPostDone={() => setScrollToPostId(null)}
+              viewerLocation={viewerLocation}
             />
           </div>
         </div>

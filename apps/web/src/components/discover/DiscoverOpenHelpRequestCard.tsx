@@ -21,10 +21,13 @@ import { avatarUrl } from "@/lib/imageTransform";
 import { supabase } from "@/lib/supabase";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import {
+  DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
+  DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
+} from "@/components/jobs/jobCardSharedClasses";
+import {
   categoryAccentClass,
   categoryIconCircleClass,
   formatOpenHelpRequestBudget,
-  isUrgentWhen,
   openHelpRequestDescription,
   openHelpRequestDetailLine,
   openHelpRequestScheduleLine,
@@ -165,9 +168,8 @@ function WhenBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em]",
+        "inline-flex items-center gap-1 rounded-full border-0 px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em]",
         whenBadgeToneClass(whenTimeframe),
-        isUrgentWhen(whenTimeframe) && "ring-1 ring-red-500/25",
         className,
       )}
     >
@@ -236,10 +238,13 @@ export function DiscoverOpenHelpRequestCard({
           : undefined
       }
       className={cn(
-        "flex flex-col rounded-[18px] border border-transparent bg-zinc-50 p-3 shadow-none",
-        "dark:bg-zinc-900/95",
+        "flex flex-col rounded-[18px] p-3",
+        DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
         onOpen &&
-          "cursor-pointer transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          cn(
+            "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
+          ),
         className,
       )}
     >
@@ -304,13 +309,8 @@ export function DiscoverOpenHelpRequestCard({
               ) : null}
             </div>
 
+            {(detailLine || scheduleLine) ? (
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground sm:text-[15px]">
-              {row.location_city ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                  {row.location_city}
-                </span>
-              ) : null}
               {detailLine ? (
                 <span className="inline-flex items-center gap-1.5">
                   {row.service_type === "cleaning" ? (
@@ -328,13 +328,19 @@ export function DiscoverOpenHelpRequestCard({
                 </span>
               ) : null}
             </div>
+            ) : null}
 
-            <div className="mt-auto pt-2">
+            <div className="mt-auto flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 pt-2">
               <ClientPoster row={row} clientName={clientName} />
+              {postedLabel ? (
+                <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+                  {postedLabel}
+                </span>
+              ) : null}
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-2 border-t border-border/40 pt-2 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:border-t-0 sm:pt-0 md:border-l md:border-border/40 md:pl-3">
+          <div className="flex items-end justify-between gap-2 pt-2 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
           <div className="text-right">
             {budget ? (
               <>
@@ -346,15 +352,10 @@ export function DiscoverOpenHelpRequestCard({
                 </p>
               </>
             ) : null}
-            {postedLabel ? (
-              <span className="mt-1 inline-flex rounded-lg bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                {postedLabel}
-              </span>
-            ) : null}
           </div>
 
           {accepted ? (
-            <div className="rounded-2xl bg-zinc-100 px-3 py-2 text-center text-xs font-black uppercase tracking-[0.14em] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 sm:w-full">
+            <div className="rounded-2xl bg-zinc-100 px-3 py-2 text-center text-xs font-black uppercase tracking-[0.14em] text-zinc-500 dark:bg-zinc-700/80 dark:text-zinc-400 sm:w-full">
               Accepted · Pending
             </div>
           ) : (
@@ -425,9 +426,10 @@ export function DiscoverMyOpenRequestCard({
         }
       }}
       className={cn(
-        "flex flex-col rounded-[18px] border border-transparent bg-zinc-50 p-3 shadow-none",
-        "dark:bg-zinc-900/95",
-        "cursor-pointer transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "flex flex-col rounded-[18px] p-3",
+        DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
+        "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
         className,
       )}
     >
@@ -533,7 +535,7 @@ export function DiscoverMyOpenRequestCard({
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-2 border-t border-border/40 pt-2 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:border-t-0 sm:pt-0 md:border-l md:border-border/40 md:pl-3">
+          <div className="flex items-end justify-between gap-2 pt-2 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
             <div className="text-right">
               {budget ? (
                 <>
@@ -546,7 +548,7 @@ export function DiscoverMyOpenRequestCard({
                 </>
               ) : null}
               {postedLabel ? (
-                <span className="mt-1 inline-flex rounded-lg bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                <span className="mt-1 inline-flex rounded-lg bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-700/80 dark:text-zinc-300">
                   {postedLabel}
                 </span>
               ) : null}
@@ -614,9 +616,10 @@ export function DiscoverMyLiveHelpCard({
         }
       }}
       className={cn(
-        "flex flex-col rounded-[18px] border border-transparent bg-zinc-50 p-3 shadow-none",
-        "dark:bg-zinc-900/95",
-        "cursor-pointer transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "flex flex-col rounded-[18px] p-3",
+        DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE,
+        "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER,
         className,
       )}
     >
@@ -684,7 +687,7 @@ export function DiscoverMyLiveHelpCard({
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-2 border-t border-border/40 pt-2 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:border-t-0 sm:pt-0 md:border-l md:border-border/40 md:pl-3">
+          <div className="flex items-end justify-between gap-2 pt-2 sm:w-[8rem] sm:shrink-0 sm:flex-col sm:items-end sm:justify-between sm:pt-0 md:pl-3">
             <div className="text-right">
               {budget ? (
                 <>
@@ -697,7 +700,7 @@ export function DiscoverMyLiveHelpCard({
                 </>
               ) : null}
               {postedLabel ? (
-                <span className="mt-1 inline-flex rounded-lg bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                <span className="mt-1 inline-flex rounded-lg bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-700/80 dark:text-zinc-300">
                   {postedLabel}
                 </span>
               ) : null}

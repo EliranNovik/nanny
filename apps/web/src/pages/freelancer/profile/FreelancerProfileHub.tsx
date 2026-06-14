@@ -6,6 +6,8 @@ import { Switch } from "@/components/ui/switch";
 import { ProfileLanguageMenuRow } from "@/components/profile/ProfileLanguageMenuRow";
 import { ProfileMenuRow, profileMenuListClassName } from "@/components/profile/ProfileMenuRow";
 import { ProfileHubIdentityCard } from "@/components/profile/ProfileHubIdentityCard";
+import { ProfileHubLogoutButton } from "@/components/profile/ProfileHubLogoutButton";
+import { ProfileHubHomeButton } from "@/components/profile/ProfileHubHomeButton";
 import type { FreelancerProfileFormContext } from "@/hooks/useFreelancerProfileForm";
 import {
   AlertCircle,
@@ -78,7 +80,7 @@ export default function FreelancerProfileHub() {
             </div>
           </div>
 
-          <div className="mt-10 flex justify-center pb-4">
+          <div className="mt-10 flex flex-col items-center gap-3 pb-4">
             <Button
               type="button"
               variant="ghost"
@@ -89,6 +91,8 @@ export default function FreelancerProfileHub() {
               <AlertCircle className="w-4 h-4" />
               {t("common.reportIssue")}
             </Button>
+            <ProfileHubHomeButton />
+            <ProfileHubLogoutButton />
           </div>
         </div>
       </div>

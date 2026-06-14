@@ -42,6 +42,7 @@ import {
   Zap,
   CalendarDays,
   Banknote,
+  ListPlus,
 } from "lucide-react";
 import {
   Dialog,
@@ -2436,20 +2437,6 @@ export default function ConfirmedListPage() {
     }
   }
 
-  const liveStatusLine = useMemo(() => {
-    if (!job) return "";
-    if (freelancers.some((f) => f.is_open_job_accepted)) {
-      return "A helper confirmed they can work this request.";
-    }
-    if (freelancersLoading && freelancers.length === 0) {
-      return "Finding nearby helpers…";
-    }
-    if (freelancers.length === 0) {
-      return "Finding nearby helpers…";
-    }
-    return "Helpers are connecting to your request…";
-  }, [job, freelancersLoading, freelancers]);
-
   const categoryImageSrc = useMemo(() => {
     const raw = (job?.service_type as string | null | undefined) ?? null;
     if (!isServiceCategoryId(raw)) return null;
@@ -2928,45 +2915,38 @@ export default function ConfirmedListPage() {
           </Suspense>
         )}
         {job ? (
-          <MobileSnapBottomSheet
-            expanded={mobileRequestDetailsOpen}
-            onExpandedChange={setMobileRequestDetailsOpen}
-            bottomOffsetClass="bottom-[var(--app-mobile-sheet-bottom)]"
-            ariaLabel="Drag to expand or collapse request details"
-            collapsed={
-              mobileRequestDetailsOpen ? (
-                <div className="flex w-full flex-col items-center bg-background px-4 pb-2 pt-2">
-                  <div
-                    aria-hidden
-                    className="h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/35"
-                  />
-                  <p className="sr-only">Swipe down to close request details</p>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setMobileRequestDetailsOpen(true)}
-                  className="flex w-full flex-col bg-background pb-3 pt-1 text-left outline-none transition-colors hover:bg-muted/15 active:bg-muted/25"
-                  aria-expanded={false}
-                  aria-label="Add more information to your request"
-                >
-                  <div
-                    aria-hidden
-                    className="mx-auto mb-2 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/35"
-                  />
-                  <div className="flex flex-col items-center gap-1.5 px-6 pb-1 pt-1 text-center">
-                    <p className="text-base font-bold leading-snug text-foreground">
-                      Add more information
-                    </p>
-                    <p className="sr-only">{liveStatusLine}</p>
-                  </div>
-                </button>
-              )
-            }
-          >
+          <>
+            {!mobileRequestDetailsOpen ? (
+              <button
+                type="button"
+                onClick={() => setMobileRequestDetailsOpen(true)}
+                className="pointer-events-auto fixed right-[max(1rem,env(safe-area-inset-right,0px))] z-[125] flex h-16 w-16 items-center justify-center rounded-full border-0 bg-background text-foreground shadow-lg active:scale-95 md:hidden dark:bg-zinc-800 dark:text-white"
+                style={{
+                  bottom: "calc(var(--app-mobile-sheet-bottom, 5.75rem) + 0.75rem)",
+                }}
+                aria-label="Add more information to your request"
+              >
+                <ListPlus className="h-8 w-8" strokeWidth={2.25} aria-hidden />
+              </button>
+            ) : null}
+            {mobileRequestDetailsOpen ? (
+            <MobileSnapBottomSheet
+              expanded
+              onExpandedChange={setMobileRequestDetailsOpen}
+              onDismiss={() => setMobileRequestDetailsOpen(false)}
+              hidePeek
+              titleId="confirmed-request-details-title"
+              bottomOffsetClass="bottom-[var(--app-mobile-sheet-bottom)]"
+              maxHeight="min(68dvh, 520px)"
+              heightMode="viewport"
+              ariaLabel="Request details"
+            >
             <div className="shrink-0 border-b border-border/40 bg-background px-5 pb-3 pt-1">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-black tracking-tight text-foreground">
+                <h2
+                  id="confirmed-request-details-title"
+                  className="text-xl font-black tracking-tight text-foreground"
+                >
                   Full request details
                 </h2>
                 <Button
@@ -3014,6 +2994,8 @@ export default function ConfirmedListPage() {
               />
             </div>
           </MobileSnapBottomSheet>
+            ) : null}
+          </>
         ) : null}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 border-none bg-white dark:bg-zinc-950 shadow-2xl overflow-hidden rounded-[32px] animate-fade-in">

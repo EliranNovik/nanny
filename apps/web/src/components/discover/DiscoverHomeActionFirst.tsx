@@ -61,6 +61,7 @@ import {
   isServiceCategoryId,
 } from "@/lib/serviceCategories";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
+import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import { communityFeedScrollState } from "@/lib/communityFeedNav";
 import { GLOBAL_POSTS_PATH } from "@/lib/profilePostShare";
 import { LiveTimer } from "@/components/LiveTimer";
@@ -148,6 +149,25 @@ export function DiscoverHomeActionFirst({
   );
   /** Prefer auth user id if profile row is still hydrating (common on `/client/home`). */
   const viewerId = profile?.id ?? user?.id ?? null;
+  const viewerLocation = useMemo<ViewerLocation | null>(() => {
+    if (!profile) return null;
+    return {
+      city: profile.city ?? null,
+      lat: profile.location_lat ?? null,
+      lng: profile.location_lng ?? null,
+    };
+  }, [profile]);
+  const discoverPostsFeedProps = {
+    limit: 5 as const,
+    appearance: "discover" as const,
+    discoverSidePanel: "favorites" as const,
+    filterPostTypeIds: discoverCommunityPostTypes,
+    sidePanelPostTypeIds: discoverCommunityPostTypes,
+    onSidePanelPostOpen: openCommunityFeedPost,
+    plainCards: true,
+    globalFeedLayout: true,
+    viewerLocation,
+  };
   const [freelancerLiveMeta, setFreelancerLiveMeta] = useState<{
     live_until: string | null;
     available_now: boolean | null;
@@ -793,14 +813,7 @@ export function DiscoverHomeActionFirst({
           <h2 className="mb-4 px-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             {t("discover.ourCommunityLive")}
           </h2>
-          <ProfilePostsFeed
-            limit={5}
-            appearance="discover"
-            discoverSidePanel="favorites"
-            filterPostTypeIds={discoverCommunityPostTypes}
-            sidePanelPostTypeIds={discoverCommunityPostTypes}
-            onSidePanelPostOpen={openCommunityFeedPost}
-          />
+          <ProfilePostsFeed {...discoverPostsFeedProps} />
           <div className="mt-6 flex justify-center px-4 pb-8">
             <button
               type="button"
@@ -984,14 +997,7 @@ export function DiscoverHomeActionFirst({
           <h2 className="mb-4 text-[17px] font-black tracking-tight text-slate-900 dark:text-white">
             {t("discover.ourCommunityLive")}
           </h2>
-          <ProfilePostsFeed
-            limit={5}
-            appearance="discover"
-            discoverSidePanel="favorites"
-            filterPostTypeIds={discoverCommunityPostTypes}
-            sidePanelPostTypeIds={discoverCommunityPostTypes}
-            onSidePanelPostOpen={openCommunityFeedPost}
-          />
+          <ProfilePostsFeed {...discoverPostsFeedProps} />
         </section>
       </div>
 

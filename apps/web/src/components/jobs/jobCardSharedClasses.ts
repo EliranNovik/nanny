@@ -43,6 +43,16 @@ export const JOB_CARD_EMPTY_PANEL = cn(
   "dark:border-zinc-600/40",
 );
 
+/** Open-help request tiles on Discover home (grid cards, my requests, live help). */
+export const DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE = cn(
+  "border-0 bg-zinc-50 shadow-none",
+  "dark:bg-zinc-800",
+);
+
+export const DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER = cn(
+  "hover:bg-zinc-100 dark:hover:bg-zinc-700/90",
+);
+
 /**
  * Explore tab cards + discover home list rows — light: same grey as Public Profile
  * “Open Help Requests” (`bg-zinc-50 shadow-sm border-0`).

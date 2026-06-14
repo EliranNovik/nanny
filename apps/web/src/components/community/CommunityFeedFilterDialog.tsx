@@ -20,6 +20,7 @@ import {
   discoverMobileSheetBottomOffset,
   useIsMobileViewport,
 } from "@/lib/discoverSheetDialog";
+import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
 import { cn, noFieldSpinnerClass } from "@/lib/utils";
 import {
   COMMUNITY_FEED_WHEN_OPTIONS,
@@ -472,6 +473,7 @@ export function CommunityFeedFilterDialog({
 }: CommunityFeedFilterDialogProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobileViewport();
+  useCommunityFeedOverlayLock(open && isMobile);
   const [sheetExpanded, setSheetExpanded] = useState(true);
   const [draft, setDraft] = useState<FilterDialogDraft>({
     advanced: filters,

@@ -47,6 +47,7 @@ import {
   mobileSheetSafePaddingBottom,
 } from "@/lib/mobileModalLayout";
 import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
+import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
 import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { useGooglePlacesPacModalSupport } from "@/lib/googlePlacesPacModal";
 import {
@@ -111,6 +112,18 @@ import {
   mapProfilePostTypeToCopyType,
 } from "@/utils/postTextTemplates";
 import { parseGeneratedPostCopy, type GeneratedPostCopy } from "@/lib/generatedPostCopy";
+import {
+  feedPostDescription,
+  feedPostLocationAddress,
+  feedPostLocationLine,
+  feedPostTitle,
+  feedPostTypeId,
+  globalFeedCtaLabel,
+  globalFeedPostTypeAccentClass,
+  globalFeedPrimaryCtaClass,
+  globalFeedTextOnlySurfaceClass,
+  type ViewerLocation,
+} from "@/lib/globalFeedPostUi";
 import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import {
@@ -1011,15 +1024,25 @@ function PostTypeBadge({
   typeName,
   className,
   size = "default",
+  compact = false,
 }: {
   typeId: string;
   typeName?: string;
   className?: string;
   size?: "default" | "lg";
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const meta = POST_TYPE_METADATA[typeId];
   const Icon = meta?.icon ?? Sparkles;
+
+  if (compact) {
+    return (
+      <span className={cn(postTypeBadgeClassName(typeId, "default"), "px-2.5 py-0.5 text-[11px] tracking-wide", className)}>
+        {feedPostTypeBadgeLabel(t, typeId, typeName)}
+      </span>
+    );
+  }
 
   return (
     <span className={cn(postTypeBadgeClassName(typeId, size), className)}>
@@ -1097,6 +1120,7 @@ export function ComposeModal({
   const [captionEditorOpen, setCaptionEditorOpen] = useState(false);
   const isMobileViewport = useIsMobileViewport();
   const [sheetExpanded, setSheetExpanded] = useState(true);
+  useCommunityFeedOverlayLock(open && isMobileViewport);
 
   useEffect(() => {
     if (open) setSheetExpanded(true);
@@ -2597,13 +2621,15 @@ function MediaTopBadges({
   serviceCategoryLabelText,
   whenLabel,
   whenTimeframe,
+  hideWhenLabel = false,
 }: {
   serviceCategoryId?: string | null;
   serviceCategoryLabelText?: string | null;
   whenLabel?: string | null;
   whenTimeframe?: string | null;
+  hideWhenLabel?: boolean;
 }) {
-  if (!serviceCategoryId && !whenLabel) return null;
+  if (!serviceCategoryId && (!whenLabel || hideWhenLabel)) return null;
 
   return (
     <div className="absolute top-3 left-3 z-[4] pointer-events-none flex max-w-[calc(100%-4rem)] flex-wrap items-center gap-2">
@@ -2617,7 +2643,7 @@ function MediaTopBadges({
           {serviceCategoryLabelText}
         </span>
       ) : null}
-      {whenLabel ? (
+      {!hideWhenLabel && whenLabel ? (
         <span className={whenBadgeClassForTimeframe(whenTimeframe)}>
           <CalendarDays className={whenBadgeIconClassForTimeframe(whenTimeframe)} />
           {whenLabel}
@@ -2725,6 +2751,8 @@ type PostCardProps = {
   isFocused?: boolean;
   discoverWideLayout?: boolean;
   plainCard?: boolean;
+  globalFeedLayout?: boolean;
+  viewerLocation?: ViewerLocation | null;
 };
 
 function FeedPostItem(props: PostCardProps) {
@@ -2755,6 +2783,8 @@ function PostCard({
   isFocused = false,
   discoverWideLayout = false,
   plainCard = false,
+  globalFeedLayout = false,
+  viewerLocation = null,
 }: {
   post: FeedPost;
   currentUserId: string | null;
@@ -2771,6 +2801,8 @@ function PostCard({
   isFocused?: boolean;
   discoverWideLayout?: boolean;
   plainCard?: boolean;
+  globalFeedLayout?: boolean;
+  viewerLocation?: ViewerLocation | null;
 }) {
   const { t, i18n } = useTranslation();
   const { addToast } = useToast();
@@ -3038,46 +3070,74 @@ function PostCard({
   const isDiscover = appearance === "discover";
   const isProfile = appearance === "profile";
   const isPlainCard = Boolean(plainCard);
+  const isGlobalFeed = Boolean(globalFeedLayout);
   const cardPadX =
-    isDiscover || isPlainCard ? "px-2 md:px-4" : "px-4";
+    isGlobalFeed ? "px-3 max-md:px-2.5 md:px-3.5" : isDiscover || isPlainCard ? "px-2 md:px-4" : "px-4";
   const cardMarginX =
-    isDiscover || isPlainCard ? "mx-2 md:mx-4" : "mx-4";
-  const mobileMediaInsetClass =
-    "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]";
+    isGlobalFeed ? "mx-0" : isDiscover || isPlainCard ? "mx-2 md:mx-4" : "mx-4";
+  const mobileMediaInsetClass = isGlobalFeed
+    ? "max-md:mx-2 max-md:w-[calc(100%-16px)] max-md:rounded-xl md:mx-3.5 md:w-[calc(100%-1.75rem)] md:rounded-xl"
+    : "max-md:mx-1.5 max-md:w-[calc(100%-12px)] max-md:rounded-[20px]";
   const mediaAspectStyle: React.CSSProperties | undefined = mediaAspectRatio
     ? { aspectRatio: String(mediaAspectRatio) }
     : undefined;
+  const isGlobalFeedPortrait = isGlobalFeed && !isLandscape && !isEventPost;
+  const isGlobalFeedEventPortrait = isGlobalFeed && isEventPost && !isLandscape;
+  // Global feed: fixed 4:5 frame for portrait (avoids extreme crop/height from tall photos).
+  const globalFeedPortraitBoxClass = isGlobalFeedPortrait ? "aspect-[4/5] w-full" : null;
+  const globalFeedEventPortraitBoxClass = isGlobalFeedEventPortrait
+    ? "aspect-video w-full max-md:max-h-[min(52vw,20rem)]"
+    : null;
   // Mobile media sizing:
   // - Portrait: near full screen (Instagram-like); discover/profile feeds use shorter caps
   // - Landscape: size to the media's real aspect ratio to avoid excessive zoom
-  const mobilePortraitMaxHeight = isDiscover
+  const mobilePortraitMaxHeight = isGlobalFeed
+    ? isEventPost
+      ? "max-md:max-h-[min(50vw,18rem)]"
+      : null
+    : isDiscover
     ? "max-md:max-h-[min(76dvh,44rem)]"
     : isProfile
       ? "max-md:max-h-[min(78dvh,42rem)]"
       : "max-md:max-h-[min(90dvh,54rem)]";
-  const mobilePortraitFallbackHeight = isDiscover
+  const mobilePortraitFallbackHeight = isGlobalFeed
+    ? isEventPost
+      ? "max-md:h-[min(50vw,18rem)]"
+      : "aspect-[4/5]"
+    : isDiscover
     ? "max-md:h-[min(74dvh,42rem)]"
     : isProfile
       ? "max-md:h-[min(74dvh,40rem)]"
       : "max-md:h-[min(86dvh,50rem)]";
-  const mobileMediaBoxClass = mediaAspectRatio
-    ? cn(
-      mobileMediaInsetClass,
-      // Portrait media can otherwise become extremely tall when width is full.
-      !isLandscape && mobilePortraitMaxHeight,
-    )
-    : isLandscape
-      ? mobileMediaInsetClass
-      : cn(
-        mobileMediaInsetClass,
-        mobilePortraitFallbackHeight,
-      );
-  const mobileMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
+  const mobileMediaBoxClass =
+    globalFeedPortraitBoxClass
+      ? cn(mobileMediaInsetClass, globalFeedPortraitBoxClass)
+      : globalFeedEventPortraitBoxClass
+        ? cn(mobileMediaInsetClass, globalFeedEventPortraitBoxClass)
+        : mediaAspectRatio
+          ? cn(
+            mobileMediaInsetClass,
+            // Portrait media can otherwise become extremely tall when width is full.
+            !isLandscape && mobilePortraitMaxHeight,
+          )
+          : isLandscape
+            ? mobileMediaInsetClass
+            : cn(
+              mobileMediaInsetClass,
+              mobilePortraitFallbackHeight,
+            );
+  const feedMediaAspectStyle: React.CSSProperties | undefined =
+    isGlobalFeed && !isLandscape ? undefined : mediaAspectStyle;
+  const mobileMediaStyle: React.CSSProperties | undefined = feedMediaAspectStyle;
 
   // Desktop media sizing:
   // - Portrait: height-capped box with width derived from aspect ratio (no side letterboxing)
   // - Landscape: full width, sized to the media's real aspect ratio
-  const portraitDesktopSizingClass = isDiscover
+  const portraitDesktopSizingClass = isGlobalFeed
+    ? isEventPost
+      ? "md:aspect-video md:w-full"
+      : "md:aspect-[4/5] md:w-full"
+    : isDiscover
     ? "md:h-[min(62vh,36rem)] md:max-h-[min(62vh,36rem)] md:w-auto md:max-w-full"
     : isProfile
       ? "md:h-[min(68vh,40rem)] md:max-h-[min(68vh,40rem)] md:w-auto md:max-w-full"
@@ -3090,9 +3150,12 @@ function PostCard({
     : isLandscape
       ? "md:w-full md:rounded-xl"
       : cn("md:rounded-xl", portraitDesktopSizingClass);
-  const portraitMediaObjectClass = "object-cover";
+  const portraitMediaObjectClass = isGlobalFeed
+    ? "object-cover object-center"
+    : "object-cover";
   const landscapeMediaObjectClass = "object-contain";
-  const mediaBoxBgClass = isLandscape ? "bg-black" : "bg-transparent";
+  const mediaBoxBgClass =
+    isLandscape || isGlobalFeedPortrait ? "bg-black/90 dark:bg-black/80" : "bg-transparent";
   // Feed column is always full width so the header type badge aligns across post types.
   // Portrait media alone shrinks below the header.
   const desktopDiscoverFeedColumnClass = isDiscover
@@ -3110,7 +3173,7 @@ function PostCard({
           ? "md:w-full md:max-w-[820px]"
           : "md:w-fit md:max-w-[520px]"
       : null;
-  const desktopMediaStyle: React.CSSProperties | undefined = mediaAspectStyle;
+  const desktopMediaStyle: React.CSSProperties | undefined = feedMediaAspectStyle;
 
   async function toggleLike() {
     if (!currentUserId) {
@@ -3426,6 +3489,59 @@ function PostCard({
     };
   }, [post, t]);
 
+  const postTypeId = feedPostTypeId(post);
+  const postLocationRaw = useMemo(() => {
+    const address = feedPostLocationAddress(post);
+    if (!address) return null;
+    return feedLocationLabel(t, address);
+  }, [post, t]);
+
+  const postLocationLine = useMemo(() => {
+    if (!postLocationRaw) return null;
+    return feedPostLocationLine(t, postLocationRaw, viewerLocation, post);
+  }, [post, postLocationRaw, t, viewerLocation]);
+
+  const postTitle = useMemo(
+    () => feedPostTitle(t, post, generatedCopy, serviceCategoryMeta?.label),
+    [generatedCopy, post, serviceCategoryMeta?.label, t],
+  );
+
+  const postDescription = useMemo(
+    () => feedPostDescription(generatedCopy, effectiveCaption, postTitle),
+    [effectiveCaption, generatedCopy, postTitle],
+  );
+
+  const authorFirstName = authorName.split(" ")[0] || authorName;
+
+  const globalFeedCtaText = useMemo(
+    () =>
+      globalFeedCtaLabel(t, {
+        isJobRequest,
+        jobAcceptedAt,
+        postTypeId,
+        authorFirstName,
+        isOwnEventPost,
+        eventJoinStatus,
+      }),
+    [
+      authorFirstName,
+      eventJoinStatus,
+      isJobRequest,
+      isOwnEventPost,
+      jobAcceptedAt,
+      postTypeId,
+      t,
+    ],
+  );
+
+  const isGlobalTextOnlyCard =
+    isGlobalFeed &&
+    !hasMedia &&
+    (isJobRequest ||
+      postTypeId === "request_help" ||
+      postTypeId === "offer_service" ||
+      postTypeId === "event");
+
   function toggleInlineVideoMute(e: React.MouseEvent) {
     e.stopPropagation();
     const el = videoRef.current;
@@ -3488,14 +3604,23 @@ function PostCard({
   }, [mediaUrl, post.media_type, videoUnmutedByUser]);
 
   function renderEngagementRow() {
-    const btnPad = hasMedia ? (isProfile ? "py-1" : "py-1.5") : isProfile ? "py-2" : "py-2.5";
+    const btnPad = isGlobalFeed
+      ? "py-2"
+      : hasMedia
+        ? isProfile
+          ? "py-1"
+          : "py-1.5"
+        : isProfile
+          ? "py-2"
+          : "py-2.5";
+    const iconClass = isGlobalFeed ? "h-5 w-5" : "h-6 w-6";
     const engagementDisabled = post.source === "availability";
     return (
       <div
         className={cn(
-          "mt-1.5 flex items-center justify-between bg-transparent",
-          cardMarginX,
-          isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0",
+          "flex items-center justify-between bg-transparent",
+          isGlobalFeed ? cn(cardPadX, "mt-1 border-t border-zinc-200/70 dark:border-zinc-800/80") : cn("mt-1.5", cardMarginX),
+          isGlobalFeed ? "pb-3.5 pt-1" : isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0",
         )}
       >
         <div className="flex items-center gap-0">
@@ -3505,7 +3630,8 @@ function PostCard({
               disabled={liking || engagementDisabled}
               onClick={() => void toggleLike()}
               className={cn(
-                "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold transition-all",
+                "flex items-center gap-1.5 rounded-full text-sm font-semibold transition-all",
+                isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
                 btnPad,
                 post.liked_by_me
                   ? "text-rose-500"
@@ -3515,10 +3641,10 @@ function PostCard({
               aria-label={post.liked_by_me ? "Unlike" : "Like"}
             >
               <Heart
-                className={cn("h-6 w-6 transition-transform", post.liked_by_me && "scale-110 fill-rose-500")}
+                className={cn(iconClass, "transition-transform", post.liked_by_me && "scale-110 fill-rose-500")}
                 strokeWidth={2.75}
               />
-              {post.like_count > 0 && (
+              {post.like_count > 0 && !isGlobalFeed && (
                 <span className="min-w-[1ch] tabular-nums">{post.like_count}</span>
               )}
             </button>
@@ -3527,17 +3653,20 @@ function PostCard({
             type="button"
             onClick={() => setCommentsOpen(true)}
             className={cn(
-              "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+              "flex items-center gap-1.5 rounded-full text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+              isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
               btnPad,
             )}
             aria-label="Comments"
           >
-            <MessageCircle className="h-6 w-6" strokeWidth={2.75} />
-            {(isJobRequest ? jobCommentCount : commentCount) > 0 && (
+            <MessageCircle className={iconClass} strokeWidth={2.75} />
+            {isGlobalFeed ? (
+              <span>{t("feed.global.comment")}</span>
+            ) : (isJobRequest ? jobCommentCount : commentCount) > 0 ? (
               <span className="min-w-[1ch] tabular-nums">
                 {isJobRequest ? jobCommentCount : commentCount}
               </span>
-            )}
+            ) : null}
           </button>
           <button
             type="button"
@@ -3548,13 +3677,16 @@ function PostCard({
                 : undefined
             }
             className={cn(
-              "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+              "flex items-center gap-1.5 rounded-full text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+              isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
               btnPad,
             )}
             aria-label="Share"
           >
-            <Send className="h-6 w-6" strokeWidth={2.75} />
-            {post.share_click_count > 0 ? (
+            <Send className={iconClass} strokeWidth={2.75} />
+            {isGlobalFeed ? (
+              <span>{t("feed.global.share")}</span>
+            ) : post.share_click_count > 0 ? (
               <span className="min-w-[1ch] tabular-nums">{post.share_click_count}</span>
             ) : null}
           </button>
@@ -3572,7 +3704,8 @@ function PostCard({
             aria-label={jobSaved ? "Remove from saved requests" : "Save request"}
             aria-pressed={jobSaved}
             className={cn(
-              "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold transition-colors",
+              "flex items-center gap-1.5 rounded-full text-sm font-semibold transition-colors",
+              isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
               btnPad,
               jobSaved
                 ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
@@ -3580,17 +3713,18 @@ function PostCard({
             )}
           >
             {jobSaveBusy ? (
-              <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+              <Loader2 className={cn(iconClass, "animate-spin")} aria-hidden />
             ) : (
               <Bookmark
                 className={cn(
-                  "h-6 w-6",
+                  iconClass,
                   jobSaved && "fill-amber-500 text-amber-700 dark:fill-amber-400 dark:text-amber-200",
                 )}
                 strokeWidth={jobSaved ? 0 : 2.75}
                 aria-hidden
               />
             )}
+            {isGlobalFeed ? <span>{t("feed.global.save")}</span> : null}
           </button>
         ) : null}
         {canSaveAuthor ? (
@@ -3605,7 +3739,8 @@ function PostCard({
             aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
             aria-pressed={authorSaved}
             className={cn(
-              "flex items-center gap-2 rounded-full px-3.5 text-base font-semibold transition-colors",
+              "flex items-center gap-1.5 rounded-full text-sm font-semibold transition-colors",
+              isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
               btnPad,
               authorSaved
                 ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
@@ -3613,17 +3748,18 @@ function PostCard({
             )}
           >
             {favoriteBusy ? (
-              <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+              <Loader2 className={cn(iconClass, "animate-spin")} aria-hidden />
             ) : (
               <Bookmark
                 className={cn(
-                  "h-6 w-6",
+                  iconClass,
                   authorSaved && "fill-amber-500 text-amber-700 dark:fill-amber-400 dark:text-amber-200",
                 )}
                 strokeWidth={authorSaved ? 0 : 2.75}
                 aria-hidden
               />
             )}
+            {isGlobalFeed ? <span>{t("feed.global.save")}</span> : null}
           </button>
         ) : null}
       </div>
@@ -3672,7 +3808,9 @@ function PostCard({
       }
       className={cn(
         "overflow-hidden transition-all duration-300 border-0",
-        isDiscover || isPlainCard
+        isGlobalFeed
+          ? "rounded-2xl bg-white shadow-none dark:bg-zinc-900/50"
+          : isDiscover || isPlainCard
           ? "bg-transparent shadow-none ring-0 outline-none rounded-none dark:bg-transparent"
           : "bg-white shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md",
         isFocused && "scroll-mt-24 scroll-mb-28",
@@ -3680,6 +3818,100 @@ function PostCard({
       )}
     >
       {/* Header — always rendered outside the media block */}
+      {isGlobalFeed ? (
+        <div className={cn("flex items-start gap-3", cardPadX, "pt-3.5 pb-2")}>
+          <GuestAwareProfileLink
+            userId={post.author_id}
+            className="shrink-0 self-start"
+            aria-label={`View ${authorName} profile`}
+          >
+            <PostAuthorAvatar
+              authorName={authorName}
+              photoUrl={post.author?.photo_url ?? undefined}
+              liveUntil={post.author?.live_until}
+              variant="card"
+            />
+          </GuestAwareProfileLink>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <GuestAwareProfileLink
+                    userId={post.author_id}
+                    className="truncate text-[17px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
+                    aria-label={`View ${authorName} profile`}
+                  >
+                    {authorName}
+                  </GuestAwareProfileLink>
+                  {post.author?.is_verified ? (
+                    <BadgeCheck
+                      className="h-4 w-4 shrink-0"
+                      fill="#0ea5e9"
+                      color="#ffffff"
+                      aria-label="Verified"
+                    />
+                  ) : null}
+                </div>
+                <p className="mt-0.5 text-[13px] font-medium leading-snug text-muted-foreground">
+                  {post.author?.is_verified ? (
+                    <>
+                      <span>{t("feed.global.verified")}</span>
+                      <span aria-hidden> · </span>
+                    </>
+                  ) : null}
+                  <time className="tabular-nums">{postedLabel}</time>
+                  {postLocationLine ? (
+                    <>
+                      <span aria-hidden> · </span>
+                      <span>{postLocationLine}</span>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+              {postTypeId ? (
+                <PostTypeBadge
+                  typeId={postTypeId}
+                  typeName={
+                    post.source === "post" || post.source === "job_request"
+                      ? post.post_types?.name
+                      : undefined
+                  }
+                  compact
+                />
+              ) : null}
+            </div>
+            {serviceCategoryMeta?.label && postTypeId ? (
+              <p
+                className={cn(
+                  "mt-1.5 text-[12px] font-bold uppercase tracking-wide",
+                  globalFeedPostTypeAccentClass(postTypeId),
+                )}
+              >
+                {feedPostTypeBadgeLabel(
+                  t,
+                  postTypeId,
+                  post.source === "post" || post.source === "job_request"
+                    ? post.post_types?.name
+                    : undefined,
+                )}
+                <span aria-hidden> · </span>
+                {serviceCategoryMeta.label}
+              </p>
+            ) : null}
+          </div>
+          {isOwnFeed && post.source === "post" ? (
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDelete}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-950/40"
+              aria-label="Delete post"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </button>
+          ) : null}
+        </div>
+      ) : (
       <div
         className={cn(
           "flex items-start gap-3",
@@ -3768,6 +4000,7 @@ function PostCard({
           ) : null}
         </div>
       </div>
+      )}
       {/* Media */}
       {mediaUrl && post.media_type === "image" && (
         <div
@@ -3812,6 +4045,7 @@ function PostCard({
             serviceCategoryLabelText={serviceCategoryMeta?.label}
             whenLabel={whenLabel}
             whenTimeframe={requestWhenTimeframe}
+            hideWhenLabel={isGlobalFeed}
           />
 
           <PostMediaExtraStack items={extraMediaItems} onOpenGallery={openMediaGallery} />
@@ -3921,6 +4155,7 @@ function PostCard({
             serviceCategoryLabelText={serviceCategoryMeta?.label}
             whenLabel={whenLabel}
             whenTimeframe={requestWhenTimeframe}
+            hideWhenLabel={isGlobalFeed}
           />
 
           <PostMediaExtraStack items={extraMediaItems} onOpenGallery={openMediaGallery} />
@@ -3967,6 +4202,214 @@ function PostCard({
         </div>
       )}
 
+      {isGlobalFeed ? (
+        <>
+          {isGlobalTextOnlyCard ? (
+            <div className={cn(cardPadX, "pb-1")}>
+              <div
+                className={cn(
+                  "rounded-xl p-4",
+                  globalFeedTextOnlySurfaceClass(postTypeId),
+                )}
+              >
+                {postTitle ? (
+                  <h3 className="flex items-center gap-2 text-[17px] font-bold leading-snug text-foreground">
+                    {serviceCategoryMeta?.id ? (
+                      <CategoryIcon
+                        categoryId={serviceCategoryMeta.id}
+                        className="h-5 w-5 shrink-0"
+                      />
+                    ) : null}
+                    <span>{postTitle}</span>
+                  </h3>
+                ) : null}
+                {postDescription ? (
+                  <p className="mt-2 text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {renderCaptionWithMentions(postDescription)}
+                  </p>
+                ) : null}
+                <div className="mt-3 space-y-1.5 text-[14px] font-medium text-foreground/85">
+                  {postLocationLine ? (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>{postLocationLine}</span>
+                    </div>
+                  ) : null}
+                  {whenLabel ? (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>{whenLabel}</span>
+                    </div>
+                  ) : null}
+                  {post.source === "post" &&
+                  post.post_type_id === "request_help" &&
+                  post.post_metadata?.budget ? (
+                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                      <Coins className="h-4 w-4 shrink-0" />
+                      <span>
+                        ₪{post.post_metadata.budget}{" "}
+                        <span className="text-muted-foreground">
+                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
+                        </span>
+                      </span>
+                    </div>
+                  ) : null}
+                  {isJobRequest && post.post_metadata?.budget ? (
+                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                      <Coins className="h-4 w-4 shrink-0" />
+                      <span>
+                        ₪{post.post_metadata.budget}{" "}
+                        <span className="text-muted-foreground">
+                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
+                        </span>
+                      </span>
+                    </div>
+                  ) : null}
+                  {post.source === "post" &&
+                  post.post_type_id === "offer_service" &&
+                  post.post_metadata?.rate ? (
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                      <Coins className="h-4 w-4 shrink-0" />
+                      <span>
+                        ₪{post.post_metadata.rate}{" "}
+                        <span className="text-muted-foreground">
+                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
+                        </span>
+                      </span>
+                    </div>
+                  ) : null}
+                  {isEventPost && eventHelpersNeeded != null ? (
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>
+                        {t("feed.event.helpersBadge", {
+                          accepted: eventAcceptedHelpers,
+                          needed: eventHelpersNeeded,
+                        })}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {(postTitle || postDescription) && (
+                <div className={cn(cardPadX, hasMedia ? "pt-2.5" : "pt-2")}>
+                  {postTitle ? (
+                    <h3 className="text-[17px] font-bold leading-snug text-foreground">
+                      {postTitle}
+                    </h3>
+                  ) : null}
+                  {postDescription ? (
+                    <p
+                      className={cn(
+                        "text-[15px] leading-relaxed text-muted-foreground whitespace-pre-wrap",
+                        postTitle && "mt-1",
+                      )}
+                    >
+                      {renderCaptionWithMentions(postDescription)}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+              {showFeedMetadataBox ? (
+                <div className={cn(cardPadX, "mt-2 space-y-1.5 text-[14px] font-medium text-foreground/90")}>
+                  {postLocationLine ? (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>{postLocationLine}</span>
+                    </div>
+                  ) : null}
+                  {whenLabel ? (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>{whenLabel}</span>
+                    </div>
+                  ) : null}
+                  {post.source === "post" &&
+                  post.post_type_id === "request_help" &&
+                  post.post_metadata?.budget ? (
+                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                      <Coins className="h-4 w-4 shrink-0" />
+                      <span>
+                        ₪{post.post_metadata.budget}{" "}
+                        <span className="text-muted-foreground">
+                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
+                        </span>
+                      </span>
+                    </div>
+                  ) : null}
+                  {post.source === "post" &&
+                  post.post_type_id === "offer_service" &&
+                  post.post_metadata?.rate ? (
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                      <Coins className="h-4 w-4 shrink-0" />
+                      <span>
+                        ₪{post.post_metadata.rate}{" "}
+                        <span className="text-muted-foreground">
+                          {feedRateTypeLabel(t, post.post_metadata.rate_type)}
+                        </span>
+                      </span>
+                    </div>
+                  ) : null}
+                  {isEventPost && eventHelpersNeeded != null ? (
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>
+                        {t("feed.event.helpersBadge", {
+                          accepted: eventAcceptedHelpers,
+                          needed: eventHelpersNeeded,
+                        })}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          )}
+
+          {showFeedActionButton ? (
+            <div className={cn(cardPadX, "mt-3 pb-1")}>
+              <button
+                type="button"
+                onClick={isJobRequest ? handleJobRequestAccept : handleActionButtonClick}
+                disabled={
+                  isJobRequest
+                    ? jobAccepting || Boolean(jobAcceptedAt)
+                    : chatOpening ||
+                      eventJoinBusy ||
+                      eventJoinStatus === "accepted" ||
+                      eventJoinStatus === "declined"
+                }
+                className={cn(
+                  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-bold transition-all duration-200 active:scale-[0.99] disabled:opacity-65 shadow-none border-0",
+                  globalFeedPrimaryCtaClass(
+                    postTypeId,
+                    isJobRequest && jobAcceptedAt
+                      ? "accepted"
+                      : eventJoinStatus === "accepted"
+                        ? "accepted"
+                        : eventJoinStatus === "declined"
+                          ? "declined"
+                          : eventJoinStatus === "pending"
+                            ? "pending"
+                            : undefined,
+                  ),
+                )}
+              >
+                {isJobRequest && jobAccepting ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                ) : chatOpening || eventJoinBusy ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                ) : null}
+                <span>{globalFeedCtaText}</span>
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
       {/* Community title — shown above caption as a heading */}
       {post.source === "post" && post.post_type_id === "community" && (generatedCopy?.title || post.post_metadata?.title) && (
         <div className={cn(cardPadX, hasMedia ? "pt-1" : "pt-3")}>
@@ -4223,6 +4666,8 @@ function PostCard({
           ) : null}
         </div>
       )}
+        </>
+      )}
 
       {renderEngagementRow()}
 
@@ -4401,6 +4846,10 @@ interface ProfilePostsFeedProps {
    * Default: true only when `discoverSidePanel === "favorites"`.
    */
   excludeOwnJobRequests?: boolean;
+  /** Unified community feed card layout (Global Posts page). */
+  globalFeedLayout?: boolean;
+  /** Viewer location for distance labels on global feed cards. */
+  viewerLocation?: ViewerLocation | null;
 }
 
 export function ProfilePostsFeed({
@@ -4429,6 +4878,8 @@ export function ProfilePostsFeed({
   filterAcceptedRequests = false,
   feedAdvancedFilters,
   excludeOwnJobRequests,
+  globalFeedLayout = false,
+  viewerLocation = null,
 }: ProfilePostsFeedProps) {
   const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
   const effectivePostTypeFilter = useMemo(() => {
@@ -5563,7 +6014,7 @@ export function ProfilePostsFeed({
   }
 
   return (
-    <div className="space-y-7 md:space-y-8">
+    <div className={cn("space-y-7 md:space-y-8", globalFeedLayout && "space-y-4 max-md:pb-[110px] md:space-y-5")}>
       {/* Compose button — own profile only */}
       {isOwnProfile && (
         <div>
@@ -5629,6 +6080,8 @@ export function ProfilePostsFeed({
                 appearance={appearance}
                 isFocused={isFocusedFeedItem(post)}
                 plainCard={plainCards}
+                globalFeedLayout={globalFeedLayout}
+                viewerLocation={viewerLocation}
               />
             ))}
           </div>
@@ -5666,6 +6119,8 @@ export function ProfilePostsFeed({
                 isFocused={isFocusedFeedItem(post)}
                 discoverWideLayout={expandDiscoverLayout}
                 plainCard={plainCards}
+                globalFeedLayout={globalFeedLayout}
+                viewerLocation={viewerLocation}
               />
             );
           }
@@ -5694,6 +6149,8 @@ export function ProfilePostsFeed({
                   isFocused={isFocusedFeedItem(post)}
                   discoverWideLayout={expandDiscoverLayout}
                   plainCard={plainCards}
+                  globalFeedLayout={globalFeedLayout}
+                  viewerLocation={viewerLocation}
                 />
               </div>
 

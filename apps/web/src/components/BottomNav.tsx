@@ -28,6 +28,7 @@ import {
   Bell,
   ChevronDown,
   LogOut,
+  Menu,
   Pencil,
   Search,
   Plus,
@@ -76,6 +77,7 @@ import {
 } from "@/lib/discoverHomeIntent";
 import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState";
 import { subscribeDiscoverHomeOverlay } from "@/lib/discoverHomeOverlayState";
+import { subscribeCommunityFeedOverlay } from "@/lib/communityFeedOverlayState";
 import {
   signedInHeaderIconBtnClass,
   signedInHeaderLocationBtnClass,
@@ -247,6 +249,10 @@ export function BottomNav() {
   const isDiscoverHome =
     pathnameNorm === "/client/home" || pathnameNorm === "/freelancer/home";
   const isCommunityFeedPage = pathnameNorm === "/community/feed";
+  const publicProfileRouteMatch = pathnameNorm.match(/^\/profile\/([^/]+)$/);
+  const viewedPublicProfileUserId = publicProfileRouteMatch?.[1] ?? null;
+  const isOwnPublicProfilePage =
+    !!viewerId && viewedPublicProfileUserId === viewerId;
   /** Location chip shell — Discover home only. */
   const showDiscoverShellHeader = isDiscoverHome;
   /** Global community feed: back + location on the left. */
@@ -260,6 +266,7 @@ export function BottomNav() {
   const [matchSearchChromeVisible, setMatchSearchChromeVisibleState] =
     useState(true);
   const [discoverHomeOverlayOpen, setDiscoverHomeOverlayOpen] = useState(false);
+  const [communityFeedOverlayOpen, setCommunityFeedOverlayOpen] = useState(false);
   const receiveRequestsOn = profile?.is_available_for_jobs === true;
   const showFreelancerJobNav =
     profile?.role === "freelancer" ||
@@ -375,11 +382,16 @@ export function BottomNav() {
     return subscribeDiscoverHomeOverlay(setDiscoverHomeOverlayOpen);
   }, []);
 
+  useEffect(() => {
+    return subscribeCommunityFeedOverlay(setCommunityFeedOverlayOpen);
+  }, []);
+
   const hideMobileBottomNav =
-    isDiscoverHome &&
-    (discoverHomeOverlayOpen ||
-      mobileSearchOpen ||
-      locationPickerOpen);
+    (isDiscoverHome &&
+      (discoverHomeOverlayOpen ||
+        mobileSearchOpen ||
+        locationPickerOpen)) ||
+    (isCommunityFeedPage && communityFeedOverlayOpen);
 
   useEffect(() => {
     if (!plusMenuOpen) return;
@@ -835,6 +847,17 @@ export function BottomNav() {
     </Dialog>
   ) : null;
 
+  const OwnPublicProfileHeaderMenu = (
+    <button
+      type="button"
+      onClick={() => navigate(profilePath)}
+      className={signedInHeaderIconBtnClass}
+      aria-label={t("common.profile")}
+    >
+      <Menu className="h-7 w-7" strokeWidth={2} aria-hidden />
+    </button>
+  );
+
   /** Desktop only: top bar — back (profile hub/subpages) or account, search, notifications */
   const DesktopHeader = (
     <header
@@ -932,22 +955,26 @@ export function BottomNav() {
 
           <div className="flex shrink-0 items-center justify-end gap-0.5">
             <LanguageSwitcher />
-            <button
-              type="button"
-              onClick={() => setNotificationsOpen(true)}
-              className={cn("relative", signedInHeaderIconBtnClass)}
-              aria-label={t("common.notifications")}
-            >
-              <Bell className="h-7 w-7" />
-              {notificationBadgeCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute end-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 md:end-0 md:top-0 md:h-7 md:min-w-7 md:px-1.5 md:text-xs"
-                >
-                  {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-                </Badge>
-              )}
-            </button>
+            {isOwnPublicProfilePage ? (
+              OwnPublicProfileHeaderMenu
+            ) : (
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen(true)}
+                className={cn("relative", signedInHeaderIconBtnClass)}
+                aria-label={t("common.notifications")}
+              >
+                <Bell className="h-7 w-7" />
+                {notificationBadgeCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute end-0.5 top-0.5 z-10 flex h-6 min-w-6 items-center justify-center border-[3px] border-white px-1 text-[11px] font-black leading-none shadow-sm dark:border-zinc-900 md:end-0 md:top-0 md:h-7 md:min-w-7 md:px-1.5 md:text-xs"
+                  >
+                    {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
+                  </Badge>
+                )}
+              </button>
+            )}
             {/*
              * Profile avatar lives in the DesktopSidePanel ("Profile" nav row) on
              * desktop, so the header no longer renders a duplicate avatar button.
@@ -1039,22 +1066,26 @@ export function BottomNav() {
                 )}
               </button>
               {!mobileSearchOpen ? (
-                <button
-                  type="button"
-                  onClick={() => setNotificationsOpen(true)}
-                  className={cn("relative", signedInHeaderIconBtnClass)}
-                  aria-label="Notifications"
-                >
-                  <Bell className="h-7 w-7" strokeWidth={2} />
-                  {notificationBadgeCount > 0 ? (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center border-2 border-white px-0.5 text-[10px] font-black leading-none shadow-sm dark:border-zinc-900"
-                    >
-                      {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
-                    </Badge>
-                  ) : null}
-                </button>
+                isOwnPublicProfilePage ? (
+                  OwnPublicProfileHeaderMenu
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setNotificationsOpen(true)}
+                    className={cn("relative", signedInHeaderIconBtnClass)}
+                    aria-label="Notifications"
+                  >
+                    <Bell className="h-7 w-7" strokeWidth={2} />
+                    {notificationBadgeCount > 0 ? (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center border-2 border-white px-0.5 text-[10px] font-black leading-none shadow-sm dark:border-zinc-900"
+                      >
+                        {notificationBadgeCount > 9 ? "9+" : notificationBadgeCount}
+                      </Badge>
+                    ) : null}
+                  </button>
+                )
               ) : null}
             </>
           )}
@@ -1212,6 +1243,7 @@ export function BottomNav() {
     const profileTabPath = isFreelancer
       ? "/freelancer/profile"
       : "/client/profile";
+    const publicProfilePath = viewerId ? `/profile/${viewerId}` : profileTabPath;
     const homePath = isFreelancer ? "/freelancer/home" : "/client/home";
 
     /**
@@ -1310,14 +1342,13 @@ export function BottomNav() {
                 );
               })()}
 
-              {/* Profile: mobile = avatar opens menu; desktop = user icon link */}
+              {/* Profile: mobile + desktop avatar → own public profile */}
               {(() => {
-                const isActive = location.pathname.startsWith(profileTabPath);
+                const isActive = location.pathname === publicProfilePath;
                 return (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => setProfileMenuOpen(true)}
+                    <Link
+                      to={publicProfilePath}
                       className={cn(
                         "md:hidden",
                         mobileTabLinkClass,
@@ -1325,7 +1356,7 @@ export function BottomNav() {
                           ? "text-zinc-950 dark:text-white"
                           : "text-zinc-950/85 hover:text-zinc-950 dark:text-white dark:hover:text-white",
                       )}
-                      aria-label="Open profile menu"
+                      aria-label="View your public profile"
                     >
                       <MobileTabItem active={isActive} label={t("common.profile")}>
                         <Avatar className="relative z-[1] h-10 w-10 border-0 ring-0 md:h-8 md:w-8">
@@ -1340,16 +1371,17 @@ export function BottomNav() {
                           </AvatarFallback>
                         </Avatar>
                       </MobileTabItem>
-                    </button>
+                    </Link>
 
                     <Link
-                      to={profileTabPath}
+                      to={publicProfilePath}
                       className={cn(
                         "group hidden md:flex flex-col items-center justify-center p-1 rounded-2xl transition-all relative",
                         isActive
                           ? "text-zinc-950 dark:text-white"
                           : "text-zinc-950/65 hover:text-zinc-950 dark:text-white/70 dark:hover:text-white",
                       )}
+                      aria-label="View your public profile"
                     >
                       <div className="relative flex h-[48px] w-[48px] shrink-0 items-center justify-center">
                         <Avatar

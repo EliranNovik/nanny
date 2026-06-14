@@ -70,15 +70,15 @@ export function openHelpRequestWhenBadgeLabel(
 export function whenBadgeToneClass(timeframe: string | null | undefined): string {
   switch (timeframe) {
     case "now":
-      return "border border-red-500/35 bg-red-500/5 text-red-700 dark:bg-black/30 dark:text-red-300";
+      return "border-0 bg-red-500/5 text-red-700 dark:bg-black/30 dark:text-red-300";
     case "today":
-      return "border border-amber-500/35 bg-amber-500/5 text-amber-700 dark:bg-black/30 dark:text-amber-300";
+      return "border-0 bg-amber-500/5 text-amber-700 dark:bg-black/30 dark:text-amber-300";
     case "tomorrow":
-      return "border border-sky-500/35 bg-sky-500/5 text-sky-700 dark:bg-black/30 dark:text-sky-300";
+      return "border-0 bg-sky-500/5 text-sky-700 dark:bg-black/30 dark:text-sky-300";
     case "this_week":
-      return "border border-violet-500/35 bg-violet-500/5 text-violet-700 dark:bg-black/30 dark:text-violet-300";
+      return "border-0 bg-violet-500/5 text-violet-700 dark:bg-black/30 dark:text-violet-300";
     default:
-      return "border border-zinc-500/30 bg-zinc-500/5 text-muted-foreground dark:bg-black/30";
+      return "border-0 bg-zinc-500/5 text-muted-foreground dark:bg-black/30";
   }
 }
 

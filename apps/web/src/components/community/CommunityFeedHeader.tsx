@@ -43,6 +43,8 @@ const FILTER_TABS: {
   { id: "event", labelKey: "feed.filters.events", Icon: CalendarDays },
 ];
 
+const GLOBAL_FILTER_TABS = FILTER_TABS.filter((tab) => tab.id !== "community");
+
 type FavoriteProfile = {
   id: string;
   full_name: string | null;
@@ -111,6 +113,8 @@ type CommunityFeedHeaderProps = {
   /** Keep filter chips out from under the fixed favorites side panel on desktop. */
   reserveSidePanelSpace?: boolean;
   className?: string;
+  /** Global posts feed: cleaner tabs without Community. */
+  variant?: "default" | "global";
 };
 
 export function CommunityFeedHeader({
@@ -129,9 +133,11 @@ export function CommunityFeedHeader({
   onAuthorFilterChange,
   reserveSidePanelSpace = false,
   className,
+  variant = "default",
 }: CommunityFeedHeaderProps) {
   const { t } = useTranslation();
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const filterTabs = variant === "global" ? GLOBAL_FILTER_TABS : FILTER_TABS;
 
   const { data: favoriteProfiles = [] } = useQuery({
     queryKey: queryKeys.discoverSavedProfiles(viewerUserId ?? null),
@@ -255,6 +261,7 @@ export function CommunityFeedHeader({
       <div
         className={cn(
           "flex gap-2 overflow-x-auto pb-1",
+          variant === "global" && "gap-2.5",
           "max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden",
           "md:[scrollbar-width:thin] md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-border/80",
           "px-1 md:px-0",
@@ -263,7 +270,7 @@ export function CommunityFeedHeader({
         role="tablist"
         aria-label={t("feed.filters.filterPostsByType")}
       >
-        {FILTER_TABS.map((tab) => {
+        {filterTabs.map((tab) => {
           const selected = tab.id === activeFilter;
           const Icon = tab.Icon;
           return (
@@ -279,13 +286,18 @@ export function CommunityFeedHeader({
                 onFilterChange(tab.id);
               }}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
+                "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 font-bold transition-all",
+                variant === "global"
+                  ? "text-[13px] normal-case tracking-normal"
+                  : "text-xs font-black uppercase tracking-wide sm:text-[13px]",
                 selected
                   ? communityFeedFilterActiveBadgeClass
                   : communityFeedFilterIdleBadgeClass,
               )}
             >
-              <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
+              {variant === "global" ? null : (
+                <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
+              )}
               {t(tab.labelKey)}
             </button>
           );

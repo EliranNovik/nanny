@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -54,6 +54,7 @@ import {
 import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
 import { apiPost } from "@/lib/api";
 import { ProfilePostsFeed } from "@/components/profile/ProfilePostsFeed";
+import type { ViewerLocation } from "@/lib/globalFeedPostUi";
 import {
   readPublicProfileCache,
   writePublicProfileCache,
@@ -1069,6 +1070,27 @@ export default function PublicProfilePage() {
 
   const isOwnProfile = currentUser?.id === userId;
 
+  const viewerLocation = useMemo<ViewerLocation | null>(() => {
+    if (!currentProfile) return null;
+    return {
+      city: currentProfile.city ?? null,
+      lat: currentProfile.location_lat ?? null,
+      lng: currentProfile.location_lng ?? null,
+    };
+  }, [currentProfile]);
+
+  const profilePostsFeedProps = useMemo(
+    () => ({
+      userId: userId!,
+      isOwnProfile,
+      appearance: "profile" as const,
+      plainCards: true,
+      globalFeedLayout: true,
+      viewerLocation,
+    }),
+    [userId, isOwnProfile, viewerLocation],
+  );
+
   const helpedOthersCount = sharedJobs.filter(
     (j) => j.status === "completed" && j.selected_freelancer_id === userId,
   ).length;
@@ -1803,7 +1825,7 @@ export default function PublicProfilePage() {
 
           <TabsContent value="posts" className="m-0 focus-visible:outline-none">
             <div className="bg-background pt-1">
-              <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" plainCards={!currentUser} />
+              <ProfilePostsFeed {...profilePostsFeedProps} />
             </div>
           </TabsContent>
 
@@ -1973,7 +1995,7 @@ export default function PublicProfilePage() {
                 )}
               </div>
             )}
-            {profileMediaTab === "posts" && <ProfilePostsFeed userId={userId!} isOwnProfile={isOwnProfile} appearance="profile" plainCards={!currentUser} />}
+            {profileMediaTab === "posts" && <ProfilePostsFeed {...profilePostsFeedProps} />}
             {profileMediaTab === "about" && (
               <div className="rounded-[2.5rem] border border-border/40 bg-card/80 p-10 shadow-xl shadow-black/5">
                 <div className="max-w-2xl">
