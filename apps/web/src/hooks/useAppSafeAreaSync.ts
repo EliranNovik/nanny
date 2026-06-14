@@ -98,7 +98,7 @@ export function useAppSafeAreaSync() {
         );
         root.style.setProperty(
           "--app-mobile-header-stack",
-          `calc(${safeTop}px + 3.5rem)`,
+          `calc(${safeTop}px + 4rem)`,
         );
         root.style.setProperty(
           "--app-mobile-bottom-glass-height",

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /** Rich dark gradient + light neutral background for the chat thread. */
-export const chatAreaBgClass = "chat-screen bg-zinc-100 text-foreground dark:text-white";
+export const chatAreaBgClass = "chat-screen bg-zinc-50 text-foreground dark:text-white";
 
 export const chatChromeBarClass = cn(
   "bg-white/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/90",
@@ -27,26 +27,26 @@ export const chatComposerFieldClass = cn(
 );
 
 export const chatReceivedBubbleCn = cn(
-  "max-w-[70%] rounded-[28px] rounded-bl-md px-5 py-3 text-left shadow-md",
+  "max-w-[70%] rounded-[18px] rounded-bl-md px-3 py-1.5 text-left shadow-md",
   "border border-slate-200/80 bg-white text-slate-900",
   "dark:border-white/10 dark:bg-white/10 dark:text-white dark:shadow-black/25",
 );
 
 export const chatSentBubbleCn = cn(
-  "ml-auto max-w-[72%] rounded-[28px] rounded-br-md px-5 py-3 text-left",
+  "ml-auto max-w-[72%] rounded-[18px] rounded-br-md px-3 py-1.5 text-left",
   "bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 text-white",
   "shadow-lg shadow-orange-500/20 border-t border-white/15",
 );
 
 export const chatBubbleBodyTextCn =
-  "block min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-base font-semibold leading-snug md:text-[15px]";
+  "m-0 block min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[17px] font-semibold leading-tight md:text-[17px]";
 
 export const chatMessageTimestampCn =
   "text-sm font-medium tabular-nums text-slate-500 dark:text-slate-400";
 
 export const chatMessageColumnCn = (isOwn: boolean) =>
   cn(
-    "flex w-full min-w-0 shrink flex-col space-y-2",
+    "flex w-full min-w-0 shrink flex-col space-y-1",
     isOwn ? "ml-auto max-w-[72%] items-end" : "max-w-[70%] items-start text-left",
     "md:max-w-[70%]",
   );

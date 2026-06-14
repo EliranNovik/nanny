@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export function HeaderBackChevron({ className }: { className?: string }) {
   return (
     <ChevronLeft
-      className={cn("h-8 w-8 shrink-0", className)}
+      className={cn("h-9 w-9 shrink-0", className)}
       strokeWidth={2.25}
       aria-hidden
     />

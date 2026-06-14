@@ -68,17 +68,17 @@
     --app-bottom-nav-height: 5.25rem;
     --app-bottom-nav-stack: calc(var(--app-bottom-nav-height) + var(--app-nav-bottom-inset));
     --app-mobile-sheet-bottom: var(--app-bottom-nav-stack);
-    /* Mobile fixed header strip: safe-top + 3.5rem bar (BottomNav). */
-    --app-mobile-header-stack: calc(var(--app-safe-top) + 3.5rem);
+    /* Mobile fixed header strip: safe-top + 4rem bar (BottomNav). */
+    --app-mobile-header-stack: calc(var(--app-safe-top) + 4rem);
     /* Frosted bands: notch + home-indicator (height synced on mobile via useAppSafeAreaSync). */
     --app-mobile-top-glass-height: calc(var(--app-safe-top) + 1rem);
     --app-mobile-bottom-glass-height: max(0.5rem, var(--app-nav-bottom-inset));
 
     /**
      * Top Layout System — spacing under fixed app chrome (see components/page-frame).
-     * --app-nav-clearance: matches md `.app-content-below-fixed-header` (3.5rem) for subheaders fixed below BottomNav.
+     * --app-nav-clearance: matches md `.app-content-below-fixed-header` (4rem) for subheaders fixed below BottomNav.
      */
-    --app-nav-clearance: 3.5rem;
+    --app-nav-clearance: 4rem;
     --app-explore-mode-toggle-block: 4.5rem;
     --app-explore-underline-tabs: 2.75rem;
     --app-explore-stack-gap: 0px;
@@ -406,7 +406,7 @@
 
   @media (min-width: 768px) {
     .app-content-below-fixed-header {
-      padding-top: 3.5rem;
+      padding-top: 4rem;
     }
 
     /* Find helpers / job match: desktop header hidden — no reserved top bar */
@@ -564,8 +564,8 @@
       background: hsl(0 0% 100% / 0.3);
       border: 1px solid hsl(0 0% 0% / 0.1);
       box-shadow: none;
-      width: min(94vw, 22.5rem);
-      max-width: min(94vw, 22.5rem);
+      width: min(96vw, 24rem);
+      max-width: min(96vw, 24rem);
     }
 
     .bottom-nav-mobile-glow {
@@ -883,7 +883,7 @@
 
 /* Premium chat thread background + desktop scrollbar */
 .chat-screen {
-  background: #f4f4f5;
+  background: #fafafa;
 }
 
 .dark .chat-screen {

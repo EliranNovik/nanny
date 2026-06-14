@@ -13,7 +13,7 @@ export function DiscoverHomeMobileHeaderRight() {
       className={signedInHeaderIconBtnClass}
       aria-label={t("discover.moreActions", { defaultValue: "More discover actions" })}
     >
-      <MoreVertical className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+      <MoreVertical className="h-7 w-7" strokeWidth={2.25} aria-hidden />
     </button>
   );
 }

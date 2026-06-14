@@ -455,12 +455,12 @@ export function BottomNav() {
           )}
           aria-label={displayCity ? `Current location: ${displayCity}. Tap to change.` : "Set your location"}
         >
-          <span className="min-w-0 flex-1 truncate text-[14px] font-bold leading-tight text-slate-900 dark:text-white sm:text-[15px]">
+          <span className="min-w-0 flex-1 truncate text-[15px] font-bold leading-tight text-slate-900 dark:text-white sm:text-base">
             {primary}
             {displayCountry ? `, ${displayCountry}` : null}
           </span>
           <ChevronDown
-            className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+            className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400"
             strokeWidth={2.25}
             aria-hidden
           />
@@ -846,7 +846,7 @@ export function BottomNav() {
        * Inner [auto | 1fr | auto] pins left controls beside the side panel and
        * language/bell to the viewport end (not the feed column before favorites).
        */}
-      <div className="grid h-14 w-full grid-cols-[220px_minmax(0,1fr)] items-center">
+      <div className="grid h-16 w-full grid-cols-[220px_minmax(0,1fr)] items-center">
         <div aria-hidden="true" />
         <div className="grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pe-3 sm:pe-5 lg:pe-6">
           <div className="flex min-w-0 items-center gap-1 ps-3">
@@ -891,7 +891,7 @@ export function BottomNav() {
                 className={signedInHeaderIconBtnClass}
                 aria-label={t("common.closeSearch")}
               >
-                <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+                <X className="h-7 w-7" strokeWidth={2.25} aria-hidden />
               </button>
             </div>
           ) : isDiscoverHome ? (
@@ -909,7 +909,7 @@ export function BottomNav() {
                 className={signedInHeaderIconBtnClass}
                 aria-label={t("common.openSearch")}
               >
-                <Search className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+                <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
               </button>
             </div>
           ) : (
@@ -938,7 +938,7 @@ export function BottomNav() {
               className={cn("relative", signedInHeaderIconBtnClass)}
               aria-label={t("common.notifications")}
             >
-              <Bell className="h-6 w-6 md:h-7 md:w-7" />
+              <Bell className="h-7 w-7" />
               {notificationBadgeCount > 0 && (
                 <Badge
                   variant="destructive"
@@ -966,7 +966,7 @@ export function BottomNav() {
         paddingTop: "var(--app-safe-top, env(safe-area-inset-top, 0px))",
       }}
     >
-      <div className="flex h-14 min-h-14 items-center gap-1 px-2 sm:px-3">
+      <div className="flex h-16 min-h-16 items-center gap-1 px-2 sm:px-3">
         <div className="flex min-w-0 shrink-0 items-center gap-0.5">
           {showDiscoverShellHeader ? (
             <>
@@ -977,7 +977,7 @@ export function BottomNav() {
                 className={signedInHeaderIconBtnClass}
                 aria-label={t("common.openSearch", { defaultValue: "Search" })}
               >
-                <Search className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+                <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
               </button>
             </>
           ) : showCommunityFeedHeaderLeft ? (
@@ -1033,9 +1033,9 @@ export function BottomNav() {
                 aria-expanded={mobileSearchOpen}
               >
                 {mobileSearchOpen ? (
-                  <X className="h-6 w-6" strokeWidth={2} />
+                  <X className="h-7 w-7" strokeWidth={2} />
                 ) : (
-                  <Search className="h-6 w-6" strokeWidth={2} />
+                  <Search className="h-7 w-7" strokeWidth={2} />
                 )}
               </button>
               {!mobileSearchOpen ? (
@@ -1045,7 +1045,7 @@ export function BottomNav() {
                   className={cn("relative", signedInHeaderIconBtnClass)}
                   aria-label="Notifications"
                 >
-                  <Bell className="h-6 w-6" strokeWidth={2} />
+                  <Bell className="h-7 w-7" strokeWidth={2} />
                   {notificationBadgeCount > 0 ? (
                     <Badge
                       variant="destructive"

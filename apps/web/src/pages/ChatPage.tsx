@@ -1071,12 +1071,16 @@ export default function ChatPage({
     const grew = messages.length > lastAnchoredMessageCountRef.current;
     lastAnchoredMessageCountRef.current = messages.length;
 
-    if (
-      (grew || pendingSmoothScrollRef.current) &&
-      shouldStickToBottom()
-    ) {
-      runBottomAnchorPass(pendingSmoothScrollRef.current);
+    const forceScrollOnSend = pendingSmoothScrollRef.current;
+    if (forceScrollOnSend) {
+      stickToBottomRef.current = true;
+      runBottomAnchorPass(true);
       pendingSmoothScrollRef.current = false;
+      return;
+    }
+
+    if (grew && shouldStickToBottom()) {
+      runBottomAnchorPass(false);
     }
   }, [
     chatPaneVisible,
@@ -1325,6 +1329,7 @@ export default function ChatPage({
     setNewMessage("");
     setSelectedFile(null);
 
+    stickToBottomRef.current = true;
     pendingSmoothScrollRef.current = true;
     isInitialLoadRef.current = false;
 
@@ -2398,7 +2403,7 @@ export default function ChatPage({
         >
           <div className="min-w-0 max-w-full">
             {/* Clearance for fixed composer + safe area (tight gap above input bar) */}
-            <div className="min-w-0 max-w-full space-y-5 px-0 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+4.75rem+0.25rem)] md:pb-[calc(4.75rem+0.25rem)]">
+            <div className="min-w-0 max-w-full space-y-4 px-0 md:px-4 pb-[calc(env(safe-area-inset-bottom,0px)+4.75rem+0.25rem)] md:pb-[calc(4.75rem+0.25rem)]">
               {job && hideBackButton && otherUser ? (
                 <ChatJobContextStrip
                   job={job as JobSummaryRow}
@@ -2469,7 +2474,7 @@ export default function ChatPage({
                     <div
                       key={msg.id}
                       className={cn(
-                        "min-w-0 max-w-full space-y-4 chat-scroll-reveal",
+                        "min-w-0 max-w-full space-y-3 chat-scroll-reveal",
                         isOwn
                           ? "chat-scroll-reveal--sent"
                           : "chat-scroll-reveal--received",
@@ -2625,7 +2630,7 @@ export default function ChatPage({
                   <div
                     key={msg.id}
                     className={cn(
-                      "min-w-0 max-w-full space-y-4 chat-scroll-reveal",
+                      "min-w-0 max-w-full space-y-3 chat-scroll-reveal",
                       isOwn
                         ? "chat-scroll-reveal--sent"
                         : "chat-scroll-reveal--received",
