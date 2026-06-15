@@ -171,27 +171,35 @@ export function CommunityFeedHeader({
           aria-label={t("feed.filters.addYourStory")}
         >
           <div className="relative h-[5.5rem] w-[5.5rem] shrink-0">
-            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/35 bg-muted/20">
-              {viewer?.photo_url ? (
-                <Avatar className="h-full w-full border-0">
-                  <AvatarImage
-                    src={viewer.photo_url}
-                    alt=""
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="text-xl font-bold">
-                    {viewerInitial}
-                  </AvatarFallback>
-                </Avatar>
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300">
-                  <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+            {variant === "global" ? (
+              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/35 bg-muted/20 text-muted-foreground">
+                <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+              </div>
+            ) : (
+              <>
+                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/35 bg-muted/20">
+                  {viewer?.photo_url ? (
+                    <Avatar className="h-full w-full border-0">
+                      <AvatarImage
+                        src={viewer.photo_url}
+                        alt=""
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="text-xl font-bold">
+                        {viewerInitial}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300">
+                      <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-emerald-600 text-white shadow-sm">
-              <Plus className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
-            </span>
+                <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-emerald-600 text-white shadow-sm">
+                  <Plus className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+                </span>
+              </>
+            )}
           </div>
           <span className="max-w-full truncate px-0.5 text-xs font-semibold leading-tight text-foreground">
             {t("feed.filters.yourStory")}

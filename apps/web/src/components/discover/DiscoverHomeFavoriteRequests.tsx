@@ -169,7 +169,7 @@ const listContainerClass = cn(
 
 const cardBtnClass = cn(
   "group flex flex-col items-center gap-1.5 text-center",
-  "w-[7.75rem] shrink-0 snap-start",
+  "w-[7.25rem] shrink-0 snap-start",
   "sm:w-[8.25rem] md:w-[9rem] lg:w-[9.75rem] xl:w-[10.5rem]",
   "sm:gap-1 lg:gap-1.5",
   "focus-visible:outline-none",

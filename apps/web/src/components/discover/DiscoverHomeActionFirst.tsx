@@ -990,7 +990,7 @@ export function DiscoverHomeActionFirst({
         <DiscoverHomeMyLiveHelpJobs
           mode="work"
           exploreLiveHelpPath={`${explorePath}?mode=work&tab=live_help`}
-          className={cn("min-w-0 px-1 pt-4 pb-1", isHire && "hidden")}
+          className={cn("min-w-0 px-0.5 pt-3", isHire && "hidden")}
         />
 
         <section className="mt-6 pb-0">

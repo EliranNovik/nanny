@@ -14,7 +14,7 @@ export function DiscoverHomePageModeSwitcher({
   className,
 }: Props) {
   return (
-    <div className={cn("px-4 pb-2 pt-1 md:hidden", className)}>
+    <div className={cn("px-4 pb-2.5 pt-3 md:hidden", className)}>
       <DiscoverHomeModeSegmentedControl
         mode={mode}
         onModeChange={onModeChange}

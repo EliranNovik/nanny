@@ -1,15 +1,20 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useFreelancerRequests } from "@/hooks/data/useFreelancerRequests";
 import { trackEvent } from "@/lib/analytics";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { DiscoverMyOpenRequestCard } from "@/components/discover/DiscoverOpenHelpRequestCard";
-
-const MY_REQUESTS_PREVIEW_LIMIT = 5;
+import {
+  DiscoverRequestCarouselArrows,
+  useDiscoverRequestCarouselScroll,
+} from "@/components/discover/DiscoverRequestCarouselControls";
+import {
+  discoverRequestCardCarouselItemClass,
+  discoverRequestCardsCarouselContainerClass,
+} from "@/components/discover/discoverRequestCarouselCardShared";
 
 type Props = {
   className?: string;
@@ -49,7 +54,7 @@ function toOpenHelpRow(
 
 export function DiscoverHomeMyOpenRequests({
   className,
-  explorePath = "/client/explore",
+  explorePath: _explorePath = "/client/explore",
 }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -57,6 +62,7 @@ export function DiscoverHomeMyOpenRequests({
 
   const { data: frData, isLoading: loading } = useFreelancerRequests(user?.id);
   const rows = useMemo(() => frData?.myOpenRequests ?? [], [frData]);
+  const confirmedHelperAvatarsByJobId = frData?.confirmedHelperAvatarsByJobId ?? {};
 
   const cards = useMemo(() => {
     if (!user?.id) return [];
@@ -73,12 +79,25 @@ export function DiscoverHomeMyOpenRequests({
           typeof (job as { acceptedCount?: number }).acceptedCount === "number"
             ? (job as { acceptedCount: number }).acceptedCount
             : 0;
-        return { row, acceptedCount };
+        const acceptedHelpers = confirmedHelperAvatarsByJobId[row.id] ?? [];
+        return { row, acceptedCount, acceptedHelpers };
       })
-      .filter((item): item is { row: DiscoverOpenHelpRequestRow; acceptedCount: number } =>
-        item != null,
+      .filter(
+        (
+          item,
+        ): item is {
+          row: DiscoverOpenHelpRequestRow;
+          acceptedCount: number;
+          acceptedHelpers: {
+            id: string;
+            photo_url: string | null;
+            full_name: string | null;
+          }[];
+        } => item != null,
       );
-  }, [rows, user?.id, profile?.full_name, profile?.photo_url]);
+  }, [rows, user?.id, profile?.full_name, profile?.photo_url, confirmedHelperAvatarsByJobId]);
+
+  const { scrollerRef, scrollByDir } = useDiscoverRequestCarouselScroll();
 
   if (!user?.id) return null;
 
@@ -89,11 +108,14 @@ export function DiscoverHomeMyOpenRequests({
           <div className="h-6 w-40 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
           <div className="h-4 w-52 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
         </div>
-        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+        <div className={discoverRequestCardsCarouselContainerClass}>
           {Array.from({ length: 2 }, (_, i) => (
             <div
               key={i}
-              className="h-36 animate-pulse rounded-[18px] bg-zinc-200/70 dark:bg-zinc-800/70"
+              className={cn(
+                discoverRequestCardCarouselItemClass,
+                "h-36 animate-pulse rounded-[18px] bg-zinc-200/70 dark:bg-zinc-800/70",
+              )}
             />
           ))}
         </div>
@@ -103,27 +125,34 @@ export function DiscoverHomeMyOpenRequests({
 
   if (cards.length === 0) return null;
 
-  const visibleCards = cards.slice(0, MY_REQUESTS_PREVIEW_LIMIT);
-  const hasMore = cards.length > MY_REQUESTS_PREVIEW_LIMIT;
-  const myRequestsActivityPath = `${explorePath}?mode=hire&tab=my_requests`;
+  const visibleCards = cards;
 
   return (
     <section className={cn("w-full", className)} aria-label="My open requests">
-      <div className="mb-3">
-        <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-          {t("discover.myRequests")}
-        </h2>
-        <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">
-          {t("discover.myRequestsSubtitle")}
-        </p>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+            {t("discover.myRequests")}
+          </h2>
+          <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">
+            {t("discover.myRequestsSubtitle")}
+          </p>
+        </div>
+        <DiscoverRequestCarouselArrows
+          onScrollLeft={() => scrollByDir(-1)}
+          onScrollRight={() => scrollByDir(1)}
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-        {visibleCards.map(({ row, acceptedCount }) => (
+      <div ref={scrollerRef} className={discoverRequestCardsCarouselContainerClass}>
+        {visibleCards.map(({ row, acceptedCount, acceptedHelpers }) => (
           <DiscoverMyOpenRequestCard
             key={row.id}
             row={row}
             acceptedCount={acceptedCount}
+            acceptedHelpers={acceptedHelpers}
+            layout="carousel"
+            className={discoverRequestCardCarouselItemClass}
             onOpen={() => {
               trackEvent("discover_my_open_request_open", { job_id: row.id });
               navigate(`/client/jobs/${encodeURIComponent(row.id)}/live`);
@@ -131,28 +160,6 @@ export function DiscoverHomeMyOpenRequests({
           />
         ))}
       </div>
-
-      {hasMore ? (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => {
-              trackEvent("discover_my_open_requests_show_more", {
-                from: "discover_home",
-                total: cards.length,
-                destination: "my_activity_my_requests",
-              });
-              navigate(myRequestsActivityPath);
-            }}
-            className={cn(
-              "flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-zinc-50 text-sm font-bold text-foreground transition-colors hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800",
-            )}
-          >
-            {t("common.showMore")}
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }

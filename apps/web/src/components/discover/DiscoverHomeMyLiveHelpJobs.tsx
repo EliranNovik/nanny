@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -11,6 +11,14 @@ import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { trackEvent } from "@/lib/analytics";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { DiscoverMyLiveHelpCard } from "@/components/discover/DiscoverOpenHelpRequestCard";
+import {
+  DiscoverRequestCarouselArrows,
+  useDiscoverRequestCarouselScroll,
+} from "@/components/discover/DiscoverRequestCarouselControls";
+import {
+  discoverRequestCardCarouselItemClass,
+  discoverRequestCardsCarouselContainerClass,
+} from "@/components/discover/discoverRequestCarouselCardShared";
 
 type Mode = "hire" | "work";
 
@@ -34,6 +42,7 @@ type JobRow = {
   budget_min?: number | null;
   budget_max?: number | null;
   budget_rate_type?: string | null;
+  service_details?: Record<string, unknown> | null;
 };
 
 type LiveHelpPayload = {
@@ -42,7 +51,6 @@ type LiveHelpPayload = {
 };
 
 const HELPING_NOW_STATUSES = ["locked", "active"] as const;
-const MY_LIVE_HELP_PREVIEW_LIMIT = 5;
 
 function toLiveHelpCardRow(job: JobRow): Pick<
   DiscoverOpenHelpRequestRow,
@@ -55,6 +63,7 @@ function toLiveHelpCardRow(job: JobRow): Pick<
   | "budget_min"
   | "budget_max"
   | "budget_rate_type"
+  | "service_details"
 > {
   return {
     service_type: job.service_type,
@@ -66,6 +75,7 @@ function toLiveHelpCardRow(job: JobRow): Pick<
     budget_min: job.budget_min ?? null,
     budget_max: job.budget_max ?? null,
     budget_rate_type: job.budget_rate_type ?? null,
+    service_details: job.service_details ?? null,
   };
 }
 
@@ -96,7 +106,7 @@ function useDiscoverMyLiveHelpJobs(userId: string | undefined, mode: Mode) {
       const baseSelect = supabase
         .from("job_requests")
         .select(
-          "id, created_at, service_type, location_city, client_id, selected_freelancer_id, status, notes, ai_generated_copy, when_timeframe, budget_min, budget_max, budget_rate_type",
+          "id, created_at, service_type, location_city, client_id, selected_freelancer_id, status, notes, ai_generated_copy, when_timeframe, budget_min, budget_max, budget_rate_type, service_details",
         );
       const filtered =
         mode === "hire"
@@ -153,7 +163,6 @@ type LiveHelpSectionProps = {
   jobs: JobRow[];
   profileMap: Record<string, ProfileMini>;
   loading: boolean;
-  exploreLiveHelpPath: string;
   className?: string;
   title: string;
   subtitle: string;
@@ -165,7 +174,6 @@ type LiveHelpSectionProps = {
   getOtherPartyId: (job: JobRow) => string;
   getJobOpenPath: (jobId: string) => string;
   openTrackEvent: string;
-  showMoreTrackEvent: string;
   createRequestPath?: string;
   emptyPostTrackEvent?: string;
 };
@@ -174,7 +182,6 @@ function DiscoverHomeLiveHelpSection({
   jobs,
   profileMap,
   loading,
-  exploreLiveHelpPath,
   className,
   title,
   subtitle,
@@ -186,12 +193,12 @@ function DiscoverHomeLiveHelpSection({
   getOtherPartyId,
   getJobOpenPath,
   openTrackEvent,
-  showMoreTrackEvent,
   createRequestPath,
   emptyPostTrackEvent,
 }: LiveHelpSectionProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { scrollerRef, scrollByDir } = useDiscoverRequestCarouselScroll();
 
   if (loading) {
     return (
@@ -200,11 +207,14 @@ function DiscoverHomeLiveHelpSection({
           <div className="h-6 w-40 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-800/80" />
           <div className="h-4 w-52 animate-pulse rounded bg-zinc-200/60 dark:bg-zinc-800/60" />
         </div>
-        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+        <div className={discoverRequestCardsCarouselContainerClass}>
           {Array.from({ length: 2 }, (_, i) => (
             <div
               key={i}
-              className="h-36 animate-pulse rounded-[18px] bg-zinc-200/70 dark:bg-zinc-800/70"
+              className={cn(
+                discoverRequestCardCarouselItemClass,
+                "h-36 animate-pulse rounded-[18px] bg-zinc-200/70 dark:bg-zinc-800/70",
+              )}
             />
           ))}
         </div>
@@ -259,20 +269,23 @@ function DiscoverHomeLiveHelpSection({
     );
   }
 
-  const visibleJobs = jobs.slice(0, MY_LIVE_HELP_PREVIEW_LIMIT);
-  const hasMore = jobs.length > MY_LIVE_HELP_PREVIEW_LIMIT;
-
   return (
     <section className={cn("w-full", className)} aria-label={ariaLabel}>
-      <div className="mb-3">
-        <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-          {title}
-        </h2>
-        <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">{subtitle}</p>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+            {title}
+          </h2>
+          <p className="mt-0.5 text-[15px] text-muted-foreground sm:text-base">{subtitle}</p>
+        </div>
+        <DiscoverRequestCarouselArrows
+          onScrollLeft={() => scrollByDir(-1)}
+          onScrollRight={() => scrollByDir(1)}
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-        {visibleJobs.map((job) => {
+      <div ref={scrollerRef} className={discoverRequestCardsCarouselContainerClass}>
+        {jobs.map((job) => {
           const otherId = getOtherPartyId(job);
           const otherProfile = otherId ? profileMap[otherId] : null;
           const otherPartyName =
@@ -282,6 +295,8 @@ function DiscoverHomeLiveHelpSection({
             <DiscoverMyLiveHelpCard
               key={job.id}
               row={toLiveHelpCardRow(job)}
+              layout="carousel"
+              className={discoverRequestCardCarouselItemClass}
               otherPartyLabel={otherPartyLabel}
               otherPartyName={otherPartyName}
               onOpen={() => {
@@ -292,35 +307,13 @@ function DiscoverHomeLiveHelpSection({
           );
         })}
       </div>
-
-      {hasMore ? (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => {
-              trackEvent(showMoreTrackEvent, {
-                from: "discover_home",
-                total: jobs.length,
-                destination: "my_activity_live_help",
-              });
-              navigate(exploreLiveHelpPath);
-            }}
-            className={cn(
-              "flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-zinc-50 text-sm font-bold text-foreground transition-colors hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800",
-            )}
-          >
-            {t("common.showMore")}
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }
 
 export function DiscoverHomeMyLiveHelpJobs({
   mode,
-  exploreLiveHelpPath,
+  exploreLiveHelpPath: _exploreLiveHelpPath,
   createRequestPath,
   className,
 }: Props) {
@@ -339,7 +332,6 @@ export function DiscoverHomeMyLiveHelpJobs({
         jobs={jobs}
         profileMap={profileMap}
         loading={loading}
-        exploreLiveHelpPath={exploreLiveHelpPath}
         createRequestPath={createRequestPath}
         className={className}
         title={t("discover.myHelpLive")}
@@ -352,7 +344,6 @@ export function DiscoverHomeMyLiveHelpJobs({
         getOtherPartyId={(job) => String(job.selected_freelancer_id ?? "")}
         getJobOpenPath={(jobId) => `/client/jobs/${encodeURIComponent(jobId)}/live`}
         openTrackEvent="discover_my_help_live_open"
-        showMoreTrackEvent="discover_my_help_live_show_more"
         emptyPostTrackEvent="discover_my_help_live_empty_post_request"
       />
     );
@@ -363,13 +354,12 @@ export function DiscoverHomeMyLiveHelpJobs({
       jobs={jobs}
       profileMap={profileMap}
       loading={loading}
-      exploreLiveHelpPath={exploreLiveHelpPath}
       className={className}
-        title={t("discover.liveHelp")}
-        subtitle={t("discover.liveHelpSubtitle")}
-        ariaLabel={t("discover.liveHelp")}
-        emptyTitle={t("discover.noLiveGigsYet")}
-        emptySub={t("discover.noLiveGigsYetSub")}
+      title={t("discover.liveHelp")}
+      subtitle={t("discover.liveHelpSubtitle")}
+      ariaLabel={t("discover.liveHelp")}
+      emptyTitle={t("discover.noLiveGigsYet")}
+      emptySub={t("discover.noLiveGigsYetSub")}
       otherPartyLabel="Helping"
       otherPartyFallback="Client"
       getOtherPartyId={(job) => String(job.client_id ?? "")}
@@ -377,7 +367,6 @@ export function DiscoverHomeMyLiveHelpJobs({
         `/freelancer/jobs/match?focus_job_id=${encodeURIComponent(jobId)}`
       }
       openTrackEvent="discover_my_live_help_open"
-      showMoreTrackEvent="discover_my_live_help_show_more"
     />
   );
 }

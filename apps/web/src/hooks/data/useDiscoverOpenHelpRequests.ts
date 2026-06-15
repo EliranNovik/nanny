@@ -103,7 +103,7 @@ export function useDiscoverOpenHelpRequests(
       if (missingClientIds.length > 0) {
         const { data: profs } = await supabase
           .from("profiles")
-          .select("id, full_name, photo_url")
+          .select("id, full_name, photo_url, is_verified")
           .in("id", missingClientIds);
         const profMap = new Map(
           (profs ?? []).map((p) => [
@@ -111,6 +111,7 @@ export function useDiscoverOpenHelpRequests(
             {
               full_name: (p.full_name as string | null) ?? null,
               photo_url: (p.photo_url as string | null) ?? null,
+              is_verified: (p.is_verified as boolean | null) ?? null,
             },
           ]),
         );
@@ -126,6 +127,8 @@ export function useDiscoverOpenHelpRequests(
             client_photo_url: r.client_photo_url?.trim()
               ? r.client_photo_url
               : p.photo_url,
+            is_verified:
+              r.is_verified != null ? r.is_verified : p.is_verified ?? false,
           };
         });
       }

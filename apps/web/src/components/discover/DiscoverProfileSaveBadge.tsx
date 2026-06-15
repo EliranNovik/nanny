@@ -38,7 +38,7 @@ export function DiscoverProfileSaveBadge({
 
   const accentIdle =
     accent === "hire"
-      ? "text-violet-600 dark:text-violet-300"
+      ? "text-orange-600 dark:text-orange-300"
       : "text-emerald-700 dark:text-emerald-300";
 
   async function onSave(e: ReactMouseEvent<HTMLButtonElement>) {
@@ -91,7 +91,7 @@ export function DiscoverProfileSaveBadge({
         "dark:border-zinc-600 dark:bg-zinc-900/95 dark:shadow-black/40",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         accent === "hire"
-          ? "focus-visible:ring-violet-500/55"
+          ? "focus-visible:ring-orange-500/55"
           : "focus-visible:ring-emerald-500/55",
         accentIdle,
         busy && "pointer-events-none opacity-75",

@@ -352,6 +352,12 @@ export function BottomNav() {
     navigate(headerBackHomeFallback);
   };
 
+  const handleCommunityFeedCompose = () => {
+    const params = new URLSearchParams(location.search);
+    params.set("compose", "1");
+    navigate({ pathname: location.pathname, search: params.toString() });
+  };
+
   useEffect(() => {
     if (previousPathnameRef.current !== location.pathname) {
       setPlusMenuOpen(false);
@@ -1018,11 +1024,11 @@ export function BottomNav() {
             <>
               <button
                 type="button"
-                onClick={handleHeaderBack}
+                onClick={handleCommunityFeedCompose}
                 className={signedInHeaderIconBtnClass}
-                aria-label="Back"
+                aria-label={t("nav.sharePost")}
               >
-                <HeaderBackChevron />
+                <Plus className="h-7 w-7" strokeWidth={2.25} aria-hidden />
               </button>
               {renderDiscoverHomeLocationChip("mobile", { besideBack: true })}
             </>

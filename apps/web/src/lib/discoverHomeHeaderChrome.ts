@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 
-/** Signed-in app header — solid, not translucent (matches feed card tone in dark mode). */
-export const signedInAppHeaderBgClass = "bg-white dark:bg-zinc-800";
+/** Signed-in app header — desktop dark matches page background. */
+export const signedInAppHeaderBgClass =
+  "bg-white dark:bg-zinc-800 md:dark:bg-background";
 
 /** Plain icon control — signed-in fixed header (no glass pill). */
 export const signedInHeaderIconBtnClass = cn(

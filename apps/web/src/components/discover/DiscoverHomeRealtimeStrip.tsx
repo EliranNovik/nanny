@@ -209,23 +209,26 @@ const workStripDeclineRoundBtn = cn(
  * Avatar frame for discover strip — plain circle (no coloured ring).
  */
 const stripAvatarClassName =
-  "h-[5.5rem] w-[5.5rem] border-0 md:h-[5.25rem] md:w-[5.25rem]";
+  "h-[5.5rem] w-[5.5rem] border-0 md:h-[6.5rem] md:w-[6.5rem]";
 
 const stripCategoryCircleClass =
-  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-14 md:w-14 items-center justify-center rounded-full border transition-all bg-white/85 shadow-sm backdrop-blur-md dark:border-0 dark:bg-zinc-800/75 dark:shadow-none md:dark:bg-zinc-900/55";
+  "relative flex max-md:h-[4.25rem] max-md:w-[4.25rem] md:h-[4.25rem] md:w-[4.25rem] items-center justify-center rounded-full border transition-all bg-white/85 shadow-sm backdrop-blur-md dark:border-0 dark:bg-zinc-800/75 dark:shadow-none md:dark:bg-zinc-900/55";
 
 const stripCategoryLabelClass =
-  "font-extrabold uppercase tracking-[0.14em] max-md:text-[10.5px] md:text-[9px]";
+  "font-extrabold uppercase tracking-[0.14em] max-md:text-[10.5px] md:text-[10.5px]";
 
-const stripCategoryCompassClass = "max-md:h-10 max-md:w-10 md:h-9 md:w-9";
+const stripCategoryCompassClass = "max-md:h-10 max-md:w-10 md:h-10 md:w-10";
 
 const stripCategoryIconShellClass =
-  "flex max-md:h-10 max-md:w-10 md:h-9 md:w-9 items-center justify-center";
+  "flex max-md:h-10 max-md:w-10 md:h-10 md:w-10 items-center justify-center";
 
-const stripCategoryIconSizeClass = "max-md:h-7 max-md:w-7 md:h-6 md:w-6";
+const stripCategoryIconSizeClass = "max-md:h-7 max-md:w-7 md:h-7 md:w-7";
 
 const stripHireProfileCardClass =
-  "flex w-[6.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] md:w-[5.5rem]";
+  "flex w-[6rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] md:w-[7.25rem]";
+
+const stripWorkProfileCardClass =
+  "flex w-[6rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] md:w-[7.25rem]";
 
 function pickPrimaryLiveCategory(
   catSet: Set<ServiceCategoryId>,
@@ -2181,27 +2184,27 @@ export function DiscoverHomeRealtimeStrip({
           onModeChange={(m) => {
             void writeDiscoverHomeIntent(m);
           }}
-          className="pb-2 pt-0"
+          className="pb-2"
         />
         {/* Category Icons Row Skeleton */}
         <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col items-center gap-2 shrink-0 animate-pulse">
-              <div className="h-[4.25rem] w-[4.25rem] md:h-14 md:w-14 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-[4.25rem] w-[4.25rem] rounded-full bg-zinc-200 dark:bg-zinc-800" />
               <div className="h-2 w-10 bg-zinc-200 dark:bg-zinc-800 rounded" />
             </div>
           ))}
         </div>
         {/* Profile Circles Loader */}
-        <div className="flex gap-2 pb-0.5 px-1 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-1.5 pb-0.5 px-1 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="flex w-[6.25rem] shrink-0 flex-col items-center gap-2 py-1 animate-pulse md:w-[5.5rem]"
+              className="flex w-[6rem] shrink-0 flex-col items-center gap-2 py-1 animate-pulse md:w-[7.25rem]"
             >
               <div className="relative overflow-visible rounded-full p-[3px] bg-zinc-100 dark:bg-zinc-800">
                 <div className="rounded-full bg-white p-0.5 dark:bg-zinc-950">
-                  <div className="h-[5.5rem] w-[5.5rem] md:h-[5.25rem] md:w-[5.25rem] rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                  <div className="h-[5.5rem] w-[5.5rem] md:h-[6.5rem] md:w-[6.5rem] rounded-full bg-zinc-200 dark:bg-zinc-800" />
                 </div>
               </div>
               <div className="h-3 w-12 bg-zinc-200 dark:bg-zinc-800 rounded" />
@@ -2221,7 +2224,7 @@ export function DiscoverHomeRealtimeStrip({
             onModeChange={(m) => {
               void writeDiscoverHomeIntent(m);
             }}
-            className="pb-2 pt-0"
+            className="pb-2"
           />
           <div className="flex items-center justify-between py-2 px-1">
             <p className="text-[14px] font-medium text-muted-foreground flex-1 pr-4">
@@ -2255,7 +2258,7 @@ export function DiscoverHomeRealtimeStrip({
           onModeChange={(m) => {
             void writeDiscoverHomeIntent(m);
           }}
-          className="pb-2 pt-0"
+          className="pb-2"
         />
         <div className="rounded-[1rem] border border-dashed border-border/50 bg-muted/25 px-4 py-5 dark:bg-zinc-900/40">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -2326,11 +2329,11 @@ export function DiscoverHomeRealtimeStrip({
           }}
         />
         {/* Category Icons Row - Work Mode */}
-        <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
+        <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4">
           <button
             onClick={() => setSelectedFilterCategory("all")}
             className={cn(
-              "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95",
+              "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
               "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             )}
           >
@@ -2354,7 +2357,7 @@ export function DiscoverHomeRealtimeStrip({
                 key={cat.id}
                 onClick={() => setSelectedFilterCategory(cat.id as ServiceCategoryId)}
                 className={cn(
-                  "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95",
+                  "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
                   "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 )}
               >
@@ -2379,7 +2382,7 @@ export function DiscoverHomeRealtimeStrip({
 
         <div
           className={cn(
-            "flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "flex snap-x snap-mandatory gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             "md:mx-0 md:flex md:max-w-full md:flex-nowrap md:justify-start md:gap-2.5 md:overflow-visible md:px-0 md:pb-0 md:snap-none",
           )}
           role="list"
@@ -2391,11 +2394,7 @@ export function DiscoverHomeRealtimeStrip({
               type="button"
               role="listitem"
               onClick={() => openWorkDetail(row)}
-              className={cn(
-                "flex w-[6.25rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl py-1 transition-transform",
-                "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                "active:scale-[0.97] md:w-[5.5rem]",
-              )}
+              className={stripWorkProfileCardClass}
             >
               <div className="relative inline-flex">
                 <Avatar className={stripAvatarClassName}>
@@ -2418,7 +2417,7 @@ export function DiscoverHomeRealtimeStrip({
                   />
                 ) : null}
               </div>
-              <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
+              <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50 md:text-[13px]">
                 {shortDisplayName(row.name)}
               </span>
             </button>
@@ -2449,25 +2448,25 @@ export function DiscoverHomeRealtimeStrip({
         }}
       />
       {/* Category Icons Row - Hire Mode */}
-      <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
+      <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4">
         <button
           onClick={() => setSelectedFilterCategory("all")}
           className={cn(
-            "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95",
-            "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
+            "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
         >
           <div className={cn(
             stripCategoryCircleClass,
             selectedFilterCategory === "all"
-              ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:border-0 dark:text-violet-300 dark:shadow-none"
+              ? "border-orange-500/70 text-orange-700 shadow-[0_10px_25px_-16px_rgba(249,115,22,0.7)] dark:border-0 dark:text-orange-300 dark:shadow-none"
               : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
           )}>
             <Compass className={stripCategoryCompassClass} strokeWidth={2.5} />
           </div>
           <span className={cn(
             stripCategoryLabelClass,
-            selectedFilterCategory === "all" ? "text-violet-700 dark:text-violet-300" : "text-slate-500 dark:text-zinc-500"
+            selectedFilterCategory === "all" ? "text-orange-700 dark:text-orange-300" : "text-slate-500 dark:text-zinc-500"
           )}>All</span>
         </button>
 
@@ -2477,14 +2476,14 @@ export function DiscoverHomeRealtimeStrip({
               key={cat.id}
               onClick={() => setSelectedFilterCategory(cat.id as ServiceCategoryId)}
               className={cn(
-                "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95",
-                "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "flex flex-col items-center gap-2 shrink-0 transition-transform active:scale-95 md:gap-2.5",
+                "focus-visible:outline-none focus-visible:rounded-2xl focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               )}
             >
               <div className={cn(
                 stripCategoryCircleClass,
                 selectedFilterCategory === cat.id
-                  ? "border-violet-500/70 text-violet-700 shadow-[0_10px_25px_-16px_rgba(124,58,237,0.7)] dark:border-0 dark:text-violet-300 dark:shadow-none"
+                  ? "border-orange-500/70 text-orange-700 shadow-[0_10px_25px_-16px_rgba(249,115,22,0.7)] dark:border-0 dark:text-orange-300 dark:shadow-none"
                   : "border-slate-200/80 text-slate-500 dark:border-0 dark:text-zinc-400"
               )}>
                 <span className={stripCategoryIconShellClass}>
@@ -2493,7 +2492,7 @@ export function DiscoverHomeRealtimeStrip({
               </div>
               <span className={cn(
                 stripCategoryLabelClass,
-                selectedFilterCategory === cat.id ? "text-violet-700 dark:text-violet-300" : "text-slate-500 dark:text-zinc-500"
+                selectedFilterCategory === cat.id ? "text-orange-700 dark:text-orange-300" : "text-slate-500 dark:text-zinc-500"
               )}>{cat.label.split(' ')[0]}</span>
             </button>
           );
@@ -2502,7 +2501,7 @@ export function DiscoverHomeRealtimeStrip({
 
       <div
         className={cn(
-          "gap-2 pb-0.5",
+          "gap-1.5 pb-0.5",
           "flex snap-x snap-mandatory overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "md:mx-0 md:flex md:max-w-full md:flex-nowrap md:justify-start md:gap-2.5 md:overflow-visible md:px-0 md:pb-0 md:snap-none",
         )}
@@ -2537,7 +2536,7 @@ export function DiscoverHomeRealtimeStrip({
                 />
               ) : null}
             </div>
-            <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50">
+            <span className="line-clamp-2 w-full px-0.5 text-center text-[12px] font-medium lowercase leading-tight tracking-normal text-zinc-900 dark:text-zinc-50 md:text-[13px]">
               {shortDisplayName(it.name)}
             </span>
           </button>

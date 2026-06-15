@@ -1,5 +1,54 @@
 import { cn } from "@/lib/utils";
 
+/** Full-width shell for carousel cards — content fills the card width. */
+export const discoverRequestCardCarouselShellClass =
+  "flex h-full w-full min-w-0 flex-col text-left";
+
+/** Stretch carousel cards to a common row height. */
+export const discoverRequestCardsCarouselContainerClass = cn(
+  "flex items-stretch gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1",
+  "scroll-smooth overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+  "-mx-4 px-4 sm:-mx-0 sm:px-0",
+);
+
+/** Fixed-width snap item for open-request / my-request cards. */
+export const discoverRequestCardCarouselItemClass = cn(
+  "flex h-auto w-[min(calc(100vw-2rem),22rem)] shrink-0 snap-start self-stretch",
+  "md:w-[26rem] lg:w-[28rem]",
+);
+
+export const discoverRequestCardCarouselBodyClass = "flex min-h-0 flex-1 flex-col";
+
+export const discoverRequestCardCarouselTitleClass =
+  "line-clamp-2 min-h-[2.75rem] text-lg font-bold leading-snug text-foreground";
+
+export const discoverRequestCardCarouselDescriptionClass =
+  "mt-1 line-clamp-2 min-h-[2.625rem] text-[15px] leading-snug text-muted-foreground";
+
+export const discoverRequestCardCarouselMetaRowClass =
+  "mt-2 flex min-h-[1.375rem] w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground";
+
+export const discoverRequestCardCarouselPosterRowClass =
+  "mt-2.5 flex min-h-[2.25rem] w-full min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1";
+
+export const discoverRequestCardCarouselFooterClass = cn(
+  "mt-auto flex w-full min-h-[4.25rem] items-center justify-between gap-3",
+  "border-t border-zinc-200/70 pt-3 dark:border-zinc-700/50",
+);
+
+export const discoverRequestCardCarouselFooterBudgetClass =
+  "flex min-h-[2.5rem] min-w-0 flex-1 flex-col justify-center text-left";
+
+export const discoverRequestCardCarouselFooterActionClass = "flex shrink-0 items-center self-center";
+
+export const discoverRequestCarouselArrowBtnClass = cn(
+  "hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full",
+  "border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-all",
+  "hover:bg-zinc-100 hover:shadow active:scale-95",
+  "dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40",
+);
+
 /** White posted-time pill — matches My Requests carousel. */
 export const discoverRequestPostedTimeBadgeBaseClass = cn(
   "inline-flex max-w-[85%] min-h-[1.75rem] items-center rounded-full bg-white px-2 py-1",

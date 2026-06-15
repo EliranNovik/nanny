@@ -1,10 +1,8 @@
 import { HeartHandshake, HelpingHand } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import {
-  DISCOVER_STROKE,
-  discoverIcon,
-} from "@/components/discover/discoverHomeIcons";
+import { DISCOVER_STROKE } from "@/components/discover/discoverHomeIcons";
 import type { DiscoverHomeIntent } from "@/lib/discoverHomeIntent";
 
 type Props = {
@@ -15,6 +13,20 @@ type Props = {
   className?: string;
 };
 
+const PAGE_TRACK_PAD_REM = 0.25;
+const PAGE_TRACK_GAP_REM = 0.125;
+
+function pageThumbStyle(mode: DiscoverHomeIntent) {
+  const index = mode === "hire" ? 0 : 1;
+  const segmentWidth = `calc((100% - ${PAGE_TRACK_PAD_REM * 2}rem - ${PAGE_TRACK_GAP_REM}rem) / 2)`;
+  const segmentStep = `calc(${segmentWidth} + ${PAGE_TRACK_GAP_REM}rem)`;
+
+  return {
+    width: segmentWidth,
+    left: `calc(${PAGE_TRACK_PAD_REM}rem + ${index} * ${segmentStep})`,
+  } as const;
+}
+
 export function DiscoverHomeModeSegmentedControl({
   mode,
   onModeChange,
@@ -23,6 +35,57 @@ export function DiscoverHomeModeSegmentedControl({
 }: Props) {
   const { t } = useTranslation();
   const isHeader = variant === "header";
+  const pageThumb = useMemo(() => pageThumbStyle(mode), [mode]);
+
+  const tabButtonClass = (selected: boolean, accent: "hire" | "work") =>
+    cn(
+      "relative z-10 flex min-w-0 items-center justify-center rounded-full transition-[color,transform] duration-300 ease-out",
+      "[-webkit-tap-highlight-color:transparent]",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset",
+      accent === "hire"
+        ? "focus-visible:ring-orange-500/35"
+        : "focus-visible:ring-emerald-500/35",
+      "active:scale-[0.98] motion-reduce:transition-none",
+      isHeader
+        ? "min-h-[44px] gap-2.5 px-5 py-2"
+        : "min-h-[44px] gap-2 px-2.5 py-2 sm:min-h-[46px] sm:px-3",
+      selected
+        ? isHeader
+          ? "text-white"
+          : cn(
+              "font-bold text-white",
+            )
+        : isHeader
+          ? "bg-transparent text-neutral-900 hover:bg-slate-200/55 dark:text-zinc-100 dark:hover:bg-zinc-800/55"
+          : "font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300",
+    );
+
+  const iconClass = (selected: boolean, accent: "hire" | "work") =>
+    cn(
+      "shrink-0 transition-all duration-300",
+      isHeader
+        ? "h-5 w-5"
+        : "h-6 w-6 sm:h-[1.375rem] sm:w-[1.375rem]",
+      selected
+        ? isHeader
+          ? "text-white"
+          : "text-white"
+        : isHeader
+          ? "text-slate-400 dark:text-zinc-500"
+          : "text-zinc-400 opacity-80 dark:text-zinc-500",
+      selected && !isHeader && "scale-105",
+    );
+
+  const labelClass = (selected: boolean) =>
+    cn(
+      "min-w-0 leading-tight tracking-tight",
+      isHeader
+        ? cn("text-sm font-semibold", selected ? "text-white dark:text-zinc-100" : "text-neutral-900 dark:text-zinc-100")
+        : cn(
+            "text-[13.5px] sm:text-sm",
+            selected ? "font-bold" : "font-semibold",
+          ),
+    );
 
   return (
     <div
@@ -32,17 +95,35 @@ export function DiscoverHomeModeSegmentedControl({
     >
       <div
         className={cn(
-          "relative isolate grid w-full grid-cols-2 items-stretch gap-1 overflow-hidden rounded-full p-1.5 leading-none",
-          "bg-slate-100/80 shadow-none",
-          "dark:bg-zinc-900",
+          "relative isolate grid w-full grid-cols-2 items-stretch leading-none",
           isHeader
-            ? "min-h-[44px] max-w-[19rem] gap-0.5 p-1"
+            ? cn(
+                "min-h-[48px] w-full max-w-[32rem] gap-0.5 overflow-hidden rounded-full p-1",
+                "bg-slate-100/80 shadow-none dark:bg-zinc-900",
+              )
             : cn(
-                "mx-auto min-h-[60px] max-w-[26rem] sm:max-w-[28rem] sm:min-h-[64px]",
-                "md:max-w-[19rem] md:min-h-[48px] md:gap-0.5 md:p-1",
+                "mx-auto w-full min-h-[50px] max-w-[min(24rem,calc(100vw-2rem))] gap-0.5 overflow-hidden rounded-full p-1",
+                "border-0 bg-zinc-100/90 shadow-none",
+                "dark:bg-zinc-900/70",
+                "sm:min-h-[52px] sm:max-w-[26rem]",
               ),
         )}
       >
+        {!isHeader ? (
+          <div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute top-1 bottom-1 z-[5] rounded-full",
+              "shadow-md transition-[left,width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+              "dark:shadow-none",
+              mode === "hire"
+                ? "bg-gradient-to-br from-orange-400 via-orange-600 to-orange-900 dark:from-orange-300 dark:via-orange-500 dark:to-orange-800"
+                : "bg-gradient-to-br from-emerald-300 via-emerald-600 to-emerald-900 dark:from-emerald-400 dark:via-emerald-600 dark:to-emerald-800",
+            )}
+            style={pageThumb}
+          />
+        ) : null}
+
         <button
           type="button"
           role="tab"
@@ -50,45 +131,20 @@ export function DiscoverHomeModeSegmentedControl({
           aria-label={mode === "hire" ? undefined : t("discover.getHelpNow")}
           onClick={() => onModeChange("hire")}
           className={cn(
-            "relative z-10 flex h-full w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-            "active:scale-[0.98] motion-reduce:transition-none",
-            isHeader
-              ? "min-h-[40px] gap-1.5 px-2.5 py-1.5"
-              : "min-h-[52px] sm:min-h-[60px] sm:px-4 md:min-h-[40px] md:gap-1.5 md:px-2.5 md:py-1.5",
-            mode === "hire"
-              ? cn(
-                  "bg-gradient-to-br from-violet-400 via-violet-600 to-violet-900 dark:from-violet-300 dark:via-violet-500 dark:to-violet-800 text-white shadow-sm",
-                )
-              : "bg-transparent text-neutral-900 hover:bg-slate-200/55 dark:hover:bg-zinc-800/55",
+            tabButtonClass(mode === "hire", "hire"),
+            isHeader &&
+              mode === "hire" &&
+              "bg-gradient-to-br from-orange-400 via-orange-600 to-orange-900 shadow-sm dark:from-orange-300 dark:via-orange-500 dark:to-orange-800",
           )}
         >
           <HeartHandshake
-            className={cn(
-              discoverIcon.md,
-              "shrink-0 transition-colors duration-300",
-              isHeader
-                ? "h-[1.05rem] w-[1.05rem]"
-                : "h-7 w-7 sm:h-[1.85rem] sm:w-[1.85rem] md:h-[1.05rem] md:w-[1.05rem]",
-              mode === "hire"
-                ? "text-white"
-                : "text-slate-400 dark:text-zinc-500",
-            )}
-            strokeWidth={DISCOVER_STROKE}
+            className={iconClass(mode === "hire", "hire")}
+            strokeWidth={mode === "hire" ? 2.5 : DISCOVER_STROKE}
             aria-hidden
           />
-          <span
-            className={cn(
-              "min-w-0 font-semibold leading-tight tracking-tight",
-              mode === "hire" ? "text-white dark:text-zinc-100" : "text-neutral-900 dark:text-zinc-100",
-              isHeader
-                ? "text-[13px]"
-                : "text-[16px] sm:text-[18px] md:text-[13px]",
-            )}
-          >
-            {t("discover.getHelpNow")}
-          </span>
+          <span className={labelClass(mode === "hire")}>{t("discover.getHelpNow")}</span>
         </button>
+
         <button
           type="button"
           role="tab"
@@ -96,44 +152,18 @@ export function DiscoverHomeModeSegmentedControl({
           aria-label={mode === "work" ? undefined : t("discover.helpOthersNow")}
           onClick={() => onModeChange("work")}
           className={cn(
-            "relative z-10 flex h-full w-full min-w-0 items-center justify-center gap-2 rounded-full px-2 py-2 transition-[color,transform,box-shadow,background-color] duration-300 ease-out",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-            "active:scale-[0.98] motion-reduce:transition-none",
-            isHeader
-              ? "min-h-[40px] gap-1.5 px-2.5 py-1.5"
-              : "min-h-[52px] sm:min-h-[60px] sm:px-4 md:min-h-[40px] md:gap-1.5 md:px-2.5 md:py-1.5",
-            mode === "work"
-              ? cn(
-                  "bg-gradient-to-br from-emerald-300 via-emerald-600 to-emerald-900 dark:from-emerald-400 dark:via-emerald-600 dark:to-emerald-800 text-white shadow-sm",
-                )
-              : "bg-transparent text-neutral-900 hover:bg-slate-200/55 dark:hover:bg-zinc-800/55",
+            tabButtonClass(mode === "work", "work"),
+            isHeader &&
+              mode === "work" &&
+              "bg-gradient-to-br from-emerald-300 via-emerald-600 to-emerald-900 shadow-sm dark:from-emerald-400 dark:via-emerald-600 dark:to-emerald-800",
           )}
         >
           <HelpingHand
-            className={cn(
-              discoverIcon.md,
-              "shrink-0 transition-colors duration-300",
-              isHeader
-                ? "h-[1.05rem] w-[1.05rem]"
-                : "h-7 w-7 sm:h-[1.85rem] sm:w-[1.85rem] md:h-[1.05rem] md:w-[1.05rem]",
-              mode === "work"
-                ? "text-white"
-                : "text-slate-400 dark:text-zinc-500",
-            )}
-            strokeWidth={DISCOVER_STROKE}
+            className={iconClass(mode === "work", "work")}
+            strokeWidth={mode === "work" ? 2.5 : DISCOVER_STROKE}
             aria-hidden
           />
-          <span
-            className={cn(
-              "min-w-0 font-semibold leading-tight tracking-tight",
-              mode === "work" ? "text-white dark:text-zinc-100" : "text-neutral-900 dark:text-zinc-100",
-              isHeader
-                ? "text-[13px]"
-                : "text-[16px] sm:text-[18px] md:text-[13px]",
-            )}
-          >
-            {t("discover.helpOthersNow")}
-          </span>
+          <span className={labelClass(mode === "work")}>{t("discover.helpOthersNow")}</span>
         </button>
       </div>
     </div>
