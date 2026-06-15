@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,7 +44,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, noFieldSpinnerClass } from "@/lib/utils";
 import {
-  mobileBottomSheetSlideAnimationClass,
   mobileSheetSafePaddingBottom,
 } from "@/lib/mobileModalLayout";
 import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
@@ -119,6 +119,7 @@ import {
   feedPostTitle,
   feedPostTypeId,
   globalFeedCtaLabel,
+  globalFeedCardSurfaceClass,
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
   globalFeedTextOnlySurfaceClass,
@@ -127,10 +128,10 @@ import {
 import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import {
+  isReelsViewerPost,
   PostMediaReelsViewer,
   type ReelFeedPost,
 } from "@/components/profile/PostMediaReelsViewer";
-import { PostMediaDesktopViewer } from "@/components/profile/PostMediaDesktopViewer";
 import { PostMediaGalleryModal } from "@/components/profile/PostMediaGalleryModal";
 import {
   MAX_PROFILE_POST_MEDIA,
@@ -418,6 +419,83 @@ function renderCaptionWithMentions(caption: string): React.ReactNode {
 
 // ─── Comment Dialog ───────────────────────────────────────────────────────────
 
+function ReelsStyleCommentComposer({
+  draft,
+  onDraftChange,
+  onSubmit,
+  submitting,
+  placeholder,
+  signedIn,
+  onSignIn,
+}: {
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onSubmit: () => void;
+  submitting: boolean;
+  placeholder: string;
+  signedIn: boolean;
+  onSignIn: () => void;
+}) {
+  if (!signedIn) {
+    return (
+      <div className="space-y-2">
+        <p className="text-center text-sm text-muted-foreground">
+          Join the community to comment and connect with others.
+        </p>
+        <Button
+          type="button"
+          className={cn(
+            "h-10 w-full rounded-xl font-bold",
+            "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
+          )}
+          onClick={onSignIn}
+        >
+          Sign in / Register
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1 rounded-full bg-zinc-800/95 px-4 py-2.5 dark:bg-zinc-700/90">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onSubmit();
+            }
+          }}
+          maxLength={4000}
+          disabled={submitting}
+          {...bidirectionalInputProps(
+            draft,
+            "w-full border-0 bg-transparent py-0.5 text-[15px] text-white outline-none placeholder:text-white/45 disabled:opacity-60",
+          )}
+          aria-label={placeholder}
+        />
+      </div>
+      <button
+        type="button"
+        disabled={submitting || !draft.trim()}
+        onClick={onSubmit}
+        className="shrink-0 p-1 text-foreground transition active:scale-95 disabled:opacity-35 dark:text-white"
+        aria-label="Post comment"
+      >
+        {submitting ? (
+          <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+        ) : (
+          <Send className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+        )}
+      </button>
+    </div>
+  );
+}
+
 function CommentsDialog({
   postId,
   open,
@@ -437,6 +515,12 @@ function CommentsDialog({
   const [submitting, setSubmitting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const dateLocale = dateFnsLocaleFor(i18n.language);
+  const isMobile = useIsMobileViewport();
+  const [sheetExpanded, setSheetExpanded] = useState(true);
+
+  useEffect(() => {
+    if (open) setSheetExpanded(true);
+  }, [open]);
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -512,152 +596,159 @@ function CommentsDialog({
     }
   }
 
+  if (!open) return null;
+
+  const dismiss = () => onClose();
+
+  const commentsHeader = (
+    <div className="flex shrink-0 items-center gap-2 px-5 py-3">
+      <MessageCircle className="h-5 w-5 text-orange-500" strokeWidth={2} />
+      <h2
+        id="comments-sheet-title"
+        className="text-base font-bold text-foreground"
+      >
+        {t("common.comments")}
+      </h2>
+    </div>
+  );
+
+  const commentsBody = (
+    <ScrollArea className="min-h-0 flex-1 px-5">
+      <div className="space-y-5 py-4">
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : comments.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {t("feed.noCommentsYet")}
+          </p>
+        ) : (
+          comments.map((c) => {
+            const name = c.author?.full_name?.trim() || "Member";
+            return (
+              <div key={c.id} className="flex gap-3">
+                {c.author?.id ? (
+                  <GuestAwareProfileLink
+                    userId={c.author.id}
+                    className="shrink-0 rounded-full outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    aria-label={`View ${name} profile`}
+                    onClick={() => onClose()}
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={c.author?.photo_url ?? undefined} />
+                      <AvatarFallback className="text-xs font-bold">
+                        {name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </GuestAwareProfileLink>
+                ) : (
+                  <Avatar className="h-8 w-8 shrink-0 opacity-60">
+                    <AvatarImage src={c.author?.photo_url ?? undefined} />
+                    <AvatarFallback className="text-xs font-bold">
+                      {name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    {c.author?.id ? (
+                      <GuestAwareProfileLink
+                        userId={c.author.id}
+                        className="text-sm font-semibold text-foreground hover:underline underline-offset-2"
+                        aria-label={`View ${name} profile`}
+                        onClick={() => onClose()}
+                      >
+                        {name}
+                      </GuestAwareProfileLink>
+                    ) : (
+                      <span className="text-sm font-semibold text-foreground">
+                        {name}
+                      </span>
+                    )}
+                    <time className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(c.created_at), {
+                        addSuffix: true,
+                        locale: dateLocale,
+                      })}
+                    </time>
+                  </div>
+                  <p
+                    {...bidirectionalTextProps(
+                      c.body,
+                      "mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
+                    )}
+                  >
+                    {c.body}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+    </ScrollArea>
+  );
+
+  const commentsComposer = (
+    <div
+      className={cn(
+        "shrink-0 px-4 py-2.5",
+        mobileSheetSafePaddingBottom,
+      )}
+    >
+      <ReelsStyleCommentComposer
+        draft={draft}
+        onDraftChange={setDraft}
+        onSubmit={() => void submitComment()}
+        submitting={submitting}
+        placeholder={t("feed.writeComment")}
+        signedIn={Boolean(user)}
+        onSignIn={() => openGuestAuthPrompt({ variant: "engage" })}
+      />
+    </div>
+  );
+
+  if (isMobile) {
+    const sheet = (
+      <MobileSnapBottomSheet
+        expanded={sheetExpanded}
+        onExpandedChange={setSheetExpanded}
+        onDismiss={dismiss}
+        hidePeek
+        titleId="comments-sheet-title"
+        className="z-[140]"
+        maxHeight="min(85dvh,720px)"
+        ariaLabel="Drag down to close comments"
+      >
+        <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+          {commentsHeader}
+          {commentsBody}
+          {commentsComposer}
+        </div>
+      </MobileSnapBottomSheet>
+    );
+    return createPortal(sheet, document.body);
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         className={cn(
-          "flex flex-col gap-0 border-0 p-0 overflow-hidden",
-          "sm:max-w-md sm:rounded-2xl sm:max-h-[min(90vh,580px)]",
-          mobileBottomSheetSlideAnimationClass,
+          "flex max-h-[min(90vh,580px)] flex-col gap-0 overflow-hidden border-0 p-0",
+          "md:max-w-md md:rounded-2xl",
         )}
       >
-        <DialogHeader className="px-5 py-4">
+        <DialogHeader className="shrink-0 px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <MessageCircle className="h-5 w-5 text-orange-500" strokeWidth={2} />
             {t("common.comments")}
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-5">
-          <div className="space-y-5 py-4">
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : comments.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                {t("feed.noCommentsYet")}
-              </p>
-            ) : (
-              comments.map((c) => {
-                const name = c.author?.full_name?.trim() || "Member";
-                return (
-                  <div key={c.id} className="flex gap-3">
-                    {c.author?.id ? (
-                      <GuestAwareProfileLink
-                        userId={c.author.id}
-                        className="shrink-0 rounded-full outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        aria-label={`View ${name} profile`}
-                        onClick={() => onClose()}
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={c.author?.photo_url ?? undefined} />
-                          <AvatarFallback className="text-xs font-bold">
-                            {name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </GuestAwareProfileLink>
-                    ) : (
-                      <Avatar className="h-8 w-8 shrink-0 opacity-60">
-                        <AvatarImage src={c.author?.photo_url ?? undefined} />
-                        <AvatarFallback className="text-xs font-bold">
-                          {name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-2">
-                        {c.author?.id ? (
-                          <GuestAwareProfileLink
-                            userId={c.author.id}
-                            className="text-sm font-semibold text-foreground hover:underline underline-offset-2"
-                            aria-label={`View ${name} profile`}
-                            onClick={() => onClose()}
-                          >
-                            {name}
-                          </GuestAwareProfileLink>
-                        ) : (
-                          <span className="text-sm font-semibold text-foreground">
-                            {name}
-                          </span>
-                        )}
-                        <time className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(c.created_at), {
-                            addSuffix: true,
-                            locale: dateLocale,
-                          })}
-                        </time>
-                      </div>
-                      <p
-                        {...bidirectionalTextProps(
-                          c.body,
-                          "mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90",
-                        )}
-                      >
-                        {c.body}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={bottomRef} />
-          </div>
-        </ScrollArea>
-
-        <div className="border-t border-border/60 bg-muted/30 px-4 py-3">
-          {user ? (
-            <div className="flex items-end gap-2">
-              <Textarea
-                placeholder={t("feed.writeComment")}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void submitComment();
-                  }
-                }}
-                maxLength={4000}
-                rows={2}
-                {...bidirectionalInputProps(
-                  draft,
-                  "min-h-[2.5rem] flex-1 resize-none bg-background text-sm",
-                )}
-                disabled={submitting}
-              />
-              <Button
-                type="button"
-                size="icon"
-                className="h-9 w-9 shrink-0 rounded-full bg-orange-600 hover:bg-orange-700 text-white"
-                disabled={submitting || !draft.trim()}
-                onClick={() => void submitComment()}
-              >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 translate-x-[1px]" />
-                )}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-center text-sm text-muted-foreground">
-                Join the community to comment and connect with others.
-              </p>
-              <Button
-                type="button"
-                className={cn(
-                  "h-10 w-full rounded-xl font-bold",
-                  "bg-black text-white hover:bg-black/90 focus-visible:ring-white/30",
-                )}
-                onClick={() => openGuestAuthPrompt({ variant: "engage" })}
-              >
-                Sign in / Register
-              </Button>
-            </div>
-          )}
-        </div>
+        {commentsBody}
+        {commentsComposer}
       </DialogContent>
     </Dialog>
   );
@@ -1006,8 +1097,8 @@ function postTypeBadgeClassName(
   return cn(
     "inline-flex items-center font-black uppercase tracking-wider border-0 shadow-none",
     size === "lg"
-      ? "gap-2.5 rounded-lg px-4 py-1.5 text-[13px]"
-      : "gap-2 rounded-md px-3.5 py-1 text-[12px]",
+      ? "gap-2.5 rounded-lg px-4 py-2 text-[14px]"
+      : "gap-2 rounded-md px-3.5 py-1.5 text-[13px]",
     typeId === "request_help" &&
       "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
     typeId === "offer_service" &&
@@ -1038,7 +1129,7 @@ function PostTypeBadge({
 
   if (compact) {
     return (
-      <span className={cn(postTypeBadgeClassName(typeId, "default"), "px-2.5 py-0.5 text-[11px] tracking-wide", className)}>
+      <span className={cn(postTypeBadgeClassName(typeId, "default"), "px-3 py-1 text-[12px] tracking-wide", className)}>
         {feedPostTypeBadgeLabel(t, typeId, typeName)}
       </span>
     );
@@ -1048,7 +1139,7 @@ function PostTypeBadge({
     <span className={cn(postTypeBadgeClassName(typeId, size), className)}>
       <Icon
         className={cn(
-          size === "lg" ? "h-5 w-5" : "h-[18px] w-[18px]",
+          size === "lg" ? "h-5 w-5" : "h-[19px] w-[19px]",
           "shrink-0",
           meta?.iconColor ?? "text-orange-500",
         )}
@@ -2566,9 +2657,19 @@ function PostAuthorAvatar({
 
   return (
     <AvatarWithLiveDot liveUntil={liveUntil}>
-      <Avatar className="h-11 w-11 shrink-0">
+      <Avatar
+        className={cn(
+          "shrink-0",
+          variant === "overlay" ? "h-11 w-11" : "h-14 w-14",
+        )}
+      >
         <AvatarImage src={photoUrl} className="object-cover" alt="" />
-        <AvatarFallback className={fallbackClass}>
+        <AvatarFallback
+          className={cn(
+            fallbackClass,
+            variant === "card" && "text-base",
+          )}
+        >
           {authorName.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -3436,7 +3537,7 @@ function PostCard({
       : null;
   const effectiveCaption = post.caption?.trim() || generatedCopy?.short_text || "";
   const captionLayout = effectiveCaption
-    ? bidirectionalTextProps(effectiveCaption, "text-left")
+    ? bidirectionalTextProps(effectiveCaption)
     : null;
   const isSource = post.source === "availability";
   const eventDateTimeLabel = useMemo(() => {
@@ -3511,6 +3612,15 @@ function PostCard({
     [effectiveCaption, generatedCopy, postTitle],
   );
 
+  const postTitleLayout = useMemo(
+    () => (postTitle ? bidirectionalTextProps(postTitle) : null),
+    [postTitle],
+  );
+  const globalFeedContentLayout = useMemo(() => {
+    const text = postDescription || postTitle || effectiveCaption;
+    return text ? bidirectionalTextProps(text) : null;
+  }, [postDescription, postTitle, effectiveCaption]);
+
   const authorFirstName = authorName.split(" ")[0] || authorName;
 
   const globalFeedCtaText = useMemo(
@@ -3541,6 +3651,35 @@ function PostCard({
       postTypeId === "request_help" ||
       postTypeId === "offer_service" ||
       postTypeId === "event");
+
+  const canOpenInReelsViewer = isReelsViewerPost(post as ReelFeedPost);
+
+  function tryOpenMobileReels() {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 768px)").matches
+    ) {
+      return;
+    }
+    if (!canOpenInReelsViewer) return;
+    onOpenMediaReels(post.id);
+  }
+
+  function handleDesktopCardClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!isGlobalFeed || !canOpenInReelsViewer) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.matchMedia("(min-width: 768px)").matches
+    ) {
+      return;
+    }
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest("a, button, input, textarea, select, video, [data-feed-interactive]")) {
+      return;
+    }
+    onOpenMediaReels(post.id);
+  }
 
   function toggleInlineVideoMute(e: React.MouseEvent) {
     e.stopPropagation();
@@ -3605,22 +3744,32 @@ function PostCard({
 
   function renderEngagementRow() {
     const btnPad = isGlobalFeed
-      ? "py-2"
+      ? "py-2.5"
       : hasMedia
         ? isProfile
-          ? "py-1"
-          : "py-1.5"
+          ? "py-1.5"
+          : "py-2"
         : isProfile
-          ? "py-2"
-          : "py-2.5";
-    const iconClass = isGlobalFeed ? "h-5 w-5" : "h-6 w-6";
+          ? "py-2.5"
+          : "py-3";
+    const iconClass = isGlobalFeed ? "h-6 w-6" : "h-7 w-7";
+    const engagementTextClass = isGlobalFeed
+      ? "text-[15px] font-bold"
+      : "text-[17px] font-semibold";
+    const engagementBtnPx = isGlobalFeed ? "px-3" : "px-3.5";
     const engagementDisabled = post.source === "availability";
     return (
       <div
         className={cn(
-          "flex items-center justify-between bg-transparent",
-          isGlobalFeed ? cn(cardPadX, "mt-1 border-t border-zinc-200/70 dark:border-zinc-800/80") : cn("mt-1.5", cardMarginX),
-          isGlobalFeed ? "pb-3.5 pt-1" : isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0",
+          "flex items-center justify-between",
+          isGlobalFeed
+            ? cn(
+                cardPadX,
+                "mt-1 border-t border-zinc-200/70 dark:border-zinc-700/45",
+                "bg-zinc-50/70 dark:bg-transparent",
+                "rounded-b-2xl pb-3.5 pt-2",
+              )
+            : cn("mt-1.5 bg-transparent", cardMarginX, isProfile ? "pb-3 pt-0" : "pb-3.5 pt-0"),
         )}
       >
         <div className="flex items-center gap-0">
@@ -3630,8 +3779,9 @@ function PostCard({
               disabled={liking || engagementDisabled}
               onClick={() => void toggleLike()}
               className={cn(
-                "flex items-center gap-1.5 rounded-full text-sm font-semibold transition-all",
-                isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
+                "flex items-center gap-2 rounded-full transition-all",
+                engagementTextClass,
+                engagementBtnPx,
                 btnPad,
                 post.liked_by_me
                   ? "text-rose-500"
@@ -3653,8 +3803,9 @@ function PostCard({
             type="button"
             onClick={() => setCommentsOpen(true)}
             className={cn(
-              "flex items-center gap-1.5 rounded-full text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
-              isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
+              "flex items-center gap-2 rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+              engagementTextClass,
+              engagementBtnPx,
               btnPad,
             )}
             aria-label="Comments"
@@ -3677,8 +3828,9 @@ function PostCard({
                 : undefined
             }
             className={cn(
-              "flex items-center gap-1.5 rounded-full text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
-              isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
+              "flex items-center gap-2 rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-orange-600 dark:text-white dark:hover:text-orange-400",
+              engagementTextClass,
+              engagementBtnPx,
               btnPad,
             )}
             aria-label="Share"
@@ -3704,8 +3856,9 @@ function PostCard({
             aria-label={jobSaved ? "Remove from saved requests" : "Save request"}
             aria-pressed={jobSaved}
             className={cn(
-              "flex items-center gap-1.5 rounded-full text-sm font-semibold transition-colors",
-              isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
+              "flex items-center gap-2 rounded-full transition-colors",
+              engagementTextClass,
+              engagementBtnPx,
               btnPad,
               jobSaved
                 ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
@@ -3739,8 +3892,9 @@ function PostCard({
             aria-label={authorSaved ? "Remove author from saved profiles" : "Save author to saved profiles"}
             aria-pressed={authorSaved}
             className={cn(
-              "flex items-center gap-1.5 rounded-full text-sm font-semibold transition-colors",
-              isGlobalFeed ? "px-2.5" : "px-3.5 text-base",
+              "flex items-center gap-2 rounded-full transition-colors",
+              engagementTextClass,
+              engagementBtnPx,
               btnPad,
               authorSaved
                 ? "text-amber-600 hover:text-amber-700 dark:text-amber-400"
@@ -3806,20 +3960,22 @@ function PostCard({
           ? feedItemDomId(post.source, post.id)
           : undefined
       }
+      onClick={handleDesktopCardClick}
       className={cn(
         "overflow-hidden transition-all duration-300 border-0",
         isGlobalFeed
-          ? "rounded-2xl bg-white shadow-none dark:bg-zinc-900/50"
+          ? cn("rounded-2xl", globalFeedCardSurfaceClass)
           : isDiscover || isPlainCard
           ? "bg-transparent shadow-none ring-0 outline-none rounded-none dark:bg-transparent"
           : "bg-white shadow-none dark:bg-zinc-950/20 md:rounded-2xl md:shadow-md",
         isFocused && "scroll-mt-24 scroll-mb-28",
         desktopDiscoverFeedColumnClass,
+        isGlobalFeed && canOpenInReelsViewer && "md:cursor-pointer",
       )}
     >
       {/* Header — always rendered outside the media block */}
       {isGlobalFeed ? (
-        <div className={cn("flex items-start gap-3", cardPadX, "pt-3.5 pb-2")}>
+        <div className={cn("flex items-start gap-3.5", cardPadX, "pt-3.5 pb-2")}>
           <GuestAwareProfileLink
             userId={post.author_id}
             className="shrink-0 self-start"
@@ -3835,24 +3991,24 @@ function PostCard({
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-start justify-between gap-2">
               <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-1.5">
+                <div className="flex min-w-0 items-center gap-2">
                   <GuestAwareProfileLink
                     userId={post.author_id}
-                    className="truncate text-[17px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
+                    className="truncate text-[19px] font-bold leading-tight text-foreground hover:underline underline-offset-2"
                     aria-label={`View ${authorName} profile`}
                   >
                     {authorName}
                   </GuestAwareProfileLink>
                   {post.author?.is_verified ? (
                     <BadgeCheck
-                      className="h-4 w-4 shrink-0"
+                      className="h-5 w-5 shrink-0"
                       fill="#0ea5e9"
                       color="#ffffff"
                       aria-label="Verified"
                     />
                   ) : null}
                 </div>
-                <p className="mt-0.5 text-[13px] font-medium leading-snug text-muted-foreground">
+                <p className="mt-1 text-[15px] font-medium leading-snug text-muted-foreground">
                   {post.author?.is_verified ? (
                     <>
                       <span>{t("feed.global.verified")}</span>
@@ -3914,7 +4070,7 @@ function PostCard({
       ) : (
       <div
         className={cn(
-          "flex items-start gap-3",
+          "flex items-start gap-3.5",
           cardPadX,
           isProfile ? "pt-3 pb-1.5" : "pt-4 pb-2",
         )}
@@ -3931,33 +4087,48 @@ function PostCard({
             variant="card"
           />
         </GuestAwareProfileLink>
-        <div className="min-w-0 flex-1 flex flex-col gap-0.5 pt-0.5">
-          <div className="flex min-w-0 items-center gap-1.5">
+        <div className="min-w-0 flex-1 flex flex-col gap-1 pt-0.5">
+          <div className="flex min-w-0 items-center gap-2">
             <GuestAwareProfileLink
               userId={post.author_id}
-              className="truncate font-black text-xl leading-tight text-foreground hover:underline underline-offset-2"
+              className="truncate text-[21px] font-black leading-tight text-foreground hover:underline underline-offset-2"
               aria-label={`View ${authorName} profile`}
             >
               {authorName}
             </GuestAwareProfileLink>
             {post.author?.is_verified ? (
               <BadgeCheck
-                className="h-[18px] w-[18px] shrink-0"
+                className="h-5 w-5 shrink-0"
                 fill="#0ea5e9"
                 color="#ffffff"
                 aria-label="Verified"
               />
             ) : null}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <time className="text-[13px] font-semibold tabular-nums text-muted-foreground">{postedLabel}</time>
-            {isSource && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
-                <Sparkles className="h-3 w-3" />
-                {feedCategoryLabel(t, (post as AvailabilityPost).category)}
-              </span>
-            )}
-          </div>
+          <p className="text-[14px] font-medium leading-snug text-muted-foreground">
+            {post.author?.is_verified ? (
+              <>
+                <span>{t("feed.global.verified")}</span>
+                <span aria-hidden> · </span>
+              </>
+            ) : null}
+            <time className="tabular-nums">{postedLabel}</time>
+            {postLocationLine ? (
+              <>
+                <span aria-hidden> · </span>
+                <span>{postLocationLine}</span>
+              </>
+            ) : null}
+            {isSource ? (
+              <>
+                <span aria-hidden> · </span>
+                <span className="inline-flex items-center gap-1 font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {feedCategoryLabel(t, (post as AvailabilityPost).category)}
+                </span>
+              </>
+            ) : null}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 self-start pt-0.5">
           {isEventPost && (eventHelpersNeeded != null || eventAcceptedHelpers > 0) ? (
@@ -4206,38 +4377,60 @@ function PostCard({
         <>
           {isGlobalTextOnlyCard ? (
             <div className={cn(cardPadX, "pb-1")}>
-              <div
+              <button
+                type="button"
+                onClick={tryOpenMobileReels}
                 className={cn(
-                  "rounded-xl p-4",
+                  "w-full rounded-xl p-4 transition-opacity active:opacity-90 max-md:cursor-pointer",
+                  globalFeedContentLayout?.className,
                   globalFeedTextOnlySurfaceClass(postTypeId),
                 )}
+                dir={globalFeedContentLayout?.dir}
+                aria-label="View post full screen"
               >
                 {postTitle ? (
-                  <h3 className="flex items-center gap-2 text-[17px] font-bold leading-snug text-foreground">
+                  <h3
+                    className={cn(
+                      "flex items-center gap-2 text-[19px] font-bold leading-snug text-foreground",
+                      postTitleLayout?.className,
+                    )}
+                    dir={postTitleLayout?.dir}
+                  >
                     {serviceCategoryMeta?.id ? (
                       <CategoryIcon
                         categoryId={serviceCategoryMeta.id}
-                        className="h-5 w-5 shrink-0"
+                        className="h-6 w-6 shrink-0"
                       />
                     ) : null}
                     <span>{postTitle}</span>
                   </h3>
                 ) : null}
                 {postDescription ? (
-                  <p className="mt-2 text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                  <p
+                    {...bidirectionalTextProps(
+                      postDescription,
+                      "mt-2 text-[17px] leading-relaxed text-foreground/90 whitespace-pre-wrap",
+                    )}
+                  >
                     {renderCaptionWithMentions(postDescription)}
                   </p>
                 ) : null}
-                <div className="mt-3 space-y-1.5 text-[14px] font-medium text-foreground/85">
+                <div
+                  className={cn(
+                    "mt-3 space-y-2 text-[16px] font-medium text-foreground/85",
+                    globalFeedContentLayout?.className,
+                  )}
+                  dir={globalFeedContentLayout?.dir}
+                >
                   {postLocationLine ? (
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <span>{postLocationLine}</span>
                     </div>
                   ) : null}
                   {whenLabel ? (
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <span>{whenLabel}</span>
                     </div>
                   ) : null}
@@ -4245,7 +4438,7 @@ function PostCard({
                   post.post_type_id === "request_help" &&
                   post.post_metadata?.budget ? (
                     <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                      <Coins className="h-4 w-4 shrink-0" />
+                      <Coins className="h-5 w-5 shrink-0" />
                       <span>
                         ₪{post.post_metadata.budget}{" "}
                         <span className="text-muted-foreground">
@@ -4256,7 +4449,7 @@ function PostCard({
                   ) : null}
                   {isJobRequest && post.post_metadata?.budget ? (
                     <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                      <Coins className="h-4 w-4 shrink-0" />
+                      <Coins className="h-5 w-5 shrink-0" />
                       <span>
                         ₪{post.post_metadata.budget}{" "}
                         <span className="text-muted-foreground">
@@ -4269,7 +4462,7 @@ function PostCard({
                   post.post_type_id === "offer_service" &&
                   post.post_metadata?.rate ? (
                     <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                      <Coins className="h-4 w-4 shrink-0" />
+                      <Coins className="h-5 w-5 shrink-0" />
                       <span>
                         ₪{post.post_metadata.rate}{" "}
                         <span className="text-muted-foreground">
@@ -4280,7 +4473,7 @@ function PostCard({
                   ) : null}
                   {isEventPost && eventHelpersNeeded != null ? (
                     <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <span>
                         {t("feed.event.helpersBadge", {
                           accepted: eventAcceptedHelpers,
@@ -4290,40 +4483,69 @@ function PostCard({
                     </div>
                   ) : null}
                 </div>
-              </div>
+              </button>
             </div>
           ) : (
             <>
               {(postTitle || postDescription) && (
-                <div className={cn(cardPadX, hasMedia ? "pt-2.5" : "pt-2")}>
+                <button
+                  type="button"
+                  onClick={tryOpenMobileReels}
+                  className={cn(
+                    cardPadX,
+                    hasMedia ? "pt-2.5" : "pt-2",
+                    "w-full max-md:active:opacity-90",
+                    globalFeedContentLayout?.className,
+                    !hasMedia && "max-md:cursor-pointer",
+                  )}
+                  dir={globalFeedContentLayout?.dir}
+                  aria-label={!hasMedia ? "View post full screen" : undefined}
+                  disabled={hasMedia}
+                >
                   {postTitle ? (
-                    <h3 className="text-[17px] font-bold leading-snug text-foreground">
+                    <h3
+                      className={cn(
+                        "text-[19px] font-bold leading-snug text-foreground",
+                        postTitleLayout?.className,
+                      )}
+                      dir={postTitleLayout?.dir}
+                    >
                       {postTitle}
                     </h3>
                   ) : null}
                   {postDescription ? (
                     <p
-                      className={cn(
-                        "text-[15px] leading-relaxed text-muted-foreground whitespace-pre-wrap",
-                        postTitle && "mt-1",
+                      {...bidirectionalTextProps(
+                        postDescription,
+                        cn(
+                          "text-[17px] leading-relaxed text-muted-foreground whitespace-pre-wrap",
+                          postTitle && "mt-1",
+                        ),
                       )}
                     >
                       {renderCaptionWithMentions(postDescription)}
                     </p>
                   ) : null}
-                </div>
+                </button>
               )}
               {showFeedMetadataBox ? (
-                <div className={cn(cardPadX, "mt-2 space-y-1.5 text-[14px] font-medium text-foreground/90")}>
+                <div
+                  className={cn(
+                    cardPadX,
+                    "mt-2 space-y-2 text-[16px] font-medium text-foreground/90",
+                    globalFeedContentLayout?.className,
+                  )}
+                  dir={globalFeedContentLayout?.dir}
+                >
                   {postLocationLine ? (
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <span>{postLocationLine}</span>
                     </div>
                   ) : null}
                   {whenLabel ? (
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <span>{whenLabel}</span>
                     </div>
                   ) : null}
@@ -4331,7 +4553,7 @@ function PostCard({
                   post.post_type_id === "request_help" &&
                   post.post_metadata?.budget ? (
                     <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                      <Coins className="h-4 w-4 shrink-0" />
+                      <Coins className="h-5 w-5 shrink-0" />
                       <span>
                         ₪{post.post_metadata.budget}{" "}
                         <span className="text-muted-foreground">
@@ -4344,7 +4566,7 @@ function PostCard({
                   post.post_type_id === "offer_service" &&
                   post.post_metadata?.rate ? (
                     <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                      <Coins className="h-4 w-4 shrink-0" />
+                      <Coins className="h-5 w-5 shrink-0" />
                       <span>
                         ₪{post.post_metadata.rate}{" "}
                         <span className="text-muted-foreground">
@@ -4355,7 +4577,7 @@ function PostCard({
                   ) : null}
                   {isEventPost && eventHelpersNeeded != null ? (
                     <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <span>
                         {t("feed.event.helpersBadge", {
                           accepted: eventAcceptedHelpers,
@@ -4413,7 +4635,12 @@ function PostCard({
       {/* Community title — shown above caption as a heading */}
       {post.source === "post" && post.post_type_id === "community" && (generatedCopy?.title || post.post_metadata?.title) && (
         <div className={cn(cardPadX, hasMedia ? "pt-1" : "pt-3")}>
-          <h3 className="text-lg font-extrabold leading-snug text-blue-600 dark:text-blue-400">
+          <h3
+            {...bidirectionalTextProps(
+              generatedCopy?.title || post.post_metadata?.title || "",
+              "text-lg font-extrabold leading-snug text-blue-600 dark:text-blue-400",
+            )}
+          >
             {generatedCopy?.title || post.post_metadata.title}
           </h3>
         </div>
@@ -4421,27 +4648,20 @@ function PostCard({
 
       {effectiveCaption && (() => {
         const captionExpandable = isPostCaptionExpandable(effectiveCaption, hasMedia);
-        return (
-        <div
-          className={cn(
-            cardPadX,
-            "pb-0",
-            hasMedia ? "pt-0 md:pt-0.5 md:pb-1" : "pt-2 md:pt-3 md:pb-1",
-          )}
-        >
+        const captionBody = (
           <div className="flex items-end justify-between gap-3">
             <div className={cn("flex-1", captionLayout?.className)} dir={captionLayout?.dir}>
               <p
                 {...bidirectionalTextProps(
                   effectiveCaption,
                   cn(
-                    "text-[17px] leading-relaxed text-foreground whitespace-pre-wrap",
+                    "text-[18px] leading-relaxed text-foreground whitespace-pre-wrap",
                     !captionExpanded &&
                       (hasMedia ? "line-clamp-2" : "line-clamp-[10]"),
                   ),
                 )}
               >
-                <span className="text-[18px] font-black lowercase">{authorName}</span>{" "}
+                <span className="text-[19px] font-black lowercase">{authorName}</span>{" "}
                 <span className="mx-1 inline-block align-middle text-[13px] text-muted-foreground">•</span>{" "}
                 {renderCaptionWithMentions(effectiveCaption)}
               </p>
@@ -4461,6 +4681,42 @@ function PostCard({
               </button>
             ) : null}
           </div>
+        );
+
+        if (!hasMedia) {
+          return (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={tryOpenMobileReels}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  tryOpenMobileReels();
+                }
+              }}
+              className={cn(
+                cardPadX,
+                "w-full pb-0 pt-2 max-md:cursor-pointer max-md:active:opacity-90 md:pt-3 md:pb-1",
+                captionLayout?.className,
+              )}
+              dir={captionLayout?.dir}
+              aria-label="View post full screen"
+            >
+              {captionBody}
+            </div>
+          );
+        }
+
+        return (
+        <div
+          className={cn(
+            cardPadX,
+            "pb-0",
+            "pt-0 md:pt-0.5 md:pb-1",
+          )}
+        >
+          {captionBody}
         </div>
         );
       })()}
@@ -4910,31 +5166,6 @@ export function ProfilePostsFeed({
   const deepLinkHandledRef = useRef<string | null>(null);
   const requestDeepLinkHandledRef = useRef<string | null>(null);
   const scrollToPostHandledRef = useRef<string | null>(null);
-  /**
-   * Track viewport width so we can render the desktop full-size viewer
-   * (`PostMediaDesktopViewer`) on md+ screens and the mobile reels viewer
-   * (`PostMediaReelsViewer`) on smaller screens. Reacts live to resize so the
-   * correct variant always reflects the current viewport.
-   */
-  const [isDesktopViewport, setIsDesktopViewport] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(min-width: 768px)").matches;
-  });
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(min-width: 768px)");
-    const onChange = (e: MediaQueryListEvent | MediaQueryList) => {
-      setIsDesktopViewport((e as MediaQueryList).matches ?? false);
-    };
-    setIsDesktopViewport(mql.matches);
-    if ("addEventListener" in mql) {
-      mql.addEventListener("change", onChange);
-      return () => mql.removeEventListener("change", onChange);
-    }
-    // Safari < 14 fallback
-    (mql as MediaQueryList).addListener(onChange);
-    return () => (mql as MediaQueryList).removeListener(onChange);
-  }, []);
   const queryClient = useQueryClient();
 
   const advancedFilters = feedAdvancedFilters;
@@ -6176,32 +6407,18 @@ export function ProfilePostsFeed({
       )}
 
       {reelsOpenPostId !== null ? (
-        isDesktopViewport ? (
-          <PostMediaDesktopViewer
-            key={`desktop-${reelsOpenPostId}`}
-            open
-            posts={displayPosts as unknown as ReelFeedPost[]}
-            initialPostId={reelsOpenPostId}
-            onClose={() => setReelsOpenPostId(null)}
-            currentUserId={user?.id ?? null}
-            onLikeToggle={handleLikeToggle}
-            onRefreshShareStats={refreshPostShareStats}
-            hideLikeButton={Boolean(filterLikedByUserId)}
-          />
-        ) : (
-          <PostMediaReelsViewer
-            key={`reels-${reelsOpenPostId}`}
-            open
-            posts={displayPosts as unknown as ReelFeedPost[]}
-            initialPostId={reelsOpenPostId}
-            onClose={() => setReelsOpenPostId(null)}
-            currentUserId={user?.id ?? null}
-            onLikeToggle={handleLikeToggle}
-            onRefreshShareStats={refreshPostShareStats}
-            onOpenComments={(postId) => setReelCommentsPostId(postId)}
-            hideLikeButton={Boolean(filterLikedByUserId)}
-          />
-        )
+        <PostMediaReelsViewer
+          key={`reels-${reelsOpenPostId}`}
+          open
+          posts={displayPosts as unknown as ReelFeedPost[]}
+          initialPostId={reelsOpenPostId}
+          onClose={() => setReelsOpenPostId(null)}
+          currentUserId={user?.id ?? null}
+          onLikeToggle={handleLikeToggle}
+          onRefreshShareStats={refreshPostShareStats}
+          onOpenComments={(postId) => setReelCommentsPostId(postId)}
+          hideLikeButton={Boolean(filterLikedByUserId)}
+        />
       ) : null}
 
       <CommentsDialog

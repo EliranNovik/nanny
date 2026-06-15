@@ -1,6 +1,24 @@
 import type { TFunction } from "i18next";
+import { format, parseISO } from "date-fns";
 import { haversineDistanceKm } from "@/lib/geo";
+import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import type { GeneratedPostCopy } from "@/lib/generatedPostCopy";
+import { cn } from "@/lib/utils";
+
+const FEED_POST_TYPE_IDS = [
+  "request_help",
+  "offer_service",
+  "community",
+  "event",
+] as const;
+
+const FEED_WHEN_LABEL_KEYS: Record<string, string> = {
+  now: "feed.filters.whenNow",
+  today: "feed.filters.whenToday",
+  tomorrow: "feed.filters.whenTomorrow",
+  this_week: "feed.filters.whenThisWeek",
+  custom: "feed.filters.whenCustom",
+};
 
 export type ViewerLocation = {
   lat?: number | null;
@@ -113,6 +131,10 @@ export function feedPostDescription(
   return text;
 }
 
+/** Global feed post card shell — darker on desktop dark mode for contrast with page bg. */
+export const globalFeedCardSurfaceClass =
+  "bg-white shadow-none dark:bg-zinc-800/65 md:dark:bg-zinc-900";
+
 export function globalFeedPostTypeAccentClass(typeId: string | null): string {
   switch (typeId) {
     case "request_help":
@@ -191,4 +213,158 @@ export function globalFeedPrimaryCtaClass(typeId: string | null, state?: "accept
     default:
       return "bg-orange-600 hover:bg-orange-700 text-white";
   }
+}
+
+function feedLocationSlug(part: string): string {
+  return part
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+export function feedRateTypeLabel(t: TFunction, rateType?: string | null): string {
+  return rateType === "per_hour"
+    ? t("feed.budget.perHour")
+    : t("feed.budget.fixedPrice");
+}
+
+export function feedLocationDisplayLabel(
+  t: TFunction,
+  location?: string | null,
+): string {
+  if (!location?.trim()) return "";
+  const localizedCountry = t("feed.location.countryIsrael");
+  const parts = location
+    .trim()
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return location.trim();
+
+  return parts
+    .map((part) => {
+      if (/^israel$/i.test(part)) return localizedCountry;
+      const slug = feedLocationSlug(part);
+      if (!slug) return part;
+      return t(`feed.location.cities.${slug}`, { defaultValue: part });
+    })
+    .join(", ");
+}
+
+function feedEventDateTimeLabel(
+  t: TFunction,
+  language: string,
+  metadata: Record<string, unknown>,
+): string | null {
+  const eventDate = metadata.event_date;
+  if (typeof eventDate === "string" && eventDate.trim()) {
+    try {
+      const base = parseISO(eventDate.trim());
+      if (!Number.isNaN(base.getTime())) {
+        const locale = dateFnsLocaleFor(language);
+        const eventTime = metadata.event_time;
+        const timeStr = typeof eventTime === "string" ? eventTime : "00:00";
+        const [hours, minutes] = timeStr.split(":").map((part) => parseInt(part, 10));
+        const dt = new Date(base);
+        dt.setHours(
+          Number.isFinite(hours) ? hours : 0,
+          Number.isFinite(minutes) ? minutes : 0,
+          0,
+          0,
+        );
+        return t("feed.event.dateTime", {
+          date: format(dt, "EEEE, MMMM d", { locale }),
+          time: format(dt, "h:mm a", { locale }),
+        });
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  const dateTime = metadata.date_time;
+  return typeof dateTime === "string" && dateTime.trim() ? dateTime.trim() : null;
+}
+
+function feedWhenLabelFromMetadata(
+  t: TFunction,
+  metadata: Record<string, unknown>,
+): string | null {
+  const timeframe = metadata.timeframe;
+  if (typeof timeframe !== "string" || !timeframe) return null;
+  if (timeframe === "custom") {
+    const customWhen = metadata.custom_when;
+    return typeof customWhen === "string" && customWhen.trim()
+      ? customWhen.trim()
+      : null;
+  }
+  const key = FEED_WHEN_LABEL_KEYS[timeframe];
+  if (key) return t(key);
+  return timeframe.replace(/_/g, " ");
+}
+
+export function feedPostWhenLabel(
+  t: TFunction,
+  language: string,
+  postTypeId: string | null,
+  metadata: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!metadata) return null;
+  if (postTypeId === "request_help" && metadata.timeframe) {
+    return feedWhenLabelFromMetadata(t, metadata);
+  }
+  if (postTypeId === "event") {
+    return feedEventDateTimeLabel(t, language, metadata);
+  }
+  return null;
+}
+
+export function feedPostBudgetLine(
+  t: TFunction,
+  postTypeId: string | null,
+  metadata: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!metadata || !postTypeId) return null;
+  if (postTypeId === "request_help") {
+    const budget = metadata.budget;
+    if (budget == null || budget === "") return null;
+    return `₪${budget} ${feedRateTypeLabel(t, metadata.rate_type as string | null | undefined)}`;
+  }
+  if (postTypeId === "offer_service") {
+    const rate = metadata.rate;
+    if (rate == null || rate === "") return null;
+    return `₪${rate} ${feedRateTypeLabel(t, metadata.rate_type as string | null | undefined)}`;
+  }
+  return null;
+}
+
+export function globalFeedPostTypeBadgeLabel(
+  t: TFunction,
+  typeId: string,
+  typeName?: string,
+): string {
+  if ((FEED_POST_TYPE_IDS as readonly string[]).includes(typeId)) {
+    return t(`feed.postType.${typeId}`);
+  }
+  return typeName ?? typeId;
+}
+
+export function globalFeedPostTypeBadgeClass(typeId: string): string {
+  return cn(
+    "inline-flex items-center font-black uppercase tracking-wide rounded-md px-2.5 py-0.5 text-[11px]",
+    typeId === "request_help" && "bg-red-500/25 text-red-200",
+    typeId === "offer_service" && "bg-emerald-500/25 text-emerald-200",
+    typeId === "community" && "bg-blue-500/25 text-blue-200",
+    typeId === "event" && "bg-violet-500/25 text-violet-200",
+  );
+}
+
+export function feedPostReelLocationLine(
+  t: TFunction,
+  post: GlobalFeedPostLike,
+): string | null {
+  const address = feedPostLocationAddress(post);
+  if (!address) return null;
+  return feedLocationDisplayLabel(t, address);
 }

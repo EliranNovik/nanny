@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { ProfilePostsFeed, ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
 import { PageFrame } from "@/components/page-frame";
 import { useAuth } from "@/context/AuthContext";
@@ -7,7 +6,7 @@ import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
 import { useKycGate } from "@/context/KycGateContext";
 import { useMobileShellScrollCollapse } from "@/hooks/useMobileShellScrollCollapse";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Send, MapPin } from "lucide-react";
+import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debugProfilePostDeepLink } from "@/lib/profilePostDeepLinkDebug";
 import { parseProfilePostShareId } from "@/lib/profilePostShare";
@@ -89,7 +88,6 @@ function FeedMainContent({
   profile,
   viewerLocation,
 }: FeedMainContentProps) {
-  const { t } = useTranslation();
   const sidePanelPostTypeIds = useMemo(
     () => (postTypeFilter === "all" ? null : [postTypeFilter]),
     [postTypeFilter],
@@ -119,13 +117,6 @@ function FeedMainContent({
         variant="global"
         className="mb-4 mt-3 md:mb-5 md:mt-4 px-2 md:px-0"
       />
-
-      {viewerLocation?.city ? (
-        <p className="mb-3 flex items-center gap-2 px-2 text-[13px] font-medium text-muted-foreground md:px-0">
-          <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-          {t("feed.global.showingNear", { city: viewerLocation.city })}
-        </p>
-      ) : null}
 
       <ProfilePostsFeed
         appearance="discover"

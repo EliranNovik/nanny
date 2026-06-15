@@ -79,6 +79,7 @@ import { subscribeMatchSearchChromeVisible } from "@/lib/matchSearchHeaderState"
 import { subscribeDiscoverHomeOverlay } from "@/lib/discoverHomeOverlayState";
 import { subscribeCommunityFeedOverlay } from "@/lib/communityFeedOverlayState";
 import {
+  signedInAppHeaderBgClass,
   signedInHeaderIconBtnClass,
   signedInHeaderLocationBtnClass,
 } from "@/lib/discoverHomeHeaderChrome";
@@ -862,7 +863,10 @@ export function BottomNav() {
   const DesktopHeader = (
     <header
       data-desktop-header-strip=""
-      className="hidden md:block fixed inset-x-0 top-0 z-50 border-0 bg-white shadow-none backdrop-blur-none transition-colors duration-300 dark:bg-zinc-900"
+      className={cn(
+        "hidden md:block fixed inset-x-0 top-0 z-50 border-0 shadow-none backdrop-blur-none transition-colors duration-300",
+        signedInAppHeaderBgClass,
+      )}
     >
       {/*
        * Full-viewport grid: 220px sidebar column + content spanning to the right edge.
@@ -988,7 +992,10 @@ export function BottomNav() {
   const MobileSignedInHeader = !hideMobileAppHeaderChrome ? (
     <header
       data-mobile-header-strip
-      className="md:hidden fixed inset-x-0 top-0 z-[60] border-0 bg-white dark:bg-zinc-900"
+      className={cn(
+        "md:hidden fixed inset-x-0 top-0 z-[60] border-0 backdrop-blur-none",
+        signedInAppHeaderBgClass,
+      )}
       style={{
         paddingTop: "var(--app-safe-top, env(safe-area-inset-top, 0px))",
       }}

@@ -1,12 +1,10 @@
 import { cn } from "@/lib/utils";
+import { signedInAppHeaderBgClass } from "@/lib/discoverHomeHeaderChrome";
 
 /** Rich dark gradient + light neutral background for the chat thread. */
 export const chatAreaBgClass = "chat-screen bg-zinc-50 text-foreground dark:text-white";
 
-export const chatChromeBarClass = cn(
-  "bg-white/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/90",
-  "dark:bg-[#14161d]/85 dark:supports-[backdrop-filter]:bg-[#14161d]/80",
-);
+export const chatChromeBarClass = signedInAppHeaderBgClass;
 
 export const chatComposerBarClass = cn(
   "bg-white/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/90",

@@ -458,7 +458,7 @@ export function PostMediaDesktopViewer({
         )}
         aria-label="Comments"
       >
-        <DesktopComments
+        <ReelDesktopCommentsPanel
           postId={activeSlide.postId}
           initialCount={activeSlide.commentCount}
           currentUserId={currentUserId}
@@ -527,16 +527,18 @@ function DesktopSlideMedia({
 
 // ─── Comments ────────────────────────────────────────────────────────────────
 
-function DesktopComments({
+export function ReelDesktopCommentsPanel({
   postId,
   initialCount,
   currentUserId,
   onClose,
+  onCountChange,
 }: {
   postId: string;
   initialCount: number;
   currentUserId: string | null;
   onClose: () => void;
+  onCountChange?: (count: number) => void;
 }) {
   const { addToast } = useToast();
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
@@ -560,6 +562,7 @@ function DesktopComments({
       if (list.length === 0) {
         setComments([]);
         setCount(0);
+        onCountChange?.(0);
         return;
       }
       const ids = [...new Set(list.map((r) => r.author_id))];
@@ -570,15 +573,18 @@ function DesktopComments({
       const map = new Map(
         (profs ?? []).map((p) => [p.id as string, p as DesktopCommentRow["author"]]),
       );
-      setComments(list.map((r) => ({ ...r, author: map.get(r.author_id) })));
-      setCount(list.length);
+      const withAuthors = list.map((r) => ({ ...r, author: map.get(r.author_id) }));
+      setComments(withAuthors);
+      const nextCount = withAuthors.length;
+      setCount(nextCount);
+      onCountChange?.(nextCount);
     } catch (e) {
       console.error("[PostMediaDesktopViewer] comments fetch", e);
       setComments([]);
     } finally {
       setLoading(false);
     }
-  }, [postId]);
+  }, [postId, onCountChange]);
 
   useEffect(() => {
     void fetchComments();

@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { glassBadgeClass, glassIconButtonClass } from "@/lib/glassBadge";
+import { signedInAppHeaderBgClass } from "@/lib/discoverHomeHeaderChrome";
 import { useToast } from "@/components/ui/toast";
 import { WhatsAppIcon, TelegramIcon } from "@/components/BrandIcons";
 import { SimpleCalendar } from "@/components/SimpleCalendar";
@@ -2281,7 +2282,8 @@ export default function ChatPage({
         {!hideBackButton && (
           <header
             className={cn(
-              "fixed left-0 right-0 top-0 z-20 flex-shrink-0 bg-transparent px-4 pb-2 shadow-none",
+              "fixed left-0 right-0 top-0 z-20 flex-shrink-0 px-4 pb-2 shadow-none backdrop-blur-none",
+              signedInAppHeaderBgClass,
               "pt-[max(0.75rem,env(safe-area-inset-top,0px))]",
               "md:relative md:top-auto md:z-auto md:min-h-[4.25rem] md:px-5 md:pt-3 md:pb-2",
             )}

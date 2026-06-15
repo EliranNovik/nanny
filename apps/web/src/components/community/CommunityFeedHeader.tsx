@@ -43,8 +43,6 @@ const FILTER_TABS: {
   { id: "event", labelKey: "feed.filters.events", Icon: CalendarDays },
 ];
 
-const GLOBAL_FILTER_TABS = FILTER_TABS.filter((tab) => tab.id !== "community");
-
 type FavoriteProfile = {
   id: string;
   full_name: string | null;
@@ -113,7 +111,7 @@ type CommunityFeedHeaderProps = {
   /** Keep filter chips out from under the fixed favorites side panel on desktop. */
   reserveSidePanelSpace?: boolean;
   className?: string;
-  /** Global posts feed: cleaner tabs without Community. */
+  /** Global posts feed uses the same type tabs with compact styling. */
   variant?: "default" | "global";
 };
 
@@ -137,7 +135,7 @@ export function CommunityFeedHeader({
 }: CommunityFeedHeaderProps) {
   const { t } = useTranslation();
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
-  const filterTabs = variant === "global" ? GLOBAL_FILTER_TABS : FILTER_TABS;
+  const filterTabs = FILTER_TABS;
 
   const { data: favoriteProfiles = [] } = useQuery({
     queryKey: queryKeys.discoverSavedProfiles(viewerUserId ?? null),

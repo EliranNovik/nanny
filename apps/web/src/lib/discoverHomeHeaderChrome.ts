@@ -1,5 +1,8 @@
 import { cn } from "@/lib/utils";
 
+/** Signed-in app header — solid, not translucent (matches feed card tone in dark mode). */
+export const signedInAppHeaderBgClass = "bg-white dark:bg-zinc-800";
+
 /** Plain icon control — signed-in fixed header (no glass pill). */
 export const signedInHeaderIconBtnClass = cn(
   "flex h-11 w-11 shrink-0 items-center justify-center text-slate-600 transition-all hover:opacity-80 active:scale-95 dark:text-slate-300",
