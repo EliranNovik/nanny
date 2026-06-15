@@ -60,7 +60,7 @@ export function DiscoverHomeModeSegmentedControl({
           : "font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300",
     );
 
-  const iconClass = (selected: boolean, accent: "hire" | "work") =>
+  const iconClass = (selected: boolean) =>
     cn(
       "shrink-0 transition-all duration-300",
       isHeader
@@ -138,7 +138,7 @@ export function DiscoverHomeModeSegmentedControl({
           )}
         >
           <HeartHandshake
-            className={iconClass(mode === "hire", "hire")}
+            className={iconClass(mode === "hire")}
             strokeWidth={mode === "hire" ? 2.5 : DISCOVER_STROKE}
             aria-hidden
           />
@@ -159,7 +159,7 @@ export function DiscoverHomeModeSegmentedControl({
           )}
         >
           <HelpingHand
-            className={iconClass(mode === "work", "work")}
+            className={iconClass(mode === "work")}
             strokeWidth={mode === "work" ? 2.5 : DISCOVER_STROKE}
             aria-hidden
           />
