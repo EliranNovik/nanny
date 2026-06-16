@@ -24,12 +24,17 @@ export function parseProfilePostShareId(
   return match ? match[0].toLowerCase() : null;
 }
 
+/** In-app path for a profile post on the global community feed. */
+export function globalProfilePostFeedPath(postId: string): string {
+  const cleanId = parseProfilePostShareId(postId) ?? postId.trim();
+  return `${GLOBAL_POSTS_PATH}?post=${encodeURIComponent(cleanId)}`;
+}
+
 /** Canonical deep link for a profile post on the global community feed. */
 export function globalProfilePostShareUrl(postId: string): string {
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
-  const cleanId = parseProfilePostShareId(postId) ?? postId.trim();
-  return `${origin}${GLOBAL_POSTS_PATH}?post=${encodeURIComponent(cleanId)}`;
+  return `${origin}${globalProfilePostFeedPath(postId)}`;
 }
 
 /** Plain-text caption trimmed for share sheets and link previews. */

@@ -1032,7 +1032,7 @@ export default function MessagesPage() {
                               {convo.last_message && (
                                 <p
                                   className={cn(
-                                    "mt-1 truncate text-[16px] leading-snug text-muted-foreground md:text-base",
+                                    "mt-1 truncate text-[18px] leading-snug text-muted-foreground md:text-base",
                                     convo.unread_count > 0 &&
                                       "font-medium text-foreground/90",
                                   )}

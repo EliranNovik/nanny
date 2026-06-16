@@ -93,8 +93,10 @@ import {
   chatBubbleBodyTextCn,
   chatBubbleLinkCn,
   chatMessageColumnCn,
+  chatMediaMessageColumnCn,
   chatMessageTimestampCn,
   chatReceivedBubbleCn,
+  chatReceivedMessageTextCn,
   chatSentBubbleCn,
   chatSystemLinkCn,
 } from "@/lib/chatTheme";
@@ -287,15 +289,15 @@ export default function ChatPage({
       typeof window !== "undefined"
         ? Math.min(window.innerHeight * 0.4, 280)
         : 280;
-    const minLine = 48;
     const isLg =
       typeof window !== "undefined" &&
       window.matchMedia("(min-width: 1024px)").matches;
     const el = isLg ? desktopComposerRef.current : mobileComposerRef.current;
     if (!el) return;
     el.style.height = "auto";
-    const h = Math.min(Math.max(el.scrollHeight, minLine), maxPx);
+    const h = Math.min(el.scrollHeight, maxPx);
     el.style.height = `${h}px`;
+    el.style.overflowY = el.scrollHeight > maxPx ? "auto" : "hidden";
   }
   const { addToast } = useToast();
   const [showContactPanel, setShowContactPanel] = useState(false);
@@ -2452,7 +2454,7 @@ export default function ChatPage({
                         <ChatDateSeparator label={formatDate(msg.created_at)} />
                       ) : null}
                       <div className="flex justify-center px-1 md:px-2">
-                        <div className="max-w-md rounded-lg bg-muted/45 px-4 py-3 text-center text-lg leading-snug text-muted-foreground dark:bg-muted/25 border-none md:px-3 md:py-2 md:text-[13px] whitespace-pre-wrap">
+                        <div className="max-w-md rounded-[22px] bg-muted/45 px-4 py-3.5 text-center text-xl leading-snug text-muted-foreground dark:bg-muted/25 border-none md:rounded-xl md:px-4 md:py-2.5 md:text-[15px] whitespace-pre-wrap">
                           {msg.body
                             ? linkifyMessageBody(msg.body, chatSystemLinkCn)
                             : null}
@@ -2476,7 +2478,7 @@ export default function ChatPage({
                     <div
                       key={msg.id}
                       className={cn(
-                        "min-w-0 max-w-full space-y-3 chat-scroll-reveal",
+                        "min-w-0 max-w-full space-y-4 chat-scroll-reveal md:space-y-3",
                         isOwn
                           ? "chat-scroll-reveal--sent"
                           : "chat-scroll-reveal--received",
@@ -2503,7 +2505,7 @@ export default function ChatPage({
                           </Avatar>
                         )}
 
-                        <div className={chatMessageColumnCn(isOwn)}>
+                        <div className={chatMediaMessageColumnCn(isOwn)}>
                           <div
                             className={cn(
                               "flex w-full min-w-0 max-w-full",
@@ -2574,7 +2576,7 @@ export default function ChatPage({
                                             chatBubbleBodyTextCn,
                                             isOwn
                                               ? "text-white"
-                                              : "text-foreground",
+                                              : chatReceivedMessageTextCn,
                                           ),
                                         )}
                                       >
@@ -2608,7 +2610,7 @@ export default function ChatPage({
                                     msg.body,
                                     cn(
                                       chatBubbleBodyTextCn,
-                                      isOwn ? "text-white" : "text-foreground",
+                                      isOwn ? "text-white" : chatReceivedMessageTextCn,
                                     ),
                                   )}
                                 >
@@ -2632,7 +2634,7 @@ export default function ChatPage({
                   <div
                     key={msg.id}
                     className={cn(
-                      "min-w-0 max-w-full space-y-3 chat-scroll-reveal",
+                      "min-w-0 max-w-full space-y-4 chat-scroll-reveal md:space-y-3",
                       isOwn
                         ? "chat-scroll-reveal--sent"
                         : "chat-scroll-reveal--received",
@@ -2703,7 +2705,7 @@ export default function ChatPage({
                                   />
                                   <span
                                     className={cn(
-                                      "max-w-[min(12rem,55vw)] truncate text-xl font-medium underline underline-offset-2 md:max-w-[150px] md:text-sm",
+                                      "max-w-[min(12rem,55vw)] truncate text-xl font-medium underline underline-offset-2 md:max-w-[180px] md:text-base",
                                       isOwn
                                         ? "text-white decoration-white/35 hover:text-white"
                                         : "text-blue-600 decoration-blue-600/40 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300",
@@ -2726,10 +2728,10 @@ export default function ChatPage({
                               >
                                 <div
                                   className={cn(
-                                    "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
+                                    "rounded-xl border px-2.5 py-2 text-xl md:px-3 md:py-2 md:text-base",
                                     isOwn
                                       ? "border-white/20 bg-white/10 text-white"
-                                      : "border-none bg-white/90 text-foreground dark:bg-zinc-700",
+                                      : "border-none bg-white/90 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300",
                                   )}
                                 >
                                   <p className="text-xs font-bold uppercase tracking-wide opacity-80 md:text-[11px]">
@@ -2761,7 +2763,7 @@ export default function ChatPage({
                                     msg.body,
                                     cn(
                                       chatBubbleBodyTextCn,
-                                      isOwn ? "text-white" : "text-foreground",
+                                      isOwn ? "text-white" : chatReceivedMessageTextCn,
                                     ),
                                   )}
                                 >
@@ -2801,7 +2803,7 @@ export default function ChatPage({
                                   className="flex items-center gap-2 rounded-lg border border-dashed border-blue-500/25 bg-muted/50 p-2 transition-colors hover:bg-muted md:p-1.5"
                                 >
                                   <File className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 md:h-4 md:w-4" />
-                                  <span className="max-w-[min(12rem,55vw)] truncate text-xl font-medium text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300 md:max-w-[150px] md:text-sm">
+                                  <span className="max-w-[min(12rem,55vw)] truncate text-xl font-medium text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:decoration-blue-400/45 dark:hover:text-blue-300 md:max-w-[180px] md:text-base">
                                     {msg.attachment_name || "Download File"}
                                   </span>
                                 </a>
@@ -2811,10 +2813,10 @@ export default function ChatPage({
                             {msg.body && matchIntro ? (
                               <div
                                 className={cn(
-                                  "rounded-xl border px-2.5 py-2 text-xl md:px-2.5 md:py-1.5 md:text-sm",
+                                  "rounded-xl border px-2.5 py-2 text-xl md:px-3 md:py-2 md:text-base",
                                   isOwn
                                     ? "border-white/20 bg-white/10 text-white"
-                                    : "bg-muted/50 text-foreground border-none dark:bg-zinc-700",
+                                    : "bg-muted/50 text-zinc-600 border-none dark:bg-zinc-700 dark:text-zinc-300",
                                 )}
                               >
                                 <p className="text-xs font-bold uppercase tracking-wide opacity-80 md:text-[11px]">
@@ -2833,7 +2835,7 @@ export default function ChatPage({
                                   msg.body,
                                   cn(
                                     chatBubbleBodyTextCn,
-                                    isOwn ? "text-white" : "text-foreground",
+                                    isOwn ? "text-white" : chatReceivedMessageTextCn,
                                   ),
                                 )}
                               >

@@ -40,18 +40,30 @@ export type LandingSiteHeaderProps = {
   /** Full-bleed bar (e.g. community feed guest header). */
   fullWidth?: boolean;
   className?: string;
-  variant?: "brand" | "glassy";
+  variant?: "brand" | "glassy" | "landingGlass";
   hideBackButtonMobile?: boolean;
   /** Mobile: orange pill header matching the landing page (desktop keeps other props). */
   mobileMatchLanding?: boolean;
+  /** Keep the pill fixed at the top on mobile (e.g. guest community feed). */
+  fixedOnMobile?: boolean;
+  /** Landing hero: plain white “Register” text — no logo or filled pill. */
+  simpleRegisterCta?: boolean;
+  /** Landing: switch from glass hero header to solid brand gradient after scroll. */
+  heroScrolledPast?: boolean;
+  /** Landing: open “What is tebnu?” instead of navigating home when brand is clicked. */
+  onBrandClick?: () => void;
 };
 
 const brandHeaderBgClass =
   "bg-gradient-to-r from-orange-500 to-red-600 border border-white/20";
 const glassyHeaderBgClass =
   "bg-white/70 dark:bg-zinc-800/40 border-0 shadow-md";
-const landingMobileHeaderBgClass =
-  "max-md:bg-gradient-to-r max-md:from-orange-500 max-md:to-red-600 max-md:border max-md:border-white/20 max-md:shadow-2xl";
+const landingHeroWhiteHeaderBgClass =
+  "border-0 bg-white shadow-none";
+const landingScrolledBrandHeaderBgClass =
+  "border-0 bg-gradient-to-r from-orange-500 to-red-600 shadow-none";
+const landingMobileOrangeHeaderBgClass =
+  "max-md:border-0 max-md:bg-gradient-to-r max-md:from-orange-500 max-md:to-red-600 max-md:shadow-none";
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
 export function LandingSiteHeader({
@@ -68,6 +80,10 @@ export function LandingSiteHeader({
   variant = "brand",
   hideBackButtonMobile = false,
   mobileMatchLanding = false,
+  fixedOnMobile = false,
+  simpleRegisterCta = false,
+  heroScrolledPast = false,
+  onBrandClick,
 }: LandingSiteHeaderProps) {
   const hideMobileBack = hideBackButtonMobile || mobileMatchLanding;
   const navigate = useNavigate();
@@ -76,9 +92,17 @@ export function LandingSiteHeader({
   const dashboardPath =
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
 
-  const linkColorClass = variant === "glassy"
-    ? "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
-    : "text-white hover:text-white/80";
+  const isLandingGlass = variant === "landingGlass";
+  const landingOnHero = isLandingGlass && !heroScrolledPast;
+
+  const linkColorClass =
+    variant === "glassy"
+      ? "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
+      : variant === "landingGlass"
+        ? landingOnHero
+          ? "max-md:text-white/90 max-md:hover:text-white text-zinc-700 hover:text-zinc-900"
+          : "text-white/90 hover:text-white"
+        : "text-white hover:text-white/80";
 
   const dynamicNavLinkClass = cn(
     "text-sm font-bold transition-colors",
@@ -86,31 +110,50 @@ export function LandingSiteHeader({
   );
 
   const headerBgClass = cn(
-    variant === "glassy" ? glassyHeaderBgClass : brandHeaderBgClass,
-    mobileMatchLanding && landingMobileHeaderBgClass,
+    isLandingGlass
+      ? heroScrolledPast
+        ? landingScrolledBrandHeaderBgClass
+        : cn(landingHeroWhiteHeaderBgClass, landingMobileOrangeHeaderBgClass)
+      : variant === "glassy"
+        ? glassyHeaderBgClass
+        : brandHeaderBgClass,
+    mobileMatchLanding &&
+      variant !== "landingGlass" &&
+      "max-md:border max-md:border-white/20 max-md:bg-gradient-to-r max-md:from-orange-500 max-md:to-red-600 max-md:shadow-2xl",
   );
 
   const backBtnClass = variant === "glassy"
     ? "border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300 dark:hover:bg-zinc-900/60"
-    : "border-white/25 bg-white/10 text-white hover:bg-white/15";
+    : variant === "landingGlass"
+      ? "border-white/25 bg-white/10 text-white hover:bg-white/15"
+      : "border-white/25 bg-white/10 text-white hover:bg-white/15";
 
   const menuIconClass = cn(
     variant === "glassy"
       ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
-      : "text-white hover:text-white/80",
-    mobileMatchLanding && "max-md:text-white max-md:hover:text-white/80",
+      : isLandingGlass && landingOnHero
+        ? "max-md:text-white max-md:hover:text-white/80 text-zinc-800 hover:text-zinc-950"
+        : "text-white hover:text-white/80",
+    mobileMatchLanding &&
+      variant !== "landingGlass" &&
+      "max-md:text-white max-md:hover:text-white/80",
   );
 
   const signInBtnClass = cn(
     variant === "glassy"
       ? "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
       : "text-white hover:bg-white/10",
-    mobileMatchLanding && "max-md:text-white max-md:hover:bg-white/10",
+    mobileMatchLanding &&
+      variant !== "landingGlass" &&
+      "max-md:text-white max-md:hover:bg-white/10",
   );
 
-  const navContainerTextClass = variant === "glassy"
-    ? "text-zinc-800 dark:text-zinc-200"
-    : "text-white";
+  const navContainerTextClass =
+    variant === "glassy"
+      ? "text-zinc-800 dark:text-zinc-200"
+      : isLandingGlass && landingOnHero
+        ? "text-zinc-800"
+        : "text-white";
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -132,6 +175,26 @@ export function LandingSiteHeader({
       <GalleryHorizontal className="w-6 h-6 text-primary" /> Post Feed
     </Link>
   ) : null;
+
+  const mobileMenuButton = (
+    <button
+      type="button"
+      onClick={() => setIsMenuOpen(!isMenuOpen)}
+      className={cn("md:hidden p-2 transition-colors shrink-0", menuIconClass)}
+      aria-label="Toggle menu"
+    >
+      {isMenuOpen ? (
+        <X className="w-6 h-6" />
+      ) : (
+        <Menu className="w-6 h-6" />
+      )}
+    </button>
+  );
+
+  const landingBrandTextClass = cn(
+    "hidden text-lg font-black tracking-tight md:inline md:text-xl lg:text-2xl",
+    landingOnHero ? "text-slate-900" : "text-white",
+  );
 
   return (
     <>
@@ -167,22 +230,63 @@ export function LandingSiteHeader({
 
       <header
         className={cn(
-          "relative min-h-[52px] md:min-h-[60px] backdrop-blur-md flex items-center px-4 md:px-8 py-3.5 md:py-4 transition-all duration-500",
+          "flex items-center px-4 transition-all duration-500 md:px-8 lg:px-12",
+          isLandingGlass
+            ? "fixed top-0 inset-x-0 z-50 min-h-[52px] w-full max-w-none rounded-none border-0 py-2.5 md:min-h-[60px] md:py-3"
+            : cn(
+                "relative min-h-[52px] py-3.5 backdrop-blur-md md:min-h-[60px] md:px-8 md:py-4",
+              ),
           headerBgClass,
-          scrollWithPage && fullWidth
-            ? mobileMatchLanding
-              ? "relative z-auto mb-4 max-md:mx-auto max-md:w-[92%] max-md:max-w-5xl max-md:rounded-full max-md:shadow-2xl md:community-feed-guest-header md:w-full md:max-w-none md:rounded-none md:border-x-0 md:shadow-md"
-              : "community-feed-guest-header relative z-auto mb-4 w-full max-w-none rounded-none border-x-0 shadow-md"
-            : scrollWithPage
-              ? "relative z-auto mx-auto mb-4 w-full max-w-5xl rounded-full shadow-2xl"
-              : mobileMatchLanding
-                ? "max-md:relative max-md:z-auto max-md:mx-auto max-md:mb-4 max-md:w-[92%] max-md:max-w-5xl max-md:rounded-full max-md:shadow-2xl md:fixed md:top-6 md:left-1/2 md:-translate-x-1/2 md:z-50 md:w-[92%] md:max-w-5xl md:rounded-full md:shadow-2xl"
-                : "fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl rounded-full shadow-2xl",
+          !isLandingGlass &&
+            (scrollWithPage && (fullWidth || isLandingGlass)
+              ? mobileMatchLanding
+                ? "relative z-auto mb-4 max-md:mx-auto max-md:w-[92%] max-md:max-w-5xl max-md:rounded-full max-md:shadow-2xl md:community-feed-guest-header md:w-full md:max-w-none md:rounded-none md:border-x-0 md:shadow-md"
+                : "community-feed-guest-header relative z-auto mb-4 w-full max-w-none rounded-none border-x-0 shadow-md"
+              : scrollWithPage
+                ? "relative z-auto mx-auto mb-4 w-full max-w-5xl rounded-full shadow-2xl"
+                : fixedOnMobile || !mobileMatchLanding
+                  ? "fixed top-4 left-1/2 z-50 w-[92%] max-w-5xl -translate-x-1/2 rounded-full shadow-2xl md:top-6"
+                  : "max-md:relative max-md:z-auto max-md:mx-auto max-md:mb-4 max-md:w-[92%] max-md:max-w-5xl max-md:rounded-full max-md:shadow-2xl md:fixed md:top-6 md:left-1/2 md:-translate-x-1/2 md:z-50 md:w-[92%] md:max-w-5xl md:rounded-full md:shadow-2xl"),
           className,
         )}
       >
-        <div className="w-full flex items-center justify-between">
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-6">
+        <div className="flex w-full items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3 md:gap-4">
+            {isLandingGlass ? mobileMenuButton : null}
+            {isLandingGlass ? (
+              onBrandClick ? (
+                <button
+                  type="button"
+                  onClick={onBrandClick}
+                  className="flex shrink-0 items-center gap-2.5 rounded-lg transition-opacity hover:opacity-90 active:scale-[0.99] md:gap-3"
+                  aria-label="What is Tebnu?"
+                >
+                  <img
+                    src={BRAND_LOGO_SRC}
+                    alt="Tebnu"
+                    className="h-9 w-auto md:h-11 lg:h-12"
+                    loading="eager"
+                    decoding="async"
+                  />
+                  <span className={landingBrandTextClass}>Tebnu</span>
+                </button>
+              ) : (
+                <Link
+                  to="/"
+                  className="flex shrink-0 items-center gap-2.5 md:gap-3"
+                  aria-label="Tebnu home"
+                >
+                  <img
+                    src={BRAND_LOGO_SRC}
+                    alt="Tebnu"
+                    className="h-9 w-auto md:h-11 lg:h-12"
+                    loading="eager"
+                    decoding="async"
+                  />
+                  <span className={landingBrandTextClass}>Tebnu</span>
+                </Link>
+              )
+            ) : null}
             {!hideBackButton ? (
               <>
                 <button
@@ -206,23 +310,13 @@ export function LandingSiteHeader({
                 ) : null}
               </>
             ) : null}
-            <button
-              type="button"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={cn("md:hidden p-2 transition-colors shrink-0", menuIconClass)}
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
+            {!isLandingGlass ? mobileMenuButton : null}
           </div>
 
           <div
             className={cn(
-              "flex items-center gap-2 md:gap-8 min-w-0 flex-1 justify-center md:justify-start md:pl-2",
+              "flex min-w-0 flex-1 items-center justify-center gap-2 md:gap-8",
+              !isLandingGlass && "md:justify-start md:pl-2",
               homeLinkRight && !user && "md:justify-center md:pl-0",
             )}
           >
@@ -294,34 +388,40 @@ export function LandingSiteHeader({
                 <Button
                   variant="ghost"
                   onClick={() => navigate("/login")}
-                  className={cn("font-bold rounded-full px-3 md:px-5 text-sm", signInBtnClass)}
+                  className={cn(
+                    "rounded-full px-3 text-sm font-bold md:px-5",
+                    isLandingGlass
+                      ? landingOnHero
+                        ? "max-md:text-white max-md:hover:bg-white/10 max-md:hover:text-white text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                        : "text-white hover:bg-white/10 hover:text-white"
+                      : signInBtnClass,
+                  )}
                 >
                   Sign in
                 </Button>
                 <Button
                   onClick={() => navigate("/onboarding")}
                   className={cn(
-                    "rounded-full font-bold px-3 md:px-5 text-sm shadow-sm",
-                    variant === "glassy"
-                      ? "bg-orange-600 text-white hover:bg-orange-700"
-                      : "bg-white text-orange-600 hover:bg-white/90",
-                    mobileMatchLanding &&
-                      "max-md:bg-white max-md:text-orange-600 max-md:hover:bg-white/90",
+                    "rounded-full px-3 text-sm font-bold md:px-4",
+                    simpleRegisterCta
+                      ? "text-white shadow-none hover:bg-white/10 hover:text-white/90"
+                      : isLandingGlass
+                        ? cn(
+                            "shadow-sm max-md:bg-white max-md:text-orange-600 max-md:shadow-md max-md:hover:bg-white/90",
+                            landingOnHero
+                              ? "md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:text-white md:hover:from-orange-600 md:hover:to-red-700"
+                              : "bg-white text-orange-600 hover:bg-white/90",
+                          )
+                        : cn(
+                            "shadow-sm",
+                            variant === "glassy"
+                              ? "bg-orange-600 text-white hover:bg-orange-700"
+                              : "bg-white text-orange-600 hover:bg-white/90",
+                            mobileMatchLanding &&
+                              "max-md:bg-white max-md:text-orange-600 max-md:hover:bg-white/90",
+                          ),
                   )}
                 >
-                  {!user && (variant !== "glassy" || mobileMatchLanding) ? (
-                    <img
-                      src={BRAND_LOGO_SRC}
-                      alt=""
-                      className={cn(
-                        "mr-2 h-6 w-auto md:h-7",
-                        variant === "glassy" && mobileMatchLanding && "md:hidden",
-                      )}
-                      aria-hidden
-                      loading="eager"
-                      decoding="async"
-                    />
-                  ) : null}
                   Register
                 </Button>
               </div>
@@ -390,11 +490,17 @@ export function LandingSiteHeader({
                   ) : (
                     <>
                       <Button
+                        variant={simpleRegisterCta ? "ghost" : "default"}
                         onClick={() => {
                           setIsMenuOpen(false);
                           navigate("/onboarding");
                         }}
-                        className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg"
+                        className={cn(
+                          "w-full h-14 rounded-2xl font-bold text-lg",
+                          simpleRegisterCta
+                            ? "bg-transparent text-slate-900 hover:bg-slate-50"
+                            : "bg-primary text-white",
+                        )}
                       >
                         Register
                       </Button>

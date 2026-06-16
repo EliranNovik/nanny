@@ -6011,7 +6011,10 @@ export function ProfilePostsFeed({
     const post = displayPosts.find(
       (p) => p.id === normalizedFocusPostId && p.source === "post",
     );
-    if (!post) {
+    const availability = displayPosts.find(
+      (p) => p.id === normalizedFocusPostId && p.source === "availability",
+    );
+    if (!post && !availability) {
       if (focusedPostFetching) {
         debugProfilePostDeepLink("deepLink effect: wait — focusedPost query");
         return;
@@ -6028,16 +6031,38 @@ export function ProfilePostsFeed({
       return;
     }
 
+    const topInset = appearance === "discover" ? 96 : 12;
+
+    if (availability) {
+      debugProfilePostDeepLink("deepLink effect: start availability scroll", {
+        focusPostId: normalizedFocusPostId,
+        topInset,
+      });
+      const cancelScroll = scrollToFeedItemWhenReady(
+        normalizedFocusPostId,
+        "availability",
+        {
+          topInset,
+          onDone: (found) => {
+            if (found) {
+              deepLinkHandledRef.current = normalizedFocusPostId;
+            }
+          },
+        },
+      );
+      return cancelScroll;
+    }
+
     debugProfilePostDeepLink("deepLink effect: start scroll", {
       focusPostId: normalizedFocusPostId,
-      topInset: appearance === "discover" ? 96 : 12,
-      hasMedia: Boolean(post.media_type && post.storage_path),
+      topInset,
+      hasMedia: Boolean(post!.media_type && post!.storage_path),
     });
 
     const cancelScroll = scrollToProfilePostWhenReady(
       normalizedFocusPostId,
       {
-        topInset: appearance === "discover" ? 96 : 12,
+        topInset,
         onDone: (found) => {
           debugProfilePostDeepLink("deepLink effect: scroll finished", {
             focusPostId: normalizedFocusPostId,

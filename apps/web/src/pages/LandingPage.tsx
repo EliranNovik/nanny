@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Briefcase,
@@ -6,7 +6,6 @@ import {
   Baby,
   Sparkles,
   Star,
-  Flag,
   ClipboardList,
   UserCheck,
   MessageCircle,
@@ -15,24 +14,79 @@ import {
   ChevronLeft,
   ChevronRight,
   Truck,
+  ShieldCheck,
+  Loader2,
+  Heart,
+  LifeBuoy,
 } from "lucide-react";
 import Benefits from "@/components/Benefits";
 import React, { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LandingSiteHeader } from "@/components/LandingSiteHeader";
-import { GuestCommunityFeedAside } from "@/components/GuestCommunityFeedAside";
+import { WhatIsTebnuDialog } from "@/components/WhatIsTebnuDialog";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/context/ThemeContext";
+import { useLandingPagePreview } from "@/hooks/data/useLandingPagePreview";
+import type { LandingActivityKind } from "@/lib/fetchLandingRecentActivity";
+
+function landingCategoryGradient(categoryId: string | null): string {
+  const k = (categoryId || "").toLowerCase();
+  if (k.includes("clean")) return "from-emerald-400 to-teal-500";
+  if (k.includes("cook")) return "from-orange-400 to-red-500";
+  if (k.includes("nanny") || k.includes("child")) return "from-violet-400 to-indigo-500";
+  if (k.includes("pickup") || k.includes("deliver")) return "from-sky-400 to-blue-500";
+  return "from-orange-400 to-amber-500";
+}
+
+function LandingCategoryIcon({
+  categoryId,
+  className,
+}: {
+  categoryId: string | null;
+  className?: string;
+}) {
+  const k = (categoryId || "").toLowerCase();
+  if (k.includes("nanny") || k.includes("child")) {
+    return <Baby className={className} />;
+  }
+  if (k.includes("clean")) return <Sparkles className={className} />;
+  if (k.includes("cook")) return <Soup className={className} />;
+  if (k.includes("pickup") || k.includes("deliver")) {
+    return <Truck className={className} />;
+  }
+  return <Briefcase className={className} />;
+}
+
+function activityKindBadge(kind: LandingActivityKind) {
+  return kind === "request"
+    ? { label: "Request", Icon: LifeBuoy, className: "text-orange-600" }
+    : { label: "Offer", Icon: Heart, className: "text-emerald-600" };
+}
+
+function helperInitials(name: string | null | undefined): string {
+  const parts = (name || "H").trim().split(/\s+/).filter(Boolean);
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("")
+    .slice(0, 2);
+}
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const buttonsRef = useRef<HTMLDivElement>(null);
   const recentActivityRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
   const [showFixedButtons, setShowFixedButtons] = useState(false);
+  const [heroScrolledPast, setHeroScrolledPast] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const { activityLoading, activityItems, reviewsLoading, reviews } =
+    useLandingPagePreview();
 
   const showcaseCategories = [
     {
@@ -183,6 +237,42 @@ export default function LandingPage() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setHeroScrolledPast(
+          !entry.isIntersecting && entry.boundingClientRect.top < 0,
+        );
+      },
+      { threshold: 0 },
+    );
+
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
+
+  /** Marketing page always renders in light mode, even when the app theme is dark. */
+  useEffect(() => {
+    const root = document.documentElement;
+    const applyLight = () => {
+      root.classList.remove("dark");
+      root.style.colorScheme = "light";
+    };
+    applyLight();
+
+    const observer = new MutationObserver(applyLight);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    return () => {
+      observer.disconnect();
+      root.style.colorScheme = "";
+      if (theme === "dark") root.classList.add("dark");
+    };
+  }, [theme]);
+
   const handleSearchingForJob = () => {
     // Navigate directly to onboarding with role param
     navigate("/onboarding?role=freelancer");
@@ -194,16 +284,25 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-      {/* Desktop: reuse the community-feed guest sidebar */}
-      <div className="app-desktop-side-panel hidden md:block z-[55]">
-        <GuestCommunityFeedAside className="h-[100dvh] bg-background/70 backdrop-blur-md" />
-      </div>
+    <div
+      className="flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col bg-slate-50/50 text-slate-900 max-md:pb-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]"
+      style={{ colorScheme: "light" }}
+    >
+      <LandingSiteHeader
+        hideLeftLogo
+        hideBackButton
+        hideBackButtonMobile
+        variant="landingGlass"
+        heroScrolledPast={heroScrolledPast}
+        onBrandClick={() => setAboutOpen(true)}
+      />
+
+      <WhatIsTebnuDialog open={aboutOpen} onOpenChange={setAboutOpen} />
 
       {/* Bottom-Left Fixed CTAs when scrolled past - Desktop Only */}
       <div
         className={cn(
-          "fixed bottom-8 left-8 z-[60] hidden md:flex md:left-[calc(220px+2rem)] items-center gap-4 transition-all duration-500 transform",
+          "fixed bottom-8 left-8 z-[60] hidden md:flex items-center gap-4 transition-all duration-500 transform",
           showFixedButtons
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-10 pointer-events-none",
@@ -216,7 +315,7 @@ export default function LandingPage() {
           <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-transform group-hover/fixed-btn:scale-110">
             <Briefcase className="w-4 h-4" />
           </div>
-          <span>Be a Helper</span>
+          <span>Offer Help</span>
         </Button>
         <Button
           onClick={handleHiringHelper}
@@ -225,11 +324,11 @@ export default function LandingPage() {
           <div className="h-8 w-8 rounded-lg bg-white/20 text-white flex items-center justify-center transition-transform group-hover/fixed-btn:scale-110">
             <Users className="w-4 h-4" />
           </div>
-          <span>Hire a Helper</span>
+          <span>Need Help</span>
         </Button>
       </div>
 
-      <main className="flex-1 app-side-panel-offset">
+      <main className="flex-1">
         {/* Full-Screen Hero Section */}
         <section
           ref={heroRef}
@@ -241,74 +340,130 @@ export default function LandingPage() {
             className="absolute inset-0 z-0 min-h-full w-full object-cover transition-transform duration-1000 group-hover/hero:scale-105"
           />
 
-          {/* Sophisticated Gradients for depth and readability */}
-          <div className="absolute inset-0 bg-black/10 z-[1]"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent z-[2]"></div>
+          {/* Lighter overlays — keep the photo vivid while preserving text contrast */}
+          <div className="absolute inset-0 z-[1] bg-black/5" />
+          <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/25 via-transparent to-transparent" />
 
-          {/* Header overlays hero image and scrolls with the section */}
-          <div className="absolute inset-x-0 top-0 z-20 px-4 pt-4 md:pt-6 app-side-panel-offset">
-            <LandingSiteHeader
-              hideLeftLogo
-              scrollWithPage
-              hideBackButtonMobile
-              className="max-w-5xl !mb-0"
-            />
-          </div>
+          <div className="absolute inset-0 z-[2] hidden bg-gradient-to-t from-black/45 via-black/10 to-transparent md:block" />
 
-          {/* Left column: hero copy (constrained); download strip is full-bleed below so QR can sit at viewport edge on desktop */}
-          <div className="relative z-10 flex w-full max-w-7xl flex-col items-start px-6 pb-6 pt-24 md:mx-0 md:px-8 md:pb-8 md:pt-28 md:pl-8 lg:pl-12 md:pr-[min(28rem,22vw)] lg:pr-[30rem]">
-            <div className="w-[85%] max-w-xl md:w-full md:bg-white/5 md:backdrop-blur-sm md:border md:border-white/5 p-5 md:p-8 rounded-[2rem] text-left space-y-4 md:space-y-6 animate-in fade-in slide-in-from-left-10 duration-1000 md:shadow-sm">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white drop-shadow-lg">
-                Bringing{" "}
-                <span className="bg-primary/40 text-orange-200 px-3 py-1 rounded-xl border border-orange-400/20 inline-block rotate-[-1deg]">
-                  families
-                </span>{" "}
-                and helpers together
+          {/* Hero copy + Didit trust card — stacked on mobile; anchored corners on desktop */}
+          <div className="relative z-10 flex min-h-[calc(90vh-4.5rem)] w-full flex-col justify-between px-6 pb-10 pt-28 md:block md:min-h-screen md:px-0 md:pb-0 md:pt-0">
+            <div className="w-[90%] max-w-2xl space-y-5 text-left animate-in fade-in slide-in-from-left-10 duration-1000 md:absolute md:left-8 md:top-36 md:w-auto md:max-w-lg lg:left-12 lg:top-44 lg:max-w-xl xl:max-w-2xl md:rounded-[2rem] md:border md:border-white/10 md:bg-white/5 md:p-8 md:backdrop-blur-sm md:shadow-sm md:space-y-6">
+              <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-white drop-shadow-lg md:text-6xl lg:text-7xl">
+                One{" "}
+                <span className="inline-block rotate-[-1deg] rounded-xl border border-orange-400/20 bg-primary/40 px-3 py-1 text-orange-200">
+                  community
+                </span>
+                . Many helpers.
               </h1>
-              <p className="text-lg md:text-xl text-white/90 max-w-md font-medium drop-shadow-md">
+              <p className="max-w-lg text-lg font-medium text-white/90 drop-shadow-md md:text-xl">
                 Find support, share skills, and connect within minutes.
               </p>
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-white/85 md:text-base">
+                <span>Verified users</span>
+                <span className="text-white/40" aria-hidden>
+                  ·
+                </span>
+                <span>Local helpers</span>
+                <span className="text-white/40" aria-hidden>
+                  ·
+                </span>
+                <span>Fast response</span>
+              </p>
+
+              {/* Mobile hero CTAs */}
+              <div className="flex flex-wrap gap-2.5 pt-1 md:hidden">
+                <Button
+                  onClick={handleHiringHelper}
+                  className="flex h-12 w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-4 text-sm font-black text-white shadow-lg shadow-orange-500/30 hover:from-orange-600 hover:to-red-700"
+                >
+                  <Users className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                  Need Help
+                </Button>
+                <Button
+                  onClick={handleSearchingForJob}
+                  className="flex h-12 w-auto items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/90 px-4 text-sm font-black text-slate-900 shadow-lg backdrop-blur-md hover:bg-white"
+                >
+                  <Briefcase className="h-4 w-4 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
+                  Offer Help
+                </Button>
+              </div>
+            </div>
+
+            <div
+              className="hidden md:absolute md:bottom-12 md:left-8 md:block md:w-auto md:max-w-xs lg:bottom-16 lg:left-12 lg:max-w-md xl:max-w-lg"
+              aria-label="Secure registration powered by Didit"
+            >
+              <div className="animate-in fade-in slide-in-from-left-10 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)] duration-1000 delay-150 lg:px-6 lg:py-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 md:h-14 md:w-14">
+                    <ShieldCheck
+                      className="h-6 w-6 text-emerald-600 lg:h-7 lg:w-7"
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500 md:text-[13px]">
+                      What sets Tebnu apart
+                    </p>
+                    <p className="mt-1 text-base font-bold leading-snug text-slate-900 md:text-lg lg:text-xl">
+                      Every member verified with{" "}
+                      <span className="text-emerald-600">Didit</span>
+                    </p>
+                    <p className="mt-2 text-sm font-medium leading-snug text-slate-600 md:text-[15px] lg:text-base">
+                      Real ID and a live selfie before anyone can hire or work.
+                    </p>
+                    <ul className="mt-2.5 space-y-1.5 md:space-y-2">
+                      {[
+                        "Encrypted ID checks at signup",
+                        "Verified before posting, hiring, or going live",
+                      ].map((line) => (
+                        <li
+                          key={line}
+                          className="flex items-center gap-2.5 text-sm font-semibold text-slate-700 md:text-[15px]"
+                        >
+                          <CheckCircle2
+                            className="h-4 w-4 shrink-0 text-emerald-600"
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Right-Aligned Stacked CTAs - Desktop Only */}
+          {/* Bottom-right CTAs — desktop */}
           <div
             ref={buttonsRef}
-            className="hidden md:flex absolute right-12 lg:right-32 top-[78%] -translate-y-1/2 flex-row items-stretch gap-6 z-20"
+            className="absolute bottom-10 right-8 z-20 hidden md:block lg:bottom-14 lg:right-12 xl:right-16"
           >
-            <Button
-              onClick={handleSearchingForJob}
-              className="group/btn h-44 w-80 flex flex-col items-center justify-center gap-4 bg-white/90 hover:bg-white backdrop-blur-xl border border-white/40 shadow-2xl rounded-[3rem] transition-all duration-500 hover:scale-105"
-            >
-              <div className="h-16 w-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover/btn:scale-110 transition-all duration-500 flex-shrink-0">
-                <Briefcase className="w-8 h-8" />
-              </div>
-              <div className="text-center">
-                <span className="block text-xl font-black text-slate-900 uppercase tracking-tight leading-tight">
-                  Be the helper
-                </span>
-                <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest opacity-80 mt-1">
-                  Join our network
-                </span>
-              </div>
-            </Button>
+            <div className="flex flex-col gap-3 xl:flex-row xl:gap-4">
+              <Button
+                onClick={handleSearchingForJob}
+                className="group/btn flex h-16 min-w-[240px] items-center justify-center gap-3.5 rounded-2xl border border-slate-200/90 bg-white px-7 text-base font-bold text-slate-900 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.35)] transition-all hover:bg-slate-50 active:scale-[0.98] lg:h-[4.5rem] lg:min-w-[260px] lg:px-8 lg:text-lg"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 lg:h-11 lg:w-11">
+                  <Briefcase className="h-5 w-5 lg:h-[1.35rem] lg:w-[1.35rem]" strokeWidth={2.25} />
+                </div>
+                <span>Offer Help</span>
+              </Button>
 
-            <Button
-              onClick={handleHiringHelper}
-              className="group/btn h-44 w-80 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white shadow-[0_20px_40px_-12px_rgba(249,115,22,0.5)] border-t border-white/20 rounded-[3rem] transition-all duration-500 hover:scale-105"
-            >
-              <div className="h-16 w-16 rounded-2xl bg-white/20 text-white flex items-center justify-center group-hover/btn:scale-110 transition-all duration-500 flex-shrink-0">
-                <Users className="w-8 h-8" />
-              </div>
-              <div className="text-center">
-                <span className="block text-xl font-black uppercase tracking-tight leading-tight">
-                  Hire a Helper
-                </span>
-                <span className="block text-[11px] font-bold text-orange-50/70 uppercase tracking-widest mt-1">
-                  Post a request
-                </span>
-              </div>
-            </Button>
+              <Button
+                onClick={handleHiringHelper}
+                className="group/btn flex h-16 min-w-[240px] items-center justify-center gap-3.5 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-7 text-base font-bold text-white shadow-[0_16px_36px_-10px_rgba(249,115,22,0.55)] transition-all hover:from-orange-600 hover:to-red-700 active:scale-[0.98] lg:h-[4.5rem] lg:min-w-[260px] lg:px-8 lg:text-lg"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white lg:h-11 lg:w-11">
+                  <Users className="h-5 w-5 lg:h-[1.35rem] lg:w-[1.35rem]" strokeWidth={2.25} />
+                </div>
+                <span>Need Help</span>
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -376,41 +531,40 @@ export default function LandingPage() {
               ))}
             </div>
           </section>
+        </div>
 
-          {/* Interactive Job Category Showcase - Carousel Version */}
-          <section className="scroll-reveal opacity-0 translate-y-10 transition-all duration-1000 delay-300 py-24 overflow-hidden">
-            <div className="max-w-7xl mx-auto px-3 sm:px-4">
-              <div className="text-center mb-16 space-y-4 px-1 sm:px-0">
-                <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
-                  Experience the{" "}
-                  <span className="text-primary italic">Tebnu</span> Ease
-                </h2>
-                <p className="text-slate-500 font-medium text-lg max-w-2xl mx-auto">
-                  Find the perfect helper for any task, with all the details at
-                  your fingertips.
-                </p>
-              </div>
+        {/* Interactive Job Category Showcase — full width on large screens */}
+        <section className="w-full scroll-reveal overflow-hidden py-24 opacity-0 transition-all delay-300 duration-1000 translate-y-10">
+          <div className="mb-16 space-y-4 px-5 text-center sm:px-8 lg:px-12 xl:px-16">
+            <h2 className="text-4xl font-black leading-tight tracking-tight text-slate-900 md:text-6xl">
+              Experience the{" "}
+              <span className="text-primary italic">Tebnu</span> Ease
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg font-medium text-slate-500">
+              Find the perfect helper for any task, with all the details at your
+              fingertips.
+            </p>
+          </div>
 
-              {/* Carousel Container */}
-              <div className="relative flex flex-col items-center w-full">
-                <div className="relative w-full md:w-[92%] max-w-[1400px] mx-auto flex items-center justify-center">
-                  {/* Left Arrow */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute left-1 sm:left-0 md:-left-12 z-30 h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-100 hover:bg-white text-slate-900 group transition-all active:scale-95"
-                    onClick={() => {
-                      const prevIndex =
-                        (activeCategoryIndex - 1 + showcaseCategories.length) %
-                        showcaseCategories.length;
-                      setActiveCategoryIndex(prevIndex);
-                    }}
-                  >
-                    <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 group-hover:-translate-x-0.5 transition-transform" />
-                  </Button>
+          <div className="relative flex w-full flex-col items-center">
+            <div className="relative flex w-full items-center justify-center px-5 sm:px-8 lg:px-12 xl:px-16">
+              {/* Left Arrow */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-3 z-30 h-9 w-9 rounded-full border border-slate-100 bg-white/90 text-slate-900 shadow-lg backdrop-blur-md transition-all group hover:bg-white active:scale-95 sm:left-6 sm:h-10 sm:w-10 md:left-10 md:h-12 md:w-12 lg:left-14 xl:left-16"
+                onClick={() => {
+                  const prevIndex =
+                    (activeCategoryIndex - 1 + showcaseCategories.length) %
+                    showcaseCategories.length;
+                  setActiveCategoryIndex(prevIndex);
+                }}
+              >
+                <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5 md:h-6 md:w-6" />
+              </Button>
 
-                  {/* Showcase Grid - Dynamic Scaling */}
-                  <div className="flex items-end justify-center w-full gap-1 sm:gap-3 md:gap-8 px-0">
+              {/* Showcase Grid - Dynamic Scaling */}
+              <div className="flex w-full items-end justify-center gap-2 px-10 sm:gap-4 md:gap-8 md:px-14 lg:gap-10 xl:px-20">
                     {showcaseCategories.map((cat, idx) => {
                       const isActive = idx === activeCategoryIndex;
                       const isPrev =
@@ -433,8 +587,8 @@ export default function LandingPage() {
                           className={cn(
                             "relative transition-all duration-700 cursor-pointer flex-shrink-0 group",
                             isActive
-                              ? "w-full md:w-[45%] lg:w-[40%] z-20"
-                              : "hidden md:block w-[15%] lg:w-[14%] z-10 opacity-40 grayscale hover:opacity-100 hover:grayscale-0",
+                              ? "w-full md:w-[48%] lg:w-[44%] xl:w-[40%] z-20"
+                              : "hidden md:block w-[16%] lg:w-[15%] xl:w-[14%] z-10 opacity-40 grayscale hover:opacity-100 hover:grayscale-0",
                             isActive
                               ? "scale-100"
                               : "scale-90 translate-y-4",
@@ -540,346 +694,298 @@ export default function LandingPage() {
                     })}
                   </div>
 
-                  {/* Right Arrow */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 sm:right-0 md:-right-12 z-30 h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-full bg-white/90 backdrop-blur-md shadow-lg border border-slate-100 hover:bg-white text-slate-900 group transition-all active:scale-95"
-                    onClick={() => {
-                      const nextIndex =
-                        (activeCategoryIndex + 1) % showcaseCategories.length;
-                      setActiveCategoryIndex(nextIndex);
-                    }}
-                  >
-                    <ChevronRight className="w-5 h-5 md:w-6 md:h-6 group-hover:translate-x-0.5 transition-transform" />
-                  </Button>
+              {/* Right Arrow */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-3 z-30 h-9 w-9 rounded-full border border-slate-100 bg-white/90 text-slate-900 shadow-lg backdrop-blur-md transition-all group hover:bg-white active:scale-95 sm:right-6 sm:h-10 sm:w-10 md:right-10 md:h-12 md:w-12 lg:right-14 xl:right-16"
+                onClick={() => {
+                  const nextIndex =
+                    (activeCategoryIndex + 1) % showcaseCategories.length;
+                  setActiveCategoryIndex(nextIndex);
+                }}
+              >
+                <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5 md:h-6 md:w-6" />
+              </Button>
+            </div>
+
+            {/* Details Revealed Below Active Card */}
+            <div className="mt-8 w-full animate-in fade-in slide-in-from-top-4 duration-700 px-5 sm:px-8 lg:px-12 xl:px-16">
+              <div className="max-h-[700px] w-full space-y-12 overflow-y-auto py-8 scrollbar-hide">
+                <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
+                  <div className="space-y-4">
+                    <div className="hidden h-1 w-12 rounded-full bg-primary sm:block" />
+                    <h4 className="text-2xl font-black leading-tight text-slate-900 md:text-3xl">
+                      {showcaseCategories[activeCategoryIndex].phrase}
+                    </h4>
+                    <p className="text-lg font-medium leading-relaxed text-slate-600">
+                      {showcaseCategories[activeCategoryIndex].details}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      Why Choose Us?
+                    </h5>
+                    <ul className="space-y-3">
+                      {showcaseCategories[activeCategoryIndex].bullets.map(
+                        (bullet, i) => (
+                          <li
+                            key={i}
+                            className="flex items-center justify-center gap-3 font-bold text-slate-700 sm:justify-start"
+                          >
+                            <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
+                            <span className="text-[15px]">{bullet}</span>
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  </div>
                 </div>
 
-                {/* Details Revealed Below Active Card */}
-                <div className="mt-8 w-full max-w-5xl animate-in fade-in slide-in-from-top-4 duration-700">
-                  <div className="space-y-12 text-center sm:text-left py-8 px-4 md:px-0 max-h-[700px] overflow-y-auto scrollbar-hide">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                      <div className="space-y-4">
-                        <div className="w-12 h-1 bg-primary rounded-full hidden sm:block"></div>
-                        <h4 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
-                          {showcaseCategories[activeCategoryIndex].phrase}
-                        </h4>
-                        <p className="text-slate-600 font-medium text-lg leading-relaxed">
-                          {showcaseCategories[activeCategoryIndex].details}
-                        </p>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Why Choose Us?
-                        </h5>
-                        <ul className="space-y-3">
-                          {showcaseCategories[activeCategoryIndex].bullets.map(
-                            (bullet, i) => (
-                              <li
-                                key={i}
-                                className="flex items-center gap-3 text-slate-700 font-bold justify-center sm:justify-start"
-                              >
-                                <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                                <span className="text-[15px]">{bullet}</span>
-                              </li>
-                            ),
-                          )}
-                        </ul>
-                      </div>
+                <div className="flex flex-col items-center justify-between gap-6 border-t border-slate-200/50 pt-8 sm:flex-row">
+                  <div className="hidden sm:block">
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      Status
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+                      <span className="text-sm font-bold tracking-tight text-slate-700">
+                        Active matches in your area
+                      </span>
                     </div>
-
-                    <div className="pt-8 border-t border-slate-200/50 flex flex-col sm:flex-row items-center justify-between gap-6">
-                      <div className="hidden sm:block">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                          Status
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                          <span className="text-sm font-bold text-slate-700 tracking-tight">
-                            Active matches in your area
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-                        <Button
-                          onClick={handleHiringHelper}
-                          size="lg"
-                          className="h-14 px-10 rounded-2xl font-bold bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 text-lg transition-all hover:scale-105 active:scale-95 w-full sm:w-auto"
-                        >
-                          {showcaseCategories[activeCategoryIndex].cta}
-                        </Button>
-                      </div>
-                    </div>
+                  </div>
+                  <div className="flex w-full flex-col items-center gap-4 sm:w-auto sm:flex-row">
+                    <Button
+                      onClick={handleHiringHelper}
+                      size="lg"
+                      className="h-14 w-full rounded-2xl bg-primary px-10 text-lg font-bold text-white shadow-xl shadow-primary/20 transition-all hover:scale-105 hover:bg-primary/90 active:scale-95 sm:w-auto"
+                    >
+                      {showcaseCategories[activeCategoryIndex].cta}
+                    </Button>
                   </div>
                 </div>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Job Categories - Commented out by user request */}
-          {/* <div className="space-y-6 pt-32 mt-12 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
-            <h2 className="text-2xl font-semibold text-center text-black">
-              Home and family needs in one place            </h2>
-            <JobCategories />
-          </div> */}
+        {/* Benefits Section */}
+        <div className="scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
+          <Benefits />
+        </div>
 
-          {/* Benefits Section */}
-          <div className="scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
-            <Benefits />
+        {/* Recent Activity — full-width horizontal scroll on large screens */}
+        <div className="w-full pt-12 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
+          <div className="mb-10 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 xl:px-16">
+            <h2 className="text-2xl font-bold text-black md:text-3xl">
+              Recent Activity
+            </h2>
+            <div className="hidden shrink-0 gap-2 md:flex">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full border-gray-200 bg-white/50 shadow-sm backdrop-blur-sm"
+                onClick={() => scrollLeft(recentActivityRef)}
+              >
+                <ChevronLeft className="h-5 w-5 text-gray-700" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full border-gray-200 bg-white/50 shadow-sm backdrop-blur-sm"
+                onClick={() => scrollRight(recentActivityRef)}
+              >
+                <ChevronRight className="h-5 w-5 text-gray-700" />
+              </Button>
+            </div>
           </div>
 
-          {/* Recent Orders Section */}
-          <div className="pt-12 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
-            <div className="max-w-7xl mx-auto px-4">
-              <div className="relative mb-10">
-                <h2 className="text-2xl md:text-3xl font-bold text-center text-black">
-                  Recent Activity
-                </h2>
-                <div className="hidden md:flex gap-2 absolute right-0 top-1/2 -translate-y-1/2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full shadow-sm w-10 h-10 border-gray-200 bg-white/50 backdrop-blur-sm"
-                    onClick={() => scrollLeft(recentActivityRef)}
-                  >
-                    <ChevronLeft className="w-5 h-5 text-gray-700" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full shadow-sm w-10 h-10 border-gray-200 bg-white/50 backdrop-blur-sm"
-                    onClick={() => scrollRight(recentActivityRef)}
-                  >
-                    <ChevronRight className="w-5 h-5 text-gray-700" />
-                  </Button>
-                </div>
+          <div
+            ref={recentActivityRef}
+            className="flex w-full snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-8 scrollbar-hide px-5 sm:gap-6 sm:px-8 lg:gap-7 lg:px-12 xl:px-16"
+          >
+            {activityLoading ? (
+              <div className="flex min-h-[220px] w-full items-center justify-center text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-
-              <div
-                ref={recentActivityRef}
-                className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 scrollbar-hide -mx-4 px-4 scroll-smooth"
-              >
-                {[
-                  {
-                    name: "Anna S.",
-                    initials: "AS",
-                    role: "Childcare Service",
-                    icon: <Baby className="w-5 h-5 text-purple-500" />,
-                    gradient: "from-blue-400 to-indigo-500",
-                    description:
-                      "Looking for a reliable nanny for my 3-year-old daughter, 3 days a week from 9 AM to 2 PM. Must have experience with toddlers.",
-                    rate: "₪80/hour",
-                  },
-                  {
-                    name: "David L.",
-                    initials: "DL",
-                    role: "House Cleaning",
-                    icon: <Sparkles className="w-5 h-5 text-orange-500" />,
-                    gradient: "from-orange-400 to-red-500",
-                    description:
-                      "Need deep cleaning for a 4-bedroom apartment. Includes kitchen, bathrooms, and all common areas. One-time service needed this weekend.",
-                    rate: "₪120/hour",
-                  },
-                  {
-                    name: "Rachel M.",
-                    initials: "RS",
-                    role: "Childcare Service",
-                    icon: <Baby className="w-5 h-5 text-purple-500" />,
-                    gradient: "from-purple-400 to-pink-500",
-                    description:
-                      "Seeking an experienced babysitter for evening care, 2-3 times per week. Two children ages 5 and 7. Must be available from 6 PM to 10 PM.",
-                    rate: "₪90/hour",
-                  },
-                  {
-                    name: "Tom K.",
-                    initials: "TM",
-                    role: "House Cleaning",
-                    icon: <Sparkles className="w-5 h-5 text-orange-500" />,
-                    gradient: "from-green-400 to-emerald-500",
-                    description:
-                      "Regular weekly cleaning service for a 3-bedroom house. Prefer someone who can come every Thursday morning. Long-term arrangement preferred.",
-                    rate: "₪100/hour",
-                  },
-                  {
-                    name: "Yael B.",
-                    initials: "YB",
-                    role: "Private Chef",
-                    icon: <Soup className="w-5 h-5 text-red-500" />,
-                    gradient: "from-red-400 to-orange-500",
-                    description:
-                      "Looking for someone to help with weekly meal prep and cooking for a family of 5. Healthy, balanced meals preferred.",
-                    rate: "₪150/hour",
-                  },
-                ].map((order, idx) => (
-                  <div
-                    key={idx}
-                    className="min-w-[320px] md:min-w-[380px] snap-center bg-white rounded-3xl border border-gray-100 shadow-xl p-6 transition-all duration-500 hover:scale-[1.02] hover:bg-gray-50 group"
+            ) : activityItems.length === 0 ? (
+              <div className="px-2 py-10 text-sm font-medium text-slate-500">
+                No open requests or offers yet — be the first to post on Tebnu.
+              </div>
+            ) : (
+              activityItems.map((item) => {
+                const badge = activityKindBadge(item.kind);
+                const BadgeIcon = badge.Icon;
+                return (
+                  <Link
+                    key={`${item.kind}-${item.id}`}
+                    to={item.href}
+                    className="group block w-[min(88vw,320px)] shrink-0 snap-start rounded-3xl border border-gray-100 bg-white p-6 shadow-xl transition-all duration-500 hover:scale-[1.02] hover:bg-gray-50 sm:w-[340px] md:w-[360px] lg:w-[380px] xl:w-[400px]"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            "h-12 w-12 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-base shadow-inner",
-                            order.gradient,
-                          )}
-                        >
-                          {order.initials}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-primary transition-colors">
-                            {order.name}
+                    <div className="mb-4 flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        {item.authorPhotoUrl ? (
+                          <Avatar className="h-16 w-16 border border-gray-100 shadow-inner">
+                            <AvatarImage src={item.authorPhotoUrl} alt="" />
+                            <AvatarFallback>{item.authorInitials}</AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <div
+                            className={cn(
+                              "flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br text-lg font-bold text-white shadow-inner",
+                              landingCategoryGradient(item.categoryId),
+                            )}
+                          >
+                            {item.authorInitials}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="truncate text-lg font-bold leading-tight text-gray-900 transition-colors group-hover:text-primary">
+                            {item.authorName}
                           </h3>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {order.icon}
-                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              {order.role}
+                          <div className="mt-0.5 flex items-center gap-1.5">
+                            <LandingCategoryIcon
+                              categoryId={item.categoryId}
+                              className="h-4 w-4 shrink-0 text-gray-500"
+                            />
+                            <span className="truncate text-xs font-semibold uppercase tracking-wider text-gray-600">
+                              {item.roleLabel}
                             </span>
                           </div>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full"
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[10px] font-black uppercase tracking-wide",
+                          badge.className,
+                        )}
                       >
-                        <Flag className="w-4 h-4" />
-                      </Button>
+                        <BadgeIcon className="h-3 w-3" aria-hidden />
+                        {badge.label}
+                      </span>
                     </div>
 
-                    <p className="text-sm text-gray-700 leading-relaxed min-h-[4.5rem] mb-6">
-                      {order.description}
+                    <p className="mb-6 min-h-[4.5rem] text-sm leading-relaxed text-gray-700">
+                      {item.description}
                     </p>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between border-t border-gray-100 pt-4">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                          Pricing
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                          {item.rateLabel ? "Pricing" : "Posted"}
                         </span>
                         <span className="font-black text-xl text-primary">
-                          {order.rate}
+                          {item.rateLabel ?? "Open"}
                         </span>
                       </div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="rounded-full bg-gray-50 hover:bg-gray-100 border-gray-100 shadow-sm font-bold text-xs uppercase tracking-tight"
-                      >
+                      <span className="inline-flex h-9 items-center rounded-full border border-gray-100 bg-gray-50 px-4 text-xs font-bold uppercase tracking-tight text-gray-900 shadow-sm transition-colors group-hover:bg-gray-100">
                         View Details
-                      </Button>
+                      </span>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  </Link>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* About our helpers — full-width horizontal scroll on large screens */}
+        <div className="w-full pt-24 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
+          <div className="mb-10 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 xl:px-16">
+            <h2 className="text-2xl font-bold text-black md:text-3xl">
+              About our helpers
+            </h2>
+            <div className="hidden shrink-0 gap-2 md:flex">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full border-gray-200 bg-white/50 shadow-sm backdrop-blur-sm"
+                onClick={() => scrollLeft(reviewsRef)}
+              >
+                <ChevronLeft className="h-5 w-5 text-gray-700" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full border-gray-200 bg-white/50 shadow-sm backdrop-blur-sm"
+                onClick={() => scrollRight(reviewsRef)}
+              >
+                <ChevronRight className="h-5 w-5 text-gray-700" />
+              </Button>
             </div>
           </div>
 
-          {/* Reviews Section */}
-          <div className="pt-24 scroll-reveal opacity-0 translate-y-10 transition-all duration-1000">
-            <div className="max-w-7xl mx-auto px-4 pb-12">
-              <div className="relative mb-10">
-                <h2 className="text-2xl md:text-3xl font-bold text-center text-black">
-                  About our helpers
-                </h2>
-                <div className="hidden md:flex gap-2 absolute right-0 top-1/2 -translate-y-1/2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full shadow-sm w-10 h-10 border-gray-200 bg-white/50 backdrop-blur-sm"
-                    onClick={() => scrollLeft(reviewsRef)}
-                  >
-                    <ChevronLeft className="w-5 h-5 text-gray-700" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full shadow-sm w-10 h-10 border-gray-200 bg-white/50 backdrop-blur-sm"
-                    onClick={() => scrollRight(reviewsRef)}
-                  >
-                    <ChevronRight className="w-5 h-5 text-gray-700" />
-                  </Button>
-                </div>
+          <div
+            ref={reviewsRef}
+            className="flex w-full snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-12 scrollbar-hide px-5 sm:gap-6 sm:px-8 lg:gap-7 lg:px-12 xl:px-16"
+          >
+            {reviewsLoading ? (
+              <div className="flex min-h-[240px] w-full items-center justify-center text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-              <div
-                ref={reviewsRef}
-                className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 scrollbar-hide -mx-4 px-4 scroll-smooth"
-              >
-                {[
-                  {
-                    name: "John D.",
-                    initials: "JD",
-                    image: "/images/helper_profile_2.png",
-                    gradient: "from-blue-400 to-purple-500",
-                    rating: 4.5,
-                    text: "Sarah was absolutely amazing with our two kids! She was punctual, caring, and our children loved spending time with her. Highly recommend her services!",
-                  },
-                  {
-                    name: "Maria R.",
-                    initials: "MR",
-                    image: "/images/helper_profile_1.png",
-                    gradient: "from-green-400 to-teal-500",
-                    rating: 5,
-                    text: "The cleaning service was exceptional! Our home has never looked better. The team was professional, thorough, and left everything sparkling clean. Will definitely use again!",
-                  },
-                  {
-                    name: "Sophie T.",
-                    initials: "ST",
-                    image: "/images/helper_profile_4.png",
-                    gradient: "from-orange-400 to-pink-500",
-                    rating: 4.8,
-                    text: "I hired help for move-out cleaning and it was perfect. Saved me so much time and stress. Highly recommended!",
-                  },
-                  {
-                    name: "Michael B.",
-                    initials: "MB",
-                    image: "/images/helper_profile_3.png",
-                    gradient: "from-red-400 to-indigo-500",
-                    rating: 5,
-                    text: "Found an excellent cook for our family dinner. The food was delicious and the kitchen was left spotless. Truly professional service.",
-                  },
-                ].map((review, idx) => (
-                  <div
-                    key={idx}
-                    className="relative min-w-[320px] md:min-w-[400px] snap-center bg-white rounded-3xl border border-gray-100 shadow-xl p-8 pt-14 mt-10 hover:shadow-2xl transition-all duration-500 group"
+            ) : reviews.length === 0 ? (
+              <div className="px-2 py-10 text-sm font-medium text-slate-500">
+                Reviews from completed jobs will appear here as the community grows.
+              </div>
+            ) : (
+              reviews.map((review) => {
+                const helper = review.reviewee!;
+                const helperName = helper.full_name?.trim() || "Helper";
+                const reviewerName =
+                  review.reviewer?.full_name?.trim() || "Community member";
+                const reviewText =
+                  review.review_text?.trim() ||
+                  "Great experience working together on Tebnu.";
+
+                return (
+                  <article
+                    key={review.id}
+                    className="group relative mt-10 w-[min(88vw,320px)] shrink-0 snap-start rounded-3xl border border-gray-100 bg-white p-8 pt-14 shadow-xl transition-all duration-500 hover:shadow-2xl sm:w-[360px] md:w-[400px] lg:w-[420px] xl:w-[440px]"
                   >
-                    {/* Floating Avatar */}
-                    <div
-                      className={cn(
-                        "absolute -top-10 left-8 h-20 w-20 rounded-full bg-gradient-to-br p-1.5 shadow-xl group-hover:scale-110 transition-transform duration-500",
-                        review.gradient,
-                      )}
+                    <Link
+                      to={`/profile/${helper.id}`}
+                      className="absolute -top-10 left-8 block h-20 w-20 rounded-full bg-gradient-to-br from-orange-400 to-red-500 p-1.5 shadow-xl transition-transform duration-500 group-hover:scale-110"
+                      aria-label={`View ${helperName}'s profile`}
                     >
                       <Avatar className="h-full w-full border-4 border-white">
                         <AvatarImage
-                          src={review.image}
+                          src={helper.photo_url || undefined}
+                          alt=""
                           className="object-cover"
                         />
-                        <AvatarFallback className="bg-transparent text-white font-bold text-2xl">
-                          {review.initials}
+                        <AvatarFallback className="bg-transparent text-2xl font-bold text-white">
+                          {helperInitials(helperName)}
                         </AvatarFallback>
                       </Avatar>
-                    </div>
+                    </Link>
 
                     <div className="flex flex-col">
-                      <div className="flex items-center justify-between gap-4 mb-4">
-                        <h4 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
-                          {review.name}
-                        </h4>
-                        <div className="flex items-center gap-1.5 bg-yellow-400/10 px-3 py-1 rounded-full border border-yellow-400/20">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <div className="mb-4 flex items-center justify-between gap-4">
+                        <Link
+                          to={`/profile/${helper.id}`}
+                          className="text-xl font-bold text-gray-900 transition-colors group-hover:text-primary"
+                        >
+                          {helperName}
+                        </Link>
+                        <div className="flex items-center gap-1.5 rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                           <span className="text-[13px] font-black text-yellow-700">
-                            {review.rating}
+                            {Number(review.rating).toFixed(1)}
                           </span>
                         </div>
                       </div>
-                      <p className="text-gray-700 leading-relaxed italic text-base md:text-lg">
-                        "{review.text}"
+                      <p className="text-base italic leading-relaxed text-gray-700 md:text-lg">
+                        &ldquo;{reviewText}&rdquo;
+                      </p>
+                      <p className="mt-4 text-xs font-semibold text-slate-500">
+                        Reviewed by {reviewerName.split(" ")[0]}
                       </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  </article>
+                );
+              })
+            )}
           </div>
         </div>
       </main>
@@ -887,26 +993,29 @@ export default function LandingPage() {
       <Footer />
 
       {/* Fixed bottom bar - Mobile only, always on */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 pt-3 bg-white/95 backdrop-blur-md border-t border-slate-100 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] z-40 md:hidden">
-        <div className="max-w-lg mx-auto flex flex-row gap-3 justify-center px-1">
+      <div className="fixed inset-x-0 bottom-[var(--app-safe-bottom,env(safe-area-inset-bottom,0px))] z-40 border-t border-slate-100 bg-white/95 p-4 pt-3 pb-3 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md md:hidden">
+        <div className="mx-auto flex flex-row items-center justify-center gap-2.5 px-1">
           <Button
             onClick={handleSearchingForJob}
-            className="h-12 rounded-[1.25rem] px-4 bg-orange-50 hover:bg-orange-100 text-orange-600 shadow-sm flex-1 gap-2 text-[13px] font-black tracking-tight"
+            className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-orange-50 px-4 text-sm font-black tracking-tight text-orange-600 shadow-sm hover:bg-orange-100"
           >
-            <Briefcase className="w-4 h-4" />
-            BE A HELPER
+            <Briefcase className="h-4 w-4" />
+            Offer Help
           </Button>
           <Button
             onClick={handleHiringHelper}
-            className="h-12 rounded-[1.25rem] px-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-md shadow-orange-500/20 flex-1 gap-2 text-[13px] font-black tracking-tight"
+            className="flex h-12 w-auto gap-2 rounded-[1.25rem] bg-gradient-to-r from-orange-500 to-orange-600 px-4 text-sm font-black tracking-tight text-white shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-orange-700"
           >
-            <Users className="w-4 h-4" />
-            HIRE A HELPER
+            <Users className="h-4 w-4" />
+            Need Help
           </Button>
         </div>
       </div>
       {/* WhatsApp Floating Contact Button */}
-      <WhatsAppButton phoneNumber="972541234567" />
+      <WhatsAppButton
+        phoneNumber="972541234567"
+        className="max-md:bottom-[calc(4.75rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))]"
+      />
     </div>
   );
 }

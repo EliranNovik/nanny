@@ -26,7 +26,7 @@ type ProfileKnockMenuProps = {
   viewerName: string | null;
   disabled?: boolean;
   className?: string;
-  /** hero = cover image; inline = compact; contact = same size as public profile chat/WA/TG row; glass = frosted black pill; peek = chat profile peek row (h-10, orange outline) */
+  /** hero = cover image; inline = compact; contact = same size as public profile chat/WA/TG row; glass = frosted black pill; peek = chat profile peek row (h-10, flat zinc chip) */
   variant?: "hero" | "inline" | "contact" | "glass" | "peek";
   /** When `up`, menu opens above the button (avoids overflow clip at bottom of cards). */
   dropdownOpens?: "up" | "down";
@@ -118,7 +118,7 @@ export function ProfileKnockMenu({
         : variant === "glass"
           ? "h-12 w-12 shrink-0 rounded-full bg-black/30 text-white shadow-lg backdrop-blur-2xl transition-colors hover:bg-black/40"
           : variant === "peek"
-            ? "h-10 w-10 shrink-0 rounded-xl border border-primary bg-white text-primary shadow-none hover:bg-orange-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+            ? "h-10 w-10 shrink-0 rounded-lg border-0 bg-zinc-100 text-primary shadow-none hover:bg-zinc-200/90 dark:bg-white/[0.08] dark:text-orange-400 dark:hover:bg-white/[0.12]"
             : "h-12 w-12 rounded-full border border-amber-500/40 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md";
 
   return (

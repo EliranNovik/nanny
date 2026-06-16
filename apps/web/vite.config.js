@@ -8,6 +8,7 @@ export default defineConfig({
         port: 5175,
         host: '0.0.0.0', // Allow external connections for ngrok
         allowedHosts: [
+            '1528-2a00-a041-f229-9200-d412-a218-85b1-3796.ngrok-free.app',
             '59b3-2a00-a041-f229-9200-211f-de6c-3c1e-20.ngrok-free.app',
             'c46872e6d739.ngrok-free.app',
             '9538501d3d45.ngrok-free.app',

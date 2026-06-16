@@ -50,7 +50,7 @@ export function ChatComposer({
   const phrasesPanelBase =
     "absolute bottom-[calc(100%+10px)] z-40 overflow-y-auto rounded-2xl border border-border/50 bg-background/95 shadow-lg backdrop-blur-lg dark:bg-zinc-900/95 p-2";
   const phraseItemClass =
-    "w-full rounded-xl px-4 py-3.5 text-left text-[17px] font-medium leading-snug text-foreground transition-colors hover:bg-muted/85 active:bg-muted dark:hover:bg-zinc-800/90 md:px-3.5 md:py-3 md:text-[15px]";
+    "w-full rounded-xl px-4 py-3.5 text-left text-[19px] font-medium leading-snug text-foreground transition-colors hover:bg-muted/85 active:bg-muted dark:hover:bg-zinc-800/90 md:px-3.5 md:py-3 md:text-[15px]";
 
   const phrases = [
     "I'm on my way",

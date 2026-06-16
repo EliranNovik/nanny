@@ -90,7 +90,7 @@ export function scrollToFeedItem(
 
 export function scrollToFeedItemWhenReady(
   id: string,
-  source: "post" | "job_request",
+  source: "post" | "job_request" | "availability",
   opts?: {
     maxAttempts?: number;
     topInset?: number;

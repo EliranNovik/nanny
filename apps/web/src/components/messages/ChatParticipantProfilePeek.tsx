@@ -131,7 +131,7 @@ function ProfileCategories({ categories }: { categories: string[] }) {
           <Badge
             key={catId}
             variant="secondary"
-            className="inline-flex items-center gap-2 rounded-full border-zinc-200/80 bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:border-zinc-600/80 dark:bg-zinc-800 dark:text-zinc-200"
+            className="inline-flex items-center gap-2 rounded-full border-0 bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-none dark:bg-zinc-800 dark:text-zinc-200"
           >
             <Icon
               className={cn("h-4 w-4 shrink-0", iconClass)}
@@ -395,15 +395,15 @@ export function ChatParticipantProfilePeek({
         <div className="flex items-stretch gap-2">
           <Button
             type="button"
-            variant="outline"
-            className="h-10 min-h-10 flex-1 rounded-xl border-primary bg-white font-semibold text-primary hover:bg-orange-50 hover:text-primary dark:bg-zinc-800 dark:hover:bg-zinc-700"
+            variant="ghost"
+            className="h-10 min-h-10 flex-1 rounded-lg border-0 bg-zinc-100 font-semibold text-primary shadow-none hover:bg-zinc-200/90 hover:text-primary dark:bg-white/[0.08] dark:text-orange-400 dark:hover:bg-white/[0.12] dark:hover:text-orange-300"
             onClick={() => {
               setOpen(false);
               navigate(`/profile/${userId}`);
             }}
           >
             See profile
-            <ChevronRight className="ml-1 h-4 w-4 text-primary" aria-hidden />
+            <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
           </Button>
           {userId &&
           viewer?.id &&

@@ -7,12 +7,13 @@ type ChatDateSeparatorProps = {
 
 export function ChatDateSeparator({ label, className }: ChatDateSeparatorProps) {
   return (
-    <div className={cn("my-8 flex justify-center", className)}>
+    <div className={cn("my-5 flex justify-center", className)}>
       <span
         className={cn(
-          "rounded-full border px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em]",
-          "border-slate-200/80 bg-white/80 text-slate-500",
-          "dark:border-white/10 dark:bg-white/5 dark:text-slate-400",
+          "inline-flex items-center rounded-lg px-3.5 py-1",
+          "bg-zinc-100 text-[13px] font-medium text-zinc-500",
+          "dark:bg-white/[0.08] dark:text-slate-400",
+          "md:px-3.5 md:py-1 md:text-sm",
         )}
       >
         {label}

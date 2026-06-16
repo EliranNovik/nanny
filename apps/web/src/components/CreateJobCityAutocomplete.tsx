@@ -150,6 +150,13 @@ export function CreateJobCityAutocomplete({
   const fieldHeightClass = isCompact ? "h-10" : "h-14";
   const textSizeClass = isCompact ? "text-base" : "text-lg";
   const gpsButtonClass = isCompact ? "h-10 w-10" : "h-14 w-14";
+  const helperText = isOptional
+    ? isConfirmed
+      ? "City from the list or GPS is saved. Edit the field to change it."
+      : "Optional — pick a city from suggestions or use GPS. You can skip this."
+    : isConfirmed
+      ? "City selected. Change the text only if you want to pick a different city."
+      : null;
 
   if (loadError) {
     return (
@@ -235,20 +242,16 @@ export function CreateJobCityAutocomplete({
           )}
         </Button>
       </div>
-      <p
-        className={cn(
-          "text-slate-500 dark:text-slate-400",
-          isCompact ? "text-xs" : "text-sm",
-        )}
-      >
-        {isOptional
-          ? isConfirmed
-            ? "City from the list or GPS is saved. Edit the field to change it."
-            : "Optional — pick a city from suggestions or use GPS. You can skip this."
-          : isConfirmed
-            ? "City selected. Change the text only if you want to pick a different city."
-            : "Choose a city from the suggestions — typing alone is not enough to continue."}
-      </p>
+      {helperText ? (
+        <p
+          className={cn(
+            "text-slate-500 dark:text-slate-400",
+            isCompact ? "text-xs" : "text-sm",
+          )}
+        >
+          {helperText}
+        </p>
+      ) : null}
     </div>
   );
 }

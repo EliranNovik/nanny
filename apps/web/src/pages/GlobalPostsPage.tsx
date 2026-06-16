@@ -115,7 +115,10 @@ function FeedMainContent({
         onAuthorFilterChange={onFavoriteAuthorFilterChange}
         reserveSidePanelSpace
         variant="global"
-        className="mb-4 mt-3 md:mb-5 md:mt-4 px-2 md:px-0"
+        className={cn(
+          "mb-4 px-2 md:mb-5 md:mt-4 md:px-0",
+          expandDiscoverLayout ? "mt-0" : "mt-3",
+        )}
       />
 
       <ProfilePostsFeed
@@ -284,18 +287,14 @@ export default function GlobalPostsPage() {
       data-community-feed-guest={!user ? "" : undefined}
     >
       {!user ? (
-        <div className="max-md:px-4 max-md:pt-4">
-          <LandingSiteHeader
-            hidePostFeedLink
-            scrollWithPage
-            fullWidth
-            hideLeftLogo
-            mobileMatchLanding
-            hideBackButtonMobile
-            className="mb-0 max-md:max-w-5xl"
-            variant="glassy"
-          />
-        </div>
+        <LandingSiteHeader
+          hidePostFeedLink
+          hideLeftLogo
+          mobileMatchLanding
+          fixedOnMobile
+          hideBackButtonMobile
+          variant="brand"
+        />
       ) : null}
 
       {user ? (
@@ -324,7 +323,7 @@ export default function GlobalPostsPage() {
           </div>
         </div>
       ) : (
-        <div className="flex w-full items-start pb-6">
+        <div className="flex w-full items-start pb-6 pt-[4.25rem] md:pt-32">
           <GuestCommunityFeedAside />
           <div className="min-w-0 flex-1 px-0 md:px-6 lg:px-8">
             <FeedMainContent

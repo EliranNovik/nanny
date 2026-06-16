@@ -205,7 +205,7 @@ export default function OnboardingPage() {
   ) {
     return (
       <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
-        <LandingSiteHeader />
+        <LandingSiteHeader hideBackButtonMobile />
         <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
           <div className="flex flex-col items-center gap-3">
             <AppBootSplashLogo />
@@ -579,21 +579,12 @@ export default function OnboardingPage() {
       <div className="flex flex-col flex-1 relative min-w-0">
         <div className="absolute top-0 right-0 left-0 z-20 pointer-events-none">
           <div className="pointer-events-auto">
-            <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
+            <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight hideBackButtonMobile />
           </div>
         </div>
 
-        <main className="flex-1 flex flex-col items-center justify-center p-6 pt-32 pb-12 overflow-y-auto">
+        <main className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-6 pb-28 pt-24 md:pb-12 md:pt-32">
           <div className="w-full max-w-[460px] animate-fade-in relative z-10 mx-auto">
-            
-            {/* Mobile Branding (Hidden on Desktop) */}
-            <div className="lg:hidden text-center mb-10">
-              <img
-                src={BRAND_LOGO_SRC}
-                alt="Tebnu"
-                className="h-24 w-auto sm:h-28 mx-auto mb-4"
-              />
-            </div>
 
           {/* Step progress indicator */}
           <div className="mb-8">
@@ -647,73 +638,115 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          <div className="text-center mb-8 md:mb-10">
+          <div className={cn("text-center", step === 1 ? "mb-2" : "mb-8 md:mb-10")}>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {step === 1 ? "Your name and city" : "Create your account"}
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {step === 1
-                ? "Just the basics — we'll match you with the right people."
-                : "Almost there. Your account is free and takes seconds."}
-            </p>
+            {step === 2 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Almost there. Your account is free and takes seconds.
+              </p>
+            ) : null}
           </div>
 
           {/* Role selector — shown at top of step 1 */}
           {step === 1 && (
             <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2.5">I am joining as…</p>
-              <div className="grid grid-cols-2 gap-3">
+              <p className="mb-6 text-center text-sm font-semibold uppercase tracking-wide text-muted-foreground sm:text-base">
+                I am joining as…
+              </p>
+              <div className="mx-auto grid max-w-[26rem] grid-cols-2 items-center gap-4 sm:max-w-md">
                 <button
                   type="button"
                   onClick={() => setRole("client")}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-2xl border-2 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                    "relative flex flex-col items-center rounded-2xl text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                     role === "client"
-                      ? "border-primary bg-primary/5 shadow-md"
-                      : "border-border bg-card hover:border-primary/40 hover:bg-primary/5"
+                      ? "z-10 scale-[1.06] gap-3.5 border border-white/20 bg-gradient-to-r from-orange-500 to-red-600 p-6 shadow-lg shadow-orange-500/25"
+                      : "gap-3 border-0 bg-muted/20 p-5 hover:bg-muted/30",
                   )}
                 >
-                  <div className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full",
-                    role === "client" ? "bg-primary/15" : "bg-muted"
-                  )}>
-                    <Heart className={cn("h-5 w-5", role === "client" ? "text-primary" : "text-muted-foreground")} />
+                  <div
+                    className={cn(
+                      "flex items-center justify-center rounded-full",
+                      role === "client" ? "h-16 w-16 bg-white/20" : "h-14 w-14 bg-white/60",
+                    )}
+                  >
+                    <Heart
+                      className={cn(
+                        role === "client" ? "h-8 w-8 text-white" : "h-7 w-7 text-muted-foreground",
+                      )}
+                    />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-foreground">I need help</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Find helpers near you</p>
+                    <p
+                      className={cn(
+                        "font-bold",
+                        role === "client" ? "text-lg text-white" : "text-base text-foreground",
+                      )}
+                    >
+                      I need help
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-1 text-sm",
+                        role === "client" ? "text-white/85" : "text-muted-foreground",
+                      )}
+                    >
+                      Find helpers near you
+                    </p>
                   </div>
-                  {role === "client" && (
-                    <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
-                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                  {role === "client" ? (
+                    <div className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-white">
+                      <Check className="h-3 w-3 text-orange-600" />
                     </div>
-                  )}
+                  ) : null}
                 </button>
                 <button
                   type="button"
                   onClick={() => setRole("freelancer")}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-2xl border-2 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 relative",
+                    "relative flex flex-col items-center rounded-2xl text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                     role === "freelancer"
-                      ? "border-primary bg-primary/5 shadow-md"
-                      : "border-border bg-card hover:border-primary/40 hover:bg-primary/5"
+                      ? "z-10 scale-[1.06] gap-3.5 border border-white/20 bg-gradient-to-r from-orange-500 to-red-600 p-6 shadow-lg shadow-orange-500/25"
+                      : "gap-3 border-0 bg-muted/20 p-5 hover:bg-muted/30",
                   )}
                 >
-                  <div className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full",
-                    role === "freelancer" ? "bg-primary/15" : "bg-muted"
-                  )}>
-                    <Users className={cn("h-5 w-5", role === "freelancer" ? "text-primary" : "text-muted-foreground")} />
+                  <div
+                    className={cn(
+                      "flex items-center justify-center rounded-full",
+                      role === "freelancer" ? "h-16 w-16 bg-white/20" : "h-14 w-14 bg-white/60",
+                    )}
+                  >
+                    <Users
+                      className={cn(
+                        role === "freelancer" ? "h-8 w-8 text-white" : "h-7 w-7 text-muted-foreground",
+                      )}
+                    />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-foreground">I want to help</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Earn by helping others</p>
+                    <p
+                      className={cn(
+                        "font-bold",
+                        role === "freelancer" ? "text-lg text-white" : "text-base text-foreground",
+                      )}
+                    >
+                      I want to help
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-1 text-sm",
+                        role === "freelancer" ? "text-white/85" : "text-muted-foreground",
+                      )}
+                    >
+                      Earn by helping others
+                    </p>
                   </div>
-                  {role === "freelancer" && (
-                    <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
-                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                  {role === "freelancer" ? (
+                    <div className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-white">
+                      <Check className="h-3 w-3 text-orange-600" />
                     </div>
-                  )}
+                  ) : null}
                 </button>
               </div>
             </div>
@@ -749,7 +782,7 @@ export default function OnboardingPage() {
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="hidden gap-3 pt-4 md:flex">
                   <Button
                     variant="outline"
                     type="button"
@@ -815,7 +848,7 @@ export default function OnboardingPage() {
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="hidden gap-3 pt-4 md:flex">
                   <Button
                     variant="outline"
                     type="button"
@@ -840,6 +873,51 @@ export default function OnboardingPage() {
           </div>
         </div>
         </main>
+
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.12)] backdrop-blur-md md:hidden">
+          <div className="mx-auto flex w-full max-w-[460px] gap-3">
+            {step === 1 ? (
+              <>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => navigate("/")}
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={handleNameCitySubmit}
+                  disabled={loading || !fullName.trim() || !cityConfirmed}
+                  className="flex-1"
+                >
+                  Continue
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setStep(1)}
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={handleRegister}
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  {loading ? "Creating Account..." : "Create Account"}
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

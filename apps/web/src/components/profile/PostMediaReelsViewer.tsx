@@ -47,6 +47,8 @@ import {
   type EventJoinInterestStatus,
 } from "@/lib/profilePostEventJoin";
 import { ReelDesktopCommentsPanel } from "@/components/profile/PostMediaDesktopViewer";
+import { useCommunityFeedOverlayLock } from "@/hooks/useCommunityFeedOverlayLock";
+import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
 
 /** Narrow post shape for reels (avoids circular imports with ProfilePostsFeed). */
 export type ReelFeedPost = {
@@ -258,6 +260,50 @@ function formatClockSeconds(totalSeconds: number): string {
   return `${m}:${r.toString().padStart(2, "0")}`;
 }
 
+/** Sync visible viewport box for iOS Safari toolbar / notch (CSS vars on html). */
+function useReelsVisualViewportSync(active: boolean) {
+  useEffect(() => {
+    if (!active || typeof window === "undefined") return;
+    const root = document.documentElement;
+    const mobileQuery = window.matchMedia("(max-width: 767.98px)");
+
+    const update = () => {
+      if (!mobileQuery.matches) {
+        root.style.removeProperty("--reels-vv-top");
+        root.style.removeProperty("--reels-vv-height");
+        return;
+      }
+      const vv = window.visualViewport;
+      const top = Math.max(0, Math.round(vv?.offsetTop ?? 0));
+      const height = Math.round(
+        vv?.height ?? window.innerHeight ?? root.clientHeight,
+      );
+      root.style.setProperty("--reels-vv-top", `${top}px`);
+      root.style.setProperty("--reels-vv-height", `${height}px`);
+    };
+
+    update();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    vv?.addEventListener("geometrychange", update);
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    mobileQuery.addEventListener("change", update);
+
+    return () => {
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      vv?.removeEventListener("geometrychange", update);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      mobileQuery.removeEventListener("change", update);
+      root.style.removeProperty("--reels-vv-top");
+      root.style.removeProperty("--reels-vv-height");
+    };
+  }, [active]);
+}
+
 type Props = {
   open: boolean;
   posts: ReelFeedPost[];
@@ -297,6 +343,17 @@ export function PostMediaReelsViewer({
   const [eventJoinByPostId, setEventJoinByPostId] = useState<
     Record<string, EventJoinInterestStatus | null>
   >({});
+  const isMobileViewport = useIsMobileViewport();
+  useCommunityFeedOverlayLock(open && isMobileViewport);
+  useReelsVisualViewportSync(open && isMobileViewport);
+
+  useEffect(() => {
+    if (!open || !isMobileViewport) return;
+    document.documentElement.dataset.reelsViewerOpen = "";
+    return () => {
+      delete document.documentElement.dataset.reelsViewerOpen;
+    };
+  }, [open, isMobileViewport]);
 
   const slides = useMemo((): ReelSlideData[] => {
     return posts.filter(isReelsViewerPost).map((p) => {
@@ -678,8 +735,13 @@ export function PostMediaReelsViewer({
 
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyTouchAction = document.body.style.touchAction;
+    document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
@@ -702,7 +764,9 @@ export function PostMediaReelsViewer({
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.touchAction = prevBodyTouchAction;
       window.removeEventListener("keydown", onKey);
     };
   }, [open, onClose]);
@@ -715,12 +779,62 @@ export function PostMediaReelsViewer({
   /** Portaled to `document.body` so `position:fixed` is viewport-anchored above app chrome. */
   return createPortal(
     <div
-      className="fixed inset-0 z-[130] flex h-[100dvh] flex-col bg-black pointer-events-auto md:flex-row"
+      className="pointer-events-auto fixed inset-0 isolate z-[10000] flex w-full max-w-none flex-col overflow-hidden bg-black md:h-[100dvh] md:max-h-[100dvh] md:flex-row"
+      data-post-media-reels-viewer
       role="dialog"
       aria-modal="true"
       aria-label="Post media"
     >
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div
+        className="relative h-full min-h-0 min-w-0 flex-1"
+        data-reels-column
+      >
+        <div
+          ref={scrollerRef}
+          data-reels-scroller
+          className="absolute inset-0 z-0 touch-pan-y snap-y snap-mandatory overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth"
+        >
+          {slides.map((slide) => {
+            const eventJoinStatus = eventJoinByPostId[slide.postId] ?? null;
+            const actionLabel = globalFeedCtaLabel(t, {
+              isJobRequest: false,
+              jobAcceptedAt: null,
+              postTypeId: slide.postTypeId,
+              authorFirstName: slide.authorFirstName,
+              isOwnEventPost: user?.id === slide.authorId && slide.postTypeId === "event",
+              eventJoinStatus,
+            });
+            const actionClassName = globalFeedPrimaryCtaClass(
+              slide.postTypeId,
+              eventJoinStatus === "accepted"
+                ? "accepted"
+                : eventJoinStatus === "declined"
+                  ? "declined"
+                  : eventJoinStatus === "pending"
+                    ? "pending"
+                    : undefined,
+            );
+            const actionDisabled =
+              primaryActionPostId === slide.postId ||
+              (slide.postTypeId === "event" &&
+                (eventJoinStatus === "accepted" || eventJoinStatus === "declined"));
+
+            return (
+              <ReelSlide
+                key={slide.postId}
+                slide={slide}
+                activePostId={activeSlide.postId}
+                showActionButton={slide.showActionButton}
+                actionLabel={actionLabel}
+                actionClassName={actionClassName}
+                actionDisabled={actionDisabled}
+                actionBusy={primaryActionPostId === slide.postId}
+                onPrimaryAction={() => void handlePrimaryAction(slide)}
+              />
+            );
+          })}
+        </div>
+
         <button
           type="button"
           onClick={onClose}
@@ -799,52 +913,11 @@ export function PostMediaReelsViewer({
         </div>
 
         <div
-          ref={scrollerRef}
-          className="min-h-0 flex-1 touch-pan-y snap-y snap-mandatory overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth [&>*]:h-full [&>*]:min-h-full"
+          data-reels-comment-bar
+          className="absolute inset-x-0 bottom-0 z-50 flex items-center gap-3 border-t border-white/10 bg-black px-4 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] pt-3 md:hidden"
         >
-          {slides.map((slide) => {
-            const eventJoinStatus = eventJoinByPostId[slide.postId] ?? null;
-            const actionLabel = globalFeedCtaLabel(t, {
-              isJobRequest: false,
-              jobAcceptedAt: null,
-              postTypeId: slide.postTypeId,
-              authorFirstName: slide.authorFirstName,
-              isOwnEventPost: user?.id === slide.authorId && slide.postTypeId === "event",
-              eventJoinStatus,
-            });
-            const actionClassName = globalFeedPrimaryCtaClass(
-              slide.postTypeId,
-              eventJoinStatus === "accepted"
-                ? "accepted"
-                : eventJoinStatus === "declined"
-                  ? "declined"
-                  : eventJoinStatus === "pending"
-                    ? "pending"
-                    : undefined,
-            );
-            const actionDisabled =
-              primaryActionPostId === slide.postId ||
-              (slide.postTypeId === "event" &&
-                (eventJoinStatus === "accepted" || eventJoinStatus === "declined"));
-
-            return (
-              <ReelSlide
-                key={slide.postId}
-                slide={slide}
-                activePostId={activeSlide.postId}
-                showActionButton={slide.showActionButton}
-                actionLabel={actionLabel}
-                actionClassName={actionClassName}
-                actionDisabled={actionDisabled}
-                actionBusy={primaryActionPostId === slide.postId}
-                onPrimaryAction={() => void handlePrimaryAction(slide)}
-              />
-            );
-          })}
-        </div>
-
-        <div className="relative z-40 flex shrink-0 items-center gap-3 bg-black px-4 py-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] md:hidden">
-          <div className="min-w-0 flex-1 rounded-full bg-zinc-800/95 px-4 py-2.5 dark:bg-zinc-700/90">
+          <div className="flex w-full items-center gap-3">
+          <div className="min-w-0 flex-1 rounded-full bg-zinc-800 px-4 py-2.5">
             <input
               type="text"
               value={activeCommentDraft}
@@ -881,6 +954,7 @@ export function PostMediaReelsViewer({
               <Send className="h-6 w-6" strokeWidth={2.25} aria-hidden />
             )}
           </button>
+          </div>
         </div>
       </div>
 
@@ -1080,7 +1154,8 @@ function ReelSlideBottomPanel({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent px-4 pt-20 pb-3",
+        "pointer-events-none absolute inset-x-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent px-4 pt-20 pb-3",
+        "max-md:bottom-[calc(4rem+var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] md:bottom-0",
       )}
     >
       <div className="pointer-events-auto max-w-[calc(100%-3.5rem)]">
@@ -1285,11 +1360,18 @@ function ReelSlide({
     };
   }, [activePostId, slide.mediaType, slide.postId, syncVideoClockFromEl]);
 
+  const isPortraitMobile =
+    isLandscapeMedia !== true;
+
   const mediaObjectClass = cn(
-    "h-full w-full",
-    isLandscapeMedia === true && "object-contain object-center",
-    isLandscapeMedia === false && "object-cover object-top",
-    isLandscapeMedia === null && "object-contain object-center",
+    isPortraitMobile &&
+      "max-md:absolute max-md:inset-0 max-md:h-full max-md:w-full max-md:object-cover max-md:object-top",
+    isLandscapeMedia === true &&
+      "max-md:max-h-full max-md:max-w-full max-md:object-contain max-md:object-center",
+    "md:h-full md:w-full",
+    isLandscapeMedia === true && "md:object-contain md:object-center",
+    isLandscapeMedia === false && "md:object-cover md:object-center",
+    isLandscapeMedia === null && "md:object-contain md:object-center",
   );
 
   const showVideoProgress =
@@ -1307,6 +1389,7 @@ function ReelSlide({
       ref={(el) => {
         rootRef.current = el;
       }}
+      data-reels-slide
       className="relative flex h-full min-h-full w-full shrink-0 snap-start snap-always flex-col bg-black"
     >
       {slide.postTypeId ? (
@@ -1346,7 +1429,14 @@ function ReelSlide({
       {slide.isTextOnly ? (
         <ReelTextOnlyCenter slide={slide} />
       ) : (
-      <div className="relative min-h-0 flex-1 bg-black">
+      <div
+        className={cn(
+          "relative min-h-0 flex-1 bg-black",
+          isPortraitMobile
+            ? "max-md:overflow-hidden"
+            : "flex items-center justify-center px-2",
+        )}
+      >
         {slide.mediaType === "image" && slide.mediaUrl ? (
           <img
             src={slide.mediaUrl}
@@ -1359,25 +1449,23 @@ function ReelSlide({
             }}
           />
         ) : slide.mediaUrl ? (
-          <div className="relative block h-full w-full overflow-hidden">
-            <video
-              ref={videoRef}
-              src={slide.mediaUrl}
-              className={mediaObjectClass}
-              playsInline
-              muted={false}
-              loop
-              preload="metadata"
-              onLoadedMetadata={(e) => {
-                const v = e.currentTarget;
-                v.muted = false;
-                const w = v.videoWidth;
-                const h = v.videoHeight;
-                if (w > 0 && h > 0) setIsLandscapeMedia(w > h);
-                syncVideoClockFromEl(v);
-              }}
-            />
-          </div>
+          <video
+            ref={videoRef}
+            src={slide.mediaUrl}
+            className={mediaObjectClass}
+            playsInline
+            muted={false}
+            loop
+            preload="metadata"
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              v.muted = false;
+              const w = v.videoWidth;
+              const h = v.videoHeight;
+              if (w > 0 && h > 0) setIsLandscapeMedia(w > h);
+              syncVideoClockFromEl(v);
+            }}
+          />
         ) : null}
       </div>
       )}

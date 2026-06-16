@@ -272,6 +272,65 @@
     padding-bottom: calc(var(--app-bottom-nav-stack) + 0.5rem);
   }
 
+  /**
+   * Fullscreen reels viewer (mobile): track visual viewport on iOS Safari;
+   * slides fill the scroller (one screen each); solid black chrome at bottom.
+   */
+  @media (max-width: 767.98px) {
+    html[data-reels-viewer-open] {
+      overflow: hidden !important;
+      overscroll-behavior: none;
+    }
+
+    html[data-reels-viewer-open] body {
+      overflow: hidden !important;
+      overscroll-behavior: none;
+    }
+
+    [data-post-media-reels-viewer] {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: auto !important;
+      width: 100% !important;
+      height: calc(
+        var(--reels-vv-top, 0px) + var(--reels-vv-height, 100dvh) +
+          var(--visual-viewport-bottom-inset, 0px)
+      ) !important;
+      max-height: calc(
+        var(--reels-vv-top, 0px) + var(--reels-vv-height, 100dvh) +
+          var(--visual-viewport-bottom-inset, 0px)
+      ) !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      transform: none !important;
+    }
+
+    [data-post-media-reels-viewer] [data-reels-column] {
+      height: 100%;
+      min-height: 0;
+    }
+
+    [data-post-media-reels-viewer] [data-reels-scroller] {
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+    }
+
+    [data-post-media-reels-viewer] [data-reels-slide] {
+      height: 100%;
+      min-height: 100%;
+      max-height: 100%;
+    }
+
+    html[data-reels-viewer-open] [data-mobile-header-strip] {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+  }
+
   @media (min-width: 768px) {
     .app-main-scroll-pad {
       padding-bottom: 6.5rem;
