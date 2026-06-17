@@ -45,22 +45,22 @@ export const JOB_CARD_EMPTY_PANEL = cn(
 
 /** Open-help request tiles on Discover home (grid cards, my requests, live help). */
 export const DISCOVER_OPEN_HELP_REQUEST_CARD_SURFACE = cn(
-  "border-0 bg-zinc-50 shadow-none",
-  "dark:bg-zinc-800",
+  "border-0 bg-zinc-100 shadow-none",
+  "dark:bg-zinc-900",
 );
 
 export const DISCOVER_OPEN_HELP_REQUEST_CARD_HOVER = cn(
-  "hover:bg-zinc-100 dark:hover:bg-zinc-700/90",
+  "hover:bg-zinc-200 dark:hover:bg-zinc-800",
 );
 
 /**
  * Explore tab cards + discover home list rows — light: same grey as Public Profile
- * “Open Help Requests” (`bg-zinc-50 shadow-sm border-0`).
+ * “Open Help Requests” (`bg-zinc-100 shadow-sm border-0`).
  * Dark: filled panel + light shadow.
  */
 export const EXPLORE_PAGE_CARD_SURFACE = cn(
-  "border-0 bg-zinc-50 shadow-sm ring-0",
-  "dark:border-0 dark:bg-zinc-800 dark:shadow-sm",
+  "border-0 bg-zinc-100 shadow-sm ring-0",
+  "dark:border-0 dark:bg-zinc-900 dark:shadow-sm",
 );
 
 /** Hover for explore cards only — no border brightening (surface stays outline-free in light mode). */

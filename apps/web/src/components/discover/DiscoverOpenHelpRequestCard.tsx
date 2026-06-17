@@ -31,7 +31,6 @@ import {
 } from "@/components/jobs/jobCardSharedClasses";
 import {
   discoverRequestCardCarouselBodyClass,
-  discoverRequestCardCarouselDescriptionClass,
   discoverRequestCardCarouselFooterActionClass,
   discoverRequestCardCarouselFooterBudgetClass,
   discoverRequestCardCarouselFooterClass,
@@ -84,7 +83,7 @@ function timeAgo(dateStr: string | null | undefined): string {
 }
 
 const myRequestUploadedImageThumbClass =
-  "h-[4.5rem] w-[4.5rem] md:h-20 md:w-20";
+  "h-[5.5rem] w-[5.5rem] md:h-24 md:w-24";
 
 const discoverMyRequestMetaRowClass =
   "mt-2 flex min-h-[1.5rem] w-full flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-muted-foreground md:text-base";
@@ -477,11 +476,8 @@ export function DiscoverOpenHelpRequestCard({
         </div>
 
         <div className={discoverRequestCardCarouselBodyClass}>
-          <div className="mt-2.5 w-full text-left">
+          <div className="mt-1.5 w-full text-left">
             <h3 className={discoverRequestCardCarouselTitleClass}>{title}</h3>
-            <p className={discoverRequestCardCarouselDescriptionClass}>
-              {description || "\u00A0"}
-            </p>
           </div>
 
           <div className={discoverRequestCardCarouselMetaRowClass}>
@@ -850,7 +846,7 @@ export function DiscoverMyOpenRequestCard({
         </div>
 
         <div className={discoverRequestCardCarouselBodyClass}>
-          <div className="mt-2.5 flex w-full items-start gap-3">
+          <div className="mt-1.5 flex w-full items-start gap-3">
             {uploadedImageUrl ? (
               <MyRequestUploadedImageButton
                 imageUrl={uploadedImageUrl}
@@ -859,9 +855,6 @@ export function DiscoverMyOpenRequestCard({
             ) : null}
             <div className="min-w-0 flex-1 text-left">
               <h3 className={discoverRequestCardCarouselTitleClass}>{title}</h3>
-              <p className={discoverRequestCardCarouselDescriptionClass}>
-                {description || "\u00A0"}
-              </p>
             </div>
           </div>
 
@@ -889,8 +882,6 @@ export function DiscoverMyOpenRequestCard({
               </span>
             ) : null}
           </div>
-
-          <div className={discoverRequestCardCarouselPosterRowClass} aria-hidden />
         </div>
 
         <div className={discoverRequestCardCarouselFooterClass}>
@@ -1174,7 +1165,7 @@ export function DiscoverMyLiveHelpCard({
         </div>
 
         <div className={discoverRequestCardCarouselBodyClass}>
-          <div className="mt-2.5 flex w-full items-start gap-3">
+          <div className="mt-1.5 flex w-full items-start gap-3">
             {uploadedImageUrl ? (
               <MyRequestUploadedImageButton
                 imageUrl={uploadedImageUrl}
@@ -1183,9 +1174,6 @@ export function DiscoverMyLiveHelpCard({
             ) : null}
             <div className="min-w-0 flex-1 text-left">
               <h3 className={discoverRequestCardCarouselTitleClass}>{title}</h3>
-              <p className={discoverRequestCardCarouselDescriptionClass}>
-                {description || "\u00A0"}
-              </p>
             </div>
           </div>
 
@@ -1204,8 +1192,6 @@ export function DiscoverMyLiveHelpCard({
               </span>
             </span>
           </div>
-
-          <div className={discoverRequestCardCarouselPosterRowClass} aria-hidden />
         </div>
 
         <div className={discoverRequestCardCarouselFooterClass}>

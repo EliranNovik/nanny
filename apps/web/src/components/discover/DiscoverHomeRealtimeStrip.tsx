@@ -23,6 +23,9 @@ import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
 import { useDiscoverHomeOverlayLock } from "@/hooks/useDiscoverHomeOverlayLock";
 import { FullscreenMapModal } from "@/components/FullscreenMapModal";
 import { useAuth } from "@/context/AuthContext";
+import { ComposeModal, type ProfileSnippet } from "@/components/profile/ProfilePostsFeed";
+import { useGuestAuthPrompt } from "@/context/GuestAuthPromptContext";
+import { useKycGate } from "@/context/KycGateContext";
 import { supabase } from "@/lib/supabase";
 import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import type { PublicProfileGalleryRow } from "@/components/helpers/HelperResultProfileCard";
@@ -51,10 +54,13 @@ import {
   type DiscoverOpenHelpRequestRow,
 } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import { sendKnockMessage } from "@/lib/knockMessage";
-import { writeDiscoverHomeIntent } from "@/lib/discoverHomeIntent";
-import { DiscoverHomePageModeSwitcher } from "@/components/discover/DiscoverHomePageModeSwitcher";
 import { cn } from "@/lib/utils";
 import { openCommunityContact } from "@/lib/communityContact";
+import { LiveTimer } from "@/components/LiveTimer";
+import {
+  isFreelancerInActive24hLiveWindow,
+  freelancerLiveCountdownTarget,
+} from "@/lib/freelancerLiveWindow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowDownCircle,
@@ -73,6 +79,9 @@ import {
   MessageSquare,
   Phone,
   Play,
+  Plus,
+  Radio,
+  Search,
   Send,
   Sparkles,
   StickyNote,
@@ -1781,6 +1790,28 @@ export function DiscoverHomeRealtimeStrip({
 }: Props) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { openGuestAuthPrompt } = useGuestAuthPrompt();
+  const { guardKycAction } = useKycGate();
+
+  const [composeOpen, setComposeOpen] = useState(false);
+
+  const handleSharePost = () => {
+    if (!user) {
+      openGuestAuthPrompt({ variant: "create" });
+      return;
+    }
+    guardKycAction("share_post", () => {
+      setComposeOpen(true);
+    });
+  };
+
+  const authorProfile: ProfileSnippet | null = user
+    ? {
+        id: user.id,
+        full_name: profile?.full_name ?? null,
+        photo_url: profile?.photo_url ?? null,
+      }
+    : null;
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailHire, setDetailHire] = useState<HireStripItem | null>(null);
   const [detailWork, setDetailWork] = useState<WorkRowItem | null>(null);
@@ -1818,6 +1849,26 @@ export function DiscoverHomeRealtimeStrip({
     variant === "work" &&
     !!user?.id &&
     profile?.role !== "freelancer";
+  const { data: freelancerLiveMeta } = useQuery({
+    queryKey: ["freelancerLiveMeta", user?.id],
+    enabled: !!user?.id && variant === "work",
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("freelancer_profiles")
+        .select("live_until, available_now")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return {
+        live_until: data?.live_until ?? null,
+        available_now: data?.available_now ?? null,
+      };
+    },
+  });
+
+  const isUserLive = freelancerLiveMeta ? isFreelancerInActive24hLiveWindow(freelancerLiveMeta) : false;
+  const liveCountdown = freelancerLiveMeta ? freelancerLiveCountdownTarget(freelancerLiveMeta) : null;
+
   const { data: openHelpRows = [], isLoading: isLoadingOpenHelp } = useDiscoverOpenHelpRequests(
     fetchOpenHelpPool,
     user?.id,
@@ -2179,13 +2230,88 @@ export function DiscoverHomeRealtimeStrip({
   if (isLoading) {
     return (
       <>
-        <DiscoverHomePageModeSwitcher
-          mode={variant}
-          onModeChange={(m) => {
-            void writeDiscoverHomeIntent(m);
-          }}
-          className="pb-2"
-        />
+        {variant === "hire" && (
+          <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-2">
+            <button
+              type="button"
+              onClick={() => navigate("/client/helpers")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
+                "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
+              )}
+            >
+              <Search className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Find Helpers
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/client/create")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-md shadow-orange-500/20"
+              )}
+            >
+              <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Post Request
+            </button>
+            <button
+              type="button"
+              onClick={handleSharePost}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
+              )}
+            >
+              <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Share Post
+            </button>
+          </div>
+        )}
+        {variant === "work" && (
+          <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-2">
+            <button
+              type="button"
+              onClick={() => navigate("/community/feed")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
+                "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
+              )}
+            >
+              <Compass className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Explore
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/availability/post-now")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
+              )}
+            >
+              <Radio className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Go Live
+            </button>
+            <button
+              type="button"
+              onClick={handleSharePost}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
+              )}
+            >
+              <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Share Post
+            </button>
+          </div>
+        )}
         {/* Category Icons Row Skeleton */}
         <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -2211,6 +2337,16 @@ export function DiscoverHomeRealtimeStrip({
             </div>
           ))}
         </div>
+        {authorProfile && (
+          <ComposeModal
+            open={composeOpen}
+            onClose={() => setComposeOpen(false)}
+            onPosted={() => {
+              setComposeOpen(false);
+            }}
+            authorProfile={authorProfile}
+          />
+        )}
       </>
     );
   }
@@ -2219,13 +2355,45 @@ export function DiscoverHomeRealtimeStrip({
     if (variant === "hire") {
       return (
         <>
-          <DiscoverHomePageModeSwitcher
-            mode={variant}
-            onModeChange={(m) => {
-              void writeDiscoverHomeIntent(m);
-            }}
-            className="pb-2"
-          />
+          <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-2">
+            <button
+              type="button"
+              onClick={() => navigate("/client/helpers")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
+                "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
+              )}
+            >
+              <Search className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Find Helpers
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/client/create")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-md shadow-orange-500/20"
+              )}
+            >
+              <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Post Request
+            </button>
+            <button
+              type="button"
+              onClick={handleSharePost}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
+              )}
+            >
+              <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Share Post
+            </button>
+          </div>
           <div className="flex items-center justify-between py-2 px-1">
             <p className="text-[14px] font-medium text-muted-foreground flex-1 pr-4">
               No helpers showing as available right now — try{" "}
@@ -2247,19 +2415,96 @@ export function DiscoverHomeRealtimeStrip({
             work={detailWork}
             variant={variant}
           />
+          {authorProfile && (
+            <ComposeModal
+              open={composeOpen}
+              onClose={() => setComposeOpen(false)}
+              onPosted={() => {
+                setComposeOpen(false);
+              }}
+              authorProfile={authorProfile}
+            />
+          )}
         </>
       );
     }
 
     return (
       <>
-        <DiscoverHomePageModeSwitcher
-          mode={variant}
-          onModeChange={(m) => {
-            void writeDiscoverHomeIntent(m);
-          }}
-          className="pb-2"
-        />
+        <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-2">
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent("discover_strip_quick_explore", { mode: "work" });
+              navigate("/community/feed");
+            }}
+            className={cn(
+              "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
+              "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+              "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
+              "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
+            )}
+          >
+            <Compass className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            Explore
+          </button>
+          {isUserLive ? (
+            <button
+              type="button"
+              onClick={() => {
+                trackEvent("discover_strip_quick_live_timer", { mode: "work" });
+                navigate("/availability/post-now");
+              }}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
+              )}
+            >
+              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-white" />
+              </span>
+              Live
+              {liveCountdown ? (
+                <span className="ml-0.5 text-[11px] xs:text-[12px] md:text-[13px] font-black opacity-90 font-mono">
+                  <LiveTimer
+                    countdownTo={liveCountdown}
+                    render={({ time }) => <span>{time}</span>}
+                  />
+                </span>
+              ) : null}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                trackEvent("discover_strip_quick_go_live", { mode: "work" });
+                navigate("/availability/post-now");
+              }}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
+              )}
+            >
+              <Radio className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Go Live
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSharePost}
+            className={cn(
+              "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+              "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+              "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
+            )}
+          >
+            <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            Share Post
+          </button>
+        </div>
         <div className="rounded-[1rem] border border-dashed border-border/50 bg-muted/25 px-4 py-5 dark:bg-zinc-900/40">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-1 flex-col items-center gap-2 text-center text-sm text-muted-foreground sm:items-start sm:text-left">
@@ -2310,6 +2555,16 @@ export function DiscoverHomeRealtimeStrip({
           work={detailWork}
           variant={variant}
         />
+        {authorProfile && (
+          <ComposeModal
+            open={composeOpen}
+            onClose={() => setComposeOpen(false)}
+            onPosted={() => {
+              setComposeOpen(false);
+            }}
+            authorProfile={authorProfile}
+          />
+        )}
       </>
     );
   }
@@ -2321,13 +2576,82 @@ export function DiscoverHomeRealtimeStrip({
     return (
       <>
       <div className="space-y-4">
-        {/* Switch buttons of get help now and help others now on mobile */}
-        <DiscoverHomePageModeSwitcher
-          mode={variant}
-          onModeChange={(m) => {
-            void writeDiscoverHomeIntent(m);
-          }}
-        />
+        {/* Quick Action Buttons: Explore, Go Live, and Share Post */}
+        <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1">
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent("discover_strip_quick_explore", { mode: "work" });
+              navigate("/community/feed");
+            }}
+            className={cn(
+              "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
+              "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+              "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
+              "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
+            )}
+          >
+            <Compass className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            Explore
+          </button>
+          {isUserLive ? (
+            <button
+              type="button"
+              onClick={() => {
+                trackEvent("discover_strip_quick_live_timer", { mode: "work" });
+                navigate("/availability/post-now");
+              }}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
+              )}
+            >
+              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-white" />
+              </span>
+              Live
+              {liveCountdown ? (
+                <span className="ml-0.5 text-[11px] xs:text-[12px] md:text-[13px] font-black opacity-90 font-mono">
+                  <LiveTimer
+                    countdownTo={liveCountdown}
+                    render={({ time }) => <span>{time}</span>}
+                  />
+                </span>
+              ) : null}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                trackEvent("discover_strip_quick_go_live", { mode: "work" });
+                navigate("/availability/post-now");
+              }}
+              className={cn(
+                "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+                "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+                "bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20"
+              )}
+            >
+              <Radio className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+              Go Live
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSharePost}
+            className={cn(
+              "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+              "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+              "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
+            )}
+          >
+            <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+            Share Post
+          </button>
+        </div>
+
         {/* Category Icons Row - Work Mode */}
         <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4">
           <button
@@ -2431,6 +2755,16 @@ export function DiscoverHomeRealtimeStrip({
         work={detailWork}
         variant={variant}
       />
+      {authorProfile && (
+        <ComposeModal
+          open={composeOpen}
+          onClose={() => setComposeOpen(false)}
+          onPosted={() => {
+            setComposeOpen(false);
+          }}
+          authorProfile={authorProfile}
+        />
+      )}
       </>
     );
   }
@@ -2440,13 +2774,53 @@ export function DiscoverHomeRealtimeStrip({
   return (
     <>
     <div className="space-y-4">
-      {/* Switch buttons of get help now and help others now on mobile */}
-      <DiscoverHomePageModeSwitcher
-        mode={variant}
-        onModeChange={(m) => {
-          void writeDiscoverHomeIntent(m);
-        }}
-      />
+      {/* Quick Action Buttons: Find Helpers, Post Request, and Share Post */}
+      <div className="grid grid-cols-3 gap-2 px-4 pt-3.5 pb-1">
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("discover_strip_quick_find_helpers", { mode: "hire" });
+            navigate("/client/helpers");
+          }}
+          className={cn(
+            "flex items-center justify-center gap-1.5 h-12 rounded-2xl",
+            "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+            "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/55 shadow-sm",
+            "dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:text-zinc-100 dark:border-zinc-800/80"
+          )}
+        >
+          <Search className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+          Find Helpers
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent("discover_strip_quick_post_request", { mode: "hire" });
+            navigate("/client/create");
+          }}
+          className={cn(
+            "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+            "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+            "bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-md shadow-orange-500/20"
+          )}
+        >
+          <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+          Post Request
+        </button>
+        <button
+          type="button"
+          onClick={handleSharePost}
+          className={cn(
+            "flex items-center justify-center gap-1.5 h-12 rounded-2xl text-white",
+            "text-[12px] xs:text-[13px] md:text-[14px] font-black tracking-tight transition-all active:scale-[0.98]",
+            "bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-md shadow-violet-500/20"
+          )}
+        >
+          <Send className="w-4 h-4 md:w-5 md:h-5 shrink-0" strokeWidth={2.5} />
+          Share Post
+        </button>
+      </div>
+
       {/* Category Icons Row - Hire Mode */}
       <div className="mt-2 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-3 px-4 pb-2 md:gap-4">
         <button
@@ -2550,6 +2924,17 @@ export function DiscoverHomeRealtimeStrip({
       work={detailWork}
       variant={variant}
     />
+
+    {authorProfile && (
+      <ComposeModal
+        open={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        onPosted={() => {
+          setComposeOpen(false);
+        }}
+        authorProfile={authorProfile}
+      />
+    )}
     </>
   );
 }

@@ -1011,14 +1011,6 @@ export function BottomNav() {
           {showDiscoverShellHeader ? (
             <>
               {renderDiscoverHomeLocationChip("mobile")}
-              <button
-                type="button"
-                onClick={() => setMobileSearchOpen(true)}
-                className={signedInHeaderIconBtnClass}
-                aria-label={t("common.openSearch", { defaultValue: "Search" })}
-              >
-                <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
-              </button>
             </>
           ) : showCommunityFeedHeaderLeft ? (
             <>
@@ -1044,7 +1036,18 @@ export function BottomNav() {
           )}
         </div>
 
-        {!discoverHomeFixedChrome &&
+        {isDiscoverHome && !mobileSearchOpen ? (
+          <div className="flex min-w-0 flex-1 justify-center px-0.5">
+            <DiscoverHomeModeSegmentedControl
+              mode={discoverHomeMode}
+              onModeChange={(m) => {
+                void writeDiscoverHomeIntent(m);
+              }}
+              variant="header"
+              className="w-full max-w-[200px] xs:max-w-[220px]"
+            />
+          </div>
+        ) : !discoverHomeFixedChrome &&
         showCommunityHeaderCategoryDropdown &&
         !mobileSearchOpen ? (
           <div className="flex min-w-0 flex-1 justify-center px-0.5">
@@ -1062,7 +1065,17 @@ export function BottomNav() {
 
         <div className="flex shrink-0 items-center gap-0.5">
           {discoverHomeFixedChrome ? (
-            <DiscoverHomeMobileHeaderRight />
+            <>
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(true)}
+                className={signedInHeaderIconBtnClass}
+                aria-label={t("common.openSearch", { defaultValue: "Search" })}
+              >
+                <Search className="h-7 w-7" strokeWidth={2.25} aria-hidden />
+              </button>
+              <DiscoverHomeMobileHeaderRight />
+            </>
           ) : (
             <>
               <button

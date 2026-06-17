@@ -249,9 +249,9 @@ export function DiscoverHomeFavoriteRequests({
     return (
       <section className={cn("w-full", className)} aria-label="Your favorites">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-[15px] font-black uppercase tracking-[0.12em] text-zinc-900 dark:text-white">
+          <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
             Your favorites
-          </p>
+          </h2>
         </div>
         <div className={listContainerClass}>
           {Array.from({ length: 6 }, (_, i) => (
@@ -277,9 +277,9 @@ export function DiscoverHomeFavoriteRequests({
   return (
     <section className={cn("w-full", className)} aria-label="Your favorites">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-[15px] font-black uppercase tracking-[0.12em] text-zinc-900 dark:text-white">
+        <h2 className="text-[22px] font-black tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
           Your favorites
-        </p>
+        </h2>
         <div className="hidden items-center gap-1.5 md:flex">
           <button
             type="button"

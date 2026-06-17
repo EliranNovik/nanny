@@ -48,8 +48,6 @@ export type LandingSiteHeaderProps = {
   fixedOnMobile?: boolean;
   /** Landing hero: plain white “Register” text — no logo or filled pill. */
   simpleRegisterCta?: boolean;
-  /** Landing: switch from glass hero header to solid brand gradient after scroll. */
-  heroScrolledPast?: boolean;
   /** Landing: open “What is tebnu?” instead of navigating home when brand is clicked. */
   onBrandClick?: () => void;
 };
@@ -58,12 +56,8 @@ const brandHeaderBgClass =
   "bg-gradient-to-r from-orange-500 to-red-600 border border-white/20";
 const glassyHeaderBgClass =
   "bg-white/70 dark:bg-zinc-800/40 border-0 shadow-md";
-const landingHeroWhiteHeaderBgClass =
-  "border-0 bg-white shadow-none";
 const landingScrolledBrandHeaderBgClass =
   "border-0 bg-gradient-to-r from-orange-500 to-red-600 shadow-none";
-const landingMobileOrangeHeaderBgClass =
-  "max-md:border-0 max-md:bg-gradient-to-r max-md:from-orange-500 max-md:to-red-600 max-md:shadow-none";
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
 export function LandingSiteHeader({
@@ -82,7 +76,6 @@ export function LandingSiteHeader({
   mobileMatchLanding = false,
   fixedOnMobile = false,
   simpleRegisterCta = false,
-  heroScrolledPast = false,
   onBrandClick,
 }: LandingSiteHeaderProps) {
   const hideMobileBack = hideBackButtonMobile || mobileMatchLanding;
@@ -93,16 +86,11 @@ export function LandingSiteHeader({
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
 
   const isLandingGlass = variant === "landingGlass";
-  const landingOnHero = isLandingGlass && !heroScrolledPast;
 
   const linkColorClass =
     variant === "glassy"
       ? "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
-      : variant === "landingGlass"
-        ? landingOnHero
-          ? "max-md:text-white/90 max-md:hover:text-white text-zinc-700 hover:text-zinc-900"
-          : "text-white/90 hover:text-white"
-        : "text-white hover:text-white/80";
+      : "text-white/90 hover:text-white";
 
   const dynamicNavLinkClass = cn(
     "text-sm font-bold transition-colors",
@@ -111,9 +99,7 @@ export function LandingSiteHeader({
 
   const headerBgClass = cn(
     isLandingGlass
-      ? heroScrolledPast
-        ? landingScrolledBrandHeaderBgClass
-        : cn(landingHeroWhiteHeaderBgClass, landingMobileOrangeHeaderBgClass)
+      ? landingScrolledBrandHeaderBgClass
       : variant === "glassy"
         ? glassyHeaderBgClass
         : brandHeaderBgClass,
@@ -124,16 +110,12 @@ export function LandingSiteHeader({
 
   const backBtnClass = variant === "glassy"
     ? "border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300 dark:hover:bg-zinc-900/60"
-    : variant === "landingGlass"
-      ? "border-white/25 bg-white/10 text-white hover:bg-white/15"
-      : "border-white/25 bg-white/10 text-white hover:bg-white/15";
+    : "border-white/25 bg-white/10 text-white hover:bg-white/15";
 
   const menuIconClass = cn(
     variant === "glassy"
       ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
-      : isLandingGlass && landingOnHero
-        ? "max-md:text-white max-md:hover:text-white/80 text-zinc-800 hover:text-zinc-950"
-        : "text-white hover:text-white/80",
+      : "text-white hover:text-white/80",
     mobileMatchLanding &&
       variant !== "landingGlass" &&
       "max-md:text-white max-md:hover:text-white/80",
@@ -151,9 +133,7 @@ export function LandingSiteHeader({
   const navContainerTextClass =
     variant === "glassy"
       ? "text-zinc-800 dark:text-zinc-200"
-      : isLandingGlass && landingOnHero
-        ? "text-zinc-800"
-        : "text-white";
+      : "text-white";
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -193,7 +173,7 @@ export function LandingSiteHeader({
 
   const landingBrandTextClass = cn(
     "hidden text-lg font-black tracking-tight md:inline md:text-xl lg:text-2xl",
-    landingOnHero ? "text-slate-900" : "text-white",
+    "text-white",
   );
 
   return (
@@ -391,9 +371,7 @@ export function LandingSiteHeader({
                   className={cn(
                     "rounded-full px-3 text-sm font-bold md:px-5",
                     isLandingGlass
-                      ? landingOnHero
-                        ? "max-md:text-white max-md:hover:bg-white/10 max-md:hover:text-white text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                        : "text-white hover:bg-white/10 hover:text-white"
+                      ? "text-white hover:bg-white/10 hover:text-white"
                       : signInBtnClass,
                   )}
                 >
@@ -406,12 +384,7 @@ export function LandingSiteHeader({
                     simpleRegisterCta
                       ? "text-white shadow-none hover:bg-white/10 hover:text-white/90"
                       : isLandingGlass
-                        ? cn(
-                            "shadow-sm max-md:bg-white max-md:text-orange-600 max-md:shadow-md max-md:hover:bg-white/90",
-                            landingOnHero
-                              ? "md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:text-white md:hover:from-orange-600 md:hover:to-red-700"
-                              : "bg-white text-orange-600 hover:bg-white/90",
-                          )
+                        ? "bg-white text-orange-600 hover:bg-white/90 shadow-sm"
                         : cn(
                             "shadow-sm",
                             variant === "glassy"

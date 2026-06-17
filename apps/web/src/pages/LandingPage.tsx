@@ -78,12 +78,12 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const buttonsRef = useRef<HTMLDivElement>(null);
+  const mobileHeroButtonsRef = useRef<HTMLDivElement>(null);
   const recentActivityRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLElement>(null);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
   const [showFixedButtons, setShowFixedButtons] = useState(false);
-  const [heroScrolledPast, setHeroScrolledPast] = useState(false);
+  const [showMobileFixedButtons, setShowMobileFixedButtons] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const { activityLoading, activityItems, reviewsLoading, reviews } =
     useLandingPagePreview();
@@ -238,19 +238,19 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    const hero = heroRef.current;
-    if (!hero) return;
-
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setHeroScrolledPast(
-          !entry.isIntersecting && entry.boundingClientRect.top < 0,
-        );
+        const isPast =
+          !entry.isIntersecting && entry.boundingClientRect.top < 0;
+        setShowMobileFixedButtons(isPast);
       },
       { threshold: 0 },
     );
 
-    observer.observe(hero);
+    if (mobileHeroButtonsRef.current) {
+      observer.observe(mobileHeroButtonsRef.current);
+    }
+
     return () => observer.disconnect();
   }, []);
 
@@ -293,7 +293,6 @@ export default function LandingPage() {
         hideBackButton
         hideBackButtonMobile
         variant="landingGlass"
-        heroScrolledPast={heroScrolledPast}
         onBrandClick={() => setAboutOpen(true)}
       />
 
@@ -331,7 +330,6 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* Full-Screen Hero Section */}
         <section
-          ref={heroRef}
           className="relative w-full min-h-[90vh] overflow-hidden group/hero"
         >
           <img
@@ -370,24 +368,6 @@ export default function LandingPage() {
                 </span>
                 <span>Fast response</span>
               </p>
-
-              {/* Mobile hero CTAs */}
-              <div className="flex flex-wrap gap-2.5 pt-1 md:hidden">
-                <Button
-                  onClick={handleHiringHelper}
-                  className="flex h-12 w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 px-4 text-sm font-black text-white shadow-lg shadow-orange-500/30 hover:from-orange-600 hover:to-red-700"
-                >
-                  <Users className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                  Need Help
-                </Button>
-                <Button
-                  onClick={handleSearchingForJob}
-                  className="flex h-12 w-auto items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/90 px-4 text-sm font-black text-slate-900 shadow-lg backdrop-blur-md hover:bg-white"
-                >
-                  <Briefcase className="h-4 w-4 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
-                  Offer Help
-                </Button>
-              </div>
             </div>
 
             <div
@@ -466,6 +446,26 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Mobile Hero CTAs - below the background image */}
+        <div className="px-6 py-8 bg-white border-b border-slate-100 md:hidden">
+          <div ref={mobileHeroButtonsRef} className="flex flex-row gap-3">
+            <Button
+              onClick={handleHiringHelper}
+              className="flex-1 flex h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 text-base font-black text-white shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-red-700 active:scale-[0.98] transition-all"
+            >
+              <Users className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+              Need Help
+            </Button>
+            <Button
+              onClick={handleSearchingForJob}
+              className="flex-1 flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-base font-black text-slate-900 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
+            >
+              <Briefcase className="h-5 w-5 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
+              Offer Help
+            </Button>
+          </div>
+        </div>
 
         <div className="max-w-7xl mx-auto px-4 md:px-0 space-y-24 py-24">
           {/* How finding a helper works - Premium Step-by-Step */}
@@ -992,8 +992,15 @@ export default function LandingPage() {
 
       <Footer />
 
-      {/* Fixed bottom bar - Mobile only, always on */}
-      <div className="fixed inset-x-0 bottom-[var(--app-safe-bottom,env(safe-area-inset-bottom,0px))] z-40 border-t border-slate-100 bg-white/95 p-4 pt-3 pb-3 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md md:hidden">
+      {/* Fixed bottom bar - Mobile only, shown when scrolled past */}
+      <div
+        className={cn(
+          "fixed inset-x-0 bottom-[var(--app-safe-bottom,env(safe-area-inset-bottom,0px))] z-40 border-t border-slate-100 bg-white/95 p-4 pt-3 pb-3 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md md:hidden transition-all duration-500 transform",
+          showMobileFixedButtons
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-10 pointer-events-none",
+        )}
+      >
         <div className="mx-auto flex flex-row items-center justify-center gap-2.5 px-1">
           <Button
             onClick={handleSearchingForJob}

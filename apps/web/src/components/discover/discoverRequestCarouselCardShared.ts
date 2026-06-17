@@ -20,24 +20,21 @@ export const discoverRequestCardCarouselItemClass = cn(
 export const discoverRequestCardCarouselBodyClass = "flex min-h-0 flex-1 flex-col";
 
 export const discoverRequestCardCarouselTitleClass =
-  "line-clamp-2 min-h-[2.75rem] text-lg font-bold leading-snug text-foreground";
-
-export const discoverRequestCardCarouselDescriptionClass =
-  "mt-1 line-clamp-2 min-h-[2.625rem] text-[15px] leading-snug text-muted-foreground";
+  "line-clamp-2 text-lg font-bold leading-snug text-foreground";
 
 export const discoverRequestCardCarouselMetaRowClass =
-  "mt-2 flex min-h-[1.375rem] w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground";
+  "mt-1 flex min-h-[1.375rem] w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground";
 
 export const discoverRequestCardCarouselPosterRowClass =
-  "mt-2.5 flex min-h-[2.25rem] w-full min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1";
+  "mt-2 flex min-h-[2.25rem] w-full min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1";
 
 export const discoverRequestCardCarouselFooterClass = cn(
-  "mt-auto flex w-full min-h-[4.25rem] items-center justify-between gap-3",
+  "mt-auto flex w-full min-h-[3.5rem] items-center justify-between gap-3",
   "border-t border-zinc-200/70 pt-3 dark:border-zinc-700/50",
 );
 
 export const discoverRequestCardCarouselFooterBudgetClass =
-  "flex min-h-[2.5rem] min-w-0 flex-1 flex-col justify-center text-left";
+  "flex min-h-[2.25rem] min-w-0 flex-1 flex-col justify-center text-left";
 
 export const discoverRequestCardCarouselFooterActionClass = "flex shrink-0 items-center self-center";
 
