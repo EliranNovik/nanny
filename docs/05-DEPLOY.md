@@ -38,6 +38,20 @@
 
 ## Frontend Deployment (Vercel / Netlify)
 
+### tebnu.com — Supabase auth URLs
+
+After adding a custom domain, configure **Authentication → URL Configuration** in Supabase:
+
+- **Site URL:** `https://www.tebnu.com` (or your canonical domain)
+- **Redirect URLs** (add all that apply):
+  - `https://www.tebnu.com/login`
+  - `https://tebnu.com/login`
+  - `https://www.tebnu.com/auth/callback`
+  - `https://tebnu.com/auth/callback`
+  - `http://localhost:5175/login` (local dev)
+
+Google OAuth succeeds when tokens appear in the URL hash (`#access_token=...`). If you see a Vercel `404: NOT_FOUND` on `/login`, the SPA rewrite is missing — ensure `vercel.json` rewrites all non-file routes to `/index.html`.
+
 ### Render (MamaLama)
 
 **Frontend** — Web Service (not Static Site, so link previews work):

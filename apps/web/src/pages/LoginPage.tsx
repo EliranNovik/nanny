@@ -15,7 +15,7 @@ import {
   readPendingProfile,
 } from "@/lib/pendingProfile";
 
-export default function LoginPage() {
+export default function LoginPage({ oauthCallback = false }: { oauthCallback?: boolean }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -171,6 +171,20 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
       setLoading(false);
+    }
+  }
+
+  // OAuth / email-link return: wait for Supabase to read tokens from the URL hash.
+  if (oauthCallback || window.location.hash.includes("access_token=")) {
+    if (authLoading || !user) {
+      return (
+        <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col">
+          <LandingSiteHeader hideLeftLogo hideLoginCta homeLinkRight />
+          <main className="flex flex-1 items-center justify-center pt-28 md:pt-36">
+            <AppBootSplashLogo />
+          </main>
+        </div>
+      );
     }
   }
 

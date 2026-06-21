@@ -254,8 +254,6 @@ function PageLayoutWithHeader() {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
-
   return (
     <Routes>
       {/* Landing & marketing — landing-style header, no app layout padding */}
@@ -266,10 +264,8 @@ function AppRoutes() {
       <Route path="/disclaimer" element={<LegalPage />} />
       <Route path="/privacy" element={<LegalPage />} />
       <Route path="/cookies" element={<LegalPage />} />
-      <Route
-        path="/login"
-        element={user ? <Navigate to="/" replace /> : <LoginPage />}
-      />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<LoginPage oauthCallback />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
       <Route
         path="/onboarding/verify"
