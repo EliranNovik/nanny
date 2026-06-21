@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   Baby,
   HelpCircle,
@@ -110,6 +111,8 @@ export function PublicPostsCategoryTabs({
   onSelect,
   className,
 }: PublicPostsCategoryTabsProps) {
+  const { t } = useTranslation();
+
   return (
     <div
       className={cn(
@@ -142,7 +145,7 @@ export function PublicPostsCategoryTabs({
               aria-hidden
             />
             <span className="max-w-[5.5rem] truncate sm:max-w-none">
-              {tab.label}
+              {t(`feed.categories.${tab.id}`, tab.label)}
             </span>
           </button>
         );

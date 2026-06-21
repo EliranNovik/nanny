@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ListFilter } from "lucide-react";
 import {
   ALL_HELP_CATEGORY_ID,
@@ -32,6 +33,7 @@ export function CommunityPostsCategoryNativeSelect({
   variant?: "default" | "header";
 }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const value = categorySelectValue(categoryParam);
   const isHeader = variant === "header";
 
@@ -65,10 +67,10 @@ export function CommunityPostsCategoryNativeSelect({
           navigate(path, { replace: true });
         }}
       >
-        <option value={ALL_HELP_CATEGORY_ID}>All help</option>
+        <option value={ALL_HELP_CATEGORY_ID}>{t("feed.categories.all_help", "All help")}</option>
         {SERVICE_CATEGORIES.map((c) => (
           <option key={c.id} value={c.id}>
-            {c.label}
+            {t(`feed.categories.${c.id}`, c.label)}
           </option>
         ))}
       </select>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Link,
   useNavigate,
@@ -76,6 +77,7 @@ export default function HelpersMatchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { addToast } = useToast();
+  const { t } = useTranslation();
 
   const jobIdQ = searchParams.get("job_id");
   const [jobScope, setJobScope] = useState<{
@@ -430,7 +432,7 @@ export default function HelpersMatchPage() {
                   <SelectContent>
                     {SERVICE_CATEGORIES.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.label}
+                        {t(`feed.categories.${c.id}`, c.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -577,7 +579,7 @@ export default function HelpersMatchPage() {
           </p>
         )}
         <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
-          {serviceCategoryLabel(activeParams.category as ServiceCategoryId)} ·{" "}
+          {t(`feed.categories.${activeParams.category}`, serviceCategoryLabel(activeParams.category as ServiceCategoryId))} ·{" "}
           {activeParams.radiusKm} km
         </p>
         <SwipeDecisionLayer

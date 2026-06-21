@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 import {
   Baby,
@@ -77,6 +78,7 @@ export function PublicPostsCategoryStepper({
   onSelect,
   className,
 }: PublicPostsCategoryStepperProps) {
+  const { t } = useTranslation();
   const n = TABS.length;
   const index = Math.max(
     0,
@@ -218,21 +220,21 @@ export function PublicPostsCategoryStepper({
                 />
               </div>
               <div className="relative z-10 flex w-max min-w-0 items-stretch gap-0">
-                {TABS.map((t, i) => {
-                  const selected = t.id === activeId;
-                  const Icon = t.Icon;
+                {TABS.map((tab, i) => {
+                  const selected = tab.id === activeId;
+                  const Icon = tab.Icon;
                   return (
                     <button
-                      key={t.id}
+                      key={tab.id}
                       ref={(el) => {
                         mobileBtnRefs.current[i] = el;
                       }}
                       type="button"
                       role="tab"
                       aria-selected={selected}
-                      aria-label={t.label}
-                      title={t.label}
-                      onClick={() => onSelect(t.id)}
+                      aria-label={t(`feed.categories.${tab.id}`, tab.label)}
+                      title={t(`feed.categories.${tab.id}`, tab.label)}
+                      onClick={() => onSelect(tab.id)}
                       className={cn(
                         "inline-flex h-9 min-h-9 max-h-10 shrink-0 snap-center items-center gap-1.5 rounded-full px-2.5 sm:px-3",
                         "whitespace-nowrap text-left text-[13px] [-webkit-tap-highlight-color:transparent]",
@@ -254,7 +256,7 @@ export function PublicPostsCategoryStepper({
                         strokeWidth={selected ? 2.25 : 2}
                         aria-hidden
                       />
-                      <span>{t.label}</span>
+                      <span>{t(`feed.categories.${tab.id}`, tab.label)}</span>
                     </button>
                   );
                 })}
@@ -294,19 +296,19 @@ export function PublicPostsCategoryStepper({
             />
 
             <div className="relative z-10 grid h-full w-full grid-cols-6 gap-0.5">
-              {TABS.map((t) => {
-                const selected = t.id === activeId;
-                const Icon = t.Icon;
+              {TABS.map((tab) => {
+                const selected = tab.id === activeId;
+                const Icon = tab.Icon;
 
                 return (
                   <button
-                    key={t.id}
+                    key={tab.id}
                     type="button"
                     role="tab"
                     aria-selected={selected}
-                    aria-label={t.label}
-                    title={t.label}
-                    onClick={() => onSelect(t.id)}
+                    aria-label={t(`feed.categories.${tab.id}`, tab.label)}
+                    title={t(`feed.categories.${tab.id}`, tab.label)}
+                    onClick={() => onSelect(tab.id)}
                     className={cn(
                       "relative z-10 flex min-w-0 flex-col items-center justify-center rounded-full px-1 py-1 md:gap-0.5",
                       "bg-transparent [-webkit-tap-highlight-color:transparent]",
@@ -334,7 +336,7 @@ export function PublicPostsCategoryStepper({
                         "line-clamp-1 break-words [overflow-wrap:anywhere]",
                       )}
                     >
-                      {t.label}
+                      {t(`feed.categories.${tab.id}`, tab.label)}
                     </span>
                   </button>
                 );

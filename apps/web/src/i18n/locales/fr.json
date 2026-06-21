@@ -120,6 +120,7 @@
       }
     },
     "categories": {
+      "all_help": "Toute l'aide",
       "cleaning": "Ménage",
       "cooking": "Cuisine",
       "pickup_delivery": "Courses et livraison",

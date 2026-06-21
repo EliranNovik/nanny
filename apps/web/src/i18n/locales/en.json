@@ -120,6 +120,7 @@
       }
     },
     "categories": {
+      "all_help": "All help",
       "cleaning": "Cleaning",
       "cooking": "Cooking",
       "pickup_delivery": "Pick up & delivery",

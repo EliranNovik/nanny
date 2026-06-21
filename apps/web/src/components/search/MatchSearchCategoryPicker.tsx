@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import { HIRE_CATEGORY_TILE_UI } from "@/lib/discoverCategoryTileIcons";
 import {
   SERVICE_CATEGORIES,
@@ -47,6 +48,7 @@ export function MatchSearchCategoryPicker({
   hintId,
 }: MatchSearchCategoryPickerProps) {
   const chips = CHIP_BY_THEME[theme];
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-2">
@@ -95,7 +97,7 @@ export function MatchSearchCategoryPicker({
                 strokeWidth={2.25}
                 aria-hidden
               />
-              {cat.label}
+              {t(`feed.categories.${cat.id}`, cat.label)}
             </button>
           );
         })}

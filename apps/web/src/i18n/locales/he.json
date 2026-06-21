@@ -120,6 +120,7 @@
       }
     },
     "categories": {
+      "all_help": "כל העזרה",
       "cleaning": "ניקיון",
       "cooking": "בישול",
       "pickup_delivery": "איסוף ומשלוח",

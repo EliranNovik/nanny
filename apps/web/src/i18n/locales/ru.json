@@ -120,6 +120,7 @@
       }
     },
     "categories": {
+      "all_help": "Вся помощь",
       "cleaning": "Уборка",
       "cooking": "Готовка",
       "pickup_delivery": "Доставка и курьер",
