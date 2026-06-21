@@ -4,6 +4,7 @@ import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
 import { cn } from "@/lib/utils";
 import {
   MOBILE_BOTTOM_SHEET_EDGE,
+  mobileModalDarkNoOutlineClass,
   mobileSheetSafePaddingBottom,
 } from "@/lib/mobileModalLayout";
 
@@ -115,6 +116,7 @@ export const discoverSheetDialogContentClassName = cn(
 /** Single white/card surface from the top (handle closes sheet). */
 export const discoverSheetInnerCardClassName = cn(
   "relative flex h-full min-h-0 w-full max-h-[min(92dvh,860px)] max-md:min-h-[68dvh] flex-1 flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-card shadow-sm sm:rounded-t-2xl",
+  mobileModalDarkNoOutlineClass,
 );
 
 /** Pill “stick” at top of sheet — tap to close (DialogClose). */

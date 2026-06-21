@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -13,23 +14,278 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { MobileSnapBottomSheet } from "@/components/ui/MobileSnapBottomSheet";
+import { useIsMobileViewport } from "@/lib/discoverSheetDialog";
+import { mobileSheetSafePaddingBottom } from "@/lib/mobileModalLayout";
 import {
   Bell,
   Briefcase,
   MessageSquare,
-  X,
   Sparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export type { NotificationAlert } from "@/lib/inboxActivityAlerts";
 
+const MOBILE_SHEET_MAX_HEIGHT = "min(78dvh, 680px)";
+const MOBILE_SHEET_ANIM_MS = 380;
+
+/** Desktop: anchored under the header bell, slides in from the right. */
+const desktopNotificationsPanelClass = cn(
+  "flex h-[min(85dvh,720px)] max-h-[min(85dvh,720px)] w-[min(26rem,calc(100vw-2rem))] max-w-[26rem] flex-col gap-0 overflow-hidden p-0",
+  "border-0 bg-background shadow-2xl outline-none ring-0 focus:outline-none focus-visible:ring-0",
+  "dark:border-0 dark:ring-0 dark:outline-none",
+  "fixed left-auto right-4 top-16 translate-x-0 translate-y-0 rounded-2xl",
+  "!left-auto !right-4 !top-16 !translate-x-0 !translate-y-0",
+  "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+  "!data-[state=open]:slide-in-from-left-0 !data-[state=open]:slide-in-from-top-0",
+  "!data-[state=closed]:slide-out-to-left-0 !data-[state=closed]:slide-out-to-top-0",
+  "data-[state=open]:slide-in-from-right-8 data-[state=closed]:slide-out-to-right-8",
+  "data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100",
+);
+
 interface NotificationsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+function formatAlertTime(dateStr: string | undefined): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (minutes < 1) return "Now";
+  if (minutes < 60) return `${minutes}m`;
+  if (hours < 24) return `${hours}h`;
+  if (days < 7) return `${days}d`;
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(date.getFullYear() !== now.getFullYear()
+      ? { year: "2-digit" as const }
+      : {}),
+  });
+}
+
+function alertIcon(type: NotificationAlert["type"]) {
+  switch (type) {
+    case "message":
+    case "job_comment":
+      return MessageSquare;
+    case "job_request":
+      return Briefcase;
+    case "hire_interest":
+      return Sparkles;
+    default:
+      return Briefcase;
+  }
+}
+
+function alertIconTone(type: NotificationAlert["type"]): string {
+  switch (type) {
+    case "message":
+      return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
+    case "job_request":
+      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+    case "job_comment":
+      return "bg-rose-500/10 text-rose-600 dark:text-rose-400";
+    case "hire_interest":
+      return "bg-orange-500/10 text-orange-600 dark:text-orange-400";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
+
+function NotificationListRow({
+  alert,
+  index,
+  onOpen,
+}: {
+  alert: NotificationAlert;
+  index: number;
+  onOpen: (alert: NotificationAlert) => void;
+}) {
+  const Icon = alertIcon(alert.type);
+  const timeLabel = formatAlertTime(alert.created_at);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(alert)}
+      className={cn(
+        "relative w-full text-left transition-colors",
+        "px-4 py-4 pr-[max(1rem,env(safe-area-inset-right,0px))]",
+        "hover:bg-muted/30 active:bg-muted/40 dark:hover:bg-zinc-900/50 dark:active:bg-zinc-900/70",
+      )}
+    >
+      {index > 0 ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-[5.5rem] right-4 top-0 h-px bg-border/70 dark:bg-white/[0.08]"
+        />
+      ) : null}
+      <div className="flex min-w-0 items-start gap-3.5">
+        <div className="relative shrink-0 pt-0.5">
+          {alert.sender_photo ? (
+            <Avatar className="h-[3.625rem] w-[3.625rem]">
+              <AvatarImage src={alert.sender_photo} className="object-cover" />
+              <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
+                {alert.title.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div
+              className={cn(
+                "flex h-[3.625rem] w-[3.625rem] items-center justify-center rounded-full",
+                alertIconTone(alert.type),
+              )}
+            >
+              <Icon className="h-6 w-6 shrink-0" aria-hidden />
+            </div>
+          )}
+        </div>
+        <div className="relative min-w-0 flex-1">
+          {timeLabel ? (
+            <span className="pointer-events-none absolute right-0 top-0 z-[1] max-w-[4rem] whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground">
+              {timeLabel}
+            </span>
+          ) : null}
+          <div className="min-w-0 max-w-full pr-[3.25rem]">
+            <p className="truncate text-[17px] font-semibold leading-snug text-foreground">
+              {alert.title}
+            </p>
+            {alert.description ? (
+              <p className="mt-1 line-clamp-2 text-[16px] leading-snug text-muted-foreground">
+                {alert.description}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function NotificationSkeletonRow({ index }: { index: number }) {
+  return (
+    <div
+      className={cn(
+        "relative px-4 py-4",
+        index > 0 &&
+          "before:pointer-events-none before:absolute before:left-[5.5rem] before:right-4 before:top-0 before:h-px before:bg-border/50",
+      )}
+    >
+      <div className="flex animate-pulse items-start gap-3.5">
+        <div className="h-[3.625rem] w-[3.625rem] shrink-0 rounded-full bg-muted/60" />
+        <div className="min-w-0 flex-1 space-y-2 pt-1">
+          <div className="h-4 w-2/5 rounded bg-muted/60" />
+          <div className="h-3.5 w-full rounded bg-muted/40" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationsPanel({
+  alerts,
+  loading,
+  onOpen,
+  onClearAll,
+  headerClassName,
+  listClassName,
+  footerClassName,
+}: {
+  alerts: NotificationAlert[];
+  loading: boolean;
+  onOpen: (alert: NotificationAlert) => void;
+  onClearAll: () => void;
+  headerClassName?: string;
+  listClassName?: string;
+  footerClassName?: string;
+}) {
+  return (
+    <>
+      <div
+        className={cn(
+          "flex shrink-0 items-center justify-between gap-3 px-4 py-3.5",
+          headerClassName,
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Bell className="h-5 w-5 shrink-0 text-orange-500" strokeWidth={2.25} />
+          <h2 className="text-base font-bold tracking-tight text-foreground">
+            Notifications
+          </h2>
+          {alerts.length > 0 ? (
+            <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold tabular-nums text-primary-foreground">
+              {alerts.length > 99 ? "99+" : alerts.length}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]",
+          listClassName,
+        )}
+      >
+        {loading ? (
+          <div className="py-1">
+            {Array.from({ length: 5 }, (_, i) => (
+              <NotificationSkeletonRow key={i} index={i} />
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="flex flex-col items-center px-6 py-16 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted/50">
+              <Sparkles className="h-7 w-7 text-muted-foreground/70" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">All caught up</h3>
+            <p className="mt-1.5 max-w-[240px] text-sm leading-relaxed text-muted-foreground">
+              New messages and job updates will show up here.
+            </p>
+          </div>
+        ) : (
+          <div className="w-full min-w-0 max-w-full overflow-x-hidden py-0.5">
+            {alerts.map((alert, index) => (
+              <NotificationListRow
+                key={alert.id}
+                alert={alert}
+                index={index}
+                onOpen={onOpen}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div
+        className={cn(
+          "flex shrink-0 items-center justify-between gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+          mobileSheetSafePaddingBottom,
+          footerClassName,
+        )}
+      >
+        <span>{alerts.length > 0 ? `${alerts.length} updates` : "Up to date"}</span>
+        {alerts.length > 0 ? (
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="text-orange-600 transition-opacity hover:opacity-80 active:opacity-60 dark:text-orange-400"
+          >
+            Clear all
+          </button>
+        ) : null}
+      </div>
+    </>
+  );
 }
 
 export function NotificationsModal({
@@ -38,40 +294,42 @@ export function NotificationsModal({
 }: NotificationsModalProps) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobileViewport();
   const [alerts, setAlerts] = useState<NotificationAlert[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(true);
+  const [presented, setPresented] = useState(false);
   const alertsRef = useRef<NotificationAlert[]>([]);
   alertsRef.current = alerts;
 
-  const fetchAlerts = async (silent = false) => {
-    if (!user || !profile) return;
-    if (!silent) setLoading(true);
+  const fetchAlerts = useCallback(
+    async (silent = false) => {
+      if (!user || !profile) return;
+      if (!silent) setLoading(true);
 
-    try {
-      const allAlerts = await fetchInboxActivityAlerts(user, profile, {
-        includeUnreadMessageAlerts: true,
-      });
-      setAlerts(allAlerts);
-    } catch (err) {
-      console.error("Error fetching news:", err);
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  };
+      try {
+        const allAlerts = await fetchInboxActivityAlerts(user, profile, {
+          includeUnreadMessageAlerts: true,
+        });
+        setAlerts(allAlerts);
+      } catch (err) {
+        console.error("Error fetching news:", err);
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [user, profile],
+  );
 
   useEffect(() => {
-    if (open) {
-      void fetchAlerts();
-    }
-  }, [open, user?.id, profile?.role]);
+    if (open) void fetchAlerts();
+  }, [open, fetchAlerts]);
 
-  // Real-time updates for news feed
   useEffect(() => {
     if (!user || !profile) return;
 
     const channel = supabase
       .channel(`notifications-live:${user.id}`)
-      // Job candidate notifications (for freelancers)
       .on(
         "postgres_changes",
         {
@@ -80,22 +338,21 @@ export function NotificationsModal({
           table: "job_candidate_notifications",
           filter: `freelancer_id=eq.${user.id}`,
         },
-        () => void fetchAlerts(true)
+        () => void fetchAlerts(true),
       )
-      // Job requests (for clients/freelancers)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "job_requests",
-          filter: profile.role === "client" 
-            ? `client_id=eq.${user.id}` 
-            : `selected_freelancer_id=eq.${user.id}`,
+          filter:
+            profile.role === "client"
+              ? `client_id=eq.${user.id}`
+              : `selected_freelancer_id=eq.${user.id}`,
         },
-        () => void fetchAlerts(true)
+        () => void fetchAlerts(true),
       )
-      // New messages
       .on(
         "postgres_changes",
         {
@@ -103,49 +360,35 @@ export function NotificationsModal({
           schema: "public",
           table: "messages",
         },
-        () => void fetchAlerts(true)
+        () => void fetchAlerts(true),
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, profile?.role]);
+  }, [user?.id, profile?.role, fetchAlerts]);
 
-  const handleIgnore = async (alert: NotificationAlert) => {
-    if (user?.id) rememberDismissedActivity(user.id, alert.id);
-
-    try {
-      if (alert.type === "message") {
-        const conversation_id = alert.metadata?.conversation_id as
-          | string
-          | undefined;
-        if (!conversation_id) return;
-        await supabase
-          .from("messages")
-          .update({ read_at: new Date().toISOString() })
-          .eq("conversation_id", conversation_id)
-          .neq("sender_id", user?.id)
-          .is("read_at", null);
-      } else if (alert.type === "job_request") {
-        await supabase
-          .from("job_candidate_notifications")
-          .update({ status: "closed" })
-          .eq("id", alert.id);
-      }
-      /* confirmation + job_update + hire_interest: no safe status to set; inbox hides via rememberDismissedActivity */
-    } catch (err) {
-      console.error("Error ignoring notification:", err);
-    } finally {
-      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+  useEffect(() => {
+    if (open && isMobile) {
+      setSheetExpanded(true);
+      const id = window.requestAnimationFrame(() => setPresented(true));
+      return () => window.cancelAnimationFrame(id);
     }
-  };
+    setPresented(false);
+    return undefined;
+  }, [open, isMobile]);
 
-  const handleView = (alert: NotificationAlert) => {
-    if (user?.id) rememberDismissedActivity(user.id, alert.id);
-    onOpenChange(false);
-    navigate(alert.link);
-  };
+  const dismissMobile = useCallback(() => {
+    if (user?.id) {
+      for (const a of alertsRef.current) {
+        rememberDismissedActivity(user.id, a.id);
+      }
+    }
+    setPresented(false);
+    setSheetExpanded(false);
+    window.setTimeout(() => onOpenChange(false), MOBILE_SHEET_ANIM_MS);
+  }, [onOpenChange, user?.id]);
 
   const handleDialogOpenChange = (next: boolean) => {
     if (!next && user?.id) {
@@ -156,177 +399,77 @@ export function NotificationsModal({
     onOpenChange(next);
   };
 
+  const handleOpen = (alert: NotificationAlert) => {
+    if (user?.id) rememberDismissedActivity(user.id, alert.id);
+    onOpenChange(false);
+    navigate(alert.link);
+  };
+
+  const handleClearAll = () => {
+    if (!user?.id) return;
+    for (const a of alerts) rememberDismissedActivity(user.id, a.id);
+    setAlerts([]);
+  };
+
+  const panel = (
+    <NotificationsPanel
+      alerts={alerts}
+      loading={loading}
+      onOpen={handleOpen}
+      onClearAll={handleClearAll}
+    />
+  );
+
+  if (isMobile) {
+    if (!open) return null;
+
+    const sheet = (
+      <div className="fixed inset-0 z-[140] md:hidden">
+        <button
+          type="button"
+          aria-label="Close notifications"
+          className={cn(
+            "absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity ease-out",
+            presented ? "opacity-100 duration-300" : "opacity-0 duration-[380ms]",
+          )}
+          onClick={dismissMobile}
+        />
+        <MobileSnapBottomSheet
+          expanded={sheetExpanded}
+          onExpandedChange={setSheetExpanded}
+          onDismiss={dismissMobile}
+          hidePeek
+          hideBackdrop
+          hideBorder
+          presented={presented}
+          titleId="notifications-sheet-title"
+          maxHeight={MOBILE_SHEET_MAX_HEIGHT}
+          ariaLabel="Drag down to close notifications"
+        >
+          <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+            <p id="notifications-sheet-title" className="sr-only">
+              Notifications
+            </p>
+            {panel}
+          </div>
+        </MobileSnapBottomSheet>
+      </div>
+    );
+
+    return createPortal(sheet, document.body);
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[440px] max-h-[85vh] flex flex-col p-0 gap-0 border-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] overflow-hidden rounded-[32px] ring-1 ring-black/5 dark:ring-white/10">
-        <DialogHeader className="px-8 pt-8 pb-6 bg-transparent">
-          <DialogTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/10 dark:bg-orange-500/20 flex items-center justify-center shadow-sm ring-1 ring-orange-500/20">
-                <Bell className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div className="space-y-0.5">
-                <span className="block text-xl font-black tracking-tight text-zinc-950 dark:text-white">
-                  Notifications
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                  <span className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                    Live Feed
-                  </span>
-                </div>
-              </div>
-            </div>
-            {alerts.length > 0 && (
-              <div className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg">
-                {alerts.length}
-              </div>
-            )}
-          </DialogTitle>
+      <DialogContent
+        overlayClassName="md:bg-black/25"
+        className={desktopNotificationsPanelClass}
+      >
+        <DialogHeader className="sr-only">
+          <DialogTitle>Notifications</DialogTitle>
         </DialogHeader>
-
-        <ScrollArea className="flex-1 px-2">
-          <div className="px-6 py-2 space-y-4">
-            {loading ? (
-              <div className="space-y-4">
-                {Array.from({ length: 4 }).map((_, i) => <NotificationSkeleton key={i} />)}
-              </div>
-            ) : alerts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center px-8">
-                <div className="w-20 h-20 rounded-[32px] bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 shadow-inner ring-1 ring-black/5 dark:ring-white/5">
-                  <Sparkles className="w-10 h-10 text-zinc-300 dark:text-zinc-700" />
-                </div>
-                <h3 className="font-black text-xl text-zinc-950 dark:text-white mb-3">Quiet for now</h3>
-                <p className="text-[13px] font-medium text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-[220px]">
-                  New updates and messages will appear here as they happen.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3 pb-8">
-                {alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="group relative flex items-start gap-4 p-5 rounded-[24px] bg-white dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50 hover:border-orange-500/30 hover:bg-orange-500/[0.03] transition-all duration-500 shadow-sm hover:shadow-xl hover:shadow-orange-500/5"
-                  >
-                    <div className="flex-shrink-0">
-                      {alert.sender_photo ? (
-                        <Avatar className="w-12 h-12 rounded-[18px] ring-2 ring-white dark:ring-zinc-900 shadow-md">
-                          <AvatarImage
-                            src={alert.sender_photo}
-                            className="object-cover"
-                          />
-                          <AvatarFallback className="bg-zinc-100 dark:bg-zinc-800 text-zinc-400 text-sm font-black">
-                            {alert.title.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div
-                          className={cn(
-                            "w-12 h-12 rounded-[18px] flex items-center justify-center shadow-sm ring-1 ring-inset",
-                            alert.type === "message"
-                              ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-blue-100 dark:ring-blue-500/20"
-                              : alert.type === "job_request"
-                                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-100 dark:ring-emerald-500/20"
-                                : alert.type === "job_comment"
-                                  ? "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-rose-100 dark:ring-rose-500/20"
-                                  : "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 ring-orange-100 dark:ring-orange-500/20",
-                          )}
-                        >
-                          {alert.type === "message" ? (
-                            <MessageSquare className="w-6 h-6" />
-                          ) : alert.type === "job_request" ? (
-                            <Briefcase className="w-6 h-6" />
-                          ) : alert.type === "job_comment" ? (
-                            <MessageSquare className="w-6 h-6" />
-                          ) : alert.type === "hire_interest" ? (
-                            <Sparkles className="w-6 h-6" />
-                          ) : (
-                            <Briefcase className="w-6 h-6" />
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <h4 className="text-[15px] font-black text-zinc-950 dark:text-white truncate tracking-tight">
-                          {alert.title}
-                        </h4>
-                        <span className="text-[11px] font-bold text-zinc-400 tabular-nums shrink-0">
-                          {alert.created_at
-                            ? new Date(alert.created_at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : ""}
-                        </span>
-                      </div>
-                      <p className="text-[13px] font-medium text-zinc-600 dark:text-zinc-400 leading-snug line-clamp-2 mb-4">
-                        {alert.description}
-                      </p>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          onClick={() => handleView(alert)}
-                          size="sm"
-                          className="h-9 px-5 rounded-xl text-[11px] font-black bg-zinc-950 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 border-0 shadow-lg shadow-black/10 dark:shadow-white/5 transition-all active:scale-[0.98]"
-                        >
-                          View Activity
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleIgnore(alert)}
-                          className="h-9 w-9 rounded-xl text-zinc-400 hover:text-rose-500 hover:bg-rose-500/5 transition-colors ml-auto"
-                        >
-                          <X className="w-4.5 h-4.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        <div className="px-8 py-6 bg-zinc-50/50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/50 flex items-center justify-between">
-          <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.2em]">
-            {alerts.length > 0 ? `${alerts.length} New Updates` : "Fully Updated"}
-          </p>
-          <button 
-            onClick={() => {
-              if (user?.id) {
-                for (const a of alerts) rememberDismissedActivity(user.id, a.id);
-                setAlerts([]);
-              }
-            }}
-            className="text-[11px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all"
-          >
-            Clear All
-          </button>
-        </div>
+        {panel}
       </DialogContent>
     </Dialog>
-  );
-}
-
-function NotificationSkeleton() {
-  return (
-    <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-muted/30 border border-transparent animate-pulse">
-      <div className="w-11 h-11 rounded-xl bg-muted/50 shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="h-4 w-24 bg-muted/60 rounded-md" />
-          <div className="h-3 w-8 bg-muted/40 rounded-md" />
-        </div>
-        <div className="h-3 w-full bg-muted/40 rounded-md" />
-        <div className="h-3 w-2/3 bg-muted/40 rounded-md" />
-        <div className="flex gap-2 mt-3">
-          <div className="h-8 w-24 bg-muted/50 rounded-xl" />
-          <div className="h-8 w-8 bg-muted/50 rounded-xl ml-auto" />
-        </div>
-      </div>
-    </div>
   );
 }

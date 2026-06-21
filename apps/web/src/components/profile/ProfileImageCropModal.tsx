@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { mobileModalDarkNoOutlineClass } from "@/lib/mobileModalLayout";
+import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
 interface ProfileImageCropModalProps {
@@ -167,7 +169,7 @@ export function ProfileImageCropModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => (!v ? onCancel() : null)}>
-      <DialogContent className="w-[min(94vw,32rem)] rounded-2xl border border-border/70 bg-gradient-to-b from-white to-slate-50 p-0 shadow-2xl dark:from-zinc-900 dark:to-zinc-950">
+      <DialogContent className={cn("w-[min(94vw,32rem)] rounded-2xl border border-border/70 bg-gradient-to-b from-white to-slate-50 p-0 shadow-2xl dark:from-zinc-900 dark:to-zinc-950", mobileModalDarkNoOutlineClass)}>
         <div className="border-b border-border/60 px-5 py-4">
           <DialogTitle className="text-[18px] font-semibold">
             Adjust profile photo

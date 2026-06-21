@@ -5,12 +5,18 @@ export const MOBILE_BOTTOM_SHEET_EDGE = "bottom-0";
 
 export const MOBILE_MODAL_Z_CLASS = "max-md:z-[130]";
 
+/** Mobile dark mode: no border/ring outline on sheet surfaces. */
+export const mobileModalDarkNoOutlineClass = cn(
+  "max-md:dark:border-0 max-md:dark:ring-0 max-md:dark:outline-none",
+);
+
 /**
  * Radix Dialog → native bottom sheet on mobile.
  * Uses !important overrides to beat DialogContent's centered top/translate defaults.
  */
 export const mobileBottomSheetDialogClass = cn(
   MOBILE_MODAL_Z_CLASS,
+  mobileModalDarkNoOutlineClass,
   "!max-md:bottom-0",
   "!max-md:fixed !max-md:inset-x-0 !max-md:top-auto !max-md:left-0 !max-md:right-0",
   "!max-md:w-full !max-md:max-w-none !max-md:translate-x-0 !max-md:translate-y-0",

@@ -337,7 +337,7 @@ export function MobileSnapBottomSheet({
         className={cn(
           "pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[1.75rem] bg-background shadow-[0_-8px_40px_-12px_rgba(0,0,0,0.22)] dark:shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)]",
           !hideBorder &&
-            "border border-border/60 border-b-0 ring-1 ring-black/[0.03] dark:border-white/[0.08] dark:ring-white/[0.05]",
+            "border border-border/60 border-b-0 ring-1 ring-black/[0.03] dark:border-0 dark:ring-0",
           fitContent && "h-auto",
           !dragging && "will-change-transform",
         )}
