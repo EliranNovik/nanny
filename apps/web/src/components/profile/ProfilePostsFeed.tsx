@@ -5106,6 +5106,8 @@ interface ProfilePostsFeedProps {
   globalFeedLayout?: boolean;
   /** Viewer location for distance labels on global feed cards. */
   viewerLocation?: ViewerLocation | null;
+  /** Filter posts by job / service category. */
+  filterCategoryId?: string | null;
 }
 
 export function ProfilePostsFeed({
@@ -5136,6 +5138,7 @@ export function ProfilePostsFeed({
   excludeOwnJobRequests,
   globalFeedLayout = false,
   viewerLocation = null,
+  filterCategoryId = null,
 }: ProfilePostsFeedProps) {
   const hideOwnJobRequests = excludeOwnJobRequests ?? discoverSidePanel === "favorites";
   const effectivePostTypeFilter = useMemo(() => {
@@ -5188,6 +5191,7 @@ export function ProfilePostsFeed({
     feedBudgetMin: advancedFilters?.budgetMin ?? null,
     feedBudgetMax: advancedFilters?.budgetMax ?? null,
     feedFavoriteProfilesOnly: advancedFilters?.favoriteProfilesOnly ?? false,
+    filterCategoryId: filterCategoryId ?? null,
     limit,
   }), [
     userId,
@@ -5206,6 +5210,7 @@ export function ProfilePostsFeed({
     advancedFilters?.budgetMin,
     advancedFilters?.budgetMax,
     advancedFilters?.favoriteProfilesOnly,
+    filterCategoryId,
     limit,
   ]);
 
@@ -5798,6 +5803,29 @@ export function ProfilePostsFeed({
         }
       );
 
+      // Client-side category filtering
+      if (filterCategoryId && filterCategoryId !== "all" && filterCategoryId !== "all_help") {
+        const target = filterCategoryId;
+        merged = merged.filter((post) => {
+          if (post.source === "availability") {
+            return (post as any).category === target;
+          }
+          if (post.source === "job_request") {
+            return post.post_metadata?.category === target;
+          }
+          if (post.source === "post") {
+            if (post.post_type_id === "request_help") {
+              return post.post_metadata?.category === target;
+            }
+            if (post.post_type_id === "offer_service") {
+              return (post.post_metadata as any)?.service === target;
+            }
+            return false;
+          }
+          return false;
+        });
+      }
+
       if (effectivePostTypeFilter?.length) {
         merged = merged.filter((post) => {
           if (post.source === "job_request") {
@@ -5834,6 +5862,7 @@ export function ProfilePostsFeed({
     filterCommentedOwnPosts,
     filterAcceptedRequests,
     advancedFilters,
+    filterCategoryId,
     limit,
     hideOwnJobRequests,
     normalizedFocusRequestId,

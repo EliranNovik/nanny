@@ -38,6 +38,8 @@ import {
   parseCommunityFeedTypeFilter,
 } from "@/lib/communityFeedNav";
 import type { ViewerLocation } from "@/lib/globalFeedPostUi";
+import { PublicPostsCategoryTabs } from "@/components/community/PublicPostsCategoryTabs";
+import { type DiscoverHomeCategoryId } from "@/lib/serviceCategories";
 
 type FeedMainContentProps = {
   user: User | null;
@@ -65,6 +67,8 @@ type FeedMainContentProps = {
   scrollToPostId: string | null;
   onScrollToPostDone: () => void;
   viewerLocation: ViewerLocation | null;
+  categoryFilter: DiscoverHomeCategoryId;
+  onCategoryFilterChange: (id: DiscoverHomeCategoryId) => void;
 };
 
 function FeedMainContent({
@@ -87,11 +91,18 @@ function FeedMainContent({
   onScrollToPostDone,
   profile,
   viewerLocation,
+  categoryFilter,
+  onCategoryFilterChange,
 }: FeedMainContentProps) {
   const sidePanelPostTypeIds = useMemo(
     () => (postTypeFilter === "all" ? null : [postTypeFilter]),
     [postTypeFilter],
   );
+
+  const showCategoryTabs =
+    postTypeFilter === "all" ||
+    postTypeFilter === "request_help" ||
+    postTypeFilter === "offer_service";
 
   return (
     <div
@@ -121,6 +132,15 @@ function FeedMainContent({
         )}
       />
 
+      {showCategoryTabs && (
+        <div className="mb-4 px-2 md:px-0">
+          <PublicPostsCategoryTabs
+            activeId={categoryFilter}
+            onSelect={onCategoryFilterChange}
+          />
+        </div>
+      )}
+
       <ProfilePostsFeed
         appearance="discover"
         discoverSidePanel="favorites"
@@ -140,6 +160,7 @@ function FeedMainContent({
         plainCards
         globalFeedLayout
         viewerLocation={viewerLocation}
+        filterCategoryId={categoryFilter}
       />
     </div>
   );
@@ -168,6 +189,7 @@ export default function GlobalPostsPage() {
     DEFAULT_COMMUNITY_FEED_ADVANCED_FILTERS,
   );
   const [favoriteAuthorFilterId, setFavoriteAuthorFilterId] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<DiscoverHomeCategoryId>("all_help");
 
   const viewerLocation = useMemo<ViewerLocation | null>(() => {
     if (!profile) return null;
@@ -319,6 +341,8 @@ export default function GlobalPostsPage() {
               scrollToPostId={scrollToPostId}
               onScrollToPostDone={() => setScrollToPostId(null)}
               viewerLocation={viewerLocation}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
             />
           </div>
         </div>
@@ -346,6 +370,8 @@ export default function GlobalPostsPage() {
               scrollToPostId={scrollToPostId}
               onScrollToPostDone={() => setScrollToPostId(null)}
               viewerLocation={viewerLocation}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
             />
           </div>
         </div>
