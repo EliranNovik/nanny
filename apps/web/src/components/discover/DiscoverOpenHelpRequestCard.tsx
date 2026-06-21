@@ -43,11 +43,13 @@ import {
   categoryAccentClass,
   categoryIconCircleClass,
   formatOpenHelpRequestBudget,
+  isOpenHelpRequestWhenExpired,
   openHelpRequestDescription,
   openHelpRequestDetailLine,
   openHelpRequestScheduleLine,
   openHelpRequestTitle,
   openHelpRequestWhenBadgeLabel,
+  requestHelpExpiredBadgeClass,
   serviceCategoryTitle,
   whenBadgeToneClass,
 } from "@/lib/openHelpRequestDisplay";
@@ -300,19 +302,25 @@ function ClientPoster({
 
 function WhenBadge({
   whenTimeframe,
+  createdAt,
   className,
 }: {
   whenTimeframe: string | null | undefined;
+  createdAt?: string | null;
   className?: string;
 }) {
-  const whenBadge = openHelpRequestWhenBadgeLabel(whenTimeframe);
+  const { t } = useTranslation();
+  const expired = isOpenHelpRequestWhenExpired(whenTimeframe, createdAt);
+  const whenBadge = expired
+    ? t("feed.whenExpired")
+    : openHelpRequestWhenBadgeLabel(whenTimeframe);
   if (!whenBadge) return null;
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full border-0 px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em]",
-        whenBadgeToneClass(whenTimeframe),
+        expired ? requestHelpExpiredBadgeClass : whenBadgeToneClass(whenTimeframe),
         className,
       )}
     >
@@ -449,7 +457,7 @@ export function DiscoverOpenHelpRequestCard({
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <WhenBadge whenTimeframe={row.when_timeframe} />
+            <WhenBadge whenTimeframe={row.when_timeframe} createdAt={row.created_at} />
             <button
               type="button"
               className={cn(
@@ -591,7 +599,7 @@ export function DiscoverOpenHelpRequestCard({
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
-                <WhenBadge whenTimeframe={row.when_timeframe} />
+                <WhenBadge whenTimeframe={row.when_timeframe} createdAt={row.created_at} />
                 <button
                   type="button"
                   className={cn(
@@ -841,7 +849,7 @@ export function DiscoverMyOpenRequestCard({
               acceptedHelpers={acceptedHelpers}
               size="carousel"
             />
-            <WhenBadge whenTimeframe={row.when_timeframe} className="shrink-0" />
+            <WhenBadge whenTimeframe={row.when_timeframe} createdAt={row.created_at} className="shrink-0" />
           </div>
         </div>
 
@@ -921,7 +929,9 @@ export function DiscoverMyOpenRequestCard({
     );
   }
 
-  const hasWhenBadge = Boolean(openHelpRequestWhenBadgeLabel(row.when_timeframe));
+  const hasWhenBadge =
+    Boolean(openHelpRequestWhenBadgeLabel(row.when_timeframe)) ||
+    isOpenHelpRequestWhenExpired(row.when_timeframe, row.created_at);
 
   return (
     <>
@@ -951,7 +961,7 @@ export function DiscoverMyOpenRequestCard({
           >
             <div className="pointer-events-none absolute right-0 top-0 z-[1] flex flex-col items-end gap-1.5">
               <div className="pointer-events-auto flex items-center gap-1.5">
-                <WhenBadge whenTimeframe={row.when_timeframe} />
+                <WhenBadge whenTimeframe={row.when_timeframe} createdAt={row.created_at} />
                 <MyRequestAcceptedCountBadge
                   acceptedCount={acceptedCount}
                   acceptedHelpers={acceptedHelpers}

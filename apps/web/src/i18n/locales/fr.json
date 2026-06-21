@@ -82,6 +82,7 @@
     "onAuthorsRequest": "sur la demande de {{name}}",
     "refresh": "Actualiser",
     "noCommentsYet": "Pas encore de commentaires. Soyez le premier !",
+    "whenExpired": "Expiré",
     "iCanHelp": "Je peux aider",
     "contactName": "Contacter {{name}}",
     "defaultUser": "Utilisateur",

@@ -3,6 +3,7 @@ import { format, parseISO } from "date-fns";
 import { haversineDistanceKm } from "@/lib/geo";
 import { dateFnsLocaleFor } from "@/lib/dateFnsLocale";
 import type { GeneratedPostCopy } from "@/lib/generatedPostCopy";
+import { isRequestHelpWhenExpired } from "@/lib/requestHelpWhen";
 import { cn } from "@/lib/utils";
 
 const FEED_POST_TYPE_IDS = [
@@ -304,15 +305,30 @@ function feedWhenLabelFromMetadata(
   return timeframe.replace(/_/g, " ");
 }
 
+export function feedWhenDisplayLabel(
+  t: TFunction,
+  metadata: Record<string, unknown> | null | undefined,
+  createdAt?: string | null,
+): string | null {
+  if (!metadata) return null;
+  const timeframe = metadata.timeframe;
+  if (typeof timeframe !== "string" || !timeframe) return null;
+  if (createdAt && isRequestHelpWhenExpired(timeframe, createdAt)) {
+    return t("feed.whenExpired");
+  }
+  return feedWhenLabelFromMetadata(t, metadata);
+}
+
 export function feedPostWhenLabel(
   t: TFunction,
   language: string,
   postTypeId: string | null,
   metadata: Record<string, unknown> | null | undefined,
+  createdAt?: string | null,
 ): string | null {
   if (!metadata) return null;
   if (postTypeId === "request_help" && metadata.timeframe) {
-    return feedWhenLabelFromMetadata(t, metadata);
+    return feedWhenDisplayLabel(t, metadata, createdAt);
   }
   if (postTypeId === "event") {
     return feedEventDateTimeLabel(t, language, metadata);

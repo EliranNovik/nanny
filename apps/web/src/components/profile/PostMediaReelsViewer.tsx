@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
   type ReactNode,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -16,7 +15,6 @@ import { ChevronLeft, Clock, Coins, Heart, Loader2, MapPin, MessageCircle, Send 
 import { cn } from "@/lib/utils";
 import {
   bidirectionalClass,
-  bidirectionalInputProps,
   bidirectionalTextProps,
 } from "@/lib/textDirection";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,6 +25,9 @@ import { publicProfileMediaPublicUrl } from "@/lib/publicProfileMedia";
 import { shareProfilePost } from "@/lib/profilePostShare";
 import { isFreelancerInActive24hLiveWindow } from "@/lib/freelancerLiveWindow";
 import { useAuth } from "@/context/AuthContext";
+import { acceptOpenHelpRequest } from "@/lib/acceptOpenHelpRequest";
+import { linkedJobRequestIdFromPost } from "@/lib/createJobFromRequestHelpCompose";
+import { isRequestHelpWhenExpired } from "@/lib/requestHelpWhen";
 import { openCommunityContact } from "@/lib/communityContact";
 import type { GeneratedPostCopy } from "@/lib/generatedPostCopy";
 import {
@@ -67,6 +68,7 @@ export type ReelFeedPost = {
   post_metadata?: Record<string, unknown> | null;
   ai_generated_copy?: GeneratedPostCopy | null;
   custom_category?: string | null;
+  created_at?: string | null;
   author?: {
     full_name: string | null;
     photo_url: string | null;
@@ -120,6 +122,7 @@ type ReelSlideData = {
   postTypeName: string | null;
   locationLine: string | null;
   whenLabel: string | null;
+  whenExpired: boolean;
   budgetLine: string | null;
   likeCount: number;
   commentCount: number;
@@ -127,6 +130,7 @@ type ReelSlideData = {
   likedByMe: boolean;
   actionLabel: string;
   showActionButton: boolean;
+  jobRequestId: string | null;
 };
 
 function reelCaptionParts(caption: string): ReactNode {
@@ -337,9 +341,7 @@ export function PostMediaReelsViewer({
   const [activeIndex, setActiveIndex] = useState(0);
   const [likingId, setLikingId] = useState<string | null>(null);
   const [primaryActionPostId, setPrimaryActionPostId] = useState<string | null>(null);
-  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
-  const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [eventJoinByPostId, setEventJoinByPostId] = useState<
     Record<string, EventJoinInterestStatus | null>
   >({});
@@ -396,13 +398,32 @@ export function PostMediaReelsViewer({
         post_metadata: p.post_metadata,
       };
       const locationLine = feedPostReelLocationLine(t, postLike);
+      const whenTimeframe =
+        postTypeId === "request_help"
+          ? ((p.post_metadata?.timeframe as string | null | undefined) ?? null)
+          : null;
+      const whenExpired = isRequestHelpWhenExpired(
+        whenTimeframe,
+        p.created_at ?? new Date(0).toISOString(),
+      );
       const whenLabel = feedPostWhenLabel(
         t,
         i18n.language,
         postTypeId,
         p.post_metadata,
+        p.created_at,
       );
       const budgetLine = feedPostBudgetLine(t, postTypeId, p.post_metadata);
+      const jobRequestId =
+        postTypeId === "request_help"
+          ? linkedJobRequestIdFromPost({
+              source: "post",
+              id: p.id,
+              post_type_id: postTypeId,
+              post_metadata: p.post_metadata as Record<string, unknown> | null,
+            })
+          : null;
+      const isOwnPost = user?.id === p.author_id;
 
       return {
         postId: p.id,
@@ -425,20 +446,26 @@ export function PostMediaReelsViewer({
         postTypeName: p.post_types?.name ?? null,
         locationLine,
         whenLabel,
+        whenExpired,
         budgetLine,
         likeCount: p.like_count,
         commentCount: p.comment_count,
         shareClickCount: p.share_click_count,
         likedByMe: p.liked_by_me,
-        actionLabel: globalFeedCtaLabel(t, {
-          isJobRequest: false,
-          jobAcceptedAt: null,
-          postTypeId,
-          authorFirstName,
-          isOwnEventPost: user?.id === p.author_id && postTypeId === "event",
-          eventJoinStatus: null,
-        }),
-        showActionButton: user?.id !== p.author_id,
+        actionLabel:
+          jobRequestId && isOwnPost
+            ? t("feed.global.viewRequest")
+            : globalFeedCtaLabel(t, {
+                isJobRequest: false,
+                jobAcceptedAt: null,
+                postTypeId,
+                authorFirstName,
+                isOwnEventPost: isOwnPost && postTypeId === "event",
+                eventJoinStatus: null,
+              }),
+        showActionButton:
+          !isOwnPost || Boolean(jobRequestId && postTypeId === "request_help"),
+        jobRequestId,
       };
     });
   }, [posts, t, i18n.language, user?.id]);
@@ -453,11 +480,9 @@ export function PostMediaReelsViewer({
   const activeSlide = slides[safeIndex] ?? slides[0];
   const activeCommentCount =
     commentCounts[activeSlide.postId] ?? activeSlide.commentCount;
-  const activeCommentDraft = commentDrafts[activeSlide.postId] ?? "";
 
   useEffect(() => {
     if (!open) {
-      setCommentDrafts({});
       setCommentCounts({});
       return;
     }
@@ -565,6 +590,44 @@ export function PostMediaReelsViewer({
       openGuestAuthPrompt({ variant: "engage" });
       return;
     }
+
+    if (slide.postTypeId === "request_help" && slide.jobRequestId) {
+      if (user.id === slide.authorId) {
+        navigate(`/client/jobs/${encodeURIComponent(slide.jobRequestId)}/live`);
+        return;
+      }
+      const canHelp =
+        viewerProfile.role === "freelancer" ||
+        (viewerProfile.role === "client" &&
+          viewerProfile.is_available_for_jobs === true);
+      if (!canHelp) {
+        addToast({
+          title: "Enable helper profile",
+          description: "Turn on help mode to accept requests.",
+          variant: "warning",
+        });
+        return;
+      }
+      setPrimaryActionPostId(slide.postId);
+      try {
+        await acceptOpenHelpRequest(slide.jobRequestId);
+        addToast({
+          title: "Accepted",
+          description: `Waiting for ${slide.authorFirstName}.`,
+          variant: "success",
+        });
+      } catch (error) {
+        addToast({
+          title: "Failed to accept",
+          description: error instanceof Error ? error.message : "Try again.",
+          variant: "error",
+        });
+      } finally {
+        setPrimaryActionPostId(null);
+      }
+      return;
+    }
+
     if (user.id === slide.authorId) return;
 
     const eventJoinStatus = eventJoinByPostId[slide.postId] ?? null;
@@ -614,42 +677,6 @@ export function PostMediaReelsViewer({
       });
     } finally {
       setPrimaryActionPostId(null);
-    }
-  }
-
-  async function submitReelComment() {
-    const postId = activeSlide.postId;
-    const body = activeCommentDraft.trim();
-    if (!body || commentSubmitting) return;
-    if (!currentUserId) {
-      openGuestAuthPrompt({ variant: "engage" });
-      return;
-    }
-    setCommentSubmitting(true);
-    try {
-      const { error } = await supabase.from("profile_post_comments").insert({
-        post_id: postId,
-        author_id: currentUserId,
-        body,
-      });
-      if (error) throw error;
-      setCommentDrafts((prev) => ({ ...prev, [postId]: "" }));
-      setCommentCounts((prev) => ({
-        ...prev,
-        [postId]: (prev[postId] ?? activeSlide.commentCount) + 1,
-      }));
-    } catch (e) {
-      console.error("[PostMediaReelsViewer] submitComment", e);
-      addToast({ title: "Could not post comment", variant: "error" });
-    } finally {
-      setCommentSubmitting(false);
-    }
-  }
-
-  function onCommentKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      void submitReelComment();
     }
   }
 
@@ -914,47 +941,15 @@ export function PostMediaReelsViewer({
 
         <div
           data-reels-comment-bar
-          className="absolute inset-x-0 bottom-0 z-50 flex items-center gap-3 border-t border-white/10 bg-black px-4 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] pt-3 md:hidden"
+          className="absolute inset-x-0 bottom-0 z-50 flex items-center border-t border-white/10 bg-black px-4 pb-[max(0.75rem,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)))] pt-3 md:hidden"
         >
-          <div className="flex w-full items-center gap-3">
-          <div className="min-w-0 flex-1 rounded-full bg-zinc-800 px-4 py-2.5">
-            <input
-              type="text"
-              value={activeCommentDraft}
-              onChange={(e) =>
-                setCommentDrafts((prev) => ({
-                  ...prev,
-                  [activeSlide.postId]: e.target.value,
-                }))
-              }
-              onKeyDown={onCommentKeyDown}
-              onFocus={() => {
-                if (!currentUserId) openGuestAuthPrompt({ variant: "engage" });
-              }}
-              placeholder={t("feed.writeComment")}
-              maxLength={4000}
-              disabled={commentSubmitting}
-              {...bidirectionalInputProps(
-                activeCommentDraft,
-                "w-full border-0 bg-transparent py-0.5 text-[15px] text-white outline-none placeholder:text-white/45 disabled:opacity-60",
-              )}
-              aria-label={t("feed.writeComment")}
-            />
-          </div>
           <button
             type="button"
-            disabled={commentSubmitting || !activeCommentDraft.trim()}
-            onClick={() => void submitReelComment()}
-            className="shrink-0 p-1 text-white transition active:scale-95 disabled:opacity-35"
-            aria-label="Post comment"
+            onClick={() => onOpenComments(activeSlide.postId)}
+            className="w-full rounded-full bg-zinc-800 px-4 py-2.5 text-left text-[15px] text-white/45 transition active:scale-[0.99]"
           >
-            {commentSubmitting ? (
-              <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
-            ) : (
-              <Send className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-            )}
+            {t("feed.writeComment")}
           </button>
-          </div>
         </div>
       </div>
 
@@ -978,6 +973,16 @@ export function PostMediaReelsViewer({
       </aside>
     </div>,
     document.body,
+  );
+}
+
+function ReelExpiredBadge() {
+  const { t } = useTranslation();
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-600/90 px-3 py-1 text-[12px] font-black uppercase tracking-wide text-white backdrop-blur-sm">
+      <Clock className="h-3.5 w-3.5 shrink-0 text-white/90" aria-hidden />
+      {t("feed.whenExpired")}
+    </span>
   );
 }
 
@@ -1393,7 +1398,10 @@ function ReelSlide({
       className="relative flex h-full min-h-full w-full shrink-0 snap-start snap-always flex-col bg-black"
     >
       {slide.postTypeId ? (
-        <div className="pointer-events-none absolute right-[max(0.75rem,env(safe-area-inset-right,0px))] top-[calc(env(safe-area-inset-top,0px)+0.625rem)] z-[25]">
+        <div className="pointer-events-none absolute right-[max(0.75rem,env(safe-area-inset-right,0px))] top-[calc(env(safe-area-inset-top,0px)+0.625rem)] z-[25] flex items-center gap-1.5">
+          {slide.whenExpired && slide.postTypeId === "request_help" ? (
+            <ReelExpiredBadge />
+          ) : null}
           <ReelPostTypeBadge
             postTypeId={slide.postTypeId}
             postTypeName={slide.postTypeName}

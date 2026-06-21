@@ -89,6 +89,7 @@ import {
   jobRequestMatchesFeedFilters,
   type JobRequestFeedPost,
 } from "@/lib/openHelpRequestFeedPost";
+import { collectLinkedJobRequestIdsFromProfilePosts } from "@/lib/createJobFromRequestHelpCompose";
 import { JobRequestCommentsSidePanel } from "@/components/jobs/JobRequestCommentsSidePanel";
 import { JobRequestCommentsModal } from "@/components/jobs/JobRequestCommentsModal";
 import {
@@ -123,8 +124,15 @@ import {
   globalFeedPostTypeAccentClass,
   globalFeedPrimaryCtaClass,
   globalFeedTextOnlySurfaceClass,
+  feedWhenDisplayLabel,
   type ViewerLocation,
 } from "@/lib/globalFeedPostUi";
+import {
+  REQUEST_HELP_WHEN_OPTIONS,
+  isRequestHelpWhenExpired,
+  isRequestHelpWhenUrgent,
+  type RequestHelpTimeframe,
+} from "@/lib/requestHelpWhen";
 import { isJobOpenForDiscoverListing } from "@/lib/discoverOpenJobStatuses";
 import type { DiscoverOpenHelpRequestRow } from "@/hooks/data/useDiscoverOpenHelpRequests";
 import {
@@ -142,11 +150,7 @@ import {
 } from "@/lib/profilePostMedia";
 import type { CommunityFeedAdvancedFilters } from "@/lib/communityFeedFilters";
 import { postMatchesAdvancedFeedFilters } from "@/lib/communityFeedFilters";
-import {
-  REQUEST_HELP_WHEN_OPTIONS,
-  isRequestHelpWhenUrgent,
-  type RequestHelpTimeframe,
-} from "@/lib/requestHelpWhen";
+import { createJobRequestFromRequestHelpCompose, linkedJobRequestIdFromPost } from "@/lib/createJobFromRequestHelpCompose";
 import { openCommunityContact } from "@/lib/communityContact";
 import {
   fetchEventPostHelperCounts,
@@ -331,14 +335,9 @@ function feedWhenLabel(
     timeframe?: string | null;
     custom_when?: string | null;
   },
+  createdAt?: string | null,
 ): string | null {
-  if (!metadata.timeframe) return null;
-  if (metadata.timeframe === "custom" && metadata.custom_when) {
-    return metadata.custom_when;
-  }
-  const key = FEED_WHEN_LABEL_KEYS[metadata.timeframe];
-  if (key) return t(key);
-  return metadata.timeframe.replace(/_/g, " ");
+  return feedWhenDisplayLabel(t, metadata, createdAt);
 }
 
 function feedLocationSlug(part: string): string {
@@ -496,14 +495,159 @@ function ReelsStyleCommentComposer({
   );
 }
 
+const MOBILE_COMMENTS_SHEET_MAX_HEIGHT = "min(52dvh, 480px)";
+const MOBILE_COMMENTS_ANIM_MS = 420;
+
+type CommentsPostPreview = {
+  authorName: string;
+  authorPhotoUrl?: string | null;
+  isVerified?: boolean;
+  text?: string | null;
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
+};
+
+function feedPostPreviewText(post: FeedPost): string | null {
+  const caption = post.caption?.trim();
+  if (caption) return caption;
+  if (post.source === "post" || post.source === "job_request") {
+    const generated = post.ai_generated_copy;
+    if (generated?.short_text?.trim()) return generated.short_text.trim();
+    if (generated?.feed_preview?.trim()) return generated.feed_preview.trim();
+    if (generated?.title?.trim()) return generated.title.trim();
+  }
+  return null;
+}
+
+function buildCommentsPostPreview(post: FeedPost): CommentsPostPreview {
+  return {
+    authorName: post.author?.full_name?.trim() || "Member",
+    authorPhotoUrl: post.author?.photo_url,
+    isVerified: post.author?.is_verified ?? undefined,
+    text: feedPostPreviewText(post),
+    mediaUrl:
+      post.media_type && post.storage_path
+        ? publicProfileMediaPublicUrl(post.storage_path)
+        : null,
+    mediaType: post.media_type,
+  };
+}
+
+function CommentsMobilePostPreview({ preview }: { preview: CommentsPostPreview }) {
+  const text = preview.text?.trim();
+  const hasMedia = Boolean(preview.mediaUrl);
+
+  return (
+    <article
+      className={cn(
+        "pointer-events-none flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl",
+        "bg-background text-foreground",
+        "shadow-[0_28px_90px_-16px_rgba(0,0,0,0.65)]",
+      )}
+    >
+      <header className="flex shrink-0 items-center gap-3 px-4 py-3">
+        <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background">
+          <AvatarImage src={preview.authorPhotoUrl ?? undefined} />
+          <AvatarFallback className="text-sm font-bold">
+            {preview.authorName.charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <p className="truncate text-[15px] font-bold tracking-tight">
+            {preview.authorName}
+          </p>
+          {preview.isVerified ? (
+            <BadgeCheck
+              className="h-[18px] w-[18px] shrink-0"
+              fill="#0ea5e9"
+              color="#ffffff"
+              aria-label="Verified"
+            />
+          ) : null}
+        </div>
+      </header>
+
+      {hasMedia ? (
+        <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
+          {preview.mediaType === "video" ? (
+            <video
+              src={preview.mediaUrl!}
+              className="absolute inset-0 h-full w-full object-cover"
+              muted
+              playsInline
+              autoPlay
+              loop
+              preload="metadata"
+              aria-hidden
+            />
+          ) : (
+            <img
+              src={preview.mediaUrl!}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 to-transparent"
+            aria-hidden
+          />
+        </div>
+      ) : text ? (
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 items-center px-5 py-6",
+            "bg-gradient-to-br from-zinc-100 via-zinc-50 to-orange-50/80",
+            "dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800",
+          )}
+        >
+          <p
+            {...bidirectionalTextProps(
+              text,
+              "line-clamp-[8] text-[15px] font-medium leading-relaxed text-foreground/90",
+            )}
+          >
+            {text}
+          </p>
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-muted/40 px-5 py-8">
+          <MessageCircle
+            className="h-10 w-10 text-muted-foreground/35"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+        </div>
+      )}
+
+      {hasMedia && text ? (
+        <footer className="shrink-0 bg-background/95 px-4 py-3 backdrop-blur-sm">
+          <p
+            {...bidirectionalTextProps(
+              text,
+              "line-clamp-2 text-[13px] leading-snug text-foreground/90",
+            )}
+          >
+            <span className="font-bold">{preview.authorName}</span>{" "}
+            {text}
+          </p>
+        </footer>
+      ) : null}
+    </article>
+  );
+}
+
 function CommentsDialog({
   postId,
   open,
   onClose,
+  postPreview,
+  overlayClassName,
 }: {
   postId: string;
   open: boolean;
   onClose: () => void;
+  postPreview?: CommentsPostPreview | null;
+  overlayClassName?: string;
 }) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
@@ -517,9 +661,21 @@ function CommentsDialog({
   const dateLocale = dateFnsLocaleFor(i18n.language);
   const isMobile = useIsMobileViewport();
   const [sheetExpanded, setSheetExpanded] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [presented, setPresented] = useState(false);
 
   useEffect(() => {
-    if (open) setSheetExpanded(true);
+    if (!open) {
+      setPresented(false);
+      const timer = window.setTimeout(() => setMounted(false), MOBILE_COMMENTS_ANIM_MS);
+      return () => window.clearTimeout(timer);
+    }
+    setMounted(true);
+    setSheetExpanded(true);
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setPresented(true));
+    });
+    return () => cancelAnimationFrame(frame);
   }, [open]);
 
   const fetchComments = useCallback(async () => {
@@ -596,9 +752,13 @@ function CommentsDialog({
     }
   }
 
-  if (!open) return null;
+  if (!mounted) return null;
 
-  const dismiss = () => onClose();
+  const dismiss = () => {
+    if (!presented) return;
+    setPresented(false);
+    window.setTimeout(() => onClose(), MOBILE_COMMENTS_ANIM_MS);
+  };
 
   const commentsHeader = (
     <div className="flex shrink-0 items-center gap-2 px-5 py-3">
@@ -712,25 +872,63 @@ function CommentsDialog({
 
   if (isMobile) {
     const sheet = (
-      <MobileSnapBottomSheet
-        expanded={sheetExpanded}
-        onExpandedChange={setSheetExpanded}
-        onDismiss={dismiss}
-        hidePeek
-        titleId="comments-sheet-title"
-        className="z-[140]"
-        maxHeight="min(85dvh,720px)"
-        ariaLabel="Drag down to close comments"
-      >
-        <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
-          {commentsHeader}
-          {commentsBody}
-          {commentsComposer}
-        </div>
-      </MobileSnapBottomSheet>
+      <div className={cn("fixed inset-0 z-[140] md:hidden", overlayClassName)}>
+        <button
+          type="button"
+          aria-label="Close comments"
+          className={cn(
+            "absolute inset-0 bg-black/70 backdrop-blur-sm",
+            "transition-opacity ease-out",
+            presented ? "opacity-100 duration-300" : "opacity-0 duration-[420ms]",
+          )}
+          onClick={dismiss}
+        />
+        {postPreview ? (
+          <div
+            className="pointer-events-none absolute inset-x-1.5 z-[1] flex items-end justify-center"
+            style={{
+              top: "max(0.5rem, env(safe-area-inset-top))",
+              bottom: `calc(${MOBILE_COMMENTS_SHEET_MAX_HEIGHT} + 0.625rem)`,
+            }}
+          >
+            <div
+              className={cn(
+                "h-full w-full origin-bottom will-change-transform",
+                "transition-[transform,opacity] ease-[cubic-bezier(0.32,0.72,0,1)]",
+                presented
+                  ? "translate-y-0 scale-100 opacity-100 duration-[420ms]"
+                  : "translate-y-10 scale-[0.82] opacity-0 duration-[380ms]",
+              )}
+            >
+              <CommentsMobilePostPreview preview={postPreview} />
+            </div>
+          </div>
+        ) : null}
+        <MobileSnapBottomSheet
+          expanded={sheetExpanded}
+          onExpandedChange={setSheetExpanded}
+          onDismiss={dismiss}
+          hidePeek
+          hideBackdrop
+          hideBorder
+          presented={presented}
+          titleId="comments-sheet-title"
+          className="z-[2]"
+          maxHeight={MOBILE_COMMENTS_SHEET_MAX_HEIGHT}
+          ariaLabel="Drag down to close comments"
+        >
+          <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+            {commentsHeader}
+            {commentsBody}
+            {commentsComposer}
+          </div>
+        </MobileSnapBottomSheet>
+      </div>
     );
     return createPortal(sheet, document.body);
   }
+
+  if (!open) return null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -1151,6 +1349,60 @@ function PostTypeBadge({
   );
 }
 
+function RequestHelpExpiredBadge({
+  size = "default",
+  className,
+}: {
+  size?: "default" | "compact";
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 font-black uppercase tracking-wide",
+        size === "compact"
+          ? "rounded-md bg-neutral-600/90 px-2.5 py-1 text-[11px] text-white dark:bg-neutral-700/90"
+          : "rounded-lg bg-neutral-600/90 px-3 py-1.5 text-[12px] text-white dark:bg-neutral-700/90",
+        className,
+      )}
+    >
+      <CalendarDays className="h-3.5 w-3.5 shrink-0 text-white/90" aria-hidden />
+      {t("feed.whenExpired")}
+    </span>
+  );
+}
+
+function PostTypeBadgeWithExpired({
+  typeId,
+  typeName,
+  size = "default",
+  compact = false,
+  showExpired = false,
+  className,
+}: {
+  typeId: string;
+  typeName?: string;
+  size?: "default" | "lg";
+  compact?: boolean;
+  showExpired?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex shrink-0 items-center gap-1.5", className)}>
+      {showExpired ? (
+        <RequestHelpExpiredBadge size={compact ? "compact" : "default"} />
+      ) : null}
+      <PostTypeBadge
+        typeId={typeId}
+        typeName={typeName}
+        size={size}
+        compact={compact}
+      />
+    </div>
+  );
+}
+
 export function ComposeModal({
   open,
   onClose,
@@ -1547,18 +1799,64 @@ export function ComposeModal({
         generatedCopy?.feed_preview ||
         null;
 
-      const { error } = await supabase.from("profile_posts").insert({
-        author_id: user.id,
-        caption: captionToSave,
-        media_type: primaryMedia?.media_type ?? null,
-        storage_path: primaryMedia?.storage_path ?? null,
-        tagged_user_ids: taggedUsers.map((u) => u.id),
-        post_type_id: selectedPostTypeId,
-        post_metadata: metadata,
-        custom_category: savedCustomCategory,
-        ai_generated_copy: generatedCopy,
-      });
-      if (error) throw error;
+      if (selectedPostTypeId === "request_help") {
+        const { data: insertedPost, error: insertErr } = await supabase
+          .from("profile_posts")
+          .insert({
+            author_id: user.id,
+            caption: captionToSave,
+            media_type: primaryMedia?.media_type ?? null,
+            storage_path: primaryMedia?.storage_path ?? null,
+            tagged_user_ids: taggedUsers.map((u) => u.id),
+            post_type_id: selectedPostTypeId,
+            post_metadata: metadata,
+            custom_category: savedCustomCategory,
+            ai_generated_copy: generatedCopy,
+          })
+          .select("id")
+          .single();
+        if (insertErr) throw insertErr;
+        if (!insertedPost?.id) throw new Error("Could not create post");
+
+        try {
+          const { jobId } = await createJobRequestFromRequestHelpCompose({
+            category: requestHelpCategory,
+            customCategory: savedCustomCategory,
+            locationAddress: postLocation.address,
+            timeframe,
+            customWhenDate,
+            customWhenTime,
+            budgetAmount,
+            budgetRateType,
+            caption: captionToSave,
+            profilePostId: insertedPost.id,
+            mediaItems: uploadedMedia,
+          });
+
+          const linkedMetadata = { ...metadata, job_request_id: jobId };
+          const { error: linkErr } = await supabase
+            .from("profile_posts")
+            .update({ post_metadata: linkedMetadata })
+            .eq("id", insertedPost.id);
+          if (linkErr) throw linkErr;
+        } catch (jobErr) {
+          await supabase.from("profile_posts").delete().eq("id", insertedPost.id);
+          throw jobErr;
+        }
+      } else {
+        const { error } = await supabase.from("profile_posts").insert({
+          author_id: user.id,
+          caption: captionToSave,
+          media_type: primaryMedia?.media_type ?? null,
+          storage_path: primaryMedia?.storage_path ?? null,
+          tagged_user_ids: taggedUsers.map((u) => u.id),
+          post_type_id: selectedPostTypeId,
+          post_metadata: metadata,
+          custom_category: savedCustomCategory,
+          ai_generated_copy: generatedCopy,
+        });
+        if (error) throw error;
+      }
 
       addToast({ title: "Post shared!", variant: "success" });
       reset();
@@ -2690,13 +2988,26 @@ const mediaWhenBadgeIconClass = "h-4 w-4 shrink-0";
 
 const mediaWhenUrgentBadgeIconClass = "h-4 w-4 shrink-0 text-white";
 
-function whenBadgeClassForTimeframe(timeframe?: string | null) {
+const mediaWhenExpiredBadgeClass =
+  "inline-flex items-center gap-2 rounded-full bg-neutral-600/90 px-4 py-2 text-sm font-black uppercase tracking-wide text-white shadow-md backdrop-blur-sm";
+
+const mediaWhenExpiredBadgeIconClass = "h-4 w-4 shrink-0 text-white/90";
+
+function whenBadgeClassForTimeframe(
+  timeframe?: string | null,
+  expired = false,
+) {
+  if (expired) return mediaWhenExpiredBadgeClass;
   return isRequestHelpWhenUrgent(timeframe)
     ? mediaWhenUrgentBadgeClass
     : mediaWhenBadgeClass;
 }
 
-function whenBadgeIconClassForTimeframe(timeframe?: string | null) {
+function whenBadgeIconClassForTimeframe(
+  timeframe?: string | null,
+  expired = false,
+) {
+  if (expired) return mediaWhenExpiredBadgeIconClass;
   return isRequestHelpWhenUrgent(timeframe)
     ? mediaWhenUrgentBadgeIconClass
     : mediaWhenBadgeIconClass;
@@ -2722,12 +3033,14 @@ function MediaTopBadges({
   serviceCategoryLabelText,
   whenLabel,
   whenTimeframe,
+  whenExpired = false,
   hideWhenLabel = false,
 }: {
   serviceCategoryId?: string | null;
   serviceCategoryLabelText?: string | null;
   whenLabel?: string | null;
   whenTimeframe?: string | null;
+  whenExpired?: boolean;
   hideWhenLabel?: boolean;
 }) {
   if (!serviceCategoryId && (!whenLabel || hideWhenLabel)) return null;
@@ -2745,8 +3058,8 @@ function MediaTopBadges({
         </span>
       ) : null}
       {!hideWhenLabel && whenLabel ? (
-        <span className={whenBadgeClassForTimeframe(whenTimeframe)}>
-          <CalendarDays className={whenBadgeIconClassForTimeframe(whenTimeframe)} />
+        <span className={whenBadgeClassForTimeframe(whenTimeframe, whenExpired)}>
+          <CalendarDays className={whenBadgeIconClassForTimeframe(whenTimeframe, whenExpired)} />
           {whenLabel}
         </span>
       ) : null}
@@ -2965,6 +3278,12 @@ function PostCard({
       cancelled = true;
     };
   }, [currentUserId, isEventPost, isOwnEventPost, post.id]);
+
+  const linkedJobRequestId = useMemo(
+    () => linkedJobRequestIdFromPost(post),
+    [post],
+  );
+  const isAcceptableHelpRequest = isJobRequest || Boolean(linkedJobRequestId);
 
   const handleActionButtonClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -3411,6 +3730,22 @@ function PostCard({
     }
   }
 
+  async function handlePrimaryFeedAction(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (
+      linkedJobRequestId &&
+      currentUserId === post.author_id
+    ) {
+      navigate(`/client/jobs/${encodeURIComponent(linkedJobRequestId)}/live`);
+      return;
+    }
+    if (isAcceptableHelpRequest) {
+      await handleJobRequestAccept(e);
+      return;
+    }
+    await handleActionButtonClick(e);
+  }
+
   async function handleJobRequestAccept(e: React.MouseEvent) {
     e.stopPropagation();
     if (!user?.id) {
@@ -3425,9 +3760,11 @@ function PostCard({
       });
       return;
     }
+    const jobId = linkedJobRequestId;
+    if (!jobId) return;
     setJobAccepting(true);
     try {
-      await acceptOpenHelpRequest(post.id);
+      await acceptOpenHelpRequest(jobId);
       setJobAcceptedAt(new Date().toISOString());
       void queryClient.invalidateQueries({
         queryKey: queryKeys.discoverOpenHelpRequests(user.id),
@@ -3549,11 +3886,11 @@ function PostCard({
 
   const whenLabel = useMemo(() => {
     if (post.source === "job_request" && post.post_metadata?.timeframe) {
-      return feedWhenLabel(t, post.post_metadata);
+      return feedWhenLabel(t, post.post_metadata, post.created_at);
     }
     if (post.source !== "post" || !post.post_metadata) return null;
     if (post.post_type_id === "request_help" && post.post_metadata.timeframe) {
-      return feedWhenLabel(t, post.post_metadata);
+      return feedWhenLabel(t, post.post_metadata, post.created_at);
     }
     if (post.post_type_id === "event") {
       return eventDateTimeLabel;
@@ -3568,6 +3905,11 @@ function PostCard({
     if (post.source !== "post" || post.post_type_id !== "request_help") return null;
     return (post.post_metadata?.timeframe as string | null | undefined) ?? null;
   }, [post]);
+
+  const whenExpired = useMemo(
+    () => isRequestHelpWhenExpired(requestWhenTimeframe, post.created_at),
+    [requestWhenTimeframe, post.created_at],
+  );
 
   const serviceCategoryMeta = useMemo(() => {
     if (post.source === "job_request" && post.post_metadata?.category) {
@@ -3624,21 +3966,28 @@ function PostCard({
   const authorFirstName = authorName.split(" ")[0] || authorName;
 
   const globalFeedCtaText = useMemo(
-    () =>
-      globalFeedCtaLabel(t, {
+    () => {
+      if (linkedJobRequestId && currentUserId === post.author_id) {
+        return t("feed.global.viewRequest");
+      }
+      return globalFeedCtaLabel(t, {
         isJobRequest,
         jobAcceptedAt,
         postTypeId,
         authorFirstName,
         isOwnEventPost,
         eventJoinStatus,
-      }),
+      });
+    },
     [
       authorFirstName,
+      currentUserId,
       eventJoinStatus,
       isJobRequest,
       isOwnEventPost,
       jobAcceptedAt,
+      linkedJobRequestId,
+      post.author_id,
       postTypeId,
       t,
     ],
@@ -3927,10 +4276,15 @@ function PostCard({
     Object.keys(post.post_metadata).length > 0;
 
   const showFeedActionButton =
+    (isJobRequest && currentUserId !== post.author_id) ||
     (post.source === "post" &&
       post.post_types &&
-      post.post_types.id !== "community") ||
-    (isJobRequest && currentUserId !== post.author_id);
+      post.post_types.id === "request_help" &&
+      (currentUserId !== post.author_id || Boolean(linkedJobRequestId))) ||
+    (post.source === "post" &&
+      post.post_types &&
+      post.post_types.id !== "community" &&
+      post.post_types.id !== "request_help");
 
   const feedActionButtonClass = cn(
     "inline-flex h-9 w-[10.75rem] shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold uppercase tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-65 shadow-none border-0",
@@ -4025,7 +4379,7 @@ function PostCard({
                 </p>
               </div>
               {postTypeId ? (
-                <PostTypeBadge
+                <PostTypeBadgeWithExpired
                   typeId={postTypeId}
                   typeName={
                     post.source === "post" || post.source === "job_request"
@@ -4033,6 +4387,7 @@ function PostCard({
                       : undefined
                   }
                   compact
+                  showExpired={whenExpired && postTypeId === "request_help"}
                 />
               ) : null}
             </div>
@@ -4146,16 +4501,21 @@ function PostCard({
           ) : null}
           {post.source === "post" &&
           (post.post_types?.id ?? post.post_type_id) ? (
-            <PostTypeBadge
+            <PostTypeBadgeWithExpired
               typeId={post.post_types?.id ?? post.post_type_id!}
               typeName={post.post_types?.name}
               size={isDiscover ? "lg" : "default"}
+              showExpired={
+                whenExpired &&
+                (post.post_types?.id ?? post.post_type_id) === "request_help"
+              }
             />
           ) : isJobRequest && post.post_types ? (
-            <PostTypeBadge
+            <PostTypeBadgeWithExpired
               typeId={post.post_types.id}
               typeName={post.post_types.name}
               size={isDiscover ? "lg" : "default"}
+              showExpired={whenExpired}
             />
           ) : null}
           {isOwnFeed && post.source === "post" ? (
@@ -4216,7 +4576,8 @@ function PostCard({
             serviceCategoryLabelText={serviceCategoryMeta?.label}
             whenLabel={whenLabel}
             whenTimeframe={requestWhenTimeframe}
-            hideWhenLabel={isGlobalFeed}
+            whenExpired={whenExpired}
+            hideWhenLabel={isGlobalFeed || whenExpired}
           />
 
           <PostMediaExtraStack items={extraMediaItems} onOpenGallery={openMediaGallery} />
@@ -4326,7 +4687,8 @@ function PostCard({
             serviceCategoryLabelText={serviceCategoryMeta?.label}
             whenLabel={whenLabel}
             whenTimeframe={requestWhenTimeframe}
-            hideWhenLabel={isGlobalFeed}
+            whenExpired={whenExpired}
+            hideWhenLabel={isGlobalFeed || whenExpired}
           />
 
           <PostMediaExtraStack items={extraMediaItems} onOpenGallery={openMediaGallery} />
@@ -4429,9 +4791,27 @@ function PostCard({
                     </div>
                   ) : null}
                   {whenLabel ? (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
-                      <span>{whenLabel}</span>
+                    <div
+                      className={cn(
+                        "flex items-center gap-2",
+                        whenExpired && "text-muted-foreground",
+                      )}
+                    >
+                      <Clock
+                        className={cn(
+                          "h-5 w-5 shrink-0",
+                          whenExpired
+                            ? "text-muted-foreground/80"
+                            : "text-muted-foreground",
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          whenExpired && "font-bold uppercase tracking-wide",
+                        )}
+                      >
+                        {whenLabel}
+                      </span>
                     </div>
                   ) : null}
                   {post.source === "post" &&
@@ -4544,9 +4924,27 @@ function PostCard({
                     </div>
                   ) : null}
                   {whenLabel ? (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
-                      <span>{whenLabel}</span>
+                    <div
+                      className={cn(
+                        "flex items-center gap-2",
+                        whenExpired && "text-muted-foreground",
+                      )}
+                    >
+                      <Clock
+                        className={cn(
+                          "h-5 w-5 shrink-0",
+                          whenExpired
+                            ? "text-muted-foreground/80"
+                            : "text-muted-foreground",
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          whenExpired && "font-bold uppercase tracking-wide",
+                        )}
+                      >
+                        {whenLabel}
+                      </span>
                     </div>
                   ) : null}
                   {post.source === "post" &&
@@ -4595,9 +4993,9 @@ function PostCard({
             <div className={cn(cardPadX, "mt-3 pb-1")}>
               <button
                 type="button"
-                onClick={isJobRequest ? handleJobRequestAccept : handleActionButtonClick}
+                onClick={handlePrimaryFeedAction}
                 disabled={
-                  isJobRequest
+                  isAcceptableHelpRequest
                     ? jobAccepting || Boolean(jobAcceptedAt)
                     : chatOpening ||
                       eventJoinBusy ||
@@ -4771,21 +5169,32 @@ function PostCard({
                   <div
                     className={cn(
                       "flex items-center gap-1.5 font-bold",
-                      isRequestHelpWhenUrgent(post.post_metadata.timeframe)
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-foreground",
+                      whenExpired
+                        ? "text-muted-foreground"
+                        : isRequestHelpWhenUrgent(post.post_metadata.timeframe)
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-foreground",
                     )}
                   >
                     <CalendarDays
                       className={cn(
                         "h-4 w-4 shrink-0",
-                        isRequestHelpWhenUrgent(post.post_metadata.timeframe)
-                          ? "text-red-500 dark:text-red-400"
-                          : "text-muted-foreground",
+                        whenExpired
+                          ? "text-muted-foreground"
+                          : isRequestHelpWhenUrgent(post.post_metadata.timeframe)
+                            ? "text-red-500 dark:text-red-400"
+                            : "text-muted-foreground",
                       )}
                     />
-                    <span className={cn(isRequestHelpWhenUrgent(post.post_metadata.timeframe) && "uppercase tracking-wide")}>
-                      {feedWhenLabel(t, post.post_metadata) ?? ""}
+                    <span
+                      className={cn(
+                        whenExpired && "uppercase tracking-wide",
+                        !whenExpired &&
+                          isRequestHelpWhenUrgent(post.post_metadata.timeframe) &&
+                          "uppercase tracking-wide",
+                      )}
+                    >
+                      {feedWhenLabel(t, post.post_metadata, post.created_at) ?? ""}
                     </span>
                   </div>
                 ) : null}
@@ -4875,9 +5284,9 @@ function PostCard({
             <div className={cn("flex justify-end", showFeedMetadataBox && "mt-3")}>
               <button
                 type="button"
-                onClick={isJobRequest ? handleJobRequestAccept : handleActionButtonClick}
+                onClick={handlePrimaryFeedAction}
                 disabled={
-                  isJobRequest
+                  isAcceptableHelpRequest
                     ? jobAccepting || Boolean(jobAcceptedAt)
                     : chatOpening ||
                       eventJoinBusy ||
@@ -4932,6 +5341,7 @@ function PostCard({
       <CommentsDialog
         postId={post.id}
         open={commentsOpen}
+        postPreview={buildCommentsPostPreview(post)}
         onClose={() => {
           setCommentsOpen(false);
           // Refresh comment count
@@ -5794,8 +6204,15 @@ export function ProfilePostsFeed({
         jobRequestEngagement,
       );
 
+      const linkedJobIdsFromProfilePosts = collectLinkedJobRequestIdsFromProfilePosts(
+        filteredProfilePosts,
+      );
+      const dedupedJobRequestFeed = jobRequestFeed.filter(
+        (j) => !linkedJobIdsFromProfilePosts.has(j.id),
+      );
+
       // 10. Merge and sort by created_at
-      let merged: FeedPost[] = [...filteredProfilePosts, ...availFeed, ...jobRequestFeed].sort(
+      let merged: FeedPost[] = [...filteredProfilePosts, ...availFeed, ...dedupedJobRequestFeed].sort(
         (a, b) => {
           const timeA = new Date(a.created_at).getTime();
           const timeB = new Date(b.created_at).getTime();
@@ -6011,6 +6428,12 @@ export function ProfilePostsFeed({
     filterPostTypeId,
     effectivePostTypeFilter,
   ]);
+
+  const reelCommentsPreview = useMemo(() => {
+    if (!reelCommentsPostId) return null;
+    const post = displayPosts.find((p) => p.id === reelCommentsPostId);
+    return post ? buildCommentsPostPreview(post) : null;
+  }, [displayPosts, reelCommentsPostId]);
 
   /** Deep link from shared URLs: scroll the matching post into view. */
   useEffect(() => {
@@ -6478,6 +6901,8 @@ export function ProfilePostsFeed({
       <CommentsDialog
         postId={reelCommentsPostId ?? ""}
         open={reelCommentsPostId !== null}
+        postPreview={reelCommentsPreview}
+        overlayClassName="z-[10050]"
         onClose={() => setReelCommentsPostId(null)}
       />
 

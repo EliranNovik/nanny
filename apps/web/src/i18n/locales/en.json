@@ -82,6 +82,7 @@
     "onAuthorsRequest": "on {{name}}'s request",
     "refresh": "Refresh",
     "noCommentsYet": "No comments yet. Be the first!",
+    "whenExpired": "Expired",
     "iCanHelp": "I can help",
     "contactName": "Contact {{name}}",
     "defaultUser": "User",
@@ -187,7 +188,8 @@
       "verified": "Verified",
       "save": "Save",
       "share": "Share",
-      "comment": "Comment"
+      "comment": "Comment",
+      "viewRequest": "View request"
     },
     "sidePanel": {
       "ariaLabel": "Posts from your favorites and popular posts",

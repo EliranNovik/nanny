@@ -22,6 +22,45 @@ export function isRequestHelpWhenUrgent(
   return timeframe === "now";
 }
 
+/** Visible window after post creation (hours). */
+export const REQUEST_HELP_WHEN_EXPIRY_HOURS: Partial<
+  Record<RequestHelpTimeframe, number>
+> = {
+  now: 24,
+  today: 24,
+  tomorrow: 48,
+};
+
+export function requestHelpWhenHasExpiryWindow(
+  timeframe: string | null | undefined,
+): timeframe is RequestHelpTimeframe {
+  if (!timeframe) return false;
+  return timeframe in REQUEST_HELP_WHEN_EXPIRY_HOURS;
+}
+
+export function requestHelpWhenExpiresAt(
+  timeframe: string | null | undefined,
+  createdAt: string | Date,
+): Date | null {
+  if (!requestHelpWhenHasExpiryWindow(timeframe)) return null;
+  const hours = REQUEST_HELP_WHEN_EXPIRY_HOURS[timeframe];
+  if (!hours) return null;
+  const created =
+    typeof createdAt === "string" ? new Date(createdAt) : new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return null;
+  return new Date(created.getTime() + hours * 60 * 60 * 1000);
+}
+
+export function isRequestHelpWhenExpired(
+  timeframe: string | null | undefined,
+  createdAt: string | Date,
+  now: Date = new Date(),
+): boolean {
+  const expiresAt = requestHelpWhenExpiresAt(timeframe, createdAt);
+  if (!expiresAt) return false;
+  return now.getTime() > expiresAt.getTime();
+}
+
 export function requestHelpWhenLabel(metadata: {
   timeframe?: string | null;
   custom_when?: string | null;

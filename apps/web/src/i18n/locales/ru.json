@@ -82,6 +82,7 @@
     "onAuthorsRequest": "к запросу {{name}}",
     "refresh": "Обновить",
     "noCommentsYet": "Пока нет комментариев. Будьте первым!",
+    "whenExpired": "Истекло",
     "iCanHelp": "Могу помочь",
     "contactName": "Связаться с {{name}}",
     "defaultUser": "Пользователь",

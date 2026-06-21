@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import {
+  isRequestHelpWhenExpired,
   isRequestHelpWhenUrgent,
   requestHelpWhenLabel,
   type RequestHelpTimeframe,
@@ -80,6 +81,17 @@ export function whenBadgeToneClass(timeframe: string | null | undefined): string
     default:
       return "border-0 bg-zinc-500/5 text-muted-foreground dark:bg-black/30";
   }
+}
+
+export const requestHelpExpiredBadgeClass =
+  "border-0 bg-neutral-600/90 text-white dark:bg-neutral-700/90";
+
+export function isOpenHelpRequestWhenExpired(
+  timeframe: string | null | undefined,
+  createdAt: string | null | undefined,
+): boolean {
+  if (!timeframe || !createdAt) return false;
+  return isRequestHelpWhenExpired(timeframe, createdAt);
 }
 
 export function categoryIconCircleClass(serviceType: string | null | undefined): string {

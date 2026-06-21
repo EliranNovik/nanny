@@ -12,6 +12,17 @@ import { MOBILE_BOTTOM_SHEET_EDGE, mobileBottomSheetDragHandleClass } from "@/li
 
 const SNAP_EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
 
+function resolveExpandedHeightPx(maxHeight: string, innerHeight: number): number {
+  const dvhMatch = maxHeight.match(/([\d.]+)dvh/);
+  const pxMatch = maxHeight.match(/([\d.]+)px/);
+  const pxCap = pxMatch ? parseFloat(pxMatch[1]) : innerHeight;
+  if (dvhMatch) {
+    const dvhPx = (parseFloat(dvhMatch[1]) / 100) * innerHeight;
+    return Math.min(dvhPx, pxCap);
+  }
+  return Math.min(innerHeight * 0.92, 860);
+}
+
 type MobileSnapBottomSheetProps = {
   /** When true, sheet is fully expanded; when false, only the peek/collapsed chrome is visible. */
   expanded: boolean;
@@ -35,6 +46,12 @@ type MobileSnapBottomSheetProps = {
   ariaLabel?: string;
   /** Overlay modals: swipe-to-close dismisses entirely instead of snapping to peek. */
   onDismiss?: () => void;
+  /** When false, sheet slides fully off-screen (enter/exit animation). */
+  presented?: boolean;
+  /** Parent renders its own backdrop (e.g. coordinated overlay). */
+  hideBackdrop?: boolean;
+  /** Remove border/ring chrome (e.g. comments overlay). */
+  hideBorder?: boolean;
 };
 
 export function MobileSnapBottomSheet({
@@ -50,6 +67,9 @@ export function MobileSnapBottomSheet({
   onDismiss,
   hidePeek = false,
   titleId,
+  presented = true,
+  hideBackdrop = false,
+  hideBorder = false,
 }: MobileSnapBottomSheetProps) {
   const sheetId = useId();
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -82,11 +102,21 @@ export function MobileSnapBottomSheet({
     ? 0
     : Math.max(0, expandedHeightPx - effectivePeekHeightPx);
 
+  const dismissDragCapPx = fitContent
+    ? Math.max(expandedHeightPx, effectivePeekHeightPx, 240)
+    : collapsedOffsetPx;
+
   const settledTranslatePx = fitContent ? 0 : expanded ? 0 : collapsedOffsetPx;
-  const translatePx = dragTranslatePx ?? settledTranslatePx;
+  const dragTranslatePxOrSettled = dragTranslatePx ?? settledTranslatePx;
+  const exitOffsetPx = presented
+    ? 0
+    : fitContent
+      ? dismissDragCapPx
+      : Math.max(expandedHeightPx, effectivePeekHeightPx, 1);
+  const translatePx = dragTranslatePxOrSettled + exitOffsetPx;
 
   useLayoutEffect(() => {
-    const vhCap = Math.min(window.innerHeight * 0.92, 860);
+    const vhCap = resolveExpandedHeightPx(maxHeight, window.innerHeight);
     if (fitContent && sheetRef.current) {
       const measured = sheetRef.current.scrollHeight;
       setExpandedHeightPx(Math.min(measured, vhCap));
@@ -95,11 +125,11 @@ export function MobileSnapBottomSheet({
     }
     if (hidePeek) setPeekHeightPx(0);
     else if (peekRef.current) setPeekHeightPx(peekRef.current.offsetHeight || 88);
-  }, [expanded, children, fitContent, hidePeek]);
+  }, [expanded, children, fitContent, hidePeek, maxHeight]);
 
   useEffect(() => {
     const onResize = () => {
-      const vhCap = Math.min(window.innerHeight * 0.92, 860);
+      const vhCap = resolveExpandedHeightPx(maxHeight, window.innerHeight);
       if (fitContent && sheetRef.current) {
         const measured = sheetRef.current.scrollHeight;
         setExpandedHeightPx(Math.min(measured, vhCap));
@@ -117,7 +147,7 @@ export function MobileSnapBottomSheet({
       ro.disconnect();
       window.removeEventListener("resize", onResize);
     };
-  }, [fitContent, hidePeek]);
+  }, [fitContent, hidePeek, maxHeight]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -127,10 +157,6 @@ export function MobileSnapBottomSheet({
       document.body.style.overflow = prev;
     };
   }, [expanded]);
-
-  const dismissDragCapPx = fitContent
-    ? Math.max(expandedHeightPx, effectivePeekHeightPx, 240)
-    : collapsedOffsetPx;
 
   const clampTranslate = (value: number) => {
     if (fitContent) {
@@ -285,21 +311,23 @@ export function MobileSnapBottomSheet({
         className,
       )}
     >
-      <button
-        type="button"
-        aria-hidden={!expanded}
-        tabIndex={expanded ? 0 : -1}
-        className={cn(
-          "pointer-events-auto fixed inset-0 bg-black/45 transition-opacity duration-300",
-          expanded ? "opacity-100" : "pointer-events-none opacity-0",
-        )}
-        style={
-          dragging
-            ? { opacity: backdropOpacity * 0.45, transition: "none" }
-            : undefined
-        }
-        onClick={() => (onDismiss ? onDismiss() : onExpandedChange(false))}
-      />
+      {!hideBackdrop ? (
+        <button
+          type="button"
+          aria-hidden={!expanded || !presented}
+          tabIndex={expanded && presented ? 0 : -1}
+          className={cn(
+            "pointer-events-auto fixed inset-0 bg-black/45 transition-opacity duration-300",
+            expanded && presented ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
+          style={
+            dragging
+              ? { opacity: backdropOpacity * 0.45, transition: "none" }
+              : undefined
+          }
+          onClick={() => (onDismiss ? onDismiss() : onExpandedChange(false))}
+        />
+      ) : null}
 
       <div
         ref={sheetRef}
@@ -307,7 +335,9 @@ export function MobileSnapBottomSheet({
         aria-modal={expanded}
         aria-labelledby={hidePeek && titleId ? titleId : `${sheetId}-peek`}
         className={cn(
-          "pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[1.75rem] border border-border/60 border-b-0 bg-background shadow-[0_-8px_40px_-12px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.03] dark:border-white/[0.08] dark:shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] dark:ring-white/[0.05]",
+          "pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[1.75rem] bg-background shadow-[0_-8px_40px_-12px_rgba(0,0,0,0.22)] dark:shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)]",
+          !hideBorder &&
+            "border border-border/60 border-b-0 ring-1 ring-black/[0.03] dark:border-white/[0.08] dark:ring-white/[0.05]",
           fitContent && "h-auto",
           !dragging && "will-change-transform",
         )}
@@ -318,7 +348,7 @@ export function MobileSnapBottomSheet({
                 transform: `translate3d(0, ${translatePx}px, 0)`,
                 transition: dragging
                   ? "none"
-                  : `transform 0.38s ${SNAP_EASING}`,
+                  : `transform ${presented ? "0.42s" : "0.38s"} ${SNAP_EASING}`,
               }
             : {
                 height: expandedHeightPx > 0 ? `${expandedHeightPx}px` : maxHeight,
@@ -326,7 +356,7 @@ export function MobileSnapBottomSheet({
                 transform: `translate3d(0, ${translatePx}px, 0)`,
                 transition: dragging
                   ? "none"
-                  : `transform 0.38s ${SNAP_EASING}`,
+                  : `transform ${presented ? "0.42s" : "0.38s"} ${SNAP_EASING}`,
               }
         }
       >

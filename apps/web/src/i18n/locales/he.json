@@ -82,6 +82,7 @@
     "onAuthorsRequest": "על הבקשה של {{name}}",
     "refresh": "רענן",
     "noCommentsYet": "אין תגובות עדיין. תהיה הראשון!",
+    "whenExpired": "פג תוקף",
     "iCanHelp": "אני יכול לעזור",
     "contactName": "צור קשר עם {{name}}",
     "defaultUser": "משתמש",
