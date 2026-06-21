@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,8 +56,6 @@ const brandHeaderBgClass =
   "bg-gradient-to-r from-orange-500 to-red-600 border border-white/20";
 const glassyHeaderBgClass =
   "bg-white/70 dark:bg-zinc-800/40 border-0 shadow-md";
-const landingScrolledBrandHeaderBgClass =
-  "border-0 bg-gradient-to-r from-orange-500 to-red-600 shadow-none";
 
 /** Floating orange pill header + optional fixed left logo or back control + mobile menu (matches landing). */
 export function LandingSiteHeader({
@@ -82,6 +80,17 @@ export function LandingSiteHeader({
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const dashboardPath =
     profile?.role === "freelancer" ? "/freelancer/home" : "/client/home";
 
@@ -99,7 +108,9 @@ export function LandingSiteHeader({
 
   const headerBgClass = cn(
     isLandingGlass
-      ? landingScrolledBrandHeaderBgClass
+      ? isScrolled
+        ? "bg-white/90 backdrop-blur-md shadow-sm md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
+        : "bg-white/10 backdrop-blur-md md:bg-gradient-to-r md:from-orange-500 md:to-red-600 md:border md:border-white/20 md:shadow-2xl md:backdrop-blur-none"
       : variant === "glassy"
         ? glassyHeaderBgClass
         : brandHeaderBgClass,
@@ -115,7 +126,9 @@ export function LandingSiteHeader({
   const menuIconClass = cn(
     variant === "glassy"
       ? "text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white"
-      : "text-white hover:text-white/80",
+      : (isLandingGlass && isScrolled)
+        ? "text-zinc-800 hover:text-zinc-950"
+        : "text-white hover:text-white/80",
     mobileMatchLanding &&
       variant !== "landingGlass" &&
       "max-md:text-white max-md:hover:text-white/80",
@@ -212,7 +225,7 @@ export function LandingSiteHeader({
         className={cn(
           "flex items-center px-4 transition-all duration-500 md:px-8 lg:px-12",
           isLandingGlass
-            ? "fixed top-0 inset-x-0 z-50 min-h-[52px] w-full max-w-none rounded-none border-0 py-2.5 md:min-h-[60px] md:py-3"
+            ? "fixed top-0 inset-x-0 z-50 min-h-[52px] w-full max-w-none rounded-none border-0 py-2.5 md:fixed md:top-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[92%] md:max-w-5xl md:rounded-full md:min-h-[60px] md:py-3"
             : cn(
                 "relative min-h-[52px] py-3.5 backdrop-blur-md md:min-h-[60px] md:px-8 md:py-4",
               ),
@@ -303,7 +316,10 @@ export function LandingSiteHeader({
             {user ? (
               <div className="flex items-center gap-4 md:gap-8 min-w-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="h-9 w-9 border border-white/30 flex-shrink-0">
+                  <Avatar className={cn(
+                    "h-9 w-9 flex-shrink-0 border",
+                    isLandingGlass && isScrolled ? "border-slate-200 md:border-white/30" : "border-white/30"
+                  )}>
                     <AvatarImage src={profile?.photo_url || undefined} alt="" />
                     <AvatarFallback className="bg-white/20 text-white text-xs font-bold">
                       {profile?.full_name
@@ -314,7 +330,10 @@ export function LandingSiteHeader({
                         .slice(0, 2) || "?"}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-bold text-white truncate">
+                  <span className={cn(
+                    "text-sm font-bold truncate",
+                    isLandingGlass && isScrolled ? "text-slate-800 md:text-white" : "text-white"
+                  )}>
                     Hi, {profile?.full_name?.split(" ")[0] || "User"}
                   </span>
                 </div>
@@ -371,7 +390,9 @@ export function LandingSiteHeader({
                   className={cn(
                     "rounded-full px-3 text-sm font-bold md:px-5",
                     isLandingGlass
-                      ? "text-white hover:bg-white/10 hover:text-white"
+                      ? isScrolled
+                        ? "text-zinc-800 hover:bg-zinc-100 hover:text-zinc-950 md:text-white md:hover:bg-white/10 md:hover:text-white"
+                        : "text-white hover:bg-white/10 hover:text-white"
                       : signInBtnClass,
                   )}
                 >
@@ -384,7 +405,9 @@ export function LandingSiteHeader({
                     simpleRegisterCta
                       ? "text-white shadow-none hover:bg-white/10 hover:text-white/90"
                       : isLandingGlass
-                        ? "bg-white text-orange-600 hover:bg-white/90 shadow-sm"
+                        ? isScrolled
+                          ? "bg-orange-600 text-white hover:bg-orange-700 md:bg-white md:text-orange-600 md:hover:bg-white/90 shadow-sm"
+                          : "bg-white text-orange-600 hover:bg-white/90 shadow-sm"
                         : cn(
                             "shadow-sm",
                             variant === "glassy"
@@ -412,7 +435,10 @@ export function LandingSiteHeader({
               <button
                 type="button"
                 onClick={() => navigate(dashboardPath)}
-                className="md:hidden p-2 text-white"
+                className={cn(
+                  "md:hidden p-2 transition-colors",
+                  isLandingGlass && isScrolled ? "text-slate-800" : "text-white"
+                )}
               >
                 <Home className="w-6 h-6" />
               </button>

@@ -48,8 +48,9 @@ function publicProfileMediaOgImageUrl(storagePath: string): string {
 }
 
 function webAppOrigin(): string {
-  return (process.env.WEB_APP_ORIGIN || process.env.CORS_ORIGIN || "")
-    .replace(/\/$/, "");
+  const raw = process.env.WEB_APP_ORIGIN || process.env.CORS_ORIGIN || "";
+  const first = raw.split(",")[0]?.trim() || "";
+  return first.replace(/\/$/, "");
 }
 
 export type ProfilePostOgMeta = {

@@ -40,6 +40,7 @@ import LoginPage from "@/pages/LoginPage";
 import LandingPage from "@/pages/LandingPage";
 import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
+import LegalPage from "@/pages/LegalPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import CreateJobPage from "@/pages/client/CreateJobPage";
 import ConfirmedListPage from "@/pages/client/ConfirmedListPage";
@@ -261,6 +262,10 @@ function AppRoutes() {
       <Route path="/" element={<RootRoute />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
+      <Route path="/terms" element={<LegalPage />} />
+      <Route path="/disclaimer" element={<LegalPage />} />
+      <Route path="/privacy" element={<LegalPage />} />
+      <Route path="/cookies" element={<LegalPage />} />
       <Route
         path="/login"
         element={user ? <Navigate to="/" replace /> : <LoginPage />}

@@ -5,14 +5,22 @@ const DEFAULT_DEV_ORIGINS = [
   "http://127.0.0.1:5175",
 ];
 
+const DEFAULT_PROD_ORIGINS = [
+  "https://www.tebnu.com",
+  "https://tebnu.com",
+  "http://www.tebnu.com",
+  "http://tebnu.com",
+];
+
 export function getAllowedCorsOrigins(): string[] {
   const fromEnv =
     process.env.CORS_ORIGIN?.split(",")
       .map((s) => s.trim())
       .filter(Boolean) ?? [];
-  if (fromEnv.length > 0) return fromEnv;
-  return DEFAULT_DEV_ORIGINS;
+  const baseAllowed = fromEnv.length > 0 ? fromEnv : DEFAULT_DEV_ORIGINS;
+  return [...new Set([...baseAllowed, ...DEFAULT_PROD_ORIGINS])];
 }
+
 
 function isDevNgrokOrigin(origin: string): boolean {
   return (

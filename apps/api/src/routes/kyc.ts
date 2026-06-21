@@ -19,11 +19,12 @@ import {
 export const kycRouter = Router();
 
 function appOrigin(): string {
-  return (
+  const raw =
     process.env.APP_ORIGIN?.trim() ||
     process.env.CORS_ORIGIN?.trim() ||
-    "http://localhost:5175"
-  );
+    "http://localhost:5175";
+  const first = raw.split(",")[0]?.trim() || "http://localhost:5175";
+  return first.replace(/\/$/, "");
 }
 
 async function loadProfile(userId: string) {
