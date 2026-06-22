@@ -90,6 +90,42 @@ export async function apiPost<T = unknown>(
   }
 }
 
+export async function apiPublicPost<T = unknown>(
+  path: string,
+  body: unknown,
+): Promise<T> {
+  try {
+    const res = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      let errorMessage = "API error";
+      try {
+        const err = await res.json();
+        errorMessage = err.error || errorMessage;
+      } catch {
+        errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return res.json();
+  } catch (err: any) {
+    if (
+      err.message?.includes("fetch failed") ||
+      err.message?.includes("Failed to fetch")
+    ) {
+      throw new Error(
+        "Cannot connect to server. Please try again later or email us directly.",
+      );
+    }
+    throw err;
+  }
+}
+
 export async function apiGet<T = unknown>(path: string): Promise<T> {
   try {
     const headers = await authHeader();

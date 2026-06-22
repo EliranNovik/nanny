@@ -184,30 +184,31 @@ const appMenuJobsCountBadgeClassName = cn(
 
 const plusMenuPanelClassName = cn(
   "bottom-nav-plus-menu-panel pointer-events-auto fixed bottom-[var(--app-plus-menu-bottom,calc(5.25rem+max(0.5rem,env(safe-area-inset-bottom,0px))))] left-1/2 z-[150] -translate-x-1/2",
-  "w-[min(18.5rem,calc(100vw-2rem))] rounded-[1.375rem] outline-none",
+  "w-[min(20.5rem,calc(100vw-2rem))] rounded-[1.5rem] outline-none",
   "shadow-[0_18px_44px_hsl(0_0%_0%_/0.16)] dark:shadow-[0_22px_52px_hsl(0_0%_0%_/0.52)]",
   "animate-in fade-in slide-in-from-bottom-3 zoom-in-95 duration-200",
   "md:bottom-[68px] md:w-[17rem]",
 );
 
-const plusMenuItemsClassName = "relative z-[2] flex flex-col gap-0.5 p-1.5";
+const plusMenuItemsClassName = "relative z-[2] flex flex-col gap-1 p-2 md:gap-0.5 md:p-1.5";
 
 const plusMenuItemClassName = cn(
-  "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left",
-  "text-[15px] font-medium leading-snug tracking-tight text-zinc-800",
+  "flex w-full items-center gap-4 rounded-2xl px-4 py-4 text-left",
+  "text-[17px] font-bold leading-snug tracking-tight text-zinc-800",
   "transition-[background,transform,color] duration-150",
   "hover:bg-zinc-900/[0.05] active:scale-[0.985] active:bg-zinc-900/[0.08]",
   "dark:text-zinc-100 dark:hover:bg-white/[0.07] dark:active:bg-white/[0.1]",
-  "md:px-3.5 md:py-2.5 md:text-[14px]",
+  "md:gap-3 md:rounded-xl md:px-3.5 md:py-2.5 md:text-[14px] md:font-medium",
 );
 
 const plusMenuIconWrapClassName = cn(
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+  "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
   "bg-zinc-900/[0.06] shadow-[inset_0_1px_0_hsl(0_0%_100%_/0.35)]",
   "dark:bg-white/[0.1] dark:shadow-[inset_0_1px_0_hsl(0_0%_100%_/0.08)]",
+  "md:h-9 md:w-9",
 );
 
-const plusMenuIconClassName = "h-[1.125rem] w-[1.125rem] text-zinc-600 dark:text-zinc-300";
+const plusMenuIconClassName = "h-6 w-6 text-zinc-600 dark:text-zinc-300 md:h-[1.125rem] md:w-[1.125rem]";
 
 export function BottomNav() {
   const { profile, loading, user, signOut } = useAuth();

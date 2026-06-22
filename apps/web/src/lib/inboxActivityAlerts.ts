@@ -10,7 +10,8 @@ export interface NotificationAlert {
     | "message"
     | "job_update"
     | "hire_interest"
-    | "job_comment";
+    | "job_comment"
+    | "welcome";
   title: string;
   description?: string;
   link: string;

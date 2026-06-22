@@ -22,6 +22,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingProfileResolved, setPendingProfileResolved] = useState(false);
+  const [pendingProfileCommitted, setPendingProfileCommitted] = useState(false);
   const {
     signIn,
     signUp,
@@ -44,6 +45,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
   useEffect(() => {
     if (!user) {
       setPendingProfileResolved(false);
+      setPendingProfileCommitted(false);
     }
   }, [user]);
 
@@ -67,6 +69,7 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
       }
 
       await refreshProfile();
+      setPendingProfileCommitted(true);
       setPendingProfileResolved(true);
     }
 
@@ -86,6 +89,12 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
 
     if (!authLoading && user && (profile || pendingProfileResolved)) {
       console.log("[LoginPage] Ready to redirect", { profile });
+      if (pendingProfileCommitted) {
+        console.log("[LoginPage] Redirecting to /onboarding/verify after pending profile commit");
+        navigate("/onboarding/verify", { replace: true });
+        return;
+      }
+
       const redirectParam = searchParams.get("redirect");
       const roleParam = searchParams.get("role");
 
@@ -111,7 +120,15 @@ export default function LoginPage({ oauthCallback = false }: { oauthCallback?: b
         navigate(redirectUrl, { replace: true });
       }
     }
-  }, [user, profile, authLoading, pendingProfileResolved, navigate, searchParams]);
+  }, [
+    user,
+    profile,
+    authLoading,
+    pendingProfileResolved,
+    pendingProfileCommitted,
+    navigate,
+    searchParams,
+  ]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -544,19 +544,42 @@ export function ReelDesktopCommentsPanel({
   const { openGuestAuthPrompt } = useGuestAuthPrompt();
   const [comments, setComments] = useState<DesktopCommentRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasLoadedComments, setHasLoadedComments] = useState(false);
+  const [commentsError, setCommentsError] = useState(false);
   const [count, setCount] = useState<number>(initialCount);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const fetchSeqRef = useRef(0);
+
+  useEffect(() => {
+    setComments([]);
+    setCount(initialCount);
+    setHasLoadedComments(false);
+    setCommentsError(false);
+    setLoading(false);
+  }, [postId, initialCount]);
 
   const fetchComments = useCallback(async () => {
+    const fetchSeq = fetchSeqRef.current + 1;
+    fetchSeqRef.current = fetchSeq;
     setLoading(true);
+    setCommentsError(false);
     try {
-      const { data: rows, error } = await supabase
-        .from("profile_post_comments")
-        .select("id, body, created_at, author_id")
-        .eq("post_id", postId)
-        .order("created_at", { ascending: true })
-        .limit(250);
+      const commentRowsPromise = supabase
+          .from("profile_post_comments")
+          .select("id, body, created_at, author_id")
+          .eq("post_id", postId)
+          .order("created_at", { ascending: true })
+          .limit(250);
+      const timeoutPromise = new Promise<"timeout">((resolve) => {
+        window.setTimeout(() => resolve("timeout"), 8000);
+      });
+      const result = await Promise.race([commentRowsPromise, timeoutPromise]);
+      if (fetchSeqRef.current !== fetchSeq) return;
+      if (result === "timeout") {
+        throw new Error("Timed out loading comments");
+      }
+      const { data: rows, error } = result;
       if (error) throw error;
       const list = (rows ?? []) as Omit<DesktopCommentRow, "author">[];
       if (list.length === 0) {
@@ -570,6 +593,7 @@ export function ReelDesktopCommentsPanel({
         .from("profiles")
         .select("id, full_name, photo_url")
         .in("id", ids);
+      if (fetchSeqRef.current !== fetchSeq) return;
       const map = new Map(
         (profs ?? []).map((p) => [p.id as string, p as DesktopCommentRow["author"]]),
       );
@@ -581,8 +605,12 @@ export function ReelDesktopCommentsPanel({
     } catch (e) {
       console.error("[PostMediaDesktopViewer] comments fetch", e);
       setComments([]);
+      setCommentsError(true);
     } finally {
-      setLoading(false);
+      if (fetchSeqRef.current === fetchSeq) {
+        setHasLoadedComments(true);
+        setLoading(false);
+      }
     }
   }, [postId, onCountChange]);
 
@@ -648,10 +676,14 @@ export function ReelDesktopCommentsPanel({
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="px-5 py-4">
-          {loading && comments.length === 0 ? (
+          {loading && !hasLoadedComments && comments.length === 0 ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
+          ) : commentsError && comments.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Could not load comments. Try again in a moment.
+            </p>
           ) : comments.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               No comments yet. Be the first!

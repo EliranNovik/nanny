@@ -14,6 +14,7 @@ import {
 } from "./routes/linkPreview";
 import { ogProfilePostRouter } from "./routes/ogProfilePost";
 import { postsRouter } from "./routes/posts";
+import { contactRouter } from "./routes/contact";
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 
 // Public Open Graph HTML for shared profile posts (WhatsApp, iMessage, etc.)
 app.use("/api/og", ogProfilePostRouter);
+app.use("/api/contact", contactRouter);
 
 // Protected routes
 app.use("/api/kyc", requireUser, kycRouter);

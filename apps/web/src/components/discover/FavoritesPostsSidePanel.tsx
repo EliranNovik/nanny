@@ -599,43 +599,34 @@ export function FavoritesPostsSidePanel({
 
   if (fixed) {
     return (
-      <>
-        {/* Reserve horizontal space so the feed column does not expand under the panel */}
-        <div
-          className={cn("hidden md:block md:shrink-0", FAVORITES_SIDE_PANEL_WIDTH_CLASS)}
-          aria-hidden
-        />
-        <aside
-          className={cn(
-            "hidden md:flex md:flex-col md:shrink-0",
-            FAVORITES_SIDE_PANEL_WIDTH_CLASS,
-            "md:fixed md:z-40",
-            FAVORITES_SIDE_PANEL_FIXED_TOP_CLASS,
-            FAVORITES_SIDE_PANEL_FIXED_MAX_H_CLASS,
-            "md:end-2 lg:end-3 xl:end-4",
-          )}
-          aria-label={panelAriaLabel}
-        >
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {renderPanelSections({
-              t,
-              favPosts,
-              favLoading,
-              hasFav,
-              popularPosts,
-              popularLoading,
-              hasPopular,
-              commentedPosts,
-              commentedLoading,
-              hasCommented,
-              myPosts,
-              myLoading,
-              hasMine,
-              openPost,
-            })}
-          </div>
-        </aside>
-      </>
+      <aside
+        className={cn(
+          "hidden md:sticky md:flex md:flex-col md:shrink-0 md:self-start",
+          FAVORITES_SIDE_PANEL_WIDTH_CLASS,
+          FAVORITES_SIDE_PANEL_FIXED_TOP_CLASS,
+          FAVORITES_SIDE_PANEL_FIXED_MAX_H_CLASS,
+        )}
+        aria-label={panelAriaLabel}
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {renderPanelSections({
+            t,
+            favPosts,
+            favLoading,
+            hasFav,
+            popularPosts,
+            popularLoading,
+            hasPopular,
+            commentedPosts,
+            commentedLoading,
+            hasCommented,
+            myPosts,
+            myLoading,
+            hasMine,
+            openPost,
+          })}
+        </div>
+      </aside>
     );
   }
 

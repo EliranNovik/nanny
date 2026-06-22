@@ -862,7 +862,7 @@ export function CommunityPostCard({
                     "flex flex-wrap gap-2",
                     plain && "gap-3",
                     compact
-                      ? "flex-nowrap overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
+                      ? "flex-nowrap overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                       : "flex-col sm:flex-row sm:flex-wrap",
                   )}
                 >

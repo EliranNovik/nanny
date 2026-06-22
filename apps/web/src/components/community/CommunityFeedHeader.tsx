@@ -292,10 +292,10 @@ export function CommunityFeedHeader({
                 onFilterChange(tab.id);
               }}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 font-bold transition-all",
+                "inline-flex shrink-0 items-center gap-2.5 rounded-full px-[1.125rem] py-2.5 font-black transition-all sm:px-5",
                 variant === "global"
-                  ? "text-[13px] normal-case tracking-normal"
-                  : "text-xs font-black uppercase tracking-wide sm:text-[13px]",
+                  ? "text-[14px] normal-case tracking-normal"
+                  : "text-[13px] uppercase tracking-wide sm:text-[14px]",
                 selected
                   ? communityFeedFilterActiveBadgeClass
                   : communityFeedFilterIdleBadgeClass,

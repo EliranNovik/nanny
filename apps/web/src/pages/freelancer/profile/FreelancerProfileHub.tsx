@@ -8,6 +8,7 @@ import { ProfileMenuRow, profileMenuListClassName } from "@/components/profile/P
 import { ProfileHubIdentityCard } from "@/components/profile/ProfileHubIdentityCard";
 import { ProfileHubLogoutButton } from "@/components/profile/ProfileHubLogoutButton";
 import { ProfileHubHomeButton } from "@/components/profile/ProfileHubHomeButton";
+import { RoleOnboardingGuide } from "@/components/onboarding/RoleOnboardingGuide";
 import type { FreelancerProfileFormContext } from "@/hooks/useFreelancerProfileForm";
 import {
   AlertCircle,
@@ -81,6 +82,11 @@ export default function FreelancerProfileHub() {
           </div>
 
           <div className="mt-10 flex flex-col items-center gap-3 pb-4">
+            <RoleOnboardingGuide
+              role={profile?.role ?? "freelancer"}
+              triggerLabel="Help"
+              triggerClassName="gap-2 text-muted-foreground"
+            />
             <Button
               type="button"
               variant="ghost"

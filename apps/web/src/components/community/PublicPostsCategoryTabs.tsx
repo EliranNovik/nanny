@@ -125,7 +125,7 @@ export function PublicPostsCategoryTabs({
   return (
     <div
       className={cn(
-        "-mx-1 flex gap-2 overflow-x-auto pb-1 pt-0.5 [scrollbar-width:thin] md:mx-0 md:flex-wrap md:overflow-visible",
+        "-mx-1 flex gap-2 overflow-x-auto pb-1 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:flex-wrap md:overflow-visible md:[scrollbar-width:auto] md:[&::-webkit-scrollbar]:block",
         className,
       )}
       role="tablist"
@@ -142,18 +142,19 @@ export function PublicPostsCategoryTabs({
             aria-selected={selected}
             onClick={() => onSelect(tab.id)}
             className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-2 text-left text-[11px] font-bold transition-all sm:px-3 sm:text-xs md:gap-2 md:py-2.5",
+              "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2.5 text-left text-xs font-black transition-all sm:px-3.5 sm:text-[13px] md:gap-2.5 md:py-3",
               selected
                 ? tab.activeClass
                 : cn("border bg-transparent", tab.idleRing),
+              "dark:border-transparent",
             )}
           >
             <Icon
-              className="h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem]"
+              className="h-5 w-5 shrink-0 sm:h-[1.35rem] sm:w-[1.35rem]"
               strokeWidth={2.25}
               aria-hidden
             />
-            <span className="max-w-[5.5rem] truncate sm:max-w-none">
+            <span className="max-w-[6.25rem] truncate sm:max-w-none">
               {t(`feed.categories.${tab.id}`, tab.label)}
             </span>
           </button>

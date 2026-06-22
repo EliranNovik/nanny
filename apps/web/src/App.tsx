@@ -96,7 +96,6 @@ import { GuestAuthPromptProvider } from "@/context/GuestAuthPromptContext";
 import { KycRestrictedRoute } from "@/components/KycRestrictedRoute";
 import { DesktopSidePanel } from "@/components/nav/DesktopSidePanel";
 import { Footer } from "@/components/Footer";
-import { Menu, PanelLeftClose } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Protected route wrapper
@@ -239,30 +238,15 @@ function PageLayoutWithHeader() {
   return (
     <div className="app-main-scroll-pad app-content-below-fixed-header app-wide-desktop-content min-h-[100dvh] min-h-[-webkit-fill-available]">
       <div className="min-h-[100dvh] min-h-[-webkit-fill-available]">
-        <DesktopSidePanel collapsed={desktopSidePanelCollapsed} />
-        <button
-          type="button"
-          onClick={() => setDesktopSidePanelCollapsed((v) => !v)}
-          className={cn(
-            "fixed top-4 z-[260] hidden h-10 w-10 items-center justify-center rounded-2xl",
-            "border border-border/70 bg-background/90 text-foreground shadow-lg backdrop-blur-xl",
-            "transition-[left,transform,background-color] duration-200 hover:bg-muted active:scale-[0.97] md:flex xl:hidden",
-            desktopSidePanelCollapsed ? "left-4" : "left-[228px]",
-          )}
-          aria-label={desktopSidePanelCollapsed ? "Open sidebar" : "Collapse sidebar"}
-          aria-pressed={!desktopSidePanelCollapsed}
-        >
-          {desktopSidePanelCollapsed ? (
-            <Menu className="h-5 w-5" strokeWidth={2.6} aria-hidden />
-          ) : (
-            <PanelLeftClose className="h-5 w-5" strokeWidth={2.6} aria-hidden />
-          )}
-        </button>
+        <DesktopSidePanel
+          collapsed={desktopSidePanelCollapsed}
+          onCollapse={() => setDesktopSidePanelCollapsed((v) => !v)}
+        />
         {/* On desktop, leave room for the fixed left panel */}
         <div
           className={cn(
             "min-w-0 app-mobile-scroll-top-clearance",
-            !desktopSidePanelCollapsed && "app-side-panel-offset",
+            desktopSidePanelCollapsed ? "md:ps-[96px]" : "app-side-panel-offset",
           )}
         >
           {/* Always-mounted keep-alive pages */}

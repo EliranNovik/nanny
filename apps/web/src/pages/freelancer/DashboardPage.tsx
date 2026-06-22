@@ -32,6 +32,7 @@ import {
   recordFirstMeaningfulAction,
   trackCtaClick,
 } from "@/lib/sessionConversionAnalytics";
+import { RoleOnboardingGuide } from "@/components/onboarding/RoleOnboardingGuide";
 
 interface JobRequest {
   id: string;
@@ -188,6 +189,12 @@ export default function FreelancerDashboardPage() {
 
   return (
     <PageFrame>
+      <RoleOnboardingGuide
+        role={profile?.role ?? "freelancer"}
+        userId={user?.id}
+        accountCreatedAt={user?.created_at}
+        autoOpen
+      />
       <div className="app-desktop-shell pt-8 space-y-6">
         <PageHeader
           title={`Welcome back, ${profile?.full_name?.split(" ")[0] || "User"}`}

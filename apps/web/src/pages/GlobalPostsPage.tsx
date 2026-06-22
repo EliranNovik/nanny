@@ -265,6 +265,7 @@ export default function GlobalPostsPage() {
     return raw ? (parseProfilePostShareId(raw) ?? raw) : null;
   });
   const [composeOpen, setComposeOpen] = useState(false);
+  const [composeInitialPostTypeId, setComposeInitialPostTypeId] = useState<string | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [postTypeFilter, setPostTypeFilter] = useState<CommunityFeedPostTypeFilter>(
     () => parseCommunityFeedTypeFilter(searchParams.get("type")) ?? "all",
@@ -383,9 +384,16 @@ export default function GlobalPostsPage() {
   useEffect(() => {
     if (searchParams.get("compose") !== "1" || !user) return;
     const next = new URLSearchParams(searchParams);
+    const postType = next.get("postType");
     next.delete("compose");
+    next.delete("postType");
     setSearchParams(next, { replace: true });
-    guardKycAction("share_post", () => setComposeOpen(true));
+    guardKycAction("share_post", () => {
+      setComposeInitialPostTypeId(
+        postType === "request_help" || postType === "offer_service" ? postType : null,
+      );
+      setComposeOpen(true);
+    });
   }, [guardKycAction, searchParams, setSearchParams, user]);
 
   const authorProfile: ProfileSnippet | null = user ? {
@@ -698,11 +706,15 @@ export default function GlobalPostsPage() {
       {authorProfile && (
         <ComposeModal
           open={composeOpen}
-          onClose={() => setComposeOpen(false)}
+          onClose={() => {
+            setComposeOpen(false);
+            setComposeInitialPostTypeId(null);
+          }}
           onPosted={() => {
             window.location.reload();
           }}
           authorProfile={authorProfile}
+          initialPostTypeId={composeInitialPostTypeId}
         />
       )}
     </PageFrame>

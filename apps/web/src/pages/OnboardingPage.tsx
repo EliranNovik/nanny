@@ -104,8 +104,13 @@ export default function OnboardingPage() {
           setCheckingProfile(false);
           clearPendingProfile();
 
-          const target =
-            existingProfile.role === "client"
+          const shouldVerify =
+            !existingProfile.is_admin &&
+            existingProfile.kyc_status !== "approved" &&
+            existingProfile.kyc_status !== "skipped";
+          const target = shouldVerify
+            ? "/onboarding/verify"
+            : existingProfile.role === "client"
               ? "/client/home"
               : "/freelancer/home";
           navigate(target, { replace: true });
@@ -441,8 +446,13 @@ export default function OnboardingPage() {
       setCompletingSignup(false);
       creatingProfileRef.current = false;
 
-      const target =
-        existingProfile.role === "client"
+      const shouldVerify =
+        !existingProfile.is_admin &&
+        existingProfile.kyc_status !== "approved" &&
+        existingProfile.kyc_status !== "skipped";
+      const target = shouldVerify
+        ? "/onboarding/verify"
+        : existingProfile.role === "client"
           ? "/client/home"
           : "/freelancer/home";
       navigate(target, { replace: true });

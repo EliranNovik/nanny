@@ -7,7 +7,11 @@ import {
   fetchInboxActivityAlerts,
   type NotificationAlert,
 } from "@/lib/inboxActivityAlerts";
-import { rememberDismissedActivity } from "@/lib/inboxDismissedActivity";
+import {
+  loadDismissedActivityIds,
+  rememberDismissedActivity,
+} from "@/lib/inboxDismissedActivity";
+import { BRAND_LOGO_SRC } from "@/lib/brandLogo";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +79,8 @@ function formatAlertTime(dateStr: string | undefined): string {
 
 function alertIcon(type: NotificationAlert["type"]) {
   switch (type) {
+    case "welcome":
+      return Sparkles;
     case "message":
     case "job_comment":
       return MessageSquare;
@@ -89,6 +95,8 @@ function alertIcon(type: NotificationAlert["type"]) {
 
 function alertIconTone(type: NotificationAlert["type"]): string {
   switch (type) {
+    case "welcome":
+      return "bg-primary/10 text-primary";
     case "message":
       return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
     case "job_request":
@@ -100,6 +108,30 @@ function alertIconTone(type: NotificationAlert["type"]): string {
     default:
       return "bg-muted text-muted-foreground";
   }
+}
+
+function welcomeAlertForUser(params: {
+  userId: string;
+  role?: string | null;
+  createdAt?: string | null;
+}): NotificationAlert {
+  const link =
+    params.role === "freelancer"
+      ? "/freelancer/home"
+      : params.role === "client"
+        ? "/client/home"
+        : "/";
+
+  return {
+    id: `welcome-tebnu-${params.userId}`,
+    type: "welcome",
+    title: "Welcome to Tebnu",
+    description: "We’re happy you’re here. Start by exploring posts or sharing your first one.",
+    link,
+    created_at: params.createdAt ?? new Date().toISOString(),
+    sender_name: "Tebnu",
+    sender_photo: BRAND_LOGO_SRC,
+  };
 }
 
 function NotificationListRow({
@@ -311,7 +343,13 @@ export function NotificationsModal({
         const allAlerts = await fetchInboxActivityAlerts(user, profile, {
           includeUnreadMessageAlerts: true,
         });
-        setAlerts(allAlerts);
+        const welcome = welcomeAlertForUser({
+          userId: user.id,
+          role: profile.role,
+          createdAt: user.created_at,
+        });
+        const dismissed = loadDismissedActivityIds(user.id);
+        setAlerts(dismissed.has(welcome.id) ? allAlerts : [welcome, ...allAlerts]);
       } catch (err) {
         console.error("Error fetching news:", err);
       } finally {

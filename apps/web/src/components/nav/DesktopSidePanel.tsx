@@ -25,6 +25,7 @@ import {
   PenSquare,
   Zap,
   LogOut,
+  Menu,
 } from "lucide-react";
 
 type SavedProfileRow = {
@@ -53,7 +54,13 @@ function isExcludedRoute(pathname: string): boolean {
   return false;
 }
 
-export function DesktopSidePanel({ collapsed = false }: { collapsed?: boolean }) {
+export function DesktopSidePanel({
+  collapsed = false,
+  onCollapse,
+}: {
+  collapsed?: boolean;
+  onCollapse?: () => void;
+}) {
   const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
   const { guardKycAction } = useKycGate();
@@ -274,7 +281,206 @@ export function DesktopSidePanel({ collapsed = false }: { collapsed?: boolean })
   // After all hooks: decide whether to render.
   if (!user || !profile) return null;
   if (isExcludedRoute(pathname)) return null;
-  if (collapsed) return null;
+
+  if (collapsed) {
+    return (
+      <aside
+        className={cn(
+          "app-desktop-side-panel hidden !w-[96px] flex-col items-center md:flex",
+          "bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-xl",
+        )}
+      >
+        <div className="flex w-full shrink-0 flex-col items-center gap-2 px-2 pt-4 pb-2">
+          <button
+            type="button"
+            onClick={onCollapse}
+            className={cn(
+              "inline-flex h-9 w-9 items-center justify-center rounded-2xl",
+              "bg-muted/55 text-foreground shadow-sm transition-colors hover:bg-muted active:scale-[0.98]",
+            )}
+            aria-label="Open sidebar"
+          >
+            <Menu className="h-5 w-5" strokeWidth={2.6} />
+          </button>
+          <img
+            src={BRAND_LOGO_SRC}
+            alt="Tebnu"
+            className="h-10 w-auto shrink-0"
+            loading="eager"
+            decoding="async"
+          />
+          <button
+            type="button"
+            onClick={() => setPlusOpen((v) => !v)}
+            className={cn(
+              "relative inline-flex h-9 w-9 items-center justify-center rounded-2xl",
+              "bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors",
+              "hover:bg-background active:scale-[0.98]",
+            )}
+            aria-label={t("common.create")}
+            aria-expanded={plusOpen}
+            aria-haspopup="menu"
+          >
+            <Plus className="h-5 w-5" strokeWidth={2.8} />
+          </button>
+
+          {plusOpen ? (
+            <>
+              <div
+                className="fixed inset-0 z-[140]"
+                onClick={() => setPlusOpen(false)}
+              />
+              <div
+                role="menu"
+                className={cn(
+                  "absolute start-[calc(100%+12px)] top-16 z-[150] w-[14.5rem] overflow-hidden rounded-2xl",
+                  "bg-background/95 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 duration-200",
+                )}
+              >
+                {isClient ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={plusMenuItemClassName}
+                    onClick={() => {
+                      setPlusOpen(false);
+                      guardKycAction("start_request", () => navigate(requestHref));
+                    }}
+                  >
+                    <UsersRound className="h-5 w-5 shrink-0 text-foreground/80" />
+                    <span>{t("nav.postRequest")}</span>
+                  </button>
+                ) : null}
+                {isFreelancer ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={plusMenuItemClassName}
+                    onClick={() => {
+                      setPlusOpen(false);
+                      guardKycAction("go_live", () => navigate(goLiveHref));
+                    }}
+                  >
+                    <Zap className="h-5 w-5 shrink-0 text-foreground/80" />
+                    <span>{isLiveNow ? t("nav.liveNow") : t("nav.goLive")}</span>
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={plusMenuItemClassName}
+                  onClick={() => {
+                    setPlusOpen(false);
+                    guardKycAction("share_post", () =>
+                      navigate(`${communityHref}?compose=1`),
+                    );
+                  }}
+                >
+                  <PenSquare className="h-5 w-5 shrink-0 text-foreground/80" />
+                  <span>{t("nav.sharePost")}</span>
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overscroll-contain px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav className="flex w-full flex-col items-center gap-2">
+            {items.map((it) => {
+              const active = it.activeMatch(pathname);
+              const Icon = it.icon;
+              const isProfileRow = it.id === "profile";
+              const label = t(it.labelKey);
+              return (
+                <Link
+                  key={it.href}
+                  to={it.href}
+                  className={cn(
+                    "relative flex h-11 w-11 items-center justify-center rounded-2xl transition-colors",
+                    "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                    active && "bg-muted/75 text-foreground",
+                  )}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={label}
+                  title={label}
+                >
+                  {isProfileRow ? (
+                    <Avatar
+                      className={cn(
+                        "h-7 w-7 shrink-0 border transition-[box-shadow,ring-color] duration-300",
+                        active
+                          ? "border-transparent ring-2 ring-foreground"
+                          : "border-black/10 dark:border-white/15",
+                      )}
+                    >
+                      <AvatarImage
+                        src={profile?.photo_url ?? undefined}
+                        alt=""
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-slate-100 text-[10px] font-bold text-zinc-900 dark:bg-zinc-800 dark:text-white">
+                        {(profile?.full_name ?? user?.email ?? "U")
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <Icon className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+                  )}
+                  {it.id === "messages" && unreadMessages > 0 ? (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black tabular-nums shadow-sm"
+                    >
+                      {unreadMessages > 9 ? "9+" : unreadMessages}
+                    </Badge>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto flex w-full flex-col items-center gap-2 rounded-2xl bg-muted/20 py-2">
+            <button
+              type="button"
+              onClick={() => openSaved("profiles")}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              aria-label={t("nav.savedProfiles")}
+              title={t("nav.savedProfiles")}
+            >
+              <Bookmark className="h-5 w-5" strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => openSaved("posts")}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              aria-label={t("nav.savedPosts")}
+              title={t("nav.savedPosts")}
+            >
+              <Bookmark className="h-5 w-5 fill-current" strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
+
+        <div className="w-full shrink-0 border-t border-border/10 p-2">
+          <button
+            type="button"
+            onClick={async () => {
+              await signOut();
+            }}
+            className={cn(
+              "flex h-11 w-full items-center justify-center rounded-2xl transition-colors",
+              "text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-red-500/20 active:scale-[0.98]",
+            )}
+            aria-label={t("common.logOut")}
+            title={t("common.logOut")}
+          >
+            <LogOut className="h-6 w-6 shrink-0" strokeWidth={2.4} />
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside
@@ -285,23 +491,33 @@ export function DesktopSidePanel({ collapsed = false }: { collapsed?: boolean })
     >
       {/* Fixed top section to allow popouts to escape overflow clipping */}
       <div className="shrink-0 px-3 pt-4 pb-1">
-        <div className="relative mb-1 flex items-center gap-1 rounded-2xl bg-muted/40 px-3 py-2 text-foreground">
+        <div className="relative mb-1 flex items-center gap-2 rounded-2xl bg-muted/40 px-2.5 py-2 text-foreground">
+          <button
+            type="button"
+            onClick={onCollapse}
+            className={cn(
+              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+              "bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors",
+              "hover:bg-background active:scale-[0.98]",
+            )}
+            aria-label="Collapse sidebar"
+          >
+            <Menu className="h-5 w-5" strokeWidth={2.6} />
+          </button>
+
           <img
             src={BRAND_LOGO_SRC}
             alt="Tebnu"
-            className="h-16 w-auto shrink-0 md:h-[4.5rem]"
+            className="h-12 w-auto shrink-0 md:h-14"
             loading="eager"
             decoding="async"
           />
-          <span className="min-w-0 truncate text-[13px] font-black leading-none tracking-tight">
-            Tebnu
-          </span>
 
           <button
             type="button"
             onClick={() => setPlusOpen((v) => !v)}
             className={cn(
-              "ms-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
               "bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors",
               "hover:bg-background active:scale-[0.98]",
             )}

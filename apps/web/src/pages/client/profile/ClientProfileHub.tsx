@@ -7,6 +7,7 @@ import { ProfileMenuRow, profileMenuListClassName } from "@/components/profile/P
 import { ProfileHubIdentityCard } from "@/components/profile/ProfileHubIdentityCard";
 import { ProfileHubLogoutButton } from "@/components/profile/ProfileHubLogoutButton";
 import { ProfileHubHomeButton } from "@/components/profile/ProfileHubHomeButton";
+import { RoleOnboardingGuide } from "@/components/onboarding/RoleOnboardingGuide";
 import type { ClientProfileFormContext } from "@/hooks/useClientProfileForm";
 import {
   User,
@@ -52,6 +53,11 @@ export default function ClientProfileHub() {
           </div>
 
           <div className="mt-10 flex flex-col items-center gap-3 pb-4">
+            <RoleOnboardingGuide
+              role={profile?.role ?? "client"}
+              triggerLabel="Help"
+              triggerClassName="gap-2 text-muted-foreground"
+            />
             <Button
               type="button"
               variant="ghost"

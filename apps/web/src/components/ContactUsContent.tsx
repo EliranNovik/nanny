@@ -21,8 +21,9 @@ import {
   Send,
   CheckCircle2,
 } from "lucide-react";
+import { apiPublicPost } from "@/lib/api";
 
-const SUPPORT_EMAIL = "support@tebnu.com";
+const SUPPORT_EMAIL = "info@tebnu.com";
 
 const TOPICS = [
   { value: "general", label: "General question" },
@@ -72,39 +73,35 @@ export function ContactUsContent() {
     return Object.keys(next).length === 0;
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!validate()) return;
 
     setSubmitting(true);
     const topicLabel = TOPICS.find((t) => t.value === topic)?.label ?? topic;
-    const subject = `[Tebnu] ${topicLabel}`;
-    const body = [
-      `Name: ${name.trim()}`,
-      `Email: ${email.trim()}`,
-      phone.trim() ? `Phone: ${phone.trim()}` : null,
-      `Topic: ${topicLabel}`,
-      "",
-      message.trim(),
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
     try {
-      window.location.href = mailto;
+      await apiPublicPost("/api/contact", {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || null,
+        topic,
+        topicLabel,
+        message: message.trim(),
+      });
       setSubmitted(true);
       addToast({
         title: "Thank you for reaching out",
-        description:
-          "If your email app opened, just send the message. You can also email us directly if you prefer.",
+        description: "Your message was sent to the Tebnu team.",
         variant: "success",
       });
-    } catch {
+    } catch (err) {
       addToast({
-        title: "Couldn’t open your email app",
-        description: `Write to us at ${SUPPORT_EMAIL} — we read every message.`,
+        title: "Couldn’t send your message",
+        description:
+          err instanceof Error
+            ? `${err.message} You can also email ${SUPPORT_EMAIL}.`
+            : `Please email us directly at ${SUPPORT_EMAIL}.`,
         variant: "error",
       });
     } finally {
@@ -116,7 +113,7 @@ export function ContactUsContent() {
     return (
       <div className="relative w-full max-w-2xl mx-auto">
         <Blob className="-right-16 -top-16 h-56 w-56 bg-gradient-to-br from-orange-400 to-rose-500" />
-        <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 p-10 text-center shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/60">
+        <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 p-10 text-center shadow-xl backdrop-blur dark:border-transparent dark:bg-slate-950/60">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-9 w-9" strokeWidth={2} />
           </div>
@@ -124,12 +121,11 @@ export function ContactUsContent() {
             We’ve got your note
           </h2>
           <p className="mt-3 text-base leading-relaxed text-slate-600 dark:text-slate-300">
-            Thanks for trusting us with your question. If your mail program
-            opened, send the draft and our team will get back to you as soon as
-            we can—usually within one business day.
+            Thanks for trusting us with your question. Our team will get back
+            to you as soon as we can—usually within one business day.
           </p>
           <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-            Nothing opened? Email us directly at{" "}
+            Need to add more detail? Email us directly at{" "}
             <a
               className="font-bold text-primary underline-offset-4 hover:underline"
               href={`mailto:${SUPPORT_EMAIL}`}
@@ -158,11 +154,11 @@ export function ContactUsContent() {
   return (
     <div className="w-full max-w-5xl mx-auto space-y-12 pb-4">
       {/* Intro */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/60 p-8 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/40 md:p-10">
+      <section className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/60 p-8 shadow-lg backdrop-blur-sm dark:border-transparent dark:bg-slate-950/40 md:p-10">
         <Blob className="-right-20 -top-20 h-64 w-64 bg-gradient-to-br from-orange-400/80 to-rose-500/60" />
         <Blob className="-bottom-16 -left-12 h-48 w-48 bg-gradient-to-tr from-primary/40 to-amber-300/50" />
         <div className="relative max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-300">
+          <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-orange-700 dark:border-transparent dark:bg-orange-500/15 dark:text-orange-300">
             <MessageCircle className="h-3.5 w-3.5" />
             We’re here for you
           </div>
@@ -180,7 +176,7 @@ export function ContactUsContent() {
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
         {/* Care strip + contact info */}
         <aside className="space-y-6">
-          <div className="rounded-[1.75rem] border border-slate-200/80 bg-gradient-to-br from-orange-50/90 to-white p-6 shadow-md dark:border-white/10 dark:from-orange-950/30 dark:to-slate-950/50">
+          <div className="rounded-[1.75rem] border border-slate-200/80 bg-gradient-to-br from-orange-50/90 to-white p-6 shadow-md dark:border-transparent dark:from-orange-950/30 dark:to-slate-950/50">
             <div className="flex gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-lg">
                 <HeartHandshake className="h-6 w-6" />
@@ -197,7 +193,7 @@ export function ContactUsContent() {
             </div>
           </div>
 
-          <div className="space-y-4 rounded-[1.75rem] border border-slate-200/80 bg-card/80 p-6 shadow-sm dark:border-white/10">
+          <div className="space-y-4 rounded-[1.75rem] border border-slate-200/80 bg-card/80 p-6 shadow-sm dark:border-transparent">
             <div className="flex items-start gap-3">
               <Mail
                 className="mt-0.5 h-5 w-5 shrink-0 text-primary"
@@ -215,7 +211,7 @@ export function ContactUsContent() {
                 </a>
               </div>
             </div>
-            <div className="flex items-start gap-3 border-t border-border/60 pt-4">
+            <div className="flex items-start gap-3 border-t border-border/60 pt-4 dark:border-transparent">
               <Clock
                 className="mt-0.5 h-5 w-5 shrink-0 text-primary"
                 aria-hidden
@@ -233,13 +229,12 @@ export function ContactUsContent() {
         </aside>
 
         {/* Form */}
-        <div className="rounded-[1.75rem] border-2 border-slate-200/90 bg-white/90 p-6 shadow-xl dark:border-white/10 dark:bg-slate-950/70 md:p-8">
+        <div className="rounded-[1.75rem] border-2 border-slate-200/90 bg-white/90 p-6 shadow-xl dark:border-transparent dark:bg-slate-950/70 md:p-8">
           <h2 className="text-xl font-black text-slate-900 dark:text-white">
             Send us a message
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            The form below opens your email app with your message ready to
-            send—we never store it on a server from this page.
+            This sends your message directly to the Tebnu team at {SUPPORT_EMAIL}.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
@@ -258,6 +253,7 @@ export function ContactUsContent() {
                       setFieldErrors((f) => ({ ...f, name: "" }));
                   }}
                   className={cn(
+                    "dark:border-transparent",
                     fieldErrors.name &&
                       "border-destructive focus-visible:ring-destructive",
                   )}
@@ -284,6 +280,7 @@ export function ContactUsContent() {
                       setFieldErrors((f) => ({ ...f, email: "" }));
                   }}
                   className={cn(
+                    "dark:border-transparent",
                     fieldErrors.email &&
                       "border-destructive focus-visible:ring-destructive",
                   )}
@@ -312,6 +309,7 @@ export function ContactUsContent() {
                 placeholder="+972 …"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                className="dark:border-transparent"
               />
             </div>
 
@@ -320,7 +318,7 @@ export function ContactUsContent() {
               <Select value={topic} onValueChange={setTopic}>
                 <SelectTrigger
                   id="contact-topic"
-                  className="h-11 rounded-lg border-2"
+                  className="h-11 rounded-lg border-2 dark:border-transparent"
                 >
                   <SelectValue placeholder="Choose a topic" />
                 </SelectTrigger>
@@ -348,7 +346,7 @@ export function ContactUsContent() {
                     setFieldErrors((f) => ({ ...f, message: "" }));
                 }}
                 className={cn(
-                  "min-h-[140px] rounded-lg border-2 border-input bg-background px-4 py-3 text-sm transition-colors focus-visible:ring-2",
+                  "min-h-[140px] rounded-lg border-2 border-input bg-background px-4 py-3 text-sm transition-colors focus-visible:ring-2 dark:border-transparent",
                   fieldErrors.message &&
                     "border-destructive focus-visible:ring-destructive",
                 )}
@@ -369,20 +367,18 @@ export function ContactUsContent() {
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Opening…
+                  Sending…
                 </>
               ) : (
                 <>
                   <Send className="mr-2 h-5 w-5" />
-                  Continue to email
+                  Submit
                 </>
               )}
             </Button>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Submitting opens your default email app with your message
-              addressed to {SUPPORT_EMAIL}. You can edit before sending. Prefer
-              not to use email? You can still reach us at the address above from
-              any device.
+              Your message is sent directly to {SUPPORT_EMAIL}. You can also
+              email us there from any device.
             </p>
           </form>
         </div>

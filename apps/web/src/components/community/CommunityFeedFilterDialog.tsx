@@ -111,7 +111,7 @@ export function CommunityFeedFilterButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "relative inline-flex shrink-0 items-center gap-2 rounded-full border-0 px-4 py-2 text-xs font-black uppercase tracking-wide transition-all sm:text-[13px]",
+        "relative inline-flex shrink-0 items-center gap-2.5 rounded-full border-0 px-[1.125rem] py-2.5 text-[13px] font-black uppercase tracking-wide transition-all sm:px-5 sm:text-[14px]",
         activeCount > 0
           ? communityFeedFilterActiveBadgeClass
           : communityFeedFilterIdleBadgeClass,
@@ -119,7 +119,7 @@ export function CommunityFeedFilterButton({
       )}
       aria-label={t("feed.filters.filterPosts")}
     >
-      <SlidersHorizontal className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} />
+      <SlidersHorizontal className="h-5 w-5 shrink-0" strokeWidth={2.25} />
       {t("feed.filters.filter")}
       {activeCount > 0 ? (
         <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-zinc-500/15 px-1.5 text-[10px] font-black tabular-nums text-zinc-800 dark:bg-white/20 dark:text-white">
@@ -559,7 +559,7 @@ export function CommunityFeedFilterDialog({
         }}
         onDismiss={() => onOpenChange(false)}
         bottomOffsetClass={discoverMobileSheetBottomOffset}
-        className="z-[130]"
+        className="z-[240]"
         maxHeight="min(90dvh, 640px)"
         ariaLabel={t("feed.filters.filterPosts")}
         collapsed={
